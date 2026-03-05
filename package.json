@@ -1,0 +1,36 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build && vite build --ssr"
+    },
+    "devDependencies": {
+        "@inertiajs/vue3": "^2.0.3",
+        "@tailwindcss/forms": "^0.5.10",
+        "@vitejs/plugin-vue": "^5.0.0",
+        "@vue-macros/volar": "^0.27.4",
+        "@vue/server-renderer": "^3.4.0",
+        "autoprefixer": "^10.4.19",
+        "axios": "^1.12.2",
+        "daisyui": "^5.1.31",
+        "laravel-vite-plugin": "^1.0",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^4.1.14",
+        "unplugin-vue-define-options": "^1.5.5",
+        "vite": "^5.4.20",
+        "vue": "^3.5.22"
+    },
+    "dependencies": {
+        "@tailwindcss/postcss": "^4.1.14",
+        "@tailwindcss/vite": "^4.1.14",
+        "@vueuse/core": "^10.11.0",
+        "apexcharts": "^3.54.1",
+        "date-fns": "^4.1.0",
+        "lodash": "^4.17.21",
+        "pikaday": "^1.8.2",
+        "pinia": "^2.2.2",
+        "tailwind-merge": "^2.5.4",
+        "vue-tg": "^0.8.0"
+    }
+}

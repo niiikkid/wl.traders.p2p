@@ -1,0 +1,47 @@
+---
+description: Включать только при задачах про роутинг/доступы/меню/новые страницы для разных ролей (роутинг↔роли↔UI)
+alwaysApply: false
+---
+
+# Доменная логика: роутинг ↔ роли ↔ UI
+
+Это правило нужно, когда ты меняешь **роуты/доступы/контроллеры** или **лейаут/меню/переключение интерфейса**. В проекте эти части связаны и ошибка в одном месте приводит к “не тому меню”, “не тем счётчикам” или “не тому доступу”.
+
+## Ключевая идея
+
+- **Контекст (какой UI показывать)** определяется **именем роута и его middleware**, а не только “ролью пользователя”.
+- Фронт показывает меню по `route().current('admin.*')` / `merchant.*` / `support.*` / и т.д.
+- Бэк использует `isRouteFor($role)` (проверка middleware `role:` у текущего роута) для расчёта shared props/счётчиков.
+
+## Бэкенд: роли/доступы/роутинг
+
+- **Роли**: Spatie Permission, middleware `role:`. Роли в проекте: `Super Admin`, `Trader`, `Merchant`, `Support`, `Team Leader`, `Merchant Support`.
+- **Роутинг по ролям**: `routes/web.php` содержит группы с `middleware: auth, banned, role:...` и неймспейсы имён роутов:
+  - `admin.*` (prefix `admin`) — `role:Super Admin`
+  - `support.*` (prefix `support`) — `role:Support|Super Admin`
+  - `leader.*` (prefix `leader`) — `role:Team Leader|Super Admin`
+  - `merchant-support.*` (prefix `merchant-support`) — `role:Merchant Support|Super Admin`
+  - `merchant.*`, `trader.*` и “общие” (`orders.*`, `disputes.*`, `payment-details.*`) — см. `routes/web.php`
+- **`isRouteFor($role)`**: `app/helpers.php` проверяет наличие `role:` в middleware роута. Используется в `HandleInertiaRequests` для вычисления “userRole” и счётчиков меню. Если ты добавляешь новую страницу и забываешь `role:` middleware — бэкенд будет считать контекст/счётчики неправильно.
+- **Точечный доступ к сущностям**: Gates определены в `app/Providers/AppServiceProvider.php` (`access-to-order`, `access-to-dispute`, `access-to-payment-detail` и др.). При добавлении новых экшенов с доступом к `Order/Dispute/PaymentDetail/Merchant` используй Gate-проверки в том же стиле, а не “ручные if”.
+
+## Inertia shared props (источник правды для UI-данных)
+
+- `app/Http/Middleware/HandleInertiaRequests.php` шарит:
+  - `auth.user`, `auth.role`, `auth.is_admin`, `auth.is_impersonated`
+  - `data.rates`, `data.wallet`, `data.hasPendingDisputes`
+  - `menu.*` (счётчики и индикаторы для меню)
+- **Правило**: счётчики/данные верхнего уровня должны жить в shared props, а не вычисляться на фронте.
+
+## Фронт: viewMode и меню
+
+- **Источник состояния**: `resources/js/store/view.js` хранит `viewMode`.
+- **Переключение**: `resources/js/Layouts/AuthenticatedLayout.vue` выставляет `viewMode` на `onMounted` и на `router.on('success')`.
+- **Как определяется режим**: в основном через `route().current('admin.*')` / `leader.*` / `support.*` / `merchant-support.*` / `merchant.*` и отдельные ветки для `integration.*`, `payments.*`, `merchants.*`.
+- Есть отдельная логика для `profile.*`, где режим выбирается по `usePage().props.auth.role.name`.
+
+## Практическая проверка при добавлении новой страницы/раздела
+
+- Убедись, что **имя роута** попадает в правильный неймспейс (`admin.*`, `support.*`, …), иначе меню/лейаут может остаться “trader”.
+- Убедись, что роут/группа имеет корректный `role:` middleware — это влияет и на доступ, и на `isRouteFor()` → shared props.
+- Если страница использует новые “счётчики/индикаторы” в меню — добавляй их в `HandleInertiaRequests`.

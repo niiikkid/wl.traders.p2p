@@ -1,0 +1,92 @@
+---
+description: Фильтры таблиц (Inertia + TableFilters): добавление/изменение/расширение
+globs:
+  - "resources/js/Components/Filters/**/*.vue"
+  - "resources/js/store/tableFilters.js"
+  - "resources/js/Wrappers/MainTableSection.vue"
+  - "resources/js/Pages/**/Index.vue"
+  - "app/Http/Controllers/**/*.php"
+  - "app/ObjectValues/TableFilters/**/*.php"
+  - "app/Queries/**/*.php"
+alwaysApply: false
+---
+
+# Фильтры таблиц (TableFilters)
+
+Это правило применять **каждый раз**, когда ты:
+- добавляешь фильтры на новую страницу с таблицей;
+- расширяешь/правишь существующие фильтры (Orders/Disputes/Payouts/Withdrawals/Users/PaymentDetails/PaymentGateways и т.д.);
+- меняешь формат значений фильтров, варианты селектов, логику применения в запросах.
+
+## Источник правды (как это устроено)
+
+### Фронт
+- Состояние фильтров/пагинации: `resources/js/store/tableFilters.js` (`page`, `per_page`, `tab`, `filters`, `filtersVariants`).
+- Применение фильтров и URL: `FiltersPanel` делает `router.visit(route(route().current()), { data: { ...tableFiltersStore.getQueryData, ...props.query } })`.
+- Инициализация стора на странице таблицы: `MainTableSection` берёт `filters` и `filtersVariants` из Inertia props.
+- UI-фильтры: `resources/js/Components/Filters/Pertials/*` пишут в `tableFiltersStore.filters[<name>]`.
+
+### Бэк
+- Парсинг и нормализация значений: `app/Http/Controllers/Controller.php::getTableFilters()`.
+- Формат отдачи в Inertia (и в URL): `app/ObjectValues/TableFilters/TableFiltersValue.php::toArray()` (строки/булевы/CSV/даты).
+- Варианты для селектов/чеклистов: `Controller::getFiltersData()` → в Inertia как `filtersVariants`.
+- Применение в запросах: `app/Queries/**/paginateFor*()` через `->when($filters->..., fn($q) => ...)`.
+
+## “Правильный” паттерн страницы с таблицей
+
+- **Контроллер index**: всегда отдавай `filters` и `filtersVariants`:
+  - `$filters = $this->getTableFilters();`
+  - `$filtersVariants = $this->getFiltersData();`
+  - `return Inertia::render('X/Index', compact('data', 'filters', 'filtersVariants'));`
+- **Vue Index**:
+  - оборачивай в `MainTableSection`;
+  - фильтры размещай в слот `header` или `table-filters`;
+  - используй `<FiltersPanel name="...">` и внутри — `InputFilter/DateFilter/DropdownFilter/FilterCheckbox`.
+
+## Чеклист: добавить/изменить фильтр (end-to-end)
+
+### 1) Выбери тип фильтра и формат значения
+- **Текст/число**: строка (backend: `request()->input('filters.xxx')`).
+- **Дата**: строка `DD/MM/YYYY` на фронте → на бэке парсится в `Carbon` (см. `startDate/endDate`).
+- **Мультиселект (DropdownFilter)**: строка CSV (`"a,b,c"`) в URL/filters; на бэке — `explode(',')` + валидация значений.
+- **Чекбокс**: булево. На бэке сейчас часто ожидается строка `'true'` из query (`request()->input('filters.xxx') === 'true'`).
+
+### 2) Бэк: добавь поддержку фильтра
+- **TableFiltersValue**:
+  - добавь свойство в конструктор (`public ?string|bool|array ...`) и в `toArray()` (важно: `toArray()` должен отдавать то, что фронт кладёт в query).
+- **Controller::getTableFilters()**:
+  - достань `request()->input('filters.<name>')`;
+  - нормализуй (CSV→array, даты→Carbon, bool→строгое сравнение);
+  - положи в `$currentFilters[...]`;
+  - передай в `new TableFiltersValue(...)`.
+- **Controller::getFiltersData()** (если нужен Dropdown/варианты):
+  - верни массив вариантов в формате `[{ name: '...', value: '...' }, ...]` под ключом, совпадающим с именем фильтра.
+- **Queries**:
+  - применяй фильтр только если он “не пустой”: `->when($filters->name, ...)` или `->when(!empty($filters->name), ...)`.
+  - для отношений используй `whereRelation`/`orWhereRelation` как в существующих примерах.
+
+### 3) Фронт: добавь UI и привязку
+- В `X/Index.vue` внутри `<FiltersPanel name="...">` добавь нужный компонент:
+  - `InputFilter name="..." placeholder="..."` (ввод пишет в store);
+  - `DateFilter name="startDate|endDate"`;
+  - `DropdownFilter name="..." title="..."` (опции берутся из `tableFiltersStore.filtersVariants[name]`).
+  - `FilterCheckbox name="..." title="..."`.
+- **Имя фильтра (`name`) на фронте должно 1:1 совпадать** с ключом в `TableFiltersValue` и в `Controller::getTableFilters()` (`filters.<name>`).
+
+## Частые ошибки (и как не ломать систему)
+
+- Не добавляй “локальное состояние” фильтров в странице — фильтры должны жить в `tableFilters` store.
+- Не ломай формат в URL: изменения формата значения требуют правок сразу в:
+  - `TableFiltersValue::toArray()`,
+  - `Controller::getTableFilters()`,
+  - конкретных `Queries`.
+- Для DropdownFilter варианты должны быть в `filtersVariants` (Inertia props → `MainTableSection` → store).
+- Если страница имеет доп. параметры запроса (например, “архив/режим”), прокидывай их через `FiltersPanel :query="{ ... }"` — он мержится в `router.visit`.
+
+## Мини-проверка после изменений
+
+- Открой страницу, выставь фильтры, нажми “Фильтровать”, обнови страницу:
+  - фильтры должны восстановиться (сессия/URL);
+  - пагинация должна работать с текущими фильтрами;
+  - сброс должен очищать `filters` и перезагружать страницу.
+

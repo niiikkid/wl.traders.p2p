@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["resources/js/*"],
+            "ziggy-js": ["./vendor/tightenco/ziggy"]
+        }
+    },
+    "exclude": [
+        "node_modules",
+        "public",
+        "resources/js/Pages/Payout/**/*",
+        "resources/js/Pages/PayoutGateway/**/*",
+        "resources/js/Pages/PayoutOffer/**/*",
+        "resources/js/Components/PayoutStatus.vue",
+        "resources/js/Modals/PayoutModal.vue"
+    ]
+}

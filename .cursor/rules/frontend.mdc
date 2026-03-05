@@ -1,0 +1,36 @@
+---
+description: Правила для фронтенда (Vue 3 / InertiaJS / DaisyUI)
+globs:
+  - "resources/js/**/*.{vue,js,ts}"
+  - "resources/css/**/*.css"
+  - "vite.config.js"
+  - "package.json"
+  - "postcss.config.js"
+alwaysApply: false
+---
+
+# Правила для фронтенда (Vue 3 / InertiaJS / DaisyUI)
+
+## Vue 3 Setup, JavaScript (проектные правила)
+
+- Не пиши стили в компонентах Vue.
+- `script` должен находиться над `template` в компонентах Vue.
+- В проекте используется `ConfirmModal` для подтверждения действия пользователя.
+- В проекте есть готовый проект пагинации `Pagination`.
+- В проекте используется папка `Wrappers` с часто используемыми структурами таблиц:
+  - `MainTableSection` — для главных страниц с таблицами (например, `Order/Index`, `Dispute/Index`)
+  - `SecondaryPageSection` — для страниц создания/редактирования/просмотра (например, `PaymentDetail/Create`, `PaymentGateway/Edit`)
+- `router.visit` всегда используй через импорт, без добавление `$router.visit`.
+- Фильтры: есть готовая реализация в `Components/Filters` (примеры — `Order/Index`, `Dispute/Index`).
+- Для таблиц раздел `Actions` имеет готовые кнопки и `Dropdown` в `Components/Table`.
+- В проекте есть 3 вида меню: Админ, Трейдер, Мерчант.
+- Для даты со временем используй компонент `Components/DateTime`.
+- В формах при выполнении запроса всегда блокируй кнопку — `processing`.
+
+## DaisyUI, Tailwind CSS
+
+- Использовать утилитные классы DaisyUI и Tailwind для верстки.
+
+## Vue.js и Inertia.JS
+
+- Используй Vue.js 3 Setup и Inertia.JS 2 для фронт энда.
