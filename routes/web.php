@@ -156,7 +156,13 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/users', [\App\Http\Controllers\Support\UserController::class, 'index'])->name('users.index');
         Route::patch('/users/{user}/toggle-traffic', [\App\Http\Controllers\Support\UserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
         Route::get('/orders', [\App\Http\Controllers\Support\OrderController::class, 'index'])->name('orders.index');
+        Route::patch('/orders/{order}/accept', [\App\Http\Controllers\Support\OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::get('/disputes', [\App\Http\Controllers\Support\DisputeController::class, 'index'])->name('disputes.index');
+        Route::post('/disputes/{order}', [\App\Http\Controllers\Support\DisputeController::class, 'store'])->name('disputes.store');
+        Route::patch('/disputes/{dispute}/accept', [\App\Http\Controllers\Support\DisputeController::class, 'accept'])->name('disputes.accept');
+        Route::patch('/disputes/{dispute}/cancel', [\App\Http\Controllers\Support\DisputeController::class, 'cancel'])->name('disputes.cancel');
+        Route::patch('/disputes/{dispute}/rollback', [\App\Http\Controllers\Support\DisputeController::class, 'rollback'])->name('disputes.rollback');
+        Route::get('/payouts', [\App\Http\Controllers\Support\PayoutController::class, 'index'])->name('payouts.index');
     });
 
     //common

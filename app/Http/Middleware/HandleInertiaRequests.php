@@ -161,6 +161,16 @@ class HandleInertiaRequests extends Middleware
                 $pendingDisputesCount = cache()->remember("pending_disputes_support", 15, function () use ($disputeQuery) {
                     return $disputeQuery->clone()->count();
                 });
+
+                $payoutsActiveCount = cache()->remember('payouts_active_support', 15, function () {
+                    return Payout::query()
+                        ->whereIn('status', [
+                            PayoutStatus::OPEN->value,
+                            PayoutStatus::TAKEN->value,
+                            PayoutStatus::SENT->value,
+                        ])
+                        ->count();
+                });
             }
 
             if (isRouteFor('Trader')) {

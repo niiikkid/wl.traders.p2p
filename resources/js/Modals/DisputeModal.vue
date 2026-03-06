@@ -189,7 +189,7 @@ const showReceipt = () => {
                 </div>
             </form>
         </ModalBody>
-        <ModalFooter v-show="(viewStore.isAdminViewMode || disputeModal.params.dispute.status === 'pending' || disputeModal.params.dispute.status === 'canceled') && !viewStore.isSupportViewMode">
+        <ModalFooter v-show="viewStore.isAdminViewMode || viewStore.isSupportViewMode || disputeModal.params.dispute.status === 'pending' || disputeModal.params.dispute.status === 'canceled'">
             <div class="flex justify-center w-full">
                 <template v-if="disputeModal.params.dispute.status === 'pending'">
                     <button

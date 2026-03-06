@@ -1,5 +1,5 @@
 <script setup>
-import {Head, router, usePage} from '@inertiajs/vue3';
+import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import OrderStatus from "@/Components/OrderStatus.vue";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
@@ -8,7 +8,6 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import OrderModal from "@/Modals/OrderModal.vue";
 import {useModalStore} from "@/store/modal.js";
 import DateTime from "@/Components/DateTime.vue";
-import ShowAction from "@/Components/Table/ShowAction.vue";
 import {ref} from "vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
@@ -18,6 +17,7 @@ import DateFilter from "@/Components/Filters/Pertials/DateFilter.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
+import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 
 const orders = ref(usePage().props.orders);
 const modalStore = useModalStore();
@@ -34,6 +34,62 @@ const openOrderModal = (order) => {
     }
     modalStore.openOrderModal({order_id: order.id})
 }
+
+const confirmAcceptOrder = (order) => {
+    modalStore.openConfirmModal({
+        title: 'Вы уверены что хотите  закрыть сделку как оплаченную?',
+        confirm_button_name: 'Платеж поступил',
+        confirm: () => {
+            useForm({}).patch(route('support.orders.accept', order.id), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    modalStore.closeAll()
+                    router.visit(route('support.orders.index'), {
+                        only: ['orders'],
+                    })
+                },
+            })
+        }
+    });
+}
+
+const confirmAcceptDispute = (dispute) => {
+    modalStore.openConfirmModal({
+        title: 'Вы уверены что хотите принять спор #' + dispute?.id + '?',
+        body: 'В таком случае, сделка будет закрыта как оплаченная.',
+        confirm_button_name: 'Принять спор',
+        confirm: () => {
+            useForm({}).patch(route('support.disputes.accept', dispute.id), {
+                preserveScroll: true,
+                onFinish: () => {
+                    modalStore.closeAll()
+                    router.visit(route('support.orders.index'), {
+                        only: ['orders'],
+                    })
+                },
+            });
+        }
+    });
+}
+
+const confirmRollbackDispute = (dispute) => {
+    modalStore.openConfirmModal({
+        title: 'Вы уверены что хотите открыть спор #' + dispute?.id + '?',
+        body: 'Референтная сделка не изменит свой статус.',
+        confirm_button_name: 'Открыть спор',
+        confirm: () => {
+            useForm({}).patch(route('support.disputes.rollback', dispute.id), {
+                preserveScroll: true,
+                onFinish: () => {
+                    modalStore.closeAll()
+                    router.visit(route('support.orders.index'), {
+                        only: ['orders'],
+                    })
+                },
+            });
+        }
+    });
+};
 
 defineOptions({ layout: AuthenticatedLayout })
 </script>
@@ -190,6 +246,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </svg>
                                             </button>
                                             <button
+                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail')"
+                                                @click.prevent="confirmAcceptOrder(order)"
+                                                type="button"
+                                                class="btn btn-success btn-outline btn-xs"
+                                                :disabled="reloadingTableData"
+                                                aria-label="Оплачен"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
+                                            </button>
+                                            <button
                                                 class="btn btn-primary btn-outline btn-xs"
                                                 @click.prevent="openOrderModal(order)"
                                                 :disabled="reloadingTableData"
@@ -262,6 +330,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </svg>
                                                 </button>
                                                 <button
+                                                    v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail')"
+                                                    @click.prevent="confirmAcceptOrder(order)"
+                                                    type="button"
+                                                    class="btn btn-success btn-outline btn-xs"
+                                                    :disabled="reloadingTableData"
+                                                    aria-label="Оплачен"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                    </svg>
+                                                </button>
+                                                <button
                                                     class="btn btn-primary btn-outline btn-xs"
                                                     @click.prevent="openOrderModal(order)"
                                                     :disabled="reloadingTableData"
@@ -315,6 +395,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </svg>
                                                     </button>
                                                     <button
+                                                        v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail')"
+                                                        @click.prevent="confirmAcceptOrder(order)"
+                                                        type="button"
+                                                        class="btn btn-success btn-outline btn-xs"
+                                                        :disabled="reloadingTableData"
+                                                        aria-label="Оплачен"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
                                                         class="btn btn-primary btn-outline btn-xs"
                                                         @click.prevent="openOrderModal(order)"
                                                         :disabled="reloadingTableData"
@@ -338,7 +430,12 @@ defineOptions({ layout: AuthenticatedLayout })
         </MainTableSection>
 
         <OrderModal/>
-        <DisputeModal/>
+        <DisputeModal
+            @accept="confirmAcceptDispute"
+            @cancel="modalStore.openDisputeCancelModal({dispute:$event})"
+            @rollback="confirmRollbackDispute"
+        />
+        <CancelDisputeModal/>
         <ConfirmModal/>
     </div>
 </template>

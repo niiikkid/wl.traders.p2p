@@ -10,8 +10,10 @@ import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
 import { storeToRefs } from 'pinia'
 import { useModalStore } from "@/store/modal.js";
 import ModalFooter from "@/Components/Modals/Components/ModalFooter.vue";
+import {useViewStore} from "@/store/view.js";
 
 const modalStore = useModalStore();
+const viewStore = useViewStore();
 const { disputeCancelModal } = storeToRefs(modalStore);
 
 const close = () => {
@@ -22,8 +24,16 @@ const form = useForm({
     reason: '',
 });
 
+const cancelDisputeRouteName = () => {
+    if (viewStore.isSupportViewMode) {
+        return 'support.disputes.cancel';
+    }
+
+    return 'disputes.cancel';
+};
+
 const cancel = (dispute) => {
-    form.patch(route('disputes.cancel', dispute.id), {
+    form.patch(route(cancelDisputeRouteName(), dispute.id), {
         preserveScroll: true,
         onSuccess: () => {
             modalStore.closeAll()

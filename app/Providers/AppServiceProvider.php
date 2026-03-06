@@ -254,7 +254,10 @@ class AppServiceProvider extends ServiceProvider
             return $user->id === $paymentDetail->user_id || $user->hasRole('Super Admin');
         });
         Gate::define('access-to-order', function (User $user, Order $order) {
-            return $user->id === $order->paymentDetail?->user_id || $user->id === $order->merchant->user_id || $user->hasRole('Super Admin');
+            return $user->id === $order->paymentDetail?->user_id
+                || $user->id === $order->merchant->user_id
+                || $user->hasRole('Super Admin')
+                || $user->hasRole('Support');
         });
         Gate::define('access-to-order-for-merchant-support', function (User $user, Order $order) {
             return $user->merchant?->id === $order->merchant->user_id || $user->id === $order->merchant->user_id || $user->hasRole('Super Admin');
@@ -263,7 +266,9 @@ class AppServiceProvider extends ServiceProvider
             return $user->id === $merchant->user_id || $user->hasRole('Super Admin');
         });
         Gate::define('access-to-dispute', function (User $user, Dispute $dispute) {
-            return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin');
+            return $user->id === optional($dispute->order->paymentDetail)->user_id
+                || $user->hasRole('Super Admin')
+                || $user->hasRole('Support');
         });
         Gate::define('access-to-dispute-receipt', function (User $user, Dispute $dispute) {
             return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin') || $user->hasRole('Support');

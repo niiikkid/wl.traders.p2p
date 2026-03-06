@@ -23,16 +23,56 @@ const closeModal = () => {
     modalStore.closeModal('order');
 };
 
+const ordersIndexRouteName = () => {
+    if (viewStore.isAdminViewMode) {
+        return 'admin.orders.index';
+    }
+
+    if (viewStore.isSupportViewMode) {
+        return 'support.orders.index';
+    }
+
+    return 'orders.index';
+};
+
+const disputesIndexRouteName = () => {
+    if (viewStore.isAdminViewMode) {
+        return 'admin.disputes.index';
+    }
+
+    if (viewStore.isSupportViewMode) {
+        return 'support.disputes.index';
+    }
+
+    return 'disputes.index';
+};
+
+const acceptOrderRouteName = () => {
+    if (viewStore.isSupportViewMode) {
+        return 'support.orders.accept';
+    }
+
+    return 'orders.accept';
+};
+
+const createDisputeRouteName = () => {
+    if (viewStore.isSupportViewMode) {
+        return 'support.disputes.store';
+    }
+
+    return 'admin.disputes.store';
+};
+
 const confirmAcceptOrder = (order) => {
     modalStore.openConfirmModal({
         title: 'Вы уверены что хотите  закрыть сделку как оплаченную?',
         confirm_button_name: 'Платеж поступил',
         confirm: () => {
-            useForm({}).patch(route('orders.accept', order.id), {
+            useForm({}).patch(route(acceptOrderRouteName(), order.id), {
                 preserveScroll: true,
                 onSuccess: () => {
                     modalStore.closeAll()
-                    router.visit(route(viewStore.adminPrefix + 'orders.index'), {
+                    router.visit(route(ordersIndexRouteName()), {
                         only: ['orders'],
                     })
                 },
@@ -46,11 +86,11 @@ const confirmCreateDispute = (order) => {
         title: 'Вы уверены что хотите открыть спор по сделке?',
         confirm_button_name: 'Открыть спор',
         confirm: () => {
-            useForm({}).post(route('admin.disputes.store', order.id), {
+            useForm({}).post(route(createDisputeRouteName(), order.id), {
                 preserveScroll: true,
                 onSuccess: () => {
                     modalStore.closeAll()
-                    router.visit(route(viewStore.adminPrefix + 'orders.index'), {
+                    router.visit(route(ordersIndexRouteName()), {
                         only: ['orders'],
                     })
                 },
@@ -398,7 +438,7 @@ const copyCallbackUrl = async (callback_url) => {
                 </form>
             </ModalBody>
 
-            <ModalFooter v-if="(order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode) && !viewStore.isSupportViewMode">
+            <ModalFooter v-if="order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode || viewStore.isSupportViewMode">
                 <div class="flex justify-center w-full">
                     <template v-if="! order.has_dispute">
                         <button
@@ -413,7 +453,7 @@ const copyCallbackUrl = async (callback_url) => {
                             Оплачен
                         </button>
                         <button
-                            v-if="viewStore.isAdminViewMode"
+                            v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode"
                             @click.prevent="confirmCreateDispute(order)"
                             type="button"
                             class="btn btn-warning btn-sm me-2"
@@ -430,7 +470,7 @@ const copyCallbackUrl = async (callback_url) => {
                             <div class="flex justify-center">
                                 <Link
                                     @click="modalStore.closeAll()"
-                                    :href="route(viewStore.adminPrefix + 'disputes.index')"
+                                    :href="route(disputesIndexRouteName())"
                                     class="inline-flex items-center link link-primary"
                                 >
                                     Перейти

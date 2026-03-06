@@ -2,8 +2,14 @@
 
 namespace App\Http\Controllers\Support;
 
+use App\Enums\BalanceType;
+use App\Enums\OrderStatus;
+use App\Enums\OrderSubStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TableOrderResource;
+use App\Models\Order;
+use App\Utils\Transaction;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class OrderController extends Controller
@@ -17,5 +23,35 @@ class OrderController extends Controller
         $orders = TableOrderResource::collection($orders);
 
         return Inertia::render('Support/Order/Index', compact('orders', 'filters', 'filtersVariants'));
+    }
+
+    public function acceptOrder(Order $order)
+    {
+        Gate::authorize('access-to-order', $order);
+
+        if ($order->dispute) {
+            return;
+        }
+
+        if ($order->status->equals(OrderStatus::SUCCESS)) {
+            return;
+        }
+
+        $balance = services()->wallet()->getTotalAvailableBalance(
+            wallet: $order->trader->wallet,
+            balanceType: BalanceType::TRUST,
+        );
+
+        if ($balance->lessThan($order->trader_paid_for_order) && $order->status->equals(OrderStatus::FAIL)) {
+            return redirect()->back()->with('error', 'Не достаточно средств на балансе.');
+        }
+
+        Transaction::run(function () use ($order) {
+            if ($order->status->equals(OrderStatus::FAIL)) {
+                services()->order()->reopenFinishedOrder($order->id, OrderSubStatus::WAITING_FOR_PAYMENT);
+            }
+
+            services()->order()->finishOrderAsSuccessful($order->id, OrderSubStatus::ACCEPTED);
+        });
     }
 } 
