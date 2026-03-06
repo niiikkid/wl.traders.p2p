@@ -32,9 +32,13 @@ class GatewayFactory
             $reservationTime = $paymentGateway->reservation_time_for_orders;
         }
 
-        $traderCommissionRate = $this->amount
-            ? $paymentGateway->resolveTraderCommissionRateForOrderAmount((float) intval($this->amount->toBeauty()))
-            : (float) $paymentGateway->trader_commission_rate_for_orders;
+        $traderCommissionRate = (float) $paymentGateway->trader_commission_rate_for_orders;
+
+        if ($this->amount && $paymentGateway->use_flexible_trader_commission_for_orders) {
+            $traderCommissionRate = $paymentGateway->resolveTraderCommissionRateForOrderAmount(
+                (float) intval($this->amount->toBeauty())
+            );
+        }
 
         return new Gateway(
             id: $paymentGateway->id,

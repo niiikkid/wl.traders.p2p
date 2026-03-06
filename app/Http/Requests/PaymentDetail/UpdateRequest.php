@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests\PaymentDetail;
 
+use App\Models\PaymentGateway;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class UpdateRequest extends FormRequest
@@ -30,8 +31,53 @@ class UpdateRequest extends FormRequest
             'daily_limit' => ['required', 'numeric', 'min:0'],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'max_pending_orders_quantity' => ['required', 'integer', 'min:1', 'max:100000000'],
-            'min_order_amount' => ['nullable', 'integer', 'min:0'],
-            'max_order_amount' => ['nullable', 'integer', 'min:0', 'gte:min_order_amount'],
+            'min_order_amount' => [
+                'nullable',
+                'integer',
+                'min:0',
+                function ($attribute, $value, $fail) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+
+                    $bounds = $this->resolveGatewayBounds();
+                    if ($bounds === null) {
+                        return;
+                    }
+
+                    if ((float) $value < $bounds['min']) {
+                        $fail("Минимальная сумма сделки не может быть меньше {$bounds['min']} по выбранному платежному методу.");
+                    }
+
+                    if ((float) $value > $bounds['max']) {
+                        $fail("Минимальная сумма сделки не может быть больше {$bounds['max']} по выбранному платежному методу.");
+                    }
+                },
+            ],
+            'max_order_amount' => [
+                'nullable',
+                'integer',
+                'min:0',
+                'gte:min_order_amount',
+                function ($attribute, $value, $fail) {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+
+                    $bounds = $this->resolveGatewayBounds();
+                    if ($bounds === null) {
+                        return;
+                    }
+
+                    if ((float) $value > $bounds['max']) {
+                        $fail("Максимальная сумма сделки не может быть больше {$bounds['max']} по выбранному платежному методу.");
+                    }
+
+                    if ((float) $value < $bounds['min']) {
+                        $fail("Максимальная сумма сделки не может быть меньше {$bounds['min']} по выбранному платежному методу.");
+                    }
+                },
+            ],
             'order_interval_minutes' => ['nullable', 'integer', 'min:1'],
             'user_device_id' => [
                 Rule::requiredIf($this->deviceIsRequired()),
@@ -69,13 +115,56 @@ class UpdateRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
+        $minOrderAmount = $this->min_order_amount;
+        $maxOrderAmount = $this->max_order_amount;
 
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
             $dailySuccessfulOrdersLimit = null;
         }
+        if ($minOrderAmount === '' || $minOrderAmount === null) {
+            $minOrderAmount = null;
+        }
+        if ($maxOrderAmount === '' || $maxOrderAmount === null) {
+            $maxOrderAmount = null;
+        }
 
         $this->merge([
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
+            'min_order_amount' => $minOrderAmount,
+            'max_order_amount' => $maxOrderAmount,
         ]);
+    }
+
+    private function resolveGatewayBounds(): ?array
+    {
+        $gatewayIds = collect((array) $this->input('payment_gateway_ids'))
+            ->map(static fn (mixed $id) => (int) $id)
+            ->filter(static fn (int $id) => $id > 0)
+            ->values();
+
+        if ($gatewayIds->isEmpty()) {
+            return null;
+        }
+
+        /** @var Collection<int, PaymentGateway> $gateways */
+        $gateways = PaymentGateway::query()
+            ->whereIn('id', $gatewayIds)
+            ->get(['id', 'min_limit', 'max_limit']);
+
+        if ($gateways->isEmpty()) {
+            return null;
+        }
+
+        $minBound = $gateways->max(static fn (PaymentGateway $gateway) => (float) $gateway->min_limit);
+        $maxBound = $gateways->min(static fn (PaymentGateway $gateway) => (float) $gateway->max_limit);
+
+        if ($minBound === null || $maxBound === null || $minBound > $maxBound) {
+            return null;
+        }
+
+        return [
+            'min' => $minBound,
+            'max' => $maxBound,
+        ];
     }
 }

@@ -8,6 +8,7 @@ import InputError from "@/Components/InputError.vue";
 import Select from "@/Components/Select.vue";
 import TextInputBlock from "@/Components/Form/TextInputBlock.vue";
 import NumberInputBlock from "@/Components/Form/NumberInputBlock.vue";
+import TraderCommissionRangePreview from "@/Components/PaymentGateway/TraderCommissionRangePreview.vue";
 import { useModalStore } from "@/store/modal.js";
 import {useViewStore} from "@/store/view.js";
 import { storeToRefs } from "pinia";
@@ -24,6 +25,7 @@ const errors = ref({});
 
 const payment_detail = ref(null);
 const devices = ref([]);
+const payment_gateways = ref([]);
 const canWorkWithoutDevice = ref(usePage().props.auth?.user?.can_work_without_device ?? false);
 
 const currentUser = usePage().props.auth?.user;
@@ -65,6 +67,62 @@ const formattedDevices = computed(() => {
     }));
 });
 
+const normalizeGatewaySelection = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => Number(item)).filter((item) => Number.isFinite(item));
+    }
+
+    const single = Number(value);
+
+    return Number.isFinite(single) ? [single] : [];
+};
+
+const selectedPaymentGateway = computed(() => {
+    const selectedIds = normalizeGatewaySelection(form.value.payment_gateway_ids);
+    if (!selectedIds.length) {
+        return null;
+    }
+
+    return payment_gateways.value.find((gateway) => Number(gateway.id) === selectedIds[0]) ?? null;
+});
+
+const selectedGatewaySupportsFlexibleCommission = computed(() => {
+    return !!selectedPaymentGateway.value?.use_flexible_trader_commission_for_orders;
+});
+
+const clampVipOrderRangeToGatewayLimits = () => {
+    const gateway = selectedPaymentGateway.value;
+    if (!gateway) {
+        return;
+    }
+
+    const gatewayMin = Number(gateway.min_limit);
+    const gatewayMax = Number(gateway.max_limit);
+
+    if (!Number.isFinite(gatewayMin) || !Number.isFinite(gatewayMax) || gatewayMin >= gatewayMax) {
+        return;
+    }
+
+    const currentMin = form.value.min_order_amount === '' ? null : Number(form.value.min_order_amount);
+    const currentMax = form.value.max_order_amount === '' ? null : Number(form.value.max_order_amount);
+
+    if (Number.isFinite(currentMin)) {
+        form.value.min_order_amount = Math.min(gatewayMax, Math.max(gatewayMin, currentMin));
+    }
+
+    if (Number.isFinite(currentMax)) {
+        form.value.max_order_amount = Math.min(gatewayMax, Math.max(gatewayMin, currentMax));
+    }
+
+    if (
+        Number.isFinite(Number(form.value.min_order_amount)) &&
+        Number.isFinite(Number(form.value.max_order_amount)) &&
+        Number(form.value.min_order_amount) > Number(form.value.max_order_amount)
+    ) {
+        form.value.max_order_amount = form.value.min_order_amount;
+    }
+};
+
 const isMultipleGatewaysAllowed = computed(() => {
     // по логике сейчас запрещено
     return false;
@@ -76,6 +134,7 @@ const resetState = () => {
     loading.value = false;
     payment_detail.value = null;
     devices.value = [];
+    payment_gateways.value = [];
     form.value = {
         name: '',
         initials: '',
@@ -106,6 +165,7 @@ const loadCreateData = (userId = null) => {
     return axios.get(route('payment-details.create-data'), { params })
         .then((res) => {
             const data = res.data?.data || res.data || {};
+            payment_gateways.value = data.paymentGateways || [];
             devices.value = (data.devices || []).map(device => ({
                 ...device,
                 name: `${device.name}`
@@ -140,6 +200,8 @@ const loadPaymentDetail = (id) => {
         if (typeof detail.owner_can_work_without_device !== 'undefined') {
             canWorkWithoutDevice.value = !!detail.owner_can_work_without_device;
         }
+
+        clampVipOrderRangeToGatewayLimits();
     });
 };
 
@@ -211,6 +273,14 @@ watch(
             resetState();
         }
     }
+);
+
+watch(
+    () => form.value.payment_gateway_ids,
+    () => {
+        clampVipOrderRangeToGatewayLimits();
+    },
+    { deep: true }
 );
 </script>
 
@@ -326,6 +396,17 @@ watch(
                     <div class="text-xs text-base-content/70 mt-2">
                         Оставьте пустым для отключения лимита
                     </div>
+
+                    <TraderCommissionRangePreview
+                        v-if="selectedGatewaySupportsFlexibleCommission"
+                        :gateway="selectedPaymentGateway"
+                        :currency="payment_detail?.currency"
+                        :min-amount="form.min_order_amount"
+                        :max-amount="form.max_order_amount"
+                        :disabled="processing"
+                        @update:min-amount="(value) => { form.min_order_amount = value; errors.min_order_amount = null; }"
+                        @update:max-amount="(value) => { form.max_order_amount = value; errors.max_order_amount = null; }"
+                    />
                 </div>
 
                 <div class="rounded-box border border-base-300 p-4">

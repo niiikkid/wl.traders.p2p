@@ -10,6 +10,7 @@ import NumberInput from "@/Components/NumberInput.vue";
 import Select from "@/Components/Select.vue";
 import Multiselect from "@/Components/Form/Multiselect.vue";
 import NumberInputBlock from "@/Components/Form/NumberInputBlock.vue";
+import TraderCommissionRangePreview from "@/Components/PaymentGateway/TraderCommissionRangePreview.vue";
 import { useModalStore } from "@/store/modal.js";
 import { storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
@@ -99,6 +100,62 @@ const formattedPaymentGateways = computed(() => {
         }));
 });
 
+const normalizeGatewaySelection = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => Number(item)).filter((item) => Number.isFinite(item));
+    }
+
+    const single = Number(value);
+
+    return Number.isFinite(single) ? [single] : [];
+};
+
+const selectedPaymentGateway = computed(() => {
+    const selectedIds = normalizeGatewaySelection(form.value.payment_gateway_ids);
+    if (!selectedIds.length) {
+        return null;
+    }
+
+    return payment_gateways.value.find((gateway) => Number(gateway.id) === selectedIds[0]) ?? null;
+});
+
+const selectedGatewaySupportsFlexibleCommission = computed(() => {
+    return !!selectedPaymentGateway.value?.use_flexible_trader_commission_for_orders;
+});
+
+const clampVipOrderRangeToGatewayLimits = () => {
+    const gateway = selectedPaymentGateway.value;
+    if (!gateway) {
+        return;
+    }
+
+    const gatewayMin = Number(gateway.min_limit);
+    const gatewayMax = Number(gateway.max_limit);
+
+    if (!Number.isFinite(gatewayMin) || !Number.isFinite(gatewayMax) || gatewayMin >= gatewayMax) {
+        return;
+    }
+
+    const currentMin = form.value.min_order_amount === '' ? null : Number(form.value.min_order_amount);
+    const currentMax = form.value.max_order_amount === '' ? null : Number(form.value.max_order_amount);
+
+    if (Number.isFinite(currentMin)) {
+        form.value.min_order_amount = Math.min(gatewayMax, Math.max(gatewayMin, currentMin));
+    }
+
+    if (Number.isFinite(currentMax)) {
+        form.value.max_order_amount = Math.min(gatewayMax, Math.max(gatewayMin, currentMax));
+    }
+
+    if (
+        Number.isFinite(Number(form.value.min_order_amount)) &&
+        Number.isFinite(Number(form.value.max_order_amount)) &&
+        Number(form.value.min_order_amount) > Number(form.value.max_order_amount)
+    ) {
+        form.value.max_order_amount = form.value.min_order_amount;
+    }
+};
+
 watch(selectedDetailType, (newType) => {
     form.value.payment_gateway_ids = [];
     form.value.detail_type = newType;
@@ -110,6 +167,14 @@ watch(selectedDetailType, (newType) => {
         });
     }
 });
+
+watch(
+    () => form.value.payment_gateway_ids,
+    () => {
+        clampVipOrderRangeToGatewayLimits();
+    },
+    { deep: true }
+);
 
 const isMultipleGatewaysAllowed = computed(() => {
     return false;
@@ -482,6 +547,17 @@ watch(
                         <div class="text-xs text-base-content/70 mt-2">
                             Оставьте пустым для отключения лимита
                         </div>
+
+                        <TraderCommissionRangePreview
+                            v-if="selectedGatewaySupportsFlexibleCommission"
+                            :gateway="selectedPaymentGateway"
+                            :currency="form.currency"
+                            :min-amount="form.min_order_amount"
+                            :max-amount="form.max_order_amount"
+                            :disabled="processing"
+                            @update:min-amount="(value) => { form.min_order_amount = value; errors.min_order_amount = null; }"
+                            @update:max-amount="(value) => { form.max_order_amount = value; errors.max_order_amount = null; }"
+                        />
                     </div>
 
                     <div class="rounded-box border border-base-300 p-4">
