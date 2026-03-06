@@ -312,5 +312,7 @@ return [
         'detail_type'  => 'тип реквизита',
         'initials'  => 'инициалы',
         'requisites'  => 'реквизиты',
+        'min_limit'  => 'min. лимит',
+        'max_limit'  => 'max. лимит',
     ],
 ];

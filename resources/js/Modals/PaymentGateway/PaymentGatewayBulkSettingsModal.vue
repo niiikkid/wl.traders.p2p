@@ -207,6 +207,18 @@ const submit = () => {
         return;
     }
 
+    if (
+        form.value.apply.use_flexible_trader_commission_for_orders
+        && form.value.use_flexible_trader_commission_for_orders
+        && !form.value.apply.trader_commission_tiers_for_orders
+    ) {
+        errors.value = {
+            ...errors.value,
+            trader_commission_tiers_for_orders: ['При включении гибкой комиссии нужно применить уровни комиссии.'],
+        };
+        return;
+    }
+
     processing.value = true;
     errors.value = {};
 
@@ -327,6 +339,14 @@ watch(
 watch(
     () => form.value.use_flexible_trader_commission_for_orders,
     (enabled) => {
+        if (enabled) {
+            form.value.apply.trader_commission_tiers_for_orders = true;
+            if (!form.value.trader_commission_tiers_for_orders.length) {
+                fillSingleTierByLimits();
+            }
+            return;
+        }
+
         if (!enabled) {
             form.value.apply.trader_commission_tiers_for_orders = false;
         }
@@ -580,10 +600,13 @@ watch(
                                     type="checkbox"
                                     class="checkbox checkbox-sm"
                                     v-model="form.apply.trader_commission_tiers_for_orders"
-                                    :disabled="!isCurrencySelected"
+                                    :disabled="!isCurrencySelected || form.use_flexible_trader_commission_for_orders"
                                 >
                                 <span class="label-text">Применить уровни гибкой комиссии</span>
                             </label>
+                            <div v-if="form.use_flexible_trader_commission_for_orders" class="text-xs text-base-content/70">
+                                При включенной гибкой комиссии уровни применяются обязательно.
+                            </div>
 
                             <div v-if="form.apply.trader_commission_tiers_for_orders" class="space-y-3">
                                 <div class="alert alert-warning text-xs">
