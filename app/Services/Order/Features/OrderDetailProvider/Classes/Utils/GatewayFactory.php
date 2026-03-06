@@ -4,12 +4,14 @@ namespace App\Services\Order\Features\OrderDetailProvider\Classes\Utils;
 
 use App\Models\Merchant;
 use App\Models\PaymentGateway;
+use App\Services\Money\Money;
 use App\Services\Order\Features\OrderDetailProvider\Values\Gateway;
 
 class GatewayFactory
 {
     public function __construct(
-        protected Merchant $merchant
+        protected Merchant $merchant,
+        protected ?Money $amount = null
     ) {}
 
     public function make(PaymentGateway $paymentGateway): Gateway
@@ -30,12 +32,16 @@ class GatewayFactory
             $reservationTime = $paymentGateway->reservation_time_for_orders;
         }
 
+        $traderCommissionRate = $this->amount
+            ? $paymentGateway->resolveTraderCommissionRateForOrderAmount((float) intval($this->amount->toBeauty()))
+            : (float) $paymentGateway->trader_commission_rate_for_orders;
+
         return new Gateway(
             id: $paymentGateway->id,
             code: $paymentGateway->code,
             reservationTime: $reservationTime,
             serviceCommissionRate: $serviceCommissionRateTotal,
-            traderCommissionRate: $paymentGateway->trader_commission_rate_for_orders,
+            traderCommissionRate: $traderCommissionRate,
         );
     }
 }

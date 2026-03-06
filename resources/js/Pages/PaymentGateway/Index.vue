@@ -114,7 +114,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="text-nowrap">Min {{ payment_gateway.min_limit }} {{ payment_gateway.currency.toUpperCase() }}</div>
                                     </td>
                                     <td class="px-6 py-3">
-                                        <div class="text-nowrap">{{ payment_gateway.trader_commission_rate_for_orders }}% / {{ payment_gateway.total_service_commission_rate_for_orders }}%</div>
+                                        <div v-if="payment_gateway.use_flexible_trader_commission_for_orders" class="text-nowrap">
+                                            Гибкая / {{ payment_gateway.total_service_commission_rate_for_orders }}%
+                                        </div>
+                                        <div v-else class="text-nowrap">
+                                            {{ payment_gateway.trader_commission_rate_for_orders }}% / {{ payment_gateway.total_service_commission_rate_for_orders }}%
+                                        </div>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
                                         <IsActiveStatus :is_active="payment_gateway.is_active"></IsActiveStatus>
@@ -178,7 +183,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                         <div class="border-b border-base-content/10 my-2"></div>
                                         <div class="flex items-center justify-between text-sm">
-                                            <div class="text-right text-xs text-nowrap">{{ payment_gateway.trader_commission_rate_for_orders }}% / {{ payment_gateway.total_service_commission_rate_for_orders }}%</div>
+                                            <div v-if="payment_gateway.use_flexible_trader_commission_for_orders" class="text-right text-xs text-nowrap">
+                                                Гибкая / {{ payment_gateway.total_service_commission_rate_for_orders }}%
+                                            </div>
+                                            <div v-else class="text-right text-xs text-nowrap">
+                                                {{ payment_gateway.trader_commission_rate_for_orders }}% / {{ payment_gateway.total_service_commission_rate_for_orders }}%
+                                            </div>
                                             <div>
                                                 <div class="text-nowrap text-xs"><span class="text-base-content/70">Max</span> {{ payment_gateway.max_limit }} {{ payment_gateway.currency.toUpperCase() }}</div>
                                                 <div class="text-nowrap text-xs"><span class="text-base-content/70">Min</span> {{ payment_gateway.min_limit }} {{ payment_gateway.currency.toUpperCase() }}</div>

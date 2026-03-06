@@ -87,7 +87,7 @@ class FindAvailablePaymentDetail
             ->where('id', $paymentDetail->user_id)
             ->first();
 
-        $gateway = (new GatewayFactory($this->merchant))->make($paymentGateway);
+        $gateway = (new GatewayFactory($this->merchant, $this->amount))->make($paymentGateway);
         $trader = (new TraderFactory())->make($user);
 
         return $this->makeDetail($paymentDetail, $gateway, $trader);

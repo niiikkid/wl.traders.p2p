@@ -29,6 +29,8 @@ class PaymentGatewayResource extends JsonResource
             'max_limit' => $this->max_limit,
             'sms_senders' => $this->sms_senders,
             'trader_commission_rate_for_orders' => $this->trader_commission_rate_for_orders,
+            'use_flexible_trader_commission_for_orders' => (bool) $this->use_flexible_trader_commission_for_orders,
+            'trader_commission_tiers_for_orders' => $this->trader_commission_tiers_for_orders ?? [],
             'total_service_commission_rate_for_orders' => $this->total_service_commission_rate_for_orders,
             'trader_commission_rate_for_payouts' => $this->trader_commission_rate_for_payouts,
             'total_service_commission_rate_for_payouts' => $this->total_service_commission_rate_for_payouts,

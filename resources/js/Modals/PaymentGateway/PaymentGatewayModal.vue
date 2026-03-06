@@ -44,6 +44,112 @@ const modalTitle = computed(() => {
     return 'Создание платежного метода';
 });
 
+const makeTier = (from = null, to = null, rate = null) => ({
+    from,
+    to,
+    rate,
+});
+
+const splitPoint = ref(null);
+
+const normalizeTiers = (tiers) => {
+    if (!Array.isArray(tiers)) {
+        return [];
+    }
+
+    return tiers.map((tier) => makeTier(
+        tier?.from ?? null,
+        tier?.to ?? null,
+        tier?.rate ?? null
+    ));
+};
+
+const toNumberOrNull = (value) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+};
+
+const getLimits = () => {
+    const min = toNumberOrNull(form.value.min_limit);
+    const max = toNumberOrNull(form.value.max_limit);
+
+    if (min === null || max === null || min >= max) {
+        return null;
+    }
+
+    return { min, max };
+};
+
+const clearTiersGeneralError = () => {
+    if (!errors.value?.trader_commission_tiers_for_orders) {
+        return;
+    }
+
+    const next = { ...errors.value };
+    delete next.trader_commission_tiers_for_orders;
+    errors.value = next;
+};
+
+const setTiersGeneralError = (message) => {
+    errors.value = {
+        ...errors.value,
+        trader_commission_tiers_for_orders: [message],
+    };
+};
+
+const buildContiguousTiers = (innerPoints, sourceTiers = []) => {
+    const limits = getLimits();
+    if (!limits) {
+        return [];
+    }
+
+    const points = Array.from(new Set(
+        innerPoints
+            .map((point) => toNumberOrNull(point))
+            .filter((point) => point !== null && point > limits.min && point < limits.max)
+    )).sort((left, right) => left - right);
+
+    const boundaries = [limits.min, ...points, limits.max];
+    const fallbackRate = toNumberOrNull(form.value.trader_commission_rate_for_orders) ?? 0;
+
+    return boundaries.slice(0, -1).map((from, index) => {
+        const to = boundaries[index + 1];
+        const midpoint = from + (to - from) / 2;
+        const sourceTier = sourceTiers.find((tier, tierIndex) => {
+            const tierFrom = toNumberOrNull(tier?.from);
+            const tierTo = toNumberOrNull(tier?.to);
+            if (tierFrom === null || tierTo === null) {
+                return false;
+            }
+
+            const isLast = tierIndex === sourceTiers.length - 1;
+            return isLast ? (midpoint >= tierFrom && midpoint <= tierTo) : (midpoint >= tierFrom && midpoint < tierTo);
+        });
+
+        return makeTier(
+            from,
+            to,
+            toNumberOrNull(sourceTier?.rate) ?? fallbackRate
+        );
+    });
+};
+
+const alignTiersWithLimits = () => {
+    const limits = getLimits();
+    if (!limits) {
+        form.value.trader_commission_tiers_for_orders = [];
+        return;
+    }
+
+    const source = normalizeTiers(form.value.trader_commission_tiers_for_orders);
+    const innerPoints = source
+        .slice(0, -1)
+        .map((tier) => toNumberOrNull(tier.to))
+        .filter((point) => point !== null);
+
+    form.value.trader_commission_tiers_for_orders = buildContiguousTiers(innerPoints, source);
+};
+
 const form = ref({
     name: null,
     code: null,
@@ -61,11 +167,14 @@ const form = ref({
     currency: 'RUB',
     detail_types: [],
     sms_senders: [],
-    logo: null
+    logo: null,
+    use_flexible_trader_commission_for_orders: false,
+    trader_commission_tiers_for_orders: [],
 });
 
 const resetCommonState = () => {
     sms_sender.value = null;
+    splitPoint.value = null;
     errors.value = {};
     paymentGateway.value = null;
 };
@@ -88,7 +197,9 @@ const resetFormForCreate = () => {
         currency: 'RUB',
         detail_types: [],
         sms_senders: [],
-        logo: null
+        logo: null,
+        use_flexible_trader_commission_for_orders: false,
+        trader_commission_tiers_for_orders: [],
     };
     resetCommonState();
 };
@@ -111,7 +222,9 @@ const resetFormForEdit = () => {
         currency: 'RUB',
         detail_types: [],
         sms_senders: [],
-        logo: null
+        logo: null,
+        use_flexible_trader_commission_for_orders: false,
+        trader_commission_tiers_for_orders: [],
     };
     resetCommonState();
 };
@@ -158,6 +271,11 @@ const loadEditData = () => {
             form.value.trader_commission_rate_for_payouts = paymentGateway.value.trader_commission_rate_for_payouts;
             form.value.total_service_commission_rate_for_payouts = paymentGateway.value.total_service_commission_rate_for_payouts;
             form.value.reservation_time_for_payouts = paymentGateway.value.reservation_time_for_payouts;
+            form.value.use_flexible_trader_commission_for_orders = !!paymentGateway.value.use_flexible_trader_commission_for_orders;
+            form.value.trader_commission_tiers_for_orders = normalizeTiers(paymentGateway.value.trader_commission_tiers_for_orders);
+            if (form.value.use_flexible_trader_commission_for_orders) {
+                alignTiersWithLimits();
+            }
             form.value.currency = (paymentGateway.value.currency || 'RUB').toUpperCase();
             form.value.detail_types = paymentGateway.value.detail_types ?? [];
             form.value.sms_senders = paymentGateway.value.sms_senders ?? [];
@@ -181,11 +299,103 @@ const removeSender = (sender) => {
     form.value.sms_senders = form.value.sms_senders.filter((item) => item !== sender);
 };
 
+const fillSingleTierByLimits = () => {
+    const limits = getLimits();
+    if (!limits) {
+        setTiersGeneralError('Сначала укажите корректные min_limit и max_limit.');
+        return;
+    }
+
+    clearTiersGeneralError();
+    form.value.trader_commission_tiers_for_orders = [makeTier(
+        limits.min,
+        limits.max,
+        toNumberOrNull(form.value.trader_commission_rate_for_orders) ?? 0
+    )];
+};
+
+const splitTierAtPoint = () => {
+    const limits = getLimits();
+    if (!limits) {
+        setTiersGeneralError('Сначала укажите корректные min_limit и max_limit.');
+        return;
+    }
+
+    alignTiersWithLimits();
+    const tiers = form.value.trader_commission_tiers_for_orders;
+    if (!tiers.length) {
+        fillSingleTierByLimits();
+    }
+
+    const point = toNumberOrNull(splitPoint.value);
+    if (point === null || point <= limits.min || point >= limits.max) {
+        setTiersGeneralError(`Граница должна быть строго между ${limits.min} и ${limits.max}.`);
+        return;
+    }
+
+    const splitIndex = tiers.findIndex((tier) => point > tier.from && point < tier.to);
+    if (splitIndex === -1) {
+        setTiersGeneralError('Эта граница уже существует или выходит за текущие уровни.');
+        return;
+    }
+
+    const targetTier = tiers[splitIndex];
+    const leftTier = makeTier(targetTier.from, point, targetTier.rate);
+    const rightTier = makeTier(point, targetTier.to, targetTier.rate);
+    tiers.splice(splitIndex, 1, leftTier, rightTier);
+
+    splitPoint.value = null;
+    clearTiersGeneralError();
+};
+
+const removeCommissionTier = (index) => {
+    const tiers = form.value.trader_commission_tiers_for_orders;
+    if (tiers.length <= 1) {
+        return;
+    }
+
+    if (index === 0) {
+        tiers[1].from = tiers[0].from;
+    } else {
+        tiers[index - 1].to = tiers[index].to;
+    }
+
+    form.value.trader_commission_tiers_for_orders = tiers.filter((_, i) => i !== index);
+    clearTiersGeneralError();
+};
+
 watch(() => form.value.is_intrabank, (newValue) => {
     if (newValue) {
         form.value.detail_types = form.value.detail_types.filter(type => !['phone', 'mobile_commerce'].includes(type));
     }
 });
+
+watch(
+    () => form.value.use_flexible_trader_commission_for_orders,
+    (enabled) => {
+        if (!enabled) {
+            return;
+        }
+
+        if (!Array.isArray(form.value.trader_commission_tiers_for_orders) || !form.value.trader_commission_tiers_for_orders.length) {
+            fillSingleTierByLimits();
+            return;
+        }
+
+        alignTiersWithLimits();
+    }
+);
+
+watch(
+    () => [form.value.min_limit, form.value.max_limit],
+    () => {
+        if (!form.value.use_flexible_trader_commission_for_orders) {
+            return;
+        }
+
+        alignTiersWithLimits();
+    }
+);
 
 const toFormData = (is_edit) => {
     const fd = new FormData();
@@ -194,6 +404,15 @@ const toFormData = (is_edit) => {
     fd.append('min_limit', form.value.min_limit ?? '');
     fd.append('max_limit', form.value.max_limit ?? '');
     fd.append('trader_commission_rate_for_orders', form.value.trader_commission_rate_for_orders ?? '');
+    fd.append('use_flexible_trader_commission_for_orders', form.value.use_flexible_trader_commission_for_orders ? '1' : '0');
+    if (form.value.use_flexible_trader_commission_for_orders) {
+        alignTiersWithLimits();
+        (form.value.trader_commission_tiers_for_orders || []).forEach((tier, index) => {
+            fd.append(`trader_commission_tiers_for_orders[${index}][from]`, tier.from ?? '');
+            fd.append(`trader_commission_tiers_for_orders[${index}][to]`, tier.to ?? '');
+            fd.append(`trader_commission_tiers_for_orders[${index}][rate]`, tier.rate ?? '');
+        });
+    }
     fd.append('total_service_commission_rate_for_orders', form.value.total_service_commission_rate_for_orders ?? '');
     fd.append('trader_commission_rate_for_payouts', form.value.trader_commission_rate_for_payouts ?? '');
     fd.append('total_service_commission_rate_for_payouts', form.value.total_service_commission_rate_for_payouts ?? '');
@@ -454,6 +673,66 @@ watch(
                                     <InputHelper v-if="! errors.total_service_commission_rate_for_orders" model-value="Доход сервиса = тотал - трейдер."></InputHelper>
                                 </div>
                             </div>
+                            <div class="mt-4 border border-base-300 rounded-box p-3 space-y-3">
+                                <label class="label cursor-pointer justify-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        class="toggle toggle-primary"
+                                        v-model="form.use_flexible_trader_commission_for_orders"
+                                    >
+                                    <span class="label-text text-sm">Гибкая комиссия трейдера по сумме сделки</span>
+                                </label>
+                                <InputError :message="errors.use_flexible_trader_commission_for_orders?.[0]" />
+
+                                <div v-if="form.use_flexible_trader_commission_for_orders" class="space-y-3">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                                        <div>
+                                            <InputLabel value="Разделить диапазон по границе" />
+                                            <NumberInput v-model="splitPoint" placeholder="2000" />
+                                        </div>
+                                        <button type="button" class="btn btn-xs btn-outline" @click="splitTierAtPoint">
+                                            Разделить
+                                        </button>
+                                        <button type="button" class="btn btn-xs" @click="fillSingleTierByLimits">
+                                            1 уровень из лимитов
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        v-for="(tier, index) in form.trader_commission_tiers_for_orders"
+                                        :key="`create-tier-${index}`"
+                                        class="grid grid-cols-1 lg:grid-cols-4 gap-2 items-end"
+                                    >
+                                        <div>
+                                            <InputLabel :value="`От (уровень #${index + 1})`" />
+                                            <div class="input input-bordered w-full">{{ tier.from }}</div>
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.from`]?.[0]" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="До" />
+                                            <div class="input input-bordered w-full">{{ tier.to }}</div>
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.to`]?.[0]" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Комиссия трейдера, %" />
+                                            <NumberInput v-model="tier.rate" step="0.1" placeholder="7" />
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-1" />
+                                        </div>
+                                        <div class="flex justify-end">
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-error btn-outline"
+                                                @click="removeCommissionTier(index)"
+                                                :disabled="form.trader_commission_tiers_for_orders.length <= 1"
+                                            >
+                                                Удалить
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <InputError :message="errors.trader_commission_tiers_for_orders?.[0]" />
+                                    <InputHelper model-value="Диапазоны должны быть подряд: от min_limit до max_limit без разрывов." />
+                                </div>
+                            </div>
                         </div>
 
                         <div class="rounded-box border border-base-300 p-4">
@@ -595,6 +874,66 @@ watch(
                                     />
 
                                     <InputError :message="errors.total_service_commission_rate_for_orders?.[0]" class="mt-2" />
+                                </div>
+                            </div>
+                            <div class="mt-4 border border-base-300 rounded-box p-3 space-y-3">
+                                <label class="label cursor-pointer justify-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        class="toggle toggle-primary"
+                                        v-model="form.use_flexible_trader_commission_for_orders"
+                                    >
+                                    <span class="label-text text-sm">Гибкая комиссия трейдера по сумме сделки</span>
+                                </label>
+                                <InputError :message="errors.use_flexible_trader_commission_for_orders?.[0]" />
+
+                                <div v-if="form.use_flexible_trader_commission_for_orders" class="space-y-3">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                                        <div>
+                                            <InputLabel value="Разделить диапазон по границе" />
+                                            <NumberInput v-model="splitPoint" placeholder="2000" />
+                                        </div>
+                                        <button type="button" class="btn btn-xs btn-outline" @click="splitTierAtPoint">
+                                            Разделить
+                                        </button>
+                                        <button type="button" class="btn btn-xs" @click="fillSingleTierByLimits">
+                                            1 уровень из лимитов
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        v-for="(tier, index) in form.trader_commission_tiers_for_orders"
+                                        :key="`edit-tier-${index}`"
+                                        class="grid grid-cols-1 lg:grid-cols-4 gap-2 items-end"
+                                    >
+                                        <div>
+                                            <InputLabel :value="`От (уровень #${index + 1})`" />
+                                            <div class="input input-bordered w-full">{{ tier.from }}</div>
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.from`]?.[0]" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="До" />
+                                            <div class="input input-bordered w-full">{{ tier.to }}</div>
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.to`]?.[0]" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Комиссия трейдера, %" />
+                                            <NumberInput v-model="tier.rate" step="0.1" placeholder="7" />
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-1" />
+                                        </div>
+                                        <div class="flex justify-end">
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-error btn-outline"
+                                                @click="removeCommissionTier(index)"
+                                                :disabled="form.trader_commission_tiers_for_orders.length <= 1"
+                                            >
+                                                Удалить
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <InputError :message="errors.trader_commission_tiers_for_orders?.[0]" />
+                                    <InputHelper model-value="Диапазоны должны быть подряд: от min_limit до max_limit без разрывов." />
                                 </div>
                             </div>
                         </div>

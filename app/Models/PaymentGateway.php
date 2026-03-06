@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\CurrencyCast;
 use App\Enums\DetailType;
+use App\Support\TraderCommissionTierResolver;
 use App\Services\Money\Currency;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -22,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string $max_limit
  * @property array $sms_senders
  * @property float $trader_commission_rate_for_orders
+ * @property bool $use_flexible_trader_commission_for_orders
+ * @property array<int, array{from: float, to: float, rate: float}>|null $trader_commission_tiers_for_orders
  * @property float $total_service_commission_rate_for_orders
  * @property float $trader_commission_rate_for_payouts
  * @property float $total_service_commission_rate_for_payouts
@@ -48,6 +51,8 @@ class PaymentGateway extends Model
         'max_limit',
         'sms_senders',
         'trader_commission_rate_for_orders',
+        'use_flexible_trader_commission_for_orders',
+        'trader_commission_tiers_for_orders',
         'total_service_commission_rate_for_orders',
         'trader_commission_rate_for_payouts',
         'total_service_commission_rate_for_payouts',
@@ -65,6 +70,8 @@ class PaymentGateway extends Model
         'detail_types' => 'array',
         'sms_senders' => 'array',
         'is_payouts_enabled' => 'bool',
+        'use_flexible_trader_commission_for_orders' => 'bool',
+        'trader_commission_tiers_for_orders' => 'array',
     ];
 
     public $timestamps = false;
@@ -124,5 +131,20 @@ class PaymentGateway extends Model
     public function scopeActive(Builder $query): void
     {
         $query->where('is_active', 1);
+    }
+
+    public function resolveTraderCommissionRateForOrderAmount(float|int $amount): float
+    {
+        $defaultRate = (float) $this->trader_commission_rate_for_orders;
+
+        if (! $this->use_flexible_trader_commission_for_orders) {
+            return $defaultRate;
+        }
+
+        return TraderCommissionTierResolver::resolveRate(
+            tiers: $this->trader_commission_tiers_for_orders,
+            amount: (float) $amount,
+            defaultRate: $defaultRate
+        );
     }
 }
