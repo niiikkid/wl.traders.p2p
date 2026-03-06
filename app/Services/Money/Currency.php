@@ -16,6 +16,7 @@ use Illuminate\Support\Collection;
  * @method static Currency AZN()
  * @method static Currency TRY()
  * @method static Currency IDR()
+ * @method static Currency PLN()
  * @method static Currency USDT()
  */
 class Currency

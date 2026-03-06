@@ -90,6 +90,14 @@ return [
             'symbol'              => 'Rp',
             'name'                => 'Рупия',
         ],
+        'PLN' => [
+            'precision'           => 8,
+            'display_precision'   => 2,
+            'subunit'             => 100,
+            'base'                => false,
+            'symbol'              => 'zł',
+            'name'                => 'Злотый',
+        ],
         //base
         'USDT' => [
             'precision'           => 8,
