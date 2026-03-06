@@ -115,7 +115,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </td>
                                     <td class="px-6 py-3">
                                         <div v-if="payment_gateway.use_flexible_trader_commission_for_orders" class="text-nowrap">
-                                            Гибкая / {{ payment_gateway.total_service_commission_rate_for_orders }}%
+                                            Гибкая / Гибкая
                                         </div>
                                         <div v-else class="text-nowrap">
                                             {{ payment_gateway.trader_commission_rate_for_orders }}% / {{ payment_gateway.total_service_commission_rate_for_orders }}%
@@ -184,7 +184,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="border-b border-base-content/10 my-2"></div>
                                         <div class="flex items-center justify-between text-sm">
                                             <div v-if="payment_gateway.use_flexible_trader_commission_for_orders" class="text-right text-xs text-nowrap">
-                                                Гибкая / {{ payment_gateway.total_service_commission_rate_for_orders }}%
+                                                Гибкая / Гибкая
                                             </div>
                                             <div v-else class="text-right text-xs text-nowrap">
                                                 {{ payment_gateway.trader_commission_rate_for_orders }}% / {{ payment_gateway.total_service_commission_rate_for_orders }}%

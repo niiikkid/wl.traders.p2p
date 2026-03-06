@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property float $trader_commission_rate_for_orders
  * @property bool $use_flexible_trader_commission_for_orders
  * @property array<int, array{from: float, to: float, rate: float}>|null $trader_commission_tiers_for_orders
+ * @property array<int, array{from: float, to: float, rate: float}>|null $total_service_commission_tiers_for_orders
  * @property float $total_service_commission_rate_for_orders
  * @property float $trader_commission_rate_for_payouts
  * @property float $total_service_commission_rate_for_payouts
@@ -53,6 +54,7 @@ class PaymentGateway extends Model
         'trader_commission_rate_for_orders',
         'use_flexible_trader_commission_for_orders',
         'trader_commission_tiers_for_orders',
+        'total_service_commission_tiers_for_orders',
         'total_service_commission_rate_for_orders',
         'trader_commission_rate_for_payouts',
         'total_service_commission_rate_for_payouts',
@@ -72,6 +74,7 @@ class PaymentGateway extends Model
         'is_payouts_enabled' => 'bool',
         'use_flexible_trader_commission_for_orders' => 'bool',
         'trader_commission_tiers_for_orders' => 'array',
+        'total_service_commission_tiers_for_orders' => 'array',
     ];
 
     public $timestamps = false;
@@ -143,6 +146,21 @@ class PaymentGateway extends Model
 
         return TraderCommissionTierResolver::resolveRate(
             tiers: $this->trader_commission_tiers_for_orders,
+            amount: (float) $amount,
+            defaultRate: $defaultRate
+        );
+    }
+
+    public function resolveTotalServiceCommissionRateForOrderAmount(float|int $amount): float
+    {
+        $defaultRate = (float) $this->total_service_commission_rate_for_orders;
+
+        if (! $this->use_flexible_trader_commission_for_orders) {
+            return $defaultRate;
+        }
+
+        return TraderCommissionTierResolver::resolveRate(
+            tiers: $this->total_service_commission_tiers_for_orders,
             amount: (float) $amount,
             defaultRate: $defaultRate
         );

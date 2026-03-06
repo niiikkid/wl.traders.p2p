@@ -147,6 +147,7 @@ class PaymentGatewayController extends Controller
             'trader_commission_rate_for_orders',
             'use_flexible_trader_commission_for_orders',
             'trader_commission_tiers_for_orders',
+            'total_service_commission_tiers_for_orders',
             'total_service_commission_rate_for_orders',
             'trader_commission_rate_for_payouts',
             'total_service_commission_rate_for_payouts',
@@ -168,6 +169,7 @@ class PaymentGatewayController extends Controller
             && ! $payload['use_flexible_trader_commission_for_orders']
         ) {
             $payload['trader_commission_tiers_for_orders'] = [];
+            $payload['total_service_commission_tiers_for_orders'] = [];
         }
 
         PaymentGateway::query()

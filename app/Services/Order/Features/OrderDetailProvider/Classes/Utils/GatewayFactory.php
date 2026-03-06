@@ -38,6 +38,12 @@ class GatewayFactory
             $traderCommissionRate = $paymentGateway->resolveTraderCommissionRateForOrderAmount(
                 (float) intval($this->amount->toBeauty())
             );
+
+            if (! isset($customGatewaySettings['custom_gateway_commission'])) {
+                $serviceCommissionRateTotal = $paymentGateway->resolveTotalServiceCommissionRateForOrderAmount(
+                    (float) intval($this->amount->toBeauty())
+                );
+            }
         }
 
         return new Gateway(

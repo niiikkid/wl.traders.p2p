@@ -46,24 +46,24 @@ const getLimits = () => {
     return { min, max };
 };
 
-const clearTiersGeneralError = () => {
-    if (!errors.value?.trader_commission_tiers_for_orders) {
+const clearTiersGeneralError = (field = "trader_commission_tiers_for_orders") => {
+    if (!errors.value?.[field]) {
         return;
     }
 
     const next = { ...errors.value };
-    delete next.trader_commission_tiers_for_orders;
+    delete next[field];
     errors.value = next;
 };
 
-const setTiersGeneralError = (message) => {
+const setTiersGeneralError = (message, field = "trader_commission_tiers_for_orders") => {
     errors.value = {
         ...errors.value,
-        trader_commission_tiers_for_orders: [message],
+        [field]: [message],
     };
 };
 
-const buildContiguousTiers = (innerPoints, sourceTiers = []) => {
+const buildContiguousTiers = (innerPoints, sourceTiers = [], fallbackRate = 0) => {
     const limits = getLimits();
     if (!limits) {
         return [];
@@ -76,7 +76,7 @@ const buildContiguousTiers = (innerPoints, sourceTiers = []) => {
     )).sort((left, right) => left - right);
 
     const boundaries = [limits.min, ...points, limits.max];
-    const fallbackRate = toNumberOrNull(form.value.trader_commission_rate_for_orders) ?? 0;
+    const safeFallbackRate = toNumberOrNull(fallbackRate) ?? 0;
 
     return boundaries.slice(0, -1).map((from, index) => {
         const to = boundaries[index + 1];
@@ -95,25 +95,44 @@ const buildContiguousTiers = (innerPoints, sourceTiers = []) => {
         return makeTier(
             from,
             to,
-            toNumberOrNull(sourceTier?.rate) ?? fallbackRate
+            toNumberOrNull(sourceTier?.rate) ?? safeFallbackRate
         );
     });
 };
 
-const alignTiersWithLimits = () => {
+const alignTiersWithLimits = (tierField, fallbackRateField) => {
     const limits = getLimits();
     if (!limits) {
-        form.value.trader_commission_tiers_for_orders = [];
+        form.value[tierField] = [];
         return;
     }
 
-    const source = form.value.trader_commission_tiers_for_orders || [];
+    const source = form.value[tierField] || [];
     const innerPoints = source
         .slice(0, -1)
         .map((tier) => toNumberOrNull(tier?.to))
         .filter((point) => point !== null);
 
-    form.value.trader_commission_tiers_for_orders = buildContiguousTiers(innerPoints, source);
+    form.value[tierField] = buildContiguousTiers(innerPoints, source, form.value[fallbackRateField]);
+};
+
+const syncTotalServiceTiersWithTraderBoundaries = () => {
+    const traderTiers = form.value.trader_commission_tiers_for_orders || [];
+    const innerPoints = traderTiers
+        .slice(0, -1)
+        .map((tier) => toNumberOrNull(tier?.to))
+        .filter((point) => point !== null);
+
+    form.value.total_service_commission_tiers_for_orders = buildContiguousTiers(
+        innerPoints,
+        form.value.total_service_commission_tiers_for_orders || [],
+        form.value.total_service_commission_rate_for_orders
+    );
+};
+
+const alignAllFlexibleTiersWithLimits = () => {
+    alignTiersWithLimits("trader_commission_tiers_for_orders", "trader_commission_rate_for_orders");
+    syncTotalServiceTiersWithTraderBoundaries();
 };
 
 const form = ref({
@@ -124,6 +143,7 @@ const form = ref({
     trader_commission_rate_for_orders: null,
     use_flexible_trader_commission_for_orders: false,
     trader_commission_tiers_for_orders: [],
+    total_service_commission_tiers_for_orders: [],
     total_service_commission_rate_for_orders: null,
     trader_commission_rate_for_payouts: null,
     total_service_commission_rate_for_payouts: null,
@@ -138,6 +158,7 @@ const form = ref({
         trader_commission_rate_for_orders: false,
         use_flexible_trader_commission_for_orders: false,
         trader_commission_tiers_for_orders: false,
+        total_service_commission_tiers_for_orders: false,
         total_service_commission_rate_for_orders: false,
         trader_commission_rate_for_payouts: false,
         total_service_commission_rate_for_payouts: false,
@@ -162,6 +183,7 @@ const resetForm = () => {
         trader_commission_rate_for_orders: null,
         use_flexible_trader_commission_for_orders: false,
         trader_commission_tiers_for_orders: [],
+        total_service_commission_tiers_for_orders: [],
         total_service_commission_rate_for_orders: null,
         trader_commission_rate_for_payouts: null,
         total_service_commission_rate_for_payouts: null,
@@ -176,6 +198,7 @@ const resetForm = () => {
             trader_commission_rate_for_orders: false,
             use_flexible_trader_commission_for_orders: false,
             trader_commission_tiers_for_orders: false,
+            total_service_commission_tiers_for_orders: false,
             total_service_commission_rate_for_orders: false,
             trader_commission_rate_for_payouts: false,
             total_service_commission_rate_for_payouts: false,
@@ -219,12 +242,24 @@ const submit = () => {
         return;
     }
 
+    if (
+        form.value.apply.use_flexible_trader_commission_for_orders
+        && form.value.use_flexible_trader_commission_for_orders
+        && !form.value.apply.total_service_commission_tiers_for_orders
+    ) {
+        errors.value = {
+            ...errors.value,
+            total_service_commission_tiers_for_orders: ['При включении гибкой комиссии нужно применить уровни тотал комиссии сервиса.'],
+        };
+        return;
+    }
+
     processing.value = true;
     errors.value = {};
 
     const payload = { currency: form.value.currency };
     if (form.value.use_flexible_trader_commission_for_orders) {
-        alignTiersWithLimits();
+        alignAllFlexibleTiersWithLimits();
     }
     Object.entries(form.value.apply).forEach(([field, enabled]) => {
         if (enabled) {
@@ -267,7 +302,17 @@ const removeCommissionTier = (index) => {
     }
 
     form.value.trader_commission_tiers_for_orders = tiers.filter((_, i) => i !== index);
-    clearTiersGeneralError();
+    const nextInnerPoints = form.value.trader_commission_tiers_for_orders
+        .slice(0, -1)
+        .map((tier) => toNumberOrNull(tier?.to))
+        .filter((point) => point !== null);
+    form.value.total_service_commission_tiers_for_orders = buildContiguousTiers(
+        nextInnerPoints,
+        form.value.total_service_commission_tiers_for_orders || [],
+        form.value.total_service_commission_rate_for_orders
+    );
+    clearTiersGeneralError("trader_commission_tiers_for_orders");
+    clearTiersGeneralError("total_service_commission_tiers_for_orders");
 };
 
 const fillSingleTierByLimits = () => {
@@ -277,11 +322,17 @@ const fillSingleTierByLimits = () => {
         return;
     }
 
-    clearTiersGeneralError();
+    clearTiersGeneralError("trader_commission_tiers_for_orders");
+    clearTiersGeneralError("total_service_commission_tiers_for_orders");
     form.value.trader_commission_tiers_for_orders = [makeTier(
         limits.min,
         limits.max,
         toNumberOrNull(form.value.trader_commission_rate_for_orders) ?? 0
+    )];
+    form.value.total_service_commission_tiers_for_orders = [makeTier(
+        limits.min,
+        limits.max,
+        toNumberOrNull(form.value.total_service_commission_rate_for_orders) ?? 0
     )];
 };
 
@@ -292,7 +343,7 @@ const splitTierAtPoint = () => {
         return;
     }
 
-    alignTiersWithLimits();
+    alignAllFlexibleTiersWithLimits();
     const tiers = form.value.trader_commission_tiers_for_orders;
     if (!tiers.length) {
         fillSingleTierByLimits();
@@ -315,8 +366,19 @@ const splitTierAtPoint = () => {
     const rightTier = makeTier(point, targetTier.to, targetTier.rate);
     tiers.splice(splitIndex, 1, leftTier, rightTier);
 
+    const innerPoints = tiers
+        .slice(0, -1)
+        .map((tier) => toNumberOrNull(tier?.to))
+        .filter((value) => value !== null);
+    form.value.total_service_commission_tiers_for_orders = buildContiguousTiers(
+        innerPoints,
+        form.value.total_service_commission_tiers_for_orders || [],
+        form.value.total_service_commission_rate_for_orders
+    );
+
     splitPoint.value = null;
-    clearTiersGeneralError();
+    clearTiersGeneralError("trader_commission_tiers_for_orders");
+    clearTiersGeneralError("total_service_commission_tiers_for_orders");
 };
 
 watch(
@@ -324,6 +386,7 @@ watch(
     (enabled) => {
         if (!enabled) {
             form.value.apply.trader_commission_tiers_for_orders = false;
+            form.value.apply.total_service_commission_tiers_for_orders = false;
             return;
         }
 
@@ -332,7 +395,7 @@ watch(
             return;
         }
 
-        alignTiersWithLimits();
+        alignAllFlexibleTiersWithLimits();
     }
 );
 
@@ -341,6 +404,7 @@ watch(
     (enabled) => {
         if (enabled) {
             form.value.apply.trader_commission_tiers_for_orders = true;
+            form.value.apply.total_service_commission_tiers_for_orders = true;
             if (!form.value.trader_commission_tiers_for_orders.length) {
                 fillSingleTierByLimits();
             }
@@ -349,6 +413,7 @@ watch(
 
         if (!enabled) {
             form.value.apply.trader_commission_tiers_for_orders = false;
+            form.value.apply.total_service_commission_tiers_for_orders = false;
         }
     }
 );
@@ -360,7 +425,7 @@ watch(
             return;
         }
 
-        alignTiersWithLimits();
+        alignAllFlexibleTiersWithLimits();
     }
 );
 
@@ -527,7 +592,7 @@ watch(
                                         class="toggle toggle-primary"
                                         v-model="form.use_flexible_trader_commission_for_orders"
                                     >
-                                    <span class="label-text text-sm">Включить гибкую комиссию трейдера</span>
+                                    <span class="label-text text-sm">Включить гибкую комиссию трейдера и тотал комиссии сервиса</span>
                                 </label>
                                 <InputError :message="errors.use_flexible_trader_commission_for_orders?.[0]" />
                             </div>
@@ -602,13 +667,22 @@ watch(
                                     v-model="form.apply.trader_commission_tiers_for_orders"
                                     :disabled="!isCurrencySelected || form.use_flexible_trader_commission_for_orders"
                                 >
-                                <span class="label-text">Применить уровни гибкой комиссии</span>
+                                <span class="label-text">Применить уровни гибкой комиссии трейдера</span>
+                            </label>
+                            <label class="label cursor-pointer justify-start gap-3 items-start w-full">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm"
+                                    v-model="form.apply.total_service_commission_tiers_for_orders"
+                                    :disabled="!isCurrencySelected || form.use_flexible_trader_commission_for_orders"
+                                >
+                                <span class="label-text">Применить уровни гибкой тотал комиссии сервиса</span>
                             </label>
                             <div v-if="form.use_flexible_trader_commission_for_orders" class="text-xs text-base-content/70">
-                                При включенной гибкой комиссии уровни применяются обязательно.
+                                При включенной гибкой комиссии уровни трейдера и тотал комиссии применяются обязательно.
                             </div>
 
-                            <div v-if="form.apply.trader_commission_tiers_for_orders" class="space-y-3">
+                            <div v-if="form.apply.trader_commission_tiers_for_orders || form.apply.total_service_commission_tiers_for_orders" class="space-y-3">
                                 <div class="alert alert-warning text-xs">
                                     Для массовой гибкой комиссии нужно одновременно применить min_limit и max_limit.
                                 </div>
@@ -627,7 +701,7 @@ watch(
                                 <div
                                     v-for="(tier, index) in form.trader_commission_tiers_for_orders"
                                     :key="`bulk-tier-${index}`"
-                                    class="grid grid-cols-1 lg:grid-cols-4 gap-2 items-end"
+                                    class="grid grid-cols-1 lg:grid-cols-5 gap-2 items-end"
                                 >
                                     <div>
                                         <InputLabel :value="`От (уровень #${index + 1})`" />
@@ -640,9 +714,14 @@ watch(
                                         <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.to`]?.[0]" class="mt-1" />
                                     </div>
                                     <div>
-                                        <InputLabel value="Комиссия трейдера, %" />
+                                        <InputLabel value="Трейдер %" />
                                         <NumberInput v-model="tier.rate" step="0.1" placeholder="7" />
                                         <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-1" />
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Тотал %" />
+                                        <NumberInput v-model="form.total_service_commission_tiers_for_orders[index].rate" step="0.1" placeholder="10" />
+                                        <InputError :message="errors[`total_service_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-1" />
                                     </div>
                                     <div class="flex justify-end">
                                         <button
@@ -656,7 +735,8 @@ watch(
                                     </div>
                                 </div>
                                 <InputError :message="errors.trader_commission_tiers_for_orders?.[0]" />
-                                <InputHelper model-value="Диапазоны должны быть подряд: от min_limit до max_limit без разрывов." />
+                                <InputError :message="errors.total_service_commission_tiers_for_orders?.[0]" />
+                                <InputHelper model-value="Диапазоны для трейдера и тотал комиссии сервиса должны быть подряд и совпадать: от min_limit до max_limit без разрывов." />
                             </div>
                         </div>
                     </div>

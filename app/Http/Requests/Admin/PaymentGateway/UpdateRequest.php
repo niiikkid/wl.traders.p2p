@@ -43,6 +43,10 @@ class UpdateRequest extends FormRequest
             'trader_commission_tiers_for_orders.*.from' => ['required_with:trader_commission_tiers_for_orders', 'numeric', 'min:0'],
             'trader_commission_tiers_for_orders.*.to' => ['required_with:trader_commission_tiers_for_orders', 'numeric', 'min:0'],
             'trader_commission_tiers_for_orders.*.rate' => ['required_with:trader_commission_tiers_for_orders', 'numeric', 'min:0'],
+            'total_service_commission_tiers_for_orders' => ['nullable', 'array'],
+            'total_service_commission_tiers_for_orders.*.from' => ['required_with:total_service_commission_tiers_for_orders', 'numeric', 'min:0'],
+            'total_service_commission_tiers_for_orders.*.to' => ['required_with:total_service_commission_tiers_for_orders', 'numeric', 'min:0'],
+            'total_service_commission_tiers_for_orders.*.rate' => ['required_with:total_service_commission_tiers_for_orders', 'numeric', 'min:0'],
             'total_service_commission_rate_for_orders' => ['required', 'numeric', 'min:0'],
             'trader_commission_rate_for_payouts' => ['required', 'numeric', 'min:0'],
             'total_service_commission_rate_for_payouts' => ['required', 'numeric', 'min:0'],
@@ -68,6 +72,7 @@ class UpdateRequest extends FormRequest
             'trader_commission_rate_for_orders' => __('комиссия трейдера'),
             'use_flexible_trader_commission_for_orders' => __('гибкая комиссия трейдера'),
             'trader_commission_tiers_for_orders' => __('уровни комиссии трейдера'),
+            'total_service_commission_tiers_for_orders' => __('уровни тотал комиссии сервиса'),
             'total_service_commission_rate_for_orders' => __('комиссия сервиса'),
             'trader_commission_rate_for_payouts' => __('комиссия трейдера (выплаты)'),
             'total_service_commission_rate_for_payouts' => __('комиссия сервиса (выплаты)'),
@@ -90,6 +95,7 @@ class UpdateRequest extends FormRequest
 
         if (! $payload['use_flexible_trader_commission_for_orders']) {
             $payload['trader_commission_tiers_for_orders'] = [];
+            $payload['total_service_commission_tiers_for_orders'] = [];
         }
 
         $this->merge($payload);
@@ -108,16 +114,16 @@ class UpdateRequest extends FormRequest
                 }
 
                 $primeTimeRate = (float) services()->settings()->getPrimeTimeBonus()->rate;
+                $useFlexible = $this->boolean('use_flexible_trader_commission_for_orders');
                 $traderRate = (float) $this->input('trader_commission_rate_for_orders');
                 $totalServiceRate = (float) $this->input('total_service_commission_rate_for_orders');
-                if (($traderRate + $primeTimeRate) > $totalServiceRate) {
+                if (! $useFlexible && ($traderRate + $primeTimeRate) > $totalServiceRate) {
                     $validator->errors()->add(
                         'trader_commission_rate_for_orders',
                         'Комиссия трейдера с учетом прайм-тайма не может быть больше тотал комиссии сервиса.'
                     );
                 }
 
-                $useFlexible = $this->boolean('use_flexible_trader_commission_for_orders');
                 if (! $useFlexible) {
                     return;
                 }
@@ -131,21 +137,60 @@ class UpdateRequest extends FormRequest
                     return;
                 }
 
-                $validated = TraderCommissionTierResolver::normalizeAndValidate(
+                $totalServiceTiers = $this->input('total_service_commission_tiers_for_orders', []);
+                if (! is_array($totalServiceTiers) || empty($totalServiceTiers)) {
+                    $validator->errors()->add(
+                        'total_service_commission_tiers_for_orders',
+                        'Для гибкой тотал комиссии добавьте хотя бы один уровень.'
+                    );
+                    return;
+                }
+
+                $validatedTrader = TraderCommissionTierResolver::normalizeAndValidate(
                     tiers: $tiers,
                     minLimit: (float) $this->input('min_limit'),
                     maxLimit: (float) $this->input('max_limit')
                 );
 
-                foreach ($validated['errors'] as $error) {
+                foreach ($validatedTrader['errors'] as $error) {
                     $validator->errors()->add('trader_commission_tiers_for_orders', $error);
                 }
 
-                foreach ($validated['normalized'] as $index => $tier) {
-                    if (($tier['rate'] + $primeTimeRate) > $totalServiceRate) {
+                $validatedTotalService = TraderCommissionTierResolver::normalizeAndValidate(
+                    tiers: $totalServiceTiers,
+                    minLimit: (float) $this->input('min_limit'),
+                    maxLimit: (float) $this->input('max_limit')
+                );
+
+                foreach ($validatedTotalService['errors'] as $error) {
+                    $validator->errors()->add('total_service_commission_tiers_for_orders', $error);
+                }
+
+                if (count($validatedTrader['normalized']) !== count($validatedTotalService['normalized'])) {
+                    $validator->errors()->add(
+                        'total_service_commission_tiers_for_orders',
+                        'Количество уровней для комиссии трейдера и тотал комиссии сервиса должно совпадать.'
+                    );
+                    return;
+                }
+
+                foreach ($validatedTrader['normalized'] as $index => $traderTier) {
+                    $totalTier = $validatedTotalService['normalized'][$index];
+
+                    if (
+                        abs($traderTier['from'] - $totalTier['from']) > TraderCommissionTierResolver::EPSILON
+                        || abs($traderTier['to'] - $totalTier['to']) > TraderCommissionTierResolver::EPSILON
+                    ) {
+                        $validator->errors()->add(
+                            'total_service_commission_tiers_for_orders',
+                            'Диапазоны гибкой комиссии трейдера и тотал комиссии сервиса должны совпадать по границам.'
+                        );
+                    }
+
+                    if (($traderTier['rate'] + $primeTimeRate) > $totalTier['rate']) {
                         $validator->errors()->add(
                             "trader_commission_tiers_for_orders.{$index}.rate",
-                            'Комиссия уровня с учетом прайм-тайма не может быть больше тотал комиссии сервиса.'
+                            'Комиссия уровня трейдера с учетом прайм-тайма не может быть больше тотал комиссии сервиса на этом уровне.'
                         );
                     }
                 }
