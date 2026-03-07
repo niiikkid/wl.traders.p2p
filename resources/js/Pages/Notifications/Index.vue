@@ -1,6 +1,6 @@
 <script setup>
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, onMounted, onUnmounted, ref, watch} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
@@ -12,6 +12,7 @@ import CopyPaymentText from "@/Components/CopyPaymentText.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import {useModalStore} from "@/store/modal.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
+import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
 
 const tableFiltersStore = useTableFiltersStore();
 const modalStore = useModalStore();
@@ -20,6 +21,11 @@ const notifications = ref(usePage().props.notifications);
 const rules = ref(usePage().props.rules);
 const filtersVariants = ref(usePage().props.filtersVariants);
 const telegramAccount = ref(usePage().props.telegramAccount);
+const audioTracks = ref(usePage().props.audioTracks ?? []);
+const notificationSoundSettings = ref(usePage().props.notificationSoundSettings ?? {
+    enabled: true,
+    track: audioTracks.value[0]?.value ?? null,
+});
 const currentTab = ref('notifications');
 
 const sectionData = computed(() => {
@@ -51,6 +57,10 @@ const ruleActionForm = useForm({
 });
 const telegramForm = useForm({});
 const notificationActionForm = useForm({});
+const soundForm = useForm({
+    enabled: notificationSoundSettings.value.enabled,
+    track: notificationSoundSettings.value.track,
+});
 
 const eventLabelFallbacks = {
     'withdrawal.requested': 'Запрос на вывод средств',
@@ -205,20 +215,82 @@ const statusBadgeClass = (status) => {
     return 'badge-warning';
 };
 
+const selectedTrackLabel = computed(() => {
+    const selectedTrack = audioTracks.value.find((track) => track.value === soundForm.track);
+    return selectedTrack?.name ?? 'Не выбрано';
+});
+
+const syncSoundSettings = () => {
+    audioTracks.value = usePage().props.audioTracks ?? [];
+    notificationSoundSettings.value = usePage().props.notificationSoundSettings ?? {
+        enabled: true,
+        track: audioTracks.value[0]?.value ?? null,
+    };
+
+    soundForm.enabled = notificationSoundSettings.value.enabled;
+    soundForm.track = notificationSoundSettings.value.track;
+};
+
+const saveSoundSettings = () => {
+    soundForm.patch(route('notifications.sound.update'), {
+        preserveScroll: true,
+    });
+};
+
+const toggleSoundEnabled = () => {
+    soundForm.enabled = !soundForm.enabled;
+    saveSoundSettings();
+};
+
+const selectSoundTrack = (track) => {
+    if (soundForm.track === track.value) {
+        return;
+    }
+
+    soundForm.track = track.value;
+    saveSoundSettings();
+};
+
+const previewSoundTrack = (track) => {
+    const audio = new Audio(track.url);
+    audio.play().catch(() => {
+        // Автовоспроизведение может блокироваться браузером.
+    });
+};
+
+const handleIncomingNotification = () => {
+    if (!route().current('notifications.*') && !route().current('admin.notifications.*')) {
+        return;
+    }
+
+    router.reload({
+        only: ['notifications', 'menu'],
+        preserveScroll: true,
+        preserveState: true,
+    });
+};
+
 router.on('success', () => {
     notifications.value = usePage().props.notifications;
     rules.value = usePage().props.rules;
     filtersVariants.value = usePage().props.filtersVariants;
     telegramAccount.value = usePage().props.telegramAccount;
+    syncSoundSettings();
     normalizeEventVariants();
     initTab();
     initRuleDefaults();
 });
 
 onMounted(() => {
+    syncSoundSettings();
     normalizeEventVariants();
     initTab();
     initRuleDefaults();
+    window.addEventListener('notifications:received', handleIncomingNotification);
+});
+
+onUnmounted(() => {
+    window.removeEventListener('notifications:received', handleIncomingNotification);
 });
 
 watch(() => ruleForm.event, (value) => {
@@ -379,6 +451,68 @@ defineOptions({ layout: AuthenticatedLayout });
 
                 <template v-else>
                     <div class="grid gap-6 lg:grid-cols-2">
+                        <div class="card bg-base-100 shadow">
+                            <div class="card-body space-y-4">
+                                <h3 class="text-lg font-semibold">Звук уведомлений</h3>
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <label class="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            class="toggle toggle-sm"
+                                            :checked="soundForm.enabled"
+                                            :disabled="soundForm.processing"
+                                            @change="toggleSoundEnabled"
+                                        />
+                                        <span class="text-sm">{{ soundForm.enabled ? 'Включено' : 'Выключено' }}</span>
+                                    </label>
+                                    <TableCellPopover v-if="audioTracks.length">
+                                        <template #trigger>
+                                            <span class="btn btn-xs btn-outline normal-case">
+                                                Выбрать звук
+                                            </span>
+                                        </template>
+                                        <div class="space-y-2 min-w-64">
+                                            <div class="text-xs text-base-content/70">
+                                                Текущий: <span class="font-medium text-base-content">{{ selectedTrackLabel }}</span>
+                                            </div>
+                                            <div class="space-y-1">
+                                                <div
+                                                    v-for="track in audioTracks"
+                                                    :key="track.value"
+                                                    class="flex items-center justify-between gap-3 rounded-box border border-base-300 px-2 py-1.5"
+                                                >
+                                                    <label class="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name="notification-sound-track"
+                                                            class="radio radio-xs"
+                                                            :checked="soundForm.track === track.value"
+                                                            :disabled="soundForm.processing"
+                                                            @change="selectSoundTrack(track)"
+                                                        />
+                                                        <span class="text-sm">{{ track.name }}</span>
+                                                    </label>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-xs btn-ghost"
+                                                        @click.prevent="previewSoundTrack(track)"
+                                                    >
+                                                        ▶
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </TableCellPopover>
+                                </div>
+                                <div v-if="!audioTracks.length" class="text-sm text-base-content/70">
+                                    Аудиофайлы не найдены в `public/audio`.
+                                </div>
+                                <div v-else class="text-xs text-base-content/70">
+                                    Выбранный звук будет проигрываться при поступлении нового уведомления в панели.
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="card bg-base-100 shadow">
                             <div class="card-body space-y-4">
                                 <div

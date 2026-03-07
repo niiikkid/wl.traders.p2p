@@ -17,6 +17,7 @@ use App\Models\Order;
 use App\Models\Payout\Payout;
 use App\Models\PaymentDetail;
 use App\Models\User;
+use App\Models\UserMeta;
 use App\Services\Money\Currency;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -130,6 +131,8 @@ class HandleInertiaRequests extends Middleware
         $activeDetails = 0;
         $pendingWithdrawals = 0;
         $notificationsUnreadCount = 0;
+        $notificationsSoundEnabled = true;
+        $notificationsSoundTrack = 'radwimps.mp3';
 
         if (auth()->check()) {
             $userId = auth()->id();
@@ -199,6 +202,11 @@ class HandleInertiaRequests extends Middleware
                     ->whereNull('read_at')
                     ->count();
             });
+
+            /** @var UserMeta|null $userMeta */
+            $userMeta = auth()->user()->meta;
+            $notificationsSoundEnabled = $userMeta?->notification_sound_enabled ?? true;
+            $notificationsSoundTrack = $userMeta?->notification_sound_track ?: 'radwimps.mp3';
         }
 
         $menu = [
@@ -236,6 +244,10 @@ class HandleInertiaRequests extends Middleware
                 'rates' => fn () => $rates,
                 'wallet' => fn () => $request->user() ? WalletResource::make($request->user()->wallet)->resolve() : null,
                 'hasPendingDisputes' => fn () => $request->user()?->hasRole('Trader') ? $menu['pendingDisputesCount'] > 0 : 0,
+            ],
+            'notificationsSound' => [
+                'enabled' => (bool) $notificationsSoundEnabled,
+                'track' => (string) $notificationsSoundTrack,
             ],
             'menu' => $menu
         ];

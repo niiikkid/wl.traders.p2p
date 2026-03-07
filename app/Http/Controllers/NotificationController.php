@@ -12,15 +12,22 @@ use App\Http\Resources\TelegramAccountResource;
 use App\Models\Notification;
 use App\Models\NotificationRule;
 use App\Services\Money\Currency;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class NotificationController extends Controller
 {
+    protected const DEFAULT_SOUND_TRACK = 'radwimps.mp3';
+
     protected function buildIndexProps(NotificationFilterRequest $request): array
     {
         $user = $request->user();
         $filters = $request->filters();
+        $audioTracks = $this->getAudioTracks();
 
         $query = Notification::query()
             ->where('user_id', $user->id)
@@ -86,12 +93,22 @@ class NotificationController extends Controller
             'currency' => $currencies,
         ];
 
+        $selectedTrack = $this->resolveSoundTrack(
+            $user->meta?->notification_sound_track,
+            $audioTracks
+        );
+
         return [
             'notifications' => $notifications,
             'rules' => $rules,
             'filters' => $filters,
             'filtersVariants' => $filtersVariants,
             'telegramAccount' => $telegramAccount,
+            'audioTracks' => $audioTracks,
+            'notificationSoundSettings' => [
+                'enabled' => $user->meta?->notification_sound_enabled ?? true,
+                'track' => $selectedTrack,
+            ],
         ];
     }
 
@@ -134,5 +151,99 @@ class NotificationController extends Controller
         $notification->update(['read_at' => null]);
 
         return back();
+    }
+
+    public function ping(Request $request): JsonResponse
+    {
+        $userId = $request->user()->id;
+
+        $latestNotificationId = Notification::query()
+            ->where('user_id', $userId)
+            ->where('channel', NotificationChannel::IN_APP)
+            ->latest('id')
+            ->value('id');
+
+        $unreadCount = Notification::query()
+            ->where('user_id', $userId)
+            ->where('channel', NotificationChannel::IN_APP)
+            ->whereNull('read_at')
+            ->count();
+
+        return response()->json([
+            'latest_notification_id' => $latestNotificationId ? (int) $latestNotificationId : null,
+            'unread_count' => (int) $unreadCount,
+        ]);
+    }
+
+    public function updateSoundSettings(Request $request)
+    {
+        $audioTracks = $this->getAudioTracks();
+        $allowedTracks = array_column($audioTracks, 'value');
+
+        $validated = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'track' => ['nullable', 'string', Rule::in($allowedTracks)],
+        ]);
+
+        $resolvedTrack = $this->resolveSoundTrack($validated['track'] ?? null, $audioTracks);
+
+        $request->user()->meta()->updateOrCreate(
+            ['user_id' => $request->user()->id],
+            [
+                'notification_sound_enabled' => (bool) $validated['enabled'],
+                'notification_sound_track' => $resolvedTrack,
+            ]
+        );
+
+        return back();
+    }
+
+    protected function getAudioTracks(): array
+    {
+        $audioDirectory = public_path('audio');
+
+        if (! File::isDirectory($audioDirectory)) {
+            return [];
+        }
+
+        $tracks = collect(File::files($audioDirectory))
+            ->filter(function ($file) {
+                return $file->getExtension() === 'mp3';
+            })
+            ->sortBy(function ($file) {
+                return $file->getFilename();
+            })
+            ->values()
+            ->map(function ($file) {
+                $name = $file->getFilename();
+
+                return [
+                    'name' => $name,
+                    'value' => $name,
+                    'url' => '/audio/' . $name,
+                ];
+            })
+            ->toArray();
+
+        return $tracks;
+    }
+
+    protected function resolveSoundTrack(?string $track, array $audioTracks): ?string
+    {
+        if (empty($audioTracks)) {
+            return null;
+        }
+
+        $allowedTracks = array_column($audioTracks, 'value');
+
+        if ($track && in_array($track, $allowedTracks, true)) {
+            return $track;
+        }
+
+        if (in_array(self::DEFAULT_SOUND_TRACK, $allowedTracks, true)) {
+            return self::DEFAULT_SOUND_TRACK;
+        }
+
+        return $audioTracks[0]['value'];
     }
 }
