@@ -54,8 +54,8 @@ class DeviceService implements DeviceServiceContract
         $now = now();
         $user = $device->user;
 
-        cache()->put("user-apk-latest-ping-at-$user->id", $now->toDateTimeString());
-        cache()->put('user-device-latest-ping-at-' . $device->id, $now->toDateTimeString());
+        cache()->put("user-apk-latest-ping-at-$user->id", $now->toISOString());
+        cache()->put('user-device-latest-ping-at-' . $device->id, $now->toISOString());
 
         $bucket = UserDevicePing::toBucket5s($now);
         UserDevicePing::query()->updateOrCreate(

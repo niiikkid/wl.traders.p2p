@@ -49,7 +49,7 @@ class HandleInertiaRequests extends Middleware
         // Save latest frontend ping time for authenticated user (Inertia request)
         if (auth()->check()) {
             $userId = auth()->id();
-            cache()->put("user-online-at-{$userId}", now()->toDateTimeString());
+            cache()->put("user-online-at-{$userId}", now()->toISOString());
         }
 
         $rates = cache()->remember('currency-rates', 60, function () {

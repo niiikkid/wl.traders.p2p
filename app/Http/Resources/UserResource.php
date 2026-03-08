@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,8 +29,8 @@ class UserResource extends JsonResource
             'login' => $this->email, // логин совпадает с колонкой email
             'avatar_uuid' => $this->avatar_uuid,
             'avatar_style' => $this->avatar_style,
-            'apk_latest_ping_at' => cache()->get("user-apk-latest-ping-at-$this->id"),
-            'online_at' => cache()->get("user-online-at-$this->id"),
+            'apk_latest_ping_at' => $this->normalizeCachedDate(cache()->get("user-apk-latest-ping-at-$this->id")),
+            'online_at' => $this->normalizeCachedDate(cache()->get("user-online-at-$this->id")),
             'banned_at' => $this->banned_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'team_leader_id' => $this->team_leader_id,
@@ -87,5 +88,18 @@ class UserResource extends JsonResource
             'can_be_impersonated' => $this->id !== auth()->user()?->id && $this->banned_at === null,
             'has_2fa' => (bool)$this->google2fa_secret,
         ];
+    }
+
+    private function normalizeCachedDate(mixed $date): ?string
+    {
+        if (!is_string($date) || $date === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($date)->toISOString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
