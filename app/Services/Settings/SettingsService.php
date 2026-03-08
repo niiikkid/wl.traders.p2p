@@ -13,6 +13,7 @@ use App\Services\Money\Currency;
 
 class SettingsService implements SettingsServiceContract
 {
+    const APP_SLOGAN = 'app_slogan';
     const PRIME_TIME_BONUS_STARTS = 'prime_time_bonus_starts';
     const PRIME_TIME_BONUS_ENDS = 'prime_time_bonus_ends';
     const PRIME_TIME_BONUS_RATE = 'prime_time_bonus_rate';
@@ -28,6 +29,40 @@ class SettingsService implements SettingsServiceContract
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
 
     protected $settings = null;
+
+    public function getAppSlogan(): string
+    {
+        if (! $this->settings) {
+            $settings = cache()->get('app-settings');
+
+            if (! $settings) {
+                $settings = cache()->rememberForever('app-settings', function () {
+                    return Setting::all();
+                });
+            }
+
+            $this->settings = $settings;
+        }
+
+        $value = $this->settings->where('key', self::APP_SLOGAN)->first()?->value;
+
+        if (! is_string($value) || $value === '') {
+            return 'Надежный процессинг';
+        }
+
+        return $value;
+    }
+
+    public function updateAppSlogan(string $value): void
+    {
+        Setting::updateOrCreate(
+            ['key' => self::APP_SLOGAN],
+            ['value' => trim($value)]
+        );
+
+        cache()->put('app-settings', Setting::all());
+        $this->settings = null;
+    }
 
     public function getPrimeTimeBonus(): PrimeTimeSettings
     {
@@ -214,6 +249,10 @@ class SettingsService implements SettingsServiceContract
     {
         cache()->forget('app-settings');
 
+        Setting::firstOrCreate([
+            'key' => self::APP_SLOGAN,
+            'value' => 'Надежный процессинг',
+        ]);
         Setting::firstOrCreate([
             'key' => self::PRIME_TIME_BONUS_STARTS,
             'value' => '00:00',

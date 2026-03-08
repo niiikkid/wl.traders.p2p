@@ -11,6 +11,7 @@ class SettingsController extends Controller
 {
     public function index()
     {
+        $appSlogan = services()->settings()->getAppSlogan();
         $primeTimeBonus = services()->settings()->getPrimeTimeBonus()->toArray();
         $supportLink = services()->settings()->getSupportLink();
         $fundsOnHoldTime = services()->settings()->getFundsOnHoldTime();
@@ -22,6 +23,7 @@ class SettingsController extends Controller
         $defaultReserveBalanceLimit = services()->settings()->getDefaultReserveBalanceLimit();
 
         return Inertia::render('Settings/Index', compact(
+            'appSlogan',
             'primeTimeBonus',
             'supportLink',
             'fundsOnHoldTime',
@@ -32,6 +34,17 @@ class SettingsController extends Controller
             'tempVipEnabled',
             'defaultReserveBalanceLimit'
         ));
+    }
+
+    public function updateAppSlogan(Request $request)
+    {
+        $request->validate([
+            'app_slogan' => ['required', 'string', 'max:120'],
+        ]);
+
+        services()->settings()->updateAppSlogan($request->app_slogan);
+
+        return redirect()->route('admin.settings.index');
     }
 
     public function updatePrimeTimeBonus(UpdatePrimeTimeBonusRequest $request)

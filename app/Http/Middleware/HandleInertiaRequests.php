@@ -223,6 +223,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'app' => [
                 'name' => config('app.name'),
+                'slogan' => services()->settings()->getAppSlogan(),
             ],
             'auth' => [
                 'user' => fn () => $request->user()

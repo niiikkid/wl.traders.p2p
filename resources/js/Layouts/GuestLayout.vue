@@ -10,7 +10,7 @@ import ThemeMarquee from "@/Components/ThemeMarquee.vue";
                 <div class="flex items-end gap-3 justify-center mb-6">
                     <div>
                         <div class="text-4xl font-extrabold tracking-tight">{{$page.props.app.name}}</div>
-                        <div class="text-xs font-medium text-base-content/70 text-center">Надежный процессинг</div>
+                        <div class="text-xs font-medium text-base-content/70 text-center">{{$page.props.app.slogan}}</div>
                     </div>
                 </div>
 

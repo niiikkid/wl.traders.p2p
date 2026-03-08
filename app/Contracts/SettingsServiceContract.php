@@ -10,6 +10,10 @@ use App\Services\Money\Currency;
 
 interface SettingsServiceContract
 {
+    public function getAppSlogan(): string;
+
+    public function updateAppSlogan(string $value): void;
+
     public function getPrimeTimeBonus(): PrimeTimeSettings;
 
     public function updatePrimeTimeBonus(string $starts, string $ends, float $rate): void;

@@ -65,11 +65,11 @@ router.on('success', (event) => {
                     <Link :href="route('dashboard')" class="flex ms-2 md:me-24 text-base-content">
                         <div class="hidden lg:block">
                             <div class="text-4xl font-semibold">{{$page.props.app.name}}</div>
-                            <div class="text-xs font-medium text-base-content/70">Надежный процессинг</div>
+                            <div class="text-xs font-medium text-base-content/70">{{$page.props.app.slogan}}</div>
                         </div>
                         <div class="lg:hidden">
                             <div class="text-[1.95rem] font-semibold">{{$page.props.app.name}}</div>
-                            <div class="text-[0.65rem] text-base-content/70">Надежный процессинг</div>
+                            <div class="text-[0.65rem] text-base-content/70">{{$page.props.app.slogan}}</div>
                         </div>
                     </Link>
                 </div>

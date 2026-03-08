@@ -2,6 +2,7 @@
 import {Head} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimeTimeBonus from "@/Pages/Settings/Partials/PrimeTimeBonus.vue";
+import AppSlogan from "@/Pages/Settings/Partials/AppSlogan.vue";
 import SupportLink from "@/Pages/Settings/Partials/SupportLink.vue";
 import FundsOnHold from "@/Pages/Settings/Partials/FundsOnHold.vue";
 import MaxPendingDisputes from "@/Pages/Settings/Partials/MaxPendingDisputes.vue";
@@ -22,6 +23,11 @@ defineOptions({ layout: AuthenticatedLayout })
                     <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Настройки системы</h2>
                 </div>
 
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <AppSlogan class="max-w-xl"></AppSlogan>
+                    </div>
+                </div>
                 <div class="card bg-base-100 shadow">
                     <div class="card-body">
                         <PrimeTimeBonus class="max-w-xl"></PrimeTimeBonus>
