@@ -89,6 +89,18 @@ const getPluralForm = (number, unit) => {
         ];
 }
 
+const formatLocalDate = (date) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const yearShort = String(date.getFullYear()).slice(-2);
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hours = pad(date.getHours());
+    const minutes = pad(date.getMinutes());
+    const seconds = pad(date.getSeconds());
+
+    return `${yearShort}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+};
+
 const formatDateStandard = (dateString) => {
     if (!dateString) {
         return '';
@@ -99,9 +111,11 @@ const formatDateStandard = (dateString) => {
         /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/
     );
     if (isoMatch) {
-        const [, y, mo, d, h, mi, s] = isoMatch;
-        const yearShort = y.slice(-2); // Последние две цифры года
-        return `${yearShort}.${mo}.${d} ${h}:${mi}:${s ?? '00'}`;
+        const parsedIsoDate = new Date(iso);
+        if (!Number.isNaN(parsedIsoDate.getTime())) {
+            // ISO-даты форматируем в локальной таймзоне пользователя.
+            return formatLocalDate(parsedIsoDate);
+        }
     }
 
     const naiveMatch = iso.match(
@@ -115,15 +129,7 @@ const formatDateStandard = (dateString) => {
 
     const parsedDate = new Date(dateString);
     if (!Number.isNaN(parsedDate.getTime())) {
-        const pad = (n) => String(n).padStart(2, '0');
-        const year = parsedDate.getFullYear();
-        const yearShort = String(year).slice(-2); // Последние две цифры года
-        const month = pad(parsedDate.getMonth() + 1);
-        const day = pad(parsedDate.getDate());
-        const hours = pad(parsedDate.getHours());
-        const minutes = pad(parsedDate.getMinutes());
-        const seconds = pad(parsedDate.getSeconds());
-        return `${yearShort}.${month}.${day} ${hours}:${minutes}:${seconds}`;
+        return formatLocalDate(parsedDate);
     }
 
     // fallback — если строка с нестандартным форматом, вернуть как есть
