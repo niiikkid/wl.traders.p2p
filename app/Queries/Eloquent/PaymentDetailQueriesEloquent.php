@@ -100,4 +100,44 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
     }
+
+    public function paginateForTeamLeader(User $teamLeader, User $trader, TableFiltersValue $filters, bool $fromArchive = false): LengthAwarePaginator
+    {
+        return PaymentDetail::query()
+            ->where('user_id', $trader->id)
+            ->whereRelation('user', 'team_leader_id', $teamLeader->id)
+            ->with(['user', 'userDevice', 'paymentGateways'])
+            ->withCount(['orders as pending_orders_count' => function ($query) {
+                $query->where('status', OrderStatus::PENDING);
+            }])
+            ->when(!$fromArchive, function ($query) {
+                $query->whereNull('archived_at');
+            })
+            ->when($fromArchive, function ($query) {
+                $query->whereNotNull('archived_at');
+            })
+            ->when($filters->id, function ($query) use ($filters) {
+                $query->where('id', $filters->id);
+            })
+            ->when($filters->name, function ($query) use ($filters) {
+                $query->where('name', 'LIKE', '%' . $filters->name . '%');
+            })
+            ->when($filters->paymentDetail, function ($query) use ($filters) {
+                $query->where('detail', 'LIKE', '%' . $filters->paymentDetail . '%');
+            })
+            ->when($filters->active, function ($query) {
+                $query->where('is_active', true);
+            })
+            ->when($filters->detailTypes && count($filters->detailTypes) > 0, function ($query) use ($filters) {
+                $query->whereIn('detail_type', $filters->detailTypes);
+            })
+            ->when($filters->paymentGateway, function ($query) use ($filters) {
+                $query->whereHas('paymentGateways', function ($subQuery) use ($filters) {
+                    $subQuery->where('name', 'LIKE', '%' . $filters->paymentGateway . '%')
+                        ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
+                });
+            })
+            ->orderByDesc('id')
+            ->paginate(request()->per_page ?? 10);
+    }
 }

@@ -34,7 +34,7 @@ const openPage = (page) => {
             preserveScroll: true
         })
     } else {
-        router.visit(route(route().current()), {
+        router.visit(route(route().current(), route().params), {
             data: {
                 page,
                 tab: currentTab.value,

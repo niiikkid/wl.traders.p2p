@@ -83,6 +83,12 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/main', [\App\Http\Controllers\MainPageController::class, 'leader'])->name('main.index');
         Route::get('/finances', [\App\Http\Controllers\WalletController::class, 'index'])->name('finances.index');
         Route::get('/referrals', [\App\Http\Controllers\TeamLeader\ReferralController::class, 'index'])->name('referrals.index');
+        Route::get('/traders', [\App\Http\Controllers\TeamLeader\TraderController::class, 'index'])->name('traders.index');
+        Route::get('/traders/{trader}', [\App\Http\Controllers\TeamLeader\TraderController::class, 'show'])->name('traders.show');
+        Route::get('/traders/{trader}/payment-details', [\App\Http\Controllers\TeamLeader\TraderPaymentDetailController::class, 'index'])->name('traders.payment-details.index');
+        Route::get('/traders/{trader}/orders', [\App\Http\Controllers\TeamLeader\TraderOrderController::class, 'index'])->name('traders.orders.index');
+        Route::get('/traders/{trader}/disputes', [\App\Http\Controllers\TeamLeader\TraderDisputeController::class, 'index'])->name('traders.disputes.index');
+        Route::get('/traders/{trader}/finances', [\App\Http\Controllers\TeamLeader\TraderFinanceController::class, 'index'])->name('traders.finances.index');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Super Admin']], function () {

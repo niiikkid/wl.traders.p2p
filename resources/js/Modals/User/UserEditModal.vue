@@ -41,6 +41,7 @@ const form = ref({
     payout_referral_commission_percentage: 0,
     payout_team_leader_split_from_service_percent: 0,
     reserve_balance_limit: null,
+    team_leader_extended_access_enabled: false,
     team_leader_id: [],
 });
 
@@ -74,6 +75,7 @@ const resetState = () => {
         payout_referral_commission_percentage: 0,
         payout_team_leader_split_from_service_percent: 0,
         reserve_balance_limit: null,
+        team_leader_extended_access_enabled: false,
         team_leader_id: [],
     };
 };
@@ -116,6 +118,7 @@ const loadUser = () => {
                 ?? data.team_leader_split_from_service_percent
                 ?? 0;
             form.value.reserve_balance_limit = data.reserve_balance_limit;
+            form.value.team_leader_extended_access_enabled = !!data.team_leader_extended_access_enabled;
             form.value.team_leader_id = data.team_leader_id ? [data.team_leader_id] : [];
         });
 };
@@ -432,6 +435,23 @@ watch(
                 </div>
 
                 <div v-if="isTeamLeader(form.role_id) || isAdmin(form.role_id)" class="space-y-6">
+                    <div v-if="isTeamLeader(form.role_id) || isAdmin(form.role_id)">
+                        <div class="form-control w-fit">
+                            <label class="label cursor-pointer gap-3">
+                                <input
+                                    type="checkbox"
+                                    class="toggle toggle-primary"
+                                    v-model="form.team_leader_extended_access_enabled"
+                                    :disabled="processing"
+                                >
+                                <span class="label-text">Расширенный функционал Team Leader</span>
+                            </label>
+                        </div>
+                        <div class="mt-1 text-xs opacity-70">
+                            Если выключено, тимлидер не увидит раздел "Трейдеры" и не получит доступ к расширенным страницам.
+                        </div>
+                    </div>
+
                     <div>
                         <h4 class="text-base font-semibold">Настройки сделок</h4>
 

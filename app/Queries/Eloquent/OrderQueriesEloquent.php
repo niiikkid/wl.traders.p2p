@@ -148,6 +148,62 @@ class OrderQueriesEloquent implements OrderQueries
             ->paginate(request()->per_page ?? 10);
     }
 
+    public function paginateForTeamLeader(User $teamLeader, User $trader, TableFiltersValue $filters): LengthAwarePaginator
+    {
+        return Order::query()
+            ->whereRelation('paymentDetail', 'user_id', $trader->id)
+            ->whereRelation('paymentDetail.user', 'team_leader_id', $teamLeader->id)
+            ->with([
+                'trader:id,email',
+                'paymentGateway:id,logo,name',
+                'paymentDetail:id,detail,detail_type,name,user_device_id,user_id',
+                'paymentDetail.userDevice:id,name',
+                'paymentDetail.user:id,name,email',
+                'dispute' => function ($query) {
+                    $query->where('status', DisputeStatus::PENDING->value)
+                        ->select(['id', 'order_id', 'status', 'reason', 'receipt', 'created_at']);
+                },
+            ])
+            ->whereNotNull('payment_detail_id')
+            ->when(! empty($filters->orderStatuses), function ($query) use ($filters) {
+                $query->whereIn('status', $filters->orderStatuses);
+            })
+            ->when($filters->startDate, function ($query) use ($filters) {
+                $query->whereDate('created_at', '>=', $filters->startDate);
+            })
+            ->when($filters->endDate, function ($query) use ($filters) {
+                $query->whereDate('created_at', '<=', $filters->endDate);
+            })
+            ->when($filters->uuid, function ($query) use ($filters) {
+                $query->where('uuid', 'LIKE', '%' . $filters->uuid . '%');
+            })
+            ->when($filters->amount, function ($query) use ($filters) {
+                $query->where(function ($query) use ($filters) {
+                    $amount = Money::fromPrecision($filters->amount, Currency::USDT())->toUnits();
+                    $query->where('amount', 'LIKE', $amount);
+                    $query->orWhere('total_profit', 'LIKE', $amount);
+                });
+            })
+            ->when($filters->paymentDetail, function ($query) use ($filters) {
+                $query->whereRelation('paymentDetail', 'detail', 'LIKE', '%' . $filters->paymentDetail . '%');
+            })
+            ->when($filters->detailTypes && count($filters->detailTypes) > 0, function ($query) use ($filters) {
+                $query->whereRelation('paymentDetail', function ($subQuery) use ($filters) {
+                    $subQuery->whereIn('detail_type', $filters->detailTypes);
+                });
+            })
+            ->when($filters->paymentGateway, function ($query) use ($filters) {
+                $query->whereRelation('paymentGateway', function ($subQuery) use ($filters) {
+                    $subQuery->where('name', 'LIKE', '%' . $filters->paymentGateway . '%')
+                        ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
+                });
+            })
+            ->select(['id', 'uuid', 'amount', 'currency', 'total_profit', 'status', 'created_at', 'payment_gateway_id', 'payment_detail_id', 'trader_id'])
+            ->withExists('dispute')
+            ->orderByDesc('id')
+            ->paginate(request()->per_page ?? 10);
+    }
+
     public function paginateForMerchant(User $user, TableFiltersValue $filters): LengthAwarePaginator
     {
         return Order::query()

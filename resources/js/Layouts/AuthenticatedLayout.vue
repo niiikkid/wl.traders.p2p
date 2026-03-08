@@ -248,54 +248,98 @@ const handleNotificationBeforeUnload = () => {
     removeNotificationSoundLeaderIfOwned();
 };
 
-// initialize components based on data attribute selectors
-onMounted(() => {
-    viewStore.setTraderViewMode()
+const roleToMode = (roleName) => {
+    if (roleName === 'Super Admin') {
+        return 'admin';
+    }
+    if (roleName === 'Merchant') {
+        return 'merchant';
+    }
+    if (roleName === 'Trader') {
+        return 'trader';
+    }
+    if (roleName === 'Team Leader') {
+        return 'leader';
+    }
+    if (roleName === 'Support') {
+        return 'support';
+    }
+    if (roleName === 'Merchant Support') {
+        return 'merchant-support';
+    }
 
+    return 'trader';
+};
+
+const setViewMode = (mode) => {
+    if (mode === 'admin') {
+        viewStore.setAdminViewMode();
+        return;
+    }
+    if (mode === 'merchant') {
+        viewStore.setMerchantViewMode();
+        return;
+    }
+    if (mode === 'trader') {
+        viewStore.setTraderViewMode();
+        return;
+    }
+    if (mode === 'leader') {
+        viewStore.setTeamLeaderViewMode();
+        return;
+    }
+    if (mode === 'support') {
+        viewStore.setSupportViewMode();
+        return;
+    }
+    if (mode === 'merchant-support') {
+        viewStore.setMerchantSupportViewMode();
+        return;
+    }
+
+    viewStore.setTraderViewMode();
+};
+
+const resolveViewMode = () => {
     if (route().current('admin.*')) {
-        viewStore.setAdminViewMode()
+        return 'admin';
     }
 
     if (route().current('leader.*')) {
-        viewStore.setTeamLeaderViewMode()
+        return 'leader';
     }
 
     if (route().current('support.*')) {
-        viewStore.setSupportViewMode()
+        return 'support';
     }
 
     if (route().current('merchant-support.*')) {
-        viewStore.setMerchantSupportViewMode()
+        return 'merchant-support';
     }
 
-    //TODO это костыль для мерчантов
-    if (route().current('profile.*')) {
-        if (role.name === 'Super Admin') {
-            viewStore.setAdminViewMode();
-        } else if (role.name === 'Merchant') {
-            viewStore.setMerchantViewMode();
-        } else if (role.name === 'Trader') {
-            viewStore.setTraderViewMode();
-        } else if (role.name === 'Team Leader') {
-            viewStore.setTeamLeaderViewMode();
-        } else if (role.name === 'Support') {
-            viewStore.setSupportViewMode();
-        } else if (role.name === 'Merchant Support') {
-            viewStore.setMerchantSupportViewMode();
-        }
+    if (
+        route().current('merchant.*')
+        || route().current('merchants.*')
+        || route().current('integration.*')
+        || route().current('payments.*')
+    ) {
+        return 'merchant';
     }
-    if (route().current('merchant.*')) {
-        viewStore.setMerchantViewMode()
+
+    if (role?.name === 'Super Admin' && viewStore.viewMode) {
+        return viewStore.viewMode;
     }
-    if (route().current('merchants.*')) {
-        viewStore.setMerchantViewMode()
-    }
-    if (route().current('integration.*')) {
-        viewStore.setMerchantViewMode()
-    }
-    if (route().current('payments.*')) {
-        viewStore.setMerchantViewMode()
-    }
+
+    return roleToMode(role?.name);
+};
+
+const applyViewMode = () => {
+    setViewMode(resolveViewMode());
+};
+
+// initialize components based on data attribute selectors
+onMounted(() => {
+    applyViewMode();
 
     syncNotificationCenterFromProps();
     startNotificationsPolling();
@@ -320,52 +364,7 @@ const closeMobileDrawer = () => {
 }
 
 router.on('success', (event) => {
-    viewStore.setTraderViewMode()
-
-    if (route().current('admin.*')) {
-        viewStore.setAdminViewMode()
-    }
-
-    if (route().current('leader.*')) {
-        viewStore.setTeamLeaderViewMode()
-    }
-
-    if (route().current('support.*')) {
-        viewStore.setSupportViewMode()
-    }
-
-    if (route().current('merchant-support.*')) {
-        viewStore.setMerchantSupportViewMode()
-    }
-
-    //TODO это костыль для мерчантов
-    if (route().current('profile.*')) {
-        if (role.name === 'Super Admin') {
-            viewStore.setAdminViewMode();
-        } else if (role.name === 'Merchant') {
-            viewStore.setMerchantViewMode();
-        } else if (role.name === 'Trader') {
-            viewStore.setTraderViewMode();
-        } else if (role.name === 'Team Leader') {
-            viewStore.setTeamLeaderViewMode();
-        } else if (role.name === 'Support') {
-            viewStore.setSupportViewMode();
-        } else if (role.name === 'Merchant Support') {
-            viewStore.setMerchantSupportViewMode();
-        }
-    }
-    if (route().current('merchant.*')) {
-        viewStore.setMerchantViewMode()
-    }
-    if (route().current('merchants.*')) {
-        viewStore.setMerchantViewMode()
-    }
-    if (route().current('integration.*')) {
-        viewStore.setMerchantViewMode()
-    }
-    if (route().current('payments.*')) {
-        viewStore.setMerchantViewMode()
-    }
+    applyViewMode();
     rates.value = usePage().props.data.rates;
     isImpersonated.value = usePage().props.auth.is_impersonated;
     syncNotificationCenterFromProps();

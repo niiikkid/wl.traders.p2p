@@ -23,6 +23,7 @@ readonly class UserUpdateDTO extends BaseDTO
         public ?float $payout_team_leader_split_from_service_percent = null,
         public ?int $reserve_balance_limit = null,
         public ?int $team_leader_id = null,
+        public bool $team_leader_extended_access_enabled = false,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -52,6 +53,7 @@ readonly class UserUpdateDTO extends BaseDTO
             reserve_balance_limit: isset($data['reserve_balance_limit']) ? (int) $data['reserve_balance_limit'] : null,
             role_id: (int) $data['role_id'],
             team_leader_id: $data['team_leader_id'] ?? null,
+            team_leader_extended_access_enabled: (bool) ($data['team_leader_extended_access_enabled'] ?? false),
         );
     }
 }

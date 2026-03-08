@@ -11,4 +11,6 @@ interface DisputeQueries
     public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator;
 
     public function paginateForUser(User $user, TableFiltersValue $filters): LengthAwarePaginator;
+
+    public function paginateForTeamLeader(User $teamLeader, User $trader, TableFiltersValue $filters): LengthAwarePaginator;
 }

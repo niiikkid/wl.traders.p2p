@@ -62,6 +62,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $avatar_style
  * @property string $google2fa_secret
  * @property int|null $team_leader_id
+ * @property bool $team_leader_extended_access_enabled
  * @property User|null $teamLeader
  * @property Carbon $banned_at
  * @property Carbon $created_at
@@ -106,6 +107,7 @@ class User extends Authenticatable
         'avatar_style',
         'google2fa_secret',
         'team_leader_id',
+        'team_leader_extended_access_enabled',
         'banned_at',
         'merchant_id',
     ];
@@ -142,10 +144,11 @@ class User extends Authenticatable
             'payouts_enabled' => 'boolean',
             'payout_hold_enabled' => 'boolean',
             'payout_active_payouts_limit' => 'integer',
-        'referral_commission_percentage' => 'float',
+            'referral_commission_percentage' => 'float',
             'team_leader_split_from_service_percent' => 'float',
-        'payout_referral_commission_percentage' => 'float',
-        'payout_team_leader_split_from_service_percent' => 'float',
+            'payout_referral_commission_percentage' => 'float',
+            'payout_team_leader_split_from_service_percent' => 'float',
+            'team_leader_extended_access_enabled' => 'boolean',
         ];
     }
 

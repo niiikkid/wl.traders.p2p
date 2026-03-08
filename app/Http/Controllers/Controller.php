@@ -26,8 +26,9 @@ abstract class Controller
             if (empty(request()->all())) {
                 $savedFilters = session($sessionKey);
                 if ($savedFilters) {
+                    $routeParameters = request()->route()?->parameters() ?? [];
                     // Перенаправляем на этот же роут, но с сохраненными параметрами без возврата
-                    header('Location: ' . route($currentRoute, $savedFilters));
+                    header('Location: ' . route($currentRoute, array_merge($savedFilters, $routeParameters)));
                     exit();
                 }
             } else {

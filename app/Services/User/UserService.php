@@ -36,6 +36,7 @@ class UserService implements UserServiceContract
                 'traffic_enabled_at' => now(),
                 'reserve_balance_limit' => services()->settings()->getDefaultReserveBalanceLimit(),
                 'team_leader_id' => $teamLeaderId,
+                'team_leader_extended_access_enabled' => false,
                 'referral_commission_percentage' => $referralCommissionPercentage,
                 // Настройки выплат по умолчанию для всех новых пользователей
                 'payouts_enabled' => true,
@@ -80,6 +81,9 @@ class UserService implements UserServiceContract
                     ?? $user->payout_team_leader_split_from_service_percent,
                 'reserve_balance_limit' => $data->reserve_balance_limit,
                 'traffic_enabled_at' => $wasTrafficStopped && ! $data->stop_traffic ? now() : $user->traffic_enabled_at,
+                'team_leader_extended_access_enabled' => in_array($roleName, ['Team Leader', 'Super Admin'], true)
+                    ? $data->team_leader_extended_access_enabled
+                    : false,
             ];
 
             if ($teamLeaderId) {

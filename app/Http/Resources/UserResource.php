@@ -34,6 +34,7 @@ class UserResource extends JsonResource
             'banned_at' => $this->banned_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'team_leader_id' => $this->team_leader_id,
+            'team_leader_extended_access_enabled' => (bool) $this->team_leader_extended_access_enabled,
             'team_leader' => $this->whenLoaded('teamLeader', function () {
                 return [
                     'id' => $this->teamLeader->id,

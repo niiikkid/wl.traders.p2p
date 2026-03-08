@@ -43,6 +43,7 @@ class UpdateRequest extends FormRequest
             'payout_team_leader_split_from_service_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'reserve_balance_limit' => ['nullable', 'integer', 'min:0'],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
+            'team_leader_extended_access_enabled' => ['required', 'boolean'],
         ];
     }
 
@@ -63,6 +64,7 @@ class UpdateRequest extends FormRequest
             'payout_team_leader_split_from_service_percent' => __('сплит комиссии тимлида от выплат'),
             'reserve_balance_limit' => __('страховой депозит'),
             'team_leader_id' => __('тим лидер'),
+            'team_leader_extended_access_enabled' => __('расширенный доступ тимлида'),
         ];
     }
 }

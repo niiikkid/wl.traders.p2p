@@ -67,7 +67,7 @@ const changePerPage = (value) => {
 }
 
 const openPage = () => {
-    router.visit(route(route().current()), {
+    router.visit(route(route().current(), route().params), {
         data: tableFiltersStore.getQueryData,
         preserveScroll: true
     })

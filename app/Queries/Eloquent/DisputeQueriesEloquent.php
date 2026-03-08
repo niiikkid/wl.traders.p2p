@@ -72,4 +72,33 @@ class DisputeQueriesEloquent implements DisputeQueries
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
     }
+
+    public function paginateForTeamLeader(User $teamLeader, User $trader, TableFiltersValue $filters): LengthAwarePaginator
+    {
+        return Dispute::query()
+            ->whereRelation('order.paymentDetail', 'user_id', $trader->id)
+            ->whereRelation('order.paymentDetail.user', 'team_leader_id', $teamLeader->id)
+            ->when(! empty($filters->disputeStatuses), function ($query) use ($filters) {
+                $query->whereIn('status', $filters->disputeStatuses);
+            })
+            ->when($filters->uuid, function ($query) use ($filters) {
+                $query->whereRelation('order', 'uuid', 'LIKE', '%' . $filters->uuid . '%');
+            })
+            ->when($filters->amount, function ($query) use ($filters) {
+                $query->where(function ($query) use ($filters) {
+                    $amount = Money::fromPrecision($filters->amount, Currency::USDT())->toUnits();
+                    $query->whereRelation('order', 'amount', 'LIKE', '%' . $amount . '%');
+                    $query->orWhereRelation('order', 'total_profit', 'LIKE', '%' . $amount . '%');
+                });
+            })
+            ->when($filters->paymentDetail, function ($query) use ($filters) {
+                $query->whereRelation('order.paymentDetail', 'detail', 'LIKE', '%' . $filters->paymentDetail . '%');
+            })
+            ->when($filters->externalID, function ($query) use ($filters) {
+                $query->whereRelation('order', 'external_id', 'LIKE', '%' . $filters->externalID . '%');
+            })
+            ->with(['order.paymentDetail.user', 'order.paymentGateway'])
+            ->orderByDesc('id')
+            ->paginate(request()->per_page ?? 10);
+    }
 }

@@ -22,6 +22,8 @@ interface OrderQueries
 
     public function paginateForMerchant(User $user, TableFiltersValue $filters): LengthAwarePaginator;
 
+    public function paginateForTeamLeader(User $teamLeader, User $trader, TableFiltersValue $filters): LengthAwarePaginator;
+
     /**
      * @return Collection<int, Dispute>
      */

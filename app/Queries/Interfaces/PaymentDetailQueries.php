@@ -11,4 +11,6 @@ interface PaymentDetailQueries
     public function paginateForAdmin(TableFiltersValue $filters, bool $fromArchive = false): LengthAwarePaginator;
 
     public function paginateForUser(User $user, TableFiltersValue $filters, bool $fromArchive = false): LengthAwarePaginator;
+
+    public function paginateForTeamLeader(User $teamLeader, User $trader, TableFiltersValue $filters, bool $fromArchive = false): LengthAwarePaginator;
 }

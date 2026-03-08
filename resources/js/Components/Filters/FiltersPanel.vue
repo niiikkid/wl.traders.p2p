@@ -83,7 +83,7 @@ const toggleFiltersDisplay = () => {
 const applyFilters = () => {
     tableFiltersStore.setCurrentPage(1);
 
-    router.visit(route(route().current()), {
+    router.visit(route(route().current(), route().params), {
         data: {
             ...tableFiltersStore.getQueryData,
             ...props.query
@@ -96,7 +96,7 @@ const clearFilters = () => {
     tableFiltersStore.setCurrentPage(1);
     tableFiltersStore.setFilters({});
 
-    router.visit(route(route().current()), {
+    router.visit(route(route().current(), route().params), {
         data: {
             ...tableFiltersStore.getQueryData,
             ...props.query
