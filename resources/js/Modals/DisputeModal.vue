@@ -8,6 +8,7 @@ import { storeToRefs } from 'pinia'
 import { useModalStore } from "@/store/modal.js";
 import {useViewStore} from "@/store/view.js";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
+import DateTime from "@/Components/DateTime.vue";
 
 const viewStore = useViewStore();
 const modalStore = useModalStore();
@@ -54,7 +55,7 @@ const showReceipt = () => {
                                     </svg>
                                 </div>
                                 <p class="mb-1 text-lg font-semibold text-base-content text-center">Спор принят</p>
-                                <p class="text-sm font-semibold text-base-content/70 text-center">{{ disputeModal.params.dispute.created_at }}</p>
+                                <DateTime class="justify-center" :data="disputeModal.params.dispute.created_at" />
                             </div>
                             <div v-else-if="disputeModal.params.dispute.status === 'canceled'">
                                 <div class="flex items-center justify-center mb-2">
@@ -63,7 +64,7 @@ const showReceipt = () => {
                                     </svg>
                                 </div>
                                 <p class="mb-1 text-lg font-semibold text-base-content text-center">Спор отклонен</p>
-                                <p class="text-sm font-semibold text-base-content/70 text-center">{{ disputeModal.params.dispute.created_at }}</p>
+                                <DateTime class="justify-center" :data="disputeModal.params.dispute.created_at" />
                             </div>
                             <div v-else-if="disputeModal.params.dispute.status === 'pending'">
                                 <div class="flex items-center justify-center mb-2">
@@ -72,7 +73,7 @@ const showReceipt = () => {
                                     </svg>
                                 </div>
                                 <p class="mb-1 text-lg font-semibold text-base-content text-center">Спор ожидает проверки</p>
-                                <p class="text-sm font-semibold text-base-content/70 text-center">{{ disputeModal.params.dispute.created_at }}</p>
+                                <DateTime class="justify-center" :data="disputeModal.params.dispute.created_at" />
                             </div>
                             <div class="space-y-3 mt-6">
                                 <div class="py-3 px-5 bg-base-200/60 card">

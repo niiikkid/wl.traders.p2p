@@ -17,7 +17,7 @@ class UserNoteResource extends JsonResource
         return [
             'id' => $this->id,
             'content' => $this->content,
-            'created_at' => $this->created_at->format('Y-m-d H:i:s'),
+            'created_at' => $this->created_at->toISOString(),
             'creator' => [
                 'id' => $this->creator->id,
                 'name' => $this->creator->name,

@@ -115,7 +115,7 @@ watch(
                         <div class="text-sm whitespace-pre-line">{{ note.content }}</div>
                         <div class="mt-2 flex justify-between items-center text-xs text-base-content/70">
                             <div>Добавил: {{ note.creator.name }}</div>
-                            <div>{{ note.created_at }}</div>
+                            <DateTime :data="note.created_at" />
                         </div>
                     </div>
                 </div>

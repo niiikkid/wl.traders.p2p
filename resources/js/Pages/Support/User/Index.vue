@@ -122,7 +122,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <DateTime v-if="user.apk_latest_ping_at" :data="user.apk_latest_ping_at" :plural="true"/>
                                     </td>
                                     <td class=" whitespace-nowrap">
-                                        {{ user.created_at }}
+                                        <DateTime class="justify-start" :data="user.created_at"/>
                                     </td>
                                     <td class=" whitespace-nowrap">
                                         <span v-if="user.is_online" class="badge badge-success badge-sm">Онлайн</span>

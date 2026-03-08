@@ -42,7 +42,7 @@ class TableOrderResource extends JsonResource
                     'base_currency' => Currency::USDT()->getCode(),
                     'status' => $this->status,
                     'status_name' => $this->status_name,
-                    'created_at' => $this->created_at->toDateTimeString(),
+                    'created_at' => $this->created_at->toISOString(),
                 ],
                 'payment_detail' => [
                     'id' => $this->paymentDetail->id,
@@ -61,7 +61,7 @@ class TableOrderResource extends JsonResource
                 ],
                 'status' => $this->dispute->status->value,
                 'reason' => $this->dispute->reason,
-                'created_at' => $this->dispute->created_at->toDateTimeString(),
+                'created_at' => $this->dispute->created_at->toISOString(),
             ] : null,
             'payment_gateway_name' => $this->paymentGateway->name,
             'payment_gateway_logo_path' => asset('storage/logos/'.$this->paymentGateway->logo),
