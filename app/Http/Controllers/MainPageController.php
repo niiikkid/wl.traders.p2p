@@ -23,11 +23,13 @@ class MainPageController extends Controller
     {
         $user = auth()->user();
         $stats = $this->mainPageCacheService->rememberTrader($user);
+        $walletStats = services()->wallet()->getWalletStats($user->wallet)->toArray();
 
         $tempVip = $user->getTempVipProgressData();
 
         return Inertia::render('MainPage/Trader/Index', [
             ...$stats,
+            'walletStats' => $walletStats,
             'tempVip' => $tempVip,
         ]);
     }

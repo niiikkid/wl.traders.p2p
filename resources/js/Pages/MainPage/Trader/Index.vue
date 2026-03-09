@@ -6,6 +6,8 @@ import ApexCharts from 'apexcharts';
 
 const statistics = usePage().props.statistics;
 const chartData = usePage().props.chart;
+const walletStats = usePage().props.walletStats;
+const rates = usePage().props.data?.rates ?? [];
 
 const formatNumber = (num) => { //TODO move to utils
     // Округляем до двух знаков после запятой, если есть дробная часть
@@ -25,6 +27,64 @@ const statisticsFormated = computed(() => {
         balance: formatNumber(statistics.balance),
         successOrderCount: statistics.successOrderCount,
     }
+});
+
+const parseAmount = (value) => {
+    if (value === null || value === undefined) {
+        return 0;
+    }
+
+    if (typeof value === 'number') {
+        return value;
+    }
+
+    const normalized = String(value).replace(/\s/g, '').replace(',', '.');
+    const parsed = Number(normalized);
+
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const selectedFiatCurrency = computed(() => {
+    return (walletStats?.currency?.secondary ?? 'rub').toLowerCase();
+});
+
+const selectedFiatRate = computed(() => {
+    const fiatRate = rates.find((rate) => rate.code === selectedFiatCurrency.value);
+    const parsedRate = parseAmount(fiatRate?.sell_price);
+
+    return parsedRate > 0 ? parsedRate : 1;
+});
+
+const toSelectedFiatEquivalent = (value) => {
+    return formatNumber(parseAmount(value) * selectedFiatRate.value);
+};
+
+const financeOverview = computed(() => {
+    const trustAmount = walletStats?.base?.trustAmount ?? '0';
+    const trustReserveAmount = walletStats?.base?.trustReserveAmount ?? '0';
+    const trustWithdrawalAmount = walletStats?.lockedForWithdrawalBalances?.trust?.primary ?? '0';
+    const escrowOrdersAmount = walletStats?.escrowBalances?.orders?.balance?.primary ?? '0';
+    const escrowOrdersCount = walletStats?.escrowBalances?.orders?.count ?? 0;
+    const escrowDisputesAmount = walletStats?.escrowBalances?.disputes?.balance?.primary ?? '0';
+    const escrowDisputesCount = walletStats?.escrowBalances?.disputes?.count ?? 0;
+    const maxReserveBalance = walletStats?.maxReserveBalance ?? 0;
+
+    return {
+        primaryCurrency: (walletStats?.currency?.primary ?? 'usdt').toUpperCase(),
+        trustAmount,
+        trustReserveAmount,
+        trustWithdrawalAmount,
+        escrowOrdersAmount,
+        escrowOrdersCount,
+        escrowDisputesAmount,
+        escrowDisputesCount,
+        maxReserveBalance,
+        reserveGoalReached: parseAmount(trustAmount) >= parseAmount(maxReserveBalance),
+        secondaryCurrency: selectedFiatCurrency.value.toUpperCase(),
+        trustAmountSecondary: toSelectedFiatEquivalent(trustAmount),
+        escrowOrdersAmountSecondary: toSelectedFiatEquivalent(escrowOrdersAmount),
+        escrowDisputesAmountSecondary: toSelectedFiatEquivalent(escrowDisputesAmount),
+    };
 });
 
 
@@ -287,6 +347,75 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <svg class="w-8 h-8 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                                     </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-base-100 shadow mt-8">
+                        <div class="card-body gap-4">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                <div>
+                                    <h3 class="card-title">Финансы</h3>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span
+                                        class="badge"
+                                        :class="financeOverview.reserveGoalReached ? 'badge-success' : 'badge-warning'"
+                                    >
+                                        {{
+                                            financeOverview.reserveGoalReached
+                                                ? 'Резерв закрыт'
+                                                : `Пополнить до ${financeOverview.maxReserveBalance} ${financeOverview.primaryCurrency}`
+                                        }}
+                                    </span>
+                                    <a :href="route('wallet.index')" class="btn btn-sm btn-outline">
+                                        Открыть финансы
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                <div class="rounded-box bg-base-200/60 p-4">
+                                    <div class="text-sm text-base-content/70">Траст баланс</div>
+                                    <div class="text-xl font-bold mt-1">
+                                        {{ financeOverview.trustAmount }} {{ financeOverview.primaryCurrency }}
+                                    </div>
+                                    <div class="text-sm text-base-content/60 mt-1">
+                                        ≈ {{ financeOverview.trustAmountSecondary }} {{ financeOverview.secondaryCurrency }}
+                                    </div>
+                                    <div class="text-xs text-base-content/70 mt-2">
+                                        Резерв: {{ financeOverview.trustReserveAmount }} {{ financeOverview.primaryCurrency }}
+                                    </div>
+                                    <div class="text-xs text-base-content/70">
+                                        Вывод: {{ financeOverview.trustWithdrawalAmount }} {{ financeOverview.primaryCurrency }}
+                                    </div>
+                                </div>
+
+                                <div class="rounded-box bg-base-200/60 p-4">
+                                    <div class="text-sm text-base-content/70">Холд в сделках</div>
+                                    <div class="text-xl font-bold mt-1">
+                                        {{ financeOverview.escrowOrdersAmount }} {{ financeOverview.primaryCurrency }}
+                                    </div>
+                                    <div class="text-sm text-base-content/60 mt-1">
+                                        ≈ {{ financeOverview.escrowOrdersAmountSecondary }} {{ financeOverview.secondaryCurrency }}
+                                    </div>
+                                    <div class="text-xs text-base-content/70 mt-2">
+                                        Сделок: {{ financeOverview.escrowOrdersCount }}
+                                    </div>
+                                </div>
+
+                                <div class="rounded-box bg-base-200/60 p-4">
+                                    <div class="text-sm text-base-content/70">Спорные сделки</div>
+                                    <div class="text-xl font-bold mt-1">
+                                        {{ financeOverview.escrowDisputesAmount }} {{ financeOverview.primaryCurrency }}
+                                    </div>
+                                    <div class="text-sm text-base-content/60 mt-1">
+                                        ≈ {{ financeOverview.escrowDisputesAmountSecondary }} {{ financeOverview.secondaryCurrency }}
+                                    </div>
+                                    <div class="text-xs text-base-content/70 mt-2">
+                                        Споров: {{ financeOverview.escrowDisputesCount }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
