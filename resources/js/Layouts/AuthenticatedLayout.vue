@@ -301,6 +301,17 @@ const setViewMode = (mode) => {
 };
 
 const resolveViewMode = () => {
+    if (route().current('trader.*')
+        || route().current('notifications.*')
+        || route().current('payment-details.*')
+        || route().current('orders.*')
+        || route().current('disputes.*')
+        || route().current('wallet.*')
+        || route().current('sms-logs.*')
+    ) {
+        return 'trader';
+    }
+
     if (route().current('admin.*')) {
         return 'admin';
     }
