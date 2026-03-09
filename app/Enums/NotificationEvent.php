@@ -12,6 +12,7 @@ enum NotificationEvent: string
     case WITHDRAWAL_REQUESTED = 'withdrawal.requested';
     case ORDER_ASSIGNED = 'order.assigned';
     case DISPUTE_OPENED = 'dispute.opened';
+    case TRUST_BALANCE_LOW = 'trust.balance.low';
 
     public function label(): string
     {
@@ -27,6 +28,7 @@ enum NotificationEvent: string
             self::WITHDRAWAL_REQUESTED => ['Super Admin'],
             self::ORDER_ASSIGNED => ['Trader'],
             self::DISPUTE_OPENED => ['Trader'],
+            self::TRUST_BALANCE_LOW => ['Trader'],
         };
     }
 

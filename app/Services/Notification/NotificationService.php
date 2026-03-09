@@ -9,6 +9,7 @@ use App\Models\Notification;
 use App\Models\NotificationRule;
 use App\Services\Money\Money;
 use App\Services\Notification\Events\NotificationEventInterface;
+use App\Services\Notification\Events\TrustBalanceLowNotificationEvent;
 use App\Services\Notification\Templates\NotificationTemplateResolver;
 
 class NotificationService implements NotificationServiceContract
@@ -76,7 +77,22 @@ class NotificationService implements NotificationServiceContract
 
         $eventCurrency = $event->currency();
 
-        if ($event->type() !== NotificationEvent::WITHDRAWAL_REQUESTED) {
+        if ($event->type()->equals(NotificationEvent::TRUST_BALANCE_LOW)) {
+            if (! $rule->min_amount_minor) {
+                return false;
+            }
+
+            $thresholdCurrency = $rule->currency?->getCode() ?? $eventCurrency?->getCode();
+            if (! $thresholdCurrency || ! ($event instanceof TrustBalanceLowNotificationEvent)) {
+                return false;
+            }
+
+            $threshold = Money::fromUnits($rule->min_amount_minor, $thresholdCurrency);
+
+            if (! $event->crossedBelow($threshold)) {
+                return false;
+            }
+        } elseif ($event->type() !== NotificationEvent::WITHDRAWAL_REQUESTED) {
             if ($rule->currency && $eventCurrency && $rule->currency->notEquals($eventCurrency)) {
                 return false;
             }

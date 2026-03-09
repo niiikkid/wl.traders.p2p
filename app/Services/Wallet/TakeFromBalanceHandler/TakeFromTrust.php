@@ -9,6 +9,7 @@ use App\Exceptions\WalletException;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Services\Money\Money;
+use App\Services\Notification\Events\TrustBalanceLowNotificationEvent;
 
 class TakeFromTrust extends TakeFromBalance
 {
@@ -18,9 +19,13 @@ class TakeFromTrust extends TakeFromBalance
             throw WalletException::invalidTransactionTypeForTake();
         }
 
-        $trust = $wallet->trust_balance->sub($amount);
+        $wallet->loadMissing('user');
+        $previousTrustBalance = $wallet->trust_balance;
+        $trust = $previousTrustBalance->sub($amount);
+        $currentTrustBalance = $trust;
 
         if ($trust->lessThanZero()) {
+            $currentTrustBalance = Money::fromUnits(0, $trust->getCurrency()->getCode());
             $wallet->update([
                 'trust_balance' => 0,
                 'reserve_balance' => $wallet->reserve_balance->sub($trust->abs()),
@@ -38,5 +43,13 @@ class TakeFromTrust extends TakeFromBalance
             'balance_type' => BalanceType::TRUST,
             'wallet_id' => $wallet->id,
         ]);
+
+        if ($wallet->user) {
+            services()->notification()->dispatch(new TrustBalanceLowNotificationEvent(
+                trader: $wallet->user,
+                previousBalance: $previousTrustBalance,
+                currentBalance: $currentTrustBalance
+            ));
+        }
     }
 }

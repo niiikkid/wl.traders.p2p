@@ -66,6 +66,7 @@ const eventLabelFallbacks = {
     'withdrawal.requested': 'Запрос на вывод средств',
     'order.assigned': 'Новая сделка',
     'dispute.opened': 'Открыт спор',
+    'trust.balance.low': 'Низкий траст-баланс',
 };
 
 const normalizeEventVariants = () => {
@@ -94,7 +95,11 @@ const eventLabels = computed(() => {
     return Object.fromEntries((filtersVariants.value.event ?? []).map((item) => [item.value, item.name]));
 });
 
-const showAmountFilters = computed(() => ruleForm.event !== 'withdrawal.requested');
+const showMinAmountFilter = computed(() => ruleForm.event !== 'withdrawal.requested');
+const showCurrencyFilter = computed(() => {
+    return ruleForm.event !== 'withdrawal.requested' && ruleForm.event !== 'trust.balance.low';
+});
+const isTrustBalanceLowEvent = computed(() => ruleForm.event === 'trust.balance.low');
 
 const channelLabels = computed(() => {
     return Object.fromEntries((filtersVariants.value.channels ?? []).map((item) => [item.value, item.name]));
@@ -161,7 +166,7 @@ const createRule = () => {
     ruleForm.post(route('notifications.rules.store'), {
         preserveScroll: true,
         onSuccess: () => {
-            if (showAmountFilters.value) {
+            if (showMinAmountFilter.value) {
                 ruleForm.reset('min_amount');
             } else {
                 ruleForm.reset('currency', 'min_amount');
@@ -297,6 +302,11 @@ watch(() => ruleForm.event, (value) => {
     if (value === 'withdrawal.requested') {
         ruleForm.currency = '';
         ruleForm.min_amount = '';
+        return;
+    }
+
+    if (value === 'trust.balance.low') {
+        ruleForm.currency = '';
     }
 });
 
@@ -609,7 +619,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </div>
                                         <InputError :message="ruleForm.errors.channels" />
                                     </div>
-                                    <div v-if="showAmountFilters">
+                                    <div v-if="showCurrencyFilter">
                                         <label class="label">
                                             <span class="label-text">Валюта (опционально)</span>
                                         </label>
@@ -621,9 +631,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </select>
                                         <InputError :message="ruleForm.errors.currency" />
                                     </div>
-                                    <div v-if="showAmountFilters">
+                                    <div v-if="showMinAmountFilter">
                                         <label class="label">
-                                            <span class="label-text">Мин. сумма (опционально)</span>
+                                            <span class="label-text">{{ isTrustBalanceLowEvent ? 'Порог траст-баланса (USDT)' : 'Мин. сумма (опционально)' }}</span>
                                         </label>
                                         <input
                                             v-model="ruleForm.min_amount"

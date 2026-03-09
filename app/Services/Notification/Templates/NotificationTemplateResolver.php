@@ -40,6 +40,14 @@ class NotificationTemplateResolver
                 ]),
                 payload: $payload
             ),
+            NotificationEvent::TRUST_BALANCE_LOW => new NotificationContent(
+                title: trans('notifications.templates.trust_balance_low.title'),
+                body: trans('notifications.templates.trust_balance_low.body', [
+                    'current_balance' => $payload['current_balance'] ?? '',
+                    'currency' => strtoupper($payload['currency'] ?? ''),
+                ]),
+                payload: $payload
+            ),
         };
     }
 }

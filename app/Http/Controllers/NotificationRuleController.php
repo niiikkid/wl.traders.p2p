@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\NotificationEvent;
 use App\Http\Requests\NotificationRuleRequest;
 use App\Models\NotificationRule;
+use App\Services\Money\Currency;
 use Illuminate\Support\Facades\Gate;
 
 class NotificationRuleController extends Controller
@@ -19,11 +20,14 @@ class NotificationRuleController extends Controller
         }
 
         $usesAmountFilters = $event !== NotificationEvent::WITHDRAWAL_REQUESTED;
+        $isTrustBalanceLow = $event === NotificationEvent::TRUST_BALANCE_LOW;
 
         NotificationRule::create([
             'user_id' => $user->id,
             'event' => $event,
-            'currency' => $usesAmountFilters ? $request->validated('currency') : null,
+            'currency' => ! $usesAmountFilters
+                ? null
+                : ($isTrustBalanceLow ? Currency::USDT()->getCode() : $request->validated('currency')),
             'statuses' => $request->validated('statuses'),
             'channels' => $request->validated('channels'),
             'min_amount_minor' => $usesAmountFilters ? $request->minAmountMinor() : null,
@@ -45,12 +49,15 @@ class NotificationRuleController extends Controller
         }
 
         $usesAmountFilters = $event !== NotificationEvent::WITHDRAWAL_REQUESTED;
+        $isTrustBalanceLow = $event === NotificationEvent::TRUST_BALANCE_LOW;
 
         $notificationRule->update([
             'event' => $event,
-            'currency' => $usesAmountFilters
-                ? $request->validated('currency', $notificationRule->currency?->getCode())
-                : null,
+            'currency' => ! $usesAmountFilters
+                ? null
+                : ($isTrustBalanceLow
+                    ? Currency::USDT()->getCode()
+                    : $request->validated('currency', $notificationRule->currency?->getCode())),
             'statuses' => $request->validated('statuses', $notificationRule->statuses),
             'channels' => $request->validated('channels', $notificationRule->channels),
             'min_amount_minor' => $usesAmountFilters

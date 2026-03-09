@@ -18,6 +18,10 @@ class NotificationRuleRequest extends FormRequest
 
     public function rules(): array
     {
+        $event = $this->has('event') && is_string($this->event)
+            ? NotificationEvent::tryFrom(strtolower(trim($this->event)))
+            : null;
+
         $baseRules = [
             'event' => ['nullable', 'string', Rule::in(NotificationEvent::values())],
             'channels' => ['nullable', 'array'],
@@ -34,7 +38,11 @@ class NotificationRuleRequest extends FormRequest
             $baseRules['channels'] = ['required', 'array', 'min:1'];
         }
 
-        if ($this->filled('min_amount')) {
+        if ($event?->equals(NotificationEvent::TRUST_BALANCE_LOW)) {
+            $baseRules['min_amount'] = ['required', 'string', 'regex:/^\d+(\.\d+)?$/'];
+        }
+
+        if ($this->filled('min_amount') && ! $event?->equals(NotificationEvent::TRUST_BALANCE_LOW)) {
             $baseRules['currency'][] = 'required';
         }
 
@@ -60,8 +68,12 @@ class NotificationRuleRequest extends FormRequest
 
     public function minAmountMinor(): ?string
     {
+        $eventValue = $this->validated('event');
+        $event = $eventValue ? NotificationEvent::from($eventValue) : null;
         $minAmount = $this->validated('min_amount');
-        $currency = $this->validated('currency');
+        $currency = $event?->equals(NotificationEvent::TRUST_BALANCE_LOW)
+            ? Currency::USDT()->getCode()
+            : $this->validated('currency');
 
         if (! $minAmount || ! $currency) {
             return null;

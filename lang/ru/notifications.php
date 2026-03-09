@@ -5,6 +5,7 @@ return [
         'withdrawal.requested' => 'Запрос на вывод средств',
         'order.assigned' => 'Новая сделка',
         'dispute.opened' => 'Открыт спор',
+        'trust.balance.low' => 'Низкий траст-баланс',
     ],
     'channels' => [
         'in_app' => 'В панели',
@@ -27,6 +28,10 @@ return [
         'dispute_opened' => [
             'title' => 'Открыт спор',
             'body' => 'По сделке :order_uuid открыт спор. ID спора: :dispute_id.',
+        ],
+        'trust_balance_low' => [
+            'title' => 'Низкий траст-баланс',
+            'body' => 'Ваш траст-баланс снизился до :current_balance :currency. Пополните средства, чтобы избежать остановки работы.',
         ],
     ],
     'telegram' => [
