@@ -1,6 +1,6 @@
 <script setup>
-import {Head, router, usePage} from '@inertiajs/vue3';
-import {ref} from "vue";
+import {Head, router, useForm, usePage} from '@inertiajs/vue3';
+import {onUnmounted, ref} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
@@ -9,10 +9,48 @@ import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 
 const traders = ref(usePage().props.traders);
+const onlineForm = useForm({
+    is_online: 0,
+});
+const isCooldown = ref(false);
+let cooldownTimer = null;
+
+onUnmounted(() => {
+    if (cooldownTimer) {
+        clearTimeout(cooldownTimer);
+        cooldownTimer = null;
+    }
+});
 
 router.on('success', () => {
     traders.value = usePage().props.traders;
 });
+
+const toggleOnline = (trader) => {
+    onlineForm
+        .transform((data) => {
+            data.is_online = trader.is_online;
+
+            trader.is_online = !trader.is_online;
+            data.is_online = trader.is_online;
+
+            return data;
+        })
+        .patch(route('leader.traders.toggle-online', trader.id), {
+            preserveScroll: true,
+            onFinish: () => {
+                if (cooldownTimer) {
+                    clearTimeout(cooldownTimer);
+                }
+
+                isCooldown.value = true;
+                cooldownTimer = setTimeout(() => {
+                    isCooldown.value = false;
+                    cooldownTimer = null;
+                }, 300);
+            },
+        });
+};
 
 const openTrader = (trader) => {
     router.visit(route('leader.traders.show', trader.id), {preserveScroll: true});
@@ -58,6 +96,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <th>Трейдер</th>
                                         <th>Реквизитов</th>
                                         <th>Статус</th>
+                                        <th>Работает</th>
                                         <th>Создан</th>
                                         <th class="text-right">Действия</th>
                                     </tr>
@@ -83,6 +122,15 @@ defineOptions({layout: AuthenticatedLayout});
                                                 <span class="badge badge-ghost badge-sm" v-else>Оффлайн</span>
                                                 <span class="badge badge-error badge-sm" v-if="trader.stop_traffic">Трафик off</span>
                                             </div>
+                                        </td>
+                                        <td class="whitespace-nowrap">
+                                            <input
+                                                type="checkbox"
+                                                :checked="trader.is_online"
+                                                class="toggle toggle-success"
+                                                :disabled="onlineForm.processing || isCooldown"
+                                                @change="toggleOnline(trader)"
+                                            >
                                         </td>
                                         <td class="whitespace-nowrap">
                                             <DateTime :data="trader.created_at" :plural="true" />
@@ -126,9 +174,21 @@ defineOptions({layout: AuthenticatedLayout});
                                         <span class="badge badge-ghost badge-sm" v-else>Оффлайн</span>
                                         <span class="badge badge-error badge-sm" v-if="trader.stop_traffic">Трафик off</span>
                                     </div>
-                                    <button class="btn btn-xs btn-primary" @click="openTrader(trader)">
-                                        Открыть
-                                    </button>
+                                    <div class="inline-flex items-center gap-3">
+                                        <div class="inline-flex items-center gap-2">
+                                            <span class="text-xs text-base-content/70">Работает:</span>
+                                            <input
+                                                type="checkbox"
+                                                :checked="trader.is_online"
+                                                class="toggle toggle-success toggle-sm"
+                                                :disabled="onlineForm.processing || isCooldown"
+                                                @change="toggleOnline(trader)"
+                                            >
+                                        </div>
+                                        <button class="btn btn-xs btn-primary" @click="openTrader(trader)">
+                                            Открыть
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

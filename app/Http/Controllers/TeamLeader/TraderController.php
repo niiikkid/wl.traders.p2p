@@ -5,6 +5,7 @@ namespace App\Http\Controllers\TeamLeader;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TeamLeader\TeamLeaderTraderResource;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class TraderController extends Controller
@@ -50,6 +51,20 @@ class TraderController extends Controller
         $this->authorizeTraderAccess($trader);
 
         return redirect()->route('leader.traders.payment-details.index', ['trader' => $trader->id]);
+    }
+
+    public function toggleOnline(Request $request, User $trader): void
+    {
+        $this->authorizeExtendedAccess();
+        $this->authorizeTraderAccess($trader);
+
+        if ((int) $trader->is_online !== (int) $request->is_online) {
+            if ($trader->stop_traffic && (int) $request->is_online) {
+                return;
+            }
+
+            $trader->update(['is_online' => ! $trader->is_online]);
+        }
     }
 
     private function authorizeTraderAccess(User $trader): void
