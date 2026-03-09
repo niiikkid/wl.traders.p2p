@@ -16,6 +16,7 @@ const props = defineProps({
 });
 const page = usePage();
 const routeKey = computed(() => route().current() || page.url?.split('?')[0] || window.location.pathname || 'default');
+const currentPageUrl = computed(() => page.url?.split('?')[0] || window.location.pathname);
 const filtersStorageKey = computed(() => {
     const baseName = props.name ?? 'default';
     return `display-filters-${baseName}-${routeKey.value}`;
@@ -83,7 +84,7 @@ const toggleFiltersDisplay = () => {
 const applyFilters = () => {
     tableFiltersStore.setCurrentPage(1);
 
-    router.visit(route(route().current(), route().params), {
+    router.visit(currentPageUrl.value, {
         data: {
             ...tableFiltersStore.getQueryData,
             ...props.query
@@ -96,7 +97,7 @@ const clearFilters = () => {
     tableFiltersStore.setCurrentPage(1);
     tableFiltersStore.setFilters({});
 
-    router.visit(route(route().current(), route().params), {
+    router.visit(currentPageUrl.value, {
         data: {
             ...tableFiltersStore.getQueryData,
             ...props.query

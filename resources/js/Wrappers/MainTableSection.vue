@@ -7,6 +7,7 @@ import AlertInfo from "@/Components/Alerts/AlertInfo.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 
 const tableFiltersStore = useTableFiltersStore();
+const page = usePage();
 
 const props = defineProps({
     title: {
@@ -67,7 +68,7 @@ const changePerPage = (value) => {
 }
 
 const openPage = () => {
-    router.visit(route(route().current(), route().params), {
+    router.visit(page.url?.split('?')[0] || window.location.pathname, {
         data: tableFiltersStore.getQueryData,
         preserveScroll: true
     })
