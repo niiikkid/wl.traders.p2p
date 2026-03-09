@@ -467,7 +467,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="flex items-center gap-2">
                                                 <span class="tex-xs text-base-content/70">Работает:</span>
                                                 <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown">
-                                                <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown">
                                             </div>
                                             <TableActionsDropdown>
                                                 <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
