@@ -5,6 +5,7 @@ namespace App\Contracts;
 use App\Enums\MarketEnum;
 use App\Models\ValueObjects\Settings\BinancePriceParserSettings;
 use App\Models\ValueObjects\Settings\CurrencyPriceParserSettings;
+use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
 use App\Models\ValueObjects\Settings\PrimeTimeSettings;
 use App\Services\Money\Currency;
 
@@ -33,12 +34,12 @@ interface SettingsServiceContract
     public function getMarketPriceParser(
         Currency $currency,
         MarketEnum $market
-    ): CurrencyPriceParserSettings|BinancePriceParserSettings;
+    ): CurrencyPriceParserSettings|BinancePriceParserSettings|ManualPriceParserSettings;
 
     public function updateMarketPriceParser(
         Currency $currency,
         MarketEnum $market,
-        CurrencyPriceParserSettings|BinancePriceParserSettings $settings
+        CurrencyPriceParserSettings|BinancePriceParserSettings|ManualPriceParserSettings $settings
     ): void;
 
     public function getSupportLink(): ?string;

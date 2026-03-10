@@ -7,6 +7,7 @@ use App\Enums\MarketEnum;
 use App\Jobs\LoadConversionPricesJob;
 use App\Services\Market\Utils\Parser\BinanceParser;
 use App\Services\Market\Utils\Parser\ByBitParser;
+use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
 use App\Services\Money\Currency;
 use App\Services\Market\Utils\MarketStore;
 use App\Services\Market\Utils\Parser\Parser;
@@ -38,6 +39,23 @@ class MarketService implements MarketServiceContract
         }
 
         try {
+            if ($market->equals(MarketEnum::MANUAL)) {
+                $settings = services()->settings()->getMarketPriceParser($currency, $market);
+
+                if (! $settings instanceof ManualPriceParserSettings) {
+                    return;
+                }
+
+                MarketStore::putPrice(
+                    currency: $currency,
+                    market: $market,
+                    buy_price: Money::fromPrecision((string) $settings->buy->rate, $currency)->toUnits(),
+                    sell_price: Money::fromPrecision((string) $settings->sell->rate, $currency)->toUnits()
+                );
+
+                return;
+            }
+
             $prices = $this->parser->getPrices($currency, $market);
 
             MarketStore::putPrice(
@@ -136,6 +154,7 @@ class MarketService implements MarketServiceContract
             MarketEnum::BINANCE => Currency::getAll()
                 ->filter(fn (Currency $currency) => $currency->getCode() !== $rubCode)
                 ->values(),
+            MarketEnum::MANUAL => Currency::getAll()->values(),
             default => collect(),
         };
     }

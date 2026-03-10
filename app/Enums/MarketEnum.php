@@ -11,4 +11,5 @@ enum MarketEnum: string
     case BYBIT = 'bybit';
     case BINANCE = 'binance';
     case RAPIRA = 'rapira';
+    case MANUAL = 'manual';
 }

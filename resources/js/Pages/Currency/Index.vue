@@ -66,6 +66,7 @@ const MARKET_LABELS = {
     bybit: 'ByBit',
     binance: 'Binance',
     rapira: 'Rapira',
+    manual: 'Ручной',
 };
 
 const MARKET_INFO = {
@@ -100,6 +101,11 @@ const MARKET_INFO = {
             href: 'https://p2p.binance.com/',
         },
     ],
+    manual: [
+        { text: 'Курсы для этого маркета не парсятся автоматически.' },
+        { text: 'Для каждой валюты вручную задаются отдельные курсы покупки и продажи USDT.' },
+        { text: 'После сохранения значения применяются в системе так же, как и для остальных маркетов.' },
+    ],
 };
 
 const marketInfo = computed(() => MARKET_INFO[selectedMarket.value] ?? null);
@@ -110,7 +116,7 @@ const marketTabs = computed(() => marketKeys.value.map((value) => ({
 
 const modalStore = useModalStore();
 const marketInfoModal = ref(null);
-const editableMarkets = ['bybit', 'binance'];
+const editableMarkets = ['bybit', 'binance', 'manual'];
 
 const openMarketInfoModal = () => {
     marketInfoModal.value?.showModal();

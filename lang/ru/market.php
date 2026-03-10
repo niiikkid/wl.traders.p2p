@@ -7,5 +7,6 @@ return [
         'bybit' => 'ByBit',
         'binance' => 'Binance',
         'rapira' => 'Rapira',
+        'manual' => 'Ручной',
     ]
 ];

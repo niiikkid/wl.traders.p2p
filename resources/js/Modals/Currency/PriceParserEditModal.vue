@@ -49,6 +49,11 @@ const binanceForm = ref({
     sell: createBinanceSideState(),
 });
 
+const manualForm = ref({
+    buy: { rate: 0 },
+    sell: { rate: 0 },
+});
+
 const bybitSides = [
     {
         key: 'buy',
@@ -81,6 +86,7 @@ const binanceSides = [
 const MARKET_TITLES = {
     bybit: 'Bybit',
     binance: 'Binance',
+    manual: 'Ручной',
 };
 const title = computed(() => {
     const label = MARKET_TITLES[market.value] ?? market.value.toUpperCase();
@@ -97,6 +103,10 @@ const resetForm = () => {
     binanceForm.value = {
         buy: createBinanceSideState(),
         sell: createBinanceSideState(),
+    };
+    manualForm.value = {
+        buy: { rate: 0 },
+        sell: { rate: 0 },
     };
     errors.value = {};
     settings.value = null;
@@ -151,6 +161,13 @@ const loadData = () => {
                     payment_methods: (sellSettings.payment_methods ?? []).map((value) => String(value)),
                     ad_quantity: sellSettings.ad_quantity ?? null,
                     min_month_orders: sellSettings.min_month_orders ?? null,
+                };
+            } else if (market.value === 'manual') {
+                manualForm.value.buy = {
+                    rate: Number(buySettings.rate ?? 0),
+                };
+                manualForm.value.sell = {
+                    rate: Number(sellSettings.rate ?? 0),
                 };
             } else {
                 bybitForm.value.buy = {
@@ -235,6 +252,19 @@ const normalizeBinanceSidePayload = (sideKey) => {
 };
 
 const normalizePayload = () => {
+    if (market.value === 'manual') {
+        return {
+            market: market.value,
+            buy: {
+                rate: Number(manualForm.value.buy?.rate ?? 0),
+            },
+            sell: {
+                rate: Number(manualForm.value.sell?.rate ?? 0),
+            },
+            _method: 'PATCH',
+        };
+    }
+
     if (market.value === 'binance') {
         return {
             market: market.value,
@@ -337,6 +367,14 @@ watch(
                         </svg>
                         <div class="text-sm">
                             Данные настройки только для Binance P2P парсера.
+                        </div>
+                    </div>
+                    <div v-else-if="market === 'manual'" class="alert alert-info mb-3" role="alert">
+                        <svg class="shrink-0 w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+                        </svg>
+                        <div class="text-sm">
+                            Ручной маркет: курс не парсится, задаётся вручную.
                         </div>
                     </div>
 
@@ -546,6 +584,58 @@ watch(
 
                                     <InputError :message="errorMessage(`${side.key}.min_month_orders`)" class="mt-2" />
                                     <InputHelper v-if="!errorMessage(`${side.key}.min_month_orders`)" model-value="Отфильтруем объявления с количеством сделок за месяц ниже указанного." />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="market === 'manual'" class="space-y-6">
+                        <div class="rounded-lg border border-base-300 bg-base-100/50 p-4 space-y-4">
+                            <div class="flex flex-col gap-1">
+                                <p class="text-sm text-base-content/70">
+                                    Укажите курсы вручную для выбранной валюты. Значения применяются в системе как обычные рыночные курсы.
+                                </p>
+                            </div>
+
+                            <div class="grid gap-4">
+                                <div>
+                                    <InputLabel
+                                        for="manual-buy-rate"
+                                        value="Покупка USDT"
+                                        :error="!!errorMessage('buy.rate')"
+                                    />
+
+                                    <NumberInput
+                                        id="manual-buy-rate"
+                                        v-model="manualForm.buy.rate"
+                                        type="text"
+                                        :class="['input input-bordered w-full mt-1', errorMessage('buy.rate') ? 'input-error' : '']"
+                                        :error="!!errorMessage('buy.rate')"
+                                        @input="clearError('buy.rate')"
+                                        placeholder="Например, 95.35"
+                                    />
+
+                                    <InputError :message="errorMessage('buy.rate')" class="mt-2" />
+                                </div>
+
+                                <div>
+                                    <InputLabel
+                                        for="manual-sell-rate"
+                                        value="Продажа USDT"
+                                        :error="!!errorMessage('sell.rate')"
+                                    />
+
+                                    <NumberInput
+                                        id="manual-sell-rate"
+                                        v-model="manualForm.sell.rate"
+                                        type="text"
+                                        :class="['input input-bordered w-full mt-1', errorMessage('sell.rate') ? 'input-error' : '']"
+                                        :error="!!errorMessage('sell.rate')"
+                                        @input="clearError('sell.rate')"
+                                        placeholder="Например, 96.10"
+                                    />
+
+                                    <InputError :message="errorMessage('sell.rate')" class="mt-2" />
                                 </div>
                             </div>
                         </div>

@@ -10,6 +10,8 @@ use App\Enums\MarketEnum;
 use Illuminate\Http\Request;
 use App\Models\ValueObjects\Settings\CurrencyPriceParserSideSettings;
 use App\Models\ValueObjects\Settings\BinancePriceParserSideSettings;
+use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
+use App\Models\ValueObjects\Settings\ManualPriceParserSideSettings;
 use App\Services\Money\Currency;
 
 class PriceParserController extends Controller
@@ -47,6 +49,10 @@ class PriceParserController extends Controller
                 buy: BinancePriceParserSideSettings::fromArray($request->validated()['buy'] ?? []),
                 sell: BinancePriceParserSideSettings::fromArray($request->validated()['sell'] ?? []),
             ),
+            $market->equals(MarketEnum::MANUAL) => new ManualPriceParserSettings(
+                buy: ManualPriceParserSideSettings::fromArray($request->validated()['buy'] ?? []),
+                sell: ManualPriceParserSideSettings::fromArray($request->validated()['sell'] ?? []),
+            ),
             default => new CurrencyPriceParserSettings(
                 buy: CurrencyPriceParserSideSettings::fromArray($request->validated()['buy'] ?? []),
                 sell: CurrencyPriceParserSideSettings::fromArray($request->validated()['sell'] ?? []),
@@ -58,6 +64,10 @@ class PriceParserController extends Controller
             market: $market,
             settings: $settings
         );
+
+        if ($market->equals(MarketEnum::MANUAL)) {
+            services()->market()->loadPricesFor($currency, $market);
+        }
 
         return response()->json(['success' => true]);
     }

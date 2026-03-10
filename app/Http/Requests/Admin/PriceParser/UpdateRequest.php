@@ -26,10 +26,17 @@ class UpdateRequest extends FormRequest
         $market = MarketEnum::tryFrom(strtolower((string) $this->input('market')));
 
         $baseRules = [
-            'market' => ['required', Rule::in([MarketEnum::BYBIT->value, MarketEnum::BINANCE->value])],
+            'market' => ['required', Rule::in([MarketEnum::BYBIT->value, MarketEnum::BINANCE->value, MarketEnum::MANUAL->value])],
             'buy' => ['required', 'array'],
             'sell' => ['required', 'array'],
         ];
+
+        if ($market && $market->equals(MarketEnum::MANUAL)) {
+            return array_merge($baseRules, [
+                'buy.rate' => ['required', 'numeric', 'min:0'],
+                'sell.rate' => ['required', 'numeric', 'min:0'],
+            ]);
+        }
 
         if ($market && $market->equals(MarketEnum::BINANCE)) {
             return array_merge($baseRules, [
@@ -71,6 +78,7 @@ class UpdateRequest extends FormRequest
             'buy.min_recent_orders' => 'минимум ордеров (покупка)',
             'buy.country' => 'страна (покупка)',
             'buy.min_month_orders' => 'минимум сделок за месяц (покупка)',
+            'buy.rate' => 'ручной курс покупки',
 
             'sell.amount' => 'объем (продажа)',
             'sell.payment_methods' => 'платежные методы (продажа)',
@@ -78,6 +86,7 @@ class UpdateRequest extends FormRequest
             'sell.min_recent_orders' => 'минимум ордеров (продажа)',
             'sell.country' => 'страна (продажа)',
             'sell.min_month_orders' => 'минимум сделок за месяц (продажа)',
+            'sell.rate' => 'ручной курс продажи',
         ];
     }
 }
