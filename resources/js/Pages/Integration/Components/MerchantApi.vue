@@ -126,6 +126,7 @@ const clearMerchantResponse = (key) => {
                                     <option value="mobile_commerce">mobile_commerce</option>
                                     <option value="account_number">account_number</option>
                                     <option value="nspk">nspk</option>
+                                    <option value="e-com">e-com</option>
                                 </select>
                             </div>
                             <div class="form-control grid">

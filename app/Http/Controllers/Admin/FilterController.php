@@ -30,6 +30,7 @@ class FilterController extends Controller
                     DetailType::MOBILE_COMMERCE => 'Моб. коммерция',
                     DetailType::ACCOUNT_NUMBER => 'Номер счета',
                     DetailType::NSPK => 'NSPK (ссылка)',
+                    DetailType::E_COM => 'E-COM',
                     default => $type->value,
                 }
             ];

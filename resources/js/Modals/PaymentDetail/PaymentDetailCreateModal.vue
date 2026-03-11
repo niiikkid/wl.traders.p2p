@@ -53,6 +53,7 @@ const details = ref({
     'mobile_commerce': '',
     'account_number': '',
     'nspk': '',
+    'e-com': '',
 });
 
 const selectedDetailType = ref(null);
@@ -71,6 +72,7 @@ const detail_type_names = {
     'mobile_commerce': 'Моб. коммерция',
     'account_number': 'Номер счета',
     'nspk': 'NSPK (ссылка)',
+    'e-com': 'E-COM',
 };
 
 const availableDetailTypes = computed(() => {
@@ -203,6 +205,7 @@ const resetState = () => {
         'mobile_commerce': '',
         'account_number': '',
         'nspk': '',
+        'e-com': '',
     };
     selectedDetailType.value = null;
     errors.value = {};
@@ -469,6 +472,25 @@ watch(
                             <TextInput
                                 id="detail"
                                 v-model="details['nspk']"
+                                type="url"
+                                class="mt-1 block w-full"
+                                placeholder="https://example.com/pay"
+                                :error="!!errors.detail?.[0]"
+                                @input="errors.detail = null"
+                                :disabled="processing"
+                            />
+                            <InputError :message="errors.detail?.[0]" class="mt-2" />
+                        </div>
+
+                        <div v-if="selectedDetailType === 'e-com'">
+                            <InputLabel
+                                for="detail"
+                                value="Ссылка E-COM"
+                                :error="!!errors.detail?.[0]"
+                            />
+                            <TextInput
+                                id="detail"
+                                v-model="details['e-com']"
                                 type="url"
                                 class="mt-1 block w-full"
                                 placeholder="https://example.com/pay"

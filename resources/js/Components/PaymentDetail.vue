@@ -39,7 +39,7 @@ const phone = computed(() => {
 
 <template>
     <div>
-        <template v-if="type === 'nspk'">
+        <template v-if="['nspk', 'e-com'].includes(type)">
             <div class="flex items-center gap-2">
                 <a
                     :href="detail"
@@ -47,7 +47,7 @@ const phone = computed(() => {
                     rel="noreferrer"
                     class="text-base-content no-underline hover:text-primary"
                 >
-                    NSPK ссылка
+                    {{ type === 'nspk' ? 'NSPK ссылка' : 'E-COM ссылка' }}
                 </a>
             </div>
             <div v-if="name" class="text-nowrap text-xs text-base-content/70">

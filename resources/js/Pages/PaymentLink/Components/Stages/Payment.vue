@@ -28,8 +28,8 @@ const openHelperModal = () => {
 
 <template>
     <div class="sm:pb-3">
-        <template v-if="data.detail_type === 'nspk'">
-            <div class="flex items-center sm:text-2xl text-xl text-base-content sm:mb-0 mb-3">
+        <template v-if="['nspk', 'e-com'].includes(data.detail_type)">
+            <div v-if="data.detail_type === 'nspk'" class="flex items-center sm:text-2xl text-xl text-base-content sm:mb-0 mb-3">
                 <img src="/images/sbp.svg" class="mr-2 w-8 h-8">
                 Оплата через СБП
             </div>

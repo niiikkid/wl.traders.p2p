@@ -44,6 +44,7 @@ const detailTypeOptions = [
     { id: 'mobile_commerce', name: 'Моб. коммерция' },
     { id: 'account_number', name: 'Номер счета' },
     { id: 'nspk', name: 'NSPK (ссылка)' },
+    { id: 'e-com', name: 'E-COM' },
 ];
 
 const resetForm = () => {

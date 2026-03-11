@@ -55,7 +55,7 @@ class StoreRequest extends FormRequest
                 new CardNumber(),
                 new UniquePaymentDetail()
             ];
-        } else if (DetailType::NSPK->equals($this->detail_type)) {
+        } else if (in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
             $detail = [
                 'required',
                 'string',
@@ -176,7 +176,7 @@ class StoreRequest extends FormRequest
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
 
-        if ($this->detail_type !== DetailType::NSPK->value) {
+        if (! in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
             $detail = preg_replace('~\D+~', '', $detail);
         }
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
