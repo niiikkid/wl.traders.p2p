@@ -64,6 +64,13 @@ class UserService implements UserServiceContract
                 $teamLeaderId = $this->resolveTeamLeaderIdForTrader($data->team_leader_id, $roleName);
             }
 
+            $extendedAccessEnabled = in_array($roleName, ['Team Leader', 'Super Admin'], true)
+                ? $data->team_leader_extended_access_enabled
+                : false;
+            $flexibleTraderCommissionEnabled = in_array($roleName, ['Team Leader', 'Super Admin'], true)
+                ? ($extendedAccessEnabled && $data->team_leader_flexible_trader_commission_enabled)
+                : false;
+
             $updateData = [
                 'email' => strtolower($data->login),
                 'banned_at' => $data->banned ? now() : null,
@@ -81,9 +88,14 @@ class UserService implements UserServiceContract
                     ?? $user->payout_team_leader_split_from_service_percent,
                 'reserve_balance_limit' => $data->reserve_balance_limit,
                 'traffic_enabled_at' => $wasTrafficStopped && ! $data->stop_traffic ? now() : $user->traffic_enabled_at,
-                'team_leader_extended_access_enabled' => in_array($roleName, ['Team Leader', 'Super Admin'], true)
-                    ? $data->team_leader_extended_access_enabled
-                    : false,
+                'team_leader_extended_access_enabled' => $extendedAccessEnabled,
+                'team_leader_flexible_trader_commission_enabled' => $flexibleTraderCommissionEnabled,
+                'team_leader_flexible_trader_commission_min' => $flexibleTraderCommissionEnabled
+                    ? $data->team_leader_flexible_trader_commission_min
+                    : null,
+                'team_leader_flexible_trader_commission_max' => $flexibleTraderCommissionEnabled
+                    ? $data->team_leader_flexible_trader_commission_max
+                    : null,
             ];
 
             if ($teamLeaderId) {

@@ -35,6 +35,16 @@ class UserResource extends JsonResource
             'created_at' => $this->created_at->toISOString(),
             'team_leader_id' => $this->team_leader_id,
             'team_leader_extended_access_enabled' => (bool) $this->team_leader_extended_access_enabled,
+            'team_leader_flexible_trader_commission_enabled' => (bool) $this->team_leader_flexible_trader_commission_enabled,
+            'team_leader_flexible_trader_commission_min' => $this->team_leader_flexible_trader_commission_min !== null
+                ? (float) $this->team_leader_flexible_trader_commission_min
+                : null,
+            'team_leader_flexible_trader_commission_max' => $this->team_leader_flexible_trader_commission_max !== null
+                ? (float) $this->team_leader_flexible_trader_commission_max
+                : null,
+            'team_leader_individual_commission_percentage' => $this->team_leader_individual_commission_percentage !== null
+                ? (float) $this->team_leader_individual_commission_percentage
+                : null,
             'team_leader' => $this->whenLoaded('teamLeader', function () {
                 return [
                     'id' => $this->teamLeader->id,

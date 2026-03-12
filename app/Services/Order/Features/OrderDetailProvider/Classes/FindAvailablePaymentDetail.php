@@ -82,7 +82,7 @@ class FindAvailablePaymentDetail
                 $query->select(['user_id', 'trust_balance', 'currency']);
             }])
             ->with([
-                'teamLeader:id,email,referral_commission_percentage,team_leader_split_from_service_percent',
+                'teamLeader:id,email,referral_commission_percentage,team_leader_split_from_service_percent,team_leader_extended_access_enabled,team_leader_flexible_trader_commission_enabled,team_leader_flexible_trader_commission_min,team_leader_flexible_trader_commission_max',
             ])
             ->where('id', $paymentDetail->user_id)
             ->first();

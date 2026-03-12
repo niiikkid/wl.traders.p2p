@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\TeamLeader;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Leader\Trader\UpdateCommissionRequest;
 use App\Http\Resources\TeamLeader\TeamLeaderTraderResource;
 use App\Models\User;
+use App\Support\TeamLeaderTraderCommissionResolver;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -41,8 +43,18 @@ class TraderController extends Controller
 
         $traders = TeamLeaderTraderResource::collection($traders);
         $filtersVariants = $this->getFiltersData();
+        $teamLeader = auth()->user();
+        $commissionSettings = [
+            'flexible_enabled' => TeamLeaderTraderCommissionResolver::isFlexibleEnabled($teamLeader),
+            'min' => $teamLeader->team_leader_flexible_trader_commission_min !== null
+                ? (float) $teamLeader->team_leader_flexible_trader_commission_min
+                : null,
+            'max' => $teamLeader->team_leader_flexible_trader_commission_max !== null
+                ? (float) $teamLeader->team_leader_flexible_trader_commission_max
+                : null,
+        ];
 
-        return Inertia::render('Leader/Trader/Index', compact('traders', 'filters', 'filtersVariants'));
+        return Inertia::render('Leader/Trader/Index', compact('traders', 'filters', 'filtersVariants', 'commissionSettings'));
     }
 
     public function show(User $trader)
@@ -65,6 +77,27 @@ class TraderController extends Controller
 
             $trader->update(['is_online' => ! $trader->is_online]);
         }
+    }
+
+    public function updateCommission(UpdateCommissionRequest $request, User $trader)
+    {
+        $this->authorizeExtendedAccess();
+        $this->authorizeTraderAccess($trader);
+
+        $teamLeader = auth()->user();
+        abort_unless(TeamLeaderTraderCommissionResolver::isFlexibleEnabled($teamLeader), 403);
+
+        $trader->update([
+            'team_leader_individual_commission_percentage' => (float) $request->validated('commission'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'team_leader_individual_commission_percentage' => (float) $trader->team_leader_individual_commission_percentage,
+                'team_leader_effective_commission_percentage' => TeamLeaderTraderCommissionResolver::resolveEffectiveRate($teamLeader, $trader),
+            ],
+        ]);
     }
 
     private function authorizeTraderAccess(User $trader): void

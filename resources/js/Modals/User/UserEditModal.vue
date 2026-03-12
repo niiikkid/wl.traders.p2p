@@ -42,6 +42,9 @@ const form = ref({
     payout_team_leader_split_from_service_percent: 0,
     reserve_balance_limit: null,
     team_leader_extended_access_enabled: false,
+    team_leader_flexible_trader_commission_enabled: false,
+    team_leader_flexible_trader_commission_min: null,
+    team_leader_flexible_trader_commission_max: null,
     team_leader_id: [],
 });
 
@@ -76,6 +79,9 @@ const resetState = () => {
         payout_team_leader_split_from_service_percent: 0,
         reserve_balance_limit: null,
         team_leader_extended_access_enabled: false,
+        team_leader_flexible_trader_commission_enabled: false,
+        team_leader_flexible_trader_commission_min: null,
+        team_leader_flexible_trader_commission_max: null,
         team_leader_id: [],
     };
 };
@@ -119,6 +125,9 @@ const loadUser = () => {
                 ?? 0;
             form.value.reserve_balance_limit = data.reserve_balance_limit;
             form.value.team_leader_extended_access_enabled = !!data.team_leader_extended_access_enabled;
+            form.value.team_leader_flexible_trader_commission_enabled = !!data.team_leader_flexible_trader_commission_enabled;
+            form.value.team_leader_flexible_trader_commission_min = data.team_leader_flexible_trader_commission_min;
+            form.value.team_leader_flexible_trader_commission_max = data.team_leader_flexible_trader_commission_max;
             form.value.team_leader_id = data.team_leader_id ? [data.team_leader_id] : [];
         });
 };
@@ -176,6 +185,21 @@ const payoutTeamLeaderSplitMode = computed({
         }
     }
 });
+
+const canConfigureFlexibleTeamLeaderCommission = computed(() => {
+    return (isTeamLeader(form.value.role_id) || isAdmin(form.value.role_id))
+        && !!form.value.team_leader_extended_access_enabled;
+});
+
+watch(
+    () => [form.value.role_id, form.value.team_leader_extended_access_enabled],
+    ([roleId, extendedEnabled]) => {
+        const teamLeaderLikeRole = isTeamLeader(roleId) || isAdmin(roleId);
+        if (!teamLeaderLikeRole || !extendedEnabled) {
+            form.value.team_leader_flexible_trader_commission_enabled = false;
+        }
+    }
+);
 
 const loadData = () => {
     loading.value = true;
@@ -455,9 +479,27 @@ watch(
                     <div>
                         <h4 class="text-base font-semibold">Настройки сделок</h4>
 
+                        <div v-if="canConfigureFlexibleTeamLeaderCommission" class="mt-3">
+                            <div class="form-control w-fit">
+                                <label class="label cursor-pointer gap-3">
+                                    <input
+                                        type="checkbox"
+                                        class="toggle toggle-primary"
+                                        v-model="form.team_leader_flexible_trader_commission_enabled"
+                                        :disabled="processing"
+                                    >
+                                    <span class="label-text">Гибкая комиссия по трейдерам</span>
+                                </label>
+                            </div>
+                            <div class="mt-1 text-xs opacity-70">
+                                При включении Team Leader настраивает комиссию отдельно для каждого трейдера в указанном диапазоне.
+                            </div>
+                            <InputError class="mt-1" :message="errors.team_leader_flexible_trader_commission_enabled?.[0]" />
+                        </div>
+
                         <InputLabel
                             for="referral_commission_percentage"
-                            value="Комиссия тимлидера (%)"
+                            value="Комиссия тимлидера по умолчанию (%)"
                             :error="!!errors.referral_commission_percentage?.[0]"
                             class="mt-3"
                         />
@@ -471,9 +513,58 @@ watch(
                             :disabled="processing"
                         />
                         <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Процент комиссии, который будет получать Team Leader со сделок привлеченных трейдеров (по умолчанию 0.20%)
+                            Базовая комиссия для всех трейдеров. Если для конкретного трейдера индивидуальная комиссия не задана, применяется это значение.
                         </div>
                         <InputError class="mt-1" :message="errors.referral_commission_percentage?.[0]" />
+
+                        <div
+                            v-if="canConfigureFlexibleTeamLeaderCommission && form.team_leader_flexible_trader_commission_enabled"
+                            class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3"
+                        >
+                            <div>
+                                <InputLabel
+                                    for="team_leader_flexible_trader_commission_min"
+                                    value="Минимальная комиссия (%)"
+                                    :error="!!errors.team_leader_flexible_trader_commission_min?.[0]"
+                                />
+                                <NumberInput
+                                    id="team_leader_flexible_trader_commission_min"
+                                    class="mt-1 block w-full"
+                                    v-model="form.team_leader_flexible_trader_commission_min"
+                                    :error="!!errors.team_leader_flexible_trader_commission_min?.[0]"
+                                    @input="errors.team_leader_flexible_trader_commission_min = null"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    :disabled="processing"
+                                />
+                                <InputError class="mt-1" :message="errors.team_leader_flexible_trader_commission_min?.[0]" />
+                            </div>
+
+                            <div>
+                                <InputLabel
+                                    for="team_leader_flexible_trader_commission_max"
+                                    value="Максимальная комиссия (%)"
+                                    :error="!!errors.team_leader_flexible_trader_commission_max?.[0]"
+                                />
+                                <NumberInput
+                                    id="team_leader_flexible_trader_commission_max"
+                                    class="mt-1 block w-full"
+                                    v-model="form.team_leader_flexible_trader_commission_max"
+                                    :error="!!errors.team_leader_flexible_trader_commission_max?.[0]"
+                                    @input="errors.team_leader_flexible_trader_commission_max = null"
+                                    step="0.01"
+                                    min="0"
+                                    max="100"
+                                    :disabled="processing"
+                                />
+                                <InputError class="mt-1" :message="errors.team_leader_flexible_trader_commission_max?.[0]" />
+                            </div>
+
+                            <div class="md:col-span-2 text-xs opacity-70">
+                                В этом диапазоне Team Leader сможет выставлять индивидуальную комиссию по каждому трейдеру.
+                            </div>
+                        </div>
 
                         <div class="mt-4 space-y-2">
                             <InputLabel

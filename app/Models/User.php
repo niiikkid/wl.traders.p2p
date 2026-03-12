@@ -63,6 +63,10 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $google2fa_secret
  * @property int|null $team_leader_id
  * @property bool $team_leader_extended_access_enabled
+ * @property bool $team_leader_flexible_trader_commission_enabled
+ * @property float|null $team_leader_flexible_trader_commission_min
+ * @property float|null $team_leader_flexible_trader_commission_max
+ * @property float|null $team_leader_individual_commission_percentage
  * @property User|null $teamLeader
  * @property Carbon $banned_at
  * @property Carbon $created_at
@@ -108,6 +112,10 @@ class User extends Authenticatable
         'google2fa_secret',
         'team_leader_id',
         'team_leader_extended_access_enabled',
+        'team_leader_flexible_trader_commission_enabled',
+        'team_leader_flexible_trader_commission_min',
+        'team_leader_flexible_trader_commission_max',
+        'team_leader_individual_commission_percentage',
         'banned_at',
         'merchant_id',
     ];
@@ -149,6 +157,10 @@ class User extends Authenticatable
             'payout_referral_commission_percentage' => 'float',
             'payout_team_leader_split_from_service_percent' => 'float',
             'team_leader_extended_access_enabled' => 'boolean',
+            'team_leader_flexible_trader_commission_enabled' => 'boolean',
+            'team_leader_flexible_trader_commission_min' => 'float',
+            'team_leader_flexible_trader_commission_max' => 'float',
+            'team_leader_individual_commission_percentage' => 'float',
         ];
     }
 

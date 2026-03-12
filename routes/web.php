@@ -85,6 +85,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/referrals', [\App\Http\Controllers\TeamLeader\ReferralController::class, 'index'])->name('referrals.index');
         Route::get('/traders', [\App\Http\Controllers\TeamLeader\TraderController::class, 'index'])->name('traders.index');
         Route::patch('/traders/{trader}/toggle-online', [\App\Http\Controllers\TeamLeader\TraderController::class, 'toggleOnline'])->name('traders.toggle-online');
+        Route::patch('/traders/{trader}/commission', [\App\Http\Controllers\TeamLeader\TraderController::class, 'updateCommission'])->name('traders.update-commission');
         Route::get('/traders/{trader}', [\App\Http\Controllers\TeamLeader\TraderController::class, 'show'])->name('traders.show');
         Route::get('/traders/{trader}/payment-details', [\App\Http\Controllers\TeamLeader\TraderPaymentDetailController::class, 'index'])->name('traders.payment-details.index');
         Route::get('/traders/{trader}/orders', [\App\Http\Controllers\TeamLeader\TraderOrderController::class, 'index'])->name('traders.orders.index');

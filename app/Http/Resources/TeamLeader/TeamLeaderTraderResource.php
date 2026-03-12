@@ -3,6 +3,7 @@
 namespace App\Http\Resources\TeamLeader;
 
 use App\Models\User;
+use App\Support\TeamLeaderTraderCommissionResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -24,8 +25,22 @@ class TeamLeaderTraderResource extends JsonResource
             'stop_traffic' => (bool) $this->stop_traffic,
             'online_at' => $this->normalizeCachedDate(cache()->get("user-online-at-$this->id")),
             'payment_details_count' => (int) ($this->payment_details_count ?? 0),
+            'team_leader_individual_commission_percentage' => $this->team_leader_individual_commission_percentage !== null
+                ? (float) $this->team_leader_individual_commission_percentage
+                : null,
+            'team_leader_effective_commission_percentage' => $this->resolveEffectiveCommission($request),
             'created_at' => $this->created_at?->toISOString(),
         ];
+    }
+
+    private function resolveEffectiveCommission(Request $request): float
+    {
+        $teamLeader = $request->user();
+        if (! $teamLeader instanceof User) {
+            return 0.0;
+        }
+
+        return TeamLeaderTraderCommissionResolver::resolveEffectiveRate($teamLeader, $this->resource);
     }
 
     private function normalizeCachedDate(mixed $date): ?string

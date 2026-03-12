@@ -24,6 +24,9 @@ readonly class UserUpdateDTO extends BaseDTO
         public ?int $reserve_balance_limit = null,
         public ?int $team_leader_id = null,
         public bool $team_leader_extended_access_enabled = false,
+        public bool $team_leader_flexible_trader_commission_enabled = false,
+        public ?float $team_leader_flexible_trader_commission_min = null,
+        public ?float $team_leader_flexible_trader_commission_max = null,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -54,6 +57,13 @@ readonly class UserUpdateDTO extends BaseDTO
             role_id: (int) $data['role_id'],
             team_leader_id: $data['team_leader_id'] ?? null,
             team_leader_extended_access_enabled: (bool) ($data['team_leader_extended_access_enabled'] ?? false),
+            team_leader_flexible_trader_commission_enabled: (bool) ($data['team_leader_flexible_trader_commission_enabled'] ?? false),
+            team_leader_flexible_trader_commission_min: isset($data['team_leader_flexible_trader_commission_min'])
+                ? (float) $data['team_leader_flexible_trader_commission_min']
+                : null,
+            team_leader_flexible_trader_commission_max: isset($data['team_leader_flexible_trader_commission_max'])
+                ? (float) $data['team_leader_flexible_trader_commission_max']
+                : null,
         );
     }
 }

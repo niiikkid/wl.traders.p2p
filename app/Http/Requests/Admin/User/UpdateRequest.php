@@ -5,6 +5,8 @@ namespace App\Http\Requests\Admin\User;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
+use Spatie\Permission\Models\Role;
 
 class UpdateRequest extends FormRequest
 {
@@ -44,7 +46,55 @@ class UpdateRequest extends FormRequest
             'reserve_balance_limit' => ['nullable', 'integer', 'min:0'],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
             'team_leader_extended_access_enabled' => ['required', 'boolean'],
+            'team_leader_flexible_trader_commission_enabled' => ['required', 'boolean'],
+            'team_leader_flexible_trader_commission_min' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'team_leader_flexible_trader_commission_max' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $roleId = (int) $this->input('role_id');
+            $roleName = Role::query()->whereKey($roleId)->value('name');
+            $isTeamLeaderLikeRole = in_array($roleName, ['Super Admin', 'Team Leader'], true);
+            $extendedAccessEnabled = (bool) $this->input('team_leader_extended_access_enabled', false);
+            $flexibleEnabled = (bool) $this->input('team_leader_flexible_trader_commission_enabled', false);
+            $min = $this->input('team_leader_flexible_trader_commission_min');
+            $max = $this->input('team_leader_flexible_trader_commission_max');
+
+            if ($flexibleEnabled && (! $isTeamLeaderLikeRole || ! $extendedAccessEnabled)) {
+                $validator->errors()->add(
+                    'team_leader_flexible_trader_commission_enabled',
+                    __('Гибкая комиссия доступна только при включенном расширенном функционале Team Leader.')
+                );
+            }
+
+            if (! $flexibleEnabled) {
+                return;
+            }
+
+            if ($min === null || $min === '') {
+                $validator->errors()->add(
+                    'team_leader_flexible_trader_commission_min',
+                    __('Укажите минимальную комиссию для трейдера.')
+                );
+            }
+
+            if ($max === null || $max === '') {
+                $validator->errors()->add(
+                    'team_leader_flexible_trader_commission_max',
+                    __('Укажите максимальную комиссию для трейдера.')
+                );
+            }
+
+            if ($min !== null && $max !== null && (float) $min > (float) $max) {
+                $validator->errors()->add(
+                    'team_leader_flexible_trader_commission_min',
+                    __('Минимальная комиссия не может быть больше максимальной.')
+                );
+            }
+        });
     }
 
     public function attributes()
@@ -65,6 +115,9 @@ class UpdateRequest extends FormRequest
             'reserve_balance_limit' => __('страховой депозит'),
             'team_leader_id' => __('тим лидер'),
             'team_leader_extended_access_enabled' => __('расширенный доступ тимлида'),
+            'team_leader_flexible_trader_commission_enabled' => __('гибкая комиссия тимлида по трейдерам'),
+            'team_leader_flexible_trader_commission_min' => __('минимальная комиссия тимлида'),
+            'team_leader_flexible_trader_commission_max' => __('максимальная комиссия тимлида'),
         ];
     }
 }
