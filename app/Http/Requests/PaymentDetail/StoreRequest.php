@@ -11,7 +11,6 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use LVR\CreditCard\CardNumber;
 
 class StoreRequest extends FormRequest
 {
@@ -52,7 +51,7 @@ class StoreRequest extends FormRequest
         } else if (DetailType::CARD->equals($this->detail_type)) {
             $detail = [
                 'required',
-                new CardNumber(),
+                'digits:16',
                 new UniquePaymentDetail()
             ];
         } else if (in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
@@ -257,4 +256,5 @@ class StoreRequest extends FormRequest
             'max' => $maxBound,
         ];
     }
+
 }
