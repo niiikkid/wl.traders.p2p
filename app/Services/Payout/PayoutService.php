@@ -15,6 +15,7 @@ use App\Models\Payout\Payout;
 use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\Payout\PayoutReceipt;
 use App\Jobs\CreditPayoutToTraderJob;
 use App\Jobs\ExpiresPayoutJob;
 use App\Jobs\SendPayoutCallbackJob;
@@ -246,11 +247,12 @@ class PayoutService implements PayoutServiceContract
     /**
      * @throws PayoutException
      */
-    public function markSent(Payout $payout, User $trader, ?UploadedFile $receipt = null): Payout
+    public function markSent(Payout $payout, User $trader, ?UploadedFile $receipt = null, array $receipts = []): Payout
     {
-        return Transaction::run(function () use ($payout, $trader, $receipt) {
+        return Transaction::run(function () use ($payout, $trader, $receipt, $receipts) {
             $payout = Payout::query()
                 ->whereKey($payout->id)
+                ->with('receipts')
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -276,9 +278,12 @@ class PayoutService implements PayoutServiceContract
                 ? $now->copy()->addMinutes($holdMinutes)
                 : null;
 
-            $receiptPath = $receipt
-                ? $this->storeReceipt($receipt, $payout->receipt_path)
-                : $payout->receipt_path;
+            $receiptFiles = $this->normalizeReceiptFiles($receipt, $receipts);
+            $receiptPath = $payout->receipt_path;
+
+            if ($receiptFiles !== []) {
+                $receiptPath = $this->replaceReceipts($payout, $receiptFiles);
+            }
 
             $updatePayload = [
                 'status' => PayoutStatus::SENT,
@@ -844,12 +849,8 @@ class PayoutService implements PayoutServiceContract
         ]);
     }
 
-    private function storeReceipt(UploadedFile $file, ?string $existingPath = null): string
+    private function storeReceipt(UploadedFile $file): string
     {
-        if ($existingPath) {
-            $this->deleteReceipt($existingPath);
-        }
-
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
         $filename = (string) Str::uuid();
         if ($extension !== '') {
@@ -906,7 +907,7 @@ class PayoutService implements PayoutServiceContract
      */
     private function resolveReceiptResetPayload(Payout $payout, PayoutStatus $targetStatus): array
     {
-        $shouldReset = $payout->receipt_path
+        $shouldReset = ($payout->receipt_path || $payout->receipts()->exists())
             && $payout->status->equals(PayoutStatus::SENT)
             && ! in_array($targetStatus, [PayoutStatus::SENT, PayoutStatus::COMPLETED], true);
 
@@ -914,10 +915,89 @@ class PayoutService implements PayoutServiceContract
             return [];
         }
 
-        $this->deleteReceipt($payout->receipt_path);
+        $this->deleteAllReceipts($payout);
         $payout->receipt_path = null;
 
         return ['receipt_path' => null];
+    }
+
+    /**
+     * @param array<int, UploadedFile> $receipts
+     */
+    private function replaceReceipts(Payout $payout, array $receipts): string
+    {
+        $this->deleteAllReceipts($payout);
+
+        $firstPath = null;
+
+        foreach ($receipts as $index => $file) {
+            $path = $this->storeReceipt($file);
+
+            if ($firstPath === null) {
+                $firstPath = $path;
+            }
+
+            $payout->receipts()->create([
+                'path' => $path,
+                'sort_order' => $index + 1,
+            ]);
+        }
+
+        return $firstPath ?? $payout->receipt_path;
+    }
+
+    /**
+     * @param array<int, UploadedFile> $receipts
+     * @return array<int, UploadedFile>
+     */
+    private function normalizeReceiptFiles(?UploadedFile $receipt, array $receipts): array
+    {
+        $files = [];
+
+        if ($receipt instanceof UploadedFile) {
+            $files[] = $receipt;
+        }
+
+        foreach ($receipts as $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $files[] = $file;
+        }
+
+        $uniqueFiles = [];
+        $seenHashes = [];
+
+        foreach ($files as $file) {
+            $hash = spl_object_hash($file);
+            if (isset($seenHashes[$hash])) {
+                continue;
+            }
+
+            $seenHashes[$hash] = true;
+            $uniqueFiles[] = $file;
+        }
+
+        return array_slice($uniqueFiles, 0, 5);
+    }
+
+    private function deleteAllReceipts(Payout $payout): void
+    {
+        $payout->loadMissing('receipts');
+
+        foreach ($payout->receipts as $receipt) {
+            $this->deleteReceipt($receipt->path);
+        }
+
+        PayoutReceipt::query()
+            ->where('payout_id', $payout->id)
+            ->delete();
+
+        $legacyPath = $payout->receipt_path;
+        if ($legacyPath) {
+            $this->deleteReceipt($legacyPath);
+        }
     }
 }
 

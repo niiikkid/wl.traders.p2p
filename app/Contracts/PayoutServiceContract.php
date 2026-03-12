@@ -29,7 +29,12 @@ interface PayoutServiceContract
     /**
      * @throws PayoutException
      */
-    public function markSent(Payout $payout, User $trader, ?UploadedFile $receipt = null): Payout;
+    /**
+     * @param array<int, UploadedFile> $receipts
+     *
+     * @throws PayoutException
+     */
+    public function markSent(Payout $payout, User $trader, ?UploadedFile $receipt = null, array $receipts = []): Payout;
 
     /**
      * @throws PayoutException

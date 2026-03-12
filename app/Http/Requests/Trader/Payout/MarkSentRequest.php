@@ -15,7 +15,18 @@ class MarkSentRequest extends FormRequest
     {
         return [
             'receipt' => [
-                'required',
+                'required_without:receipts',
+                'file',
+                'mimes:jpg,jpeg,png,pdf',
+                'max:10240',
+            ],
+            'receipts' => [
+                'required_without:receipt',
+                'array',
+                'min:1',
+                'max:5',
+            ],
+            'receipts.*' => [
                 'file',
                 'mimes:jpg,jpeg,png,pdf',
                 'max:10240',
@@ -27,6 +38,8 @@ class MarkSentRequest extends FormRequest
     {
         return [
             'receipt' => 'чек выплаты',
+            'receipts' => 'чеки выплаты',
+            'receipts.*' => 'чек выплаты',
         ];
     }
 }

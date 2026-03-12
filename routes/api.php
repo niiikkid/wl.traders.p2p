@@ -42,6 +42,7 @@ Route::group(['middleware' => ['api-access-token']], function () {
         Route::patch('{payout:uuid}/cancel', [\App\Http\Controllers\API\Payout\PayoutController::class, 'cancel'])->name('api.payouts.cancel');
         Route::patch('{payout:uuid}/confirm-paid', [\App\Http\Controllers\API\Payout\PayoutController::class, 'confirmPaid'])->name('api.payouts.confirm-paid');
         Route::get('{payout:uuid}/receipt', [\App\Http\Controllers\API\Payout\PayoutReceiptController::class, 'show'])->name('api.payouts.receipt');
+        Route::get('{payout:uuid}/receipts', [\App\Http\Controllers\API\Payout\PayoutReceiptController::class, 'index'])->name('api.payouts.receipts');
     });
 
     Route::group(['prefix' => 'statements'], function () {

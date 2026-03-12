@@ -60,7 +60,13 @@ class PayoutController extends Controller
     public function markSent(MarkSentRequest $request, Payout $payout): RedirectResponse
     {
         try {
-            services()->payout()->markSent($payout, $request->user(), $request->file('receipt'));
+            $receipts = $request->file('receipts', []);
+            services()->payout()->markSent(
+                $payout,
+                $request->user(),
+                $request->file('receipt'),
+                is_array($receipts) ? $receipts : []
+            );
         } catch (PayoutException $exception) {
             return redirect()->back()->with('error', $exception->getMessage());
         }

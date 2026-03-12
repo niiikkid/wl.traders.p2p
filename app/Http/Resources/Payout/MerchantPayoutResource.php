@@ -35,6 +35,7 @@ class MerchantPayoutResource extends JsonResource
             'requisites' => $this->requisites,
             'initials' => $this->initials,
             'receipt_url' => $this->receipt_path ? route('payouts.receipts.show', ['payout' => $this->uuid]) : null,
+            'receipt_urls' => $this->receiptUrls(),
             'amount' => $this->formatMoney($this->amount_fiat),
             'merchant_debit' => $this->formatMoney($this->merchant_debit),
             'usdt_body' => $this->formatMoney($this->usdt_body),
@@ -120,6 +121,40 @@ class MerchantPayoutResource extends JsonResource
             'value' => $money->toBeauty(),
             'currency' => strtoupper($money->getCurrency()->getCode()),
         ];
+    }
+
+    /**
+     * @return array<int, array{id: int|null, filename: string, url: string}>
+     */
+    private function receiptUrls(): array
+    {
+        $this->resource->loadMissing('receipts');
+
+        $receiptUrls = $this->receipts
+            ->map(fn ($receipt) => [
+                'id' => $receipt->id,
+                'filename' => basename($receipt->path),
+                'url' => route('payouts.receipts.item.show', [
+                    'payout' => $this->uuid,
+                    'receipt' => $receipt->id,
+                ]),
+            ])
+            ->values()
+            ->all();
+
+        if ($receiptUrls !== []) {
+            return $receiptUrls;
+        }
+
+        if (! $this->receipt_path) {
+            return [];
+        }
+
+        return [[
+            'id' => null,
+            'filename' => basename($this->receipt_path),
+            'url' => route('payouts.receipts.show', ['payout' => $this->uuid]),
+        ]];
     }
 }
 

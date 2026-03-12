@@ -22,7 +22,7 @@ class TeamLeaderTraderCommissionResolver
             return $defaultRate;
         }
 
-        if ($trader->team_leader_id !== $teamLeader->id) {
+        if ((int) $trader->team_leader_id !== (int) $teamLeader->id) {
             return $defaultRate;
         }
 

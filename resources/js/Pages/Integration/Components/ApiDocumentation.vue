@@ -740,15 +740,15 @@ const tocSections = [
 
                             <div class="border border-base-200 rounded-xl p-4 space-y-3 overflow-x-auto">
                                 <div class="grid gap-3">
-                                    <h3 class="text-xl font-semibold">Получить чек выплаты</h3>
+                                    <h3 class="text-xl font-semibold">Получить чек выплаты (legacy)</h3>
                                     <div class="flex flex-wrap items-center gap-3">
                                         <span class="badge badge-primary badge-lg">GET</span>
                                         <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/payouts/{payout_id}/receipt</code>
                                     </div>
                                 </div>
                                 <p class="text-sm text-base-content/80">
-                                    Возвращает JSON с метаданными файла и base64-содержимым. Декодируйте значение <code class="bg-base-200 px-1 rounded text-xs">base64</code>,
-                                    чтобы получить оригинальный чек (JPEG/PNG/PDF).
+                                    Старый endpoint, сохранён для обратной совместимости. Возвращает первый чек выплаты
+                                    с метаданными файла и base64-содержимым.
                                 </p>
                                 <div>
                                     <h4 class="font-semibold mb-2">Ответ сервера</h4>
@@ -760,6 +760,48 @@ const tocSections = [
                                             mime_type: "application/pdf",
                                             size: 102400,
                                             base64: "JVBERi0xLjQKJ..."
+                                        }
+                                    }) }}</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="border border-base-200 rounded-xl p-4 space-y-3 overflow-x-auto">
+                                <div class="grid gap-3">
+                                    <h3 class="text-xl font-semibold">Получить все чеки выплаты</h3>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <span class="badge badge-primary badge-lg">GET</span>
+                                        <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/payouts/{payout_id}/receipts</code>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-base-content/80">
+                                    Новый endpoint возвращает массив чеков (до 5 шт.) в формате base64.
+                                    Каждый элемент содержит <code class="bg-base-200 px-1 rounded text-xs">filename</code>,
+                                    <code class="bg-base-200 px-1 rounded text-xs">mime_type</code>,
+                                    <code class="bg-base-200 px-1 rounded text-xs">size</code> и
+                                    <code class="bg-base-200 px-1 rounded text-xs">base64</code>.
+                                </p>
+                                <div>
+                                    <h4 class="font-semibold mb-2">Ответ сервера</h4>
+                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({
+                                        success: true,
+                                        data: {
+                                            payout_id: "af8d6a20-...",
+                                            receipts: [
+                                                {
+                                                    receipt_id: 101,
+                                                    filename: "receipt-1.jpg",
+                                                    mime_type: "image/jpeg",
+                                                    size: 82451,
+                                                    base64: "/9j/4AAQSkZJRg..."
+                                                },
+                                                {
+                                                    receipt_id: 102,
+                                                    filename: "receipt-2.pdf",
+                                                    mime_type: "application/pdf",
+                                                    size: 120344,
+                                                    base64: "JVBERi0xLjQKJ..."
+                                                }
+                                            ]
                                         }
                                     }) }}</code></pre>
                                 </div>

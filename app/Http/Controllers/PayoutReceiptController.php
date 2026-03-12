@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payout\Payout;
+use App\Models\Payout\PayoutReceipt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -14,23 +15,51 @@ class PayoutReceiptController extends Controller
     public function show(Request $request, Payout $payout): BinaryFileResponse
     {
         $payout->loadMissing('merchant');
+        $receiptPath = $payout->receipt_path ?: $payout->receipts()->orderBy('sort_order')->value('path');
 
         if (! $this->canViewReceipt($request, $payout)) {
             abort(403);
         }
 
-        if (! $payout->receipt_path) {
+        if (! $receiptPath) {
             abort(404, 'Чек для этой выплаты отсутствует.');
         }
 
         $disk = Storage::disk(self::RECEIPT_DISK);
 
-        if (! $disk->exists($payout->receipt_path)) {
+        if (! $disk->exists($receiptPath)) {
             abort(404, 'Файл чека не найден.');
         }
 
-        $path = $disk->path($payout->receipt_path);
-        $mime = $disk->mimeType($payout->receipt_path) ?: 'application/octet-stream';
+        $path = $disk->path($receiptPath);
+        $mime = $disk->mimeType($receiptPath) ?: 'application/octet-stream';
+
+        return response()->file($path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+        ]);
+    }
+
+    public function showItem(Request $request, Payout $payout, PayoutReceipt $receipt): BinaryFileResponse
+    {
+        $payout->loadMissing('merchant');
+
+        if (! $this->canViewReceipt($request, $payout)) {
+            abort(403);
+        }
+
+        if ($receipt->payout_id !== $payout->id) {
+            abort(404, 'Чек для этой выплаты отсутствует.');
+        }
+
+        $disk = Storage::disk(self::RECEIPT_DISK);
+
+        if (! $disk->exists($receipt->path)) {
+            abort(404, 'Файл чека не найден.');
+        }
+
+        $path = $disk->path($receipt->path);
+        $mime = $disk->mimeType($receipt->path) ?: 'application/octet-stream';
 
         return response()->file($path, [
             'Content-Type' => $mime,

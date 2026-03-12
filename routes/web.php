@@ -64,6 +64,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/invoice', [\App\Http\Controllers\InvoiceController::class, 'store'])->name('invoice.store');
         Route::patch('/user/online', [\App\Http\Controllers\UserOnlineController::class, 'toggle'])->name('user.online.toggle');
         Route::get('/payouts/{payout:uuid}/receipt', [PayoutReceiptController::class, 'show'])->name('payouts.receipts.show');
+        Route::get('/payouts/{payout:uuid}/receipts/{receipt}', [PayoutReceiptController::class, 'showItem'])->name('payouts.receipts.item.show');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Merchant|Super Admin']], function () {

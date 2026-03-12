@@ -257,6 +257,7 @@ class PayoutQueriesEloquent implements PayoutQueries
                 'merchant:id,name,user_id',
                 'merchant.user:id,name,email',
                 'trader:id,name,email,payout_hold_enabled,payout_hold_minutes,payout_active_payouts_limit',
+                'receipts:id,payout_id,path,sort_order',
             ]);
     }
 

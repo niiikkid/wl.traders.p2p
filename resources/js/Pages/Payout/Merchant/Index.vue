@@ -62,6 +62,18 @@ const formatMeta = (meta) => {
     }
 };
 
+const payoutReceiptLinks = (payout) => {
+    if (Array.isArray(payout?.receipt_urls)) {
+        return payout.receipt_urls;
+    }
+
+    if (payout?.receipt_url) {
+        return [{ id: null, filename: 'Чек 1', url: payout.receipt_url }];
+    }
+
+    return [];
+};
+
 const resendPayoutCallback = (payoutUUID) => {
     if (!payoutUUID) {
         return;
@@ -321,14 +333,17 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     <div class="card bg-base-100 shadow-sm">
                                                         <div class="card-body text-sm">
                                                             <div class="text-xs uppercase text-base-content/50">Чек выплаты</div>
-                                                            <div v-if="payout.receipt_url" class="space-y-2">
+                                                            <div v-if="payoutReceiptLinks(payout).length" class="space-y-2">
                                                                 <a
-                                                                    :href="payout.receipt_url"
+                                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                                    :key="`receipt-desktop-${payout.id}-${receipt.id ?? index}`"
+                                                                    :href="receipt.url"
                                                                     target="_blank"
                                                                     rel="noopener"
-                                                                    class="btn btn-sm btn-outline btn-primary w-full"
+                                                                    class="btn btn-sm btn-outline btn-primary w-full justify-between"
                                                                 >
-                                                                    Скачать чек
+                                                                    <span>Чек {{ index + 1 }}</span>
+                                                                    <span class="text-xs opacity-70 truncate max-w-[140px]">{{ receipt.filename }}</span>
                                                                 </a>
                                                                 <div class="text-xs text-base-content/60">
                                                                     Ссылка доступна только авторизованным пользователям.
@@ -550,14 +565,17 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="card bg-base-200/40 border border-base-300">
                                                 <div class="card-body p-3 text-sm space-y-0">
                                                     <div class="text-xs uppercase text-base-content/60">Чек выплаты</div>
-                                                    <div v-if="payout.receipt_url" class="space-y-1">
+                                                    <div v-if="payoutReceiptLinks(payout).length" class="space-y-1">
                                                         <a
-                                                            :href="payout.receipt_url"
+                                                            v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                            :key="`receipt-mobile-${payout.id}-${receipt.id ?? index}`"
+                                                            :href="receipt.url"
                                                             target="_blank"
                                                             rel="noopener"
-                                                            class="btn btn-sm btn-outline btn-primary w-full"
+                                                            class="btn btn-sm btn-outline btn-primary w-full justify-between"
                                                         >
-                                                            Скачать чек
+                                                            <span>Чек {{ index + 1 }}</span>
+                                                            <span class="text-xs opacity-70 truncate max-w-[140px]">{{ receipt.filename }}</span>
                                                         </a>
                                                         <div class="text-[10px] text-base-content/60">
                                                             Ссылка доступна только авторизованным пользователям.

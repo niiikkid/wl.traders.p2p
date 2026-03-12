@@ -64,6 +64,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property User|null $trader
  * @property PaymentGateway $paymentGateway
  * @property \Illuminate\Database\Eloquent\Collection<int, PayoutOperation> $operations
+ * @property \Illuminate\Database\Eloquent\Collection<int, PayoutReceipt> $receipts
  */
 #[ObservedBy([PayoutObserver::class])]
 class Payout extends Model
@@ -166,6 +167,13 @@ class Payout extends Model
     public function operations(): HasMany
     {
         return $this->hasMany(PayoutOperation::class, 'payout_id');
+    }
+
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(PayoutReceipt::class, 'payout_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     public function callbackLogs(): MorphMany

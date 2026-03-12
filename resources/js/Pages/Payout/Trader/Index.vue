@@ -272,7 +272,7 @@ const activeEmptyState = computed(() => activePayoutsList.value.length === 0);
 const receiptModal = ref({
     open: false,
     payout: null,
-    file: null,
+    files: [],
     error: null,
     processing: false,
 });
@@ -283,7 +283,7 @@ const openReceiptModal = (payout) => {
     receiptModal.value = {
         open: true,
         payout,
-        file: null,
+        files: [],
         error: null,
         processing: false,
     };
@@ -295,7 +295,7 @@ const openReceiptModal = (payout) => {
 const closeReceiptModal = () => {
     receiptModal.value.open = false;
     receiptModal.value.payout = null;
-    receiptModal.value.file = null;
+    receiptModal.value.files = [];
     receiptModal.value.error = null;
     receiptModal.value.processing = false;
     if (receiptInputRef.value) {
@@ -304,8 +304,8 @@ const closeReceiptModal = () => {
 };
 
 const handleReceiptChange = (event) => {
-    const [file] = event.target.files ?? [];
-    receiptModal.value.file = file ?? null;
+    const files = Array.from(event.target.files ?? []).slice(0, 5);
+    receiptModal.value.files = files;
     receiptModal.value.error = null;
 };
 
@@ -314,8 +314,13 @@ const submitReceipt = () => {
         return;
     }
 
-    if (! receiptModal.value.file) {
-        receiptModal.value.error = 'Загрузите чек в формате JPG, PNG или PDF.';
+    if (!receiptModal.value.files.length) {
+        receiptModal.value.error = 'Загрузите хотя бы один чек в формате JPG, PNG или PDF.';
+        return;
+    }
+
+    if (receiptModal.value.files.length > 5) {
+        receiptModal.value.error = 'Можно загрузить не более 5 чеков.';
         return;
     }
 
@@ -324,7 +329,7 @@ const submitReceipt = () => {
     router.post(
         route('trader.payouts.mark-sent', receiptModal.value.payout.uuid),
         {
-            receipt: receiptModal.value.file,
+            receipts: receiptModal.value.files,
         },
         {
             forceFormData: true,
@@ -333,7 +338,10 @@ const submitReceipt = () => {
                 stopAutoRefresh();
             },
             onError: (errors) => {
-                receiptModal.value.error = errors?.receipt ?? 'Не удалось загрузить чек, попробуйте ещё раз.';
+                receiptModal.value.error = errors?.receipts
+                    ?? errors?.['receipts.0']
+                    ?? errors?.receipt
+                    ?? 'Не удалось загрузить чек(и), попробуйте ещё раз.';
             },
             onSuccess: () => {
                 closeReceiptModal();
@@ -344,6 +352,18 @@ const submitReceipt = () => {
             },
         },
     );
+};
+
+const payoutReceiptLinks = (payout) => {
+    if (Array.isArray(payout?.receipt_urls)) {
+        return payout.receipt_urls;
+    }
+
+    if (payout?.receipt_url) {
+        return [{ id: null, filename: 'Чек 1', url: payout.receipt_url }];
+    }
+
+    return [];
 };
 
 defineOptions({ layout: AuthenticatedLayout });
@@ -510,6 +530,21 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 >
                                                     Холд: {{ formatHoldCountdown(payout.timings.hold_until) ?? 'ожидаем завершения' }}
                                                 </div>
+                                            </div>
+                                        </div>
+                                        <div v-if="payoutReceiptLinks(payout).length" class="pt-1">
+                                            <div class="text-xs text-base-content/60 mb-2">Чеки выплаты</div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <a
+                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                    :key="`active-receipt-${payout.id}-${receipt.id ?? index}`"
+                                                    :href="receipt.url"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    class="btn btn-xs btn-outline"
+                                                >
+                                                    Чек {{ index + 1 }}
+                                                </a>
                                             </div>
                                         </div>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 bg-base-300/80 py-3 px-4 rounded-box text-sm">
@@ -808,6 +843,18 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </td>
                                     <td>
                                         <div class="badge badge-outline badge-sm">{{ payout.status_label }}</div>
+                                        <div v-if="payoutReceiptLinks(payout).length" class="mt-2 flex flex-wrap gap-1">
+                                            <a
+                                                v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                :key="`history-receipt-${payout.id}-${receipt.id ?? index}`"
+                                                :href="receipt.url"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="link link-primary text-xs"
+                                            >
+                                                Чек {{ index + 1 }}
+                                            </a>
+                                        </div>
                                     </td>
                                     <td>
                                         <DateTime :data="payout.timings.completed_at" simple class="justify-start" />
@@ -888,6 +935,21 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="text-base-content/60 text-xs uppercase">Статус</div>
                                             <div class="badge badge-outline badge-sm">{{ payout.status_label }}</div>
                                         </div>
+                                        <div v-if="payoutReceiptLinks(payout).length" class="space-y-1 sm:col-span-2">
+                                            <div class="text-base-content/60 text-xs uppercase">Чеки</div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <a
+                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                    :key="`mobile-history-receipt-${payout.id}-${receipt.id ?? index}`"
+                                                    :href="receipt.url"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    class="btn btn-xs btn-outline"
+                                                >
+                                                    Чек {{ index + 1 }}
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -917,20 +979,26 @@ defineOptions({ layout: AuthenticatedLayout });
                     Подтверждение отправки средств
                 </h3>
                 <p class="text-sm text-base-content/70">
-                    Загрузите чек перевода (JPG, PNG или PDF). Он будет доступен администраторам и вам.
+                    Загрузите до 5 чеков перевода (JPG, PNG или PDF). Они будут доступны администраторам, мерчанту и вам.
                 </p>
                 <div class="form-control">
                     <label class="label">
-                        <span class="label-text text-sm font-semibold">Чек выплаты</span>
+                        <span class="label-text text-sm font-semibold">Чеки выплаты</span>
                     </label>
                     <input
                         type="file"
                         class="file-input file-input-bordered w-full"
                         accept=".jpg,.jpeg,.png,.pdf"
+                        multiple
                         @change="handleReceiptChange"
                         ref="receiptInputRef"
                     />
-                    <p class="text-xs text-base-content/60 mt-2">Макс. размер — 10 МБ.</p>
+                    <p class="text-xs text-base-content/60 mt-2">До 5 файлов, каждый до 10 МБ.</p>
+                    <ul v-if="receiptModal.files.length" class="mt-2 text-xs text-base-content/70 space-y-1">
+                        <li v-for="(file, index) in receiptModal.files" :key="`${file.name}-${index}`">
+                            {{ index + 1 }}. {{ file.name }}
+                        </li>
+                    </ul>
                     <div v-if="receiptModal.error" class="text-error text-sm mt-2">
                         {{ receiptModal.error }}
                     </div>
