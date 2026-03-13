@@ -65,7 +65,7 @@ class PayoutController extends Controller
                 $payout,
                 $request->user(),
                 $request->file('receipt'),
-                is_array($receipts) ? $receipts : []
+                is_array( $receipts) ? $receipts : []
             );
         } catch (PayoutException $exception) {
             return redirect()->back()->with('error', $exception->getMessage());

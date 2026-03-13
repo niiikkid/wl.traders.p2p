@@ -74,6 +74,14 @@ const payoutReceiptLinks = (payout) => {
     return [];
 };
 
+const shortReceiptLabel = (filename) => {
+    if (!filename) {
+        return '—';
+    }
+
+    return String(filename).slice(0, 8);
+};
+
 const resendPayoutCallback = (payoutUUID) => {
     if (!payoutUUID) {
         return;
@@ -343,7 +351,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                                     class="btn btn-sm btn-outline btn-primary w-full justify-between"
                                                                 >
                                                                     <span>Чек {{ index + 1 }}</span>
-                                                                    <span class="text-xs opacity-70 truncate max-w-[140px]">{{ receipt.filename }}</span>
+                                                                    <span class="text-xs opacity-70 truncate max-w-[140px]">{{ shortReceiptLabel(receipt.filename) }}</span>
                                                                 </a>
                                                                 <div class="text-xs text-base-content/60">
                                                                     Ссылка доступна только авторизованным пользователям.
@@ -575,7 +583,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                             class="btn btn-sm btn-outline btn-primary w-full justify-between"
                                                         >
                                                             <span>Чек {{ index + 1 }}</span>
-                                                            <span class="text-xs opacity-70 truncate max-w-[140px]">{{ receipt.filename }}</span>
+                                                            <span class="text-xs opacity-70 truncate max-w-[140px]">{{ shortReceiptLabel(receipt.filename) }}</span>
                                                         </a>
                                                         <div class="text-[10px] text-base-content/60">
                                                             Ссылка доступна только авторизованным пользователям.
