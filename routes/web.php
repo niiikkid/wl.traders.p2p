@@ -102,6 +102,8 @@ Route::group(['middleware' => ['2fa']], function () {
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Super Admin']], function () {
         Route::get('/trader/main', [\App\Http\Controllers\MainPageController::class, 'trader'])->name('trader.main.index');
         Route::post('/trader/temp-vip/activate', [\App\Http\Controllers\Trader\TempVipController::class, 'activate'])->name('trader.temp-vip.activate');
+        Route::get('/trader/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'index'])->name('trader.feedback.index');
+        Route::post('/trader/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'store'])->name('trader.feedback.store');
 
         Route::get('/notifications', [\App\Http\Controllers\Trader\NotificationController::class, 'index'])->name('notifications.index');
 
@@ -220,6 +222,9 @@ Route::group(['middleware' => ['2fa']], function () {
 
     Route::group(['prefix' => 'admin', 'as'=>'admin.', 'middleware' => ['auth', 'banned', 'role:Super Admin']], function () {
         Route::get('/main', [\App\Http\Controllers\MainPageController::class, 'admin'])->name('main.index');
+        Route::get('/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'index'])->name('feedback.index');
+        Route::patch('/feedbacks/{feedback}/favorite', [\App\Http\Controllers\Trader\FeedbackController::class, 'toggleFavorite'])->name('feedback.favorite');
+        Route::patch('/feedbacks/{feedback}/hidden', [\App\Http\Controllers\Trader\FeedbackController::class, 'toggleHidden'])->name('feedback.hidden');
 
         Route::get('/notifications', [\App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('notifications.index');
 
