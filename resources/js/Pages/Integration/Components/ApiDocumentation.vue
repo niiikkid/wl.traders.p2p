@@ -227,7 +227,7 @@ const tocSections = [
                                 </div>
                                 <div>
                                     <h4 class="font-semibold mb-2">Ответ сервера</h4>
-                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: [{ name: "Сбербанк", code: "sberbank", schema: "100000000111", currency: "rub", min_limit: "1000", max_limit: "100000", reservation_time: 10, detail_types: ["card", "phone", "mobile_commerce", "account_number", "nspk", "e-com"] }] }) }}</code></pre>
+                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: [{ name: "Сбербанк", code: "sberbank", schema: "100000000111", currency: "rub", min_limit: "1000", max_limit: "100000", reservation_time: 10, detail_types: ["card", "phone", "mobile_commerce", "account_number", "iban_uah", "nspk", "e-com"] }] }) }}</code></pre>
                                 </div>
                             </section>
                         </div>
@@ -286,7 +286,7 @@ const tocSections = [
                                             </tr>
                                             <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">payment_detail_type</code></td>
-                                                <td>тип реквизита: card, phone, mobile_commerce, account_number, nspk, e-com.</td>
+                                                <td>тип реквизита: card, phone, mobile_commerce, account_number, iban_uah, nspk, e-com.</td>
                                             </tr>
                                             <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">client_id</code></td>
@@ -391,7 +391,7 @@ const tocSections = [
                                             </tr>
                                             <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">payment_detail_type</code></td>
-                                                <td>тип реквизита: card, phone, mobile_commerce, account_number, nspk, e-com.</td>
+                                                <td>тип реквизита: card, phone, mobile_commerce, account_number, iban_uah, nspk, e-com.</td>
                                             </tr>
                                             <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">client_id</code></td>
@@ -413,7 +413,7 @@ const tocSections = [
                                 <div>
                                     <h4 class="font-semibold mb-2">Ответ сервера</h4>
                                     <p class="text-sm text-base-content/80">Поле <code class="bg-base-200 px-1 rounded">base_amount</code> — исходная сумма сделки на момент создания. Поле <code class="bg-base-200 px-1 rounded">amount</code> может быть изменено при пересчёте.</p>
-                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16...", external_id: "...", merchant_id: "3db07a16...", base_amount: "1000", amount: "1040", profit: "9.94", merchant_profit: "9.05", currency: "rub", profit_currency: "usdt", conversion_price_currency: "rub", conversion_price: "100.77", status: "pending", sub_status: "pending", callback_url: "...", payment_gateway: "sberbank", payment_gateway_name: "Сбербанк", payment_detail: { detail: "1000200030004000", detail_type: "card", initials: "Пол Атрейдес" }, merchant: { name: "...", description: "..." }, finished_at: null, expires_at: 1731375451, created_at: 1731375391, current_server_time: 1731655862 } }) }}</code></pre>
+                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16...", external_id: "...", merchant_id: "3db07a16...", base_amount: "1000", amount: "1040", profit: "9.94", merchant_profit: "9.05", currency: "rub", profit_currency: "usdt", conversion_price_currency: "rub", conversion_price: "100.77", status: "pending", sub_status: "pending", callback_url: "...", payment_gateway: "sberbank", payment_gateway_name: "Сбербанк", payment_detail: { detail: "1000200030004000", detail_type: "card", initials: "Пол Атрейдес", additional_info: "3665906843" }, merchant: { name: "...", description: "..." }, finished_at: null, expires_at: 1731375451, created_at: 1731375391, current_server_time: 1731655862 } }) }}</code></pre>
                                 </div>
                             </div>
                         </section>

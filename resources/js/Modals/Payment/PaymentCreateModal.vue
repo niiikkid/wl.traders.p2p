@@ -43,6 +43,7 @@ const detailTypeOptions = [
     { id: 'phone', name: 'СБП' },
     { id: 'mobile_commerce', name: 'Моб. коммерция' },
     { id: 'account_number', name: 'Номер счета' },
+    { id: 'iban_uah', name: 'IBAN UAH' },
     { id: 'nspk', name: 'NSPK (ссылка)' },
     { id: 'e-com', name: 'E-COM' },
 ];

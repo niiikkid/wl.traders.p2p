@@ -56,6 +56,7 @@ class PaymentLinkController extends Controller
             'detail' => $order->paymentDetail?->detail,
             'detail_type' => $order->paymentDetail?->detail_type->value,
             'initials' => $order->paymentDetail?->initials,
+            'additional_info' => $order->paymentDetail?->additional_info,
             'payment_gateway' => $order->paymentGateway?->name,
             'success_url' => $order->success_url,
             'fail_url' => $order->fail_url,

@@ -75,6 +75,7 @@ class OrderResource extends JsonResource
                     'payment_detail' => $this->paymentDetail?->detail,
                     'payment_detail_type' => $this->paymentDetail?->detail_type->value,
                     'payment_detail_name' => $this->paymentDetail?->name,
+                    'payment_detail_additional_info' => $this->paymentDetail?->additional_info,
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('trader'), function () {

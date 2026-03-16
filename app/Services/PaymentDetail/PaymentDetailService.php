@@ -21,6 +21,7 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 'detail' => $data->detail,
                 'detail_type' => $data->detail_type,
                 'initials' => $data->initials,
+                'additional_info' => $data->additional_info,
                 'is_active' => $data->is_active,
                 'daily_limit' => Money::fromPrecision($data->daily_limit, Currency::make($data->currency)),
                 'current_daily_limit' => Money::fromPrecision(0, Currency::make($data->currency)),
@@ -56,6 +57,7 @@ class PaymentDetailService implements PaymentDetailServiceContract
             $paymentDetail->update([
                 'name' => $data->name,
                 'initials' => $data->initials,
+                'additional_info' => $data->additional_info,
                 'is_active' => $data->is_active,
                 'daily_limit' => Money::fromPrecision($data->daily_limit, $paymentDetail->currency),
                 'daily_successful_orders_limit' => $data->daily_successful_orders_limit,

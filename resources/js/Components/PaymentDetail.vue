@@ -78,9 +78,14 @@ const phone = computed(() => {
                         {{ phone }}
                     </template>
                 </template>
-                <template v-if="type === 'account_number'">
+                <template v-if="['account_number', 'iban_uah'].includes(type)">
                     <template v-if="short">
-                        ***{{ detail.substring(detail.length - 6) }}
+                        <template v-if="type === 'account_number'">
+                            ***{{ detail.substring(detail.length - 6) }}
+                        </template>
+                        <template v-else>
+                            {{ detail.substring(0, 6) }}...{{ detail.substring(detail.length - 4) }}
+                        </template>
                     </template>
                     <template v-else>
                         {{ detail }}
@@ -110,9 +115,14 @@ const phone = computed(() => {
                         {{ phone }}
                     </template>
                 </template>
-                <template v-if="type === 'account_number'">
+                <template v-if="['account_number', 'iban_uah'].includes(type)">
                     <template v-if="short">
-                        ***{{ detail.substring(detail.length - 6) }}
+                        <template v-if="type === 'account_number'">
+                            ***{{ detail.substring(detail.length - 6) }}
+                        </template>
+                        <template v-else>
+                            {{ detail.substring(0, 6) }}...{{ detail.substring(detail.length - 4) }}
+                        </template>
                     </template>
                     <template v-else>
                         {{ detail }}

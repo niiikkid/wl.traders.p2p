@@ -17,6 +17,23 @@ const formatedPaymentDetail = computed(() => {
 
 const isPhoneType = computed(() => ['phone', 'mobile_commerce'].includes(props.data.detail_type));
 const isMobileCommerce = computed(() => props.data.detail_type === 'mobile_commerce');
+const isIbanUah = computed(() => props.data.detail_type === 'iban_uah');
+const displayPaymentDetail = computed(() => {
+    if (!isIbanUah.value) {
+        return formatedPaymentDetail.value;
+    }
+
+    const rawDetail = String(props.data.detail ?? '').trim();
+    if (!rawDetail) {
+        return '';
+    }
+
+    const partLength = Math.ceil(rawDetail.length / 3);
+    const start = rawDetail.slice(0, partLength);
+    const end = rawDetail.slice(-partLength);
+
+    return `${start}...${end}`;
+});
 
 const openHelperModal = () => {
     const el = document.getElementById('helper-modal');
@@ -64,7 +81,7 @@ const openHelperModal = () => {
                 <img src="/images/sbp.svg" class="mr-2 w-8 h-8">
                 Моб. коммерция
             </div>
-            <div v-if="data.detail_type === 'account_number'" class="alert alert-warning mb-4 sm:text-sm text-xs">
+            <div v-if="['account_number', 'iban_uah'].includes(data.detail_type)" class="alert alert-warning mb-4 sm:text-sm text-xs">
                 <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
                 </svg>
@@ -94,9 +111,15 @@ const openHelperModal = () => {
                             </svg>
                             Номер счета
                         </template>
+                        <template v-else-if="isIbanUah">
+                            <svg class="mr-2 text-primary sm:w-6 sm:h-6 w-5 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 9h3m-3 3h3m-3 3h3m-6 1c-.306-.613-.933-1-1.618-1H7.618c-.685 0-1.312.387-1.618 1M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm7 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"/>
+                            </svg>
+                            Номер IBAN
+                        </template>
                     </div>
                     <div class="text-base-content">
-                        <CopyPaymentText :text="formatedPaymentDetail" :copy_text="data.detail"></CopyPaymentText>
+                        <CopyPaymentText :text="displayPaymentDetail" :copy_text="data.detail"></CopyPaymentText>
                     </div>
                 </div>
                 <div class="flex justify-between items-center border border-base-300 rounded-xl p-3">
@@ -113,6 +136,22 @@ const openHelperModal = () => {
                     </div>
                     <div class="text-base-content">
                         <CopyPaymentText :text="data.initials" :copy_text="data.initials"></CopyPaymentText>
+                    </div>
+                </div>
+                <div v-if="isIbanUah || data.additional_info" class="flex justify-between items-center border border-base-300 rounded-xl p-3">
+                    <div class="flex items-center text-base-content sm:text-base text-xs">
+                        <svg class="mr-2 text-primary sm:w-6 sm:h-6 w-5 h-6" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM8.25 12a.75.75 0 0 0-.75.75v4.5a.75.75 0 0 0 1.5 0v-4.5a.75.75 0 0 0-.75-.75Z" />
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
+                        </svg>
+                        <template v-if="isIbanUah">ІПН (ИНН)</template>
+                        <template v-else>Дополнительная информация</template>
+                    </div>
+                    <div class="text-base-content">
+                        <template v-if="data.additional_info">
+                            <CopyPaymentText :text="data.additional_info" :copy_text="data.additional_info"></CopyPaymentText>
+                        </template>
+                        <template v-else>—</template>
                     </div>
                 </div>
                 <div v-if="isPhoneType" class="flex justify-between items-center border border-base-300 rounded-xl p-3">
@@ -139,7 +178,7 @@ const openHelperModal = () => {
                 </div>
             </div>
 
-            <div v-if="data.detail_type !== 'account_number'" class="alert alert-warning mt-3 sm:mt-0 mb-4 sm:text-sm text-xs">
+            <div v-if="!['account_number', 'iban_uah'].includes(data.detail_type)" class="alert alert-warning mt-3 sm:mt-0 mb-4 sm:text-sm text-xs">
                 <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
                 </svg>

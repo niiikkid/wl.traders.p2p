@@ -13,6 +13,7 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
         public string $detail,
         public DetailType $detail_type,
         public string $initials,
+        public ?string $additional_info,
         public bool $is_active,
         public int $daily_limit,
         public ?int $daily_successful_orders_limit,
@@ -34,6 +35,7 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
             detail: $data['detail'],
             detail_type: DetailType::from($data['detail_type']),
             initials: $data['initials'],
+            additional_info: $data['additional_info'] ?? null,
             is_active: (bool) $data['is_active'],
             daily_limit: (int) $data['daily_limit'],
             daily_successful_orders_limit: isset($data['daily_successful_orders_limit'])

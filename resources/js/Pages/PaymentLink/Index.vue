@@ -45,6 +45,7 @@ const setData = () => {
         detail: usePage().props.data.detail,
         detail_type: usePage().props.data.detail_type,
         initials: usePage().props.data.initials,
+        additional_info: usePage().props.data.additional_info,
         payment_gateway: usePage().props.data.payment_gateway,
         success_url: usePage().props.data.success_url,
         fail_url: usePage().props.data.fail_url,

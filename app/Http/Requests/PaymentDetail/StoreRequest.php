@@ -67,6 +67,13 @@ class StoreRequest extends FormRequest
                 'digits:20',
                 new UniquePaymentDetail()
             ];
+        } else if (DetailType::IBAN_UAH->equals($this->detail_type)) {
+            $detail = [
+                'required',
+                'string',
+                'regex:/^UA\d{27}$/',
+                new UniquePaymentDetail()
+            ];
         } else {
             $detail = [
                 'required',
@@ -80,6 +87,21 @@ class StoreRequest extends FormRequest
             'detail' => $detail,
             'detail_type' => ['required', Rule::in(DetailType::values())],
             'initials' => ['required', 'string', 'min:3', 'max:40'],
+            'additional_info' => [
+                Rule::requiredIf(DetailType::IBAN_UAH->equals($this->detail_type)),
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if (! DetailType::IBAN_UAH->equals($this->detail_type) || $value === null || $value === '') {
+                        return;
+                    }
+
+                    if (! preg_match('/^\d{10}$/', (string) $value)) {
+                        $fail('Для IBAN UAH поле должно содержать ИПН из 10 цифр.');
+                    }
+                },
+            ],
             'is_active' => ['required', 'boolean'],
             'daily_limit' => ['required', 'integer', 'min:1', 'max:100000000'],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
@@ -157,6 +179,7 @@ class StoreRequest extends FormRequest
         return [
             'detail' => __('реквизит'),
             'initials' => __('инициалы'),
+            'additional_info' => __('дополнительная информация'),
             'is_active' => __('активность'),
             'daily_limit' => __('дневной лимит'),
             'daily_successful_orders_limit' => __('дневной лимит по количеству сделок'),
@@ -171,12 +194,19 @@ class StoreRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $detail = $this->detail;
+        $additionalInfo = $this->additional_info;
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
 
-        if (! in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
+        if ($this->detail_type === DetailType::IBAN_UAH->value) {
+            $detail = strtoupper(trim((string) $detail));
+            $detail = preg_replace('/\s+/', '', $detail);
+        } elseif (! in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
             $detail = preg_replace('~\D+~', '', $detail);
+        }
+        if ($additionalInfo === '' || $additionalInfo === null) {
+            $additionalInfo = null;
         }
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
             $dailySuccessfulOrdersLimit = null;
@@ -190,6 +220,7 @@ class StoreRequest extends FormRequest
 
         $this->merge([
             'detail' => $detail,
+            'additional_info' => $additionalInfo,
             'currency' => strtolower($this->currency),
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
             'min_order_amount' => $minOrderAmount,

@@ -49,6 +49,7 @@ class TableOrderResource extends JsonResource
                     'detail' => $this->paymentDetail->detail,
                     'type' => $this->paymentDetail->detail_type->value,
                     'name' => $this->paymentDetail->name,
+                    'additional_info' => $this->paymentDetail->additional_info,
                 ],
                 'user' => [
                     'id' => $this->paymentDetail->user->id,
@@ -68,6 +69,7 @@ class TableOrderResource extends JsonResource
             'payment_detail' => $this->paymentDetail->detail,
             'payment_detail_type' => $this->paymentDetail->detail_type->value,
             'payment_detail_name' => $this->paymentDetail->name,
+            'payment_detail_additional_info' => $this->paymentDetail->additional_info,
             'device_name' => $this->paymentDetail?->userDevice?->name,
             'trader_email' => $this->trader->email,
             'trader_name' => $this->trader->name,

@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property string $detail
  * @property DetailType $detail_type
  * @property string $initials
+ * @property string|null $additional_info
  * @property boolean $is_active
  * @property Money $daily_limit
  * @property Money $current_daily_limit
@@ -53,6 +54,7 @@ class PaymentDetail extends Model
         'detail',
         'detail_type',
         'initials',
+        'additional_info',
         'is_active',
         'daily_limit',
         'current_daily_limit',

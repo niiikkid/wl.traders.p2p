@@ -34,6 +34,7 @@ const form = ref({
     name: '',
     detail: '',
     initials: '',
+    additional_info: '',
     is_active: true,
     daily_limit: '',
     daily_successful_orders_limit: '',
@@ -52,6 +53,7 @@ const details = ref({
     'phone': '',
     'mobile_commerce': '',
     'account_number': '',
+    'iban_uah': '',
     'nspk': '',
     'e-com': '',
 });
@@ -71,6 +73,7 @@ const detail_type_names = {
     'phone': 'СБП',
     'mobile_commerce': 'Моб. коммерция',
     'account_number': 'Номер счета',
+    'iban_uah': 'IBAN UAH',
     'nspk': 'NSPK (ссылка)',
     'e-com': 'E-COM',
 };
@@ -161,6 +164,9 @@ const clampVipOrderRangeToGatewayLimits = () => {
 watch(selectedDetailType, (newType) => {
     form.value.payment_gateway_ids = [];
     form.value.detail_type = newType;
+    if (newType !== 'iban_uah') {
+        form.value.additional_info = '';
+    }
     if (newType) {
         Object.keys(details.value).forEach(key => {
             if (key !== newType) {
@@ -187,6 +193,7 @@ const resetState = () => {
         name: '',
         detail: '',
         initials: '',
+        additional_info: '',
         is_active: true,
         daily_limit: '',
         daily_successful_orders_limit: '',
@@ -204,6 +211,7 @@ const resetState = () => {
         'phone': '',
         'mobile_commerce': '',
         'account_number': '',
+        'iban_uah': '',
         'nspk': '',
         'e-com': '',
     };
@@ -247,6 +255,7 @@ const submit = () => {
     }
     payload.detail_type = selectedDetailType.value;
     payload.detail = details.value[payload.detail_type];
+    payload.additional_info = payload.additional_info || null;
 
     axios.post(route('payment-details.store'), payload, {
         headers: { 'Accept': 'application/json' }
@@ -463,6 +472,25 @@ watch(
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
+                        <div v-if="selectedDetailType === 'iban_uah'">
+                            <InputLabel
+                                for="detail"
+                                value="Номер счета IBAN"
+                                :error="!!errors.detail?.[0]"
+                            />
+                            <TextInput
+                                id="detail"
+                                v-model="details['iban_uah']"
+                                type="text"
+                                class="mt-1 block w-full"
+                                placeholder="UA543220010000026200353789635"
+                                :error="!!errors.detail?.[0]"
+                                @input="errors.detail = null"
+                                :disabled="processing"
+                            />
+                            <InputError :message="errors.detail?.[0]" class="mt-2" />
+                        </div>
+
                         <div v-if="selectedDetailType === 'nspk'">
                             <InputLabel
                                 for="detail"
@@ -540,6 +568,24 @@ watch(
                                     :disabled="processing"
                                 />
                                 <InputError :message="errors.initials?.[0]" class="mt-2" />
+                            </div>
+                            <div v-if="selectedDetailType === 'iban_uah'">
+                                <InputLabel
+                                    for="additional_info"
+                                    value="ИПН (ИНН)"
+                                    :error="!!errors.additional_info?.[0]"
+                                />
+                                <TextInput
+                                    id="additional_info"
+                                    v-model="form.additional_info"
+                                    type="text"
+                                    class="mt-1 block w-full"
+                                    placeholder="3665906843"
+                                    :error="!!errors.additional_info?.[0]"
+                                    @input="errors.additional_info = null"
+                                    :disabled="processing"
+                                />
+                                <InputError :message="errors.additional_info?.[0]" class="mt-2" />
                             </div>
                         </div>
                     </div>

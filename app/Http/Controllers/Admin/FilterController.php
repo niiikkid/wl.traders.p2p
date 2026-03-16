@@ -29,6 +29,7 @@ class FilterController extends Controller
                     DetailType::PHONE => 'СБП',
                     DetailType::MOBILE_COMMERCE => 'Моб. коммерция',
                     DetailType::ACCOUNT_NUMBER => 'Номер счета',
+                    DetailType::IBAN_UAH => 'IBAN UAH',
                     DetailType::NSPK => 'NSPK (ссылка)',
                     DetailType::E_COM => 'E-COM',
                     default => $type->value,

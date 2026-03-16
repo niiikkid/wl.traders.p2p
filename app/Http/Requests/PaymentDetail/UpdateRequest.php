@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PaymentDetail;
 
+use App\Enums\DetailType;
 use App\Models\PaymentGateway;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
@@ -27,6 +28,21 @@ class UpdateRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:3', 'max:30'],
             'initials' => ['required', 'string', 'min:3', 'max:40'],
+            'additional_info' => [
+                Rule::requiredIf($this->additionalInfoIsRequired()),
+                'nullable',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if (! $this->additionalInfoIsRequired() || $value === null || $value === '') {
+                        return;
+                    }
+
+                    if (! preg_match('/^\d{10}$/', (string) $value)) {
+                        $fail('Для IBAN UAH поле должно содержать ИПН из 10 цифр.');
+                    }
+                },
+            ],
             'is_active' => ['required', 'boolean'],
             'daily_limit' => ['required', 'numeric', 'min:0'],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
@@ -93,6 +109,7 @@ class UpdateRequest extends FormRequest
     {
         return [
             'initials' => __('инициалы'),
+            'additional_info' => __('дополнительная информация'),
             'is_active' => __('активность'),
             'daily_limit' => __('дневной лимит'),
             'daily_successful_orders_limit' => __('дневной лимит по количеству сделок'),
@@ -115,11 +132,15 @@ class UpdateRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
+        $additionalInfo = $this->additional_info;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
 
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
             $dailySuccessfulOrdersLimit = null;
+        }
+        if ($additionalInfo === '' || $additionalInfo === null) {
+            $additionalInfo = null;
         }
         if ($minOrderAmount === '' || $minOrderAmount === null) {
             $minOrderAmount = null;
@@ -130,9 +151,17 @@ class UpdateRequest extends FormRequest
 
         $this->merge([
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
+            'additional_info' => $additionalInfo,
             'min_order_amount' => $minOrderAmount,
             'max_order_amount' => $maxOrderAmount,
         ]);
+    }
+
+    private function additionalInfoIsRequired(): bool
+    {
+        $paymentDetail = $this->route('paymentDetail');
+
+        return $paymentDetail?->detail_type?->equals(DetailType::IBAN_UAH) ?? false;
     }
 
     private function resolveGatewayBounds(): ?array

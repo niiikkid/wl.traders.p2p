@@ -48,6 +48,7 @@ const isVipUser = computed(() => {
 const form = ref({
     name: '',
     initials: '',
+    additional_info: '',
     is_active: false,
     daily_limit: '',
     daily_successful_orders_limit: '',
@@ -138,6 +139,7 @@ const resetState = () => {
     form.value = {
         name: '',
         initials: '',
+        additional_info: '',
         is_active: false,
         daily_limit: '',
         daily_successful_orders_limit: '',
@@ -186,6 +188,7 @@ const loadPaymentDetail = (id) => {
         form.value = {
             name: detail.name,
             initials: detail.initials,
+            additional_info: detail.additional_info ?? '',
             is_active: !!detail.is_active,
             daily_limit: detail.daily_limit,
             daily_successful_orders_limit: detail.daily_successful_orders_limit,
@@ -238,6 +241,7 @@ const submit = () => {
     if (!payload.user_device_id) {
         payload.user_device_id = null;
     }
+    payload.additional_info = payload.additional_info || null;
 
     axios.patch(route('payment-details.update', payment_detail.value.id), payload, {
         headers: { 'Accept': 'application/json' }
@@ -367,6 +371,14 @@ watch(
                             :errors="errors"
                             field="initials"
                             label="Инициалы (имя получателя)"
+                        />
+                        <TextInputBlock
+                            v-if="payment_detail?.detail_type === 'iban_uah'"
+                            v-model="form.additional_info"
+                            :form="{}"
+                            :errors="errors"
+                            field="additional_info"
+                            label="ИПН (ИНН)"
                         />
                     </div>
                 </div>

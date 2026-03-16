@@ -281,6 +281,7 @@ class PaymentDetailController extends Controller
         $payload = [
             'name' => $detail->name,
             'initials' => $detail->initials,
+            'additional_info' => $detail->additional_info,
             'is_active' => (bool) $detail->is_active,
             'daily_limit' => (int) $detail->daily_limit->toPrecision(),
             'daily_successful_orders_limit' => $detail->daily_successful_orders_limit,
