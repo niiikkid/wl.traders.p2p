@@ -95,7 +95,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <DisplayUUID :uuid="order.uuid"/>
                                 </th>
                                 <td class="text-nowrap">
-                                    {{ order.merchant_email || '-' }}
+                                    {{ order.merchant_name || '-' }}
                                 </td>
                                 <td>
                                     <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>

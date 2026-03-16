@@ -159,8 +159,7 @@ class OrderQueriesEloquent implements OrderQueries
                 'paymentDetail:id,detail,detail_type,name,additional_info,user_device_id,user_id',
                 'paymentDetail.userDevice:id,name',
                 'paymentDetail.user:id,name,email',
-                'merchant:id,user_id',
-                'merchant.user:id,email',
+                'merchant:id,name',
                 'dispute' => function ($query) {
                     $query->where('status', DisputeStatus::PENDING->value)
                         ->select(['id', 'order_id', 'status', 'reason', 'receipt', 'created_at']);
