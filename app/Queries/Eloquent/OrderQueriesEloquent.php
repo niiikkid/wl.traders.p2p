@@ -159,7 +159,6 @@ class OrderQueriesEloquent implements OrderQueries
                 'paymentDetail:id,detail,detail_type,name,additional_info,user_device_id,user_id',
                 'paymentDetail.userDevice:id,name',
                 'paymentDetail.user:id,name,email',
-                'merchant:id,name',
                 'dispute' => function ($query) {
                     $query->where('status', DisputeStatus::PENDING->value)
                         ->select(['id', 'order_id', 'status', 'reason', 'receipt', 'created_at']);
@@ -199,7 +198,7 @@ class OrderQueriesEloquent implements OrderQueries
                         ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
                 });
             })
-            ->select(['id', 'uuid', 'amount', 'currency', 'total_profit', 'status', 'created_at', 'payment_gateway_id', 'payment_detail_id', 'trader_id', 'merchant_id'])
+            ->select(['id', 'uuid', 'amount', 'currency', 'total_profit', 'status', 'created_at', 'payment_gateway_id', 'payment_detail_id', 'trader_id'])
             ->withExists('dispute')
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);

@@ -19,12 +19,6 @@ class TableOrderResource extends JsonResource
         /**
          * @var Order $this
          */
-        $merchantName = null;
-
-        if ($this->relationLoaded('merchant') && $this->merchant) {
-            $merchantName = $this->merchant->name;
-        }
-
         return [
             'id' => $this->id,
             'uuid' => $this->uuid,
@@ -79,7 +73,6 @@ class TableOrderResource extends JsonResource
             'device_name' => $this->paymentDetail?->userDevice?->name,
             'trader_email' => $this->trader->email,
             'trader_name' => $this->trader->name,
-            'merchant_name' => $merchantName,
             'created_at' => $this->created_at->toISOString(),
         ];
     }
