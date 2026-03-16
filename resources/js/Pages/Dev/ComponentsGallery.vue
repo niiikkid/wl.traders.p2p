@@ -303,6 +303,7 @@ const demoPopoverText = ref('Это всплывающее описание с �
                                     <PaymentDetail type="card" :detail="'1234567812345678'" :short="true" />
                                     <PaymentDetail type="phone" :detail="'+79991234567'" :short="true" />
                                     <PaymentDetail type="account_number" :detail="'40817810099910004312'" :short="true" />
+                                    <PaymentDetail type="iban_uah" :detail="'UA543220010000026200353789635'" :short="true" />
                                 </div>
 
                                 <div class="flex items-center gap-3">
