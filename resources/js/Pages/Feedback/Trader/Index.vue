@@ -1,6 +1,6 @@
 <script setup>
 import {Head, router, useForm} from '@inertiajs/vue3';
-import {computed} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import InputError from '@/Components/InputError.vue';
@@ -28,6 +28,11 @@ const props = defineProps({
         type: Number,
         required: true,
     },
+    feedbackCooldownEndsAt: {
+        type: String,
+        required: false,
+        default: null,
+    },
 });
 
 const maxContentLength = 1000;
@@ -41,6 +46,42 @@ const feedList = computed(() => props.feed?.data ?? []);
 const myList = computed(() => props.myFeedbacks?.data ?? []);
 const hasAnyVisible = computed(() => feedList.value.length > 0 || myList.value.length > 0);
 const feedbackIndexRouteName = computed(() => (props.canModerate ? 'admin.feedback.index' : 'trader.feedback.index'));
+const nowTimestamp = ref(Date.now());
+
+const cooldownEndTimestamp = computed(() => {
+    if (!props.feedbackCooldownEndsAt) {
+        return null;
+    }
+
+    const parsedTimestamp = Date.parse(props.feedbackCooldownEndsAt);
+    return Number.isNaN(parsedTimestamp) ? null : parsedTimestamp;
+});
+
+const cooldownRemainingSeconds = computed(() => {
+    if (!cooldownEndTimestamp.value) {
+        return 0;
+    }
+
+    return Math.max(0, Math.ceil((cooldownEndTimestamp.value - nowTimestamp.value) / 1000));
+});
+
+const cooldownActive = computed(() => cooldownRemainingSeconds.value > 0);
+const cooldownMinutes = computed(() => Math.floor(cooldownRemainingSeconds.value / 60));
+const cooldownSeconds = computed(() => cooldownRemainingSeconds.value % 60);
+
+let cooldownIntervalId = null;
+
+onMounted(() => {
+    cooldownIntervalId = window.setInterval(() => {
+        nowTimestamp.value = Date.now();
+    }, 1000);
+});
+
+onBeforeUnmount(() => {
+    if (cooldownIntervalId !== null) {
+        window.clearInterval(cooldownIntervalId);
+    }
+});
 
 const submit = () => {
     form.post(route('trader.feedback.store'), {
@@ -164,10 +205,39 @@ defineOptions({layout: AuthenticatedLayout});
                                     <button
                                         type="submit"
                                         class="btn btn-primary btn-sm"
-                                        :disabled="form.processing || !form.content.trim().length"
+                                        :disabled="form.processing || cooldownActive || !form.content.trim().length"
                                     >
                                         Отправить
                                     </button>
+                                </div>
+                                <div v-if="cooldownActive" class="alert alert-warning py-2">
+                                    <span class="text-xs sm:text-sm">
+                                        Следующее сообщение можно отправить через
+                                        <span class="ml-1 inline-flex items-center gap-1 font-mono">
+                                            <span class="countdown">
+                                                <span
+                                                    :style="{'--value': cooldownMinutes}"
+                                                    :aria-label="String(cooldownMinutes)"
+                                                    aria-live="polite"
+                                                >
+                                                    {{ cooldownMinutes }}
+                                                </span>
+                                            </span>
+                                            :
+                                            <span class="countdown">
+                                                <span
+                                                    :style="{'--value': cooldownSeconds}"
+                                                    :aria-label="String(cooldownSeconds)"
+                                                    aria-live="polite"
+                                                >
+                                                    {{ cooldownSeconds }}
+                                                </span>
+                                            </span>
+                                        </span>
+                                        <span class="sr-only">
+                                            {{ cooldownMinutes }} минут {{ cooldownSeconds }} секунд
+                                        </span>
+                                    </span>
                                 </div>
                                 <InputError :message="form.errors.content" />
                             </form>

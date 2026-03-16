@@ -19,6 +19,7 @@ class FeedbackController extends Controller
         $user = $request->user();
         $canModerate = $request->routeIs('admin.*');
         $showHidden = $canModerate ? $request->boolean('show_hidden', false) : false;
+        $feedbackCooldownEndsAt = null;
 
         $feedPage = max((int) $request->integer('feed_page', 1), 1);
         $myPage = max((int) $request->integer('my_page', 1), 1);
@@ -61,10 +62,26 @@ class FeedbackController extends Controller
                 'feed_page' => $feedPage,
             ]);
 
+        if (! $canModerate) {
+            $latestFeedback = Feedback::query()
+                ->where('user_id', $user->id)
+                ->latest('created_at')
+                ->first(['created_at']);
+
+            if ($latestFeedback !== null && $latestFeedback->created_at !== null) {
+                $cooldownEndsAt = $latestFeedback->created_at->copy()->addSeconds(StoreRequest::COOLDOWN_SECONDS);
+
+                if ($cooldownEndsAt->isFuture()) {
+                    $feedbackCooldownEndsAt = $cooldownEndsAt->toISOString();
+                }
+            }
+        }
+
         return Inertia::render('Feedback/Trader/Index', [
             'canModerate' => $canModerate,
             'showHidden' => $showHidden,
             'hiddenCount' => $canModerate ? $user->hiddenFeedbacks()->count() : 0,
+            'feedbackCooldownEndsAt' => $feedbackCooldownEndsAt,
             'feed' => FeedbackResource::collection($feed),
             'myFeedbacks' => FeedbackResource::collection($myFeedbacks),
         ]);
