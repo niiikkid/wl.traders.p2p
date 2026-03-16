@@ -82,6 +82,7 @@ defineOptions({layout: AuthenticatedLayout});
                         <thead class="text-xs uppercase bg-base-300">
                             <tr>
                                 <th>UUID</th>
+                                <th>Мерчант</th>
                                 <th>Сумма</th>
                                 <th>Реквизит</th>
                                 <th>Статус</th>
@@ -93,6 +94,9 @@ defineOptions({layout: AuthenticatedLayout});
                                 <th class="font-medium whitespace-nowrap">
                                     <DisplayUUID :uuid="order.uuid"/>
                                 </th>
+                                <td class="text-nowrap">
+                                    {{ order.merchant_email || '-' }}
+                                </td>
                                 <td>
                                     <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
                                     <div class="text-nowrap text-xs opacity-70">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
