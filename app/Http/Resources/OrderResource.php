@@ -18,6 +18,12 @@ class OrderResource extends JsonResource
     public function toArray(Request $request): array
     {
         $shotUUID = mb_substr($this->uuid, 0, 8);
+        $authUser = auth()->user();
+        $isSupportViewMode = $request->input('view_mode') === 'support';
+        $canSeeAmountUpdates = auth()->check() && (
+            ($isSupportViewMode && (bool) $authUser?->support_can_edit_order_amount)
+            || (! $isSupportViewMode && $authUser?->hasRole('Super Admin'))
+        );
         /**
          * @var Order $this
          */
@@ -48,7 +54,7 @@ class OrderResource extends JsonResource
             'status_name' => $this->status_name,
             'callback_url' => $this->callback_url,
             'is_h2h' => $this->is_h2h,
-            $this->mergeWhen(auth()->check() && auth()->user()->hasRole('Super Admin'), function () {
+            $this->mergeWhen($canSeeAmountUpdates, function () {
                 return [
                     'amount_updates_history' => $this->amount_updates_history ? array_reverse($this->amount_updates_history) : null,
                     'total_fee' => $this->total_fee?->toBeauty(),

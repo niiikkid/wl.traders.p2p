@@ -45,14 +45,18 @@ const form = ref({
     team_leader_flexible_trader_commission_enabled: false,
     team_leader_flexible_trader_commission_min: null,
     team_leader_flexible_trader_commission_max: null,
+    support_can_view_deposits: false,
+    support_can_edit_order_amount: false,
     team_leader_id: [],
 });
 
 const isAdmin = (roleId) => roleId === 1;
 const isTrader = (roleId) => roleId === 2;
 const isMerchant = (roleId) => roleId === 3;
+const isSupport = (roleId) => roleId === 4;
 const isTeamLeader = (roleId) => roleId === 5;
 const hasPayoutsToggle = (roleId) => isTrader(roleId) || isMerchant(roleId) || isAdmin(roleId);
+const canManageSupportFeatures = (roleId) => isSupport(roleId) || isAdmin(roleId);
 
 const close = () => {
     modalStore.closeModal('userEdit');
@@ -82,6 +86,8 @@ const resetState = () => {
         team_leader_flexible_trader_commission_enabled: false,
         team_leader_flexible_trader_commission_min: null,
         team_leader_flexible_trader_commission_max: null,
+        support_can_view_deposits: false,
+        support_can_edit_order_amount: false,
         team_leader_id: [],
     };
 };
@@ -128,6 +134,8 @@ const loadUser = () => {
             form.value.team_leader_flexible_trader_commission_enabled = !!data.team_leader_flexible_trader_commission_enabled;
             form.value.team_leader_flexible_trader_commission_min = data.team_leader_flexible_trader_commission_min;
             form.value.team_leader_flexible_trader_commission_max = data.team_leader_flexible_trader_commission_max;
+            form.value.support_can_view_deposits = !!data.support_can_view_deposits;
+            form.value.support_can_edit_order_amount = !!data.support_can_edit_order_amount;
             form.value.team_leader_id = data.team_leader_id ? [data.team_leader_id] : [];
         });
 };
@@ -707,6 +715,36 @@ watch(
                             <InputError class="mt-1" :message="errors.payout_team_leader_split_from_service_percent?.[0]" />
                         </div>
                     </div>
+                </div>
+
+                <div v-if="canManageSupportFeatures(form.role_id)" class="space-y-3">
+                    <h4 class="text-base font-semibold">Доступы саппорта</h4>
+
+                    <div class="form-control w-fit">
+                        <label class="label cursor-pointer gap-3">
+                            <input
+                                type="checkbox"
+                                class="toggle toggle-primary"
+                                v-model="form.support_can_view_deposits"
+                                :disabled="processing"
+                            >
+                            <span class="label-text">Просмотр депозитов</span>
+                        </label>
+                    </div>
+                    <InputError class="mt-1" :message="errors.support_can_view_deposits?.[0]" />
+
+                    <div class="form-control w-fit">
+                        <label class="label cursor-pointer gap-3">
+                            <input
+                                type="checkbox"
+                                class="toggle toggle-primary"
+                                v-model="form.support_can_edit_order_amount"
+                                :disabled="processing"
+                            >
+                            <span class="label-text">Изменение суммы сделки</span>
+                        </label>
+                    </div>
+                    <InputError class="mt-1" :message="errors.support_can_edit_order_amount?.[0]" />
                 </div>
 
                 <div v-if="(isTrader(form.role_id) || isAdmin(form.role_id)) && user && !user.team_leader_id">

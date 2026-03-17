@@ -8,7 +8,7 @@ import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
 import {useModalStore} from "@/store/modal.js";
 import {storeToRefs} from "pinia";
 import {useViewStore} from "@/store/view.js";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import DateTime from "@/Components/DateTime.vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import DUUID from "@/Components/DUUID.vue";
@@ -101,6 +101,17 @@ const confirmCreateDispute = (order) => {
 
 const order = ref(null);
 const callbackCopied = ref(false);
+const canEditOrderAmountInCurrentView = computed(() => {
+    if (viewStore.isAdminViewMode) {
+        return true;
+    }
+
+    if (viewStore.isSupportViewMode) {
+        return !!user?.support_can_edit_order_amount;
+    }
+
+    return false;
+});
 
 const displayValue = (value) => {
     if (value === null || value === undefined || value === '') {
@@ -132,7 +143,11 @@ const show = () => {
         callbackCopied.value = false;
     }
 
-    axios.get(route('orders.show', order_id))
+    axios.get(route('orders.show', order_id), {
+        params: {
+            view_mode: viewStore.isSupportViewMode ? 'support' : 'default',
+        },
+    })
         .then(response => {
             if (response.data.success) {
                 order.value = response.data.data.order;
@@ -207,9 +222,9 @@ const copyCallbackUrl = async (callback_url) => {
                                 </div>
                                 <div class="space-y-4">
                                     <div class="space-y-2 text-sm">
-                                        <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
+                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Мерчант</dt>
-                                            <dd class="font-medium text-base-content"><span class="truncate">{{ order.merchant.name }}</span> (id:{{ order.merchant.id }})</dd>
+                                            <dd class="font-medium text-base-content"><span class="truncate">{{ order.merchant?.name ?? '—' }}</span> (id:{{ order.merchant?.id ?? '—' }})</dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">UUID</dt>
@@ -226,7 +241,7 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dd class="font-medium text-base-content">
                                                 <div class="flex gap-2">
                                                     <a
-                                                        v-if="order.canEditAmount"
+                                                        v-if="order.canEditAmount && canEditOrderAmountInCurrentView"
                                                         href="#"
                                                         class="px-0 py-0 text-info inline-flex items-center hover:underline"
                                                         @click.prevent="modalStore.openEditOrderAmountModal({order: order})"

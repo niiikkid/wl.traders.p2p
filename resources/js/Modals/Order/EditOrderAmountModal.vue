@@ -12,9 +12,11 @@ import {router, useForm} from "@inertiajs/vue3";
 import InputHelper from "@/Components/InputHelper.vue";
 import NumberInput from "@/Components/NumberInput.vue";
 import { watch } from "vue";
+import {useViewStore} from "@/store/view.js";
 
 const modalStore = useModalStore();
 const { editOrderAmountModal } = storeToRefs(modalStore);
+const viewStore = useViewStore();
 
 const close = () => {
     modalStore.closeModal('editOrderAmount')
@@ -32,8 +34,12 @@ watch(() => editOrderAmountModal.value.showed, (showed) => {
 });
 
 const submit = () => {
+    const routeName = viewStore.isSupportViewMode
+        ? 'support.orders.update.amount'
+        : 'orders.update.amount';
+
     form
-        .patch(route('orders.update.amount', editOrderAmountModal.value.params.order.id), {
+        .patch(route(routeName, editOrderAmountModal.value.params.order.id), {
             preserveScroll: true,
             onSuccess: () => {
                 modalStore.closeAll();

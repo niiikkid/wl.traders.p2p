@@ -27,6 +27,8 @@ readonly class UserUpdateDTO extends BaseDTO
         public bool $team_leader_flexible_trader_commission_enabled = false,
         public ?float $team_leader_flexible_trader_commission_min = null,
         public ?float $team_leader_flexible_trader_commission_max = null,
+        public bool $support_can_view_deposits = false,
+        public bool $support_can_edit_order_amount = false,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -64,6 +66,8 @@ readonly class UserUpdateDTO extends BaseDTO
             team_leader_flexible_trader_commission_max: isset($data['team_leader_flexible_trader_commission_max'])
                 ? (float) $data['team_leader_flexible_trader_commission_max']
                 : null,
+            support_can_view_deposits: (bool) ($data['support_can_view_deposits'] ?? false),
+            support_can_edit_order_amount: (bool) ($data['support_can_edit_order_amount'] ?? false),
         );
     }
 }

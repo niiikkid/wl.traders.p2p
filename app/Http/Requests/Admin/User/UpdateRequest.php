@@ -49,6 +49,8 @@ class UpdateRequest extends FormRequest
             'team_leader_flexible_trader_commission_enabled' => ['required', 'boolean'],
             'team_leader_flexible_trader_commission_min' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'team_leader_flexible_trader_commission_max' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'support_can_view_deposits' => ['required', 'boolean'],
+            'support_can_edit_order_amount' => ['required', 'boolean'],
         ];
     }
 
@@ -118,6 +120,8 @@ class UpdateRequest extends FormRequest
             'team_leader_flexible_trader_commission_enabled' => __('гибкая комиссия тимлида по трейдерам'),
             'team_leader_flexible_trader_commission_min' => __('минимальная комиссия тимлида'),
             'team_leader_flexible_trader_commission_max' => __('максимальная комиссия тимлида'),
+            'support_can_view_deposits' => __('доступ саппорта к депозитам'),
+            'support_can_edit_order_amount' => __('доступ саппорта к изменению суммы сделки'),
         ];
     }
 }

@@ -8,7 +8,9 @@ use App\Enums\OrderSubStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TableOrderResource;
 use App\Models\Order;
+use App\Services\Money\Money;
 use App\Utils\Transaction;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
@@ -54,4 +56,22 @@ class OrderController extends Controller
             services()->order()->finishOrderAsSuccessful($order->id, OrderSubStatus::ACCEPTED);
         });
     }
-} 
+
+    public function updateAmount(Request $request, Order $order)
+    {
+        abort_unless((bool) $request->user()?->support_can_edit_order_amount, 403);
+
+        Gate::authorize('access-to-order', $order);
+
+        $request->validate([
+            'amount' => ['required', 'integer', 'min:1'],
+        ]);
+
+        services()->order()->updateAmount(
+            orderID: $order->id,
+            amount: Money::fromPrecision($request->input('amount'), $order->currency),
+        );
+
+        return redirect()->back()->with('message', 'Сумма сделки обновлена.');
+    }
+}

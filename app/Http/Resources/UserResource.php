@@ -42,6 +42,8 @@ class UserResource extends JsonResource
             'team_leader_flexible_trader_commission_max' => $this->team_leader_flexible_trader_commission_max !== null
                 ? (float) $this->team_leader_flexible_trader_commission_max
                 : null,
+            'support_can_view_deposits' => (bool) $this->support_can_view_deposits,
+            'support_can_edit_order_amount' => (bool) $this->support_can_edit_order_amount,
             'team_leader_individual_commission_percentage' => $this->team_leader_individual_commission_percentage !== null
                 ? (float) $this->team_leader_individual_commission_percentage
                 : null,

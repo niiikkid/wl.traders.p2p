@@ -67,6 +67,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property bool $team_leader_flexible_trader_commission_enabled
  * @property float|null $team_leader_flexible_trader_commission_min
  * @property float|null $team_leader_flexible_trader_commission_max
+ * @property bool $support_can_view_deposits
+ * @property bool $support_can_edit_order_amount
  * @property float|null $team_leader_individual_commission_percentage
  * @property User|null $teamLeader
  * @property Carbon $banned_at
@@ -116,6 +118,8 @@ class User extends Authenticatable
         'team_leader_flexible_trader_commission_enabled',
         'team_leader_flexible_trader_commission_min',
         'team_leader_flexible_trader_commission_max',
+        'support_can_view_deposits',
+        'support_can_edit_order_amount',
         'team_leader_individual_commission_percentage',
         'banned_at',
         'merchant_id',
@@ -161,6 +165,8 @@ class User extends Authenticatable
             'team_leader_flexible_trader_commission_enabled' => 'boolean',
             'team_leader_flexible_trader_commission_min' => 'float',
             'team_leader_flexible_trader_commission_max' => 'float',
+            'support_can_view_deposits' => 'boolean',
+            'support_can_edit_order_amount' => 'boolean',
             'team_leader_individual_commission_percentage' => 'float',
         ];
     }

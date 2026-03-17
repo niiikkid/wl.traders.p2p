@@ -1,11 +1,12 @@
 <script setup>
 import {router, usePage} from "@inertiajs/vue3";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import ViewModeSwitcher from "@/Layouts/Partials/ViewModeSwitcher.vue";
 import {useUserStore} from "@/store/user.js";
 
 const menu = ref(usePage().props.menu);
 const userStore = useUserStore();
+const canViewDeposits = computed(() => !!usePage().props.auth?.user?.support_can_view_deposits);
 
 router.on('success', (event) => {
     menu.value = usePage().props.menu;
@@ -45,6 +46,19 @@ router.on('success', (event) => {
                 <span v-if="menu.pendingOrdersCount" class="badge badge-info badge-sm justify-self-end">
                     {{ menu.pendingOrdersCount }}
                 </span>
+            </span>
+        </li>
+        <li v-if="canViewDeposits" :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.deposits.*') }]">
+            <span
+                @click="router.visit(route('support.deposits.index'), { preserveScroll: true })"
+                @keydown.enter.space="router.visit(route('support.deposits.index'), { preserveScroll: true })"
+                role="link"
+                tabindex="0"
+            >
+                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 15v2a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-2m-8 1V4m0 12-4-4m4 4 4-4"/>
+                </svg>
+                Депозиты средств
             </span>
         </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.disputes.*') }]">

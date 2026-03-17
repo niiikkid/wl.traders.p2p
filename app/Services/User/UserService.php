@@ -70,6 +70,7 @@ class UserService implements UserServiceContract
             $flexibleTraderCommissionEnabled = in_array($roleName, ['Team Leader', 'Super Admin'], true)
                 ? ($extendedAccessEnabled && $data->team_leader_flexible_trader_commission_enabled)
                 : false;
+            $supportFeatureAllowed = in_array($roleName, ['Support', 'Super Admin'], true);
 
             $updateData = [
                 'email' => strtolower($data->login),
@@ -96,6 +97,12 @@ class UserService implements UserServiceContract
                 'team_leader_flexible_trader_commission_max' => $flexibleTraderCommissionEnabled
                     ? $data->team_leader_flexible_trader_commission_max
                     : null,
+                'support_can_view_deposits' => $supportFeatureAllowed
+                    ? $data->support_can_view_deposits
+                    : false,
+                'support_can_edit_order_amount' => $supportFeatureAllowed
+                    ? $data->support_can_edit_order_amount
+                    : false,
             ];
 
             if ($teamLeaderId) {

@@ -170,6 +170,8 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/users/{user}/toggle-traffic', [\App\Http\Controllers\Support\UserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
         Route::get('/orders', [\App\Http\Controllers\Support\OrderController::class, 'index'])->name('orders.index');
         Route::patch('/orders/{order}/accept', [\App\Http\Controllers\Support\OrderController::class, 'acceptOrder'])->name('orders.accept');
+        Route::patch('/orders/{order}/amount', [\App\Http\Controllers\Support\OrderController::class, 'updateAmount'])->name('orders.update.amount');
+        Route::get('/deposits', [\App\Http\Controllers\Support\DepositController::class, 'index'])->name('deposits.index');
         Route::get('/disputes', [\App\Http\Controllers\Support\DisputeController::class, 'index'])->name('disputes.index');
         Route::post('/disputes/{order}', [\App\Http\Controllers\Support\DisputeController::class, 'store'])->name('disputes.store');
         Route::patch('/disputes/{dispute}/accept', [\App\Http\Controllers\Support\DisputeController::class, 'accept'])->name('disputes.accept');
