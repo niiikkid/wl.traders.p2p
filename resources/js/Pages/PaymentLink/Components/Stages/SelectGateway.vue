@@ -16,10 +16,16 @@ const emit = defineEmits(['selected']);
 const formGatewaySelect = useForm({});
 
 const submitGatewaySelect = () => {
-    formGatewaySelect.post(route('payment.payment-detail.store', {
-        'order': props.data.uuid,
-        'paymentGateway': selectedGateway.value,
-    }), {
+    const defaultUrl = route('payment.payment-detail.store', {
+        order: props.data.uuid,
+        paymentGateway: selectedGateway.value,
+    });
+    const template = props.data.store_payment_detail_url_template;
+    const endpoint = template
+        ? template.replace('__GATEWAY__', String(selectedGateway.value))
+        : defaultUrl;
+
+    formGatewaySelect.post(endpoint, {
         onSuccess: result => {
             selected();
         },

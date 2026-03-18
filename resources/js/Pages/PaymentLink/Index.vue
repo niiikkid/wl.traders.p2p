@@ -13,6 +13,7 @@ import Payment from "@/Pages/PaymentLink/Components/Stages/Payment.vue";
 import SuccessOrFail from "@/Pages/PaymentLink/Components/Stages/SuccessOrFail.vue";
 import DisputeReview from "@/Pages/PaymentLink/Components/Stages/DisputeReview.vue";
 import DisputeCanceled from "@/Pages/PaymentLink/Components/Stages/DisputeCanceled.vue";
+import DemoSwitcher from "@/Pages/PaymentLink/Components/DemoSwitcher.vue";
 
 defineProps({
     canResetPassword: {
@@ -26,6 +27,7 @@ defineProps({
 const stage = ref('payment');
 const clockRef = ref(null);
 const data = ref({});
+const demo = ref(null);
 
 const initializeClock = () => {
     nextTick(() => {
@@ -58,7 +60,12 @@ const setData = () => {
         manually: usePage().props.data.manually,
         gateway_selected: usePage().props.data.gateway_selected,
         available_gateways: usePage().props.data.available_gateways,
+        is_demo: usePage().props.data.is_demo ?? false,
+        store_dispute_url: usePage().props.data.store_dispute_url ?? null,
+        store_payment_detail_url_template: usePage().props.data.store_payment_detail_url_template ?? null,
     }
+
+    demo.value = usePage().props.demo ?? null;
 }
 
 const checkPaid = () => {
@@ -93,9 +100,11 @@ router.on('success', (event) => {
 })
 
 onMounted(() => {
-    setTimeout(() => {
-        checkPaid();
-    }, 5000)
+    if (!data.value.is_demo) {
+        setTimeout(() => {
+            checkPaid();
+        }, 5000)
+    }
 
     if (data.value.gateway_selected) {
         initializeClock();
@@ -110,12 +119,23 @@ defineOptions({ layout: PaymentLayout });
         <Head title="Платеж" />
 
         <div
-            class="w-full m-8"
+            class="w-full m-8 flex justify-center"
+        >
+        <div
+            class="w-full"
             :class="stage === 'select_gateway' ? 'sm:max-w-lg' : 'sm:max-w-md'"
         >
             <div class="flex justify-between items-center px-2 sm:px-0 mb-2">
                 <MerchantName :name="data.name"/>
                 <SupportButton :support_link="data.support_link"/>
+            </div>
+
+            <div v-if="data.is_demo && demo" class="sm:mx-0 mx-2 mb-4 lg:hidden">
+                <DemoSwitcher :demo="demo" />
+            </div>
+
+            <div v-if="data.is_demo && demo" class="hidden lg:block fixed top-6 right-6 w-[22rem] z-30">
+                <DemoSwitcher :demo="demo" />
             </div>
 
             <PaymentHeader :stage="stage" :data="data">
@@ -161,6 +181,7 @@ defineOptions({ layout: PaymentLayout });
                 <ThemeToggle/>
             </div>
 <!--            <StageSwitcher :stage="stage" @setStage="stage = $event"/>-->
+        </div>
         </div>
     </div>
 </template>

@@ -27,7 +27,11 @@ const openFail = () => {
 };
 
 const submitReceipt = () => {
-    formReceipt.post(route('payment.dispute.store', props.data.uuid))
+    const endpoint = props.data.store_dispute_url
+        ? props.data.store_dispute_url
+        : route('payment.dispute.store', props.data.uuid);
+
+    formReceipt.post(endpoint)
 }
 </script>
 

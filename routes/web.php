@@ -8,6 +8,15 @@ use App\Http\Controllers\TelegramSettingsController;
 use App\Http\Controllers\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/payment/demo', [\App\Http\Controllers\PaymentDemoController::class, 'show'])
+    ->middleware('payment.domain')
+    ->name('payment.demo.show');
+Route::post('/payment/demo/dispute', [\App\Http\Controllers\PaymentDemoController::class, 'storeDispute'])
+    ->middleware('payment.domain')
+    ->name('payment.demo.dispute.store');
+Route::post('/payment/demo/payment-detail/{paymentGateway}', [\App\Http\Controllers\PaymentDemoController::class, 'storePaymentDetail'])
+    ->middleware('payment.domain')
+    ->name('payment.demo.payment-detail.store');
 Route::get('/payment/{order:uuid}', [\App\Http\Controllers\PaymentLinkController::class, 'show'])
     ->middleware('payment.domain')
     ->name('payment.show');
