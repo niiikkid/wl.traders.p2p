@@ -3,6 +3,7 @@
 namespace App\Http\Resources\API\Merchant;
 
 use App\Models\Order;
+use App\Support\PaymentLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,7 +36,7 @@ class OrderResource extends JsonResource
             'finished_at' => $this->finished_at?->getTimestamp(),
             'expires_at' => $this->expires_at?->getTimestamp(),
             'created_at' => $this->created_at->getTimestamp(),
-            'payment_link' => route('payment.show', $this->uuid),
+            'payment_link' => PaymentLink::order($this->uuid),
         ];
     }
 }

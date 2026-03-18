@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\Money\Currency;
+use App\Support\PaymentLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -123,7 +124,7 @@ class OrderResource extends JsonResource
             'expires_at' => $this->expires_at?->toISOString(),
             'finished_at' => $this->finished_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
-            'payment_link' => route('payment.show', $this->uuid),
+            'payment_link' => PaymentLink::order($this->uuid),
             'canEditAmount' => $this->status->equals(OrderStatus::PENDING) && $this->dispute_exists && $this->trader_paid_for_order,
         ];
     }

@@ -8,12 +8,18 @@ use App\Http\Controllers\TelegramSettingsController;
 use App\Http\Controllers\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/payment/{order:uuid}', [\App\Http\Controllers\PaymentLinkController::class, 'show'])->name('payment.show');
-Route::post('/payment/{order:uuid}/dispute', [\App\Http\Controllers\PaymentLinkController::class, 'storeDispute'])->name('payment.dispute.store');
-Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [\App\Http\Controllers\PaymentLinkController::class, 'storePaymentDetail'])->name('payment.payment-detail.store');
+Route::get('/payment/{order:uuid}', [\App\Http\Controllers\PaymentLinkController::class, 'show'])
+    ->middleware('payment.domain')
+    ->name('payment.show');
+Route::post('/payment/{order:uuid}/dispute', [\App\Http\Controllers\PaymentLinkController::class, 'storeDispute'])
+    ->middleware('payment.domain')
+    ->name('payment.dispute.store');
+Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [\App\Http\Controllers\PaymentLinkController::class, 'storePaymentDetail'])
+    ->middleware('payment.domain')
+    ->name('payment.payment-detail.store');
 
 Route::post('/telegram/webhook', TelegramWebhookController::class)
-    ->middleware('telegram.secret')
+    ->middleware(['telegram.secret', 'backoffice.domain'])
     ->name('telegram.webhook');
 
 // Выход из режима Impersonate
@@ -23,9 +29,9 @@ Route::post('/impersonate/leave', function () {
         return redirect()->route('admin.users.index');
     }
     return redirect()->back()->with('error', 'Вы не в режиме Impersonate');
-})->middleware('auth', 'banned')->name('impersonate.leave');
+})->middleware('auth', 'banned', 'backoffice.domain')->name('impersonate.leave');
 
-Route::group(['middleware' => ['2fa']], function () {
+Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     Route::group(['middleware' => ['auth', 'banned']], function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -359,7 +365,7 @@ Route::group(['middleware' => ['2fa']], function () {
 });
 
 
-Route::get('/phpinfo', fn () => phpinfo());
+Route::get('/phpinfo', fn () => phpinfo())->middleware('backoffice.domain');
 
 require __DIR__.'/auth.php';
 
