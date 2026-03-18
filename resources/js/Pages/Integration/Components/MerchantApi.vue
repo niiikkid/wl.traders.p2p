@@ -79,6 +79,25 @@ const clearMerchantResponse = (key) => {
     <div class="space-y-6">
         <div class="card bg-base-100 shadow">
             <div class="card-body">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="badge badge-primary badge-outline">DEMO</div>
+                        <div class="text-base font-medium text-base-content">Демонстрационная платежная форма</div>
+                    </div>
+                    <a
+                        :href="route('payment.demo.show')"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="btn btn-primary btn-sm"
+                    >
+                        Открыть демо
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-y-6 xl:gap-x-6">
                     <div class="space-y-4 col-span-1">
                         <h3 class="card-title mb-4">Создать сделку</h3>
