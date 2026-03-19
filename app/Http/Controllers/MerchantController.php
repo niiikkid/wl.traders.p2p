@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\DetailType;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Http\Requests\Merchant\StoreRequest;
-use App\Http\Requests\Merchant\UpdateGatewaySettingsRequest;
+use App\Http\Requests\Merchant\UpdateCommissionSettingsRequest;
 use App\Http\Resources\CategoryResource;
 use App\Http\Resources\MerchantResource;
-use App\Http\Resources\OrderResource;
 use App\Http\Resources\PaymentGatewayResource;
 use App\Models\Category;
 use App\Models\Merchant;
@@ -81,48 +81,6 @@ class MerchantController extends Controller
         return back();
     }
 
-    public function updateGatewaySettings(UpdateGatewaySettingsRequest $request, Merchant $merchant)
-    {
-        Gate::authorize('access-to-merchant', $merchant);
-
-        $gatewaySettings = $request->get('gateway_settings', []);
-
-        // Если пользователь не Super Admin, фильтруем настройки
-        if (!auth()->user()->hasRole('Super Admin')) {
-            $currentSettings = $merchant->gateway_settings;
-
-            foreach ($gatewaySettings as $gatewayId => $settings) {
-                // Оставляем только флаг active, остальные настройки берем из текущих
-                $filteredSettings = [
-                    'active' => $settings['active'] ?? true
-                ];
-
-                // Если есть текущие настройки для этого шлюза, сохраняем их
-                if (isset($currentSettings[$gatewayId])) {
-                    $filteredSettings += array_diff_key(
-                        $currentSettings[$gatewayId],
-                        ['active' => true]
-                    );
-                }
-
-                $gatewaySettings[$gatewayId] = $filteredSettings;
-            }
-        }
-
-        $merchant->update([
-            'gateway_settings' => $gatewaySettings,
-        ]);
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh('categories'))->resolve(),
-                'gateway_settings' => $merchant->gateway_settings,
-            ]);
-        }
-
-        return back();
-    }
-
     public function settings(Merchant $merchant): JsonResponse
     {
         Gate::authorize('access-to-merchant', $merchant);
@@ -137,11 +95,60 @@ class MerchantController extends Controller
 
         return response()->json([
             'merchant' => MerchantResource::make($merchant)->resolve(),
-            'gateway_settings' => $merchant->gateway_settings ?? [],
+            'commission_settings' => $merchant->getCommissionSettings(),
             'payment_gateways' => $paymentGateways,
             'markets' => $this->getMarkets(),
             'categories' => CategoryResource::collection(Category::orderBy('name')->get())->resolve(),
             'currencies' => $this->getCurrencies(),
+            'detail_types' => $this->getDetailTypes(),
+        ]);
+    }
+
+    public function updateCommissionSettings(
+        UpdateCommissionSettingsRequest $request,
+        Merchant $merchant
+    ): JsonResponse {
+        Gate::authorize('access-to-merchant', $merchant);
+
+        $rawSettings = $request->validated('commission_settings', []);
+
+        $normalized = collect($rawSettings)
+            ->map(function (array $setting) {
+                $useFlexible = (bool) ($setting['use_flexible_trader_commission_for_orders'] ?? false);
+                $traderRate = $setting['trader_commission_rate_for_orders'] ?? null;
+                $totalRate = $setting['total_service_commission_rate_for_orders'] ?? null;
+
+                $hasFixed = $traderRate !== null && $totalRate !== null;
+                $hasFlexible = $useFlexible && ! empty($setting['trader_commission_tiers_for_orders']) && ! empty($setting['total_service_commission_tiers_for_orders']);
+
+                if (! $hasFixed && ! $hasFlexible) {
+                    return null;
+                }
+
+                return [
+                    'currency' => strtolower((string) $setting['currency']),
+                    'detail_type' => (string) $setting['detail_type'],
+                    'trader_commission_rate_for_orders' => $hasFixed ? (float) $traderRate : null,
+                    'total_service_commission_rate_for_orders' => $hasFixed ? (float) $totalRate : null,
+                    'use_flexible_trader_commission_for_orders' => $useFlexible,
+                    'trader_commission_tiers_for_orders' => $useFlexible
+                        ? array_values($setting['trader_commission_tiers_for_orders'] ?? [])
+                        : [],
+                    'total_service_commission_tiers_for_orders' => $useFlexible
+                        ? array_values($setting['total_service_commission_tiers_for_orders'] ?? [])
+                        : [],
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+
+        $merchant->setCommissionSettings($normalized);
+        $merchant->save();
+
+        return response()->json([
+            'merchant' => MerchantResource::make($merchant->fresh()->load('categories'))->resolve(),
+            'commission_settings' => $merchant->fresh()->getCommissionSettings(),
         ]);
     }
 
@@ -228,5 +235,19 @@ class MerchantController extends Controller
             })
             ->values()
             ->toArray();
+    }
+
+    protected function getDetailTypes(): array
+    {
+        $detailTypes = [];
+
+        foreach (DetailType::values() as $detailType) {
+            $detailTypes[] = [
+                'name' => trans('detail-type.' . $detailType),
+                'code' => $detailType,
+            ];
+        }
+
+        return $detailTypes;
     }
 }

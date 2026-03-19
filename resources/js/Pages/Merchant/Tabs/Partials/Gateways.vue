@@ -1,9 +1,9 @@
 <script setup>
-import InputLabel from "@/Components/InputLabel.vue";
+import InputError from "@/Components/InputError.vue";
 import InputHelper from "@/Components/InputHelper.vue";
-import TextInput from "@/Components/TextInput.vue";
+import InputLabel from "@/Components/InputLabel.vue";
+import NumberInput from "@/Components/NumberInput.vue";
 import {computed, ref, watch} from "vue";
-import GatewayLogo from "@/Components/GatewayLogo.vue";
 
 const emit = defineEmits(['updated']);
 
@@ -12,13 +12,17 @@ const props = defineProps({
         type: Number,
         required: true,
     },
-    gatewaySettings: {
-        type: [Object, Array],
-        default: () => ({}),
-    },
     paymentGateways: {
         type: Object,
         default: () => ({ data: [] }),
+    },
+    detailTypes: {
+        type: Array,
+        default: () => [],
+    },
+    commissionSettings: {
+        type: Array,
+        default: () => [],
     },
     isAdmin: {
         type: Boolean,
@@ -26,312 +30,763 @@ const props = defineProps({
     },
 });
 
-const deepClone = (value, fallback) => {
-    if (value === undefined || value === null) {
-        return fallback ?? null;
+const isEditMode = ref(false);
+const processing = ref(false);
+const errors = ref({});
+const localCommissionSettings = ref([]);
+const selectedPairKey = ref('');
+const splitPoints = ref({});
+const splitErrors = ref({});
+const expandedSets = ref({});
+const toNumberOrNull = (value) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+};
+
+const detailTypeMap = computed(() => {
+    const map = {};
+
+    (props.detailTypes ?? []).forEach((detailType) => {
+        if (!detailType?.code) {
+            return;
+        }
+
+        map[detailType.code] = detailType.name ?? detailType.code;
+    });
+
+    return map;
+});
+
+const pairCombinations = computed(() => {
+    const pairs = [];
+    const unique = new Set();
+
+    (props.paymentGateways?.data ?? []).forEach((gateway) => {
+        const currency = (gateway.currency ?? '').toLowerCase();
+        const detailTypes = Array.isArray(gateway.detail_types) ? gateway.detail_types : [];
+
+        detailTypes.forEach((detailType) => {
+            const detailCode = typeof detailType === 'string'
+                ? detailType
+                : (detailType?.value ?? detailType?.code ?? '');
+
+            if (!currency || !detailCode) {
+                return;
+            }
+
+            const key = `${currency}|${detailCode}`;
+
+            if (unique.has(key)) {
+                return;
+            }
+
+            unique.add(key);
+            pairs.push({
+                key,
+                currency,
+                detail_type: detailCode,
+            });
+        });
+    });
+
+    return pairs.sort((left, right) => {
+        if (left.currency === right.currency) {
+            return left.detail_type.localeCompare(right.detail_type);
+        }
+
+        return left.currency.localeCompare(right.currency);
+    });
+});
+
+const makeTier = (from = null, to = null, rate = null) => ({ from, to, rate });
+
+const normalizeTierList = (tiers) => {
+    if (!Array.isArray(tiers)) {
+        return [];
     }
 
-    try {
-        return JSON.parse(JSON.stringify(value));
-    } catch (e) {
-        return fallback ?? value;
+    return tiers.map((tier) => makeTier(
+        tier?.from ?? null,
+        tier?.to ?? null,
+        tier?.rate ?? null
+    ));
+};
+
+const hasDetailType = (gateway, detailType) => {
+    const gatewayDetailTypes = Array.isArray(gateway?.detail_types) ? gateway.detail_types : [];
+
+    return gatewayDetailTypes.some((item) => {
+        const code = typeof item === "string" ? item : (item?.value ?? item?.code ?? "");
+        return code === detailType;
+    });
+};
+
+const getPairLimitsByValues = (currency, detailType) => {
+    let min = null;
+    let max = null;
+
+    (props.paymentGateways?.data ?? []).forEach((gateway) => {
+        if ((gateway?.currency ?? "").toLowerCase() !== (currency ?? "").toLowerCase()) {
+            return;
+        }
+
+        if (!hasDetailType(gateway, detailType)) {
+            return;
+        }
+
+        const gatewayMin = toNumberOrNull(gateway?.min_limit);
+        const gatewayMax = toNumberOrNull(gateway?.max_limit);
+
+        if (gatewayMin !== null) {
+            min = min === null ? gatewayMin : Math.min(min, gatewayMin);
+        }
+
+        if (gatewayMax !== null) {
+            max = max === null ? gatewayMax : Math.max(max, gatewayMax);
+        }
+    });
+
+    if (min === null || max === null || min >= max) {
+        return null;
+    }
+
+    return { min, max };
+};
+
+const getPairLimits = (setting) => {
+    return getPairLimitsByValues(setting?.currency, setting?.detail_type);
+};
+
+const getPairGateways = (setting) => {
+    return (props.paymentGateways?.data ?? []).filter((gateway) => {
+        if ((gateway?.currency ?? "").toLowerCase() !== (setting?.currency ?? "").toLowerCase()) {
+            return false;
+        }
+
+        return hasDetailType(gateway, setting?.detail_type);
+    });
+};
+
+const getPairLimitDetails = (setting) => {
+    const gateways = getPairGateways(setting);
+
+    if (!gateways.length) {
+        return null;
+    }
+
+    let minGateway = null;
+    let maxGateway = null;
+
+    gateways.forEach((gateway) => {
+        const minLimit = toNumberOrNull(gateway?.min_limit);
+        const maxLimit = toNumberOrNull(gateway?.max_limit);
+
+        if (minLimit !== null && (!minGateway || minLimit < minGateway.value)) {
+            minGateway = {
+                value: minLimit,
+                name: gateway?.original_name ?? gateway?.name ?? `#${gateway?.id}`,
+            };
+        }
+
+        if (maxLimit !== null && (!maxGateway || maxLimit > maxGateway.value)) {
+            maxGateway = {
+                value: maxLimit,
+                name: gateway?.original_name ?? gateway?.name ?? `#${gateway?.id}`,
+            };
+        }
+    });
+
+    if (!minGateway || !maxGateway) {
+        return null;
+    }
+
+    return {
+        minGateway,
+        maxGateway,
+        gateways,
+    };
+};
+
+const ensureTotalTiersLength = (setting) => {
+    const traderTiers = setting.trader_commission_tiers_for_orders ?? [];
+    const totalTiers = setting.total_service_commission_tiers_for_orders ?? [];
+
+    if (totalTiers.length >= traderTiers.length) {
+        return;
+    }
+
+    for (let i = totalTiers.length; i < traderTiers.length; i += 1) {
+        totalTiers.push(makeTier(
+            traderTiers[i]?.from ?? null,
+            traderTiers[i]?.to ?? null,
+            setting.total_service_commission_rate_for_orders ?? null,
+        ));
     }
 };
 
-const gatewayEditMode = ref(false);
-const processing = ref(false);
-const localGatewaySettings = ref(deepClone(props.gatewaySettings, {}));
-const macros = ref({
-    commission: null,
-    reservation_time: null,
-});
+const applyFixedLimitsToTiers = (setting) => {
+    if (!setting?.use_flexible_trader_commission_for_orders) {
+        return;
+    }
+
+    const limits = getPairLimits(setting);
+
+    if (!limits) {
+        return;
+    }
+
+    ensureTotalTiersLength(setting);
+
+    const traderTiers = setting.trader_commission_tiers_for_orders ?? [];
+    const totalTiers = setting.total_service_commission_tiers_for_orders ?? [];
+
+    if (!traderTiers.length) {
+        traderTiers.push(makeTier(
+            limits.min,
+            limits.max,
+            setting.trader_commission_rate_for_orders ?? 0
+        ));
+        totalTiers.push(makeTier(
+            limits.min,
+            limits.max,
+            setting.total_service_commission_rate_for_orders ?? 0
+        ));
+        return;
+    }
+
+    traderTiers[0].from = limits.min;
+    traderTiers[traderTiers.length - 1].to = limits.max;
+    totalTiers[0].from = limits.min;
+    totalTiers[traderTiers.length - 1].to = limits.max;
+};
+
+const getSettingKey = (setting) => `${setting?.currency}|${setting?.detail_type}`;
+
+const isSetExpanded = (setting) => {
+    const key = getSettingKey(setting);
+    return !!expandedSets.value[key];
+};
+
+const toggleSetExpanded = (setting) => {
+    const key = getSettingKey(setting);
+    expandedSets.value = {
+        ...expandedSets.value,
+        [key]: !expandedSets.value[key],
+    };
+};
+
+const setSplitError = (setting, message = '') => {
+    const key = getSettingKey(setting);
+    splitErrors.value = {
+        ...splitErrors.value,
+        [key]: message,
+    };
+};
+
+const setSingleTierFromLimits = (setting) => {
+    const limits = getPairLimits(setting);
+
+    if (!limits) {
+        return;
+    }
+
+    setting.trader_commission_tiers_for_orders = [makeTier(
+        limits.min,
+        limits.max,
+        setting.trader_commission_rate_for_orders ?? 0
+    )];
+    setting.total_service_commission_tiers_for_orders = [makeTier(
+        limits.min,
+        limits.max,
+        setting.total_service_commission_rate_for_orders ?? 0
+    )];
+    setSplitError(setting, '');
+};
+
+const getSetShortInfo = (setting) => {
+    const hasFixed = setting.trader_commission_rate_for_orders !== null
+        && setting.trader_commission_rate_for_orders !== ""
+        && setting.total_service_commission_rate_for_orders !== null
+        && setting.total_service_commission_rate_for_orders !== "";
+    const hasFlexible = !!setting.use_flexible_trader_commission_for_orders
+        && (setting.trader_commission_tiers_for_orders?.length ?? 0) > 0;
+
+    if (!hasFixed && !hasFlexible) {
+        return 'Не настроен';
+    }
+
+    if (hasFixed && !hasFlexible) {
+        return `Фикс: трейдер ${setting.trader_commission_rate_for_orders}% / тотал ${setting.total_service_commission_rate_for_orders}%`;
+    }
+
+    if (!hasFixed && hasFlexible) {
+        return `Гибкая: уровней ${setting.trader_commission_tiers_for_orders.length}`;
+    }
+
+    return `Фикс + гибкая: уровней ${setting.trader_commission_tiers_for_orders.length}`;
+};
+
+const initCommissionSettings = () => {
+    const settings = [];
+
+    (props.commissionSettings ?? []).forEach((item) => {
+        const currency = (item?.currency ?? '').toLowerCase();
+        const detailType = item?.detail_type ?? '';
+
+        if (!currency || !detailType) {
+            return;
+        }
+
+        const normalized = {
+            currency,
+            detail_type: detailType,
+            trader_commission_rate_for_orders: item?.trader_commission_rate_for_orders ?? null,
+            total_service_commission_rate_for_orders: item?.total_service_commission_rate_for_orders ?? null,
+            use_flexible_trader_commission_for_orders: !!item?.use_flexible_trader_commission_for_orders,
+            trader_commission_tiers_for_orders: normalizeTierList(item?.trader_commission_tiers_for_orders),
+            total_service_commission_tiers_for_orders: normalizeTierList(item?.total_service_commission_tiers_for_orders),
+        };
+        ensureTotalTiersLength(normalized);
+        applyFixedLimitsToTiers(normalized);
+
+        settings.push(normalized);
+    });
+
+    localCommissionSettings.value = settings;
+};
 
 watch(
-    () => props.gatewaySettings,
-    (value) => {
-        localGatewaySettings.value = deepClone(value, {});
+    () => [props.paymentGateways, props.commissionSettings, props.detailTypes],
+    () => {
+        initCommissionSettings();
     },
     { immediate: true, deep: true }
 );
 
-const paymentGatewayList = computed(() => props.paymentGateways?.data ?? []);
+const getLabel = (setting) => {
+    const currency = (setting?.currency ?? '').toUpperCase();
+    const detailTypeLabel = detailTypeMap.value[setting?.detail_type] ?? setting?.detail_type ?? '-';
+    return `${currency} / ${detailTypeLabel}`;
+};
 
-const groupedGateways = computed(() => {
-    const grouped = {};
-
-    paymentGatewayList.value.forEach((gateway) => {
-        const key = gateway.currency;
-        if (!grouped[key]) {
-            grouped[key] = [];
-        }
-        grouped[key].push(gateway);
-    });
-
-    return grouped;
+const configuredPairKeys = computed(() => {
+    return new Set(
+        localCommissionSettings.value.map((setting) => `${setting.currency}|${setting.detail_type}`)
+    );
 });
 
-const getSetting = (gatewayId, settingName) => {
-    const gateway = localGatewaySettings.value[gatewayId] ?? {};
+const availablePairs = computed(() => {
+    return pairCombinations.value.filter((pair) => !configuredPairKeys.value.has(pair.key));
+});
 
-    if (settingName === 'active') {
-        return gateway[settingName] !== undefined ? gateway[settingName] : true;
+const addCommissionSet = () => {
+    if (!selectedPairKey.value) {
+        return;
     }
 
-    return gateway[settingName] ?? null;
+    const pair = pairCombinations.value.find((item) => item.key === selectedPairKey.value);
+
+    if (!pair) {
+        return;
+    }
+
+    localCommissionSettings.value.push({
+        currency: pair.currency,
+        detail_type: pair.detail_type,
+        trader_commission_rate_for_orders: null,
+        total_service_commission_rate_for_orders: null,
+        use_flexible_trader_commission_for_orders: false,
+        trader_commission_tiers_for_orders: [],
+        total_service_commission_tiers_for_orders: [],
+    });
+
+    selectedPairKey.value = '';
 };
 
-const normalizeValue = (value, min = 1, max = 1000) => {
-    if (value === "" || value === null || value === undefined) {
-        return null;
-    }
-
-    const num = Number(value);
-
-    if (Number.isNaN(num)) {
-        return min;
-    }
-
-    return Math.min(Math.max(num, min), max);
+const removeCommissionSet = (index) => {
+    localCommissionSettings.value.splice(index, 1);
 };
 
-const setSetting = (gatewayId, settingName, value) => {
-    const settings = {...localGatewaySettings.value};
+const splitTierAtPoint = (setting) => {
+    const limits = getPairLimits(setting);
 
-    if (!settings[gatewayId]) {
-        settings[gatewayId] = {};
+    if (!limits) {
+        return;
     }
 
-    let normalizedValue = value;
-
-    if (settingName === "custom_gateway_commission") {
-        normalizedValue = normalizeValue(value, 0, 100);
+    const traderTiers = setting.trader_commission_tiers_for_orders ?? [];
+    const totalTiers = setting.total_service_commission_tiers_for_orders ?? [];
+    if (!traderTiers.length) {
+        setSingleTierFromLimits(setting);
     }
 
-    if (settingName === "custom_gateway_reservation_time") {
-        normalizedValue = normalizeValue(value, 1, 10000);
+    const key = getSettingKey(setting);
+    const splitPoint = toNumberOrNull(splitPoints.value[key]);
+
+    if (splitPoint === null || splitPoint <= limits.min || splitPoint >= limits.max) {
+        setSplitError(setting, `Граница должна быть строго между ${limits.min} и ${limits.max}.`);
+        return;
     }
 
-    settings[gatewayId][settingName] = normalizedValue;
-    localGatewaySettings.value = settings;
+    let targetIndex = -1;
+
+    traderTiers.forEach((tier, index) => {
+        const from = toNumberOrNull(tier?.from);
+        const to = toNumberOrNull(tier?.to);
+
+        if (from === null || to === null || to <= from) {
+            return;
+        }
+
+        if (splitPoint > from && splitPoint < to) {
+            targetIndex = index;
+        }
+    });
+
+    if (targetIndex === -1) {
+        setSplitError(setting, 'Эта граница уже существует или выходит за текущие уровни.');
+        return;
+    }
+
+    const targetTraderTier = traderTiers[targetIndex];
+    const targetTotalTier = totalTiers[targetIndex] ?? makeTier(
+        targetTraderTier.from,
+        targetTraderTier.to,
+        setting.total_service_commission_rate_for_orders ?? 0
+    );
+
+    const from = Number(targetTraderTier.from);
+    const to = Number(targetTraderTier.to);
+
+    const leftTraderTier = makeTier(from, splitPoint, targetTraderTier.rate ?? setting.trader_commission_rate_for_orders ?? 0);
+    const rightTraderTier = makeTier(splitPoint, to, targetTraderTier.rate ?? setting.trader_commission_rate_for_orders ?? 0);
+    const leftTotalTier = makeTier(from, splitPoint, targetTotalTier.rate ?? setting.total_service_commission_rate_for_orders ?? 0);
+    const rightTotalTier = makeTier(splitPoint, to, targetTotalTier.rate ?? setting.total_service_commission_rate_for_orders ?? 0);
+
+    traderTiers.splice(targetIndex, 1, leftTraderTier, rightTraderTier);
+    totalTiers.splice(targetIndex, 1, leftTotalTier, rightTotalTier);
+
+    applyFixedLimitsToTiers(setting);
+    splitPoints.value[key] = '';
+    setSplitError(setting, '');
 };
 
-const submitGatewaySettings = () => {
-    if (processing.value) {
+const removeTier = (setting, index) => {
+    if ((setting.trader_commission_tiers_for_orders?.length ?? 0) <= 1) {
+        return;
+    }
+
+    setting.trader_commission_tiers_for_orders.splice(index, 1);
+    setting.total_service_commission_tiers_for_orders.splice(index, 1);
+    applyFixedLimitsToTiers(setting);
+};
+
+const toggleFlexible = (setting, enabled) => {
+    setting.use_flexible_trader_commission_for_orders = enabled;
+
+    if (!enabled) {
+        setSplitError(setting, '');
+        return;
+    }
+
+    if ((setting.trader_commission_tiers_for_orders?.length ?? 0) === 0) {
+        setSingleTierFromLimits(setting);
+    } else {
+        applyFixedLimitsToTiers(setting);
+    }
+};
+
+const submit = () => {
+    if (processing.value || !props.merchantId || !props.isAdmin) {
         return;
     }
 
     processing.value = true;
+    errors.value = {};
 
-    axios.patch(route("merchants.gateway-settings.update", props.merchantId), {
-        gateway_settings: localGatewaySettings.value,
+    localCommissionSettings.value.forEach((setting) => {
+        applyFixedLimitsToTiers(setting);
+    });
+
+    const payload = localCommissionSettings.value
+        .filter((setting) => {
+            const hasFixed = setting.trader_commission_rate_for_orders !== null
+                && setting.trader_commission_rate_for_orders !== ""
+                && setting.total_service_commission_rate_for_orders !== null
+                && setting.total_service_commission_rate_for_orders !== "";
+            const hasFlexible = setting.use_flexible_trader_commission_for_orders
+                && (setting.trader_commission_tiers_for_orders?.length ?? 0) > 0
+                && (setting.total_service_commission_tiers_for_orders?.length ?? 0) > 0;
+
+            return hasFixed || hasFlexible;
+        })
+        .map((setting) => ({
+            currency: setting.currency,
+            detail_type: setting.detail_type,
+            trader_commission_rate_for_orders: setting.trader_commission_rate_for_orders === "" ? null : setting.trader_commission_rate_for_orders,
+            total_service_commission_rate_for_orders: setting.total_service_commission_rate_for_orders === "" ? null : setting.total_service_commission_rate_for_orders,
+            use_flexible_trader_commission_for_orders: !!setting.use_flexible_trader_commission_for_orders,
+            trader_commission_tiers_for_orders: setting.use_flexible_trader_commission_for_orders ? setting.trader_commission_tiers_for_orders : [],
+            total_service_commission_tiers_for_orders: setting.use_flexible_trader_commission_for_orders ? setting.total_service_commission_tiers_for_orders : [],
+        }));
+
+    const prefix = props.isAdmin ? 'admin.' : '';
+
+    axios.patch(route(`${prefix}merchants.commission-settings.update`, props.merchantId), {
+        commission_settings: payload,
     }, {
         headers: {Accept: 'application/json'},
     }).then(({data}) => {
         emit('updated', data);
-        gatewayEditMode.value = false;
+        isEditMode.value = false;
+    }).catch((error) => {
+        if (error.response?.data?.errors) {
+            errors.value = error.response.data.errors;
+        }
     }).finally(() => {
         processing.value = false;
     });
 };
-
-const applyMacros = (type) => {
-    if (type === "commission") {
-        paymentGatewayList.value.forEach((gateway) => {
-            setSetting(gateway.id, 'custom_gateway_commission', macros.value.commission);
-        });
-    }
-
-    if (type === "reservation_time") {
-        paymentGatewayList.value.forEach((gateway) => {
-            setSetting(gateway.id, 'custom_gateway_reservation_time', macros.value.reservation_time);
-        });
-    }
-};
 </script>
 
 <template>
-    <div class="space-y-3">
-        <div class="lg:flex block justify-between items-center">
-            <div class="flex items-center">
+    <div class="space-y-4">
+        <div class="flex items-center justify-between">
+            <InputHelper model-value="Комиссия задается по уникальной паре: валюта + тип реквизита. Если пара не настроена, применяются комиссии платежного метода." />
+            <div v-if="isAdmin">
                 <button
-                    v-if="gatewayEditMode === false"
-                    @click.prevent="gatewayEditMode = true"
+                    v-if="!isEditMode"
                     type="button"
-                    class="btn btn-outline btn-primary btn-xs"
+                    class="btn btn-xs btn-outline btn-primary"
+                    @click="isEditMode = true"
                 >
                     Изменить
                 </button>
                 <button
                     v-else
-                    @click.prevent="submitGatewaySettings"
                     type="button"
-                    class="btn btn-success btn-xs"
+                    class="btn btn-xs btn-success"
                     :class="{ 'btn-disabled': processing }"
                     :disabled="processing"
+                    @click="submit"
                 >
                     Сохранить
                 </button>
             </div>
         </div>
+
         <div
-            v-if="gatewayEditMode === true && isAdmin"
-            class="p-5 sm:p-8 bg-base-100 shadow rounded-box"
+            v-if="isAdmin && isEditMode && availablePairs.length"
+            class="rounded-box border border-base-300 p-3 flex flex-col md:flex-row md:items-end gap-3"
         >
-            <div>
-                <header>
-                    <h2 class="text-lg font-medium text-base-content">
-                        Макросы для настроек
-                    </h2>
-                </header>
-                <form class="mt-6 space-y-6">
-                    <div class="grid lg:grid-cols-2 grid-cols-1 gap-6">
-                        <div>
-                            <InputLabel for="commission_macros" value="Комиссия" />
-
-                            <TextInput
-                                id="commission_macros"
-                                v-model="macros.commission"
-                                class="mt-1 block w-full"
-                                step="1"
-                                @input="applyMacros('commission')"
-                            />
-
-                            <InputHelper
-                                model-value="Установит у всех методов указанную комиссию."
-                            ></InputHelper>
-                        </div>
-                        <div>
-                            <InputLabel
-                                for="reservation_time_macros"
-                                value="Время на сделку"
-                            />
-
-                            <TextInput
-                                id="reservation_time_macros"
-                                v-model="macros.reservation_time"
-                                class="mt-1 block w-full"
-                                step="1"
-                                @input="applyMacros('reservation_time')"
-                            />
-
-                            <InputHelper
-                                model-value="Установит у всех методов указанную время на сделку"
-                            ></InputHelper>
-                        </div>
-                    </div>
-                </form>
+            <div class="flex-1">
+                <InputLabel value="Добавить набор комиссии" />
+                <select v-model="selectedPairKey" class="select select-bordered w-full mt-1">
+                    <option value="">Выберите валюту и тип реквизита</option>
+                    <option
+                        v-for="pair in availablePairs"
+                        :key="pair.key"
+                        :value="pair.key"
+                    >
+                        {{ pair.currency.toUpperCase() }} / {{ detailTypeMap[pair.detail_type] ?? pair.detail_type }}
+                    </option>
+                </select>
             </div>
+            <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="!selectedPairKey"
+                @click="addCommissionSet"
+            >
+                Добавить
+            </button>
         </div>
-        <div class="mb-5" v-for="(gateways, currency) in groupedGateways" :key="currency">
-            <div>
-        <span
-            class="badge badge-neutral"
+
+        <div v-if="pairCombinations.length === 0" class="rounded-box border border-base-300 bg-base-200 px-3 py-2 text-sm text-base-content/70">
+            Нет доступных сочетаний валюты и типа реквизита.
+        </div>
+        <div v-else-if="localCommissionSettings.length === 0" class="rounded-box border border-base-300 bg-base-200 px-3 py-2 text-sm text-base-content/70">
+            Наборы комиссий не настроены. Будут применяться комиссии из платежных методов.
+        </div>
+
+        <div
+            v-for="(setting, settingIndex) in localCommissionSettings"
+            :key="`${setting.currency}|${setting.detail_type}`"
+            class="rounded-box border border-base-300 p-4 space-y-3"
         >
-          {{ currency.toUpperCase() }}
-        </span>
-            </div>
-            <div class="mt-3 gap-3 grid 2xl:grid-cols-4 xl:grid-cols-2">
-                <div
-                    class="rounded-box bg-base-300 shadow"
-                    v-for="gateway in gateways"
-                    :key="gateway.id"
-                >
-                    <div
-                        class="rounded-box text-sm font-semibold py-2 px-3"
-                        :class="
-                                        getSetting(gateway.id, 'active')
-                                        ? 'bg-base-200'
-                                        : 'bg-error/30'
-                                      "
-                    >
-                        <div class="flex justify-between gap-2 items-center">
-                            <div>
-                                <GatewayLogo :img_path="gateway.logo_path" class="w-8 h-8 text-base-content/70"/>
-                            </div>
-                            <div :class="getSetting(gateway.id, 'custom_gateway_commission') > 0 ||
-                                          getSetting(gateway.id, 'custom_gateway_commission') === 0 ? 'w-20' : 'w-25'">
-                                <div
-                                    class="truncate"
-                                    :class="
-                                        getSetting(gateway.id, 'active')
-                                        ? 'text-base-content'
-                                        : 'text-base-content'
-                                      "
-                                >
-                                    {{ gateway.original_name }}
-                                </div>
-                            </div>
-                            <div
-                                class="text-base-content text-xl flex justify-between items-end gap-2"
-                                :class="
-                                        getSetting(gateway.id, 'active')
-                                        ? 'text-base-content'
-                                        : 'text-base-content'
-                                    "
-                                 >
-                                <div class="flex items-center gap-2">
-                                    <template
-                                        v-if="
-                                          getSetting(gateway.id, 'custom_gateway_commission') > 0 ||
-                                          getSetting(gateway.id, 'custom_gateway_commission') === 0
-                                        "
-                                    >
-                                        <div class="text-sm text-error line-through">
-                                            {{ gateway.total_service_commission_rate_for_orders }}%
-                                        </div>
-                                        <div class="text-base-content">
-                                            {{ getSetting(gateway.id, "custom_gateway_commission") }}%
-                                        </div>
-                                    </template>
-                                    <template v-else>
-                                        <div>{{ gateway.total_service_commission_rate_for_orders }}%</div>
-                                    </template>
-                                </div>
-                            </div>
+            <button
+                type="button"
+                class="w-full text-left"
+                @click="toggleSetExpanded(setting)"
+            >
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <div class="text-sm font-semibold">{{ getLabel(setting) }}</div>
+                        <div class="text-xs text-base-content/70">
+                            {{ getSetShortInfo(setting) }}
                         </div>
                     </div>
-                    <div
-                        v-if="gatewayEditMode === true"
-                        class="py-2 px-4 flex justify-between items-center"
+                    <div class="text-xs text-base-content/60">
+                        {{ isSetExpanded(setting) ? 'Свернуть' : 'Развернуть' }}
+                    </div>
+                </div>
+            </button>
+
+            <div v-if="isSetExpanded(setting)" class="space-y-3">
+                <div class="text-xs text-base-content/70">
+                    Приоритетная комиссия для сделок по этой паре.
+                </div>
+
+                <button
+                    v-if="isAdmin && isEditMode"
+                    type="button"
+                    class="btn btn-xs btn-outline btn-error"
+                    @click="removeCommissionSet(settingIndex)"
+                >
+                    Удалить набор
+                </button>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <InputLabel :value="'Фикс. комиссия трейдера %'" />
+                        <NumberInput
+                            :model-value="setting.trader_commission_rate_for_orders"
+                            step="0.1"
+                            placeholder="Например 7"
+                            :disabled="!isAdmin || !isEditMode"
+                            @update:model-value="(value) => setting.trader_commission_rate_for_orders = value"
+                        />
+                    </div>
+                    <div>
+                        <InputLabel :value="'Фикс. тотал комиссия сервиса %'" />
+                        <NumberInput
+                            :model-value="setting.total_service_commission_rate_for_orders"
+                            step="0.1"
+                            placeholder="Например 10"
+                            :disabled="!isAdmin || !isEditMode"
+                            @update:model-value="(value) => setting.total_service_commission_rate_for_orders = value"
+                        />
+                    </div>
+                </div>
+
+                <label class="label cursor-pointer justify-start gap-3">
+                    <input
+                        type="checkbox"
+                        class="toggle toggle-primary"
+                        :checked="!!setting.use_flexible_trader_commission_for_orders"
+                        :disabled="!isAdmin || !isEditMode"
+                        @change="toggleFlexible(setting, $event.target.checked)"
                     >
-                        <span class="text-xs text-base-content/70">Включен</span>
-                        <label class="cursor-pointer flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary toggle-sm"
-                                :checked="getSetting(gateway.id, 'active')"
-                                @change="setSetting(gateway.id, 'active', $event.target.checked)"
+                    <span class="label-text text-sm">Гибкая комиссия по уровням суммы сделки</span>
+                </label>
+
+                <div
+                    v-if="setting.use_flexible_trader_commission_for_orders"
+                    class="space-y-2"
+                >
+                    <div v-if="!getPairLimits(setting)" class="rounded-box border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-base-content/80">
+                        Для этой пары не удалось определить границы min/max по платежным методам.
+                    </div>
+                    <div v-else-if="getPairLimitDetails(setting)" class="rounded-box border border-base-300 bg-base-200 px-3 py-2 text-xs text-base-content/80">
+                        <div>
+                            Диапазон для гибкой комиссии: {{ getPairLimits(setting).min }} - {{ getPairLimits(setting).max }}.
+                        </div>
+                        <div class="mt-1">
+                            Минимум взят из {{ getPairLimitDetails(setting).minGateway.name }},
+                            максимум взят из {{ getPairLimitDetails(setting).maxGateway.name }}.
+                        </div>
+                        <div class="mt-1">
+                            Расчет: по всем платежным методам этой пары (валюта + тип реквизита) берется самый маленький min_limit и самый большой max_limit.
+                        </div>
+                    </div>
+                    <div v-if="getPairLimits(setting)" class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+                        <div>
+                            <InputLabel value="Разделить диапазон по границе" />
+                            <NumberInput
+                                v-model="splitPoints[getSettingKey(setting)]"
+                                step="0.01"
+                                :min="getPairLimits(setting).min"
+                                :max="getPairLimits(setting).max"
+                                placeholder="Например 2000"
+                                :disabled="!isAdmin || !isEditMode"
                             />
-                        </label>
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-xs btn-outline"
+                            v-if="isAdmin && isEditMode"
+                            @click="splitTierAtPoint(setting)"
+                        >
+                            Разделить
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-xs"
+                            v-if="isAdmin && isEditMode"
+                            @click="setSingleTierFromLimits(setting)"
+                        >
+                            1 уровень из лимитов
+                        </button>
+                    </div>
+                    <div v-if="splitErrors[getSettingKey(setting)]" class="text-xs text-error">
+                        {{ splitErrors[getSettingKey(setting)] }}
                     </div>
                     <div
-                        v-if="isAdmin && gatewayEditMode === true"
-                        class="py-2 px-4 flex justify-between items-center"
+                        v-for="(tier, tierIndex) in setting.trader_commission_tiers_for_orders"
+                        :key="`${setting.currency}|${setting.detail_type}-tier-${tierIndex}`"
+                        class="grid grid-cols-1 lg:grid-cols-5 gap-2 items-end"
                     >
-                        <span class="text-xs text-base-content/70">Комиссия</span>
-                        <input
-                            type="text"
-                            class="input input-bordered input-sm w-20 text-center"
-                            :value="getSetting(gateway.id, 'custom_gateway_commission')"
-                            @input="setSetting(gateway.id, 'custom_gateway_commission', $event.target.value)"
-                        />
-                    </div>
-                    <div
-                        v-if="isAdmin && gatewayEditMode === true"
-                        class="py-2 px-4 flex justify-between items-center"
-                    >
-                        <span class="text-xs text-base-content/70">Время на сделку</span>
-                        <input
-                            type="text"
-                            class="input input-bordered input-sm w-20 text-center"
-                            :value="getSetting(gateway.id, 'custom_gateway_reservation_time')"
-                            @input="setSetting(gateway.id, 'custom_gateway_reservation_time', $event.target.value)"
-                        />
+                        <div>
+                            <InputLabel :value="'От'" />
+                            <NumberInput
+                                v-model="tier.from"
+                                step="0.01"
+                                :min="getPairLimits(setting)?.min ?? 0"
+                                :max="getPairLimits(setting)?.max ?? 999999999"
+                                :disabled="!isAdmin || !isEditMode || tierIndex === 0"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel :value="'До'" />
+                            <NumberInput
+                                v-model="tier.to"
+                                step="0.01"
+                                :min="getPairLimits(setting)?.min ?? 0"
+                                :max="getPairLimits(setting)?.max ?? 999999999"
+                                :disabled="!isAdmin || !isEditMode || tierIndex === setting.trader_commission_tiers_for_orders.length - 1"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel :value="'Трейдер %'" />
+                            <NumberInput
+                                v-model="tier.rate"
+                                step="0.1"
+                                :disabled="!isAdmin || !isEditMode"
+                            />
+                        </div>
+                        <div>
+                            <InputLabel :value="'Тотал %'" />
+                            <NumberInput
+                                v-model="setting.total_service_commission_tiers_for_orders[tierIndex].rate"
+                                step="0.1"
+                                :disabled="!isAdmin || !isEditMode"
+                            />
+                        </div>
+                        <div class="flex justify-end">
+                            <button
+                                type="button"
+                                class="btn btn-xs btn-outline btn-error"
+                                :disabled="!isAdmin || !isEditMode || setting.trader_commission_tiers_for_orders.length <= 1"
+                                @click="removeTier(setting, tierIndex)"
+                            >
+                                Удалить
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <InputError :message="errors.commission_settings?.[0]" />
     </div>
 </template>
-
-<style scoped></style>

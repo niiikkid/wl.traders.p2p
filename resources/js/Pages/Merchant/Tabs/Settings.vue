@@ -34,9 +34,13 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
-    gatewaySettings: {
-        type: [Object, Array],
-        default: () => ({}),
+    detailTypes: {
+        type: Array,
+        default: () => [],
+    },
+    commissionSettings: {
+        type: Array,
+        default: () => [],
     },
     paymentGateways: {
         type: Object,
@@ -62,9 +66,8 @@ const merchant = ref(deepClone(props.merchant ?? page?.props?.merchant ?? null))
 const markets = ref(deepClone(props.markets?.length ? props.markets : page?.props?.markets ?? []));
 const categories = ref(deepClone(props.categories?.length ? props.categories : page?.props?.categories ?? []));
 const currencies = ref(deepClone(props.currencies?.length ? props.currencies : page?.props?.currencies ?? []));
-const gatewaySettings = ref(deepClone(
-    Object.keys(props.gatewaySettings ?? {}).length ? props.gatewaySettings : page?.props?.gatewaySettings ?? {}
-));
+const detailTypes = ref(deepClone(props.detailTypes?.length ? props.detailTypes : page?.props?.detailTypes ?? []));
+const commissionSettings = ref(deepClone(props.commissionSettings ?? page?.props?.commissionSettings ?? [], []));
 const paymentGateways = ref(deepClone(
     (props.paymentGateways && Object.keys(props.paymentGateways).length)
         ? props.paymentGateways
@@ -183,26 +186,6 @@ watch(
 );
 
 watch(
-    () => props.gatewaySettings,
-    (value) => {
-        if (value !== undefined) {
-            gatewaySettings.value = deepClone(value ?? {}, {});
-        }
-    },
-    { immediate: false }
-);
-
-watch(
-    () => page.props?.gatewaySettings,
-    (value) => {
-        if (value !== undefined && Object.keys(props.gatewaySettings ?? {}).length === 0) {
-            gatewaySettings.value = deepClone(value ?? {}, {});
-        }
-    },
-    { immediate: true }
-);
-
-watch(
     () => props.paymentGateways,
     (value) => {
         if (value !== undefined) {
@@ -277,6 +260,46 @@ watch(
     (value) => {
         if (value !== undefined && (!props.currencies || !props.currencies.length)) {
             currencies.value = deepClone(value ?? [], []);
+        }
+    },
+    { immediate: true }
+);
+
+watch(
+    () => props.detailTypes,
+    (value) => {
+        if (value !== undefined) {
+            detailTypes.value = deepClone(value ?? [], []);
+        }
+    },
+    { immediate: false }
+);
+
+watch(
+    () => page.props?.detailTypes,
+    (value) => {
+        if (value !== undefined && (!props.detailTypes || !props.detailTypes.length)) {
+            detailTypes.value = deepClone(value ?? [], []);
+        }
+    },
+    { immediate: true }
+);
+
+watch(
+    () => props.commissionSettings,
+    (value) => {
+        if (value !== undefined) {
+            commissionSettings.value = deepClone(value ?? [], []);
+        }
+    },
+    { immediate: false }
+);
+
+watch(
+    () => page.props?.commissionSettings,
+    (value) => {
+        if (value !== undefined && (!props.commissionSettings || !props.commissionSettings.length)) {
+            commissionSettings.value = deepClone(value ?? [], []);
         }
     },
     { immediate: true }
@@ -493,8 +516,8 @@ const removeMinOrderAmount = (currency) => {
 };
 
 const handleGatewaySettingsUpdated = (payload) => {
-    if (payload?.gateway_settings) {
-        gatewaySettings.value = payload.gateway_settings;
+    if (payload?.commission_settings) {
+        commissionSettings.value = payload.commission_settings;
     }
     if (payload?.merchant) {
         merchant.value = payload.merchant;
@@ -522,7 +545,7 @@ const activeTab = ref('info');
             </li>
             <li class="me-2">
                 <a @click.prevent="activeTab = 'gateways'" href="#" :class="activeTab === 'gateways' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Методы
+                    Комиссии
                 </a>
             </li>
             <li v-if="viewStore.isAdminViewMode" class="me-2">
@@ -974,7 +997,8 @@ const activeTab = ref('info');
                 <Gateways
                     v-if="paymentGateways"
                     :merchant-id="merchant?.id"
-                    :gateway-settings="gatewaySettings"
+                    :detail-types="detailTypes"
+                    :commission-settings="commissionSettings"
                     :payment-gateways="paymentGateways"
                     :is-admin="viewStore.isAdminViewMode"
                     @updated="handleGatewaySettingsUpdated"

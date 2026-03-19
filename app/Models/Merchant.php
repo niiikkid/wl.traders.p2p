@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DetailType;
 use App\Enums\MarketEnum;
 use App\Services\Money\Currency;
 use Carbon\Carbon;
@@ -126,5 +127,131 @@ class Merchant extends Model
         $market = $geoMap[$currency->getCode()] ?? $geoMap[strtolower($currency->getCode())] ?? null;
 
         return $market ? MarketEnum::tryFrom($market) : null;
+    }
+
+    /**
+     * Получить нормализованные настройки комиссий мерчанта по валюте и типу реквизита.
+     *
+     * @return array<int, array{
+     *     currency: string,
+     *     detail_type: string,
+     *     trader_commission_rate_for_orders: ?float,
+     *     total_service_commission_rate_for_orders: ?float,
+     *     use_flexible_trader_commission_for_orders: bool,
+     *     trader_commission_tiers_for_orders: array<int, array{from: float, to: float, rate: float}>,
+     *     total_service_commission_tiers_for_orders: array<int, array{from: float, to: float, rate: float}>
+     * }>
+     */
+    public function getCommissionSettings(): array
+    {
+        $settings = $this->settings ?? [];
+        $rawCommissionSettings = $settings['commission_settings'] ?? [];
+
+        if (! is_array($rawCommissionSettings)) {
+            return [];
+        }
+
+        $items = array_is_list($rawCommissionSettings)
+            ? $rawCommissionSettings
+            : array_values($rawCommissionSettings);
+
+        return collect($items)
+            ->map(function ($item) {
+                if (! is_array($item)) {
+                    return null;
+                }
+
+                $currency = strtolower((string) ($item['currency'] ?? ''));
+                $detailType = (string) ($item['detail_type'] ?? '');
+
+                if ($currency === '' || $detailType === '') {
+                    return null;
+                }
+
+                return [
+                    'currency' => $currency,
+                    'detail_type' => $detailType,
+                    'trader_commission_rate_for_orders' => isset($item['trader_commission_rate_for_orders'])
+                        ? (float) $item['trader_commission_rate_for_orders']
+                        : null,
+                    'total_service_commission_rate_for_orders' => isset($item['total_service_commission_rate_for_orders'])
+                        ? (float) $item['total_service_commission_rate_for_orders']
+                        : null,
+                    'use_flexible_trader_commission_for_orders' => (bool) ($item['use_flexible_trader_commission_for_orders'] ?? false),
+                    'trader_commission_tiers_for_orders' => $this->normalizeCommissionTiers(
+                        $item['trader_commission_tiers_for_orders'] ?? []
+                    ),
+                    'total_service_commission_tiers_for_orders' => $this->normalizeCommissionTiers(
+                        $item['total_service_commission_tiers_for_orders'] ?? []
+                    ),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->toArray();
+    }
+
+    public function setCommissionSettings(array $items): void
+    {
+        $normalized = collect($items)
+            ->map(function (array $item): ?array {
+                $currency = strtolower((string) ($item['currency'] ?? ''));
+                $detailType = (string) ($item['detail_type'] ?? '');
+
+                if ($currency === '' || $detailType === '') {
+                    return null;
+                }
+
+                return [
+                    'currency' => $currency,
+                    'detail_type' => $detailType,
+                    'trader_commission_rate_for_orders' => isset($item['trader_commission_rate_for_orders'])
+                        ? (float) $item['trader_commission_rate_for_orders']
+                        : null,
+                    'total_service_commission_rate_for_orders' => isset($item['total_service_commission_rate_for_orders'])
+                        ? (float) $item['total_service_commission_rate_for_orders']
+                        : null,
+                    'use_flexible_trader_commission_for_orders' => (bool) ($item['use_flexible_trader_commission_for_orders'] ?? false),
+                    'trader_commission_tiers_for_orders' => $this->normalizeCommissionTiers(
+                        $item['trader_commission_tiers_for_orders'] ?? []
+                    ),
+                    'total_service_commission_tiers_for_orders' => $this->normalizeCommissionTiers(
+                        $item['total_service_commission_tiers_for_orders'] ?? []
+                    ),
+                ];
+            })
+            ->filter()
+            ->keyBy(fn (array $item) => $item['currency'] . '|' . $item['detail_type'])
+            ->toArray();
+
+        $settings = $this->settings ?? [];
+        $settings['commission_settings'] = $normalized;
+        $this->settings = $settings;
+    }
+
+    public function getCommissionSettingForPair(Currency $currency, DetailType $detailType): ?array
+    {
+        $key = strtolower($currency->getCode()) . '|' . $detailType->value;
+
+        foreach ($this->getCommissionSettings() as $setting) {
+            if (($setting['currency'] . '|' . $setting['detail_type']) === $key) {
+                return $setting;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeCommissionTiers(array $tiers): array
+    {
+        return collect($tiers)
+            ->filter(fn ($tier) => is_array($tier))
+            ->map(fn (array $tier) => [
+                'from' => (float) ($tier['from'] ?? 0),
+                'to' => (float) ($tier['to'] ?? 0),
+                'rate' => (float) ($tier['rate'] ?? 0),
+            ])
+            ->values()
+            ->toArray();
     }
 }

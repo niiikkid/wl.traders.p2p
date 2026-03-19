@@ -214,7 +214,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/merchants/data', [\App\Http\Controllers\MerchantController::class, 'indexData'])->name('merchants.data');
         Route::get('/merchants/{merchant}/settings', [\App\Http\Controllers\MerchantController::class, 'settings'])->name('merchants.settings');
         Route::patch('/merchants/{merchant}/callback', [\App\Http\Controllers\MerchantController::class, 'updateCallbackURL'])->name('merchants.callback.update');
-        Route::patch('/merchants/{merchant}/gateway-settings', [\App\Http\Controllers\MerchantController::class, 'updateGatewaySettings'])->name('merchants.gateway-settings.update');
+        Route::patch('/merchants/{merchant}/commission-settings', [\App\Http\Controllers\MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
 
         Route::get('/merchant/finances', [\App\Http\Controllers\WalletController::class, 'index'])->name('merchant.finances.index');
 
@@ -334,6 +334,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/merchants/{merchant}/validated', [\App\Http\Controllers\Admin\MerchantController::class, 'validated'])->name('merchants.validated');
         Route::patch('/merchants/{merchant}/settings', [\App\Http\Controllers\Admin\MerchantController::class, 'updateSettings'])->name('merchants.settings.update');
         Route::patch('/merchants/{merchant}/geo', [\App\Http\Controllers\Admin\MerchantController::class, 'updateGeo'])->name('merchants.geo.update');
+        Route::patch('/merchants/{merchant}/commission-settings', [\App\Http\Controllers\MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
         Route::post('/merchants/{merchant}/resend-callback', [\App\Http\Controllers\Admin\MerchantResendCallbackController::class, 'resendByDateRange'])->name('merchants.resend-callback');
 
         //Route::resource('/categories', \App\Http\Controllers\Admin\CategoryController::class);

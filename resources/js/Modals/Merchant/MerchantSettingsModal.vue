@@ -17,7 +17,8 @@ const merchant = ref(null);
 const markets = ref([]);
 const categories = ref([]);
 const currencies = ref([]);
-const gatewaySettings = ref({});
+const detailTypes = ref([]);
+const commissionSettings = ref([]);
 const paymentGateways = ref({ data: [] });
 const loading = ref(false);
 const error = ref(null);
@@ -39,7 +40,8 @@ const resetState = () => {
     markets.value = [];
     categories.value = [];
     currencies.value = [];
-    gatewaySettings.value = {};
+    detailTypes.value = [];
+    commissionSettings.value = [];
     paymentGateways.value = { data: [] };
     error.value = null;
 };
@@ -64,7 +66,8 @@ const fetchSettings = async () => {
         markets.value = data.markets ?? [];
         categories.value = data.categories ?? [];
         currencies.value = data.currencies ?? [];
-        gatewaySettings.value = data.gateway_settings ?? {};
+        detailTypes.value = data.detail_types ?? [];
+        commissionSettings.value = data.commission_settings ?? [];
         paymentGateways.value = data.payment_gateways ?? { data: [] };
     } catch (e) {
         error.value = e.response?.data?.message ?? 'Не удалось загрузить настройки мерчанта.';
@@ -112,7 +115,8 @@ watch(
                 :markets="markets"
                 :categories="categories"
                 :currencies="currencies"
-                :gateway-settings="gatewaySettings"
+                :detail-types="detailTypes"
+                :commission-settings="commissionSettings"
                 :payment-gateways="paymentGateways"
                 @updated="notifyUpdated"
             />

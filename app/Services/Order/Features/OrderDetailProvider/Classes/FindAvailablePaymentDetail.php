@@ -29,7 +29,6 @@ class FindAvailablePaymentDetail
     protected Carbon $start;
     protected Carbon $end;
     protected Money $exchangePrice;
-    protected array $inactiveGatewayIds;
     protected int $maxPendingDisputes;
     protected Money $approximateTotalProfit;
 
@@ -55,10 +54,6 @@ class FindAvailablePaymentDetail
             throw OrderException::marketPriceUnavailable();
         }
 
-        $this->inactiveGatewayIds = collect($this->merchant->gateway_settings)
-            ->filter(fn($settings) => isset($settings['active']) && $settings['active'] === false)
-            ->keys()
-            ->all();
         $this->maxPendingDisputes = services()->settings()->getMaxPendingDisputes();
         $this->approximateTotalProfit = $amount->convert($this->exchangePrice, Currency::USDT());
     }
@@ -87,7 +82,7 @@ class FindAvailablePaymentDetail
             ->where('id', $paymentDetail->user_id)
             ->first();
 
-        $gateway = (new GatewayFactory($this->merchant, $this->amount))->make($paymentGateway);
+        $gateway = (new GatewayFactory($this->merchant, $this->amount, $paymentDetail->detail_type))->make($paymentGateway);
         $trader = (new TraderFactory())->make($user);
 
         return $this->makeDetail($paymentDetail, $gateway, $trader);
@@ -229,7 +224,6 @@ class FindAvailablePaymentDetail
                         ->where('max_limit', '>=', intval($this->amount->toBeauty()))
                         ->where('currency', $this->currency->getCode())
                         ->where('is_intrabank', false)
-                        ->whereNotIn('payment_gateways.id', $this->inactiveGatewayIds)
                         ->where('is_active', 1);
                 });
             })
@@ -238,7 +232,6 @@ class FindAvailablePaymentDetail
                     $query->where('min_limit', '<=', intval($this->amount->toBeauty()))
                         ->where('max_limit', '>=', intval($this->amount->toBeauty()))
                         ->where('code', $this->gateway->code)
-                        ->whereNotIn('payment_gateways.id', $this->inactiveGatewayIds)
                         ->where('is_active', 1);
                 });
             })
