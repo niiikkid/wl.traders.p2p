@@ -37,13 +37,14 @@ class FormatMoney
     {
         try {
             return bcdiv($amount, str_pad(1, $divisibility + 1, '0'), $divisibility);
-        } catch (\ValueError $exception) {
-            Log::error('FormatMoney::unitsToPrecision bcdiv value error', [
+        } catch (\Throwable $exception) {
+            Log::error('FormatMoney::unitsToPrecision bcdiv failed', [
                 'amount' => $amount,
                 'amount_type' => get_debug_type($amount),
                 'amount_length' => mb_strlen($amount),
                 'divisibility' => $divisibility,
                 'divisor' => str_pad(1, $divisibility + 1, '0'),
+                'exception_class' => $exception::class,
                 'exception_message' => $exception->getMessage(),
             ]);
 
