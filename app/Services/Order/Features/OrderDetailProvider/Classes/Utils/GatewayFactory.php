@@ -71,8 +71,7 @@ class GatewayFactory
                 (float) intval($this->amount->toBeauty())
             );
         }
-        info([$serviceCommissionRateTotal, $traderCommissionRate]);
-dd(1);
+
         return new Gateway(
             id: $paymentGateway->id,
             code: $paymentGateway->code,
