@@ -2,6 +2,8 @@
 
 namespace App\Services\Money\Utils;
 
+use Illuminate\Support\Facades\Log;
+
 class FormatMoney
 {
     public static function precisionToUnits(string $amount, int $divisibility): string
@@ -33,7 +35,20 @@ class FormatMoney
 
     public static function unitsToPrecision(string $amount, int $divisibility): string
     {
-        return bcdiv($amount, str_pad(1, $divisibility + 1, '0'), $divisibility);
+        try {
+            return bcdiv($amount, str_pad(1, $divisibility + 1, '0'), $divisibility);
+        } catch (\ValueError $exception) {
+            Log::error('FormatMoney::unitsToPrecision bcdiv value error', [
+                'amount' => $amount,
+                'amount_type' => get_debug_type($amount),
+                'amount_length' => mb_strlen($amount),
+                'divisibility' => $divisibility,
+                'divisor' => str_pad(1, $divisibility + 1, '0'),
+                'exception_message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
     }
 
     public static function beautifyPrecision(string $amount): string
@@ -47,4 +62,5 @@ class FormatMoney
 
         return !empty($amount) ? $amount : 0;
     }
+
 }
