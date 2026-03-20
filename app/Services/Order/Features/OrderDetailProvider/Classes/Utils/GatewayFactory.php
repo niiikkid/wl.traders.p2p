@@ -30,11 +30,21 @@ class GatewayFactory
             );
 
             if ($merchantCommissionSettings) {
-                $hasMerchantCommissionOverride = true;
-                $traderCommissionRate = (float) ($merchantCommissionSettings['trader_commission_rate_for_orders'] ?? 0);
-                $serviceCommissionRateTotal = (float) ($merchantCommissionSettings['total_service_commission_rate_for_orders'] ?? 0);
+                $hasFixedOverride = $merchantCommissionSettings['trader_commission_rate_for_orders'] !== null
+                    && $merchantCommissionSettings['total_service_commission_rate_for_orders'] !== null;
+                $useFlexible = (bool) ($merchantCommissionSettings['use_flexible_trader_commission_for_orders'] ?? false);
+                $hasFlexibleOverride = $useFlexible
+                    && ! empty($merchantCommissionSettings['trader_commission_tiers_for_orders'])
+                    && ! empty($merchantCommissionSettings['total_service_commission_tiers_for_orders']);
 
-                if ($this->amount && ($merchantCommissionSettings['use_flexible_trader_commission_for_orders'] ?? false)) {
+                if ($hasFixedOverride) {
+                    $hasMerchantCommissionOverride = true;
+                    $traderCommissionRate = (float) $merchantCommissionSettings['trader_commission_rate_for_orders'];
+                    $serviceCommissionRateTotal = (float) $merchantCommissionSettings['total_service_commission_rate_for_orders'];
+                }
+
+                if ($this->amount && $hasFlexibleOverride) {
+                    $hasMerchantCommissionOverride = true;
                     $orderAmount = (float) intval($this->amount->toBeauty());
                     $traderCommissionRate = TraderCommissionTierResolver::resolveRate(
                         tiers: $merchantCommissionSettings['trader_commission_tiers_for_orders'] ?? [],
@@ -61,7 +71,8 @@ class GatewayFactory
                 (float) intval($this->amount->toBeauty())
             );
         }
-
+        info([$serviceCommissionRateTotal, $traderCommissionRate]);
+dd(1);
         return new Gateway(
             id: $paymentGateway->id,
             code: $paymentGateway->code,

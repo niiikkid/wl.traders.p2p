@@ -115,8 +115,10 @@ class MerchantController extends Controller
         $normalized = collect($rawSettings)
             ->map(function (array $setting) {
                 $useFlexible = (bool) ($setting['use_flexible_trader_commission_for_orders'] ?? false);
-                $traderRate = $setting['trader_commission_rate_for_orders'] ?? null;
-                $totalRate = $setting['total_service_commission_rate_for_orders'] ?? null;
+                $traderRateRaw = $setting['trader_commission_rate_for_orders'] ?? null;
+                $totalRateRaw = $setting['total_service_commission_rate_for_orders'] ?? null;
+                $traderRate = ($traderRateRaw === '' || $traderRateRaw === null) ? null : (float) $traderRateRaw;
+                $totalRate = ($totalRateRaw === '' || $totalRateRaw === null) ? null : (float) $totalRateRaw;
 
                 $hasFixed = $traderRate !== null && $totalRate !== null;
                 $hasFlexible = $useFlexible && ! empty($setting['trader_commission_tiers_for_orders']) && ! empty($setting['total_service_commission_tiers_for_orders']);

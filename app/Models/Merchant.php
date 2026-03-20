@@ -171,12 +171,12 @@ class Merchant extends Model
                 return [
                     'currency' => $currency,
                     'detail_type' => $detailType,
-                    'trader_commission_rate_for_orders' => isset($item['trader_commission_rate_for_orders'])
-                        ? (float) $item['trader_commission_rate_for_orders']
-                        : null,
-                    'total_service_commission_rate_for_orders' => isset($item['total_service_commission_rate_for_orders'])
-                        ? (float) $item['total_service_commission_rate_for_orders']
-                        : null,
+                    'trader_commission_rate_for_orders' => $this->normalizeNullableRate(
+                        $item['trader_commission_rate_for_orders'] ?? null
+                    ),
+                    'total_service_commission_rate_for_orders' => $this->normalizeNullableRate(
+                        $item['total_service_commission_rate_for_orders'] ?? null
+                    ),
                     'use_flexible_trader_commission_for_orders' => (bool) ($item['use_flexible_trader_commission_for_orders'] ?? false),
                     'trader_commission_tiers_for_orders' => $this->normalizeCommissionTiers(
                         $item['trader_commission_tiers_for_orders'] ?? []
@@ -205,12 +205,12 @@ class Merchant extends Model
                 return [
                     'currency' => $currency,
                     'detail_type' => $detailType,
-                    'trader_commission_rate_for_orders' => isset($item['trader_commission_rate_for_orders'])
-                        ? (float) $item['trader_commission_rate_for_orders']
-                        : null,
-                    'total_service_commission_rate_for_orders' => isset($item['total_service_commission_rate_for_orders'])
-                        ? (float) $item['total_service_commission_rate_for_orders']
-                        : null,
+                    'trader_commission_rate_for_orders' => $this->normalizeNullableRate(
+                        $item['trader_commission_rate_for_orders'] ?? null
+                    ),
+                    'total_service_commission_rate_for_orders' => $this->normalizeNullableRate(
+                        $item['total_service_commission_rate_for_orders'] ?? null
+                    ),
                     'use_flexible_trader_commission_for_orders' => (bool) ($item['use_flexible_trader_commission_for_orders'] ?? false),
                     'trader_commission_tiers_for_orders' => $this->normalizeCommissionTiers(
                         $item['trader_commission_tiers_for_orders'] ?? []
@@ -253,5 +253,14 @@ class Merchant extends Model
             ])
             ->values()
             ->toArray();
+    }
+
+    private function normalizeNullableRate(mixed $rate): ?float
+    {
+        if ($rate === null || $rate === '') {
+            return null;
+        }
+
+        return (float) $rate;
     }
 }
