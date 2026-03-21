@@ -1,8 +1,7 @@
 <script setup>
-import {Head, usePage} from '@inertiajs/vue3';
-import MainTableSection from '@/Wrappers/MainTableSection.vue';
+import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 import FiltersSection from './Components/FiltersSection.vue';
 
 defineOptions({ layout: AuthenticatedLayout })
@@ -11,6 +10,8 @@ const props = defineProps({
     statistics: Object,
     filters: Object
 });
+
+const page = usePage();
 
 // Имя для куки
 const CURRENCY_COOKIE_NAME = 'selected_currency';
@@ -89,6 +90,51 @@ const minAmountStatsByGroups = computed(() => {
 
     return props.statistics.minAmountStats[selectedCurrency.value] || [];
 });
+
+const selectedCustomLimitLevels = computed(() => {
+    return minAmountStatsByGroups.value.filter(group => group.min_amount !== null);
+});
+
+const limitLevelError = computed(() => {
+    return page.props.errors?.limit_level || page.props.errors?.amount || page.props.errors?.currency || null;
+});
+
+const addLevelForm = useForm({
+    currency: selectedCurrency.value || '',
+    amount: '',
+});
+
+watch(selectedCurrency, (newCurrency) => {
+    addLevelForm.currency = newCurrency || '';
+});
+
+const addLimitLevel = () => {
+    if (!selectedCurrency.value) return;
+
+    addLevelForm.currency = selectedCurrency.value;
+    addLevelForm.post(route('admin.enabled-cards.limit-levels.store'), {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['statistics', 'filters', 'errors'],
+        onSuccess: () => {
+            addLevelForm.reset('amount');
+        },
+    });
+};
+
+const removeLimitLevel = (amount) => {
+    if (!selectedCurrency.value) return;
+
+    router.delete(route('admin.enabled-cards.limit-levels.destroy'), {
+        data: {
+            currency: selectedCurrency.value,
+            amount,
+        },
+        preserveState: true,
+        preserveScroll: true,
+        only: ['statistics', 'filters', 'errors'],
+    });
+};
 </script>
 
 <template>
@@ -122,6 +168,104 @@ const minAmountStatsByGroups = computed(() => {
 
             <!-- Фильтры -->
             <FiltersSection :initial-filters="filters" />
+
+            <details class="collapse collapse-arrow bg-base-100 shadow">
+                <summary class="collapse-title flex items-center gap-3 text-base font-semibold">
+                    <span class="badge badge-primary badge-sm">?</span>
+                    Как это работает?
+                </summary>
+                <div class="collapse-content text-sm text-base-content/80 space-y-3">
+                    <p>
+                        Страница показывает текущую пропускную способность реквизитов по выбранной валюте и заданным фильтрам.
+                        Учитываются только активные, неархивные реквизиты онлайн-трейдеров.
+                    </p>
+                    <div class="space-y-1">
+                        <p class="font-medium text-base-content">Что означают показатели:</p>
+                        <p>
+                            <span class="font-medium">Свободный лимит</span> — это сумма, которую реквизиты этой группы
+                            могут принять прямо сейчас до упора в дневной лимит.
+                        </p>
+                        <p>
+                            <span class="font-medium">Потенциальный лимит</span> — это свободный лимит плюс сумма сделок,
+                            которые сейчас находятся в ожидании подтверждения.
+                        </p>
+                    </div>
+                    <div class="space-y-1">
+                        <p class="font-medium text-base-content">Как считаются уровни:</p>
+                        <p>
+                            Группа <span class="font-medium">«Не указан»</span> включает реквизиты, у которых минимальный лимит не задан.
+                        </p>
+                        <p>
+                            Каждый уровень работает как верхний порог. Например, уровень <span class="font-medium">«От 5 000»</span>
+                            учитывает реквизиты с минимальным лимитом до 5 000 включительно.
+                        </p>
+                        <p>
+                            Поэтому уровни нарастающие и могут пересекаться: если у реквизита минимальный лимит 2 000,
+                            он попадет и в уровень «От 2 000», и в «От 5 000», и в более высокие уровни.
+                        </p>
+                    </div>
+                    <p>
+                        Для каждого уровня отдельно считаются: количество реквизитов, свободный лимит и потенциальный лимит.
+                    </p>
+                </div>
+            </details>
+
+            <div class="card bg-base-100 shadow">
+                <div class="card-body p-4 sm:p-5 gap-4">
+                    <div class="flex flex-col gap-1">
+                        <h3 class="card-title text-lg">Уровни минимального лимита</h3>
+                        <p class="text-sm text-base-content/70">
+                            Для каждой валюты можно задать свои уровни. Группа "Не указан" всегда остается фиксированной.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="badge badge-outline">Не указан</span>
+                        <template v-for="level in selectedCustomLimitLevels" :key="level.min_amount">
+                            <div class="badge badge-primary badge-soft gap-2 py-3">
+                                <span>{{ level.title }}</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-ghost btn-xs btn-circle"
+                                    @click="removeLimitLevel(level.min_amount)"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </template>
+                        <span v-if="selectedCustomLimitLevels.length === 0" class="text-sm text-base-content/60">
+                            Дополнительные уровни не добавлены
+                        </span>
+                    </div>
+
+                    <form class="flex flex-col sm:flex-row sm:items-end gap-3" @submit.prevent="addLimitLevel">
+                        <div class="w-full sm:max-w-sm">
+                            <label for="new-limit-level-input" class="label py-1">
+                                <span class="label-text font-medium">Сумма уровня (от)</span>
+                            </label>
+                            <input
+                                id="new-limit-level-input"
+                                v-model="addLevelForm.amount"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                class="input input-bordered w-full"
+                                placeholder="Например, 1000"
+                            >
+                        </div>
+                        <button
+                            type="submit"
+                            class="btn btn-primary sm:w-auto"
+                            :disabled="addLevelForm.processing || !selectedCurrency"
+                        >
+                            Добавить уровень
+                        </button>
+                    </form>
+                    <p v-if="limitLevelError" class="text-sm text-error">
+                        {{ limitLevelError }}
+                    </p>
+                </div>
+            </div>
 
             <!-- Статистика: 4 отдельных блока -->
             <div class="grid grid-cols-1 3xl:grid-cols-4 xl:grid-cols-2 gap-6 mt-6">

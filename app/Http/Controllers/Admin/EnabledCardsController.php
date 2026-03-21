@@ -4,17 +4,60 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\OrderStatus;
 use App\Http\Controllers\Controller;
+use App\Models\EnabledCardMinAmountLevel;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Services\Money\Currency;
+use App\Services\Money\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use App\Models\User;
 use App\Models\Wallet;
 
 class EnabledCardsController extends Controller
 {
+    public function storeLimitLevel(Request $request)
+    {
+        $validated = $request->validate([
+            'currency' => ['required', 'string', Rule::in(Currency::getAllCodes())],
+            'amount' => ['required', 'numeric', 'gt:0'],
+        ]);
+
+        $currency = Currency::make($validated['currency']);
+        $amount_units = (int) Money::fromPrecision((string) $validated['amount'], $currency->getCode())->toUnits();
+
+        if ($amount_units <= 0) {
+            return back()->withErrors([
+                'limit_level' => 'Уровень лимита должен быть больше нуля.',
+            ]);
+        }
+
+        EnabledCardMinAmountLevel::query()->firstOrCreate([
+            'currency' => $currency->getCode(),
+            'min_amount' => $amount_units,
+        ]);
+
+        return back();
+    }
+
+    public function destroyLimitLevel(Request $request)
+    {
+        $validated = $request->validate([
+            'currency' => ['required', 'string', Rule::in(Currency::getAllCodes())],
+            'amount' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $currency = Currency::make($validated['currency']);
+
+        EnabledCardMinAmountLevel::query()
+            ->where('currency', $currency->getCode())
+            ->where('min_amount', (int) $validated['amount'])
+            ->delete();
+
+        return back();
+    }
+
     public function index(Request $request)
     {
         // Получаем параметры фильтрации
@@ -92,19 +135,20 @@ class EnabledCardsController extends Controller
         $currencyLimits = $currencyLimitsQuery
             ->select(
                 'currency',
-                DB::raw('SUM(CAST(daily_limit AS DECIMAL) - CAST(current_daily_limit AS DECIMAL)) as total_free_limit')
+                DB::raw('COALESCE(SUM(CAST(daily_limit AS SIGNED) - CAST(current_daily_limit AS SIGNED)), 0) as total_free_limit')
             )
             ->groupBy('currency')
             ->get()
             ->map(function ($item) {
                 // Создаем объект валюты для получения правильного имени и символа
                 $currency = new Currency($item->currency);
+                $freeLimit = Money::fromUnits((string) $item->total_free_limit, $currency->getCode())->toBeauty();
 
                 return [
                     'code' => $currency->getCode(),
                     'name' => $currency->getName(),
                     'symbol' => $currency->getSymbol(),
-                    'total_free_limit' => number_format($item->total_free_limit / 100, 2, '.', ' ')
+                    'total_free_limit' => $freeLimit,
                 ];
             });
 
@@ -112,11 +156,11 @@ class EnabledCardsController extends Controller
         $pendingOrderAmounts = Order::query()
             ->whereIn('payment_detail_id', $activePaymentDetailIds)
             ->where('status', OrderStatus::PENDING)
-            ->select('currency', DB::raw('SUM(CAST(amount AS DECIMAL)) as total_amount'))
+            ->select('currency', DB::raw('COALESCE(SUM(CAST(amount AS SIGNED)), 0) as total_amount'))
             ->groupBy('currency')
             ->get()
             ->mapWithKeys(function (Order $item) {
-                return [$item->currency->getCode() => $item->total_amount];
+                return [$item->currency->getCode() => (int) $item->total_amount];
             });
 
         // Расчет потенциального лимита (свободный лимит - сумма активных заказов)
@@ -143,7 +187,7 @@ class EnabledCardsController extends Controller
         $potentialLimits = $potentialLimitsQuery
             ->select(
                 'currency',
-                DB::raw('SUM(CAST(daily_limit AS DECIMAL) - CAST(current_daily_limit AS DECIMAL)) as total_free_limit')
+                DB::raw('COALESCE(SUM(CAST(daily_limit AS SIGNED) - CAST(current_daily_limit AS SIGNED)), 0) as total_free_limit')
             )
             ->groupBy('currency')
             ->get()
@@ -155,12 +199,13 @@ class EnabledCardsController extends Controller
 
                 // Вычисляем потенциальный лимит
                 $potentialLimit = $item->total_free_limit + $pendingAmount;
+                $formattedPotentialLimit = Money::fromUnits((string) $potentialLimit, $currency->getCode())->toBeauty();
 
                 return [
                     'code' => $currency->getCode(),
                     'name' => $currency->getName(),
                     'symbol' => $currency->getSymbol(),
-                    'total_potential_limit' => number_format($potentialLimit / 100, 2, '.', ' ')
+                    'total_potential_limit' => $formattedPotentialLimit,
                 ];
             });
 
@@ -204,18 +249,13 @@ class EnabledCardsController extends Controller
             ->values()
             ->toArray();
 
-        // Определение лимитных групп для таблицы
-        $minAmountGroups = [
-            'no_limit' => ['title' => 'Не указан', 'min_amount' => null],
-            '1k' => ['title' => 'От 1,000', 'min_amount' => 100000],
-            '2k' => ['title' => 'От 2,000', 'min_amount' => 200000],
-            '3k' => ['title' => 'От 3,000', 'min_amount' => 300000],
-            '4k' => ['title' => 'От 4,000', 'min_amount' => 400000],
-            '5k' => ['title' => 'От 5,000', 'min_amount' => 500000],
-            '10k' => ['title' => 'От 10,000', 'min_amount' => 1000000],
-            '20k' => ['title' => 'От 20,000', 'min_amount' => 2000000],
-            '50k' => ['title' => 'От 50,000', 'min_amount' => 5000000],
-        ];
+        $minAmountLevels = EnabledCardMinAmountLevel::query()
+            ->select(['currency', 'min_amount'])
+            ->orderBy('min_amount')
+            ->get()
+            ->groupBy('currency')
+            ->map(fn ($levels) => $levels->pluck('min_amount')->map(fn ($value) => (int) $value)->values()->all())
+            ->toArray();
 
         // Получение статистики по группам минимальных лимитов
         $minAmountStats = [];
@@ -224,7 +264,28 @@ class EnabledCardsController extends Controller
             $currencyCode = $currency['code'];
             $minAmountStats[$currencyCode] = [];
 
-            foreach ($minAmountGroups as $groupKey => $group) {
+            $groups = collect($minAmountLevels[$currencyCode] ?? [])
+                ->map(fn ($amount_units) => (int) $amount_units)
+                ->filter(fn (int $amount_units) => $amount_units > 0)
+                ->unique()
+                ->sort()
+                ->values()
+                ->map(function (int $amount_units) use ($currencyCode) {
+                    $amount = Money::fromUnits((string) $amount_units, $currencyCode)->toBeauty();
+
+                    return [
+                        'title' => "От {$amount}",
+                        'min_amount' => $amount_units,
+                    ];
+                })
+                ->prepend([
+                    'title' => 'Не указан',
+                    'min_amount' => null,
+                ])
+                ->values()
+                ->all();
+
+            foreach ($groups as $group) {
                 // Базовый запрос для активных реквизитов выбранной валюты
                 $query = PaymentDetail::query()
                     ->whereNull('archived_at')
@@ -265,36 +326,45 @@ class EnabledCardsController extends Controller
                 }
 
                 // Подсчет количества реквизитов в группе
-                $count = $query->count();
+                $count = (clone $query)->count();
 
                 // Свободный лимит для реквизитов в группе
-                $freeLimit = $query->sum(DB::raw('CAST(daily_limit AS DECIMAL) - CAST(current_daily_limit AS DECIMAL)'));
+                $freeLimit = (int) ((clone $query)->toBase()->selectRaw(
+                    'COALESCE(SUM(CAST(daily_limit AS SIGNED) - CAST(current_daily_limit AS SIGNED)), 0) as free_limit'
+                )->value('free_limit') ?? 0);
 
                 // ID реквизитов в группе для расчета потенциального лимита
-                $detailIds = $query->pluck('id')->toArray();
+                $detailIds = (clone $query)->pluck('id')->toArray();
 
                 // Сумма ожидающих заказов для реквизитов группы
-                $pendingAmount = Order::query()
-                    ->whereIn('payment_detail_id', $detailIds)
-                    ->where('status', OrderStatus::PENDING)
-                    ->where('currency', $currencyCode)
-                    ->sum('amount');
+                $pendingAmount = 0;
+
+                if (! empty($detailIds)) {
+                    $pendingAmount = (int) (Order::query()
+                        ->whereIn('payment_detail_id', $detailIds)
+                        ->where('status', OrderStatus::PENDING)
+                        ->where('currency', $currencyCode)
+                        ->toBase()
+                        ->selectRaw('COALESCE(SUM(CAST(amount AS SIGNED)), 0) as pending_amount')
+                        ->value('pending_amount') ?? 0);
+                }
 
                 // Расчет потенциального лимита
                 $potentialLimit = $freeLimit + $pendingAmount;
 
-                $minAmountStats[$currencyCode][$groupKey] = [
+                $minAmountStats[$currencyCode][] = [
                     'title' => $group['title'],
+                    'min_amount' => $group['min_amount'],
                     'count' => $count,
-                    'free_limit' => number_format($freeLimit / 100, 2, '.', ' '),
-                    'potential_limit' => number_format($potentialLimit / 100, 2, '.', ' ')
+                    'free_limit' => Money::fromUnits((string) $freeLimit, $currencyCode)->toBeauty(),
+                    'potential_limit' => Money::fromUnits((string) $potentialLimit, $currencyCode)->toBeauty(),
                 ];
             }
         }
 
         // Форматируем баланс для отображения
-        $formattedTotalBalance = number_format($totalTradersBalance / 100, 2, '.', ' ');
-        $formattedOnlineBalance = number_format($onlineTradersBalance / 100, 2, '.', ' ');
+        $formattedTotalBalance = Money::fromUnits((string) $totalTradersBalance, Currency::USDT()->getCode())->toBeauty();
+        $formattedOnlineBalance = Money::fromUnits((string) $onlineTradersBalance, Currency::USDT()->getCode())->toBeauty();
 
         return Inertia::render('EnabledCards/Index', [
             'statistics' => [
@@ -302,6 +372,7 @@ class EnabledCardsController extends Controller
                 'currencyLimits' => $currencyLimits,
                 'potentialLimits' => $potentialLimits,
                 'availableCurrencies' => $availableCurrencies,
+                'minAmountLevels' => $minAmountLevels,
                 'minAmountStats' => $minAmountStats,
                 'tradersBalance' => [
                     'total' => $formattedTotalBalance,

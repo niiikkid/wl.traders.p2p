@@ -258,6 +258,8 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/profit-calculator/calculate', [\App\Http\Controllers\Admin\ProfitCalculatorController::class, 'calculate'])->name('profit-calculator.calculate');
 
         Route::get('/enabled-cards', [\App\Http\Controllers\Admin\EnabledCardsController::class, 'index'])->name('enabled-cards.index');
+        Route::post('/enabled-cards/limit-levels', [\App\Http\Controllers\Admin\EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
+        Route::delete('/enabled-cards/limit-levels', [\App\Http\Controllers\Admin\EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
 
         // Маршруты для фильтрации
         Route::get('/filters/detail-types', [\App\Http\Controllers\Admin\FilterController::class, 'getDetailTypes']);

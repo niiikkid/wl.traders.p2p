@@ -413,4 +413,5 @@ class SettingsService implements SettingsServiceContract
             'reservation_time_for_payouts' => 20,
         ];
     }
+
 }
