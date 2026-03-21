@@ -5,6 +5,8 @@ namespace App\Services\Device;
 use App\Contracts\DeviceServiceContract;
 use App\Models\UserDevice;
 use App\Models\UserDevicePing;
+use App\Services\PaymentDetail\PaymentDetailEnabledPeriodService;
+use App\Services\UserOnline\UserOnlinePeriodRecorder;
 
 class DeviceService implements DeviceServiceContract
 {
@@ -55,6 +57,7 @@ class DeviceService implements DeviceServiceContract
         $user = $device->user;
 
         cache()->put("user-apk-latest-ping-at-$user->id", $now->toISOString());
+        cache()->put("user-online-at-$user->id", $now->toISOString());
         cache()->put('user-device-latest-ping-at-' . $device->id, $now->toISOString());
 
         $bucket = UserDevicePing::toBucket5s($now);
@@ -65,5 +68,8 @@ class DeviceService implements DeviceServiceContract
             ],
             []
         );
+
+        app(UserOnlinePeriodRecorder::class)->touch($user->id, $now);
+        app(PaymentDetailEnabledPeriodService::class)->syncForUser($user, $now);
     }
 }

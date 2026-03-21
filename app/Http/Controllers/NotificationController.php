@@ -11,6 +11,7 @@ use App\Http\Resources\NotificationRuleResource;
 use App\Http\Resources\TelegramAccountResource;
 use App\Models\Notification;
 use App\Models\NotificationRule;
+use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use App\Services\Money\Currency;
 use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
@@ -156,6 +157,10 @@ class NotificationController extends Controller
     public function ping(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
+        $now = now();
+
+        cache()->put("user-online-at-{$userId}", $now->toISOString());
+        app(UserOnlinePeriodRecorder::class)->touch($userId, $now);
 
         $latestNotificationId = Notification::query()
             ->where('user_id', $userId)

@@ -312,6 +312,11 @@ class User extends Authenticatable
         return $this->hasMany(UserTempVipActivation::class);
     }
 
+    public function onlinePeriods(): HasMany
+    {
+        return $this->hasMany(UserOnlinePeriod::class);
+    }
+
     /**
      * Рассчитать данные прогресса временного VIP.
      */

@@ -28,6 +28,7 @@ class SettingsService implements SettingsServiceContract
     const TEMP_VIP_ENABLED = 'temp_vip_enabled';
     const DEFAULT_RESERVE_BALANCE_LIMIT = 'default_reserve_balance_limit';
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
+    const TRADER_ANALYTICS_OPERATION_THRESHOLDS = 'trader_analytics_operation_thresholds';
 
     protected $settings = null;
 
@@ -247,6 +248,37 @@ class SettingsService implements SettingsServiceContract
         );
     }
 
+    public function getTraderAnalyticsOperationThresholds(): array
+    {
+        $value = $this->getParam(self::TRADER_ANALYTICS_OPERATION_THRESHOLDS);
+        $thresholds = json_decode($value, true);
+
+        if (! is_array($thresholds)) {
+            $thresholds = [];
+        }
+
+        return $this->normalizeTraderAnalyticsOperationThresholds($thresholds);
+    }
+
+    public function getTraderAnalyticsOperationThresholdForCurrency(Currency $currency): string
+    {
+        $thresholds = $this->getTraderAnalyticsOperationThresholds();
+
+        return (string) ($thresholds[$currency->getCode()] ?? '300');
+    }
+
+    public function updateTraderAnalyticsOperationThreshold(string $currencyCode, string $threshold): void
+    {
+        $currency = Currency::make($currencyCode);
+        $thresholds = $this->getTraderAnalyticsOperationThresholds();
+        $thresholds[$currency->getCode()] = $threshold;
+
+        $this->updateParam(
+            self::TRADER_ANALYTICS_OPERATION_THRESHOLDS,
+            json_encode($this->normalizeTraderAnalyticsOperationThresholds($thresholds))
+        );
+    }
+
     public function createAll(): void
     {
         cache()->forget('app-settings');
@@ -309,6 +341,11 @@ class SettingsService implements SettingsServiceContract
         Setting::firstOrCreate([
             'key' => self::PAYOUT_CURRENCY_SETTINGS,
             'value' => json_encode($this->normalizePayoutCurrencySettings([])),
+        ]);
+
+        Setting::firstOrCreate([
+            'key' => self::TRADER_ANALYTICS_OPERATION_THRESHOLDS,
+            'value' => json_encode($this->normalizeTraderAnalyticsOperationThresholds([])),
         ]);
 
         $currenciesJson = $this->getParam(self::CURRENCY_PRICE_PARSER_SETTINGS);
@@ -412,6 +449,21 @@ class SettingsService implements SettingsServiceContract
             'trader_commission_rate' => 4,
             'reservation_time_for_payouts' => 20,
         ];
+    }
+
+    protected function normalizeTraderAnalyticsOperationThresholds(array $thresholds): array
+    {
+        $normalized = [];
+
+        Currency::getAll()->each(function (Currency $currency) use (&$normalized, $thresholds) {
+            $code = $currency->getCode();
+            $current = $thresholds[$code] ?? $thresholds[strtoupper($code)] ?? null;
+            $value = is_numeric($current) ? (string) $current : '300';
+
+            $normalized[$code] = $value;
+        });
+
+        return $normalized;
     }
 
 }

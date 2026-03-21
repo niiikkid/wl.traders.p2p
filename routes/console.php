@@ -13,6 +13,7 @@ Schedule::command('app:update-p2p-prices')->everyMinute();
 Schedule::command('app:close-manually-orders')->everyMinute();
 Schedule::command('app:execute-funds-on-hold')->everyMinute();
 Schedule::command('app:prune-user-device-pings')->everyMinute();
+Schedule::command('app:prune-user-online-periods')->daily();
 Schedule::command('app:reset-payment-detail-limits')->dailyAt('00:00');
 Schedule::command('app:load-filter-conditions')->hourly();
 Schedule::command('telescope:prune --hours=48')->daily();

@@ -41,10 +41,14 @@ const getInitialCurrency = () => {
         return savedCurrency;
     }
 
-    // Иначе возвращаем первую валюту из списка
-    return props.statistics.availableCurrencies.length > 0
-        ? props.statistics.availableCurrencies[0].code
-        : null;
+    // Если сохраненной валюты нет — по умолчанию выбираем гривну
+    const defaultCurrency = props.statistics.availableCurrencies.find(c => c.code === 'uah');
+    if (defaultCurrency) {
+        return defaultCurrency.code;
+    }
+
+    // Фоллбек: первая валюта из списка
+    return props.statistics.availableCurrencies.length > 0 ? props.statistics.availableCurrencies[0].code : null;
 };
 
 // Устанавливаем начальное значение валюты

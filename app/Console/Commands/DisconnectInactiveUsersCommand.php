@@ -37,9 +37,9 @@ class DisconnectInactiveUsersCommand extends Command
             ->whereHas('orders')
             ->get();
 
-        User::query()
-            ->whereIn('id', $inactiveUsers->pluck('id'))
-            ->update(['is_online' => false]);
+        $inactiveUsers->each(function (User $user) {
+            $user->update(['is_online' => false]);
+        });
 
         return Command::SUCCESS;
     }

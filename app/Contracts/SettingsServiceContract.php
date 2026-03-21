@@ -68,5 +68,11 @@ interface SettingsServiceContract
 
     public function updatePayoutCurrencySettings(array $settings): void;
 
+    public function getTraderAnalyticsOperationThresholds(): array;
+
+    public function getTraderAnalyticsOperationThresholdForCurrency(Currency $currency): string;
+
+    public function updateTraderAnalyticsOperationThreshold(string $currencyCode, string $threshold): void;
+
     public function createAll(): void;
 }

@@ -19,6 +19,8 @@ use App\Models\PaymentDetail;
 use App\Models\User;
 use App\Models\UserMeta;
 use App\Services\Money\Currency;
+use App\Services\PaymentDetail\PaymentDetailEnabledPeriodService;
+use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -48,8 +50,15 @@ class HandleInertiaRequests extends Middleware
     {
         // Save latest frontend ping time for authenticated user (Inertia request)
         if (auth()->check()) {
-            $userId = auth()->id();
-            cache()->put("user-online-at-{$userId}", now()->toISOString());
+            $user = auth()->user();
+            $userId = $user->id;
+            $now = now();
+            cache()->put("user-online-at-{$userId}", $now->toISOString());
+            app(UserOnlinePeriodRecorder::class)->touch($userId, $now);
+
+            if ($user->hasRole('Trader')) {
+                app(PaymentDetailEnabledPeriodService::class)->syncForUser($user, $now);
+            }
         }
 
         $rates = cache()->remember('currency-rates', 60, function () {
@@ -182,7 +191,8 @@ class HandleInertiaRequests extends Middleware
                         ->whereNull('archived_at')
                         ->where('is_active', true)
                         ->whereRelation('user', 'is_online', true)
-                        ->whereRelation('user', 'user_id', $userId)
+                        ->whereRelation('user', 'id', $userId)
+                        ->whereRelation('user', 'stop_traffic', false)
                         ->count();
                 });
             } elseif (isRouteFor('Super Admin')) {
@@ -191,6 +201,7 @@ class HandleInertiaRequests extends Middleware
                         ->whereNull('archived_at')
                         ->where('is_active', true)
                         ->whereRelation('user', 'is_online', true)
+                        ->whereRelation('user', 'stop_traffic', false)
                         ->count();
                 });
             }

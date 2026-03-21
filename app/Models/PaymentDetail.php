@@ -5,9 +5,11 @@ namespace App\Models;
 use App\Casts\CurrencyCast;
 use App\Casts\MoneyCast;
 use App\Enums\DetailType;
+use App\Observers\PaymentDetailObserver;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -45,6 +47,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
+#[ObservedBy([PaymentDetailObserver::class])]
 class PaymentDetail extends Model
 {
     use HasFactory;

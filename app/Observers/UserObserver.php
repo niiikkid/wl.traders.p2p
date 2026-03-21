@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\User;
 use App\Models\UserMeta;
+use App\Services\PaymentDetail\PaymentDetailEnabledPeriodService;
 
 class UserObserver
 {
@@ -22,15 +23,23 @@ class UserObserver
      */
     public function updated(User $user): void
     {
+        $shouldSyncDetailEnabledPeriods = false;
+
         if ($user->wasChanged('banned_at') && $user->banned_at) {
             $user->updateQuietly([
                 'is_online' => false,
             ]);
+            $shouldSyncDetailEnabledPeriods = true;
         }
         if ($user->wasChanged('stop_traffic') && $user->stop_traffic) {
             $user->updateQuietly([
                 'is_online' => false,
             ]);
+            $shouldSyncDetailEnabledPeriods = true;
+        }
+
+        if ($user->wasChanged('is_online') || $user->wasChanged('stop_traffic')) {
+            $shouldSyncDetailEnabledPeriods = true;
         }
 
         if ($user->wasChanged('is_vip')) {
@@ -39,6 +48,10 @@ class UserObserver
             } else {
                 services()->paymentDetail()->resetVipLimitsForUser($user);
             }
+        }
+
+        if ($shouldSyncDetailEnabledPeriods) {
+            app(PaymentDetailEnabledPeriodService::class)->syncForUser($user);
         }
     }
 
