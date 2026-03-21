@@ -263,7 +263,7 @@ class TraderAnalyticsController extends Controller
                     ? round($enabled_percent_sum / $day_count_for_chart, 2)
                     : 0,
             ],
-            'enabledDetailsByDay' => $enabled_details_by_day,
+            'enabledDetailsByDay' => array_reverse($enabled_details_by_day),
             'topTraders' => $top_traders,
             'activeTraders' => $active_traders,
         ]);
