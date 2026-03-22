@@ -86,7 +86,7 @@ class StoreRequest extends FormRequest
             'name' => ['required', 'string', 'min:3', 'max:30'],
             'detail' => $detail,
             'detail_type' => ['required', Rule::in(DetailType::values())],
-            'initials' => ['required', 'string', 'min:3', 'max:40'],
+            'initials' => ['required', 'string', 'min:3', 'max:80'],
             'additional_info' => [
                 Rule::requiredIf(DetailType::IBAN_UAH->equals($this->detail_type)),
                 'nullable',

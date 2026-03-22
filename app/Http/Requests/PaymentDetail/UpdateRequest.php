@@ -27,7 +27,7 @@ class UpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'min:3', 'max:30'],
-            'initials' => ['required', 'string', 'min:3', 'max:40'],
+            'initials' => ['required', 'string', 'min:3', 'max:80'],
             'additional_info' => [
                 Rule::requiredIf($this->additionalInfoIsRequired()),
                 'nullable',
