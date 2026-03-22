@@ -12,6 +12,8 @@ const props = defineProps({
 });
 
 const page = usePage();
+const routePrefix = computed(() => route().current('support.*') ? 'support' : 'admin');
+const filtersBasePath = computed(() => routePrefix.value === 'support' ? '/support/filters' : '/admin/filters');
 
 // Имя для куки
 const CURRENCY_COOKIE_NAME = 'selected_currency';
@@ -116,7 +118,7 @@ const addLimitLevel = () => {
     if (!selectedCurrency.value) return;
 
     addLevelForm.currency = selectedCurrency.value;
-    addLevelForm.post(route('admin.enabled-cards.limit-levels.store'), {
+    addLevelForm.post(route(`${routePrefix.value}.enabled-cards.limit-levels.store`), {
         preserveState: true,
         preserveScroll: true,
         only: ['statistics', 'filters', 'errors'],
@@ -129,7 +131,7 @@ const addLimitLevel = () => {
 const removeLimitLevel = (amount) => {
     if (!selectedCurrency.value) return;
 
-    router.delete(route('admin.enabled-cards.limit-levels.destroy'), {
+    router.delete(route(`${routePrefix.value}.enabled-cards.limit-levels.destroy`), {
         data: {
             currency: selectedCurrency.value,
             amount,
@@ -171,7 +173,7 @@ const removeLimitLevel = (amount) => {
             </div>
 
             <!-- Фильтры -->
-            <FiltersSection :initial-filters="filters" />
+            <FiltersSection :initial-filters="filters" :filters-base-path="filtersBasePath" />
 
             <details class="collapse collapse-arrow bg-base-100 shadow">
                 <summary class="collapse-title flex items-center gap-3 text-base font-semibold">

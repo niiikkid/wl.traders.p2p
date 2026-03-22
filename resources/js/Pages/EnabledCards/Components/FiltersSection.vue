@@ -7,6 +7,10 @@ import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
   initialFilters: Object,
+  filtersBasePath: {
+    type: String,
+    required: true,
+  },
 });
 
 // Состояние фильтров
@@ -81,9 +85,9 @@ setTimeout(() => {
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DetailTypeFilter v-model="filters.detail_type" />
-        <PaymentGatewayFilter v-model="filters.payment_gateway_id" />
-        <UserFilter v-model="filters.user_id" />
+        <DetailTypeFilter v-model="filters.detail_type" :filters-base-path="filtersBasePath" />
+        <PaymentGatewayFilter v-model="filters.payment_gateway_id" :filters-base-path="filtersBasePath" />
+        <UserFilter v-model="filters.user_id" :filters-base-path="filtersBasePath" />
       </div>
     </div>
   </div>

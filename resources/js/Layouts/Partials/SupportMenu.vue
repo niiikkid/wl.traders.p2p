@@ -48,6 +48,19 @@ router.on('success', (event) => {
                 </span>
             </span>
         </li>
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.enabled-cards.*') }]">
+            <span
+                @click="router.visit(route('support.enabled-cards.index'), { preserveScroll: true })"
+                @keydown.enter.space="router.visit(route('support.enabled-cards.index'), { preserveScroll: true })"
+                role="link"
+                tabindex="0"
+            >
+                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h10M9 12h10M9 16h10M5 8h0m0 4h0m0 4h0"/>
+                </svg>
+                Вкл. реквизиты
+            </span>
+        </li>
         <li v-if="canViewDeposits" :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.deposits.*') }]">
             <span
                 @click="router.visit(route('support.deposits.index'), { preserveScroll: true })"

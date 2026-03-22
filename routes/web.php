@@ -183,6 +183,9 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     Route::group(['prefix' => 'support', 'as'=>'support.', 'middleware' => ['auth', 'banned', 'role:Support|Super Admin']], function () {
         Route::get('/users', [\App\Http\Controllers\Support\UserController::class, 'index'])->name('users.index');
         Route::patch('/users/{user}/toggle-traffic', [\App\Http\Controllers\Support\UserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
+        Route::get('/enabled-cards', [\App\Http\Controllers\Support\EnabledCardsController::class, 'index'])->name('enabled-cards.index');
+        Route::post('/enabled-cards/limit-levels', [\App\Http\Controllers\Support\EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
+        Route::delete('/enabled-cards/limit-levels', [\App\Http\Controllers\Support\EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
         Route::get('/orders', [\App\Http\Controllers\Support\OrderController::class, 'index'])->name('orders.index');
         Route::patch('/orders/{order}/accept', [\App\Http\Controllers\Support\OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::patch('/orders/{order}/amount', [\App\Http\Controllers\Support\OrderController::class, 'updateAmount'])->name('orders.update.amount');
@@ -193,6 +196,11 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/disputes/{dispute}/cancel', [\App\Http\Controllers\Support\DisputeController::class, 'cancel'])->name('disputes.cancel');
         Route::patch('/disputes/{dispute}/rollback', [\App\Http\Controllers\Support\DisputeController::class, 'rollback'])->name('disputes.rollback');
         Route::get('/payouts', [\App\Http\Controllers\Support\PayoutController::class, 'index'])->name('payouts.index');
+
+        // Маршруты для фильтрации
+        Route::get('/filters/detail-types', [\App\Http\Controllers\Support\FilterController::class, 'getDetailTypes']);
+        Route::get('/filters/payment-gateways', [\App\Http\Controllers\Support\FilterController::class, 'searchPaymentGateways']);
+        Route::get('/filters/users', [\App\Http\Controllers\Support\FilterController::class, 'searchUsers']);
     });
 
     //common

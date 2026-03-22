@@ -4,6 +4,10 @@ import axios from 'axios';
 
 const props = defineProps({
   modelValue: [String, Number],
+  filtersBasePath: {
+    type: String,
+    required: true,
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -24,7 +28,7 @@ const searchUsers = async () => {
   loading.value = true;
 
   try {
-    const response = await axios.get('/admin/filters/users', {
+    const response = await axios.get(`${props.filtersBasePath}/users`, {
       params: { query: searchQuery.value }
     });
 
@@ -71,7 +75,7 @@ watch(() => props.modelValue, async (newVal) => {
 
   if (!selectedUser.value || selectedUser.value.value !== newVal) {
     try {
-      const response = await axios.get('/admin/filters/users', {
+      const response = await axios.get(`${props.filtersBasePath}/users`, {
         params: { query: newVal }
       });
 
@@ -103,7 +107,7 @@ onMounted(() => {
 onMounted(async () => {
   if (props.modelValue) {
     try {
-      const response = await axios.get('/admin/filters/users', {
+      const response = await axios.get(`${props.filtersBasePath}/users`, {
         params: { query: props.modelValue }
       });
 

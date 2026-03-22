@@ -4,6 +4,10 @@ import axios from 'axios';
 
 const props = defineProps({
   modelValue: String,
+  filtersBasePath: {
+    type: String,
+    required: true,
+  },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -13,7 +17,7 @@ const loading = ref(true);
 
 onMounted(async () => {
   try {
-    const response = await axios.get('/admin/filters/detail-types');
+    const response = await axios.get(`${props.filtersBasePath}/detail-types`);
     detailTypes.value = response.data;
     loading.value = false;
   } catch (error) {
