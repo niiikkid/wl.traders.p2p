@@ -6,6 +6,7 @@ namespace App\Services\UserOnline;
 
 use App\Models\UserOnlinePeriod;
 use Carbon\Carbon;
+use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Support\Facades\DB;
 
 class UserOnlinePeriodRecorder
@@ -22,43 +23,59 @@ class UserOnlinePeriodRecorder
             return;
         }
 
-        DB::transaction(function () use ($user_id, $occurred_at) {
-            $last_period = UserOnlinePeriod::query()
-                ->where('user_id', $user_id)
-                ->latest('ended_at')
-                ->lockForUpdate()
-                ->first();
+        $lock = null;
+        $store = cache()->getStore();
 
-            if (! $last_period) {
+        if ($store instanceof LockProvider) {
+            $lock = cache()->lock('user-online-period-lock:' . $user_id, 3);
+
+            // Лучшее усилие: если параллельный запрос уже пишет интервал, просто пропускаем этот touch.
+            if (! $lock->get()) {
+                return;
+            }
+        }
+
+        try {
+            DB::transaction(function () use ($user_id, $occurred_at) {
+                $last_period = UserOnlinePeriod::query()
+                    ->where('user_id', $user_id)
+                    ->latest('ended_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $last_period) {
+                    UserOnlinePeriod::query()->create([
+                        'user_id' => $user_id,
+                        'started_at' => $occurred_at,
+                        'ended_at' => $occurred_at,
+                    ]);
+
+                    return;
+                }
+
+                $gap = $last_period->ended_at->diffInSeconds($occurred_at, false);
+
+                if ($gap >= 0 && $gap <= self::CONTINUOUS_SESSION_GAP_SECONDS) {
+                    if ($occurred_at->gt($last_period->ended_at)) {
+                        $last_period->update([
+                            'ended_at' => $occurred_at,
+                        ]);
+                    }
+
+                    return;
+                }
+
                 UserOnlinePeriod::query()->create([
                     'user_id' => $user_id,
                     'started_at' => $occurred_at,
                     'ended_at' => $occurred_at,
                 ]);
+            }, 3);
 
-                return;
-            }
-
-            $gap = $last_period->ended_at->diffInSeconds($occurred_at, false);
-
-            if ($gap >= 0 && $gap <= self::CONTINUOUS_SESSION_GAP_SECONDS) {
-                if ($occurred_at->gt($last_period->ended_at)) {
-                    $last_period->update([
-                        'ended_at' => $occurred_at,
-                    ]);
-                }
-
-                return;
-            }
-
-            UserOnlinePeriod::query()->create([
-                'user_id' => $user_id,
-                'started_at' => $occurred_at,
-                'ended_at' => $occurred_at,
-            ]);
-        });
-
-        cache()->put($bucket_key, true, now()->addSeconds(self::TOUCH_BUCKET_SECONDS + 5));
+            cache()->put($bucket_key, true, now()->addSeconds(self::TOUCH_BUCKET_SECONDS + 5));
+        } finally {
+            optional($lock)?->release();
+        }
     }
 
     private function makeBucketKey(int $user_id, Carbon $occurred_at): string
