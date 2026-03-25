@@ -11,6 +11,7 @@ const incomeChartData = computed(() => page.props.chart || { labels: [], data: [
 const conversionChartData = computed(() => page.props.conversionChart || { labels: [], data: [] });
 const turnoverChartData = computed(() => page.props.turnoverChart || { labels: [], data: [] });
 const ordersChartData = computed(() => page.props.ordersChart || { labels: [], data: [] });
+const averageCheckChartData = computed(() => page.props.averageCheckChart || { labels: [], data: [] });
 const selectedPeriodPresetProp = computed(() => page.props.selectedPeriodPreset || 'all');
 const selectedDateFromProp = computed(() => page.props.selectedDateFrom || '');
 const selectedDateToProp = computed(() => page.props.selectedDateTo || '');
@@ -77,6 +78,7 @@ const chartTabs = [
     { value: 'conversion', label: 'Конверсия', colorToken: 'success', seriesName: 'Конверсия (%)' },
     { value: 'turnover', label: 'Оборот', colorToken: 'secondary', seriesName: 'Оборот ($)' },
     { value: 'orders', label: 'Количество сделок', colorToken: 'accent', seriesName: 'Сделок' },
+    { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
 ];
 
 const colorProbeSpans = {};
@@ -164,6 +166,7 @@ const chartDataByTab = computed(() => ({
     conversion: getLastPoints(normalizeChartLabels(conversionChartData.value, selectedPeriodPreset.value)),
     turnover: getLastPoints(normalizeChartLabels(turnoverChartData.value, selectedPeriodPreset.value)),
     orders: getLastPoints(normalizeChartLabels(ordersChartData.value, selectedPeriodPreset.value)),
+    average_check: getLastPoints(normalizeChartLabels(averageCheckChartData.value, selectedPeriodPreset.value)),
 }));
 
 const activeTabConfig = computed(() => {

@@ -299,6 +299,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $turnoverData = [];
         $conversionData = [];
         $ordersData = [];
+        $averageCheckData = [];
 
         $successOrdersByDayQuery = Order::where('status', OrderStatus::SUCCESS)
             ->whereBetween('created_at', [$startDate, $endDate]);
@@ -328,6 +329,21 @@ class MainPageStatsService implements MainPageStatsServiceContract
             ->groupBy('bucket_key')
             ->pluck('count', 'bucket_key');
 
+        $totalAmountByDayQuery = Order::query()
+            ->whereIn('status', [OrderStatus::SUCCESS, OrderStatus::FAIL])
+            ->whereBetween('created_at', [$startDate, $endDate]);
+
+        if ($merchantId) {
+            $totalAmountByDayQuery->where('merchant_id', $merchantId);
+        }
+
+        $this->applyOrderFilters($totalAmountByDayQuery, $normalizedFilters);
+
+        $totalAmountByDay = $totalAmountByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_amount")
+            ->groupBy('bucket_key')
+            ->pluck('total_amount', 'bucket_key');
+
         $buckets = [];
         $currentBucketDate = $startDate->copy();
         while ($currentBucketDate->lte($endDate)) {
@@ -348,12 +364,17 @@ class MainPageStatsService implements MainPageStatsServiceContract
             )->toInt();
             $successCount = (int) ($successOrdersByDay[$bucketKey] ?? 0);
             $failedCount = (int) ($failedOrdersByDay[$bucketKey] ?? 0);
+            $totalAmount = Money::fromUnits(
+                (int) ($totalAmountByDay[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
             $buckets[] = [
                 'label' => $label,
                 'income' => $income,
                 'turnover' => $turnover,
                 'successCount' => $successCount,
                 'failedCount' => $failedCount,
+                'totalAmount' => $totalAmount,
             ];
 
             if ($isHourly) {
@@ -378,6 +399,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                     'turnover' => array_sum(array_column($chunk, 'turnover')),
                     'successCount' => array_sum(array_column($chunk, 'successCount')),
                     'failedCount' => array_sum(array_column($chunk, 'failedCount')),
+                    'totalAmount' => array_sum(array_column($chunk, 'totalAmount')),
                 ];
             }
 
@@ -391,6 +413,9 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $incomeData[] = $bucket['income'];
             $turnoverData[] = $bucket['turnover'];
             $ordersData[] = $totalCount;
+            $averageCheckData[] = $totalCount > 0
+                ? round($bucket['totalAmount'] / $totalCount, 2)
+                : 0;
             $conversionData[] = $totalCount > 0
                 ? round(($bucket['successCount'] / $totalCount) * 100, 2)
                 : 0;
@@ -433,6 +458,10 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'ordersChart' => [
                 'labels' => $labels,
                 'data' => $ordersData,
+            ],
+            'averageCheckChart' => [
+                'labels' => $labels,
+                'data' => $averageCheckData,
             ],
             'selectedPeriodPreset' => $resolvedPeriod['preset'],
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
