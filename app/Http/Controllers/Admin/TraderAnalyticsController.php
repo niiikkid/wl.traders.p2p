@@ -14,6 +14,7 @@ use App\Models\UserOnlinePeriod;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,6 +31,9 @@ class TraderAnalyticsController extends Controller
         $validated = $request->validate([
             'period' => ['nullable', 'string', 'in:today,7d,14d,30d'],
             'currency' => ['nullable', 'string', 'in:' . implode(',', $currency_codes)],
+            'amount_ranges' => ['nullable', 'string', 'max:500'],
+            'tab' => ['nullable', 'string', 'in:overview,trader'],
+            'trader_id' => ['nullable', 'integer'],
         ]);
 
         $period_options = [
@@ -41,8 +45,16 @@ class TraderAnalyticsController extends Controller
 
         $period = $validated['period'] ?? 'today';
         $selected_currency = $validated['currency'] ?? $default_currency;
+        $amount_ranges_raw = $validated['amount_ranges'] ?? null;
+        $selected_tab = $validated['tab'] ?? 'overview';
+        $selected_trader_id = isset($validated['trader_id']) ? (int) $validated['trader_id'] : null;
         $operation_threshold = services()->settings()->getTraderAnalyticsOperationThresholdForCurrency(
             Currency::make($selected_currency)
+        );
+        $amount_ranges = $this->parseAmountRanges(
+            $amount_ranges_raw,
+            $selected_currency,
+            (string) $operation_threshold
         );
         $days = $period_options[$period]['days'] ?? null;
         $is_today = (bool) ($period_options[$period]['today'] ?? false);
@@ -146,6 +158,63 @@ class TraderAnalyticsController extends Controller
             ->whereRaw('CAST(amount AS SIGNED) >= ?', [$selected_threshold_units])
             ->count();
 
+        $trader_range_query = (clone $orders_query)
+            ->selectRaw('trader_id, COUNT(*) as total_operations');
+
+        foreach ($amount_ranges as $index => $range) {
+            $column = 'range_' . $index;
+
+            if ($range['max_units'] === null) {
+                $trader_range_query->selectRaw(
+                    "SUM(CASE WHEN CAST(amount AS SIGNED) >= ? THEN 1 ELSE 0 END) as {$column}",
+                    [$range['min_units']]
+                );
+                continue;
+            }
+
+            $trader_range_query->selectRaw(
+                "SUM(CASE WHEN CAST(amount AS SIGNED) >= ? AND CAST(amount AS SIGNED) <= ? THEN 1 ELSE 0 END) as {$column}",
+                [$range['min_units'], $range['max_units']]
+            );
+        }
+
+        $trader_range_rows = $trader_range_query
+            ->groupBy('trader_id')
+            ->orderByDesc('total_operations')
+            ->limit(100)
+            ->get();
+
+        $trader_range_trader_ids = $trader_range_rows->pluck('trader_id')->filter()->values();
+        $trader_range_traders = User::query()
+            ->whereIn('id', $trader_range_trader_ids)
+            ->get(['id', 'name', 'email', 'is_online'])
+            ->keyBy('id');
+
+        $trader_amount_range_stats = $trader_range_rows
+            ->map(function ($row) use ($amount_ranges, $trader_range_traders) {
+                $trader = $trader_range_traders->get((int) $row->trader_id);
+                $ranges = [];
+
+                foreach ($amount_ranges as $index => $range) {
+                    $ranges[] = [
+                        'key' => $range['key'],
+                        'label' => $range['label'],
+                        'count' => (int) ($row->{'range_' . $index} ?? 0),
+                    ];
+                }
+
+                return [
+                    'trader_id' => (int) $row->trader_id,
+                    'name' => $trader?->name ?? 'Удален',
+                    'email' => $trader?->email ?? '-',
+                    'is_online' => (bool) ($trader?->is_online ?? false),
+                    'total_operations' => (int) ($row->total_operations ?? 0),
+                    'ranges' => $ranges,
+                ];
+            })
+            ->values()
+            ->all();
+
         $top_start_at = now()->subDays(6)->startOfDay();
         $top_end_at = now()->endOfDay();
 
@@ -216,11 +285,109 @@ class TraderAnalyticsController extends Controller
             })
             ->all();
 
-        return Inertia::render('Admin/TraderAnalytics/Index', [
+        $selected_trader = null;
+        if ($selected_trader_id !== null) {
+            $selected_trader = User::query()
+                ->role('Trader')
+                ->whereKey($selected_trader_id)
+                ->first(['id', 'name', 'email', 'is_online']);
+        }
+
+        $individual_by_day = [];
+        $individual_summary = [
+            'operations_count' => 0,
+            'processed_operations_count' => 0,
+            'avg_processing_seconds' => 0,
+            'avg_processing_human' => '0 мин',
+        ];
+
+        if ($selected_trader !== null) {
+            $avg_processing_seconds_sum = 0;
+            $avg_processing_days_count = 0;
+
+            for ($index = 0; $index < $day_count_for_chart; $index++) {
+                $day = $day_loop_start->copy()->addDays($index);
+                $day_start = $day->copy()->startOfDay();
+                $day_end = $day->copy()->endOfDay()->min($end_at);
+
+                $day_orders_query = Order::query()
+                    ->whereBetween('created_at', [$day_start, $day_end])
+                    ->where('currency', $selected_currency)
+                    ->where('trader_id', $selected_trader->id);
+
+                $day_operations_count = (clone $day_orders_query)->count();
+                $day_processed_operations_count = (clone $day_orders_query)->whereNotNull('finished_at')->count();
+                $day_avg_processing_seconds = (float) ((clone $day_orders_query)
+                    ->whereNotNull('finished_at')
+                    ->selectRaw('AVG(TIMESTAMPDIFF(SECOND, created_at, finished_at)) as avg_seconds')
+                    ->value('avg_seconds') ?? 0);
+
+                $range_counts = [];
+                foreach ($amount_ranges as $range) {
+                    $range_query = clone $day_orders_query;
+                    if ($range['max_units'] === null) {
+                        $range_query->whereRaw('CAST(amount AS SIGNED) >= ?', [$range['min_units']]);
+                    } else {
+                        $range_query->whereRaw(
+                            'CAST(amount AS SIGNED) >= ? AND CAST(amount AS SIGNED) <= ?',
+                            [$range['min_units'], $range['max_units']]
+                        );
+                    }
+
+                    $range_counts[] = [
+                        'key' => $range['key'],
+                        'label' => $range['label'],
+                        'count' => $range_query->count(),
+                    ];
+                }
+
+                $individual_summary['operations_count'] += $day_operations_count;
+                $individual_summary['processed_operations_count'] += $day_processed_operations_count;
+
+                if ($day_avg_processing_seconds > 0) {
+                    $avg_processing_seconds_sum += (int) round($day_avg_processing_seconds);
+                    $avg_processing_days_count++;
+                }
+
+                $individual_by_day[] = [
+                    'date' => $day->format('Y-m-d'),
+                    'date_label' => $day->format('d.m'),
+                    'operations_count' => $day_operations_count,
+                    'processed_operations_count' => $day_processed_operations_count,
+                    'avg_processing_seconds' => (int) round($day_avg_processing_seconds),
+                    'avg_processing_human' => $this->formatSecondsToHuman((int) round($day_avg_processing_seconds)),
+                    'ranges' => $range_counts,
+                ];
+            }
+
+            $individual_summary['avg_processing_seconds'] = $avg_processing_days_count > 0
+                ? (int) round($avg_processing_seconds_sum / $avg_processing_days_count)
+                : 0;
+            $individual_summary['avg_processing_human'] = $this->formatSecondsToHuman($individual_summary['avg_processing_seconds']);
+        }
+
+        return Inertia::render($this->getPageComponent(), [
             'filters' => [
                 'period' => $period,
                 'currency' => $selected_currency,
+                'amount_ranges' => $amount_ranges_raw,
+                'tab' => $selected_tab,
+                'trader_id' => $selected_trader?->id,
             ],
+            'routes' => [
+                'index' => $this->getIndexRouteName(),
+                'update_threshold' => $this->getUpdateThresholdRouteName(),
+                'search_traders' => $this->getSearchTradersRouteName(),
+            ],
+            'amountRanges' => collect($amount_ranges)
+                ->map(fn (array $range) => [
+                    'key' => $range['key'],
+                    'label' => $range['label'],
+                    'min' => $range['min'],
+                    'max' => $range['max'],
+                ])
+                ->values()
+                ->all(),
             'currencyOptions' => Currency::getAll()
                 ->map(function (Currency $currency) {
                     return [
@@ -266,7 +433,54 @@ class TraderAnalyticsController extends Controller
             'enabledDetailsByDay' => array_reverse($enabled_details_by_day),
             'topTraders' => $top_traders,
             'activeTraders' => $active_traders,
+            'traderAmountRangeStats' => $trader_amount_range_stats,
+            'individualTrader' => $selected_trader === null ? null : [
+                'id' => $selected_trader->id,
+                'name' => $selected_trader->name,
+                'email' => $selected_trader->email,
+                'is_online' => (bool) $selected_trader->is_online,
+            ],
+            'individualByDay' => array_reverse($individual_by_day),
+            'individualSummary' => $individual_summary,
         ]);
+    }
+
+    public function searchTraders(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'query' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $search = trim((string) ($validated['query'] ?? ''));
+
+        $query = User::query()
+            ->role('Trader')
+            ->select(['id', 'name', 'email'])
+            ->orderBy('name')
+            ->limit(20);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('name', 'like', '%' . $search . '%')
+                    ->orWhere('email', 'like', '%' . $search . '%');
+
+                if (is_numeric($search)) {
+                    $builder->orWhere('id', (int) $search);
+                }
+            });
+        }
+
+        $items = $query
+            ->get()
+            ->map(fn (User $trader) => [
+                'value' => (string) $trader->id,
+                'label' => trim($trader->name . ' (' . $trader->email . ')'),
+            ])
+            ->values()
+            ->all();
+
+        return response()->json($items);
     }
 
     public function updateOperationsThreshold(Request $request)
@@ -298,5 +512,104 @@ class TraderAnalyticsController extends Controller
         }
 
         return "{$minutes} мин";
+    }
+
+    private function parseAmountRanges(?string $rangesRaw, string $currency, string $operationThreshold): array
+    {
+        $ranges = [];
+        $segments = array_filter(array_map('trim', explode(',', (string) $rangesRaw)));
+
+        foreach ($segments as $segment) {
+            if (! str_contains($segment, '-')) {
+                continue;
+            }
+
+            [$minRaw, $maxRaw] = array_pad(explode('-', $segment, 2), 2, '');
+
+            $minRaw = trim($minRaw);
+            $maxRaw = trim($maxRaw);
+
+            if ($minRaw === '' || ! is_numeric($minRaw) || (float) $minRaw < 0) {
+                continue;
+            }
+
+            if ($maxRaw !== '' && (! is_numeric($maxRaw) || (float) $maxRaw < (float) $minRaw)) {
+                continue;
+            }
+
+            $min = (string) $minRaw;
+            $max = $maxRaw === '' ? null : (string) $maxRaw;
+
+            $ranges[] = [
+                'min' => $min,
+                'max' => $max,
+            ];
+
+            if (count($ranges) >= 8) {
+                break;
+            }
+        }
+
+        if ($ranges === []) {
+            $ranges = $this->defaultAmountRangesForCurrency($currency, $operationThreshold);
+        }
+
+        return collect($ranges)
+            ->values()
+            ->map(function (array $range, int $index) use ($currency) {
+                $minUnits = (string) Money::fromPrecision((string) $range['min'], $currency)->toUnits();
+                $maxUnits = $range['max'] === null
+                    ? null
+                    : (string) Money::fromPrecision((string) $range['max'], $currency)->toUnits();
+
+                return [
+                    'key' => 'range_' . ($index + 1),
+                    'label' => $range['max'] === null
+                        ? 'от ' . $range['min']
+                        : $range['min'] . ' - ' . $range['max'],
+                    'min' => (string) $range['min'],
+                    'max' => $range['max'] === null ? null : (string) $range['max'],
+                    'min_units' => $minUnits,
+                    'max_units' => $maxUnits,
+                ];
+            })
+            ->all();
+    }
+
+    private function defaultAmountRangesForCurrency(string $currency, string $operationThreshold): array
+    {
+        return match ($currency) {
+            'uah' => [
+                ['min' => '300', 'max' => '999'],
+                ['min' => '1000', 'max' => '29999'],
+            ],
+            'rub' => [
+                ['min' => '1000', 'max' => '4999'],
+                ['min' => '5000', 'max' => '500000'],
+            ],
+            default => [
+                ['min' => $operationThreshold, 'max' => null],
+            ],
+        };
+    }
+
+    protected function getPageComponent(): string
+    {
+        return 'Admin/TraderAnalytics/Index';
+    }
+
+    protected function getIndexRouteName(): string
+    {
+        return 'admin.traders-analytics.index';
+    }
+
+    protected function getUpdateThresholdRouteName(): string
+    {
+        return 'admin.traders-analytics.operations-threshold.update';
+    }
+
+    protected function getSearchTradersRouteName(): string
+    {
+        return 'admin.traders-analytics.traders.search';
     }
 }

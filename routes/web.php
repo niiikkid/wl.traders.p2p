@@ -186,6 +186,9 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/enabled-cards', [\App\Http\Controllers\Support\EnabledCardsController::class, 'index'])->name('enabled-cards.index');
         Route::post('/enabled-cards/limit-levels', [\App\Http\Controllers\Support\EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
         Route::delete('/enabled-cards/limit-levels', [\App\Http\Controllers\Support\EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
+        Route::get('/traders/analytics', [\App\Http\Controllers\Support\TraderAnalyticsController::class, 'index'])->name('traders-analytics.index');
+        Route::patch('/traders/analytics/operations-threshold', [\App\Http\Controllers\Support\TraderAnalyticsController::class, 'updateOperationsThreshold'])->name('traders-analytics.operations-threshold.update');
+        Route::get('/traders/analytics/traders/search', [\App\Http\Controllers\Support\TraderAnalyticsController::class, 'searchTraders'])->name('traders-analytics.traders.search');
         Route::get('/orders', [\App\Http\Controllers\Support\OrderController::class, 'index'])->name('orders.index');
         Route::patch('/orders/{order}/accept', [\App\Http\Controllers\Support\OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::patch('/orders/{order}/amount', [\App\Http\Controllers\Support\OrderController::class, 'updateAmount'])->name('orders.update.amount');
@@ -270,6 +273,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::delete('/enabled-cards/limit-levels', [\App\Http\Controllers\Admin\EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
         Route::get('/traders/analytics', [\App\Http\Controllers\Admin\TraderAnalyticsController::class, 'index'])->name('traders-analytics.index');
         Route::patch('/traders/analytics/operations-threshold', [\App\Http\Controllers\Admin\TraderAnalyticsController::class, 'updateOperationsThreshold'])->name('traders-analytics.operations-threshold.update');
+        Route::get('/traders/analytics/traders/search', [\App\Http\Controllers\Admin\TraderAnalyticsController::class, 'searchTraders'])->name('traders-analytics.traders.search');
 
         // Маршруты для фильтрации
         Route::get('/filters/detail-types', [\App\Http\Controllers\Admin\FilterController::class, 'getDetailTypes']);
