@@ -75,8 +75,8 @@ const searchDebounceTimers = {};
 
 const chartTabs = [
     { value: 'income', label: 'Доход', colorToken: 'primary', seriesName: 'Доход ($)' },
-    { value: 'conversion', label: 'Конверсия', colorToken: 'success', seriesName: 'Конверсия (%)' },
     { value: 'turnover', label: 'Оборот', colorToken: 'secondary', seriesName: 'Оборот ($)' },
+    { value: 'conversion', label: 'Конверсия', colorToken: 'success', seriesName: 'Конверсия (%)' },
     { value: 'orders', label: 'Количество сделок', colorToken: 'accent', seriesName: 'Сделок' },
     { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
 ];
@@ -824,14 +824,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                     >
                                         Месяц
                                     </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm join-item"
-                                        :class="selectedPeriodPreset === 'all' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
-                                        @click="setPeriodPreset('all')"
-                                    >
-                                        Все
-                                    </button>
                                     <div class="dropdown dropdown-end" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
                                         <button
                                             type="button"
@@ -862,6 +854,14 @@ defineOptions({ layout: AuthenticatedLayout });
                                             </div>
                                         </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm join-item"
+                                        :class="selectedPeriodPreset === 'all' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
+                                        @click="setPeriodPreset('all')"
+                                    >
+                                        Все
+                                    </button>
                                 </div>
                             </div>
                         </div>
