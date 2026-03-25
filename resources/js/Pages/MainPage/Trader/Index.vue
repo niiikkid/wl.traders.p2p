@@ -787,7 +787,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         <div ref="chart" class="h-50"></div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
                         <div class="card bg-base-100 shadow px-5 py-3.5">
                             <div class="text-sm text-base-content/70">Траст баланс</div>
                             <div class="text-xl font-bold mt-1">
