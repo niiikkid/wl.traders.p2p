@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Contracts\MainPageCacheServiceContract;
 use App\Contracts\MainPageStatsServiceContract;
+use App\Enums\BalanceType;
 use App\Enums\DetailType;
 use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\PaymentGateway;
 use App\Models\User;
+use App\Services\Money\Currency;
+use App\Services\Money\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 
@@ -34,9 +38,28 @@ class MainPageController extends Controller
     public function trader()
     {
         $user = auth()->user();
-        $stats = $this->mainPageCacheService->rememberTrader($user);
-        $walletStats = services()->wallet()->getWalletStats($user->wallet)->toArray();
+        $periodPreset = (string) request()->get('period', 'all');
+        $dateFrom = request()->get('date_from');
+        $dateTo = request()->get('date_to');
+        $filters = [
+            'paymentMethodIds' => request()->input('payment_method_ids', []),
+            'paymentDetailIds' => request()->input('payment_detail_ids', []),
+        ];
 
+        $stats = $this->mainPageStatsService->buildTraderMainPageStats(
+            $user,
+            $periodPreset,
+            $dateFrom !== null ? (string) $dateFrom : null,
+            $dateTo !== null ? (string) $dateTo : null,
+            $filters,
+        );
+
+        $balance = $user->wallet
+            ? services()->wallet()->getTotalAvailableBalance($user->wallet, BalanceType::TRUST)
+            : Money::fromUnits(0, Currency::USDT());
+        $stats['statistics']['balance'] = $balance->toBeauty();
+
+        $walletStats = services()->wallet()->getWalletStats($user->wallet)->toArray();
         $tempVip = $user->getTempVipProgressData();
 
         return Inertia::render('MainPage/Trader/Index', [
@@ -93,6 +116,26 @@ class MainPageController extends Controller
             'payment_method' => $this->searchPaymentMethods($search, $selectedIds),
             'payment_detail' => $this->searchPaymentDetails($search, $selectedIds),
             'merchant' => $this->searchMerchants($search, $selectedIds),
+            default => collect(),
+        };
+
+        return response()->json($options->values());
+    }
+
+    public function traderFilterOptions(Request $request, string $type): JsonResponse
+    {
+        $user = auth()->user();
+        $search = trim((string) $request->get('query', ''));
+        $selectedIds = collect($request->input('selected_ids', []))
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $options = match ($type) {
+            'payment_method' => $this->searchTraderPaymentMethods($user, $search, $selectedIds),
+            'payment_detail' => $this->searchTraderPaymentDetails($user, $search, $selectedIds),
             default => collect(),
         };
 
@@ -201,6 +244,79 @@ class MainPageController extends Controller
                 'value' => $merchant->id,
                 'label' => $merchant->name,
             ]),
+        );
+    }
+
+    private function searchTraderPaymentMethods(User $user, string $search, array $selectedIds): Collection
+    {
+        $detailIds = PaymentDetail::query()
+            ->where('user_id', $user->id)
+            ->pluck('id');
+
+        $allowedGatewayIds = $detailIds->isEmpty()
+            ? collect()
+            : DB::table('payment_detail_payment_gateway')
+                ->whereIn('payment_detail_id', $detailIds)
+                ->distinct()
+                ->pluck('payment_gateway_id');
+
+        $query = PaymentGateway::query()
+            ->whereIn('id', $allowedGatewayIds)
+            ->select(['id', 'name', 'code', 'currency']);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->mergeSelectedFirst(
+            $query->limit(10)->get()->map(fn (PaymentGateway $gateway) => [
+                'value' => $gateway->id,
+                'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+            ]),
+            PaymentGateway::query()
+                ->whereIn('id', $selectedIds)
+                ->whereIn('id', $allowedGatewayIds)
+                ->get()
+                ->map(fn (PaymentGateway $gateway) => [
+                    'value' => $gateway->id,
+                    'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                ]),
+        );
+    }
+
+    private function searchTraderPaymentDetails(User $user, string $search, array $selectedIds): Collection
+    {
+        $query = PaymentDetail::query()
+            ->where('user_id', $user->id)
+            ->select(['id', 'name', 'detail', 'detail_type']);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('detail', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->mergeSelectedFirst(
+            $query->limit(10)->get()->map(fn (PaymentDetail $detail) => [
+                'value' => $detail->id,
+                'label' => $detail->name,
+                'subtitle' => $this->formatPaymentDetailSubtitle($detail),
+            ]),
+            PaymentDetail::query()
+                ->where('user_id', $user->id)
+                ->whereIn('id', $selectedIds)
+                ->get()
+                ->map(fn (PaymentDetail $detail) => [
+                    'value' => $detail->id,
+                    'label' => $detail->name,
+                    'subtitle' => $this->formatPaymentDetailSubtitle($detail),
+                ]),
         );
     }
 

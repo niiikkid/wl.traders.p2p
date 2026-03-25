@@ -9,7 +9,9 @@ use App\Enums\InvoiceType;
 use App\Enums\OrderStatus;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\PaymentDetail;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Carbon\Carbon;
@@ -468,6 +470,293 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'selectedDateTo' => $resolvedPeriod['dateTo'],
             'selectedFilters' => $normalizedFilters,
         ];
+    }
+
+    public function buildTraderMainPageStats(
+        User $user,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        array $filters = [],
+    ): array {
+        $normalizedFilters = $this->normalizeTraderDashboardFilters($user, $filters);
+        $resolvedPeriod = $this->resolvePeriodRange($periodPreset, $dateFrom, $dateTo);
+        $startDate = $resolvedPeriod['startDate'];
+        $endDate = $resolvedPeriod['endDate'];
+
+        if ($resolvedPeriod['preset'] === 'all') {
+            $allBoundsQuery = Order::query();
+            $this->scopeTraderOrders($allBoundsQuery, $user);
+            $this->applyTraderDashboardOrderFilters($allBoundsQuery, $normalizedFilters);
+
+            $minCreatedAt = $allBoundsQuery->min('created_at');
+            if ($minCreatedAt) {
+                $startDate = Carbon::parse($minCreatedAt)->startOfDay();
+            } else {
+                $startDate = now()->startOfDay();
+            }
+
+            $endDate = now()->endOfDay();
+            $resolvedPeriod['dateFrom'] = $startDate->toDateString();
+            $resolvedPeriod['dateTo'] = $endDate->toDateString();
+        }
+
+        $isHourly = $startDate->isSameDay($endDate);
+        $bucketSql = $isHourly
+            ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
+            : "DATE(created_at)";
+
+        $query = Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($query, $user);
+        $this->applyTraderDashboardOrderFilters($query, $normalizedFilters);
+
+        $totalTurnover = Money::fromUnits($query->clone()->sum('total_profit'), Currency::USDT());
+        $totalProfit = Money::fromUnits($query->clone()->sum('trader_profit'), Currency::USDT());
+
+        $successOrderQuery = Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($successOrderQuery, $user);
+        $this->applyTraderDashboardOrderFilters($successOrderQuery, $normalizedFilters);
+        $successOrderCount = $successOrderQuery->count();
+
+        $failedOrderQuery = Order::query()
+            ->where('status', OrderStatus::FAIL)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($failedOrderQuery, $user);
+        $this->applyTraderDashboardOrderFilters($failedOrderQuery, $normalizedFilters);
+        $failedOrderCount = $failedOrderQuery->count();
+
+        $totalOrderCount = $successOrderCount + $failedOrderCount;
+        $conversionRate = $totalOrderCount > 0
+            ? round(($successOrderCount / $totalOrderCount) * 100, 2)
+            : 0;
+
+        $earningsByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($earningsByDayQuery, $user);
+        $this->applyTraderDashboardOrderFilters($earningsByDayQuery, $normalizedFilters);
+        $earningsByDay = $earningsByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(trader_profit) as total_earnings")
+            ->groupBy('bucket_key')
+            ->pluck('total_earnings', 'bucket_key');
+
+        $turnoverByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($turnoverByDayQuery, $user);
+        $this->applyTraderDashboardOrderFilters($turnoverByDayQuery, $normalizedFilters);
+        $turnoverByDay = $turnoverByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_turnover")
+            ->groupBy('bucket_key')
+            ->pluck('total_turnover', 'bucket_key');
+
+        $successOrdersByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($successOrdersByDayQuery, $user);
+        $this->applyTraderDashboardOrderFilters($successOrdersByDayQuery, $normalizedFilters);
+        $successOrdersByDay = $successOrdersByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('bucket_key')
+            ->pluck('count', 'bucket_key');
+
+        $failedOrdersByDayQuery = Order::where('status', OrderStatus::FAIL)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($failedOrdersByDayQuery, $user);
+        $this->applyTraderDashboardOrderFilters($failedOrdersByDayQuery, $normalizedFilters);
+        $failedOrdersByDay = $failedOrdersByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('bucket_key')
+            ->pluck('count', 'bucket_key');
+
+        $totalAmountByDayQuery = Order::query()
+            ->whereIn('status', [OrderStatus::SUCCESS, OrderStatus::FAIL])
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($totalAmountByDayQuery, $user);
+        $this->applyTraderDashboardOrderFilters($totalAmountByDayQuery, $normalizedFilters);
+        $totalAmountByDay = $totalAmountByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_amount")
+            ->groupBy('bucket_key')
+            ->pluck('total_amount', 'bucket_key');
+
+        $labels = [];
+        $incomeData = [];
+        $turnoverData = [];
+        $conversionData = [];
+        $ordersData = [];
+        $averageCheckData = [];
+
+        $buckets = [];
+        $currentBucketDate = $startDate->copy();
+        while ($currentBucketDate->lte($endDate)) {
+            $bucketKey = $isHourly
+                ? $currentBucketDate->format('Y-m-d H:00:00')
+                : $currentBucketDate->toDateString();
+
+            $label = $isHourly
+                ? $currentBucketDate->format('H:i')
+                : $currentBucketDate->format('d.m');
+            $income = Money::fromUnits(
+                (int) ($earningsByDay[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $turnover = Money::fromUnits(
+                (int) ($turnoverByDay[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $successCount = (int) ($successOrdersByDay[$bucketKey] ?? 0);
+            $failedCount = (int) ($failedOrdersByDay[$bucketKey] ?? 0);
+            $totalAmount = Money::fromUnits(
+                (int) ($totalAmountByDay[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $buckets[] = [
+                'label' => $label,
+                'income' => $income,
+                'turnover' => $turnover,
+                'successCount' => $successCount,
+                'failedCount' => $failedCount,
+                'totalAmount' => $totalAmount,
+            ];
+
+            if ($isHourly) {
+                $currentBucketDate->addHour();
+            } else {
+                $currentBucketDate->addDay();
+            }
+        }
+
+        if (in_array($resolvedPeriod['preset'], ['custom', 'all'], true) && count($buckets) > 30) {
+            $chunkSize = (int) ceil(count($buckets) / 30);
+            $groupedBuckets = [];
+
+            for ($i = 0; $i < count($buckets); $i += $chunkSize) {
+                $chunk = array_slice($buckets, $i, $chunkSize);
+                $firstLabel = $chunk[0]['label'];
+                $lastLabel = $chunk[count($chunk) - 1]['label'];
+
+                $groupedBuckets[] = [
+                    'label' => $firstLabel === $lastLabel ? $firstLabel : "{$firstLabel}-{$lastLabel}",
+                    'income' => array_sum(array_column($chunk, 'income')),
+                    'turnover' => array_sum(array_column($chunk, 'turnover')),
+                    'successCount' => array_sum(array_column($chunk, 'successCount')),
+                    'failedCount' => array_sum(array_column($chunk, 'failedCount')),
+                    'totalAmount' => array_sum(array_column($chunk, 'totalAmount')),
+                ];
+            }
+
+            $buckets = $groupedBuckets;
+        }
+
+        foreach ($buckets as $bucket) {
+            $totalCount = $bucket['successCount'] + $bucket['failedCount'];
+
+            $labels[] = $bucket['label'];
+            $incomeData[] = $bucket['income'];
+            $turnoverData[] = $bucket['turnover'];
+            $ordersData[] = $totalCount;
+            $averageCheckData[] = $totalCount > 0
+                ? round($bucket['totalAmount'] / $totalCount, 2)
+                : 0;
+            $conversionData[] = $totalCount > 0
+                ? round(($bucket['successCount'] / $totalCount) * 100, 2)
+                : 0;
+        }
+
+        $pendingOrdersQuery = Order::query()
+            ->where('status', OrderStatus::PENDING)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeTraderOrders($pendingOrdersQuery, $user);
+        $this->applyTraderDashboardOrderFilters($pendingOrdersQuery, $normalizedFilters);
+        $pendingOrderCount = $pendingOrdersQuery->count();
+
+        return [
+            'statistics' => [
+                'totalTurnover' => $totalTurnover->toBeauty(),
+                'totalProfit' => $totalProfit->toBeauty(),
+                'totalOrderCount' => $totalOrderCount,
+                'successOrderCount' => $successOrderCount,
+                'failedOrderCount' => $failedOrderCount,
+                'conversionRate' => $conversionRate . '%',
+                'pendingOrderCount' => $pendingOrderCount,
+            ],
+            'chart' => [
+                'labels' => $labels,
+                'data' => $incomeData,
+            ],
+            'conversionChart' => [
+                'labels' => $labels,
+                'data' => $conversionData,
+            ],
+            'turnoverChart' => [
+                'labels' => $labels,
+                'data' => $turnoverData,
+            ],
+            'ordersChart' => [
+                'labels' => $labels,
+                'data' => $ordersData,
+            ],
+            'averageCheckChart' => [
+                'labels' => $labels,
+                'data' => $averageCheckData,
+            ],
+            'selectedPeriodPreset' => $resolvedPeriod['preset'],
+            'selectedDateFrom' => $resolvedPeriod['dateFrom'],
+            'selectedDateTo' => $resolvedPeriod['dateTo'],
+            'selectedFilters' => $normalizedFilters,
+        ];
+    }
+
+    private function scopeTraderOrders(Builder $query, User $user): void
+    {
+        $query->whereRelation('paymentDetail', 'user_id', $user->id);
+    }
+
+    private function normalizeTraderDashboardFilters(User $user, array $filters): array
+    {
+        $allowedDetailIds = PaymentDetail::query()
+            ->where('user_id', $user->id)
+            ->pluck('id')
+            ->all();
+
+        $allowedDetailIdSet = array_flip($allowedDetailIds);
+
+        $detailIds = array_values(array_filter(
+            $this->normalizeIdArray($filters['paymentDetailIds'] ?? []),
+            fn (int $id) => isset($allowedDetailIdSet[$id])
+        ));
+
+        $gatewayIdsFromDetails = $allowedDetailIds === []
+            ? []
+            : DB::table('payment_detail_payment_gateway')
+                ->whereIn('payment_detail_id', $allowedDetailIds)
+                ->distinct()
+                ->pluck('payment_gateway_id')
+                ->all();
+
+        $gatewaySet = array_flip(array_map('intval', $gatewayIdsFromDetails));
+
+        $methodIds = array_values(array_filter(
+            $this->normalizeIdArray($filters['paymentMethodIds'] ?? []),
+            fn (int $id) => isset($gatewaySet[$id])
+        ));
+
+        return [
+            'paymentMethodIds' => $methodIds,
+            'paymentDetailIds' => $detailIds,
+        ];
+    }
+
+    private function applyTraderDashboardOrderFilters(Builder $query, array $filters): void
+    {
+        if (!empty($filters['paymentMethodIds'])) {
+            $query->whereIn('payment_gateway_id', $filters['paymentMethodIds']);
+        }
+
+        if (!empty($filters['paymentDetailIds'])) {
+            $query->whereIn('payment_detail_id', $filters['paymentDetailIds']);
+        }
     }
 
     private function normalizeFilters(array $filters): array

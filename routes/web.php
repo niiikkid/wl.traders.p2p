@@ -116,6 +116,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Super Admin']], function () {
         Route::get('/trader/main', [\App\Http\Controllers\MainPageController::class, 'trader'])->name('trader.main.index');
+        Route::get('/trader/main/filter-options/{type}', [\App\Http\Controllers\MainPageController::class, 'traderFilterOptions'])->name('trader.main.filter-options');
         Route::post('/trader/temp-vip/activate', [\App\Http\Controllers\Trader\TempVipController::class, 'activate'])->name('trader.temp-vip.activate');
         Route::get('/trader/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'index'])->name('trader.feedback.index');
         Route::post('/trader/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'store'])->name('trader.feedback.store');
