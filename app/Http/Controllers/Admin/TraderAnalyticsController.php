@@ -32,7 +32,7 @@ class TraderAnalyticsController extends Controller
             'period' => ['nullable', 'string', 'in:today,7d,14d,30d'],
             'currency' => ['nullable', 'string', 'in:' . implode(',', $currency_codes)],
             'amount_ranges' => ['nullable', 'string', 'max:500'],
-            'tab' => ['nullable', 'string', 'in:overview,trader'],
+            'tab' => ['nullable', 'string', 'in:overview,trader,tops'],
             'trader_id' => ['nullable', 'integer'],
         ]);
 

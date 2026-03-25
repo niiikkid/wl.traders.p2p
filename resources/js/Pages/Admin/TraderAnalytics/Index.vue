@@ -177,7 +177,17 @@ watch(selectedCurrency, (currency) => {
                                 :class="selectedTab === 'trader' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'"
                                 aria-current="page"
                             >
-                                <span>Индивидуальная по трейдеру</span>
+                                <span>По трейдеру</span>
+                            </a>
+                        </li>
+                        <li class="me-2">
+                            <a
+                                @click.prevent="switchTab('tops')"
+                                href="#"
+                                :class="selectedTab === 'tops' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'"
+                                aria-current="page"
+                            >
+                                <span>Топы</span>
                             </a>
                         </li>
                     </ul>
@@ -316,76 +326,9 @@ watch(selectedCurrency, (currency) => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 2xl:grid-cols-2 gap-6">
-                    <div class="card bg-base-100 shadow">
-                        <div class="card-body p-5">
-                            <h2 class="card-title text-lg">ТОП-10 трейдеров за неделю</h2>
-                            <div class="overflow-x-auto">
-                                <table class="table table-sm">
-                                    <thead class="text-xs uppercase bg-base-300">
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Трейдер</th>
-                                            <th>Операции</th>
-                                            <th>Среднее время</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="item in topTraders" :key="item.trader_id">
-                                            <td>{{ item.rank }}</td>
-                                            <td>
-                                                <div class="flex items-center gap-2">
-                                                    <span>{{ item.email }}</span>
-                                                    <span v-if="item.is_online" class="badge badge-success badge-xs">online</span>
-                                                </div>
-                                            </td>
-                                            <td>{{ item.operations_count }}</td>
-                                            <td>{{ item.avg_processing_human }}</td>
-                                        </tr>
-                                        <tr v-if="topTraders.length === 0">
-                                            <td colspan="4" class="text-center text-base-content/60">Нет данных</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card bg-base-100 shadow">
-                        <div class="card-body p-5">
-                            <h2 class="card-title text-lg">ТОП-10 по времени активности</h2>
-                            <div class="overflow-x-auto">
-                                <table class="table table-sm">
-                                    <thead class="text-xs uppercase bg-base-300">
-                                        <tr>
-                                            <th>Трейдер</th>
-                                            <th>Статус</th>
-                                            <th>Активность</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="item in activeTraders" :key="item.trader_id">
-                                            <td>{{ item.email }}</td>
-                                            <td>
-                                                <span class="badge badge-sm" :class="item.is_online ? 'badge-success' : 'badge-ghost'">
-                                                    {{ item.is_online ? 'Онлайн' : 'Оффлайн' }}
-                                                </span>
-                                            </td>
-                                            <td>{{ item.active_human }}</td>
-                                        </tr>
-                                        <tr v-if="activeTraders.length === 0">
-                                            <td colspan="3" class="text-center text-base-content/60">Нет данных</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </template>
 
-            <template v-else>
+            <template v-else-if="selectedTab === 'trader'">
                 <details open class="collapse collapse-arrow bg-base-100 shadow">
                     <summary class="collapse-title text-base font-semibold">Фильтры индивидуальной аналитики</summary>
                     <div class="collapse-content space-y-4">
@@ -471,6 +414,75 @@ watch(selectedCurrency, (currency) => {
 
                 <div v-else class="alert">
                     <span>Выберите трейдера через поиск и нажмите "Применить фильтры".</span>
+                </div>
+            </template>
+
+            <template v-else>
+                <div class="grid grid-cols-1 2xl:grid-cols-2 gap-6">
+                    <div class="card bg-base-100 shadow">
+                        <div class="card-body p-5">
+                            <h2 class="card-title text-lg">ТОП-10 трейдеров за неделю</h2>
+                            <div class="overflow-x-auto">
+                                <table class="table table-sm">
+                                    <thead class="text-xs uppercase bg-base-300">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Трейдер</th>
+                                            <th>Операции</th>
+                                            <th>Среднее время</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="item in topTraders" :key="item.trader_id">
+                                            <td>{{ item.rank }}</td>
+                                            <td>
+                                                <div class="flex items-center gap-2">
+                                                    <span>{{ item.email }}</span>
+                                                    <span v-if="item.is_online" class="badge badge-success badge-xs">online</span>
+                                                </div>
+                                            </td>
+                                            <td>{{ item.operations_count }}</td>
+                                            <td>{{ item.avg_processing_human }}</td>
+                                        </tr>
+                                        <tr v-if="topTraders.length === 0">
+                                            <td colspan="4" class="text-center text-base-content/60">Нет данных</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-base-100 shadow">
+                        <div class="card-body p-5">
+                            <h2 class="card-title text-lg">ТОП-10 по времени активности</h2>
+                            <div class="overflow-x-auto">
+                                <table class="table table-sm">
+                                    <thead class="text-xs uppercase bg-base-300">
+                                        <tr>
+                                            <th>Трейдер</th>
+                                            <th>Статус</th>
+                                            <th>Активность</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="item in activeTraders" :key="item.trader_id">
+                                            <td>{{ item.email }}</td>
+                                            <td>
+                                                <span class="badge badge-sm" :class="item.is_online ? 'badge-success' : 'badge-ghost'">
+                                                    {{ item.is_online ? 'Онлайн' : 'Оффлайн' }}
+                                                </span>
+                                            </td>
+                                            <td>{{ item.active_human }}</td>
+                                        </tr>
+                                        <tr v-if="activeTraders.length === 0">
+                                            <td colspan="3" class="text-center text-base-content/60">Нет данных</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </template>
         </div>
