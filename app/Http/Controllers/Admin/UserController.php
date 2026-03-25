@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\OrderStatus;
+use App\Enums\PayoutStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\StoreRequest;
 use App\Http\Requests\Admin\User\UpdateRequest;
 use App\DTO\User\UserCreateDTO;
 use App\DTO\User\UserUpdateDTO;
 use App\Http\Resources\UserResource;
+use App\Models\Order;
+use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Utils\Transaction;
 use Illuminate\Http\Request;
@@ -21,9 +25,15 @@ class UserController extends Controller
     public function index()
     {
         $filters = $this->getTableFilters();
+        $fromArchive = request()->tab === 'archived';
 
         $users = User::query()
             ->with(['roles', 'wallet'])
+            ->when($fromArchive, function ($query) {
+                $query->whereNotNull('archived_at');
+            }, function ($query) {
+                $query->whereNull('archived_at');
+            })
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
                     $query->where('email', 'like', '%' . $filters->user . '%');
@@ -120,6 +130,10 @@ class UserController extends Controller
 
     public function toggleOnline(Request $request, User $user)
     {
+        if ($user->archived_at !== null && (int) $request->is_online) {
+            return;
+        }
+
         if ((int)$user->is_online !== (int)$request->is_online) {
             if ($user->stop_traffic && (int)$request->is_online) {
                 return;
@@ -127,6 +141,77 @@ class UserController extends Controller
 
             $user->update(['is_online' => !$user->is_online]);
         }
+    }
+
+    public function archive(User $user)
+    {
+        if (! $user->hasRole('Trader')) {
+            return redirect()->back()->with('error', 'Архивировать можно только трейдера.');
+        }
+
+        if ($user->archived_at !== null) {
+            return redirect()->back()->with('error', 'Пользователь уже в архиве.');
+        }
+
+        $hasActiveOrder = Order::query()
+            ->where('trader_id', $user->id)
+            ->where('status', OrderStatus::PENDING)
+            ->exists();
+
+        if ($hasActiveOrder) {
+            return redirect()->back()->with('error', 'Нельзя архивировать трейдера с активной сделкой.');
+        }
+
+        $hasActivePayout = Payout::query()
+            ->where('trader_id', $user->id)
+            ->whereIn('status', [
+                PayoutStatus::TAKEN->value,
+                PayoutStatus::SENT->value,
+            ])
+            ->exists();
+
+        if ($hasActivePayout) {
+            return redirect()->back()->with('error', 'Нельзя архивировать трейдера с активной выплатой.');
+        }
+
+        Transaction::run(function () use ($user) {
+            $user = User::where('id', $user->id)->lockForUpdate()->first();
+
+            $user->paymentDetails()->where('is_active', true)->update([
+                'is_active' => false,
+            ]);
+
+            $user->update([
+                'archived_at' => now(),
+                'stop_traffic' => true,
+                'is_online' => false,
+                'payouts_enabled' => false,
+            ]);
+        });
+
+        return redirect()->back()->with('message', 'Пользователь отправлен в архив.');
+    }
+
+    public function unarchive(User $user)
+    {
+        if (! $user->hasRole('Trader')) {
+            return redirect()->back()->with('error', 'Вернуть из архива можно только трейдера.');
+        }
+
+        if ($user->archived_at === null) {
+            return redirect()->back()->with('error', 'Пользователь уже не в архиве.');
+        }
+
+        Transaction::run(function () use ($user) {
+            $user = User::where('id', $user->id)->lockForUpdate()->first();
+
+            $user->update([
+                'archived_at' => null,
+                'is_online' => false,
+            ]);
+        });
+
+        return redirect()->back()->with('message', 'Пользователь возвращен из архива.');
     }
 
     public function reset2fa(User $user)

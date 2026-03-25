@@ -21,10 +21,16 @@ class ApiAccessToken
         $token = $request->header('Access-Token');
 
         $user = cache()->remember("api-access-token-middleware-$token", 60 * 60 * 24, function () use ($token) {
-            return User::where('api_access_token', $token)->first();
+            return User::query()
+                ->where('api_access_token', $token)
+                ->whereNull('archived_at')
+                ->first();
         });
 
-        if (! $user) {
+        $user = $user?->fresh();
+
+        if (! $user || $user->archived_at !== null) {
+            cache()->forget("api-access-token-middleware-$token");
             return response()->failWithMessage('Invalid Access Token.');
         }
 

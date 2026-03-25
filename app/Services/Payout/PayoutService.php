@@ -213,6 +213,14 @@ class PayoutService implements PayoutServiceContract
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if ($lockedTrader->archived_at !== null || $lockedTrader->banned_at !== null) {
+                throw new PayoutException('Трейдер недоступен для работы с выплатами.');
+            }
+
+            if (! $lockedTrader->payouts_enabled) {
+                throw new PayoutException('Выплаты для трейдера отключены.');
+            }
+
             $limit = max((int) $lockedTrader->payout_active_payouts_limit ?: 1, 1);
 
             $activeCount = Payout::query()

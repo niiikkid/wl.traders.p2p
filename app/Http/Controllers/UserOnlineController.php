@@ -10,6 +10,10 @@ class UserOnlineController extends Controller
     {
         $user = $request->user();
 
+        if ($user->archived_at && ! $user->is_online) {
+            return;
+        }
+
         // Если stop_traffic включен, не даем включить is_online
         if ($user->stop_traffic && !$user->is_online) {
             return;

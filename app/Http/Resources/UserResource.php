@@ -32,6 +32,7 @@ class UserResource extends JsonResource
             'apk_latest_ping_at' => $this->normalizeCachedDate(cache()->get("user-apk-latest-ping-at-$this->id")),
             'online_at' => $this->normalizeCachedDate(cache()->get("user-online-at-$this->id")),
             'banned_at' => $this->banned_at?->toISOString(),
+            'archived_at' => $this->archived_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'team_leader_id' => $this->team_leader_id,
             'team_leader_extended_access_enabled' => (bool) $this->team_leader_extended_access_enabled,

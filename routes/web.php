@@ -281,6 +281,8 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/filters/users', [\App\Http\Controllers\Admin\FilterController::class, 'searchUsers']);
 
         Route::patch('/users/{user}/toggle-online', [\App\Http\Controllers\Admin\UserController::class, 'toggleOnline'])->name('users.toggle-online');
+        Route::post('/users/{user}/archive', [\App\Http\Controllers\Admin\UserController::class, 'archive'])->name('users.archive');
+        Route::delete('/users/{user}/unarchive', [\App\Http\Controllers\Admin\UserController::class, 'unarchive'])->name('users.unarchive');
         Route::get('/users/roles', [\App\Http\Controllers\Admin\UserController::class, 'roles'])->name('users.roles');
         Route::get('/users/team-leaders', [\App\Http\Controllers\Admin\UserController::class, 'teamLeaders'])->name('users.team-leaders');
         Route::get('/users/{user}/temp-vip-history', [\App\Http\Controllers\Admin\UserController::class, 'tempVipHistory'])->name('users.temp-vip-history');

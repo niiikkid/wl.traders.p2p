@@ -45,6 +45,7 @@ class LoginRequest extends FormRequest
             // Храним логин в колонке email
             'email' => (string)$this->string('login'),
             'password' => (string)$this->string('password'),
+            'archived_at' => null,
         ], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 

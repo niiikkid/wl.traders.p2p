@@ -69,6 +69,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property float|null $team_leader_flexible_trader_commission_max
  * @property bool $support_can_view_deposits
  * @property bool $support_can_edit_order_amount
+ * @property Carbon|null $archived_at
  * @property float|null $team_leader_individual_commission_percentage
  * @property User|null $teamLeader
  * @property Carbon $banned_at
@@ -122,6 +123,7 @@ class User extends Authenticatable
         'support_can_edit_order_amount',
         'team_leader_individual_commission_percentage',
         'banned_at',
+        'archived_at',
         'merchant_id',
     ];
 
@@ -149,6 +151,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'banned_at' => 'datetime',
+            'archived_at' => 'datetime',
             'traffic_enabled_at' => 'datetime',
             'temp_vip_active_until' => 'datetime',
             'temp_vip_progress_start_at' => 'datetime',

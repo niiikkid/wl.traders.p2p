@@ -15,7 +15,7 @@ class Banned
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (auth()->check() && $request->user()->banned_at !== null) {
+        if (auth()->check() && ($request->user()->banned_at !== null || $request->user()->archived_at !== null)) {
             abort(403);
         }
 

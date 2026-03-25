@@ -138,6 +138,7 @@ class FindAvailablePaymentDetail
             ->where('is_online', true)
             ->where('stop_traffic', false)
             ->whereNull('banned_at')
+            ->whereNull('archived_at')
             ->whereHas('wallet', function ($q) {
                 $q->where('trust_balance', '>=', $this->approximateTotalProfit->toUnitsInt());
             })

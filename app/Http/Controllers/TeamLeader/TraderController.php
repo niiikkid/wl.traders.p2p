@@ -21,6 +21,7 @@ class TraderController extends Controller
         $traders = User::query()
             ->role('Trader')
             ->where('team_leader_id', auth()->id())
+            ->whereNull('archived_at')
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($builder) use ($filters) {
                     $builder->where('email', 'like', '%' . $filters->user . '%')

@@ -29,6 +29,11 @@ class DeviceAccessToken
             return response()->failWithMessage('Неверный токен устройства', 401);
         }
 
+        $user = $device->user()->first();
+        if (! $user || $user->archived_at !== null || $user->banned_at !== null) {
+            return response()->failWithMessage('Пользователь устройства недоступен', 403);
+        }
+
         $request->merge(['device' => $device]);
 
         return $next($request);

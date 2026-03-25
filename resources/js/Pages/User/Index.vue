@@ -5,7 +5,7 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import {ref, onUnmounted, computed} from "vue";
+import {ref, onUnmounted, computed, onMounted} from "vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
@@ -17,10 +17,14 @@ import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
 import CountdownTimer from "@/Components/CountdownTimer.vue";
+import {useTableFiltersStore} from "@/store/tableFilters.js";
+import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 
 const page = usePage();
 const users = computed(() => page.props.users);
 const modalStore = useModalStore();
+const tableFiltersStore = useTableFiltersStore();
+const currentTab = ref('active');
 
 const isCooldown = ref(false);
 let cooldownTimer = null;
@@ -82,6 +86,50 @@ const openUserTempVipHistoryModal = (user) => {
     modalStore.openUserTempVipHistoryModal({ user });
 };
 
+const openPage = (tab) => {
+    currentTab.value = tab;
+    tableFiltersStore.setTab(tab);
+    tableFiltersStore.setCurrentPage(1);
+
+    router.visit(route(route().current()), {
+        preserveScroll: true,
+        data: tableFiltersStore.getQueryData,
+    });
+};
+
+const isTraderRole = (user) => user.role?.name === 'Trader';
+
+const confirmArchiveUser = (user) => {
+    modalStore.openConfirmModal({
+        title: 'Вы уверены что хотите архивировать пользователя #' + user.id + '?',
+        body: 'Действие можно отменить.',
+        confirm_button_name: 'Архивировать',
+        confirm: () => {
+            router.post(route('admin.users.archive', user.id), {}, {
+                preserveScroll: true,
+            });
+        },
+    });
+};
+
+const confirmUnarchiveUser = (user) => {
+    modalStore.openConfirmModal({
+        title: 'Вы уверены что хотите вернуть пользователя из архива #' + user.id + '?',
+        body: 'Действие можно отменить.',
+        confirm_button_name: 'Вернуть',
+        confirm: () => {
+            router.delete(route('admin.users.unarchive', user.id), {
+                preserveScroll: true,
+            });
+        },
+    });
+};
+
+onMounted(() => {
+    currentTab.value = tableFiltersStore.getTab || 'active';
+    tableFiltersStore.setTab(currentTab.value);
+});
+
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -93,6 +141,7 @@ defineOptions({ layout: AuthenticatedLayout })
         <UserCreateModal />
         <UserEditModal />
         <UserTempVipHistoryModal />
+        <ConfirmModal />
 
         <MainTableSection
             title="Пользователи"
@@ -111,6 +160,20 @@ defineOptions({ layout: AuthenticatedLayout })
                 />
             </template>
             <template v-slot:table-filters>
+                <div class="flex items-center justify-between gap-3 mb-3">
+                    <ul class="flex flex-wrap text-sm font-medium text-center">
+                        <li class="me-2">
+                            <a @click.prevent="openPage('active')" href="#" :class="currentTab === 'active' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
+                                <span>Активные</span>
+                            </a>
+                        </li>
+                        <li class="me-2">
+                            <a @click.prevent="openPage('archived')" href="#" :class="currentTab === 'archived' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
+                                <span>Архив</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 <FiltersPanel name="users">
                     <InputFilter
                         name="user"
@@ -241,27 +304,37 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <td class="px-6 py-3 text-nowrap">
                                         <div class="space-y-1">
                                             <div class="flex items-center">
-                                                <input type="checkbox" :checked="user.is_online" class="toggle toggle-success" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown">
+                                                <input type="checkbox" :checked="user.is_online" class="toggle toggle-success" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap text-right">
                                         <TableActionsDropdown>
-                                            <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
-                                                Войти как пользователь
-                                            </TableAction>
-                                            <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
-                                                Кошелек
-                                            </TableAction>
-                                            <TableAction @click="openUserNotesModal(user)">
-                                                Заметки
-                                            </TableAction>
-                                            <TableAction @click="openUserEditModal(user)">
-                                                Редактировать
-                                            </TableAction>
-                                            <TableAction @click="openUserTempVipHistoryModal(user)">
-                                                История VIP
-                                            </TableAction>
+                                            <template v-if="currentTab === 'active'">
+                                                <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
+                                                    Войти как пользователь
+                                                </TableAction>
+                                                <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
+                                                    Кошелек
+                                                </TableAction>
+                                                <TableAction @click="openUserNotesModal(user)">
+                                                    Заметки
+                                                </TableAction>
+                                                <TableAction @click="openUserEditModal(user)">
+                                                    Редактировать
+                                                </TableAction>
+                                                <TableAction @click="openUserTempVipHistoryModal(user)">
+                                                    История VIP
+                                                </TableAction>
+                                                <TableAction v-if="isTraderRole(user)" @click="confirmArchiveUser(user)">
+                                                    Архивировать
+                                                </TableAction>
+                                            </template>
+                                            <template v-else-if="isTraderRole(user)">
+                                                <TableAction @click="confirmUnarchiveUser(user)">
+                                                    Вернуть из архива
+                                                </TableAction>
+                                            </template>
                                         </TableActionsDropdown>
                                     </td>
                                 </tr>
@@ -369,24 +442,34 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="flex items-center gap-2">
                                                 <div class="flex items-center gap-2">
                                                     <span class="text-xs text-base-content/70">Работает: </span>
-                                                    <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user, 'order')" :disabled="onlineForm.processing || isCooldown">
+                                                    <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user, 'order')" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
                                                 </div>
                                                 <TableActionsDropdown>
-                                                    <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
-                                                        Войти как пользователь
-                                                    </TableAction>
-                                                    <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
-                                                        Кошелек
-                                                    </TableAction>
-                                                    <TableAction @click="openUserNotesModal(user)">
-                                                        Заметки
-                                                    </TableAction>
-                                                    <TableAction @click="openUserEditModal(user)">
-                                                        Редактировать
-                                                    </TableAction>
-                                                    <TableAction @click="openUserTempVipHistoryModal(user)">
-                                                        История VIP
-                                                    </TableAction>
+                                                    <template v-if="currentTab === 'active'">
+                                                        <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
+                                                            Войти как пользователь
+                                                        </TableAction>
+                                                        <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
+                                                            Кошелек
+                                                        </TableAction>
+                                                        <TableAction @click="openUserNotesModal(user)">
+                                                            Заметки
+                                                        </TableAction>
+                                                        <TableAction @click="openUserEditModal(user)">
+                                                            Редактировать
+                                                        </TableAction>
+                                                        <TableAction @click="openUserTempVipHistoryModal(user)">
+                                                            История VIP
+                                                        </TableAction>
+                                                        <TableAction v-if="isTraderRole(user)" @click="confirmArchiveUser(user)">
+                                                            Архивировать
+                                                        </TableAction>
+                                                    </template>
+                                                    <template v-else-if="isTraderRole(user)">
+                                                        <TableAction @click="confirmUnarchiveUser(user)">
+                                                            Вернуть из архива
+                                                        </TableAction>
+                                                    </template>
                                                 </TableActionsDropdown>
                                             </div>
                                         </div>
@@ -466,24 +549,34 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center gap-2">
                                                 <span class="tex-xs text-base-content/70">Работает:</span>
-                                                <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown">
+                                                <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
                                             </div>
                                             <TableActionsDropdown>
-                                                <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
-                                                    Войти как пользователь
-                                                </TableAction>
-                                                <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
-                                                    Кошелек
-                                                </TableAction>
-                                                <TableAction @click="openUserNotesModal(user)">
-                                                    Заметки
-                                                </TableAction>
-                                                <TableAction @click="openUserEditModal(user)">
-                                                    Редактировать
-                                                </TableAction>
-                                                <TableAction @click="openUserTempVipHistoryModal(user)">
-                                                    История VIP
-                                                </TableAction>
+                                                <template v-if="currentTab === 'active'">
+                                                    <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
+                                                        Войти как пользователь
+                                                    </TableAction>
+                                                    <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
+                                                        Кошелек
+                                                    </TableAction>
+                                                    <TableAction @click="openUserNotesModal(user)">
+                                                        Заметки
+                                                    </TableAction>
+                                                    <TableAction @click="openUserEditModal(user)">
+                                                        Редактировать
+                                                    </TableAction>
+                                                    <TableAction @click="openUserTempVipHistoryModal(user)">
+                                                        История VIP
+                                                    </TableAction>
+                                                    <TableAction v-if="isTraderRole(user)" @click="confirmArchiveUser(user)">
+                                                        Архивировать
+                                                    </TableAction>
+                                                </template>
+                                                <template v-else-if="isTraderRole(user)">
+                                                    <TableAction @click="confirmUnarchiveUser(user)">
+                                                        Вернуть из архива
+                                                    </TableAction>
+                                                </template>
                                             </TableActionsDropdown>
                                         </div>
                                     </div>

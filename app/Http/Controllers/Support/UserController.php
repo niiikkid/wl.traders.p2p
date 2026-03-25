@@ -16,6 +16,7 @@ class UserController extends Controller
 
         $users = User::query()
             ->with(['roles', 'wallet'])
+            ->whereNull('archived_at')
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
                     $query->where('email', 'like', '%' . $filters->user . '%');
