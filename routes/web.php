@@ -250,6 +250,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
     Route::group(['prefix' => 'admin', 'as'=>'admin.', 'middleware' => ['auth', 'banned', 'role:Super Admin']], function () {
         Route::get('/main', [\App\Http\Controllers\MainPageController::class, 'admin'])->name('main.index');
+        Route::get('/main/filter-options/{type}', [\App\Http\Controllers\MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
         Route::get('/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'index'])->name('feedback.index');
         Route::patch('/feedbacks/{feedback}/favorite', [\App\Http\Controllers\Trader\FeedbackController::class, 'toggleFavorite'])->name('feedback.favorite');
         Route::patch('/feedbacks/{feedback}/hidden', [\App\Http\Controllers\Trader\FeedbackController::class, 'toggleHidden'])->name('feedback.hidden');

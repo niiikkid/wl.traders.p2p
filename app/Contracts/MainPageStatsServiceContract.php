@@ -12,6 +12,13 @@ interface MainPageStatsServiceContract
 
     public function buildLeaderStats(User $user): array;
 
-    public function buildAdminStats(User $user, ?int $merchantId = null): array;
+    public function buildAdminStats(
+        User $user,
+        ?int $merchantId = null,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        array $filters = [],
+    ): array;
 }
 
