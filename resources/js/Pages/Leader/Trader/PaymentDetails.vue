@@ -10,6 +10,10 @@ import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
+import PaymentDetailLimit from "@/Components/PaymentDetailLimit.vue";
+import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue";
+import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
+import TableInfoDropdown from "@/Components/Table/TableInfoDropdown.vue";
 
 const page = usePage();
 const tableFiltersStore = useTableFiltersStore();
@@ -17,6 +21,61 @@ const tableFiltersStore = useTableFiltersStore();
 const trader = ref(page.props.trader);
 const paymentDetails = ref(page.props.paymentDetails);
 const currentTab = ref('active');
+
+const normalizeNumber = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return 0;
+    }
+
+    return Number(String(value).replace(/\s/g, '').replace(',', '.')) || 0;
+};
+
+const percentFrom = (current, limit) => {
+    const currentValue = normalizeNumber(current);
+    const limitValue = normalizeNumber(limit);
+
+    if (limitValue <= 0) {
+        return 0;
+    }
+
+    return Math.min(100, (currentValue / limitValue) * 100);
+};
+
+const hasLimit = (limit) => {
+    return normalizeNumber(limit) > 0;
+};
+
+const progressClass = (percent, has_limit = true) => {
+    if (!has_limit) {
+        return 'text-base-content/40';
+    }
+
+    if (percent < 40) {
+        return 'text-success';
+    }
+
+    if (percent < 80) {
+        return 'text-warning';
+    }
+
+    return 'text-error';
+};
+
+const percentLabel = (percent) => {
+    if (!Number.isFinite(percent)) {
+        return '0%';
+    }
+
+    return `${Math.round(percent)}%`;
+};
+
+const radialStyle = (value) => {
+    return {
+        '--value': value,
+        '--size': '2.4rem',
+        '--thickness': '3px',
+    };
+};
 
 const openPage = (tab) => {
     tableFiltersStore.setTab(tab);
@@ -142,7 +201,9 @@ defineOptions({layout: AuthenticatedLayout});
                                         <th>ID</th>
                                         <th>Реквизит</th>
                                         <th>Тип</th>
+                                        <th>Лимиты</th>
                                         <th>Статус</th>
+                                        <th><span class="sr-only">Настройки</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -159,9 +220,135 @@ defineOptions({layout: AuthenticatedLayout});
                                             </div>
                                         </td>
                                         <td class="whitespace-nowrap">{{ detail.detail_type }}</td>
+                                        <td class="text-nowrap">
+                                            <TableCellPopover>
+                                                <template #trigger>
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="relative grid place-items-center">
+                                                            <div class="radial-progress text-base-300/60" :style="radialStyle(100)"></div>
+                                                            <div
+                                                                class="radial-progress absolute inset-0"
+                                                                :class="progressClass(
+                                                                    percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity),
+                                                                    hasLimit(detail.max_pending_orders_quantity)
+                                                                )"
+                                                                :style="radialStyle(percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity))"
+                                                                role="progressbar"
+                                                                :aria-valuenow="percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity)"
+                                                            >
+                                                                <span class="text-[10px] leading-none">
+                                                                    {{ percentLabel(percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity)) }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="relative grid place-items-center">
+                                                            <div class="radial-progress text-base-300/60" :style="radialStyle(100)"></div>
+                                                            <div
+                                                                class="radial-progress absolute inset-0"
+                                                                :class="progressClass(
+                                                                    percentFrom(detail.current_daily_successful_orders_count, detail.daily_successful_orders_limit),
+                                                                    hasLimit(detail.daily_successful_orders_limit)
+                                                                )"
+                                                                :style="radialStyle(percentFrom(detail.current_daily_successful_orders_count, detail.daily_successful_orders_limit))"
+                                                                role="progressbar"
+                                                                :aria-valuenow="percentFrom(detail.current_daily_successful_orders_count, detail.daily_successful_orders_limit)"
+                                                            >
+                                                                <span class="text-[10px] leading-none">
+                                                                    {{ percentLabel(percentFrom(detail.current_daily_successful_orders_count, detail.daily_successful_orders_limit)) }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="relative grid place-items-center">
+                                                            <div class="radial-progress text-base-300/60" :style="radialStyle(100)"></div>
+                                                            <div
+                                                                class="radial-progress absolute inset-0"
+                                                                :class="progressClass(
+                                                                    percentFrom(detail.current_daily_limit, detail.daily_limit),
+                                                                    hasLimit(detail.daily_limit)
+                                                                )"
+                                                                :style="radialStyle(percentFrom(detail.current_daily_limit, detail.daily_limit))"
+                                                                role="progressbar"
+                                                                :aria-valuenow="percentFrom(detail.current_daily_limit, detail.daily_limit)"
+                                                            >
+                                                                <span class="text-[10px] leading-none">
+                                                                    {{ percentLabel(percentFrom(detail.current_daily_limit, detail.daily_limit)) }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                                <div class="grid gap-3 text-sm">
+                                                    <div class="grid gap-1">
+                                                        <div class="text-xs text-base-content/70">Активных сделок</div>
+                                                        <div class="flex justify-end mb-1">
+                                                            <div class="relative text-nowrap">
+                                                                <span
+                                                                    class="text-xs font-semibold"
+                                                                    :class="{
+                                                                        'text-success': percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) < 40,
+                                                                        'text-warning': percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) >= 40 && percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) < 80,
+                                                                        'text-error': percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) >= 80
+                                                                    }"
+                                                                >
+                                                                    {{ detail.pending_orders_count }}
+                                                                </span>
+                                                                <span class="mx-1 opacity-70">из</span>
+                                                                <span class="text-xs font-semibold">
+                                                                    {{ detail.max_pending_orders_quantity }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        <progress
+                                                            class="progress w-full"
+                                                            :class="{
+                                                                'progress-success': percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) < 40,
+                                                                'progress-warning': percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) >= 40 && percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) < 80,
+                                                                'progress-error': percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity) >= 80
+                                                            }"
+                                                            :value="percentFrom(detail.pending_orders_count, detail.max_pending_orders_quantity)"
+                                                            max="100"
+                                                        ></progress>
+                                                    </div>
+                                                    <div class="grid gap-1">
+                                                        <div class="text-xs text-base-content/70">Количество сделок за день</div>
+                                                        <PaymentDetailOrdersLimit
+                                                            :current_daily_successful_orders_count="detail.current_daily_successful_orders_count"
+                                                            :daily_successful_orders_limit="detail.daily_successful_orders_limit"
+                                                        />
+                                                    </div>
+                                                    <div class="grid gap-1">
+                                                        <div class="text-xs text-base-content/70">Объём сделок за день</div>
+                                                        <PaymentDetailLimit
+                                                            :current_daily_limit="detail.current_daily_limit"
+                                                            :daily_limit="detail.daily_limit"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </TableCellPopover>
+                                        </td>
                                         <td class="whitespace-nowrap">
                                             <span class="badge badge-success badge-sm" v-if="detail.is_active">Активен</span>
                                             <span class="badge badge-ghost badge-sm" v-else>Выключен</span>
+                                        </td>
+                                        <td class="text-right">
+                                            <TableInfoDropdown>
+                                                <div class="grid gap-2 text-sm">
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="text-base-content/70">Интервал:</span>
+                                                        <span class="text-right">{{ detail.order_interval_minutes !== null ? detail.order_interval_minutes + ' мин' : '-' }}</span>
+                                                    </div>
+                                                    <div class="grid gap-1">
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <span class="text-base-content/70">Мин:</span>
+                                                            <span class="text-right">{{ detail.min_order_amount !== null ? detail.min_order_amount : '∞' }}</span>
+                                                        </div>
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <span class="text-base-content/70">Макс:</span>
+                                                            <span class="text-right">{{ detail.max_order_amount !== null ? detail.max_order_amount : '∞' }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </TableInfoDropdown>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -189,6 +376,38 @@ defineOptions({layout: AuthenticatedLayout});
                                             :type="detail.detail_type"
                                             :name="detail.name"
                                         />
+                                    </div>
+                                </div>
+                                <div class="mt-2 grid gap-1 text-xs">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-base-content/70">Сумма:</span>
+                                        <span class="text-right">
+                                            {{ detail.min_order_amount !== null ? detail.min_order_amount : '∞' }}
+                                            -
+                                            {{ detail.max_order_amount !== null ? detail.max_order_amount : '∞' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-base-content/70">Активных сделок:</span>
+                                        <span class="text-right">{{ detail.pending_orders_count }} / {{ detail.max_pending_orders_quantity }}</span>
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <div class="text-base-content/70">Лимит сделок/день:</div>
+                                        <PaymentDetailOrdersLimit
+                                            :current_daily_successful_orders_count="detail.current_daily_successful_orders_count"
+                                            :daily_successful_orders_limit="detail.daily_successful_orders_limit"
+                                        />
+                                    </div>
+                                    <div class="grid gap-1">
+                                        <div class="text-base-content/70">Объем/день:</div>
+                                        <PaymentDetailLimit
+                                            :current_daily_limit="detail.current_daily_limit"
+                                            :daily_limit="detail.daily_limit"
+                                        />
+                                    </div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-base-content/70">Интервал:</span>
+                                        <span class="text-right">{{ detail.order_interval_minutes !== null ? detail.order_interval_minutes + ' мин' : '-' }}</span>
                                     </div>
                                 </div>
                             </div>
