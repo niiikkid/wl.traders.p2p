@@ -67,4 +67,35 @@ class OrderException extends BaseException
     {
         return new self('Не удалось получить актуальный курс конвертации.');
     }
+
+    public static function merchantApiRateRequired(string $currency): OrderException
+    {
+        return new self("Для валюты {$currency} требуется передать параметр rate.");
+    }
+
+    public static function merchantApiRateForbidden(string $currency): OrderException
+    {
+        return new self("Для валюты {$currency} параметр rate недоступен для выбранного источника курсов.");
+    }
+
+    public static function merchantApiRateSettingsMissing(string $currency): OrderException
+    {
+        return new self("Для валюты {$currency} не настроены параметры проверки merchant_api курса.");
+    }
+
+    public static function merchantApiRateOutOfRange(
+        string $currency,
+        string $requestedRate,
+        string $referenceRate,
+        string $deviationPercent,
+        string $allowedMinRate,
+        string $allowedMaxRate,
+    ): OrderException {
+        return new self(
+            "Недопустимый курс для {$currency}. " .
+            "Передан: {$requestedRate}. " .
+            "Опорный курс: {$referenceRate}, допустимое отклонение: ±{$deviationPercent}% " .
+            "(допустимый диапазон: {$allowedMinRate} - {$allowedMaxRate})."
+        );
+    }
 }

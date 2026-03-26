@@ -314,5 +314,8 @@ return [
         'requisites'  => 'реквизиты',
         'min_limit'  => 'min. лимит',
         'max_limit'  => 'max. лимит',
+        'rate' => 'курс',
+        'reference_rate' => 'опорный курс',
+        'max_deviation_percent' => 'допустимое отклонение (%)',
     ],
 ];

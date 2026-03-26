@@ -32,6 +32,9 @@ class OrderMaker
      */
     public function create(): Order
     {
+        $conversionPrice = $this->data->merchantRate
+            ?? Money::fromPrecision(0, $this->data->amount->getCurrency());
+
         return Order::create([
             'uuid' => (string)Str::uuid(),
             'external_id' => $this->data->externalID,
@@ -45,7 +48,7 @@ class OrderMaker
             'service_profit' => Money::fromPrecision(0, Currency::USDT()),
             'trader_paid_for_order' => Money::fromPrecision(0, Currency::USDT()),
             'currency' => $this->data->amount->getCurrency(),
-            'conversion_price' => Money::fromPrecision(0, $this->data->amount->getCurrency()),
+            'conversion_price' => $conversionPrice,
             'market' => $this->geoMarket,
             'trader_commission_rate' => 0,
             'total_service_commission_rate' => 0,
@@ -81,6 +84,8 @@ class OrderMaker
         if ($this->data->manually && $this->data->h2h) {
             throw OrderException::noH2HAndManually();
         }
+
+        $this->validateMerchantApiRate();
     }
 
     /**
@@ -112,5 +117,55 @@ class OrderMaker
         }
 
         return $market;
+    }
+
+    /**
+     * @throws OrderException
+     */
+    protected function validateMerchantApiRate(): void
+    {
+        $currencyCode = strtoupper($this->data->amount->getCurrency()->getCode());
+
+        if (! $this->geoMarket->equals(MarketEnum::MERCHANT_API)) {
+            if ($this->data->merchantRate) {
+                throw OrderException::merchantApiRateForbidden($currencyCode);
+            }
+
+            return;
+        }
+
+        if (! $this->data->merchantRate) {
+            throw OrderException::merchantApiRateRequired($currencyCode);
+        }
+
+        $merchantRateSettings = $this->data->merchant->getMerchantApiRateSetting($this->data->amount->getCurrency());
+
+        if (! $merchantRateSettings) {
+            throw OrderException::merchantApiRateSettingsMissing($currencyCode);
+        }
+
+        $referenceRate = (float) $merchantRateSettings['reference_rate'];
+        $maxDeviationPercent = (float) $merchantRateSettings['max_deviation_percent'];
+
+        if ($referenceRate <= 0 || $maxDeviationPercent <= 0) {
+            throw OrderException::merchantApiRateSettingsMissing($currencyCode);
+        }
+
+        $requestedRate = (float) $this->data->merchantRate->toPrecision();
+        $minRate = $referenceRate * (1 - ($maxDeviationPercent / 100));
+        $maxRate = $referenceRate * (1 + ($maxDeviationPercent / 100));
+
+        if ($requestedRate < $minRate || $requestedRate > $maxRate) {
+            $precision = $this->data->amount->getCurrency()->getPrecision();
+
+            throw OrderException::merchantApiRateOutOfRange(
+                currency: $currencyCode,
+                requestedRate: $this->data->merchantRate->toPrecision(),
+                referenceRate: number_format($referenceRate, $precision, '.', ''),
+                deviationPercent: number_format($maxDeviationPercent, 2, '.', ''),
+                allowedMinRate: number_format($minRate, $precision, '.', ''),
+                allowedMaxRate: number_format($maxRate, $precision, '.', ''),
+            );
+        }
     }
 }

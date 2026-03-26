@@ -12,17 +12,18 @@ use App\Services\Money\Money;
 readonly class CreateOrderDTO extends BaseDTO
 {
     public function __construct(
-        public Money       $amount,
-        public Merchant    $merchant,
-        public bool        $h2h = false,
-        public bool        $manually = false,
-        public ?string     $externalID = null,
-        public ?string     $callbackURL = null,
-        public ?string     $successURL = null,
-        public ?string     $failURL = null,
+        public Money           $amount,
+        public Merchant        $merchant,
+        public bool            $h2h = false,
+        public bool            $manually = false,
+        public ?string         $externalID = null,
+        public ?string         $callbackURL = null,
+        public ?string         $successURL = null,
+        public ?string         $failURL = null,
         public ?PaymentGateway $paymentGateway = null,
-        public ?DetailType $paymentDetailType = null,
-        public ?int        $merchantClientId = null,
+        public ?DetailType     $paymentDetailType = null,
+        public ?int            $merchantClientId = null,
+        public ?Money          $merchantRate = null,
     )
     {}
 
@@ -55,6 +56,13 @@ readonly class CreateOrderDTO extends BaseDTO
             }
         }
 
+        $currencyCode = $data['payment_gateway']?->currency?->getCode()
+            ?? $data['amount']->getCurrency()->getCode();
+        $merchantRate = null;
+        if (array_key_exists('rate', $data) && $data['rate'] !== null && $data['rate'] !== '') {
+            $merchantRate = Money::fromPrecision((string) $data['rate'], $currencyCode);
+        }
+
         return new static(
             amount: $data['amount'],
             merchant: $data['merchant'],
@@ -67,6 +75,7 @@ readonly class CreateOrderDTO extends BaseDTO
             paymentGateway: $data['payment_gateway'] ?? null,
             paymentDetailType: $data['payment_detail_type'] ?? null,
             merchantClientId: $data['merchant_client_id'] ?? null,
+            merchantRate: $merchantRate,
         );
     }
 }

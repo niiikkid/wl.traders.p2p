@@ -14,6 +14,10 @@ class CurrencyController extends Controller
         $markets = [];
 
         foreach (MarketEnum::cases() as $market) {
+            if ($market->equals(MarketEnum::MERCHANT_API)) {
+                continue;
+            }
+
             $currencies = [];
 
             services()->market()

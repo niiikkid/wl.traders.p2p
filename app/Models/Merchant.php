@@ -108,6 +108,35 @@ class Merchant extends Model
         return $this->settings['geos'] ?? [];
     }
 
+    public function getMerchantApiRateSettingsMap(): array
+    {
+        return $this->settings['merchant_api_rates'] ?? [];
+    }
+
+    public function getMerchantApiRateSetting(Currency $currency): ?array
+    {
+        $settings = $this->getMerchantApiRateSettingsMap();
+        $code = strtolower($currency->getCode());
+
+        $config = $settings[$code] ?? $settings[strtoupper($code)] ?? null;
+
+        if (! is_array($config)) {
+            return null;
+        }
+
+        $referenceRate = isset($config['reference_rate']) ? (float) $config['reference_rate'] : null;
+        $maxDeviationPercent = isset($config['max_deviation_percent']) ? (float) $config['max_deviation_percent'] : null;
+
+        if ($referenceRate === null || $maxDeviationPercent === null) {
+            return null;
+        }
+
+        return [
+            'reference_rate' => $referenceRate,
+            'max_deviation_percent' => $maxDeviationPercent,
+        ];
+    }
+
     /**
      * Сохранить карту GEO в настройках мерчанта.
      */

@@ -36,6 +36,7 @@ const h2hOrderForm = ref({
     amount: '1000',
     payment_gateway: '',
     currency: 'rub',
+    rate: '',
     payment_detail_type: '',
     merchant_id: initialMerchantId,
     callback_url: '',
@@ -155,6 +156,12 @@ const clearH2HResponse = (key) => {
                                     <span class="label-text">currency</span>
                                 </label>
                                 <input v-model="h2hOrderForm.currency" type="text" class="input input-bordered w-full" placeholder="rub">
+                            </div>
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">rate</span>
+                                </label>
+                                <input v-model="h2hOrderForm.rate" type="text" class="input input-bordered w-full" placeholder="95.12345678">
                             </div>
                             <div class="form-control grid">
                                 <label class="label">

@@ -7,6 +7,7 @@ use App\Exceptions\OrderException;
 use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\PaymentGateway;
+use App\Enums\MarketEnum;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Services\Order\Features\OrderDetailProvider\Classes\FindAvailablePaymentDetail;
@@ -29,6 +30,16 @@ class OrderDetailProvider
      */
     public function provide(): Detail
     {
+        $forcedExchangePrice = null;
+
+        if (
+            $this->order->market?->equals(MarketEnum::MERCHANT_API)
+            && $this->order->conversion_price
+            && $this->order->conversion_price->greaterThanZero()
+        ) {
+            $forcedExchangePrice = $this->order->conversion_price;
+        }
+
         $findAvailablePaymentDetail = new FindAvailablePaymentDetail(
             $this->merchant,
             $this->order->market,
@@ -36,6 +47,7 @@ class OrderDetailProvider
             $this->detailType,
             $this->currency,
             $this->gateway,
+            $forcedExchangePrice,
         );
 
         $selectedDetail = $findAvailablePaymentDetail->get();

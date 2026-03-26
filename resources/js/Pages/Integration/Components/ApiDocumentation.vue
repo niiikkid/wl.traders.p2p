@@ -285,6 +285,15 @@ const tocSections = [
                                                 <td>код валюты. Не обязателен, если указан payment_gateway.</td>
                                             </tr>
                                             <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">rate</code></td>
+                                                <td>
+                                                    курс создания сделки. Обязателен только если для валюты в GEO мерчанта выбран источник
+                                                    <code class="bg-base-200 px-1 rounded text-xs">merchant_api</code>. Значение должно быть больше 0,
+                                                    с точностью не выше precision валюты (сейчас обычно до 8 знаков), и попадать в допустимый диапазон
+                                                    относительно опорного курса и процента отклонения, заданных администратором.
+                                                </td>
+                                            </tr>
+                                            <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">payment_detail_type</code></td>
                                                 <td>тип реквизита: card, phone, mobile_commerce, account_number, iban_uah, nspk, e-com.</td>
                                             </tr>
@@ -388,6 +397,15 @@ const tocSections = [
                                             <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">currency</code></td>
                                                 <td>код валюты. Не обязателен, если указан payment_gateway.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">rate</code></td>
+                                                <td>
+                                                    курс создания сделки. Обязателен только если для валюты в GEO мерчанта выбран источник
+                                                    <code class="bg-base-200 px-1 rounded text-xs">merchant_api</code>. Значение должно быть больше 0,
+                                                    с точностью не выше precision валюты (сейчас обычно до 8 знаков), и попадать в допустимый диапазон
+                                                    относительно опорного курса и процента отклонения, заданных администратором.
+                                                </td>
                                             </tr>
                                             <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">payment_detail_type</code></td>

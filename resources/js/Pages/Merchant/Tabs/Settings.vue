@@ -16,6 +16,7 @@ import DUUID from "@/Components/DUUID.vue";
 
 const viewStore = useViewStore();
 const emit = defineEmits(['updated']);
+const MERCHANT_API_MARKET = 'merchant_api';
 
 const props = defineProps({
     merchant: {
@@ -81,6 +82,8 @@ const normalizeGeoItems = (items) => {
         return [{
             currency: 'rub',
             market: 'rapira',
+            reference_rate: null,
+            max_deviation_percent: null,
         }];
     }
 
@@ -89,6 +92,8 @@ const normalizeGeoItems = (items) => {
         .map((geo) => ({
             currency: (geo.currency ?? '').toLowerCase(),
             market: geo.market,
+            reference_rate: geo.reference_rate ?? null,
+            max_deviation_percent: geo.max_deviation_percent ?? null,
         }));
 };
 
@@ -108,6 +113,8 @@ const formCallback = reactive({
 const geoForm = reactive({
     currency: '',
     market: '',
+    reference_rate: '',
+    max_deviation_percent: '',
     errors: {},
     processing: false,
     recentlySuccessful: false,
@@ -305,6 +312,18 @@ watch(
     { immediate: true }
 );
 
+watch(
+    () => geoForm.market,
+    (market) => {
+        if (market !== MERCHANT_API_MARKET) {
+            geoForm.reference_rate = '';
+            geoForm.max_deviation_percent = '';
+            clearFormError(geoForm, 'reference_rate');
+            clearFormError(geoForm, 'max_deviation_percent');
+        }
+    }
+);
+
 const markRecentlySuccessful = (form) => {
     if (!form) {
         return;
@@ -395,6 +414,21 @@ const addGeo = () => {
         return;
     }
 
+    if (geoForm.market === MERCHANT_API_MARKET) {
+        const referenceRate = Number(geoForm.reference_rate);
+        const maxDeviationPercent = Number(geoForm.max_deviation_percent);
+
+        if (!Number.isFinite(referenceRate) || referenceRate <= 0) {
+            geoForm.errors = { reference_rate: ['Укажите корректный опорный курс больше 0.'] };
+            return;
+        }
+
+        if (!Number.isFinite(maxDeviationPercent) || maxDeviationPercent <= 0) {
+            geoForm.errors = { max_deviation_percent: ['Укажите корректное отклонение в процентах больше 0.'] };
+            return;
+        }
+    }
+
     const currency = geoForm.currency.toLowerCase();
 
     if ((geoItems.value || []).some((geo) => geo.currency === currency)) {
@@ -404,11 +438,18 @@ const addGeo = () => {
 
     geoItems.value = [
         ...geoItems.value,
-        {currency, market: geoForm.market},
+        {
+            currency,
+            market: geoForm.market,
+            reference_rate: geoForm.market === MERCHANT_API_MARKET ? geoForm.reference_rate : null,
+            max_deviation_percent: geoForm.market === MERCHANT_API_MARKET ? geoForm.max_deviation_percent : null,
+        },
     ];
 
     geoForm.currency = '';
     geoForm.market = '';
+    geoForm.reference_rate = '';
+    geoForm.max_deviation_percent = '';
     geoForm.errors = {};
 };
 
@@ -741,7 +782,7 @@ const activeTab = ref('info');
                         </p>
 
                         <form class="space-y-4" @submit.prevent="submitGeo">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
                                 <div>
                                     <InputLabel
                                         for="geo_currency"
@@ -782,12 +823,57 @@ const activeTab = ref('info');
                                     ></Select>
                                 </div>
 
+                                <div v-if="geoForm.market === MERCHANT_API_MARKET">
+                                    <InputLabel
+                                        for="geo_reference_rate"
+                                        value="Опорный курс"
+                                        :error="!!geoForm.errors.reference_rate || !!geoForm.errors.geos"
+                                        class="mb-1"
+                                    />
+                                    <TextInput
+                                        id="geo_reference_rate"
+                                        v-model="geoForm.reference_rate"
+                                        type="text"
+                                        class="mt-1 block w-full"
+                                        placeholder="Например, 95.12345678"
+                                        :error="!!geoForm.errors.reference_rate || !!geoForm.errors.geos"
+                                        @input="() => { clearFormError(geoForm, 'reference_rate'); clearFormError(geoForm, 'geos'); }"
+                                    />
+                                    <InputError :message="geoForm.errors.reference_rate" class="mt-2" />
+                                </div>
+
+                                <div v-if="geoForm.market === MERCHANT_API_MARKET">
+                                    <InputLabel
+                                        for="geo_max_deviation_percent"
+                                        value="Допустимое отклонение, %"
+                                        :error="!!geoForm.errors.max_deviation_percent || !!geoForm.errors.geos"
+                                        class="mb-1"
+                                    />
+                                    <TextInput
+                                        id="geo_max_deviation_percent"
+                                        v-model="geoForm.max_deviation_percent"
+                                        type="text"
+                                        class="mt-1 block w-full"
+                                        placeholder="Например, 3.00"
+                                        :error="!!geoForm.errors.max_deviation_percent || !!geoForm.errors.geos"
+                                        @input="() => { clearFormError(geoForm, 'max_deviation_percent'); clearFormError(geoForm, 'geos'); }"
+                                    />
+                                    <InputError :message="geoForm.errors.max_deviation_percent" class="mt-2" />
+                                </div>
+
                                 <div class="flex items-end">
                                     <button
                                         type="button"
                                         class="btn btn-primary w-full"
                                         @click="addGeo"
-                                        :disabled="!geoForm.currency || !geoForm.market"
+                                        :disabled="
+                                            !geoForm.currency
+                                            || !geoForm.market
+                                            || (
+                                                geoForm.market === MERCHANT_API_MARKET
+                                                && (!geoForm.reference_rate || !geoForm.max_deviation_percent)
+                                            )
+                                        "
                                     >
                                         Добавить GEO
                                     </button>
@@ -811,6 +897,12 @@ const activeTab = ref('info');
                                         </div>
                                         <div class="text-xs text-base-content/70">
                                             {{ markets.find(m => m.value === geo.market)?.name || geo.market }}
+                                        </div>
+                                        <div
+                                            v-if="geo.market === MERCHANT_API_MARKET"
+                                            class="text-xs text-base-content/70 mt-1"
+                                        >
+                                            Опорный курс: {{ geo.reference_rate }} | Отклонение: ±{{ geo.max_deviation_percent }}%
                                         </div>
                                     </div>
                                     <button

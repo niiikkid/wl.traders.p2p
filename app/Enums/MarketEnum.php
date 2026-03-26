@@ -12,4 +12,5 @@ enum MarketEnum: string
     case BINANCE = 'binance';
     case RAPIRA = 'rapira';
     case MANUAL = 'manual';
+    case MERCHANT_API = 'merchant_api';
 }

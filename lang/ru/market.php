@@ -8,5 +8,6 @@ return [
         'binance' => 'Binance',
         'rapira' => 'Rapira',
         'manual' => 'Ручной',
+        'merchant_api' => 'Курс от мерчанта (API)',
     ]
 ];

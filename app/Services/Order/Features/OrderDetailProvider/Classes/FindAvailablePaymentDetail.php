@@ -39,6 +39,7 @@ class FindAvailablePaymentDetail
         protected ?DetailType     $detailType = null,
         protected ?Currency       $currency = null,
         protected ?PaymentGateway $gateway = null,
+        protected ?Money          $forcedExchangePrice = null,
     )
     {
         if (is_null($this->gateway) && is_null($this->currency)) {
@@ -48,7 +49,15 @@ class FindAvailablePaymentDetail
         $this->primeTimeBonus = services()->settings()->getPrimeTimeBonus();
         $this->start = Carbon::createFromTimeString($this->primeTimeBonus->starts);
         $this->end = Carbon::createFromTimeString($this->primeTimeBonus->ends);
-        $this->exchangePrice = services()->market()->getSellPrice($this->amount->getCurrency(), $this->market);
+        if ($this->forcedExchangePrice && $this->forcedExchangePrice->greaterThanZero()) {
+            $this->exchangePrice = $this->forcedExchangePrice;
+        } else {
+            if ($this->market->equals(MarketEnum::MERCHANT_API)) {
+                throw OrderException::marketPriceUnavailable();
+            }
+
+            $this->exchangePrice = services()->market()->getSellPrice($this->amount->getCurrency(), $this->market);
+        }
 
         if (! $this->exchangePrice->greaterThanZero()) {
             throw OrderException::marketPriceUnavailable();

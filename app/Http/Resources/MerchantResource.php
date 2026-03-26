@@ -37,10 +37,18 @@ class MerchantResource extends JsonResource
             'callback_url' => $this->callback_url,
             'payout_callback_url' => $this->payout_callback_url,
             'geos' => collect($this->settings['geos'] ?? [])
-                ->map(fn ($market, $currency) => [
-                    'currency' => strtolower($currency),
-                    'market' => $market,
-                ])
+                ->map(function ($market, $currency) {
+                    $currencyCode = strtolower($currency);
+                    $merchantApiRateMap = $this->settings['merchant_api_rates'] ?? [];
+                    $merchantApiRateSettings = $merchantApiRateMap[$currencyCode] ?? null;
+
+                    return [
+                        'currency' => $currencyCode,
+                        'market' => $market,
+                        'reference_rate' => $merchantApiRateSettings['reference_rate'] ?? null,
+                        'max_deviation_percent' => $merchantApiRateSettings['max_deviation_percent'] ?? null,
+                    ];
+                })
                 ->values(),
             'commission_settings' => $this->getCommissionSettings(),
             'max_order_wait_time' => $this->max_order_wait_time,

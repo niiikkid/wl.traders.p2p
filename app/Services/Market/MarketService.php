@@ -27,6 +27,10 @@ class MarketService implements MarketServiceContract
     public function loadAllPrices(): void
     {
         foreach (MarketEnum::cases() as $market) {
+            if ($market->equals(MarketEnum::MERCHANT_API)) {
+                continue;
+            }
+
             $this->supportedCurrenciesForMarket($market)
                 ->each(fn (Currency $currency) => LoadConversionPricesJob::dispatch($currency, $market));
         }
@@ -39,6 +43,10 @@ class MarketService implements MarketServiceContract
         }
 
         try {
+            if ($market->equals(MarketEnum::MERCHANT_API)) {
+                return;
+            }
+
             if ($market->equals(MarketEnum::MANUAL)) {
                 $settings = services()->settings()->getMarketPriceParser($currency, $market);
 
@@ -155,6 +163,7 @@ class MarketService implements MarketServiceContract
                 ->filter(fn (Currency $currency) => $currency->getCode() !== $rubCode)
                 ->values(),
             MarketEnum::MANUAL => Currency::getAll()->values(),
+            MarketEnum::MERCHANT_API => Currency::getAll()->values(),
             default => collect(),
         };
     }
