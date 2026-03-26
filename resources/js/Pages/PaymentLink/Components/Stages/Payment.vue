@@ -2,7 +2,7 @@
 import CopyPaymentText from "@/Components/CopyPaymentText.vue";
 import MainButton from "@/Pages/PaymentLink/Components/MainButton.vue";
 import {computed} from "vue";
-import {useFormatPaymentDetail} from "@/Utils/paymentDetail.js";
+import {useFormatPaymentDetail} from "@/utils/paymentDetail.js";
 
 const props = defineProps({
     data: {

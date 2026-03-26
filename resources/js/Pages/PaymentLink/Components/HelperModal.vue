@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { useFormatPaymentDetail } from "@/Utils/paymentDetail.js";
+import { useFormatPaymentDetail } from "@/utils/paymentDetail.js";
 
 const props = defineProps({
     data: {

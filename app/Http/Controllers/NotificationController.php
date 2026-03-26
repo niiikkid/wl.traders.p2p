@@ -11,6 +11,7 @@ use App\Http\Resources\NotificationRuleResource;
 use App\Http\Resources\TelegramAccountResource;
 use App\Models\Notification;
 use App\Models\NotificationRule;
+use App\Models\UserMeta;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use App\Services\Money\Currency;
 use Illuminate\Http\JsonResponse;
@@ -119,6 +120,9 @@ class NotificationController extends Controller
                 'enabled' => $user->meta?->notification_sound_enabled ?? true,
                 'track' => $selectedTrack,
             ],
+            'notificationSoundStats' => $request->routeIs('admin.*')
+                ? $this->getNotificationSoundStats($audioTracks)
+                : null,
         ];
     }
 
@@ -271,5 +275,39 @@ class NotificationController extends Controller
         }
 
         return $audioTracks[0]['value'];
+    }
+
+    protected function getNotificationSoundStats(array $audioTracks): array
+    {
+        $rawStats = UserMeta::query()
+            ->selectRaw('notification_sound_track, COUNT(DISTINCT user_id) as assigned_count')
+            ->whereNotNull('user_id')
+            ->whereNotNull('notification_sound_track')
+            ->groupBy('notification_sound_track')
+            ->pluck('assigned_count', 'notification_sound_track');
+
+        $totalAssignedUsers = (int) UserMeta::query()
+            ->whereNotNull('user_id')
+            ->whereNotNull('notification_sound_track')
+            ->distinct('user_id')
+            ->count('user_id');
+
+        $items = collect($audioTracks)
+            ->map(function (array $track) use ($rawStats) {
+                $trackValue = $track['value'];
+
+                return [
+                    'track' => $trackValue,
+                    'name' => $track['name'],
+                    'assigned_count' => (int) ($rawStats[$trackValue] ?? 0),
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        return [
+            'total_assigned_users' => $totalAssignedUsers,
+            'items' => $items,
+        ];
     }
 }

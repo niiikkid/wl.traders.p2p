@@ -23,6 +23,7 @@ const rules = ref(usePage().props.rules);
 const filtersVariants = ref(usePage().props.filtersVariants);
 const telegramAccount = ref(usePage().props.telegramAccount);
 const audioTracks = ref(usePage().props.audioTracks ?? []);
+const notificationSoundStats = ref(usePage().props.notificationSoundStats ?? null);
 const notificationSoundSettings = ref(usePage().props.notificationSoundSettings ?? {
     enabled: true,
     track: audioTracks.value[0]?.value ?? null,
@@ -245,6 +246,14 @@ const getNamedTrackSubtitle = (track) => {
     return namedTrackSubtitles[track?.value] ?? '';
 };
 
+const soundStatsItems = computed(() => {
+    return notificationSoundStats.value?.items ?? [];
+});
+
+const soundStatsTotalAssignedUsers = computed(() => {
+    return notificationSoundStats.value?.total_assigned_users ?? 0;
+});
+
 const isNumericTrack = (trackName = '') => {
     return /^\d+\.mp3$/i.test(trackName);
 };
@@ -276,7 +285,11 @@ const groupedAudioTracks = computed(() => {
 });
 
 const syncSoundSettings = () => {
+    const pageProps = usePage().props;
     audioTracks.value = usePage().props.audioTracks ?? [];
+    if (Object.prototype.hasOwnProperty.call(pageProps, 'notificationSoundStats')) {
+        notificationSoundStats.value = pageProps.notificationSoundStats ?? null;
+    }
     notificationSoundSettings.value = usePage().props.notificationSoundSettings ?? {
         enabled: true,
         track: audioTracks.value[0]?.value ?? null,
@@ -316,7 +329,7 @@ const handleIncomingNotification = () => {
     }
 
     router.reload({
-        only: ['notifications', 'menu'],
+        only: ['notifications', 'menu', 'notificationSoundStats', 'audioTracks', 'notificationSoundSettings'],
         preserveScroll: true,
         preserveState: true,
     });
@@ -609,6 +622,26 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </div>
                                 <div v-else class="text-xs text-base-content/70">
                                     Выбранный звук будет проигрываться при поступлении нового уведомления в панели.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="notificationSoundStats" class="card bg-base-100 shadow">
+                            <div class="card-body space-y-4">
+                                <h3 class="text-lg font-semibold">Статистика звуков</h3>
+                                <div class="space-y-2 max-h-72 overflow-auto">
+                                    <div
+                                        v-for="item in soundStatsItems"
+                                        :key="item.track"
+                                        class="flex items-center justify-between gap-3 rounded-box border border-base-300 px-3 py-2"
+                                    >
+                                        <span class="text-sm">
+                                            {{ formatTrackName(item.name) }}
+                                        </span>
+                                        <span class="badge badge-sm badge-ghost">
+                                            {{ item.assigned_count }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
