@@ -14,6 +14,7 @@ import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
 import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
 import ThemeMarquee from "@/Components/ThemeMarquee.vue";
 import {useNotificationCenterStore} from "@/store/notificationCenter.js";
+import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 
 const viewStore = useViewStore();
 const userStore = useUserStore();
@@ -170,10 +171,7 @@ const playNotificationSound = () => {
         return;
     }
 
-    const audio = new Audio(`/audio/${notificationCenterStore.soundTrack}`);
-    audio.play().catch(() => {
-        // Автовоспроизведение может блокироваться браузером до первого взаимодействия с page.
-    });
+    playNotificationAudio(`/audio/${notificationCenterStore.soundTrack}`, {interrupt: false});
     notificationSoundLastPlayedAt.value = Date.now();
 };
 

@@ -13,6 +13,7 @@ import {useTableFiltersStore} from "@/store/tableFilters.js";
 import {useModalStore} from "@/store/modal.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
+import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 
 const tableFiltersStore = useTableFiltersStore();
 const modalStore = useModalStore();
@@ -222,7 +223,56 @@ const statusBadgeClass = (status) => {
 
 const selectedTrackLabel = computed(() => {
     const selectedTrack = audioTracks.value.find((track) => track.value === soundForm.track);
-    return selectedTrack?.name ?? 'Не выбрано';
+    return selectedTrack ? formatTrackName(selectedTrack.name) : 'Не выбрано';
+});
+
+const formatTrackName = (trackName = '') => {
+    return trackName.replace(/\.mp3$/i, '');
+};
+
+const namedTrackSubtitles = {
+    'DreamsAreMessagesFromTheDeep.mp3': 'Мечты - послания из глубины',
+    'LetWealthCome.mp3': 'Пусть приходит богатство',
+    'Loshadka-1.mp3': 'Лошадка - версия 1',
+    'Loshadka-2.mp3': 'Лошадка - версия 2',
+    'MoneyPowerWomanDrugs.mp3': 'Деньги, власть, женщины, наркотики',
+    'Pressure.mp3': 'Давление',
+    'SixDays.mp3': 'Шесть дней',
+    'radwimps.mp3': 'Судзумэ, закрывающая двери',
+};
+
+const getNamedTrackSubtitle = (track) => {
+    return namedTrackSubtitles[track?.value] ?? '';
+};
+
+const isNumericTrack = (trackName = '') => {
+    return /^\d+\.mp3$/i.test(trackName);
+};
+
+const groupedAudioTracks = computed(() => {
+    const namedTracks = [];
+    const numericTracks = [];
+
+    audioTracks.value.forEach((track) => {
+        if (isNumericTrack(track.name)) {
+            numericTracks.push(track);
+            return;
+        }
+
+        namedTracks.push(track);
+    });
+
+    numericTracks.sort((leftTrack, rightTrack) => {
+        const leftValue = Number(formatTrackName(leftTrack.name));
+        const rightValue = Number(formatTrackName(rightTrack.name));
+
+        return leftValue - rightValue;
+    });
+
+    return {
+        named: namedTracks,
+        numeric: numericTracks,
+    };
 });
 
 const syncSoundSettings = () => {
@@ -257,10 +307,7 @@ const selectSoundTrack = (track) => {
 };
 
 const previewSoundTrack = (track) => {
-    const audio = new Audio(track.url);
-    audio.play().catch(() => {
-        // Автовоспроизведение может блокироваться браузером.
-    });
+    playNotificationAudio(track.url, {interrupt: true});
 };
 
 const handleIncomingNotification = () => {
@@ -485,30 +532,73 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="text-xs text-base-content/70">
                                                 Текущий: <span class="font-medium text-base-content">{{ selectedTrackLabel }}</span>
                                             </div>
-                                            <div class="space-y-1">
-                                                <div
-                                                    v-for="track in audioTracks"
-                                                    :key="track.value"
-                                                    class="flex items-center justify-between gap-3 rounded-box border border-base-300 px-2 py-1.5"
-                                                >
-                                                    <label class="flex items-center gap-2 cursor-pointer">
-                                                        <input
-                                                            type="radio"
-                                                            name="notification-sound-track"
-                                                            class="radio radio-xs"
-                                                            :checked="soundForm.track === track.value"
-                                                            :disabled="soundForm.processing"
-                                                            @change="selectSoundTrack(track)"
-                                                        />
-                                                        <span class="text-sm">{{ track.name }}</span>
-                                                    </label>
-                                                    <button
-                                                        type="button"
-                                                        class="btn btn-xs btn-ghost"
-                                                        @click.prevent="previewSoundTrack(track)"
+                                            <div class="space-y-3">
+                                                <div v-if="groupedAudioTracks.named.length" class="space-y-1.5">
+                                                    <div class="text-[11px] font-semibold uppercase text-base-content/60 px-1">
+                                                        Избранные
+                                                    </div>
+                                                    <div
+                                                        v-for="track in groupedAudioTracks.named"
+                                                        :key="track.value"
+                                                        class="flex items-center justify-between gap-3 rounded-box border border-neutral/40 bg-neutral/15 px-2 py-1.5"
                                                     >
-                                                        ▶
-                                                    </button>
+                                                        <label class="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="notification-sound-track"
+                                                                class="radio radio-xs"
+                                                                :checked="soundForm.track === track.value"
+                                                                :disabled="soundForm.processing"
+                                                                @change="selectSoundTrack(track)"
+                                                            />
+                                                            <span class="flex flex-col leading-tight">
+                                                                <span class="text-sm">{{ formatTrackName(track.name) }}</span>
+                                                                <span
+                                                                    v-if="getNamedTrackSubtitle(track)"
+                                                                    class="text-[11px] mt-0.5 text-neutral-content/70"
+                                                                >
+                                                                    {{ getNamedTrackSubtitle(track) }}
+                                                                </span>
+                                                            </span>
+                                                        </label>
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-xs btn-ghost"
+                                                            @click.prevent="previewSoundTrack(track)"
+                                                        >
+                                                            ▶
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div v-if="groupedAudioTracks.numeric.length" class="space-y-1.5">
+                                                    <div class="text-[11px] font-semibold uppercase text-base-content/60 px-1">
+                                                        Обычные
+                                                    </div>
+                                                    <div
+                                                        v-for="track in groupedAudioTracks.numeric"
+                                                        :key="track.value"
+                                                        class="flex items-center justify-between gap-3 rounded-box border border-base-300 px-2 py-1.5"
+                                                    >
+                                                        <label class="flex items-center gap-2 cursor-pointer">
+                                                            <input
+                                                                type="radio"
+                                                                name="notification-sound-track"
+                                                                class="radio radio-xs"
+                                                                :checked="soundForm.track === track.value"
+                                                                :disabled="soundForm.processing"
+                                                                @change="selectSoundTrack(track)"
+                                                            />
+                                                            <span class="text-sm">{{ formatTrackName(track.name) }}</span>
+                                                        </label>
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-xs btn-ghost"
+                                                            @click.prevent="previewSoundTrack(track)"
+                                                        >
+                                                            ▶
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
