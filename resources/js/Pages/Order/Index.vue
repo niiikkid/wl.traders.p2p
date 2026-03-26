@@ -55,12 +55,10 @@ watch(displayShortDetail, () => {
 });
 
 const filtersVariants = ref(usePage().props.filtersVariants);
-const canExport = ref(['Trader', 'Super Admin'].includes(usePage().props.auth?.role?.name));
 const showExportModal = ref(false);
 
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
-    canExport.value = ['Trader', 'Super Admin'].includes(usePage().props.auth?.role?.name);
 })
 
 const reloadingTableData = ref(false);
@@ -149,7 +147,7 @@ defineOptions({ layout: AuthenticatedLayout })
         >
             <template v-slot:button>
                 <button
-                    v-if="canExport"
+                    v-if="viewStore.isTraderViewMode"
                     type="button"
                     class="btn btn-primary btn-sm"
                     @click="openExportModal"

@@ -3,6 +3,7 @@ import {Head, router, usePage} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
+import {useViewStore} from '@/store/view.js';
 import GatewayLogo from '@/Components/GatewayLogo.vue';
 import BankManualIcon from '@/Components/BankManualIcon.vue';
 import DateTime from '@/Components/DateTime.vue';
@@ -36,6 +37,7 @@ const props = defineProps({
 });
 
 const page = usePage();
+const viewStore = useViewStore();
 
 const trader = computed(() => page.props.auth?.user ?? {});
 const orderBook = computed(() => props.orderBook ?? []);
@@ -389,6 +391,7 @@ defineOptions({ layout: AuthenticatedLayout });
         >
             <template #button>
                 <button
+                    v-if="viewStore.isTraderViewMode"
                     type="button"
                     class="btn btn-primary btn-sm"
                     @click="openExportModal"
