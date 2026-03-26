@@ -12,7 +12,7 @@ const conversionChartData = computed(() => page.props.conversionChart || { label
 const turnoverChartData = computed(() => page.props.turnoverChart || { labels: [], data: [] });
 const ordersChartData = computed(() => page.props.ordersChart || { labels: [], data: [] });
 const averageCheckChartData = computed(() => page.props.averageCheckChart || { labels: [], data: [] });
-const selectedPeriodPresetProp = computed(() => page.props.selectedPeriodPreset || 'all');
+const selectedPeriodPresetProp = computed(() => page.props.selectedPeriodPreset || 'month');
 const selectedDateFromProp = computed(() => page.props.selectedDateFrom || '');
 const selectedDateToProp = computed(() => page.props.selectedDateTo || '');
 const selectedFiltersProp = computed(() => page.props.selectedFilters || {});
@@ -20,7 +20,7 @@ const selectedFiltersProp = computed(() => page.props.selectedFilters || {});
 const processing = ref(false);
 const isMobile = ref(false);
 const activeChartTab = ref('income');
-const selectedPeriodPreset = ref(selectedPeriodPresetProp.value || 'all');
+const selectedPeriodPreset = ref(selectedPeriodPresetProp.value || 'month');
 const selectedDateFrom = ref(selectedDateFromProp.value || '');
 const selectedDateTo = ref(selectedDateToProp.value || '');
 const filterDropdownOpen = ref(false);
@@ -489,8 +489,8 @@ watch([selectedDateFrom, selectedDateTo], () => {
 });
 
 watch(selectedPeriodPresetProp, (newValue) => {
-    selectedPeriodPreset.value = newValue || 'all';
-    if ((newValue || 'all') !== 'custom') {
+    selectedPeriodPreset.value = newValue || 'month';
+    if ((newValue || 'month') !== 'custom') {
         customPeriodDropdownOpen.value = false;
     }
 });

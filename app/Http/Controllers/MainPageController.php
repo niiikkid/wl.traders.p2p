@@ -38,7 +38,7 @@ class MainPageController extends Controller
     public function trader()
     {
         $user = auth()->user();
-        $periodPreset = (string) request()->get('period', 'all');
+        $periodPreset = (string) request()->get('period', 'month');
         $dateFrom = request()->get('date_from');
         $dateTo = request()->get('date_to');
         $filters = [
@@ -79,7 +79,7 @@ class MainPageController extends Controller
     public function admin()
     {
         $merchantId = request()->get('merchant_id');
-        $periodPreset = (string) request()->get('period', 'all');
+        $periodPreset = (string) request()->get('period', 'month');
         $dateFrom = request()->get('date_from');
         $dateTo = request()->get('date_to');
         $filters = [
