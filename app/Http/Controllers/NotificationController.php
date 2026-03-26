@@ -23,6 +23,15 @@ use Illuminate\Validation\Rule;
 class NotificationController extends Controller
 {
     protected const DEFAULT_SOUND_TRACK = 'radwimps.mp3';
+    protected const PRIORITY_SOUND_TRACKS = [
+        'DreamsAreMessagesFromTheDeep.mp3',
+        'LetWealthCome.mp3',
+        'Loshadka-1.mp3',
+        'Loshadka-2.mp3',
+        'MoneyPowerWomanDrugs.mp3',
+        'Pressure.mp3',
+        'SixDays.mp3',
+    ];
 
     protected function buildIndexProps(NotificationFilterRequest $request): array
     {
@@ -211,12 +220,24 @@ class NotificationController extends Controller
             return [];
         }
 
+        $prioritySortMap = array_flip(self::PRIORITY_SOUND_TRACKS);
+
         $tracks = collect(File::files($audioDirectory))
             ->filter(function ($file) {
                 return $file->getExtension() === 'mp3';
             })
-            ->sortBy(function ($file) {
-                return $file->getFilename();
+            ->sort(function ($leftFile, $rightFile) use ($prioritySortMap) {
+                $leftName = $leftFile->getFilename();
+                $rightName = $rightFile->getFilename();
+
+                $leftPriority = $prioritySortMap[$leftName] ?? PHP_INT_MAX;
+                $rightPriority = $prioritySortMap[$rightName] ?? PHP_INT_MAX;
+
+                if ($leftPriority !== $rightPriority) {
+                    return $leftPriority <=> $rightPriority;
+                }
+
+                return strcmp($leftName, $rightName);
             })
             ->values()
             ->map(function ($file) {
