@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationRuleController;
+use App\Http\Controllers\NewsController;
 use App\Http\Controllers\PayoutReceiptController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TelegramSettingsController;
@@ -97,6 +98,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
     Route::group(['prefix' => 'leader', 'as'=>'leader.',  'middleware' => ['auth', 'banned', 'role:Team Leader|Super Admin']], function () {
         Route::get('/main', [\App\Http\Controllers\MainPageController::class, 'leader'])->name('main.index');
+        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/finances', [\App\Http\Controllers\WalletController::class, 'index'])->name('finances.index');
         Route::get('/referrals', [\App\Http\Controllers\TeamLeader\ReferralController::class, 'index'])->name('referrals.index');
         Route::get('/traders', [\App\Http\Controllers\TeamLeader\TraderController::class, 'index'])->name('traders.index');
@@ -116,6 +118,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Super Admin']], function () {
         Route::get('/trader/main', [\App\Http\Controllers\MainPageController::class, 'trader'])->name('trader.main.index');
+        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/trader/main/filter-options/{type}', [\App\Http\Controllers\MainPageController::class, 'traderFilterOptions'])->name('trader.main.filter-options');
         Route::post('/trader/temp-vip/activate', [\App\Http\Controllers\Trader\TempVipController::class, 'activate'])->name('trader.temp-vip.activate');
         Route::get('/trader/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'index'])->name('trader.feedback.index');
@@ -184,6 +187,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     // Группа маршрутов для Support
     Route::group(['prefix' => 'support', 'as'=>'support.', 'middleware' => ['auth', 'banned', 'role:Support|Super Admin']], function () {
         Route::get('/users', [\App\Http\Controllers\Support\UserController::class, 'index'])->name('users.index');
+        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::patch('/users/{user}/toggle-traffic', [\App\Http\Controllers\Support\UserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
         Route::get('/enabled-cards', [\App\Http\Controllers\Support\EnabledCardsController::class, 'index'])->name('enabled-cards.index');
         Route::post('/enabled-cards/limit-levels', [\App\Http\Controllers\Support\EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
@@ -252,6 +256,9 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
     Route::group(['prefix' => 'admin', 'as'=>'admin.', 'middleware' => ['auth', 'banned', 'role:Super Admin']], function () {
         Route::get('/main', [\App\Http\Controllers\MainPageController::class, 'admin'])->name('main.index');
+        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+        Route::post('/news', [NewsController::class, 'store'])->name('news.store');
+        Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');
         Route::get('/main/filter-options/{type}', [\App\Http\Controllers\MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
         Route::get('/feedbacks', [\App\Http\Controllers\Trader\FeedbackController::class, 'index'])->name('feedback.index');
         Route::patch('/feedbacks/{feedback}/favorite', [\App\Http\Controllers\Trader\FeedbackController::class, 'toggleFavorite'])->name('feedback.favorite');

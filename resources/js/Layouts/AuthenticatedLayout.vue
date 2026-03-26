@@ -301,6 +301,7 @@ const setViewMode = (mode) => {
 const resolveViewMode = () => {
     if (route().current('trader.*')
         || route().current('notifications.*')
+        || route().current('news.*')
         || route().current('payment-details.*')
         || route().current('orders.*')
         || route().current('disputes.*')

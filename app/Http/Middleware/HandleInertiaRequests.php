@@ -13,6 +13,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Dispute;
 use App\Models\Invoice;
 use App\Models\Notification;
+use App\Models\NewsPost;
 use App\Models\Order;
 use App\Models\Payout\Payout;
 use App\Models\PaymentDetail;
@@ -55,6 +56,20 @@ class HandleInertiaRequests extends Middleware
             $now = now();
             cache()->put("user-online-at-{$userId}", $now->toISOString());
             app(UserOnlinePeriodRecorder::class)->touch($userId, $now);
+
+            if ($request->routeIs([
+                'news.index',
+                'admin.news.index',
+                'support.news.index',
+                'leader.news.index',
+            ])) {
+                $user->meta()->updateOrCreate(
+                    ['user_id' => $userId],
+                    ['news_last_read_at' => $now]
+                );
+
+                cache()->forget("news_unread_{$userId}");
+            }
 
             if ($user->hasRole('Trader')) {
                 app(PaymentDetailEnabledPeriodService::class)->syncForUser($user, $now);
@@ -140,6 +155,7 @@ class HandleInertiaRequests extends Middleware
         $activeDetails = 0;
         $pendingWithdrawals = 0;
         $notificationsUnreadCount = 0;
+        $newsUnreadCount = 0;
         $notificationsSoundEnabled = true;
         $notificationsSoundTrack = 'radwimps.mp3';
 
@@ -214,6 +230,25 @@ class HandleInertiaRequests extends Middleware
                     ->count();
             });
 
+            $newsUnreadCount = cache()->remember("news_unread_{$userId}", 15, function () use ($userId) {
+                $lastReadAt = UserMeta::query()
+                    ->where('user_id', $userId)
+                    ->value('news_last_read_at');
+                $user = auth()->user();
+                $roleNames = $user->roles()->pluck('name')->values()->all();
+
+                $query = NewsPost::query()
+                    ->when($lastReadAt, function ($query) use ($lastReadAt) {
+                        $query->where('created_at', '>', $lastReadAt);
+                    });
+
+                if (! $user->hasRole('Super Admin')) {
+                    $query->visibleForRoles($roleNames);
+                }
+
+                return $query->count();
+            });
+
             /** @var UserMeta|null $userMeta */
             $userMeta = auth()->user()->meta;
             $notificationsSoundEnabled = $userMeta?->notification_sound_enabled ?? true;
@@ -227,6 +262,7 @@ class HandleInertiaRequests extends Middleware
             'activeDetails' => (int)$activeDetails,
             'pendingWithdrawals' => (int)$pendingWithdrawals,
             'notificationsUnreadCount' => (int)$notificationsUnreadCount,
+            'newsUnreadCount' => (int)$newsUnreadCount,
             'payoutsActiveCount' => (int)$payoutsActiveCount,
         ];
 
