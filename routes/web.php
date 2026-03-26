@@ -175,6 +175,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
         //export
         Route::get('/trader/export/orders', [\App\Http\Controllers\Trader\ExportController::class, 'exportOrders'])->name('trader.export.orders');
+        Route::get('/trader/export/payouts', [\App\Http\Controllers\Trader\ExportController::class, 'exportPayouts'])->name('trader.export.payouts');
 
         //Route::get('/trader/settings', [\App\Http\Controllers\Trader\SettingController::class, 'index'])->name('trader.settings.index');
         //Route::patch('/trader/settings', [\App\Http\Controllers\Trader\SettingController::class, 'update'])->name('trader.settings.update');

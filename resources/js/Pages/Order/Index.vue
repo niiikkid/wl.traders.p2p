@@ -22,6 +22,7 @@ import DateFilter from "@/Components/Filters/Pertials/DateFilter.vue";
 import TempVipBanner from "@/Pages/MainPage/Trader/TempVipBanner.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
+import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
 
 const viewStore = useViewStore();
 const orders = ref(usePage().props.orders);
@@ -54,9 +55,12 @@ watch(displayShortDetail, () => {
 });
 
 const filtersVariants = ref(usePage().props.filtersVariants);
+const canExport = ref(['Trader', 'Super Admin'].includes(usePage().props.auth?.role?.name));
+const showExportModal = ref(false);
 
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
+    canExport.value = ['Trader', 'Super Admin'].includes(usePage().props.auth?.role?.name);
 })
 
 const reloadingTableData = ref(false);
@@ -124,6 +128,14 @@ const confirmRollbackDispute = (dispute) => {
     });
 };
 
+const openExportModal = () => {
+    showExportModal.value = true;
+};
+
+const closeExportModal = () => {
+    showExportModal.value = false;
+};
+
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -135,6 +147,16 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Сделки"
             :data="orders"
         >
+            <template v-slot:button>
+                <button
+                    v-if="canExport"
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    @click="openExportModal"
+                >
+                    Выгрузить
+                </button>
+            </template>
             <template v-slot:header>
                 <div class="space-y-4">
                     <TempVipBanner
@@ -509,5 +531,11 @@ defineOptions({ layout: AuthenticatedLayout })
         />
         <CancelDisputeModal/>
         <ConfirmModal/>
+        <TraderExportModal
+            :show="showExportModal"
+            route-name="trader.export.orders"
+            entity-label="сделки"
+            @close="closeExportModal"
+        />
     </div>
 </template>

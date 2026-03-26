@@ -10,6 +10,7 @@ import Pagination from '@/Components/Pagination/Pagination.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import { formatDistanceStrict } from 'date-fns';
 import DisplayUUID from "../../../Components/DisplayUUID.vue";
+import TraderExportModal from '@/Components/Export/TraderExportModal.vue';
 
 const props = defineProps({
     orderBook: {
@@ -278,6 +279,7 @@ const receiptModal = ref({
 });
 
 const receiptInputRef = ref(null);
+const showExportModal = ref(false);
 
 const openReceiptModal = (payout) => {
     receiptModal.value = {
@@ -366,6 +368,14 @@ const payoutReceiptLinks = (payout) => {
     return [];
 };
 
+const openExportModal = () => {
+    showExportModal.value = true;
+};
+
+const closeExportModal = () => {
+    showExportModal.value = false;
+};
+
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -377,6 +387,15 @@ defineOptions({ layout: AuthenticatedLayout });
             title="Выплаты"
             :data="history"
         >
+            <template #button>
+                <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    @click="openExportModal"
+                >
+                    Выгрузить
+                </button>
+            </template>
             <template #header>
                 <div class="space-y-6">
                     <div class="flex flex-wrap items-end justify-between gap-4">
@@ -1019,6 +1038,12 @@ defineOptions({ layout: AuthenticatedLayout });
                 </div>
             </div>
         </Modal>
+        <TraderExportModal
+            :show="showExportModal"
+            route-name="trader.export.payouts"
+            entity-label="выплаты"
+            @close="closeExportModal"
+        />
     </div>
 </template>
 
