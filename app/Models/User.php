@@ -23,6 +23,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property int $id
  * @property string $name
  * @property string $email
+ * @property string|null $telegram_username
  * @property string $login
  * @property string $apk_access_token
  * @property string $api_access_token
@@ -63,6 +64,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $avatar_style
  * @property string $google2fa_secret
  * @property int|null $team_leader_id
+ * @property int|null $user_team_id
  * @property bool $team_leader_extended_access_enabled
  * @property bool $team_leader_flexible_trader_commission_enabled
  * @property float|null $team_leader_flexible_trader_commission_min
@@ -72,6 +74,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $archived_at
  * @property float|null $team_leader_individual_commission_percentage
  * @property User|null $teamLeader
+ * @property UserTeam|null $userTeam
  * @property Carbon $banned_at
  * @property Carbon $created_at
  * @property Carbon $updated_At
@@ -90,6 +93,7 @@ class User extends Authenticatable
         'name',
         // Колонка email используется как login
         'email',
+        'telegram_username',
         'password',
         'apk_access_token',
         'api_access_token',
@@ -115,6 +119,7 @@ class User extends Authenticatable
         'avatar_style',
         'google2fa_secret',
         'team_leader_id',
+        'user_team_id',
         'team_leader_extended_access_enabled',
         'team_leader_flexible_trader_commission_enabled',
         'team_leader_flexible_trader_commission_min',
@@ -245,6 +250,11 @@ class User extends Authenticatable
     public function teamLeader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'team_leader_id');
+    }
+
+    public function userTeam(): BelongsTo
+    {
+        return $this->belongsTo(UserTeam::class, 'user_team_id');
     }
 
     public function referrals(): HasMany

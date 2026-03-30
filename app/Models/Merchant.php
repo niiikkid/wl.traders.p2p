@@ -124,15 +124,21 @@ class Merchant extends Model
             return null;
         }
 
-        $referenceRate = isset($config['reference_rate']) ? (float) $config['reference_rate'] : null;
+        $referenceRate = isset($config['order_reference_rate'])
+            ? (float) $config['order_reference_rate']
+            : (isset($config['reference_rate']) ? (float) $config['reference_rate'] : null);
+        $payoutReferenceRate = isset($config['payout_reference_rate'])
+            ? (float) $config['payout_reference_rate']
+            : (isset($config['reference_rate']) ? (float) $config['reference_rate'] : null);
         $maxDeviationPercent = isset($config['max_deviation_percent']) ? (float) $config['max_deviation_percent'] : null;
 
-        if ($referenceRate === null || $maxDeviationPercent === null) {
+        if ($referenceRate === null || $payoutReferenceRate === null || $maxDeviationPercent === null) {
             return null;
         }
 
         return [
-            'reference_rate' => $referenceRate,
+            'order_reference_rate' => $referenceRate,
+            'payout_reference_rate' => $payoutReferenceRate,
             'max_deviation_percent' => $maxDeviationPercent,
         ];
     }

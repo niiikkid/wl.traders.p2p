@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Merchant;
 
 use App\DTO\Payout\PayoutCreateDTO;
+use App\Enums\MarketEnum;
 use App\Enums\PayoutMethodType;
 use App\Exceptions\PayoutException;
 use App\Http\Controllers\Controller;
@@ -194,7 +195,18 @@ class PayoutController extends Controller
             return null;
         }
 
-        $conversionPrice = services()->market()->getBuyPrice($currency, $market, false);
+        if ($market->equals(MarketEnum::MERCHANT_API)) {
+            $merchantApiRateSetting = $merchant->getMerchantApiRateSetting($currency);
+            $referenceRate = (float) ($merchantApiRateSetting['payout_reference_rate'] ?? 0);
+
+            if ($referenceRate <= 0) {
+                return null;
+            }
+
+            $conversionPrice = Money::fromPrecision((string) $referenceRate, $currency->getCode());
+        } else {
+            $conversionPrice = services()->market()->getBuyPrice($currency, $market, false);
+        }
 
         if (! $conversionPrice->greaterThanZero()) {
             return null;

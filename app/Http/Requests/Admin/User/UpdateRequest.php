@@ -30,6 +30,7 @@ class UpdateRequest extends FormRequest
         return [
             // Используем поле login, но проверяем уникальность по колонке email
             'login' => ['required', 'string', 'max:255', Rule::unique(User::class, 'email')->ignore($user->id)],
+            'telegram_username' => ['nullable', 'string', 'max:32', 'regex:/^@?[A-Za-z0-9_]{5,32}$/'],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'banned' => ['required', 'boolean'],
             'stop_traffic' => ['required', 'boolean'],
@@ -116,6 +117,7 @@ class UpdateRequest extends FormRequest
             'payout_team_leader_split_from_service_percent' => __('сплит комиссии тимлида от выплат'),
             'reserve_balance_limit' => __('страховой депозит'),
             'team_leader_id' => __('тим лидер'),
+            'telegram_username' => __('telegram'),
             'team_leader_extended_access_enabled' => __('расширенный доступ тимлида'),
             'team_leader_flexible_trader_commission_enabled' => __('гибкая комиссия тимлида по трейдерам'),
             'team_leader_flexible_trader_commission_min' => __('минимальная комиссия тимлида'),

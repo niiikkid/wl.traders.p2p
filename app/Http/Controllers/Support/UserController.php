@@ -15,7 +15,7 @@ class UserController extends Controller
         $filters = $this->getTableFilters();
 
         $users = User::query()
-            ->with(['roles', 'wallet'])
+            ->with(['roles', 'wallet', 'userTeam'])
             ->whereNull('archived_at')
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {

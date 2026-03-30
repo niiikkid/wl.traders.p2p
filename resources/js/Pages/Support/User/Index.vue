@@ -7,6 +7,7 @@ import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import {ref} from "vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
+import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
 
 const users = ref(usePage().props.users);
 
@@ -72,9 +73,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         Баланс
                                     </th>
                                     <th scope="col">
-                                        Роль
-                                    </th>
-                                    <th scope="col">
                                         Пинг
                                     </th>
                                     <th scope="col">
@@ -94,29 +92,29 @@ defineOptions({ layout: AuthenticatedLayout })
                                         {{ user.id }}
                                     </th>
                                     <td class=" whitespace-nowrap">
-                                        <div class="inline-flex items-center gap-3">
-                                            <div class="avatar">
-                                                <div class="w-10 rounded-full">
-                                                    <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" alt="user photo">
+                                        <UserSummaryPopover :user="user">
+                                            <div class="inline-flex items-center gap-3 text-left hover:opacity-80 transition">
+                                                <div class="avatar">
+                                                    <div class="w-10 rounded-full">
+                                                        <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" alt="user photo">
+                                                    </div>
                                                 </div>
+                                                <div>
+                                                    <div class="whitespace-nowrap">
+                                                        {{ user.email }}
+                                                    </div>
+                                                    <div class="whitespace-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
+                                                        <span>{{ user.role.name }}</span>
+                                                        <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
+                                                    </div>
+                                                </div>
+                                                <span v-if="user.banned_at" class="badge badge-error badge-sm" title="Пользователь заблокирован">Ban</span>
+                                                <span v-if="user.stop_traffic" class="badge badge-error badge-sm" title="Трафик остановлен">Stop</span>
                                             </div>
-                                            <div>
-                                                <div class="whitespace-nowrap">
-                                                    {{ user.email }}
-                                                </div>
-                                                <div class="whitespace-nowrap text-xs text-base-content/70">
-                                                    {{ user.name }}
-                                                </div>
-                                            </div>
-                                            <span v-if="user.banned_at" class="badge badge-error badge-sm" title="Пользователь заблокирован">Ban</span>
-                                            <span v-if="user.stop_traffic" class="badge badge-error badge-sm" title="Трафик остановлен">Stop</span>
-                                        </div>
+                                        </UserSummaryPopover>
                                     </td>
                                     <td class=" whitespace-nowrap">
                                         {{ user.balance }} $
-                                    </td>
-                                    <td class=" whitespace-nowrap">
-                                        {{ user.role.name }}
                                     </td>
                                     <td class=" whitespace-nowrap">
                                         <DateTime v-if="user.apk_latest_ping_at" :data="user.apk_latest_ping_at" :plural="true"/>
@@ -170,17 +168,25 @@ defineOptions({ layout: AuthenticatedLayout })
 
                                     <!-- Основная информация: пользователь -->
                                     <div class="flex items-center justify-between gap-3 mb-1">
-                                        <div>
-                                            <div class="flex items-center gap-2">
-                                                <div class="avatar">
-                                                    <div class="w-12 rounded-full">
-                                                        <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" alt="user photo">
+                                        <div class="min-w-0">
+                                            <UserSummaryPopover :user="user">
+                                                <div class="flex items-center gap-2 hover:opacity-80 transition">
+                                                    <div class="avatar">
+                                                        <div class="w-12 rounded-full">
+                                                            <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" alt="user photo">
+                                                        </div>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <div class="whitespace-nowrap truncate font-medium">
+                                                            {{ user.email }}
+                                                        </div>
+                                                        <div class="inline-flex items-center gap-2 text-xs text-base-content/70">
+                                                            <span>{{ user.role.name }}</span>
+                                                            <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="whitespace-nowrap truncate font-medium">
-                                                    {{ user.email }}
-                                                </div>
-                                            </div>
+                                            </UserSummaryPopover>
                                             <div class="flex flex-col gap-1">
                                                 <span v-if="user.banned_at" class="badge badge-error badge-sm" title="Пользователь заблокирован">Ban</span>
                                                 <span v-if="user.stop_traffic" class="badge badge-error badge-sm" title="Трафик остановлен">Stop</span>
@@ -192,15 +198,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </div>
 
-                                    <!-- Информация: баланс, роль, статус -->
+                                    <!-- Информация: баланс, команда, статус -->
                                     <div class="flex flex-col gap-2">
                                         <div class="flex items-center justify-between">
                                             <div class="text-base-content/70 text-sm">Баланс</div>
                                             <div class="text-base-content font-medium">{{ user.balance }} $</div>
                                         </div>
                                         <div class="flex items-center justify-between">
-                                            <div class="text-base-content/70 text-sm">Роль</div>
-                                            <div class="text-base-content">{{ user.role.name }}</div>
+                                            <div class="text-base-content/70 text-sm">Команда</div>
+                                            <div class="text-base-content">{{ user.user_team?.name || '—' }}</div>
                                         </div>
                                         <div v-if="user.apk_latest_ping_at" class="flex items-center justify-between">
                                             <div class="text-base-content/70 text-sm">Пинг</div>

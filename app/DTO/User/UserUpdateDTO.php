@@ -9,6 +9,7 @@ readonly class UserUpdateDTO extends BaseDTO
     public function __construct(
         public string $login,
         public int $role_id,
+        public ?string $telegram_username = null,
         public ?bool $banned = null,
         public bool $stop_traffic = false,
         public bool $can_work_without_device = false,
@@ -35,6 +36,7 @@ readonly class UserUpdateDTO extends BaseDTO
     {
         return new static(
             login: strtolower($data['login']),
+            telegram_username: self::normalizeTelegramUsername($data['telegram_username'] ?? null),
             banned: isset($data['banned']) ? (bool) $data['banned'] : null,
             stop_traffic: (bool) ($data['stop_traffic'] ?? false),
             can_work_without_device: (bool) ($data['can_work_without_device'] ?? false),
@@ -69,6 +71,20 @@ readonly class UserUpdateDTO extends BaseDTO
             support_can_view_deposits: (bool) ($data['support_can_view_deposits'] ?? false),
             support_can_edit_order_amount: (bool) ($data['support_can_edit_order_amount'] ?? false),
         );
+    }
+
+    private static function normalizeTelegramUsername(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+
+        return ltrim($value, '@');
     }
 }
 

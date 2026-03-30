@@ -24,6 +24,7 @@ const errors = ref({});
 
 const form = ref({
     login: '',
+    telegram_username: '',
     password: '',
     password_confirmation: '',
     role_id: 0,
@@ -33,6 +34,7 @@ const form = ref({
 const resetForm = () => {
     form.value = {
         login: '',
+        telegram_username: '',
         password: '',
         password_confirmation: '',
         role_id: 0,
@@ -168,6 +170,25 @@ watch(
                         :disabled="processing"
                     />
                     <InputError :message="errors.password_confirmation?.[0]" class="mt-1" />
+                </div>
+
+                <div>
+                    <InputLabel
+                        for="telegram_username"
+                        value="Telegram (необязательно)"
+                        :error="!!errors.telegram_username?.[0]"
+                    />
+                    <TextInput
+                        id="telegram_username"
+                        type="text"
+                        class="mt-1 block w-full"
+                        v-model="form.telegram_username"
+                        placeholder="@username или username"
+                        :error="!!errors.telegram_username?.[0]"
+                        @input="errors.telegram_username = null"
+                        :disabled="processing"
+                    />
+                    <InputError class="mt-1" :message="errors.telegram_username?.[0]" />
                 </div>
 
                 <div>

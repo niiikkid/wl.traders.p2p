@@ -26,6 +26,7 @@ class StoreRequest extends FormRequest
         return [
             // Используем поле login, но сохраняем в колонку email
             'login' => 'required|string|max:255|unique:users,email',
+            'telegram_username' => ['nullable', 'string', 'max:32', 'regex:/^@?[A-Za-z0-9_]{5,32}$/'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role_id' => ['required', 'integer', 'exists:roles,id'],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
@@ -37,6 +38,7 @@ class StoreRequest extends FormRequest
         return [
             'role_id' => __('роль'),
             'team_leader_id' => __('тим лидер'),
+            'telegram_username' => __('telegram'),
         ];
     }
 }

@@ -116,6 +116,11 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/disputes/{dispute}/receipt', [\App\Http\Controllers\DisputeController::class, 'receipt'])->name('disputes.receipt');
     });
 
+    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Team Leader|Super Admin']], function () {
+        Route::post('/news/views', [NewsController::class, 'trackViews'])->name('news.views.store');
+        Route::post('/news/reactions', [NewsController::class, 'react'])->name('news.reactions.store');
+    });
+
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Super Admin']], function () {
         Route::get('/trader/main', [\App\Http\Controllers\MainPageController::class, 'trader'])->name('trader.main.index');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
@@ -293,11 +298,16 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/users/{user}/toggle-online', [\App\Http\Controllers\Admin\UserController::class, 'toggleOnline'])->name('users.toggle-online');
         Route::post('/users/{user}/archive', [\App\Http\Controllers\Admin\UserController::class, 'archive'])->name('users.archive');
         Route::delete('/users/{user}/unarchive', [\App\Http\Controllers\Admin\UserController::class, 'unarchive'])->name('users.unarchive');
+        Route::patch('/users/{user}/team', [\App\Http\Controllers\Admin\UserController::class, 'updateTeam'])->name('users.team.update');
         Route::get('/users/roles', [\App\Http\Controllers\Admin\UserController::class, 'roles'])->name('users.roles');
         Route::get('/users/team-leaders', [\App\Http\Controllers\Admin\UserController::class, 'teamLeaders'])->name('users.team-leaders');
         Route::get('/users/{user}/temp-vip-history', [\App\Http\Controllers\Admin\UserController::class, 'tempVipHistory'])->name('users.temp-vip-history');
         Route::get('/users/{user}', [\App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
         Route::resource('/users', \App\Http\Controllers\Admin\UserController::class)->only(['index', 'store', 'update']);
+        Route::get('/user-teams', [\App\Http\Controllers\Admin\UserTeamController::class, 'index'])->name('user-teams.index');
+        Route::post('/user-teams', [\App\Http\Controllers\Admin\UserTeamController::class, 'store'])->name('user-teams.store');
+        Route::patch('/user-teams/{userTeam}', [\App\Http\Controllers\Admin\UserTeamController::class, 'update'])->name('user-teams.update');
+        Route::delete('/user-teams/{userTeam}', [\App\Http\Controllers\Admin\UserTeamController::class, 'destroy'])->name('user-teams.destroy');
         Route::delete('/users/{user}/reset-2fa', [\App\Http\Controllers\Admin\UserController::class, 'reset2fa'])->name('users.reset-2fa');
         Route::get('/payment-gateways', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'index'])->name('payment-gateways.index');
         Route::get('/payment-gateways/create-data', [\App\Http\Controllers\Admin\PaymentGatewayController::class, 'createData'])->name('payment-gateways.create-data');

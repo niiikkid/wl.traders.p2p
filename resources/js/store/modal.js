@@ -52,6 +52,18 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
+                userTeamManage: {
+                    showed: false,
+                    params: {},
+                },
+                userTeamChange: {
+                    showed: false,
+                    params: {},
+                },
+                userSummary: {
+                    showed: false,
+                    params: {},
+                },
                 paymentDetailCreate: {
                     showed: false,
                     params: {},
@@ -140,6 +152,9 @@ export const useModalStore = defineStore('modal', {
         userCreateModal: (state) => state.modals.userCreate,
         userEditModal: (state) => state.modals.userEdit,
         userTempVipHistoryModal: (state) => state.modals.userTempVipHistory,
+        userTeamManageModal: (state) => state.modals.userTeamManage,
+        userTeamChangeModal: (state) => state.modals.userTeamChange,
+        userSummaryModal: (state) => state.modals.userSummary,
         paymentDetailCreateModal: (state) => state.modals.paymentDetailCreate,
         paymentDetailEditModal: (state) => state.modals.paymentDetailEdit,
         paymentDetailBulkEditModal: (state) => state.modals.paymentDetailBulkEdit,
@@ -217,6 +232,15 @@ export const useModalStore = defineStore('modal', {
         },
         openUserTempVipHistoryModal(props) {
             this.openModal('userTempVipHistory', props);
+        },
+        openUserTeamManageModal(props) {
+            this.openModal('userTeamManage', props);
+        },
+        openUserTeamChangeModal(props) {
+            this.openModal('userTeamChange', props);
+        },
+        openUserSummaryModal(props) {
+            this.openModal('userSummary', props);
         },
         openPaymentDetailCreateModal(props) {
             this.openModal('paymentDetailCreate', props);

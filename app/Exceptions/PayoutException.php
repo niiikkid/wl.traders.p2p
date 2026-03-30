@@ -97,5 +97,36 @@ class PayoutException extends BaseException
             "Маркет {$market} не поддерживает валюту {$currency}. Обратитесь к администратору для настройки GEO."
         );
     }
+
+    public static function merchantApiRateRequired(string $currency): self
+    {
+        return new self("Для валюты {$currency} требуется передать параметр rate при создании выплаты.");
+    }
+
+    public static function merchantApiRateForbidden(string $currency): self
+    {
+        return new self("Для валюты {$currency} параметр rate недоступен для выбранного источника курсов.");
+    }
+
+    public static function merchantApiRateSettingsMissing(string $currency): self
+    {
+        return new self("Для валюты {$currency} не настроены параметры проверки merchant_api курса выплат.");
+    }
+
+    public static function merchantApiRateOutOfRange(
+        string $currency,
+        string $requestedRate,
+        string $referenceRate,
+        string $deviationPercent,
+        string $allowedMinRate,
+        string $allowedMaxRate,
+    ): self {
+        return new self(
+            "Недопустимый курс выплаты для {$currency}. " .
+            "Передан: {$requestedRate}. " .
+            "Опорный курс выплат: {$referenceRate}, допустимое отклонение: ±{$deviationPercent}% " .
+            "(допустимый диапазон: {$allowedMinRate} - {$allowedMaxRate})."
+        );
+    }
 }
 

@@ -35,6 +35,7 @@ const payoutCreateForm = ref({
     initials: '',
     bank_name: '',
     callback_url: '',
+    rate: '',
 });
 
 watch(
@@ -182,6 +183,13 @@ const clearPayoutResponse = (key) => {
                                     <span class="label-text">currency</span>
                                 </label>
                                 <input v-model="payoutCreateForm.currency" :disabled="!!payoutCreateForm.payment_gateway" type="text" class="input input-bordered w-full" placeholder="RUB">
+                            </div>
+
+                            <div class="form-control">
+                                <label class="label">
+                                    <span class="label-text">rate</span>
+                                </label>
+                                <input v-model="payoutCreateForm.rate" type="text" class="input input-bordered w-full" placeholder="95.12345678">
                             </div>
 
                             <div class="form-control">

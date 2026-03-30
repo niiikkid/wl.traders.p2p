@@ -144,7 +144,7 @@ class OrderMaker
             throw OrderException::merchantApiRateSettingsMissing($currencyCode);
         }
 
-        $referenceRate = (float) $merchantRateSettings['reference_rate'];
+        $referenceRate = (float) $merchantRateSettings['order_reference_rate'];
         $maxDeviationPercent = (float) $merchantRateSettings['max_deviation_percent'];
 
         if ($referenceRate <= 0 || $maxDeviationPercent <= 0) {

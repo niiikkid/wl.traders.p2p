@@ -28,6 +28,7 @@ class UserService implements UserServiceContract
             $user = User::create([
                 'name' => '',
                 'email' => strtolower($data->login),
+                'telegram_username' => $data->telegram_username,
                 'password' => Hash::make($data->password),
                 'apk_access_token' => strtolower(Str::random(32)),
                 'api_access_token' => strtolower(Str::random(32)),
@@ -74,6 +75,7 @@ class UserService implements UserServiceContract
 
             $updateData = [
                 'email' => strtolower($data->login),
+                'telegram_username' => $data->telegram_username,
                 'banned_at' => $data->banned ? now() : null,
                 'stop_traffic' => $data->stop_traffic,
                 'can_work_without_device' => $data->can_work_without_device,

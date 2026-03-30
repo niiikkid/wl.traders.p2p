@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\StoreRequest;
+use App\Http\Requests\Admin\User\UpdateTeamRequest;
 use App\Http\Requests\Admin\User\UpdateRequest;
 use App\DTO\User\UserCreateDTO;
 use App\DTO\User\UserUpdateDTO;
@@ -28,7 +29,7 @@ class UserController extends Controller
         $fromArchive = request()->tab === 'archived';
 
         $users = User::query()
-            ->with(['roles', 'wallet'])
+            ->with(['roles', 'wallet', 'userTeam'])
             ->when($fromArchive, function ($query) {
                 $query->whereNotNull('archived_at');
             }, function ($query) {
@@ -105,7 +106,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load('roles', 'meta', 'teamLeader');
+        $user->load('roles', 'meta', 'teamLeader', 'userTeam');
         $user = UserResource::make($user)->resolve();
 
         return response()->json([
@@ -126,6 +127,17 @@ class UserController extends Controller
         }
 
         return redirect()->route('admin.users.index');
+    }
+
+    public function updateTeam(UpdateTeamRequest $request, User $user)
+    {
+        $user->update([
+            'user_team_id' => $request->validated('user_team_id'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+        ]);
     }
 
     public function toggleOnline(Request $request, User $user)

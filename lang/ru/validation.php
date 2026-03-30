@@ -316,6 +316,8 @@ return [
         'max_limit'  => 'max. лимит',
         'rate' => 'курс',
         'reference_rate' => 'опорный курс',
+        'order_reference_rate' => 'опорный курс для сделок',
+        'payout_reference_rate' => 'опорный курс для выплат',
         'max_deviation_percent' => 'допустимое отклонение (%)',
     ],
 ];

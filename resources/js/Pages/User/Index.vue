@@ -12,6 +12,9 @@ import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
 import UserCreateModal from "@/Modals/User/UserCreateModal.vue";
 import UserEditModal from "@/Modals/User/UserEditModal.vue";
 import UserTempVipHistoryModal from "@/Modals/User/UserTempVipHistoryModal.vue";
+import UserTeamManageModal from "@/Modals/User/UserTeamManageModal.vue";
+import UserChangeTeamModal from "@/Modals/User/UserChangeTeamModal.vue";
+import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
 import {useModalStore} from "@/store/modal.js";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
@@ -86,6 +89,14 @@ const openUserTempVipHistoryModal = (user) => {
     modalStore.openUserTempVipHistoryModal({ user });
 };
 
+const openUserTeamManageModal = () => {
+    modalStore.openUserTeamManageModal();
+};
+
+const openUserTeamChangeModal = (user) => {
+    modalStore.openUserTeamChangeModal({ user });
+};
+
 const openPage = (tab) => {
     currentTab.value = tab;
     tableFiltersStore.setTab(tab);
@@ -141,6 +152,8 @@ defineOptions({ layout: AuthenticatedLayout })
         <UserCreateModal />
         <UserEditModal />
         <UserTempVipHistoryModal />
+        <UserTeamManageModal />
+        <UserChangeTeamModal />
         <ConfirmModal />
 
         <MainTableSection
@@ -148,13 +161,22 @@ defineOptions({ layout: AuthenticatedLayout })
             :data="users"
         >
             <template v-slot:button>
-                <button
-                    @click="openUserCreateModal"
-                    type="button"
-                    class="hidden md:block btn btn-sm btn-primary"
-                >
-                    Создать пользователя
-                </button>
+                <div class="hidden md:flex items-center justify-end gap-2">
+                    <button
+                        @click="openUserTeamManageModal"
+                        type="button"
+                        class="btn btn-sm btn-outline"
+                    >
+                        Команды
+                    </button>
+                    <button
+                        @click="openUserCreateModal"
+                        type="button"
+                        class="btn btn-sm btn-primary"
+                    >
+                        Создать пользователя
+                    </button>
+                </div>
                 <AddMobileIcon
                     @click="openUserCreateModal"
                 />
@@ -234,14 +256,16 @@ defineOptions({ layout: AuthenticatedLayout })
                                         {{ user.id }}
                                     </th>
                                     <td class="px-6 py-3 text-nowrap">
-                                        <div class="inline-flex items-center gap-2">
+                                        <UserSummaryPopover :user="user">
+                                            <div class="inline-flex items-center gap-2 text-left hover:opacity-80 transition">
                                             <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" class="w-10 h-10 rounded-full" alt="user photo">
                                             <div>
                                                 <div class="text-nowrap">
                                                     {{ user.email }}
                                                 </div>
-                                                <div class="text-nowrap text-xs">
-                                                    {{ user.role.name }}
+                                                <div class="text-nowrap text-xs inline-flex items-center gap-2">
+                                                    <span>{{ user.role.name }}</span>
+                                                    <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
                                                 </div>
                                             </div>
                                             <span
@@ -276,7 +300,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path fill-rule="evenodd" d="M10.788 3.103c.495-1.004 1.926-1.004 2.421 0l2.358 4.777 5.273.766c1.107.16 1.55 1.522.748 2.303l-3.816 3.72.9 5.25c.19 1.104-.968 1.945-1.959 1.424l-4.716-2.48-4.715 2.48c-.99.52-2.148-.32-1.96-1.424l.9-5.25-3.815-3.72c-.8-.78-.36-2.142.748-2.303l5.274-.766 2.358-4.777Z" clip-rule="evenodd"/>
                                                 </svg>
                                             </span>
-                                        </div>
+                                            </div>
+                                        </UserSummaryPopover>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
                                         {{ user.balance }} $
@@ -323,6 +348,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <TableAction @click="openUserEditModal(user)">
                                                     Редактировать
                                                 </TableAction>
+                                                <TableAction @click="openUserTeamChangeModal(user)">
+                                                    Изменить команду
+                                                </TableAction>
                                                 <TableAction @click="openUserTempVipHistoryModal(user)">
                                                     История VIP
                                                 </TableAction>
@@ -331,6 +359,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </TableAction>
                                             </template>
                                             <template v-else-if="isTraderRole(user)">
+                                                <TableAction @click="openUserTeamChangeModal(user)">
+                                                    Изменить команду
+                                                </TableAction>
                                                 <TableAction @click="confirmUnarchiveUser(user)">
                                                     Вернуть из архива
                                                 </TableAction>
@@ -368,17 +399,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div class="hidden sm:block">
                                         <div class="flex items-center justify-between gap-2 py-2">
                                             <div class="inline-flex items-center justify-between gap-2 flex-1 min-w-0">
-                                                <div class="inline-flex items-center gap-2">
+                                                <UserSummaryPopover :user="user">
+                                                    <div class="inline-flex items-center gap-2 text-left hover:opacity-80 transition">
                                                     <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" class="w-10 h-10 rounded-full flex-shrink-0" alt="user photo">
                                                     <div>
                                                         <div class="text-nowrap truncate">
                                                             {{ user.email }}
                                                         </div>
-                                                        <div class="text-nowrap text-xs text-base-content/70">
-                                                            {{ user.role.name }}
+                                                        <div class="text-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
+                                                            <span>{{ user.role.name }}</span>
+                                                            <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                    </div>
+                                                </UserSummaryPopover>
                                                 <div class="inline-flex items-center">
                                                     <span class="tex-xs text-base-content/70">Заходил:</span>
                                                     <span class="text-base-content ml-1">
@@ -458,6 +492,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <TableAction @click="openUserEditModal(user)">
                                                             Редактировать
                                                         </TableAction>
+                                                        <TableAction @click="openUserTeamChangeModal(user)">
+                                                            Изменить команду
+                                                        </TableAction>
                                                         <TableAction @click="openUserTempVipHistoryModal(user)">
                                                             История VIP
                                                         </TableAction>
@@ -466,6 +503,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </TableAction>
                                                     </template>
                                                     <template v-else-if="isTraderRole(user)">
+                                                        <TableAction @click="openUserTeamChangeModal(user)">
+                                                            Изменить команду
+                                                        </TableAction>
                                                         <TableAction @click="confirmUnarchiveUser(user)">
                                                             Вернуть из архива
                                                         </TableAction>
@@ -479,14 +519,17 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div class="sm:hidden">
                                         <div class="flex items-center gap-2 mb-2">
                                             <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" class="w-10 h-10 rounded-full flex-shrink-0" alt="user photo">
-                                            <div class="min-w-0 flex-1">
-                                                <div class="text-nowrap truncate text-sm">
-                                                    {{ user.email }}
+                                            <UserSummaryPopover :user="user">
+                                                <div class="inline-flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80 transition">
+                                                    <div class="text-nowrap truncate text-sm">
+                                                        {{ user.email }}
+                                                    </div>
+                                                    <div class="text-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
+                                                        <span>{{ user.role.name }}</span>
+                                                        <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
+                                                    </div>
                                                 </div>
-                                                <div class="text-nowrap text-xs text-base-content/70">
-                                                    {{ user.role.name }}
-                                                </div>
-                                            </div>
+                                            </UserSummaryPopover>
                                             <div class="flex items-center gap-1 flex-shrink-0 mr-1">
                                                 <span
                                                     v-if="user.banned_at"
@@ -565,6 +608,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <TableAction @click="openUserEditModal(user)">
                                                         Редактировать
                                                     </TableAction>
+                                                    <TableAction @click="openUserTeamChangeModal(user)">
+                                                        Изменить команду
+                                                    </TableAction>
                                                     <TableAction @click="openUserTempVipHistoryModal(user)">
                                                         История VIP
                                                     </TableAction>
@@ -573,6 +619,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </TableAction>
                                                 </template>
                                                 <template v-else-if="isTraderRole(user)">
+                                                    <TableAction @click="openUserTeamChangeModal(user)">
+                                                        Изменить команду
+                                                    </TableAction>
                                                     <TableAction @click="confirmUnarchiveUser(user)">
                                                         Вернуть из архива
                                                     </TableAction>

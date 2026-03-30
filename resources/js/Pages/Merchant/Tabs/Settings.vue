@@ -82,7 +82,8 @@ const normalizeGeoItems = (items) => {
         return [{
             currency: 'rub',
             market: 'rapira',
-            reference_rate: null,
+            order_reference_rate: null,
+            payout_reference_rate: null,
             max_deviation_percent: null,
         }];
     }
@@ -92,7 +93,8 @@ const normalizeGeoItems = (items) => {
         .map((geo) => ({
             currency: (geo.currency ?? '').toLowerCase(),
             market: geo.market,
-            reference_rate: geo.reference_rate ?? null,
+            order_reference_rate: geo.order_reference_rate ?? geo.reference_rate ?? null,
+            payout_reference_rate: geo.payout_reference_rate ?? geo.reference_rate ?? null,
             max_deviation_percent: geo.max_deviation_percent ?? null,
         }));
 };
@@ -113,7 +115,8 @@ const formCallback = reactive({
 const geoForm = reactive({
     currency: '',
     market: '',
-    reference_rate: '',
+    order_reference_rate: '',
+    payout_reference_rate: '',
     max_deviation_percent: '',
     errors: {},
     processing: false,
@@ -316,9 +319,11 @@ watch(
     () => geoForm.market,
     (market) => {
         if (market !== MERCHANT_API_MARKET) {
-            geoForm.reference_rate = '';
+            geoForm.order_reference_rate = '';
+            geoForm.payout_reference_rate = '';
             geoForm.max_deviation_percent = '';
-            clearFormError(geoForm, 'reference_rate');
+            clearFormError(geoForm, 'order_reference_rate');
+            clearFormError(geoForm, 'payout_reference_rate');
             clearFormError(geoForm, 'max_deviation_percent');
         }
     }
@@ -415,11 +420,17 @@ const addGeo = () => {
     }
 
     if (geoForm.market === MERCHANT_API_MARKET) {
-        const referenceRate = Number(geoForm.reference_rate);
+        const orderReferenceRate = Number(geoForm.order_reference_rate);
+        const payoutReferenceRate = Number(geoForm.payout_reference_rate);
         const maxDeviationPercent = Number(geoForm.max_deviation_percent);
 
-        if (!Number.isFinite(referenceRate) || referenceRate <= 0) {
-            geoForm.errors = { reference_rate: ['Укажите корректный опорный курс больше 0.'] };
+        if (!Number.isFinite(orderReferenceRate) || orderReferenceRate <= 0) {
+            geoForm.errors = { order_reference_rate: ['Укажите корректный опорный курс для сделок больше 0.'] };
+            return;
+        }
+
+        if (!Number.isFinite(payoutReferenceRate) || payoutReferenceRate <= 0) {
+            geoForm.errors = { payout_reference_rate: ['Укажите корректный опорный курс для выплат больше 0.'] };
             return;
         }
 
@@ -441,14 +452,16 @@ const addGeo = () => {
         {
             currency,
             market: geoForm.market,
-            reference_rate: geoForm.market === MERCHANT_API_MARKET ? geoForm.reference_rate : null,
+            order_reference_rate: geoForm.market === MERCHANT_API_MARKET ? geoForm.order_reference_rate : null,
+            payout_reference_rate: geoForm.market === MERCHANT_API_MARKET ? geoForm.payout_reference_rate : null,
             max_deviation_percent: geoForm.market === MERCHANT_API_MARKET ? geoForm.max_deviation_percent : null,
         },
     ];
 
     geoForm.currency = '';
     geoForm.market = '';
-    geoForm.reference_rate = '';
+    geoForm.order_reference_rate = '';
+    geoForm.payout_reference_rate = '';
     geoForm.max_deviation_percent = '';
     geoForm.errors = {};
 };
@@ -825,21 +838,40 @@ const activeTab = ref('info');
 
                                 <div v-if="geoForm.market === MERCHANT_API_MARKET">
                                     <InputLabel
-                                        for="geo_reference_rate"
-                                        value="Опорный курс"
-                                        :error="!!geoForm.errors.reference_rate || !!geoForm.errors.geos"
+                                        for="geo_order_reference_rate"
+                                        value="Опорный курс для сделок"
+                                        :error="!!geoForm.errors.order_reference_rate || !!geoForm.errors.geos"
                                         class="mb-1"
                                     />
                                     <TextInput
-                                        id="geo_reference_rate"
-                                        v-model="geoForm.reference_rate"
+                                        id="geo_order_reference_rate"
+                                        v-model="geoForm.order_reference_rate"
                                         type="text"
                                         class="mt-1 block w-full"
                                         placeholder="Например, 95.12345678"
-                                        :error="!!geoForm.errors.reference_rate || !!geoForm.errors.geos"
-                                        @input="() => { clearFormError(geoForm, 'reference_rate'); clearFormError(geoForm, 'geos'); }"
+                                        :error="!!geoForm.errors.order_reference_rate || !!geoForm.errors.geos"
+                                        @input="() => { clearFormError(geoForm, 'order_reference_rate'); clearFormError(geoForm, 'geos'); }"
                                     />
-                                    <InputError :message="geoForm.errors.reference_rate" class="mt-2" />
+                                    <InputError :message="geoForm.errors.order_reference_rate" class="mt-2" />
+                                </div>
+
+                                <div v-if="geoForm.market === MERCHANT_API_MARKET">
+                                    <InputLabel
+                                        for="geo_payout_reference_rate"
+                                        value="Опорный курс для выплат"
+                                        :error="!!geoForm.errors.payout_reference_rate || !!geoForm.errors.geos"
+                                        class="mb-1"
+                                    />
+                                    <TextInput
+                                        id="geo_payout_reference_rate"
+                                        v-model="geoForm.payout_reference_rate"
+                                        type="text"
+                                        class="mt-1 block w-full"
+                                        placeholder="Например, 95.12345678"
+                                        :error="!!geoForm.errors.payout_reference_rate || !!geoForm.errors.geos"
+                                        @input="() => { clearFormError(geoForm, 'payout_reference_rate'); clearFormError(geoForm, 'geos'); }"
+                                    />
+                                    <InputError :message="geoForm.errors.payout_reference_rate" class="mt-2" />
                                 </div>
 
                                 <div v-if="geoForm.market === MERCHANT_API_MARKET">
@@ -871,7 +903,11 @@ const activeTab = ref('info');
                                             || !geoForm.market
                                             || (
                                                 geoForm.market === MERCHANT_API_MARKET
-                                                && (!geoForm.reference_rate || !geoForm.max_deviation_percent)
+                                                && (
+                                                    !geoForm.order_reference_rate
+                                                    || !geoForm.payout_reference_rate
+                                                    || !geoForm.max_deviation_percent
+                                                )
                                             )
                                         "
                                     >
@@ -902,7 +938,7 @@ const activeTab = ref('info');
                                             v-if="geo.market === MERCHANT_API_MARKET"
                                             class="text-xs text-base-content/70 mt-1"
                                         >
-                                            Опорный курс: {{ geo.reference_rate }} | Отклонение: ±{{ geo.max_deviation_percent }}%
+                                            Сделки: {{ geo.order_reference_rate }} | Выплаты: {{ geo.payout_reference_rate }} | Отклонение: ±{{ geo.max_deviation_percent }}%
                                         </div>
                                     </div>
                                     <button

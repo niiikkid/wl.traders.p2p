@@ -626,6 +626,15 @@ const tocSections = [
                                                 <td>Код валюты. Если не указан payment_gateway, используется для расчётов.</td>
                                             </tr>
                                             <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">rate</code></td>
+                                                <td>
+                                                    курс создания выплаты. Обязателен только если для валюты в GEO мерчанта выбран источник
+                                                    <code class="bg-base-200 px-1 rounded text-xs">merchant_api</code>. Значение должно быть больше 0,
+                                                    с точностью не выше precision валюты (обычно до 8 знаков), и попадать в допустимый диапазон
+                                                    относительно опорного курса для выплат и процента отклонения, заданных администратором.
+                                                </td>
+                                            </tr>
+                                            <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">payout_method_type</code> <span class="text-error">*</span></td>
                                                 <td><code>sbp</code> или <code>card</code>.</td>
                                             </tr>

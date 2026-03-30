@@ -45,7 +45,12 @@ class MerchantResource extends JsonResource
                     return [
                         'currency' => $currencyCode,
                         'market' => $market,
-                        'reference_rate' => $merchantApiRateSettings['reference_rate'] ?? null,
+                        'order_reference_rate' => $merchantApiRateSettings['order_reference_rate']
+                            ?? $merchantApiRateSettings['reference_rate']
+                            ?? null,
+                        'payout_reference_rate' => $merchantApiRateSettings['payout_reference_rate']
+                            ?? $merchantApiRateSettings['reference_rate']
+                            ?? null,
                         'max_deviation_percent' => $merchantApiRateSettings['max_deviation_percent'] ?? null,
                     ];
                 })

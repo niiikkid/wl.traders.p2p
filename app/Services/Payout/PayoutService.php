@@ -48,10 +48,11 @@ class PayoutService implements PayoutServiceContract
 
             $currency = $data->amountFiat->getCurrency();
             $geoMarket = $this->resolveGeoMarket($data->merchant, $currency);
-            $conversionPrice = services()->market()->getBuyPrice(
-                $currency,
-                $geoMarket,
-                false
+            $conversionPrice = $this->resolveConversionPriceForPayout(
+                merchant: $data->merchant,
+                currency: $currency,
+                geoMarket: $geoMarket,
+                merchantRate: $data->merchantRate
             );
 
             if (! $conversionPrice->greaterThanZero()) {
@@ -908,6 +909,60 @@ class PayoutService implements PayoutServiceContract
         }
 
         return $market;
+    }
+
+    /**
+     * @throws PayoutException
+     */
+    private function resolveConversionPriceForPayout(
+        Merchant $merchant,
+        Currency $currency,
+        MarketEnum $geoMarket,
+        ?Money $merchantRate = null
+    ): Money
+    {
+        if ($geoMarket->equals(MarketEnum::MERCHANT_API)) {
+            $merchantApiRateSetting = $merchant->getMerchantApiRateSetting($currency);
+            $referenceRate = (float) ($merchantApiRateSetting['payout_reference_rate'] ?? 0);
+            $maxDeviationPercent = (float) ($merchantApiRateSetting['max_deviation_percent'] ?? 0);
+
+            if ($referenceRate <= 0 || $maxDeviationPercent <= 0) {
+                throw PayoutException::merchantApiRateSettingsMissing(strtoupper($currency->getCode()));
+            }
+
+            if (! $merchantRate) {
+                throw PayoutException::merchantApiRateRequired(strtoupper($currency->getCode()));
+            }
+
+            $requestedRate = (float) $merchantRate->toPrecision();
+            $minRate = $referenceRate * (1 - ($maxDeviationPercent / 100));
+            $maxRate = $referenceRate * (1 + ($maxDeviationPercent / 100));
+
+            if ($requestedRate < $minRate || $requestedRate > $maxRate) {
+                $precision = $currency->getPrecision();
+
+                throw PayoutException::merchantApiRateOutOfRange(
+                    currency: strtoupper($currency->getCode()),
+                    requestedRate: $merchantRate->toPrecision(),
+                    referenceRate: number_format($referenceRate, $precision, '.', ''),
+                    deviationPercent: number_format($maxDeviationPercent, 2, '.', ''),
+                    allowedMinRate: number_format($minRate, $precision, '.', ''),
+                    allowedMaxRate: number_format($maxRate, $precision, '.', ''),
+                );
+            }
+
+            return $merchantRate;
+        }
+
+        if ($merchantRate) {
+            throw PayoutException::merchantApiRateForbidden(strtoupper($currency->getCode()));
+        }
+
+        return services()->market()->getBuyPrice(
+            $currency,
+            $geoMarket,
+            false
+        );
     }
 
     /**

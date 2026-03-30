@@ -2,12 +2,15 @@
 
 namespace App\Http\Requests\API\Payout;
 
+use App\Enums\MarketEnum;
 use App\Enums\PayoutMethodType;
+use App\Models\Merchant;
 use App\Services\Money\Currency;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreRequest extends FormRequest
 {
@@ -71,6 +74,7 @@ class StoreRequest extends FormRequest
             'initials' => ['required', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:30'],
             'callback_url' => ['nullable', 'string', 'url:https', 'max:256'],
+            'rate' => ['nullable'],
         ];
     }
 
@@ -103,7 +107,90 @@ class StoreRequest extends FormRequest
                     $validator->errors()->add('bank_name', 'Поле bank_name недоступно при выборе payment_gateway.');
                 }
             },
+            function (Validator $validator) {
+                $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+                if (! $merchant instanceof Merchant) {
+                    return;
+                }
+
+                $currencyCode = $this->resolveCurrencyCode();
+                if (! $currencyCode) {
+                    return;
+                }
+
+                try {
+                    $currency = Currency::make($currencyCode);
+                } catch (\Throwable) {
+                    return;
+                }
+
+                $geoMarket = $merchant->getGeoMarket($currency);
+                $rate = $this->input('rate');
+
+                if ($geoMarket?->equals(MarketEnum::MERCHANT_API)) {
+                    if ($rate === null || $rate === '') {
+                        $validator->errors()->add('rate', 'Поле rate обязательно для выбранного источника курсов.');
+                        return;
+                    }
+
+                    if (! is_numeric($rate)) {
+                        $validator->errors()->add('rate', 'Поле rate должно быть числом.');
+                        return;
+                    }
+
+                    if ((float) $rate <= 0) {
+                        $validator->errors()->add('rate', 'Поле rate должно быть больше 0.');
+                        return;
+                    }
+
+                    if (! $this->isDecimalWithinPrecision((string) $rate, $currency->getPrecision())) {
+                        $validator->errors()->add(
+                            'rate',
+                            "Поле rate может содержать не более {$currency->getPrecision()} знаков после запятой для валюты {$currency->getCode()}."
+                        );
+                    }
+
+                    return;
+                }
+
+                if ($rate !== null && $rate !== '') {
+                    $validator->errors()->add('rate', 'Поле rate недоступно для выбранного источника курсов.');
+                }
+            },
         ];
+    }
+
+    protected function resolveCurrencyCode(): ?string
+    {
+        if (! empty($this->payment_gateway)) {
+            try {
+                $paymentGateway = queries()->paymentGateway()->getByCode($this->payment_gateway);
+
+                return $paymentGateway->currency->getCode();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        if (! empty($this->currency)) {
+            return (string) $this->currency;
+        }
+
+        return null;
+    }
+
+    protected function isDecimalWithinPrecision(string $value, int $maxScale): bool
+    {
+        $normalized = trim($value);
+        $normalized = str_replace(',', '.', $normalized);
+
+        if (! preg_match('/^-?\d+(?:\.(\d+))?$/', $normalized, $matches)) {
+            return false;
+        }
+
+        $scale = isset($matches[1]) ? strlen($matches[1]) : 0;
+
+        return $scale <= $maxScale;
     }
 }
 

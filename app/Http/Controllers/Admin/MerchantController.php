@@ -127,7 +127,8 @@ class MerchantController extends Controller
             'geos' => ['required', 'array', 'min:1'],
             'geos.*.currency' => ['required', 'string', Rule::in(Currency::getAllCodes())],
             'geos.*.market' => ['required', Rule::enum(MarketEnum::class)],
-            'geos.*.reference_rate' => ['nullable', 'numeric', 'gt:0'],
+            'geos.*.order_reference_rate' => ['nullable', 'numeric', 'gt:0'],
+            'geos.*.payout_reference_rate' => ['nullable', 'numeric', 'gt:0'],
             'geos.*.max_deviation_percent' => ['nullable', 'numeric', 'gt:0', 'decimal:0,2'],
         ]);
 
@@ -164,18 +165,31 @@ class MerchantController extends Controller
                     }
 
                     if ($marketEnum->equals(MarketEnum::MERCHANT_API)) {
-                        $referenceRate = $geo['reference_rate'] ?? null;
+                        $orderReferenceRate = $geo['order_reference_rate'] ?? null;
+                        $payoutReferenceRate = $geo['payout_reference_rate'] ?? null;
                         $maxDeviationPercent = $geo['max_deviation_percent'] ?? null;
 
-                        if ($referenceRate === null || $referenceRate === '') {
+                        if ($orderReferenceRate === null || $orderReferenceRate === '') {
                             $validator->errors()->add(
                                 'geos',
-                                "Для валюты " . strtoupper($currencyCode) . " в маркете merchant_api нужно указать опорный курс."
+                                "Для валюты " . strtoupper($currencyCode) . " в маркете merchant_api нужно указать опорный курс для сделок."
                             );
-                        } elseif (! $this->isDecimalWithinPrecision((string) $referenceRate, $currency->getPrecision())) {
+                        } elseif (! $this->isDecimalWithinPrecision((string) $orderReferenceRate, $currency->getPrecision())) {
                             $validator->errors()->add(
                                 'geos',
-                                "Опорный курс для " . strtoupper($currencyCode) . " может содержать не более {$currency->getPrecision()} знаков после запятой."
+                                "Опорный курс сделок для " . strtoupper($currencyCode) . " может содержать не более {$currency->getPrecision()} знаков после запятой."
+                            );
+                        }
+
+                        if ($payoutReferenceRate === null || $payoutReferenceRate === '') {
+                            $validator->errors()->add(
+                                'geos',
+                                "Для валюты " . strtoupper($currencyCode) . " в маркете merchant_api нужно указать опорный курс для выплат."
+                            );
+                        } elseif (! $this->isDecimalWithinPrecision((string) $payoutReferenceRate, $currency->getPrecision())) {
+                            $validator->errors()->add(
+                                'geos',
+                                "Опорный курс выплат для " . strtoupper($currencyCode) . " может содержать не более {$currency->getPrecision()} знаков после запятой."
                             );
                         }
 
@@ -214,7 +228,8 @@ class MerchantController extends Controller
 
                 return [
                     $currencyCode => [
-                        'reference_rate' => (float) $geo['reference_rate'],
+                        'order_reference_rate' => (float) $geo['order_reference_rate'],
+                        'payout_reference_rate' => (float) $geo['payout_reference_rate'],
                         'max_deviation_percent' => round((float) $geo['max_deviation_percent'], 2),
                     ],
                 ];

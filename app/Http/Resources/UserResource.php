@@ -27,6 +27,9 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'login' => $this->email, // логин совпадает с колонкой email
+            'telegram_username' => $this->telegram_username,
+            'telegram_tag' => $this->telegram_username ? '@' . $this->telegram_username : null,
+            'telegram_url' => $this->telegram_username ? 'https://t.me/' . $this->telegram_username : null,
             'avatar_uuid' => $this->avatar_uuid,
             'avatar_style' => $this->avatar_style,
             'apk_latest_ping_at' => $this->normalizeCachedDate(cache()->get("user-apk-latest-ping-at-$this->id")),
@@ -52,6 +55,16 @@ class UserResource extends JsonResource
                 return [
                     'id' => $this->teamLeader->id,
                     'email' => $this->teamLeader->email,
+                ];
+            }),
+            'user_team' => $this->whenLoaded('userTeam', function () {
+                if (! $this->userTeam) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->userTeam->id,
+                    'name' => $this->userTeam->name,
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('roles'), function () {

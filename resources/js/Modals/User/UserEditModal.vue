@@ -27,6 +27,7 @@ const user = ref(null);
 
 const form = ref({
     login: '',
+    telegram_username: '',
     role_id: 0,
     banned: false,
     stop_traffic: false,
@@ -68,6 +69,7 @@ const resetState = () => {
     errors.value = {};
     form.value = {
         login: '',
+        telegram_username: '',
         role_id: 0,
         banned: false,
         stop_traffic: false,
@@ -112,6 +114,7 @@ const loadUser = () => {
             const data = response.data?.data || response.data;
             user.value = data;
             form.value.login = data.email;
+            form.value.telegram_username = data.telegram_username || '';
             form.value.role_id = data.role.id;
             form.value.banned = !!data.banned_at;
             form.value.stop_traffic = !!data.stop_traffic;
@@ -300,6 +303,25 @@ watch(
                         :disabled="processing"
                     />
                     <InputError class="mt-1" :message="errors.login?.[0]" />
+                </div>
+
+                <div>
+                    <InputLabel
+                        for="telegram_username"
+                        value="Telegram (необязательно)"
+                        :error="!!errors.telegram_username?.[0]"
+                    />
+                    <TextInput
+                        id="telegram_username"
+                        type="text"
+                        class="mt-1 block w-full"
+                        v-model="form.telegram_username"
+                        placeholder="@username или username"
+                        :error="!!errors.telegram_username?.[0]"
+                        @input="errors.telegram_username = null"
+                        :disabled="processing"
+                    />
+                    <InputError class="mt-1" :message="errors.telegram_username?.[0]" />
                 </div>
 
                 <div v-if="user && user.id !== 1">

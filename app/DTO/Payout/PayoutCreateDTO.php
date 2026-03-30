@@ -21,6 +21,7 @@ readonly class PayoutCreateDTO extends BaseDTO
         public string $currencyCode,
         public ?string $callbackUrl,
         public ?string $bankName,
+        public ?Money $merchantRate = null,
     ) {
     }
 
@@ -35,6 +36,7 @@ readonly class PayoutCreateDTO extends BaseDTO
         string $currencyCode,
         ?string $callbackUrl,
         ?string $bankName,
+        ?Money $merchantRate = null,
     ): self {
         return new self(
             merchant: $merchant,
@@ -47,6 +49,7 @@ readonly class PayoutCreateDTO extends BaseDTO
             currencyCode: $currencyCode,
             callbackUrl: $callbackUrl,
             bankName: $bankName,
+            merchantRate: $merchantRate,
         );
     }
 }

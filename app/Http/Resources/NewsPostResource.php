@@ -21,6 +21,10 @@ class NewsPostResource extends JsonResource
             'title' => $this->title,
             'cover_image_url' => $this->cover_image_path ? Storage::disk('public')->url($this->cover_image_path) : null,
             'content_html' => $this->content_html,
+            'views_count' => (int) $this->views_count,
+            'likes_count' => (int) $this->likes_count,
+            'dislikes_count' => (int) $this->dislikes_count,
+            'user_reaction' => $this->whenLoaded('reactions', fn () => $this->reactions->first()?->reaction),
             'created_at' => $this->created_at,
             'author' => [
                 'id' => $this->author?->id,
