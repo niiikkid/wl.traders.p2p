@@ -56,7 +56,7 @@ readonly class CreateOrderDTO extends BaseDTO
             }
         }
 
-        $currencyCode = $data['payment_gateway']?->currency?->getCode()
+        $currencyCode = ($data['payment_gateway'] ?? null)?->currency?->getCode()
             ?? $data['amount']->getCurrency()->getCode();
         $merchantRate = null;
         if (array_key_exists('rate', $data) && $data['rate'] !== null && $data['rate'] !== '') {
