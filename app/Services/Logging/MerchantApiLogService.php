@@ -11,6 +11,7 @@ use App\Models\MerchantApiRequestLog;
 use App\Models\Order;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -72,6 +73,15 @@ class MerchantApiLogService implements MerchantApiLogServiceContract
         if (is_a($exceptionClass, OrderException::class, true)) {
             $exceptionClass = null;
             $exceptionMessage = null;
+        } elseif ($exceptionClass || $exceptionMessage) {
+            Log::error('Unexpected API order create error', [
+                'merchant_id' => $merchant->id,
+                'merchant_uuid' => $merchant->uuid,
+                'external_id' => $externalID,
+                'request_id' => $requestID,
+                'exception_class' => $exceptionClass,
+                'exception_message' => $exceptionMessage,
+            ]);
         }
 
         // Рассчитываем время выполнения запроса в миллисекундах
