@@ -70,7 +70,7 @@ const waterMessages = [
     'Любезный мой, правильно сделал, что не пожалел воды. Древо откликнулось сразу.',
 ]
 
-const phase = ref(3)
+const phase = ref(MIN_PHASE)
 const lastPhaseChangeAt = ref(Date.now())
 const nextAllowedWaterAt = ref(0)
 const disputesBlessingUntil = ref(0)
@@ -86,7 +86,7 @@ let tickInterval = null
 const clampPhase = (value) => Math.max(MIN_PHASE, Math.min(MAX_PHASE, value))
 
 const imageSrc = computed(() => `/priest/${phase.value}.png`)
-const activePhaseMeta = computed(() => phaseMeta[phase.value] ?? phaseMeta[3])
+const activePhaseMeta = computed(() => phaseMeta[phase.value] ?? phaseMeta[MIN_PHASE])
 const expectedImagePath = computed(() => imageSrc.value)
 const canWater = computed(() => tickNow.value >= nextAllowedWaterAt.value)
 const canPrayAgainstDisputes = computed(() => phase.value >= 4)
@@ -254,7 +254,7 @@ onMounted(() => {
         const rawValue = window.localStorage.getItem(STORAGE_KEY)
         if (rawValue) {
             const parsedValue = JSON.parse(rawValue)
-            phase.value = clampPhase(Number(parsedValue.phase) || 3)
+            phase.value = clampPhase(Number(parsedValue.phase) || MIN_PHASE)
             lastPhaseChangeAt.value = Number(parsedValue.lastPhaseChangeAt) || Date.now()
             nextAllowedWaterAt.value = Number(parsedValue.nextAllowedWaterAt) || 0
             disputesBlessingUntil.value = Number(parsedValue.disputesBlessingUntil) || 0
@@ -312,13 +312,13 @@ onBeforeUnmount(() => {
                     </button>
 
                     <div class="dropdown dropdown-end">
-                        <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square" aria-label="Как играть">
+                        <button type="button" tabindex="0" class="btn btn-ghost btn-xs btn-square" aria-label="Наставление">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
                             </svg>
                         </button>
                         <div tabindex="0" class="dropdown-content z-30 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-3 shadow">
-                            <div class="text-sm font-semibold text-base-content">Как играть</div>
+                            <div class="text-sm font-semibold text-base-content">Наставление</div>
                             <div class="mt-2 space-y-2 text-xs text-base-content/70">
                                 <p>Своевременно поливай любимое денежное древо батюшки, чтобы батюшка не впадал в духовную тоску.</p>
                                 <p>Батюшка — хранитель сей площадки: от его расположения зависят и милости, и кары небесные.</p>
