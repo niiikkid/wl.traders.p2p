@@ -48,6 +48,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property bool $temp_vip_can_activate
  * @property Carbon|null $temp_vip_progress_start_at
  * @property boolean $stop_traffic
+ * @property bool $hide_name_in_trader_top
  * @property boolean $can_work_without_device
  * @property bool $payouts_enabled
  * @property bool $payout_hold_enabled
@@ -103,6 +104,7 @@ class User extends Authenticatable
         'temp_vip_can_activate',
         'temp_vip_progress_start_at',
         'stop_traffic',
+        'hide_name_in_trader_top',
         'can_work_without_device',
         'payouts_enabled',
         'payout_hold_enabled',
@@ -176,6 +178,7 @@ class User extends Authenticatable
             'support_can_view_deposits' => 'boolean',
             'support_can_edit_order_amount' => 'boolean',
             'team_leader_individual_commission_percentage' => 'float',
+            'hide_name_in_trader_top' => 'boolean',
         ];
     }
 

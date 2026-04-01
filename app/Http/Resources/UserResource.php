@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\Trader\TraderLeaderboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -91,6 +92,10 @@ class UserResource extends JsonResource
                 ];
             }),
             'stop_traffic' => $this->stop_traffic,
+            'hide_name_in_trader_top' => (bool) $this->hide_name_in_trader_top,
+            'weekly_top_rank' => $this->hasRole('Trader')
+                ? app(TraderLeaderboardService::class)->getTraderWeeklyRank((int) $this->id)
+                : null,
             'can_work_without_device' => (bool) $this->can_work_without_device,
             'traffic_enabled_at' => $this->traffic_enabled_at?->toISOString(),
             'is_online' => $this->is_online,

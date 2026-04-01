@@ -161,6 +161,8 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
         //statistics
         Route::get('trader/statistics', [\App\Http\Controllers\Trader\StatisticController::class, 'index'])->name('trader.statistics.index');
+        Route::get('/trader/leaderboard', [\App\Http\Controllers\Trader\TraderLeaderboardController::class, 'index'])->name('trader.leaderboard.index');
+        Route::patch('/trader/leaderboard/hide-name', [\App\Http\Controllers\Trader\TraderLeaderboardController::class, 'updateHideName'])->name('trader.leaderboard.hide-name.update');
 
         //disputes
         Route::get('/disputes', [\App\Http\Controllers\DisputeController::class, 'index'])->name('disputes.index');

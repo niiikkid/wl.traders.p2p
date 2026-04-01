@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\UserOnlinePeriod;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\Trader\TraderLeaderboardService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -215,44 +216,7 @@ class TraderAnalyticsController extends Controller
             ->values()
             ->all();
 
-        $top_start_at = now()->subDays(6)->startOfDay();
-        $top_end_at = now()->endOfDay();
-
-        $top_rows = Order::query()
-            ->whereBetween('created_at', [$top_start_at, $top_end_at])
-            ->where('currency', $selected_currency)
-            ->whereIn('trader_id', $trader_ids)
-            ->where('status', OrderStatus::SUCCESS)
-            ->selectRaw('trader_id, COUNT(*) as operations_count, AVG(TIMESTAMPDIFF(SECOND, created_at, finished_at)) as avg_processing_seconds')
-            ->groupBy('trader_id')
-            ->orderByDesc('operations_count')
-            ->limit(10)
-            ->get();
-
-        $top_trader_ids = $top_rows->pluck('trader_id')->filter()->values();
-        $top_traders_map = User::query()
-            ->whereIn('id', $top_trader_ids)
-            ->get(['id', 'name', 'email', 'is_online'])
-            ->keyBy('id');
-
-        $top_traders = $top_rows
-            ->values()
-            ->map(function ($row, $index) use ($top_traders_map) {
-                $trader = $top_traders_map->get((int) $row->trader_id);
-                $avg_seconds = (float) ($row->avg_processing_seconds ?? 0);
-
-                return [
-                    'rank' => $index + 1,
-                    'trader_id' => (int) $row->trader_id,
-                    'name' => $trader?->name ?? 'Удален',
-                    'email' => $trader?->email ?? '-',
-                    'is_online' => (bool) ($trader?->is_online ?? false),
-                    'operations_count' => (int) $row->operations_count,
-                    'avg_processing_seconds' => (int) round($avg_seconds),
-                    'avg_processing_human' => $this->formatSecondsToHuman((int) round($avg_seconds)),
-                ];
-            })
-            ->all();
+        $top_traders = app(TraderLeaderboardService::class)->getWeeklyTop($selected_currency, 0, 10, false)['top'];
 
         $active_traders = $activity_by_trader
             ->sortDesc()

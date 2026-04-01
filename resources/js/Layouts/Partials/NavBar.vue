@@ -1,12 +1,23 @@
 <script setup>
 import {Link, router, usePage} from "@inertiajs/vue3";
-import {computed, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {useViewStore} from "@/store/view.js";
 import ThemeToggle from "@/Components/ThemeToggle.vue";
 
 const viewStore = useViewStore();
 
 const wallet = ref(usePage().props.data.wallet);
+const authUser = ref(usePage().props.auth.user);
+const isTraderTopOpen = ref(false);
+const isTraderTopLoading = ref(false);
+const traderTopError = ref('');
+const traderTopLoaded = ref(false);
+const traderTopData = ref({
+    top: [],
+    current_trader: null,
+    reset_at: null,
+});
+const hideNameInTraderTop = ref(Boolean(authUser.value?.hide_name_in_trader_top ?? true));
 
 const emit = defineEmits(['toggleSidebar']);
 const toggleSidebar = () => {
@@ -39,9 +50,126 @@ const login = computed(() =>
     email.charAt(0).toUpperCase() + email.slice(1)
 )
 
+const currentTraderTopRankLabel = computed(() => {
+    const rank = authUser.value?.weekly_top_rank ?? null;
+
+    if (!rank) {
+        return 'Вне топа';
+    }
+
+    return `${rank} место`;
+});
+
+const shouldShowCurrentTraderSeparated = computed(() => {
+    const current = traderTopData.value.current_trader;
+    return !!current && Number(current.rank) > 10;
+});
+
+const getTraderLeaderboardIndexUrl = () => {
+    try {
+        return route('trader.leaderboard.index');
+    } catch (error) {
+        return '/trader/leaderboard';
+    }
+};
+
+const getTraderLeaderboardHideNameUrl = () => {
+    try {
+        return route('trader.leaderboard.hide-name.update');
+    } catch (error) {
+        return '/trader/leaderboard/hide-name';
+    }
+};
+
+const formatResetAt = computed(() => {
+    if (!traderTopData.value.reset_at) {
+        return '-';
+    }
+
+    const date = new Date(traderTopData.value.reset_at);
+
+    if (Number.isNaN(date.getTime())) {
+        return '-';
+    }
+
+    return date.toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+});
+
+const loadTraderTop = async () => {
+    isTraderTopLoading.value = true;
+    traderTopError.value = '';
+
+    try {
+        const response = await window.axios.get(getTraderLeaderboardIndexUrl(), {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+        const payload = response?.data?.data ?? response?.data ?? {};
+
+        const hasValidPayloadShape = payload !== null
+            && typeof payload === 'object'
+            && Array.isArray(payload?.top);
+
+        if (!hasValidPayloadShape) {
+            throw new Error('Некорректный формат ответа');
+        }
+
+        traderTopData.value = {
+            top: payload.top,
+            current_trader: payload?.current_trader ?? null,
+            reset_at: payload?.reset_at ?? null,
+        };
+        traderTopLoaded.value = true;
+    } catch (error) {
+        traderTopError.value = error?.response?.data?.message ?? 'Не удалось загрузить топ трейдеров';
+    } finally {
+        isTraderTopLoading.value = false;
+    }
+};
+
+const toggleTraderTop = async () => {
+    isTraderTopOpen.value = !isTraderTopOpen.value;
+};
+
+const toggleHideNameInTop = async () => {
+    const nextValue = !hideNameInTraderTop.value;
+    hideNameInTraderTop.value = nextValue;
+
+    try {
+        const response = await window.axios.patch(getTraderLeaderboardHideNameUrl(), {
+            hide_name_in_trader_top: nextValue,
+        });
+
+        const persistedValue = Boolean(response?.data?.hide_name_in_trader_top ?? nextValue);
+        hideNameInTraderTop.value = persistedValue;
+
+        if (authUser.value) {
+            authUser.value.hide_name_in_trader_top = persistedValue;
+        }
+    } catch (error) {
+        hideNameInTraderTop.value = !nextValue;
+    }
+};
+
 router.on('success', (event) => {
     wallet.value = usePage().props.data.wallet;
+    authUser.value = usePage().props.auth.user;
+    hideNameInTraderTop.value = Boolean(authUser.value?.hide_name_in_trader_top ?? true);
+    isTraderTopOpen.value = false;
 })
+
+onMounted(async () => {
+    if (!traderTopLoaded.value && !isTraderTopLoading.value) {
+        await loadTraderTop();
+    }
+});
 
 // Вынос переключателя темы в отдельный компонент
 </script>
@@ -85,7 +213,93 @@ router.on('success', (event) => {
                     </div>
                 </div>
                 <div v-show="viewStore.isTraderViewMode" class="lg:flex items-center hidden text-nowrap">
-                    <svg class="w-6 h-6 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <div class="dropdown dropdown-end" :class="isTraderTopOpen ? 'dropdown-open' : ''">
+                        <button
+                            tabindex="0"
+                            type="button"
+                            role="button"
+                            class="btn btn-sm btn-outline btn-accent normal-case h-auto min-h-0 py-1.5 px-3 leading-tight"
+                            @click.prevent="toggleTraderTop"
+                        >
+                            <span class="flex flex-col items-start">
+                                <span class="text-xs">Топ трейдеров</span>
+                                <span class="text-[11px] opacity-70">{{ currentTraderTopRankLabel }}</span>
+                            </span>
+                        </button>
+                        <div tabindex="0" class="card card-sm dropdown-content border border-accent/20 bg-base-100 rounded-box z-[60] mt-3 w-[26rem] max-w-[calc(100vw-2rem)] shadow whitespace-normal">
+                            <div class="card-body p-4 space-y-3 whitespace-normal">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <h3 class="font-semibold text-sm">ТОП-10 трейдеров за неделю</h3>
+                                        <p class="text-xs text-base-content/70 mt-1 leading-tight break-words whitespace-normal">
+                                            При равном количестве сделок выше тот, у кого меньше среднее время обработки.
+                                        </p>
+                                        <p class="text-xs text-base-content/70 break-words whitespace-normal">
+                                            Сброс топа: {{ formatResetAt }}
+                                        </p>
+                                    </div>
+                                    <button type="button" class="btn btn-ghost btn-xs shrink-0" @click.prevent="isTraderTopOpen = false">Закрыть</button>
+                                </div>
+
+                                <div v-if="isTraderTopLoading" class="flex justify-center py-4">
+                                    <span class="loading loading-spinner loading-sm"></span>
+                                </div>
+                                <div v-else-if="traderTopError" class="alert alert-error py-2">
+                                    <span class="text-xs">{{ traderTopError }}</span>
+                                </div>
+                                <div v-else-if="!traderTopData.top.length" class="alert py-2">
+                                    <span class="text-xs">За последние 7 дней пока нет данных для топа.</span>
+                                </div>
+                                <div v-else class="space-y-1">
+                                    <div class="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem] items-center gap-2 px-2 pb-1 border-b border-base-300">
+                                        <span class="text-[10px] uppercase tracking-wide text-base-content/60">#</span>
+                                        <span class="text-[10px] uppercase tracking-wide text-base-content/60">Трейдер</span>
+                                        <span class="text-[10px] uppercase tracking-wide text-base-content/60 text-right whitespace-nowrap">Сделки</span>
+                                        <span class="text-[10px] uppercase tracking-wide text-base-content/60 text-right whitespace-nowrap">Среднее время</span>
+                                    </div>
+                                    <div
+                                        v-for="item in traderTopData.top"
+                                        :key="`top-${item.trader_id}`"
+                                        class="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem] items-center gap-2 rounded-lg px-2 py-1.5"
+                                        :class="Number(item.trader_id) === Number(authUser?.id ?? 0) ? 'bg-primary/10 border border-primary/20' : 'bg-base-200/40'"
+                                    >
+                                        <span class="text-xs font-semibold">#{{ item.rank }}</span>
+                                        <span class="text-xs truncate">{{ item.nickname }}</span>
+                                        <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ item.operations_count }} сделок</span>
+                                        <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ item.avg_processing_human }}</span>
+                                    </div>
+
+                                    <div v-if="shouldShowCurrentTraderSeparated" class="space-y-1 pt-1">
+                                        <div class="flex items-center gap-2 px-2">
+                                            <div class="h-px flex-1 bg-base-300"></div>
+                                            <span class="text-[10px] uppercase tracking-wide text-base-content/50">другие трейдеры</span>
+                                            <div class="h-px flex-1 bg-base-300"></div>
+                                        </div>
+
+                                        <div
+                                            class="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem] items-center gap-2 rounded-lg px-2 py-1.5 bg-primary/10 border border-primary/20"
+                                        >
+                                            <span class="text-xs font-semibold">#{{ traderTopData.current_trader.rank }}</span>
+                                            <span class="text-xs truncate">{{ traderTopData.current_trader.nickname }}</span>
+                                            <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ traderTopData.current_trader.operations_count }} сделок</span>
+                                            <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ traderTopData.current_trader.avg_processing_human }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="border-t border-base-300 pt-2 mt-2 flex items-center justify-between">
+                                        <span class="text-xs">Скрыть мое имя в топе</span>
+                                        <input
+                                            type="checkbox"
+                                            class="toggle toggle-sm toggle-primary"
+                                            :checked="hideNameInTraderTop"
+                                            @change="toggleHideNameInTop"
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <svg class="w-6 h-6 text-primary ml-7" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8H5m12 0a1 1 0 0 1 1 1v2.6M17 8l-4-4M5 8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.6M5 8l4-4 4 4m6 4h-4a2 2 0 1 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1Z"/>
                     </svg>
                     <div class="font-semibold text-base-content">

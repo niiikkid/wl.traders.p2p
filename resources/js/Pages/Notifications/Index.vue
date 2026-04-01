@@ -72,14 +72,15 @@ const eventLabelFallbacks = {
 };
 
 const normalizeEventVariants = () => {
-    const events = filtersVariants.value.event ?? [];
+    const currentFiltersVariants = filtersVariants.value ?? {};
+    const events = currentFiltersVariants.event ?? [];
 
     if (!events.length) {
         return;
     }
 
     filtersVariants.value = {
-        ...filtersVariants.value,
+        ...currentFiltersVariants,
         event: events.map((item) => {
             const keyName = `notifications.events.${item.value}`;
             const fallbackName = eventLabelFallbacks[item.value];
@@ -338,7 +339,7 @@ const handleIncomingNotification = () => {
 router.on('success', () => {
     notifications.value = usePage().props.notifications;
     rules.value = usePage().props.rules;
-    filtersVariants.value = usePage().props.filtersVariants;
+    filtersVariants.value = usePage().props.filtersVariants ?? filtersVariants.value ?? {};
     telegramAccount.value = usePage().props.telegramAccount;
     syncSoundSettings();
     normalizeEventVariants();
