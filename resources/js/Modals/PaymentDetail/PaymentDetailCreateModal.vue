@@ -37,6 +37,8 @@ const form = ref({
     additional_info: '',
     is_active: true,
     daily_limit: '',
+    monthly_limit: '',
+    monthly_limit_reset_day: '',
     daily_successful_orders_limit: '',
     max_pending_orders_quantity: 1,
     payment_gateway_ids: [],
@@ -196,6 +198,8 @@ const resetState = () => {
         additional_info: '',
         is_active: true,
         daily_limit: '',
+        monthly_limit: '',
+        monthly_limit_reset_day: '',
         daily_successful_orders_limit: '',
         max_pending_orders_quantity: 1,
         payment_gateway_ids: [],
@@ -668,6 +672,49 @@ watch(
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
                             Оставьте пустым для отключения лимита
+                        </div>
+                    </div>
+
+                    <div class="rounded-box border border-base-300 p-4">
+                        <div class="text-sm font-medium mb-3">
+                            Ежемесячные лимиты ({{ form.currency?.toUpperCase() }})
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel
+                                    for="monthly_limit"
+                                    value="Объем сделок"
+                                    :error="!!errors.monthly_limit?.[0]"
+                                />
+                                <NumberInput
+                                    id="monthly_limit"
+                                    v-model="form.monthly_limit"
+                                    class="mt-1 block w-full"
+                                    :error="!!errors.monthly_limit?.[0]"
+                                    @input="errors.monthly_limit = null"
+                                    :disabled="processing"
+                                />
+                                <InputError :message="errors.monthly_limit?.[0]" class="mt-2" />
+                            </div>
+                            <div>
+                                <InputLabel
+                                    for="monthly_limit_reset_day"
+                                    value="День сброса (1-28)"
+                                    :error="!!errors.monthly_limit_reset_day?.[0]"
+                                />
+                                <NumberInput
+                                    id="monthly_limit_reset_day"
+                                    v-model="form.monthly_limit_reset_day"
+                                    class="mt-1 block w-full"
+                                    :error="!!errors.monthly_limit_reset_day?.[0]"
+                                    @input="errors.monthly_limit_reset_day = null"
+                                    :disabled="processing"
+                                />
+                                <InputError :message="errors.monthly_limit_reset_day?.[0]" class="mt-2" />
+                            </div>
+                        </div>
+                        <div class="text-xs text-base-content/70 mt-2">
+                            Заполните оба поля или оставьте оба пустыми для отключения лимита
                         </div>
                     </div>
 

@@ -51,6 +51,8 @@ const form = ref({
     additional_info: '',
     is_active: false,
     daily_limit: '',
+    monthly_limit: '',
+    monthly_limit_reset_day: '',
     daily_successful_orders_limit: '',
     max_pending_orders_quantity: null,
     min_order_amount: null,
@@ -142,6 +144,8 @@ const resetState = () => {
         additional_info: '',
         is_active: false,
         daily_limit: '',
+        monthly_limit: '',
+        monthly_limit_reset_day: '',
         daily_successful_orders_limit: '',
         max_pending_orders_quantity: null,
         min_order_amount: null,
@@ -191,6 +195,8 @@ const loadPaymentDetail = (id) => {
             additional_info: detail.additional_info ?? '',
             is_active: !!detail.is_active,
             daily_limit: detail.daily_limit,
+            monthly_limit: detail.monthly_limit,
+            monthly_limit_reset_day: detail.monthly_limit_reset_day,
             daily_successful_orders_limit: detail.daily_successful_orders_limit,
             max_pending_orders_quantity: detail.max_pending_orders_quantity,
             min_order_amount: detail.min_order_amount,
@@ -445,6 +451,33 @@ watch(
                     </div>
                     <div class="text-xs text-base-content/70 mt-2">
                         Оставьте пустым для отключения лимита
+                    </div>
+                </div>
+
+                <div class="rounded-box border border-base-300 p-4">
+                    <div class="text-sm font-medium mb-3">
+                        Ежемесячные лимиты ({{ payment_detail?.currency?.toUpperCase() || '' }})
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <NumberInputBlock
+                            v-model="form.monthly_limit"
+                            :form="{}"
+                            :errors="errors"
+                            :on-clear="(field) => (errors[field] = null)"
+                            field="monthly_limit"
+                            label="Объем сделок"
+                        />
+                        <NumberInputBlock
+                            v-model="form.monthly_limit_reset_day"
+                            :form="{}"
+                            :errors="errors"
+                            :on-clear="(field) => (errors[field] = null)"
+                            field="monthly_limit_reset_day"
+                            label="День сброса (1-28)"
+                        />
+                    </div>
+                    <div class="text-xs text-base-content/70 mt-2">
+                        Заполните оба поля или оставьте оба пустыми для отключения лимита
                     </div>
                 </div>
 

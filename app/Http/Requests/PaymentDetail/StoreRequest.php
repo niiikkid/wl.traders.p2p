@@ -104,6 +104,20 @@ class StoreRequest extends FormRequest
             ],
             'is_active' => ['required', 'boolean'],
             'daily_limit' => ['required', 'integer', 'min:1', 'max:100000000'],
+            'monthly_limit' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100000000',
+                Rule::requiredIf($this->monthly_limit_reset_day !== null && $this->monthly_limit_reset_day !== ''),
+            ],
+            'monthly_limit_reset_day' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:28',
+                Rule::requiredIf($this->monthly_limit !== null && $this->monthly_limit !== ''),
+            ],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'min_order_amount' => [
                 'nullable',
@@ -182,6 +196,8 @@ class StoreRequest extends FormRequest
             'additional_info' => __('дополнительная информация'),
             'is_active' => __('активность'),
             'daily_limit' => __('дневной лимит'),
+            'monthly_limit' => __('месячный лимит'),
+            'monthly_limit_reset_day' => __('день сброса месячного лимита'),
             'daily_successful_orders_limit' => __('дневной лимит по количеству сделок'),
             'min_order_amount' => __('минимальная сумма сделки'),
             'max_order_amount' => __('максимальная сумма сделки'),
@@ -196,6 +212,8 @@ class StoreRequest extends FormRequest
         $detail = $this->detail;
         $additionalInfo = $this->additional_info;
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
+        $monthlyLimit = $this->monthly_limit;
+        $monthlyLimitResetDay = $this->monthly_limit_reset_day;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
 
@@ -211,6 +229,12 @@ class StoreRequest extends FormRequest
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
             $dailySuccessfulOrdersLimit = null;
         }
+        if ($monthlyLimit === '' || $monthlyLimit === null) {
+            $monthlyLimit = null;
+        }
+        if ($monthlyLimitResetDay === '' || $monthlyLimitResetDay === null) {
+            $monthlyLimitResetDay = null;
+        }
         if ($minOrderAmount === '' || $minOrderAmount === null) {
             $minOrderAmount = null;
         }
@@ -223,6 +247,8 @@ class StoreRequest extends FormRequest
             'additional_info' => $additionalInfo,
             'currency' => strtolower($this->currency),
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
+            'monthly_limit' => $monthlyLimit,
+            'monthly_limit_reset_day' => $monthlyLimitResetDay,
             'min_order_amount' => $minOrderAmount,
             'max_order_amount' => $maxOrderAmount,
         ]);

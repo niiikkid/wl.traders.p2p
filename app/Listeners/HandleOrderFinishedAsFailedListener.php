@@ -7,6 +7,7 @@ use App\Enums\TransactionType;
 use App\Events\OrderFinishedAsFailedEvent;
 use App\Services\Order\Utils\DailyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
+use App\Services\Order\Utils\MonthlyLimit;
 use App\Utils\Transaction;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -29,6 +30,7 @@ class HandleOrderFinishedAsFailedListener implements ShouldQueue
     {
         Transaction::run(function () use ($event) {
             DailyLimit::decrement($event->order->payment_detail_id, $event->order->amount, $event->order->created_at);
+            MonthlyLimit::decrement($event->order->payment_detail_id, $event->order->amount, $event->order->created_at);
             DailySuccessfulOrdersLimit::decrement($event->order->payment_detail_id, $event->order->created_at);
 
             services()->wallet()->giveToBalance(

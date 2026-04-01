@@ -28,6 +28,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property boolean $is_active
  * @property Money $daily_limit
  * @property Money $current_daily_limit
+ * @property Money|null $monthly_limit
+ * @property Money $current_monthly_limit
+ * @property int|null $monthly_limit_reset_day
  * @property int|null $daily_successful_orders_limit
  * @property int $current_daily_successful_orders_count
  * @property Money $max_pending_orders_quantity
@@ -61,6 +64,9 @@ class PaymentDetail extends Model
         'is_active',
         'daily_limit',
         'current_daily_limit',
+        'monthly_limit',
+        'current_monthly_limit',
+        'monthly_limit_reset_day',
         'daily_successful_orders_limit',
         'current_daily_successful_orders_count',
         'max_pending_orders_quantity',
@@ -79,6 +85,8 @@ class PaymentDetail extends Model
     protected $casts = [
         'daily_limit' => MoneyCast::class,
         'current_daily_limit' => MoneyCast::class,
+        'monthly_limit' => MoneyCast::class,
+        'current_monthly_limit' => MoneyCast::class,
         'min_order_amount' => MoneyCast::class,
         'max_order_amount' => MoneyCast::class,
         'vip_min_order_amount_backup' => MoneyCast::class,

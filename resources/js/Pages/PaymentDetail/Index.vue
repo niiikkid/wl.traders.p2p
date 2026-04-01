@@ -601,6 +601,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                                                 :daily_limit="payment_detail.daily_limit"
                                                             />
                                                         </div>
+                                                        <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1">
+                                                            <div class="text-xs text-base-content/70">Объём сделок за месяц</div>
+                                                            <PaymentDetailLimit
+                                                                :current_daily_limit="payment_detail.current_monthly_limit"
+                                                                :daily_limit="payment_detail.monthly_limit"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </TableCellPopover>
                                             </td>

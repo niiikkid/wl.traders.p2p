@@ -12,6 +12,7 @@ use App\Exceptions\OrderException;
 use App\Models\Order;
 use App\Services\Order\Features\OrderDetailProvider\OrderDetailProvider;
 use App\Services\Order\Utils\DailyLimit;
+use App\Services\Order\Utils\MonthlyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
 
 class OrderDetailAssigner
@@ -72,6 +73,7 @@ class OrderDetailAssigner
         ]);
 
         DailyLimit::increment($this->order->payment_detail_id, $this->order->amount, $this->order->created_at);
+        MonthlyLimit::increment($this->order->payment_detail_id, $this->order->amount, $this->order->created_at);
         DailySuccessfulOrdersLimit::increment($this->order->payment_detail_id, $this->order->created_at);
 
         services()->wallet()->takeFromBalance(

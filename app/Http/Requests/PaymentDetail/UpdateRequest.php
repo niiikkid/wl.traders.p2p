@@ -45,6 +45,20 @@ class UpdateRequest extends FormRequest
             ],
             'is_active' => ['required', 'boolean'],
             'daily_limit' => ['required', 'numeric', 'min:0'],
+            'monthly_limit' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100000000',
+                Rule::requiredIf($this->monthly_limit_reset_day !== null && $this->monthly_limit_reset_day !== ''),
+            ],
+            'monthly_limit_reset_day' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:28',
+                Rule::requiredIf($this->monthly_limit !== null && $this->monthly_limit !== ''),
+            ],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'max_pending_orders_quantity' => ['required', 'integer', 'min:1', 'max:100000000'],
             'min_order_amount' => [
@@ -112,6 +126,8 @@ class UpdateRequest extends FormRequest
             'additional_info' => __('дополнительная информация'),
             'is_active' => __('активность'),
             'daily_limit' => __('дневной лимит'),
+            'monthly_limit' => __('месячный лимит'),
+            'monthly_limit_reset_day' => __('день сброса месячного лимита'),
             'daily_successful_orders_limit' => __('дневной лимит по количеству сделок'),
             'min_order_amount' => __('минимальная сумма сделки'),
             'max_order_amount' => __('максимальная сумма сделки'),
@@ -132,6 +148,8 @@ class UpdateRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
+        $monthlyLimit = $this->monthly_limit;
+        $monthlyLimitResetDay = $this->monthly_limit_reset_day;
         $additionalInfo = $this->additional_info;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
@@ -142,6 +160,12 @@ class UpdateRequest extends FormRequest
         if ($additionalInfo === '' || $additionalInfo === null) {
             $additionalInfo = null;
         }
+        if ($monthlyLimit === '' || $monthlyLimit === null) {
+            $monthlyLimit = null;
+        }
+        if ($monthlyLimitResetDay === '' || $monthlyLimitResetDay === null) {
+            $monthlyLimitResetDay = null;
+        }
         if ($minOrderAmount === '' || $minOrderAmount === null) {
             $minOrderAmount = null;
         }
@@ -151,6 +175,8 @@ class UpdateRequest extends FormRequest
 
         $this->merge([
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
+            'monthly_limit' => $monthlyLimit,
+            'monthly_limit_reset_day' => $monthlyLimitResetDay,
             'additional_info' => $additionalInfo,
             'min_order_amount' => $minOrderAmount,
             'max_order_amount' => $maxOrderAmount,

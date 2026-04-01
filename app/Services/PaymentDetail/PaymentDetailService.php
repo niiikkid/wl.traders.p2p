@@ -25,6 +25,11 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 'is_active' => $data->is_active,
                 'daily_limit' => Money::fromPrecision($data->daily_limit, Currency::make($data->currency)),
                 'current_daily_limit' => Money::fromPrecision(0, Currency::make($data->currency)),
+                'monthly_limit' => $data->monthly_limit !== null
+                    ? Money::fromPrecision($data->monthly_limit, Currency::make($data->currency))
+                    : null,
+                'current_monthly_limit' => Money::fromPrecision(0, Currency::make($data->currency)),
+                'monthly_limit_reset_day' => $data->monthly_limit_reset_day,
                 'daily_successful_orders_limit' => $data->daily_successful_orders_limit,
                 'current_daily_successful_orders_count' => 0,
                 'max_pending_orders_quantity' => $data->max_pending_orders_quantity,
@@ -60,6 +65,10 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 'additional_info' => $data->additional_info,
                 'is_active' => $data->is_active,
                 'daily_limit' => Money::fromPrecision($data->daily_limit, $paymentDetail->currency),
+                'monthly_limit' => $data->monthly_limit !== null
+                    ? Money::fromPrecision($data->monthly_limit, $paymentDetail->currency)
+                    : null,
+                'monthly_limit_reset_day' => $data->monthly_limit_reset_day,
                 'daily_successful_orders_limit' => $data->daily_successful_orders_limit,
                 'min_order_amount' => $data->min_order_amount ? Money::fromPrecision($data->min_order_amount, $paymentDetail->currency) : null,
                 'max_order_amount' => $data->max_order_amount ? Money::fromPrecision($data->max_order_amount, $paymentDetail->currency) : null,

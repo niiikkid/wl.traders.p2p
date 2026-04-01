@@ -172,6 +172,12 @@ class FindAvailablePaymentDetail
             })
             ->whereRaw('(daily_limit - current_daily_limit) >= ?', [$this->amount->toUnitsInt()])
             ->where(function (Builder $query) {
+                $query->whereNull('monthly_limit')
+                    ->orWhere('monthly_limit', 0)
+                    ->orWhereNull('monthly_limit_reset_day')
+                    ->orWhereRaw('(monthly_limit - current_monthly_limit) >= ?', [$this->amount->toUnitsInt()]);
+            })
+            ->where(function (Builder $query) {
                 $query->whereNull('daily_successful_orders_limit')
                     ->orWhereColumn('current_daily_successful_orders_count', '<', 'daily_successful_orders_limit');
             })
