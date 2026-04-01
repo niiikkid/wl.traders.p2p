@@ -23,7 +23,7 @@ import TempVipBanner from "@/Pages/MainPage/Trader/TempVipBanner.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
-import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
+//import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
 
 const viewStore = useViewStore();
 const orders = ref(usePage().props.orders);
@@ -158,9 +158,9 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
             <template v-slot:header>
                 <div class="space-y-4">
-                    <div class="w-full max-w-md">
+<!--                    <div class="w-full max-w-md">
                         <MoneyTreeGame />
-                    </div>
+                    </div>-->
 
                     <TempVipBanner
                         v-if="!viewStore.isAdminViewMode && tempVip?.enabled"
