@@ -333,12 +333,12 @@ onBeforeUnmount(() => {
                 </div>
             </div>
 
-            <div class="h-60 rounded-box bg-base-200/60 overflow-hidden flex items-end justify-center p-1">
+            <div class="h-72 rounded-box bg-base-200/60 overflow-hidden flex items-end justify-center p-1">
                 <img
                     v-if="!imageLoadError"
                     :src="imageSrc"
                     alt="Батюшка и его саженье"
-                    class="max-h-full max-w-full scale-110 rounded-xl object-contain object-bottom select-none"
+                    class="max-h-full max-w-full scale-115 rounded-xl object-contain object-bottom select-none"
                     draggable="false"
                     @error="handleImageError"
                 >
