@@ -298,7 +298,10 @@ onBeforeUnmount(() => {
         <div class="card-body p-4 gap-3">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <div class="badge badge-success badge-outline mb-1">Любимое денежное древо батюшки.</div>
+                    <div class="badge badge-success badge-outline mb-1">
+                        <span class="sm:hidden">Любимое дерево</span>
+                        <span class="hidden sm:inline">Любимое денежное древо батюшки.</span>
+                    </div>
                     <p class="text-xs text-base-content/70">{{ activePhaseMeta.title }}</p>
                 </div>
 
