@@ -142,6 +142,13 @@ const chartTabs = [
     { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
 ];
 
+const periodPresetOptions = [
+    { value: 'today', label: 'Сегодня' },
+    { value: 'week', label: 'Неделя' },
+    { value: 'month', label: 'Месяц' },
+    { value: 'all', label: 'Все' },
+];
+
 const colorProbeSpans = {};
 const getThemeColor = (token) => {
     let span = colorProbeSpans[token];
@@ -601,8 +608,8 @@ defineOptions({ layout: AuthenticatedLayout });
                         </div>
                     </div>
 
-                    <div class="mt-8 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-                        <div class="join join-horizontal flex-wrap">
+                    <div class="mt-8 flex flex-col xl:flex-row lg:items-start xl:justify-between gap-3">
+                        <div class="hidden md:join md:join-horizontal md:flex md:flex-wrap">
                             <button
                                 v-for="tab in chartTabs"
                                 :key="tab.value"
@@ -613,6 +620,33 @@ defineOptions({ layout: AuthenticatedLayout });
                             >
                                 {{ tab.label }}
                             </button>
+                        </div>
+
+                        <div class="dropdown md:hidden">
+                            <button
+                                type="button"
+                                tabindex="0"
+                                class="btn btn-sm bg-base-100 border-transparent"
+                            >
+                                Тип графика: {{ activeTabTitle }}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <ul
+                                tabindex="0"
+                                class="dropdown-content z-30 mt-2 menu p-2 shadow bg-base-100 rounded-box w-56 max-w-[calc(100vw-1rem)] border border-base-300"
+                            >
+                                <li v-for="tab in chartTabs" :key="`mobile-chart-tab-${tab.value}`">
+                                    <button
+                                        type="button"
+                                        :class="activeChartTab === tab.value ? 'menu-active' : ''"
+                                        @click="activeChartTab = tab.value"
+                                    >
+                                        {{ tab.label }}
+                                    </button>
+                                </li>
+                            </ul>
                         </div>
 
                         <div class="flex flex-col gap-2 lg:items-end">
@@ -635,8 +669,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                         ></span>
                                     </button>
 
-                                    <div class="dropdown-content z-30 mt-2 w-[24rem] bg-base-100 border border-base-300 rounded-box shadow p-3">
-                                        <div class="grid grid-cols-[8.5rem_1fr] gap-3">
+                                    <div class="dropdown-content z-30 mt-2 w-[20rem] md:w-[24rem] max-w-[calc(100vw-1rem)] bg-base-100 border border-base-300 rounded-box shadow p-3">
+                                        <div class="grid grid-cols-1 md:grid-cols-[8.5rem_1fr] gap-3">
                                             <div class="border border-base-300 rounded-md p-2 space-y-1">
                                                 <button
                                                     v-for="filterType in filterTypes"
@@ -714,7 +748,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </div>
                                 </div>
 
-                                <div class="join join-horizontal flex-wrap">
+                                <div class="hidden md:join md:join-horizontal md:flex md:flex-wrap">
                                     <button
                                         type="button"
                                         class="btn btn-sm join-item"
@@ -739,7 +773,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     >
                                         Месяц
                                     </button>
-                                    <div class="dropdown dropdown-end" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
+                                    <div class="dropdown" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
                                         <button
                                             type="button"
                                             class="btn btn-sm join-item"
@@ -748,7 +782,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         >
                                             Свой период
                                         </button>
-                                        <div class="dropdown-content z-30 mt-2 w-72 bg-base-100 border border-base-300 rounded-box shadow p-3">
+                                        <div class="dropdown-content z-30 mt-2 w-72 bg-base-100 border border-base-300 rounded-box shadow p-3 left-0 right-auto translate-x-0">
                                             <div class="flex items-center gap-2">
                                                 <input
                                                     v-model="selectedDateFrom"
@@ -777,6 +811,66 @@ defineOptions({ layout: AuthenticatedLayout });
                                     >
                                         Все
                                     </button>
+                                </div>
+
+                                <div class="flex md:hidden items-start gap-2">
+                                    <div class="dropdown">
+                                        <button
+                                            type="button"
+                                            tabindex="0"
+                                            class="btn btn-sm bg-base-100 border-transparent"
+                                        >
+                                            Период
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                        <ul
+                                            tabindex="0"
+                                            class="dropdown-content z-30 mt-2 menu p-2 shadow bg-base-100 rounded-box w-44 border border-base-300"
+                                        >
+                                            <li v-for="option in periodPresetOptions" :key="option.value">
+                                                <button
+                                                    type="button"
+                                                    :class="selectedPeriodPreset === option.value ? 'menu-active' : ''"
+                                                    @click="setPeriodPreset(option.value)"
+                                                >
+                                                    {{ option.label }}
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="dropdown" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
+                                        <button
+                                            type="button"
+                                            class="btn btn-sm"
+                                            :class="selectedPeriodPreset === 'custom' ? 'btn-primary' : 'bg-base-100 border-transparent'"
+                                            @click="openCustomPeriodDropdown"
+                                        >
+                                            Свой период
+                                        </button>
+                                        <div class="dropdown-content z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] bg-base-100 border border-base-300 rounded-box shadow p-3 left-1/2 -translate-x-1/2">
+                                            <div class="flex items-center gap-2">
+                                                <input
+                                                    v-model="selectedDateFrom"
+                                                    type="date"
+                                                    class="input input-bordered input-sm w-full"
+                                                >
+                                                <span class="text-sm text-base-content/60">—</span>
+                                                <input
+                                                    v-model="selectedDateTo"
+                                                    type="date"
+                                                    class="input input-bordered input-sm w-full"
+                                                >
+                                            </div>
+                                            <div class="flex justify-end mt-3">
+                                                <button type="button" class="btn btn-ghost btn-sm" @click="customPeriodDropdownOpen = false">
+                                                    Закрыть
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
