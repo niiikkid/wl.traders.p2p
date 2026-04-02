@@ -84,7 +84,11 @@ const normalizeEventVariants = () => {
         event: events.map((item) => {
             const keyName = `notifications.events.${item.value}`;
             const fallbackName = eventLabelFallbacks[item.value];
-            const name = item.name === keyName ? (fallbackName ?? item.name) : item.name;
+            const shouldUseFallback = !item.name
+                || item.name === keyName
+                || item.name === item.value
+                || item.name.startsWith('notifications.events.');
+            const name = shouldUseFallback ? (fallbackName ?? item.name) : item.name;
 
             return {
                 ...item,
@@ -92,6 +96,8 @@ const normalizeEventVariants = () => {
             };
         }),
     };
+
+    tableFiltersStore.setFiltersVariants(filtersVariants.value);
 };
 
 const eventLabels = computed(() => {
@@ -418,7 +424,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     :disabled="markAllForm.processing"
                     @click.prevent="markAllRead"
                 >
-                    Отметить все прочитанными
+                    Все прочитано
                 </button>
             </template>
 
