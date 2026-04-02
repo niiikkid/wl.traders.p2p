@@ -867,7 +867,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         >
                                             Свой период
                                         </button>
-                                        <div class="dropdown-content z-30 mt-2 w-72 bg-base-100 border border-base-300 rounded-box shadow p-3">
+                                        <div class="dropdown-content z-30 mt-2 w-72 bg-base-100 border border-base-300 rounded-box shadow p-3 right-0 left-auto">
                                             <div class="flex items-center gap-2">
                                                 <input
                                                     v-model="selectedDateFrom"

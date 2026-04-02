@@ -773,7 +773,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     >
                                         Месяц
                                     </button>
-                                    <div class="dropdown" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
+                                    <div class="dropdown dropdown-end" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
                                         <button
                                             type="button"
                                             class="btn btn-sm join-item"
@@ -782,7 +782,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         >
                                             Свой период
                                         </button>
-                                        <div class="dropdown-content z-30 mt-2 w-72 bg-base-100 border border-base-300 rounded-box shadow p-3 left-0 right-auto translate-x-0">
+                                        <div class="dropdown-content z-30 mt-2 w-72 bg-base-100 border border-base-300 rounded-box shadow p-3 right-0 left-auto">
                                             <div class="flex items-center gap-2">
                                                 <input
                                                     v-model="selectedDateFrom"
