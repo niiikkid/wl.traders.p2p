@@ -515,7 +515,7 @@ const applyFilter = (options = {}) => {
     router.visit(route('trader.main.index'), {
         data: requestData,
         preserveScroll: true,
-        preserveState: false,
+        preserveState: true,
         replace: true,
         onFinish: () => {
             processing.value = false;

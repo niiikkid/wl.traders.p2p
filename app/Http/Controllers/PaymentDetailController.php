@@ -13,6 +13,7 @@ use App\Http\Resources\UserDeviceResource;
 use App\Models\PaymentDetail;
 use App\Models\PaymentDetailTag;
 use App\Models\PaymentGateway;
+use App\Models\Order;
 use App\Models\User;
 use App\Models\UserDevice;
 use App\Services\Money\Money;
@@ -22,6 +23,7 @@ use App\DTO\PaymentDetail\PaymentDetailCreateDTO;
 use App\DTO\PaymentDetail\PaymentDetailUpdateDTO;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class PaymentDetailController extends Controller
@@ -46,6 +48,8 @@ class PaymentDetailController extends Controller
                     ->get()
             )->resolve();
         }
+
+        $this->appendSuccessfulOrdersStats($paymentDetails->getCollection());
 
         $paymentDetails = PaymentDetailResource::collection($paymentDetails);
 
@@ -318,5 +322,36 @@ class PaymentDetailController extends Controller
         }
 
         return $payload;
+    }
+
+    protected function appendSuccessfulOrdersStats(\Illuminate\Support\Collection $paymentDetails): void
+    {
+        $paymentDetails->each(function (PaymentDetail $paymentDetail) {
+            $stats = Cache::remember(
+                "payment_detail_success_stats:{$paymentDetail->id}",
+                now()->addMinutes(15),
+                function () use ($paymentDetail): array {
+                    $aggregate = Order::query()
+                        ->where('payment_detail_id', $paymentDetail->id)
+                        ->where('status', OrderStatus::SUCCESS)
+                        ->selectRaw('COUNT(*) as successful_orders_count, COALESCE(SUM(base_amount), 0) as fiat_turnover, COALESCE(SUM(total_profit), 0) as usdt_turnover')
+                        ->first();
+
+                    $successfulOrdersCount = (int) ($aggregate?->successful_orders_count ?? 0);
+                    $fiatTurnover = (int) ($aggregate?->fiat_turnover ?? 0);
+                    $usdtTurnover = (int) ($aggregate?->usdt_turnover ?? 0);
+
+                    return [
+                        'successful_orders_total_count' => $successfulOrdersCount,
+                        'successful_orders_total_turnover_fiat' => Money::fromUnits($fiatTurnover, $paymentDetail->currency)->toBeauty(),
+                        'successful_orders_total_turnover_usdt' => Money::fromUnits($usdtTurnover, Currency::USDT())->toBeauty(),
+                    ];
+                }
+            );
+
+            $paymentDetail->setAttribute('successful_orders_total_count', $stats['successful_orders_total_count']);
+            $paymentDetail->setAttribute('successful_orders_total_turnover_fiat', $stats['successful_orders_total_turnover_fiat']);
+            $paymentDetail->setAttribute('successful_orders_total_turnover_usdt', $stats['successful_orders_total_turnover_usdt']);
+        });
     }
 }

@@ -45,6 +45,9 @@ class PaymentDetailResource extends JsonResource
             'user_device_id' => $this->user_device_id,
             'created_at' => $this->created_at->toDateString(),
             'payment_gateway_ids' => $this->payment_gateway_ids ?? [],
+            'successful_orders_total_count' => $this->resource->successful_orders_total_count ?? 0,
+            'successful_orders_total_turnover_fiat' => $this->resource->successful_orders_total_turnover_fiat ?? null,
+            'successful_orders_total_turnover_usdt' => $this->resource->successful_orders_total_turnover_usdt ?? null,
             $this->mergeWhen($this->resource->relationLoaded('paymentGateways'), function () {
                 /**
                  * @var PaymentDetail $this

@@ -98,6 +98,36 @@ const normalizeNumber = (value) => {
     return Number(String(value).replace(/\s/g, '').replace(',', '.')) || 0;
 };
 
+const formatInteger = (value) => {
+    const number = Number(value ?? 0);
+
+    if (!Number.isFinite(number)) {
+        return '0';
+    }
+
+    return new Intl.NumberFormat('ru-RU', {
+        maximumFractionDigits: 0,
+    }).format(Math.trunc(number));
+};
+
+const formatMoneyAmount = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return '-';
+    }
+
+    const normalized = String(value).replace(/\s/g, '').replace(',', '.');
+    const number = Number(normalized);
+
+    if (!Number.isFinite(number)) {
+        return String(value);
+    }
+
+    return new Intl.NumberFormat('ru-RU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(number);
+};
+
 const percentFrom = (current, limit) => {
     const current_value = normalizeNumber(current);
     const limit_value = normalizeNumber(limit);
@@ -644,6 +674,24 @@ defineOptions({ layout: AuthenticatedLayout })
                                                                     <span class="text-right">{{ payment_detail.max_order_amount !== null ? payment_detail.max_order_amount : '∞' }}</span>
                                                                 </div>
                                                             </div>
+                                                            <div class="divider my-1"></div>
+                                                            <div class="grid gap-1.5">
+                                                                <div class="flex items-center justify-between gap-2">
+                                                                    <span class="text-base-content/50">Сделок:</span>
+                                                                    <span class="text-right font-medium">{{ formatInteger(payment_detail.successful_orders_total_count) }}</span>
+                                                                </div>
+                                                                <div class="flex items-center justify-between gap-2">
+                                                                    <span class="text-base-content/50">Оборот:</span>
+                                                                    <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_fiat) }} <span class="text-primary">{{ payment_detail.currency?.toUpperCase?.() }}</span></span>
+                                                                </div>
+                                                                <div class="flex items-center justify-between gap-2">
+                                                                    <span class="text-base-content/50">Оборот:</span>
+                                                                    <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_usdt) }} <span class="text-primary">USDT</span></span>
+                                                                </div>
+                                                                <div class="pt-1 text-[11px] text-base-content/50 text-center">
+                                                                    Обновляется раз в 15 минут
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </TableInfoDropdown>
                                                     <TableActionsDropdown v-if="currentTab === 'active'">
@@ -848,6 +896,26 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <span>Интервал:</span>
                                                 <div class="text-nowrap text-xs">
                                                     {{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}
+                                                </div>
+                                            </div>
+                                            <div class="grid gap-1 text-sm">
+                                                <span class="text-base-content/50">Статистика:</span>
+                                                <div class="grid gap-0.5 text-xs">
+                                                    <div>
+                                                        <span class="opacity-60">Сделок:</span>
+                                                        {{ formatInteger(payment_detail.successful_orders_total_count) }}
+                                                    </div>
+                                                    <div>
+                                                        <span class="opacity-60">Оборот:</span>
+                                                        {{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_fiat) }} <span class="text-primary">{{ payment_detail.currency?.toUpperCase?.() }}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="opacity-60">Оборот:</span>
+                                                        {{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_usdt) }} <span class="text-primary">USDT</span>
+                                                    </div>
+                                                    <div class="pt-1 text-[11px] text-base-content/50 text-center">
+                                                        Обновляется раз в 15 минут
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div class="grid gap-1 text-sm">
