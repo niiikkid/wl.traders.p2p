@@ -249,7 +249,7 @@ onMounted(async () => {
                             tabindex="0"
                             type="button"
                             role="button"
-                            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl"
+                            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
                         >
                             <div class="flex items-center justify-center gap-2">
                                 <svg class="w-6 h-6 text-primary shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
@@ -370,7 +370,7 @@ onMounted(async () => {
                             tabindex="0"
                             type="button"
                             role="button"
-                            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl"
+                            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
                         >
                             <div class="flex items-center justify-center gap-2">
                                 <svg class="w-6 h-6 text-primary shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
