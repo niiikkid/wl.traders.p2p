@@ -22,6 +22,7 @@ use App\Models\UserMeta;
 use App\Services\Money\Currency;
 use App\Services\PaymentDetail\PaymentDetailEnabledPeriodService;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
+use App\Services\Wallet\Values\WalletStatsValue;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -266,6 +267,13 @@ class HandleInertiaRequests extends Middleware
             'payoutsActiveCount' => (int)$payoutsActiveCount,
         ];
 
+        $sharedWalletStats = null;
+        if (auth()->check() && (isRouteFor('Trader') || isRouteFor('Merchant'))) {
+            /** @var WalletStatsValue $walletStatsValue */
+            $walletStatsValue = services()->wallet()->getWalletStats($request->user()->wallet);
+            $sharedWalletStats = $walletStatsValue->toArray();
+        }
+
         return [
             ...parent::share($request),
             'app' => [
@@ -291,6 +299,7 @@ class HandleInertiaRequests extends Middleware
             'data' => [
                 'rates' => fn () => $rates,
                 'wallet' => fn () => $request->user() ? WalletResource::make($request->user()->wallet)->resolve() : null,
+                'wallet_stats' => fn () => $sharedWalletStats,
                 'hasPendingDisputes' => fn () => $request->user()?->hasRole('Trader') ? $menu['pendingDisputesCount'] > 0 : 0,
             ],
             'notificationsSound' => [
