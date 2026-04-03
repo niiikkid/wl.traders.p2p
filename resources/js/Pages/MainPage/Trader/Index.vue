@@ -1097,10 +1097,38 @@ defineOptions({ layout: AuthenticatedLayout });
                         </div>
                     </div>
 
+                    <div v-if="canNavigateByPeriod" class="mt-4 sm:hidden">
+                        <div class="join join-horizontal items-center w-full">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-ghost join-item"
+                                :disabled="processing"
+                                @click="navigatePeriod(-1)"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <span class="join-item flex-1 px-3 text-sm font-medium text-base-content text-center">
+                                {{ selectedPeriodLabel }}
+                            </span>
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-ghost join-item"
+                                :disabled="processing"
+                                @click="navigatePeriod(1)"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7-7 7" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="card bg-base-100 shadow mt-4 pt-4 pb-7 px-6 pl-3">
                         <div class="flex items-center justify-between gap-3 pl-3">
                             <h2 class="text-base-content/70 text-lg">{{ activeTabTitle }}</h2>
-                            <div v-if="canNavigateByPeriod" class="join join-horizontal items-center">
+                            <div v-if="canNavigateByPeriod" class="hidden sm:join sm:join-horizontal sm:items-center sm:flex">
                                 <button
                                     type="button"
                                     class="btn btn-sm btn-ghost join-item"
