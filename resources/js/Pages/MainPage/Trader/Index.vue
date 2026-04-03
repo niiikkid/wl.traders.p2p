@@ -96,6 +96,12 @@ const activeChartTab = ref('income');
 const selectedPeriodPreset = ref(selectedPeriodPresetProp.value || 'month');
 const selectedDateFrom = ref(selectedDateFromProp.value || '');
 const selectedDateTo = ref(selectedDateToProp.value || '');
+const selectedPeriodCursor = ref('');
+const periodCursors = ref({
+    today: '',
+    week: '',
+    month: '',
+});
 const filterDropdownOpen = ref(false);
 const customPeriodDropdownOpen = ref(false);
 const activeFilterType = ref('payment_method');
@@ -148,6 +154,154 @@ const periodPresetOptions = [
     { value: 'month', label: 'Месяц' },
     { value: 'all', label: 'Все' },
 ];
+
+const russianMonthFormatter = new Intl.DateTimeFormat('ru-RU', {
+    month: 'long',
+    year: 'numeric',
+});
+const russianShortDateFormatter = new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+});
+
+const parseIsoDate = (value) => {
+    if (!value) {
+        return null;
+    }
+    const [year, month, day] = String(value).split('-').map((item) => Number(item));
+    if (!year || !month || !day) {
+        return null;
+    }
+    const parsedDate = new Date(year, month - 1, day);
+    return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const formatDateToIso = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const getMonthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
+const getMonthEnd = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0);
+const getDayStart = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+const getWeekDayNumber = (date) => {
+    const dayNumber = date.getDay();
+    return dayNumber === 0 ? 7 : dayNumber;
+};
+const getWeekStart = (date) => addDays(getDayStart(date), 1 - getWeekDayNumber(date));
+const getWeekEnd = (date) => addDays(getWeekStart(date), 6);
+const addDays = (date, days) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+const addMonths = (date, months) => new Date(date.getFullYear(), date.getMonth() + months, 1);
+
+const normalizeRuShortDate = (date) => russianShortDateFormatter.format(date).replace('.', '');
+
+const canNavigateByPeriod = computed(() => ['today', 'week', 'month'].includes(selectedPeriodPreset.value));
+
+const getDefaultCursorByPreset = (preset) => {
+    const now = new Date();
+    if (preset === 'month') {
+        return formatDateToIso(getMonthStart(now));
+    }
+    if (preset === 'week') {
+        return formatDateToIso(getWeekStart(now));
+    }
+    return formatDateToIso(getDayStart(now));
+};
+
+const setPresetCursor = (preset, cursor) => {
+    if (!['today', 'week', 'month'].includes(preset) || !cursor) {
+        return;
+    }
+    periodCursors.value[preset] = cursor;
+    if (selectedPeriodPreset.value === preset) {
+        selectedPeriodCursor.value = cursor;
+    }
+};
+
+const getPresetCursor = (preset) => {
+    if (!['today', 'week', 'month'].includes(preset)) {
+        return '';
+    }
+    return periodCursors.value[preset] || getDefaultCursorByPreset(preset);
+};
+
+const initializePeriodCursors = () => {
+    periodCursors.value.today = getDefaultCursorByPreset('today');
+    periodCursors.value.week = getDefaultCursorByPreset('week');
+    periodCursors.value.month = getDefaultCursorByPreset('month');
+};
+
+const resolvePeriodAnchorDate = (cursor = null, preset = selectedPeriodPreset.value) => {
+    const cursorDate = parseIsoDate(cursor);
+    if (cursorDate) {
+        if (preset === 'month') {
+            return getMonthStart(cursorDate);
+        }
+        if (preset === 'week') {
+            return getWeekStart(cursorDate);
+        }
+        return getDayStart(cursorDate);
+    }
+
+    if (preset === 'week') {
+        const dateFrom = parseIsoDate(selectedDateFrom.value);
+        if (dateFrom) {
+            return getWeekStart(dateFrom);
+        }
+    }
+
+    const dateFrom = parseIsoDate(selectedDateFrom.value);
+    if (dateFrom) {
+        if (preset === 'month') {
+            return getMonthStart(dateFrom);
+        }
+        if (preset === 'week') {
+            return getWeekStart(dateFrom);
+        }
+        return getDayStart(dateFrom);
+    }
+
+    const dateTo = parseIsoDate(selectedDateTo.value);
+    if (dateTo) {
+        if (preset === 'month') {
+            return getMonthStart(dateTo);
+        }
+        if (preset === 'week') {
+            return getWeekStart(dateTo);
+        }
+        return getDayStart(dateTo);
+    }
+
+    if (preset === 'month') {
+        return getMonthStart(new Date());
+    }
+    if (preset === 'week') {
+        return getWeekStart(new Date());
+    }
+    return getDayStart(new Date());
+};
+
+const selectedPeriodLabel = computed(() => {
+    if (!canNavigateByPeriod.value) {
+        return '';
+    }
+
+    if (selectedPeriodPreset.value === 'month') {
+        const monthDate = resolvePeriodAnchorDate(selectedPeriodCursor.value, 'month');
+        const label = russianMonthFormatter.format(monthDate);
+        return label.charAt(0).toUpperCase() + label.slice(1);
+    }
+
+    if (selectedPeriodPreset.value === 'today') {
+        return normalizeRuShortDate(resolvePeriodAnchorDate(selectedPeriodCursor.value, 'today'));
+    }
+
+    const weekStartDate = resolvePeriodAnchorDate(selectedPeriodCursor.value, 'week');
+    const weekEndDate = getWeekEnd(weekStartDate);
+    return `${normalizeRuShortDate(weekStartDate)} — ${normalizeRuShortDate(weekEndDate)}`;
+});
 
 const colorProbeSpans = {};
 const getThemeColor = (token) => {
@@ -311,7 +465,7 @@ watch(activeData, () => {
     renderChart();
 }, { deep: true });
 
-const applyFilter = () => {
+const applyFilter = (options = {}) => {
     if (processing.value) {
         return;
     }
@@ -319,7 +473,36 @@ const applyFilter = () => {
     const requestData = {
         period: selectedPeriodPreset.value,
     };
-    if (selectedPeriodPreset.value === 'custom' && selectedDateFrom.value && selectedDateTo.value) {
+    if (selectedPeriodPreset.value === 'month') {
+        const monthAnchorDate = resolvePeriodAnchorDate(options.periodCursor || selectedPeriodCursor.value, 'month');
+        const startDate = getMonthStart(monthAnchorDate);
+        const endDate = getMonthEnd(monthAnchorDate);
+        const nextCursor = formatDateToIso(startDate);
+        setPresetCursor('month', nextCursor);
+        selectedDateFrom.value = formatDateToIso(startDate);
+        selectedDateTo.value = formatDateToIso(endDate);
+        requestData.date_from = selectedDateFrom.value;
+        requestData.date_to = selectedDateTo.value;
+    } else if (selectedPeriodPreset.value === 'today') {
+        const dayAnchorDate = resolvePeriodAnchorDate(options.periodCursor || selectedPeriodCursor.value, 'today');
+        const startDate = getDayStart(dayAnchorDate);
+        const endDate = getDayStart(dayAnchorDate);
+        const nextCursor = formatDateToIso(dayAnchorDate);
+        setPresetCursor('today', nextCursor);
+        selectedDateFrom.value = formatDateToIso(startDate);
+        selectedDateTo.value = formatDateToIso(endDate);
+        requestData.date_from = selectedDateFrom.value;
+        requestData.date_to = selectedDateTo.value;
+    } else if (selectedPeriodPreset.value === 'week') {
+        const weekStartDate = resolvePeriodAnchorDate(options.periodCursor || selectedPeriodCursor.value, 'week');
+        const weekEndDate = getWeekEnd(weekStartDate);
+        const nextCursor = formatDateToIso(weekStartDate);
+        setPresetCursor('week', nextCursor);
+        selectedDateFrom.value = formatDateToIso(weekStartDate);
+        selectedDateTo.value = formatDateToIso(weekEndDate);
+        requestData.date_from = selectedDateFrom.value;
+        requestData.date_to = selectedDateTo.value;
+    } else if (selectedPeriodPreset.value === 'custom' && selectedDateFrom.value && selectedDateTo.value) {
         requestData.date_from = selectedDateFrom.value;
         requestData.date_to = selectedDateTo.value;
     }
@@ -436,6 +619,10 @@ const setPeriodPreset = (preset) => {
     if (preset !== 'custom') {
         customPeriodDropdownOpen.value = false;
     }
+    if (['today', 'week', 'month'].includes(preset)) {
+        const currentCursor = getDefaultCursorByPreset(preset);
+        setPresetCursor(preset, currentCursor);
+    }
     if (preset !== 'custom') {
         applyFilter();
         return;
@@ -443,6 +630,21 @@ const setPeriodPreset = (preset) => {
     if (selectedDateFrom.value && selectedDateTo.value) {
         applyFilter();
     }
+};
+
+const navigatePeriod = (step) => {
+    if (!canNavigateByPeriod.value) {
+        return;
+    }
+    const currentAnchorDate = resolvePeriodAnchorDate(selectedPeriodCursor.value, selectedPeriodPreset.value);
+    const nextAnchorDate = selectedPeriodPreset.value === 'month'
+        ? getMonthStart(addMonths(currentAnchorDate, step))
+        : selectedPeriodPreset.value === 'week'
+            ? getWeekStart(addDays(currentAnchorDate, step * 7))
+            : getDayStart(addDays(currentAnchorDate, step));
+    const nextPeriodCursor = formatDateToIso(nextAnchorDate);
+    setPresetCursor(selectedPeriodPreset.value, nextPeriodCursor);
+    applyFilter({ periodCursor: nextPeriodCursor });
 };
 
 const openCustomPeriodDropdown = () => {
@@ -464,6 +666,13 @@ watch([selectedDateFrom, selectedDateTo], () => {
 
 watch(selectedPeriodPresetProp, (newValue) => {
     selectedPeriodPreset.value = newValue || 'month';
+    if (['today', 'week', 'month'].includes(newValue || 'month')) {
+        const nextCursor = formatDateToIso(resolvePeriodAnchorDate(
+            selectedDateFromProp.value,
+            newValue || 'month',
+        ));
+        setPresetCursor(newValue || 'month', nextCursor);
+    }
     if ((newValue || 'month') !== 'custom') {
         customPeriodDropdownOpen.value = false;
     }
@@ -471,6 +680,10 @@ watch(selectedPeriodPresetProp, (newValue) => {
 
 watch(selectedDateFromProp, (newValue) => {
     selectedDateFrom.value = newValue || '';
+    if (['today', 'week', 'month'].includes(selectedPeriodPreset.value)) {
+        const nextCursor = formatDateToIso(resolvePeriodAnchorDate(newValue, selectedPeriodPreset.value));
+        setPresetCursor(selectedPeriodPreset.value, nextCursor);
+    }
 });
 
 watch(selectedDateToProp, (newValue) => {
@@ -497,8 +710,16 @@ let themeObserver = null;
 let scheduledThemeUpdate = false;
 
 onMounted(() => {
+    initializePeriodCursors();
     updateIsMobile();
     window.addEventListener('resize', updateIsMobile);
+    if (['today', 'week', 'month'].includes(selectedPeriodPreset.value)) {
+        const nextCursor = formatDateToIso(resolvePeriodAnchorDate(
+            selectedDateFrom.value,
+            selectedPeriodPreset.value,
+        ));
+        setPresetCursor(selectedPeriodPreset.value, nextCursor);
+    }
     renderChart();
     filterTypes.forEach((filterType) => {
         if ((selectedFilters.value[filterType.key] || []).length > 0) {
@@ -877,7 +1098,34 @@ defineOptions({ layout: AuthenticatedLayout });
                     </div>
 
                     <div class="card bg-base-100 shadow mt-4 pt-4 pb-7 px-6 pl-3">
-                        <h2 class="text-base-content/70 text-lg pl-3">{{ activeTabTitle }}</h2>
+                        <div class="flex items-center justify-between gap-3 pl-3">
+                            <h2 class="text-base-content/70 text-lg">{{ activeTabTitle }}</h2>
+                            <div v-if="canNavigateByPeriod" class="join join-horizontal items-center">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-ghost join-item"
+                                    :disabled="processing"
+                                    @click="navigatePeriod(-1)"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <span class="join-item px-3 text-sm font-medium text-base-content min-w-36 text-center">
+                                    {{ selectedPeriodLabel }}
+                                </span>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-ghost join-item"
+                                    :disabled="processing"
+                                    @click="navigatePeriod(1)"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7-7 7" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                         <div ref="chart" class="h-50"></div>
                     </div>
 

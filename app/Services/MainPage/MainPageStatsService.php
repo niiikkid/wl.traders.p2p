@@ -812,15 +812,24 @@ class MainPageStatsService implements MainPageStatsServiceContract
             : 'month';
 
         $now = now();
-        $startDate = $now->copy()->subDays(29)->startOfDay();
-        $endDate = $now->copy()->endOfDay();
+        $monthAnchorDate = $this->parseDateValue($dateFrom)
+            ?? $this->parseDateValue($dateTo)
+            ?? $now->copy();
+        $startDate = $monthAnchorDate->copy()->startOfMonth()->startOfDay();
+        $endDate = $monthAnchorDate->copy()->endOfMonth()->endOfDay();
 
         if ($normalizedPreset === 'today') {
-            $startDate = $now->copy()->startOfDay();
-            $endDate = $now->copy()->endOfDay();
+            $dayAnchorDate = $this->parseDateValue($dateFrom)
+                ?? $this->parseDateValue($dateTo)
+                ?? $now->copy();
+            $startDate = $dayAnchorDate->copy()->startOfDay();
+            $endDate = $dayAnchorDate->copy()->endOfDay();
         } elseif ($normalizedPreset === 'week') {
-            $startDate = $now->copy()->subDays(6)->startOfDay();
-            $endDate = $now->copy()->endOfDay();
+            $weekAnchorDate = $this->parseDateValue($dateFrom)
+                ?? $this->parseDateValue($dateTo)
+                ?? $now->copy();
+            $startDate = $weekAnchorDate->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+            $endDate = $weekAnchorDate->copy()->endOfWeek(Carbon::SUNDAY)->endOfDay();
         } elseif ($normalizedPreset === 'custom') {
             $parsedStart = $this->parseDateValue($dateFrom);
             $parsedEnd = $this->parseDateValue($dateTo);
