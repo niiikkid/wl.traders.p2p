@@ -159,8 +159,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/orders/{order}/accept', [\App\Http\Controllers\OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::patch('/orders/{order}/amount', [\App\Http\Controllers\Admin\OrderController::class, 'updateAmount'])->name('orders.update.amount');
 
-        //statistics
-        Route::get('trader/statistics', [\App\Http\Controllers\Trader\StatisticController::class, 'index'])->name('trader.statistics.index');
         Route::get('/trader/leaderboard', [\App\Http\Controllers\Trader\TraderLeaderboardController::class, 'index'])->name('trader.leaderboard.index');
         Route::patch('/trader/leaderboard/hide-name', [\App\Http\Controllers\Trader\TraderLeaderboardController::class, 'updateHideName'])->name('trader.leaderboard.hide-name.update');
 
