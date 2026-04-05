@@ -353,7 +353,7 @@ onMounted(async () => {
                                                 Прошлая неделя
                                             </button>
                                         </div>
-                                        <p class="text-xs text-base-content/70 break-words whitespace-normal">
+                                        <p class="text-xs text-base-content/70 break-words whitespace-normal  mt-2">
                                             {{ formatTraderTopPeriod }}
                                         </p>
                                     </div>
