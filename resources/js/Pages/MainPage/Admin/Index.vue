@@ -707,6 +707,15 @@ const toggleMobilePeriodDropdown = () => {
 };
 
 const handleMobileDropdownOutsideClick = (event) => {
+    if (
+        !mobileChartDropdownOpen.value
+        && !mobilePeriodDropdownOpen.value
+        && !filterDropdownOpen.value
+        && !customPeriodDropdownOpen.value
+    ) {
+        return;
+    }
+
     const clickTarget = event.target;
     if (!(clickTarget instanceof Node)) {
         return;
@@ -725,19 +734,19 @@ const handleMobileDropdownOutsideClick = (event) => {
 
     let hasClosedDropdown = false;
 
-    if (!clickedInsideChart) {
+    if (!clickedInsideChart && mobileChartDropdownOpen.value) {
         mobileChartDropdownOpen.value = false;
         hasClosedDropdown = true;
     }
-    if (!clickedInsidePeriod) {
+    if (!clickedInsidePeriod && mobilePeriodDropdownOpen.value) {
         mobilePeriodDropdownOpen.value = false;
         hasClosedDropdown = true;
     }
-    if (!clickedInsideFilters) {
+    if (!clickedInsideFilters && filterDropdownOpen.value) {
         filterDropdownOpen.value = false;
         hasClosedDropdown = true;
     }
-    if (!clickedInsideDesktopCustomPeriod && !clickedInsideMobileCustomPeriod) {
+    if (!clickedInsideDesktopCustomPeriod && !clickedInsideMobileCustomPeriod && customPeriodDropdownOpen.value) {
         customPeriodDropdownOpen.value = false;
         hasClosedDropdown = true;
     }
