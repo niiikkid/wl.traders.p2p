@@ -19,7 +19,12 @@ class TraderLeaderboardController extends Controller
             abort(401);
         }
 
-        $payload = $leaderboardService->getWeeklyTop(null, (int) $user->id, 10, true);
+        $validated = request()->validate([
+            'week_offset' => ['nullable', 'integer', 'min:0', 'max:1'],
+        ]);
+        $weekOffset = (int) ($validated['week_offset'] ?? 0);
+
+        $payload = $leaderboardService->getWeeklyTop(null, (int) $user->id, 10, true, $weekOffset);
         $top = collect($payload['top'])
             ->map(fn (array $item) => [
                 'rank' => (int) $item['rank'],
@@ -45,6 +50,7 @@ class TraderLeaderboardController extends Controller
         ];
 
         return response()->json([
+            'week_offset' => $weekOffset,
             'period_start' => $payload['period_start'],
             'period_end' => $payload['period_end'],
             'reset_at' => $payload['reset_at'],

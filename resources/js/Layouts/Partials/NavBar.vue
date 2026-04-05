@@ -12,9 +12,13 @@ const isTraderTopOpen = ref(false);
 const isTraderTopLoading = ref(false);
 const traderTopError = ref('');
 const traderTopLoaded = ref(false);
+const selectedTraderTopWeekOffset = ref(0);
 const traderTopData = ref({
     top: [],
     current_trader: null,
+    week_offset: 0,
+    period_start: null,
+    period_end: null,
     reset_at: null,
 });
 const hideNameInTraderTop = ref(Boolean(authUser.value?.hide_name_in_trader_top ?? true));
@@ -117,31 +121,49 @@ const getTraderLeaderboardHideNameUrl = () => {
     }
 };
 
-const formatResetAt = computed(() => {
-    if (!traderTopData.value.reset_at) {
+const formatIsoDateOnly = (dateValue) => {
+    if (typeof dateValue !== 'string') {
+        return null;
+    }
+
+    const matched = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!matched) {
+        return null;
+    }
+
+    return `${matched[3]}.${matched[2]}.${matched[1]}`;
+};
+
+const formatTraderTopPeriod = computed(() => {
+    const periodStartRaw = traderTopData.value.period_start;
+    const periodEndRaw = traderTopData.value.period_end;
+
+    if (!periodStartRaw || !periodEndRaw) {
         return '-';
     }
 
-    const date = new Date(traderTopData.value.reset_at);
-
-    if (Number.isNaN(date.getTime())) {
+    const periodStart = formatIsoDateOnly(periodStartRaw);
+    const periodEnd = formatIsoDateOnly(periodEndRaw);
+    if (!periodStart || !periodEnd) {
         return '-';
     }
 
-    return date.toLocaleString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+    return `с ${periodStart} 00:00 по ${periodEnd} 23:59`;
 });
 
-const loadTraderTop = async () => {
+const selectedTraderTopWeekLabel = computed(() => {
+    return selectedTraderTopWeekOffset.value === 1 ? 'прошлую неделю' : 'текущую неделю';
+});
+
+const loadTraderTop = async (weekOffset = selectedTraderTopWeekOffset.value) => {
     isTraderTopLoading.value = true;
     traderTopError.value = '';
 
     try {
         const response = await window.axios.get(getTraderLeaderboardIndexUrl(), {
+            params: {
+                week_offset: weekOffset,
+            },
             headers: {
                 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
@@ -160,8 +182,12 @@ const loadTraderTop = async () => {
         traderTopData.value = {
             top: payload.top,
             current_trader: payload?.current_trader ?? null,
+            week_offset: Number(payload?.week_offset ?? weekOffset) || 0,
+            period_start: payload?.period_start ?? null,
+            period_end: payload?.period_end ?? null,
             reset_at: payload?.reset_at ?? null,
         };
+        selectedTraderTopWeekOffset.value = traderTopData.value.week_offset;
         traderTopLoaded.value = true;
     } catch (error) {
         traderTopError.value = error?.response?.data?.message ?? 'Не удалось загрузить топ трейдеров';
@@ -172,6 +198,15 @@ const loadTraderTop = async () => {
 
 const toggleTraderTop = async () => {
     isTraderTopOpen.value = !isTraderTopOpen.value;
+};
+
+const selectTraderTopWeek = async (weekOffset) => {
+    if (selectedTraderTopWeekOffset.value === weekOffset && traderTopLoaded.value) {
+        return;
+    }
+
+    selectedTraderTopWeekOffset.value = weekOffset;
+    await loadTraderTop(weekOffset);
 };
 
 const toggleHideNameInTop = async () => {
@@ -300,8 +335,26 @@ onMounted(async () => {
                                         <p class="text-xs text-base-content/70 mt-1 leading-tight break-words whitespace-normal">
                                             При равном количестве сделок выше тот, у кого меньше среднее время обработки.
                                         </p>
+                                        <div class="join mt-2">
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs join-item"
+                                                :class="selectedTraderTopWeekOffset === 0 ? 'btn-accent' : 'btn-ghost'"
+                                                @click.prevent="selectTraderTopWeek(0)"
+                                            >
+                                                Текущая неделя
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs join-item"
+                                                :class="selectedTraderTopWeekOffset === 1 ? 'btn-accent' : 'btn-ghost'"
+                                                @click.prevent="selectTraderTopWeek(1)"
+                                            >
+                                                Прошлая неделя
+                                            </button>
+                                        </div>
                                         <p class="text-xs text-base-content/70 break-words whitespace-normal">
-                                            Сброс топа: {{ formatResetAt }}
+                                            {{ formatTraderTopPeriod }}
                                         </p>
                                     </div>
                                     <button type="button" class="btn btn-ghost btn-xs shrink-0" @click.prevent="isTraderTopOpen = false">Закрыть</button>
@@ -314,7 +367,7 @@ onMounted(async () => {
                                     <span class="text-xs">{{ traderTopError }}</span>
                                 </div>
                                 <div v-else-if="!traderTopData.top.length" class="alert py-2">
-                                    <span class="text-xs">За последние 7 дней пока нет данных для топа.</span>
+                                    <span class="text-xs">За {{ selectedTraderTopWeekLabel }} пока нет данных для топа.</span>
                                 </div>
                                 <div v-else class="space-y-1">
                                     <div class="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem] items-center gap-2 px-2 pb-1 border-b border-base-300">

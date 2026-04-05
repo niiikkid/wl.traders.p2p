@@ -42,9 +42,9 @@ class TraderLeaderboardService
      *   }|null
      * }
      */
-    public function getWeeklyTop(?string $currency, int $currentTraderId, int $limit = 10, bool $applyPrivacy = true): array
+    public function getWeeklyTop(?string $currency, int $currentTraderId, int $limit = 10, bool $applyPrivacy = true, int $weekOffset = 0): array
     {
-        $payload = $this->getWeeklyLeaderboardPayload($currency);
+        $payload = $this->getWeeklyLeaderboardPayload($currency, $weekOffset);
         $rows = collect($payload['rows'])
             ->map(function (array $row) use ($applyPrivacy, $currentTraderId) {
                 $resolvedNickname = $applyPrivacy
@@ -73,7 +73,7 @@ class TraderLeaderboardService
 
     public function getTraderWeeklyRank(int $traderId, ?string $currency = null): ?int
     {
-        $payload = $this->getWeeklyLeaderboardPayload($currency);
+        $payload = $this->getWeeklyLeaderboardPayload($currency, 0);
         $row = collect($payload['rows'])->firstWhere('trader_id', $traderId);
 
         return $row['rank'] ?? null;
@@ -98,17 +98,20 @@ class TraderLeaderboardService
      *   }>
      * }
      */
-    private function getWeeklyLeaderboardPayload(?string $currency): array
+    private function getWeeklyLeaderboardPayload(?string $currency, int $weekOffset = 0): array
     {
+        $resolvedWeekOffset = max(0, $weekOffset);
         $currencyCode = $currency !== null && trim($currency) !== ''
             ? strtolower($currency)
             : 'all';
-        $cacheKey = sprintf('trader_weekly_leaderboard:%s', $currencyCode);
-        $resolver = function () use ($currencyCode) {
-            $now = CarbonImmutable::now();
-            $periodStart = $now->subDays(6)->startOfDay();
-            $periodEnd = $now->endOfDay();
-            $resetAt = $now->endOfDay()->addSecond();
+        $cacheKey = sprintf('trader_weekly_leaderboard:%s:%d', $currencyCode, $resolvedWeekOffset);
+        $now = CarbonImmutable::now();
+        $baseWeekDate = $now->subWeeks($resolvedWeekOffset);
+        $periodStart = $baseWeekDate->startOfWeek()->startOfDay();
+        $periodEnd = $baseWeekDate->endOfWeek()->endOfDay();
+        $resetAt = $periodEnd->addSecond();
+
+        $resolver = function () use ($currencyCode, $now, $periodStart, $periodEnd, $resetAt) {
 
             $rowsQuery = Order::query()
                 ->whereBetween('created_at', [$periodStart, $periodEnd])
@@ -165,7 +168,12 @@ class TraderLeaderboardService
             return $resolver();
         }
 
-        return Cache::remember($cacheKey, now()->addHour(), $resolver);
+        $cacheTtl = $now->addHour();
+        if ($resetAt->lessThan($cacheTtl)) {
+            $cacheTtl = $resetAt;
+        }
+
+        return Cache::remember($cacheKey, $cacheTtl, $resolver);
     }
 
     private function formatSecondsToHuman(int $seconds): string
