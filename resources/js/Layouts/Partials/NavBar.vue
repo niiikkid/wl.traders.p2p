@@ -1,6 +1,6 @@
 <script setup>
 import {Link, router, usePage} from "@inertiajs/vue3";
-import {computed, onMounted, ref} from "vue";
+import {computed, nextTick, onMounted, ref} from "vue";
 import {useViewStore} from "@/store/view.js";
 import ThemeToggle from "@/Components/ThemeToggle.vue";
 
@@ -22,6 +22,7 @@ const traderTopData = ref({
     reset_at: null,
 });
 const hideNameInTraderTop = ref(Boolean(authUser.value?.hide_name_in_trader_top ?? true));
+const traderTopDropdownRef = ref(null);
 
 const emit = defineEmits(['toggleSidebar']);
 const toggleSidebar = () => {
@@ -200,6 +201,22 @@ const toggleTraderTop = async () => {
     isTraderTopOpen.value = !isTraderTopOpen.value;
 };
 
+const closeTraderTop = () => {
+    isTraderTopOpen.value = false;
+    nextTick(() => {
+        const root = traderTopDropdownRef.value;
+        const active = document.activeElement;
+        if (
+            root
+            && active instanceof HTMLElement
+            && root.contains(active)
+            && typeof active.blur === 'function'
+        ) {
+            active.blur();
+        }
+    });
+};
+
 const selectTraderTopWeek = async (weekOffset) => {
     if (selectedTraderTopWeekOffset.value === weekOffset && traderTopLoaded.value) {
         return;
@@ -314,7 +331,7 @@ onMounted(async () => {
                     </div>
                 </div>
                 <div v-show="viewStore.isTraderViewMode" class="lg:flex items-center hidden text-nowrap">
-                    <div class="dropdown dropdown-end" :class="isTraderTopOpen ? 'dropdown-open' : ''">
+                    <div ref="traderTopDropdownRef" class="dropdown dropdown-end" :class="isTraderTopOpen ? 'dropdown-open' : ''">
                         <button
                             tabindex="0"
                             type="button"
@@ -357,7 +374,7 @@ onMounted(async () => {
                                             {{ formatTraderTopPeriod }}
                                         </p>
                                     </div>
-                                    <button type="button" class="btn btn-ghost btn-xs shrink-0" @click.prevent="isTraderTopOpen = false">Закрыть</button>
+                                    <button type="button" class="btn btn-ghost btn-xs shrink-0" @click.prevent="closeTraderTop">Закрыть</button>
                                 </div>
 
                                 <div v-if="isTraderTopLoading" class="flex justify-center py-4">

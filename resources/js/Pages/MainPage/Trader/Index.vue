@@ -104,9 +104,16 @@ const periodCursors = ref({
 });
 const filterDropdownOpen = ref(false);
 const customPeriodDropdownOpen = ref(false);
+const mobileChartDropdownOpen = ref(false);
+const mobilePeriodDropdownOpen = ref(false);
 const activeFilterType = ref('payment_method');
 const chart = ref(null);
 const apexChart = ref(null);
+const mobileChartDropdownRef = ref(null);
+const mobilePeriodDropdownRef = ref(null);
+const filterDropdownRef = ref(null);
+const desktopCustomPeriodDropdownRef = ref(null);
+const mobileCustomPeriodDropdownRef = ref(null);
 
 const selectedFilters = ref({
     payment_method: selectedFiltersProp.value.paymentMethodIds || [],
@@ -604,10 +611,19 @@ const closeFilterDropdown = () => {
     }
 };
 
+const blurActiveElement = () => {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
+};
+
 const toggleFilterDropdown = () => {
-    filterDropdownOpen.value = !filterDropdownOpen.value;
-    if (filterDropdownOpen.value) {
+    const nextState = !filterDropdownOpen.value;
+    filterDropdownOpen.value = nextState;
+    if (nextState) {
         loadFilterOptions(activeFilterType.value, searchQueries.value[activeFilterType.value] || '');
+    } else {
+        blurActiveElement();
     }
 };
 
@@ -649,7 +665,80 @@ const navigatePeriod = (step) => {
 
 const openCustomPeriodDropdown = () => {
     selectedPeriodPreset.value = 'custom';
-    customPeriodDropdownOpen.value = !customPeriodDropdownOpen.value;
+    const nextState = !customPeriodDropdownOpen.value;
+    customPeriodDropdownOpen.value = nextState;
+    if (customPeriodDropdownOpen.value) {
+        mobileChartDropdownOpen.value = false;
+        mobilePeriodDropdownOpen.value = false;
+        filterDropdownOpen.value = false;
+    } else {
+        blurActiveElement();
+    }
+};
+
+const toggleMobileChartDropdown = () => {
+    const nextState = !mobileChartDropdownOpen.value;
+    mobileChartDropdownOpen.value = nextState;
+    if (nextState) {
+        mobilePeriodDropdownOpen.value = false;
+        customPeriodDropdownOpen.value = false;
+        filterDropdownOpen.value = false;
+    } else {
+        blurActiveElement();
+    }
+};
+
+const toggleMobilePeriodDropdown = () => {
+    const nextState = !mobilePeriodDropdownOpen.value;
+    mobilePeriodDropdownOpen.value = nextState;
+    if (nextState) {
+        mobileChartDropdownOpen.value = false;
+        customPeriodDropdownOpen.value = false;
+        filterDropdownOpen.value = false;
+    } else {
+        blurActiveElement();
+    }
+};
+
+const handleMobileDropdownOutsideClick = (event) => {
+    const clickTarget = event.target;
+    if (!(clickTarget instanceof Node)) {
+        return;
+    }
+
+    const clickedInsideChart = mobileChartDropdownRef.value instanceof HTMLElement
+        && mobileChartDropdownRef.value.contains(clickTarget);
+    const clickedInsidePeriod = mobilePeriodDropdownRef.value instanceof HTMLElement
+        && mobilePeriodDropdownRef.value.contains(clickTarget);
+    const clickedInsideFilters = filterDropdownRef.value instanceof HTMLElement
+        && filterDropdownRef.value.contains(clickTarget);
+    const clickedInsideDesktopCustomPeriod = desktopCustomPeriodDropdownRef.value instanceof HTMLElement
+        && desktopCustomPeriodDropdownRef.value.contains(clickTarget);
+    const clickedInsideMobileCustomPeriod = mobileCustomPeriodDropdownRef.value instanceof HTMLElement
+        && mobileCustomPeriodDropdownRef.value.contains(clickTarget);
+
+    let hasClosedDropdown = false;
+
+    if (!clickedInsideChart) {
+        mobileChartDropdownOpen.value = false;
+        hasClosedDropdown = true;
+    }
+    if (!clickedInsidePeriod) {
+        mobilePeriodDropdownOpen.value = false;
+        hasClosedDropdown = true;
+    }
+    if (!clickedInsideFilters) {
+        filterDropdownOpen.value = false;
+        hasClosedDropdown = true;
+    }
+    if (!clickedInsideDesktopCustomPeriod && !clickedInsideMobileCustomPeriod) {
+        customPeriodDropdownOpen.value = false;
+        hasClosedDropdown = true;
+    }
+
+    if (hasClosedDropdown) {
+        blurActiveElement();
+    }
 };
 
 const hasActiveAdvancedFilters = computed(() => Object.values(selectedFilters.value).some((items) => Array.isArray(items) && items.length > 0));
@@ -740,6 +829,7 @@ onMounted(() => {
         attributes: true,
         attributeFilter: ['data-theme'],
     });
+    document.addEventListener('pointerdown', handleMobileDropdownOutsideClick, true);
 });
 
 onBeforeUnmount(() => {
@@ -762,6 +852,9 @@ onBeforeUnmount(() => {
     Object.values(searchDebounceTimers).forEach((timer) => {
         clearTimeout(timer);
     });
+    if (typeof document !== 'undefined') {
+        document.removeEventListener('pointerdown', handleMobileDropdownOutsideClick, true);
+    }
 });
 
 defineOptions({ layout: AuthenticatedLayout });
@@ -843,11 +936,11 @@ defineOptions({ layout: AuthenticatedLayout });
                             </button>
                         </div>
 
-                        <div class="dropdown md:hidden">
+                        <div ref="mobileChartDropdownRef" class="dropdown md:hidden" :class="{ 'dropdown-open': mobileChartDropdownOpen }">
                             <button
                                 type="button"
-                                tabindex="0"
                                 class="btn btn-sm bg-base-100 border-transparent"
+                                @click.stop="toggleMobileChartDropdown"
                             >
                                 Тип графика: {{ activeTabTitle }}
                                 <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -855,14 +948,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </svg>
                             </button>
                             <ul
-                                tabindex="0"
                                 class="dropdown-content z-30 mt-2 menu p-2 shadow bg-base-100 rounded-box w-56 max-w-[calc(100vw-1rem)] border border-base-300"
                             >
                                 <li v-for="tab in chartTabs" :key="`mobile-chart-tab-${tab.value}`">
                                     <button
                                         type="button"
                                         :class="activeChartTab === tab.value ? 'menu-active' : ''"
-                                        @click="activeChartTab = tab.value"
+                                        @click="activeChartTab = tab.value; mobileChartDropdownOpen = false"
                                     >
                                         {{ tab.label }}
                                     </button>
@@ -872,13 +964,13 @@ defineOptions({ layout: AuthenticatedLayout });
 
                         <div class="flex flex-col gap-2 lg:items-end">
                             <div class="flex items-start gap-2">
-                                <div class="dropdown" :class="{ 'dropdown-open': filterDropdownOpen }">
+                                <div ref="filterDropdownRef" class="dropdown" :class="{ 'dropdown-open': filterDropdownOpen }">
                                     <button
                                         type="button"
                                         class="btn btn-sm btn-square relative"
                                         :class="hasActiveAdvancedFilters ? 'btn-primary border-transparent' : 'bg-base-100 border-transparent text-base-content hover:bg-primary hover:border-primary hover:text-primary-content'"
                                         title="Фильтры"
-                                        @click="toggleFilterDropdown"
+                                        @click.stop="toggleFilterDropdown"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
@@ -994,12 +1086,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                     >
                                         Месяц
                                     </button>
-                                    <div class="dropdown dropdown-end" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
+                                    <div ref="desktopCustomPeriodDropdownRef" class="dropdown dropdown-end" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
                                         <button
                                             type="button"
                                             class="btn btn-sm join-item"
                                             :class="selectedPeriodPreset === 'custom' ? 'btn-primary' : 'bg-base-100 border-transparent'"
-                                            @click="openCustomPeriodDropdown"
+                                            @click.stop="openCustomPeriodDropdown"
                                         >
                                             Свой период
                                         </button>
@@ -1035,11 +1127,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </div>
 
                                 <div class="flex md:hidden items-start gap-2">
-                                    <div class="dropdown">
+                                    <div ref="mobilePeriodDropdownRef" class="dropdown" :class="{ 'dropdown-open': mobilePeriodDropdownOpen }">
                                         <button
                                             type="button"
-                                            tabindex="0"
                                             class="btn btn-sm bg-base-100 border-transparent"
+                                            @click.stop="toggleMobilePeriodDropdown"
                                         >
                                             Период
                                             <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1047,14 +1139,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                             </svg>
                                         </button>
                                         <ul
-                                            tabindex="0"
                                             class="dropdown-content z-30 mt-2 menu p-2 shadow bg-base-100 rounded-box w-44 border border-base-300"
                                         >
                                             <li v-for="option in periodPresetOptions" :key="option.value">
                                                 <button
                                                     type="button"
                                                     :class="selectedPeriodPreset === option.value ? 'menu-active' : ''"
-                                                    @click="setPeriodPreset(option.value)"
+                                                    @click="setPeriodPreset(option.value); mobilePeriodDropdownOpen = false"
                                                 >
                                                     {{ option.label }}
                                                 </button>
@@ -1062,12 +1153,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </ul>
                                     </div>
 
-                                    <div class="dropdown" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
+                                    <div ref="mobileCustomPeriodDropdownRef" class="dropdown" :class="{ 'dropdown-open': customPeriodDropdownOpen }">
                                         <button
                                             type="button"
                                             class="btn btn-sm"
                                             :class="selectedPeriodPreset === 'custom' ? 'btn-primary' : 'bg-base-100 border-transparent'"
-                                            @click="openCustomPeriodDropdown"
+                                            @click.stop="openCustomPeriodDropdown"
                                         >
                                             Свой период
                                         </button>
