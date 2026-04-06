@@ -10,8 +10,14 @@ import NumberInput from "@/Components/NumberInput.vue";
 import Select from "@/Components/Select.vue";
 import Multiselect from "@/Components/Form/Multiselect.vue";
 import NumberInputBlock from "@/Components/Form/NumberInputBlock.vue";
+import FieldHint from "@/Components/Form/FieldHint.vue";
 import TraderCommissionRangePreview from "@/Components/PaymentGateway/TraderCommissionRangePreview.vue";
 import { useModalStore } from "@/store/modal.js";
+import {
+    paymentDetailFieldHints,
+    paymentDetailSectionHints,
+    paymentDetailTypeHints,
+} from "@/utils/paymentDetailHints.js";
 import { storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
@@ -128,6 +134,10 @@ const selectedPaymentGateway = computed(() => {
 
 const selectedGatewaySupportsFlexibleCommission = computed(() => {
     return !!selectedPaymentGateway.value?.use_flexible_trader_commission_for_orders;
+});
+
+const currentDetailHint = computed(() => {
+    return paymentDetailTypeHints[selectedDetailType.value] ?? null;
 });
 
 const clampVipOrderRangeToGatewayLimits = () => {
@@ -301,8 +311,9 @@ watch(
             </div>
             <form v-else @submit.prevent="submit" class="space-y-6">
                 <div class="rounded-box border border-base-300 p-4">
-                    <div class="text-sm font-medium mb-3">
-                        Параметры реквизита
+                    <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                        <span>Параметры реквизита</span>
+                        <FieldHint :text="paymentDetailSectionHints.parameters" />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -310,6 +321,7 @@ watch(
                                 for="currency"
                                 value="Валюта"
                                 :error="!!errors.currency?.[0]"
+                                :hint="paymentDetailFieldHints.currency"
                                 class="mb-1"
                             />
                             <Select
@@ -331,6 +343,7 @@ watch(
                                 for="detail_type"
                                 value="Тип реквизита"
                                 :error="!!errors.detail_type?.[0]"
+                                :hint="paymentDetailFieldHints.detail_type"
                                 class="mb-1"
                             />
                             <Select
@@ -351,14 +364,16 @@ watch(
 
                 <template v-if="selectedDetailType">
                     <div class="rounded-box border border-base-300 p-4 space-y-4">
-                        <div class="text-sm font-medium">
-                            Платежные данные
+                        <div class="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                            <span>Платежные данные</span>
+                            <FieldHint :text="paymentDetailSectionHints.paymentData" />
                         </div>
                         <div>
                             <InputLabel
                                 for="payment_gateway_ids"
                                 :value="isMultipleGatewaysAllowed ? 'Платежные методы' : 'Платежный метод'"
                                 :error="!!errors.payment_gateway_ids?.[0]"
+                                :hint="paymentDetailFieldHints.payment_gateway_ids"
                                 class="mb-1"
                             />
                             <Multiselect
@@ -379,6 +394,7 @@ watch(
                                 for="user_device_id"
                                 value="Устройство"
                                 :error="!!errors.user_device_id?.[0]"
+                                :hint="paymentDetailFieldHints.user_device_id"
                                 class="mb-1"
                             />
                             <Select
@@ -399,6 +415,7 @@ watch(
                                 for="detail"
                                 value="Номер телефона"
                                 :error="!!errors.detail?.[0]"
+                                :hint="currentDetailHint"
                             />
                             <div class="relative">
                                 <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
@@ -421,6 +438,7 @@ watch(
                                 for="detail"
                                 value="Номер телефона"
                                 :error="!!errors.detail?.[0]"
+                                :hint="currentDetailHint"
                             />
                             <div class="relative">
                                 <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
@@ -443,6 +461,7 @@ watch(
                                 for="detail"
                                 value="Карта"
                                 :error="!!errors.detail?.[0]"
+                                :hint="currentDetailHint"
                             />
                             <TextInput
                                 id="detail"
@@ -462,6 +481,7 @@ watch(
                                 for="detail"
                                 value="Номер счета"
                                 :error="!!errors.detail?.[0]"
+                                :hint="currentDetailHint"
                             />
                             <TextInput
                                 id="detail"
@@ -481,6 +501,7 @@ watch(
                                 for="detail"
                                 value="Номер счета IBAN"
                                 :error="!!errors.detail?.[0]"
+                                :hint="currentDetailHint"
                             />
                             <TextInput
                                 id="detail"
@@ -500,6 +521,7 @@ watch(
                                 for="detail"
                                 value="Ссылка NSPK/SBP"
                                 :error="!!errors.detail?.[0]"
+                                :hint="currentDetailHint"
                             />
                             <TextInput
                                 id="detail"
@@ -519,6 +541,7 @@ watch(
                                 for="detail"
                                 value="Ссылка E-COM"
                                 :error="!!errors.detail?.[0]"
+                                :hint="currentDetailHint"
                             />
                             <TextInput
                                 id="detail"
@@ -535,8 +558,9 @@ watch(
                     </div>
 
                     <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Данные получателя
+                        <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                            <span>Данные получателя</span>
+                            <FieldHint :text="paymentDetailSectionHints.recipientData" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -544,6 +568,7 @@ watch(
                                     for="name"
                                     value="Никнейм реквизитов"
                                     :error="!!errors.name?.[0]"
+                                    :hint="paymentDetailFieldHints.name"
                                 />
                                 <TextInput
                                     id="name"
@@ -559,8 +584,9 @@ watch(
                             <div>
                                 <InputLabel
                                     for="initials"
-                                    value="Инициалы (имя получателя)"
+                                    value="Инициалы"
                                     :error="!!errors.initials?.[0]"
+                                    :hint="paymentDetailFieldHints.initials"
                                 />
                                 <TextInput
                                     id="initials"
@@ -578,6 +604,7 @@ watch(
                                     for="additional_info"
                                     value="ИПН (ИНН)"
                                     :error="!!errors.additional_info?.[0]"
+                                    :hint="paymentDetailFieldHints.additional_info"
                                 />
                                 <TextInput
                                     id="additional_info"
@@ -595,8 +622,9 @@ watch(
                     </div>
 
                     <div v-if="isVipUser" class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Лимит на сумму сделки ({{ form.currency?.toUpperCase() }})
+                        <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                            <span>Лимит на сумму сделки ({{ form.currency?.toUpperCase() }})</span>
+                            <FieldHint :text="paymentDetailSectionHints.vipOrderAmountLimits" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <NumberInputBlock
@@ -606,6 +634,7 @@ watch(
                                 :on-clear="(field) => (errors[field] = null)"
                                 field="min_order_amount"
                                 label="Минимум"
+                                :label-tooltip="paymentDetailFieldHints.min_order_amount"
                             />
                             <NumberInputBlock
                                 v-model="form.max_order_amount"
@@ -614,6 +643,7 @@ watch(
                                 :on-clear="(field) => (errors[field] = null)"
                                 field="max_order_amount"
                                 label="Максимум"
+                                :label-tooltip="paymentDetailFieldHints.max_order_amount"
                             />
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
@@ -633,8 +663,9 @@ watch(
                     </div>
 
                     <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Дневные лимиты ({{ form.currency?.toUpperCase() }})
+                        <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                            <span>Дневные лимиты ({{ form.currency?.toUpperCase() }})</span>
+                            <FieldHint :text="paymentDetailSectionHints.dailyLimits" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -642,6 +673,7 @@ watch(
                                     for="daily_limit"
                                     value="Объем сделок"
                                     :error="!!errors.daily_limit?.[0]"
+                                    :hint="paymentDetailFieldHints.daily_limit"
                                 />
                                 <NumberInput
                                     id="daily_limit"
@@ -658,6 +690,7 @@ watch(
                                     for="daily_successful_orders_limit"
                                     value="Количество сделок"
                                     :error="!!errors.daily_successful_orders_limit?.[0]"
+                                    :hint="paymentDetailFieldHints.daily_successful_orders_limit"
                                 />
                                 <NumberInput
                                     id="daily_successful_orders_limit"
@@ -676,8 +709,9 @@ watch(
                     </div>
 
                     <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Ежемесячные лимиты ({{ form.currency?.toUpperCase() }})
+                        <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                            <span>Ежемесячные лимиты ({{ form.currency?.toUpperCase() }})</span>
+                            <FieldHint :text="paymentDetailSectionHints.monthlyLimits" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -685,6 +719,7 @@ watch(
                                     for="monthly_limit"
                                     value="Объем сделок"
                                     :error="!!errors.monthly_limit?.[0]"
+                                    :hint="paymentDetailFieldHints.monthly_limit"
                                 />
                                 <NumberInput
                                     id="monthly_limit"
@@ -701,6 +736,7 @@ watch(
                                     for="monthly_limit_reset_day"
                                     value="День сброса (1-28)"
                                     :error="!!errors.monthly_limit_reset_day?.[0]"
+                                    :hint="paymentDetailFieldHints.monthly_limit_reset_day"
                                 />
                                 <NumberInput
                                     id="monthly_limit_reset_day"
@@ -719,8 +755,9 @@ watch(
                     </div>
 
                     <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Ограничения активности
+                        <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                            <span>Ограничения активности</span>
+                            <FieldHint :text="paymentDetailSectionHints.activityLimits" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <NumberInputBlock
@@ -730,6 +767,7 @@ watch(
                                 :on-clear="(field) => (errors[field] = null)"
                                 field="max_pending_orders_quantity"
                                 label="Макс. активных"
+                                :label-tooltip="paymentDetailFieldHints.max_pending_orders_quantity"
                             />
                             <NumberInputBlock
                                 v-model="form.order_interval_minutes"
@@ -738,6 +776,7 @@ watch(
                                 :on-clear="(field) => (errors[field] = null)"
                                 field="order_interval_minutes"
                                 label="Интервал (мин)"
+                                :label-tooltip="paymentDetailFieldHints.order_interval_minutes"
                             />
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
@@ -747,7 +786,10 @@ watch(
 
                     <div>
                         <label class="label cursor-pointer mb-3 mt-3 justify-start gap-3">
-                            <span class="label-text">Реквизит включен</span>
+                            <span class="inline-flex max-w-full flex-wrap items-center gap-1.5">
+                                <span class="label-text">Реквизит включен</span>
+                                <FieldHint :text="paymentDetailFieldHints.is_active" />
+                            </span>
                             <input type="checkbox" class="toggle toggle-primary" v-model="form.is_active" :disabled="processing" />
                         </label>
                     </div>

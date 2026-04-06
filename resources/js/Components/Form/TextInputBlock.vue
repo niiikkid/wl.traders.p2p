@@ -1,8 +1,6 @@
 <script setup>
 import { computed } from "vue";
 import TextInput from "@/Components/TextInput.vue";
-import InputLabel from "@/Components/InputLabel.vue";
-import InputError from "@/Components/InputError.vue";
 import InputBlock from "@/Components/Form/InputBlock.vue";
 
 const props = defineProps({
@@ -27,6 +25,10 @@ const props = defineProps({
     },
     label: {
         type: String
+    },
+    labelTooltip: {
+        type: String,
+        default: null,
     },
     helper: {
         type: String,
@@ -67,6 +69,7 @@ const clearErrors = (field) => {
             :errors="errors"
             :field="field"
             :label="label"
+            :label-tooltip="labelTooltip"
             :helper="helper"
         >
             <TextInput
