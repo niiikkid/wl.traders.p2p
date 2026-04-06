@@ -5,6 +5,7 @@ namespace App\Services\Market;
 use App\Contracts\MarketServiceContract;
 use App\Enums\MarketEnum;
 use App\Jobs\LoadConversionPricesJob;
+use GuzzleHttp\Exception\ConnectException;
 use App\Services\Market\Utils\Parser\BinanceParser;
 use App\Services\Market\Utils\Parser\ByBitParser;
 use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
@@ -73,7 +74,9 @@ class MarketService implements MarketServiceContract
                 sell_price: $prices->sellPrice->toUnits()
             );
         } catch (Throwable $e) {
-            report($e);
+            if (! $this->shouldSkipReporting($e)) {
+                report($e);
+            }
         }
     }
 
@@ -118,12 +121,16 @@ class MarketService implements MarketServiceContract
                                     currency: $currency
                                 );
                             } catch (Throwable $e) {
-                                report($e);
+                                if (! $this->shouldSkipReporting($e)) {
+                                    report($e);
+                                }
                             }
                         });
                 }
             } catch (Throwable $e) {
-                report($e);
+                if (! $this->shouldSkipReporting($e)) {
+                    report($e);
+                }
             }
         }
     }
@@ -235,5 +242,23 @@ class MarketService implements MarketServiceContract
                 return $this->supportsCurrency($market, $currency);
             }
         ));
+    }
+
+    protected function shouldSkipReporting(Throwable $exception): bool
+    {
+        $current = $exception;
+
+        while ($current instanceof Throwable) {
+            if (
+                $current instanceof ConnectException
+                && str_contains($current->getMessage(), 'cURL error 35')
+            ) {
+                return true;
+            }
+
+            $current = $current->getPrevious();
+        }
+
+        return false;
     }
 }
