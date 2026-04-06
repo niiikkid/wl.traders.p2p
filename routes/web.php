@@ -231,6 +231,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/merchant/support/{support}', [\App\Http\Controllers\Merchant\Support\SupportController::class, 'update'])->name('merchant.support.update');
 
         Route::get('/merchant/main', [\App\Http\Controllers\MainPageController::class, 'merchant'])->name('merchant.main.index');
+        Route::get('/merchant/main/filter-options/{type}', [\App\Http\Controllers\MainPageController::class, 'merchantFilterOptions'])->name('merchant.main.filter-options');
 
         Route::resource('/merchants', \App\Http\Controllers\MerchantController::class)->only(['index', 'store']);
         Route::get('/merchants/data', [\App\Http\Controllers\MerchantController::class, 'indexData'])->name('merchants.data');

@@ -1098,10 +1098,10 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     :key="`${activeFilterType}-${option.value}`"
                                                     class="w-full"
                                                 >
-                                                    <label class="flex w-full cursor-pointer items-start gap-3 px-2 py-1">
+                                                    <label class="flex w-full cursor-pointer items-center gap-3 px-2 py-1">
                                                         <input
                                                             type="checkbox"
-                                                            class="checkbox checkbox-sm mt-0.5"
+                                                            class="checkbox checkbox-sm shrink-0"
                                                             :checked="isOptionSelected(activeFilterType, option.value)"
                                                             @change="toggleFilterOption(activeFilterType, option, $event)"
                                                         >

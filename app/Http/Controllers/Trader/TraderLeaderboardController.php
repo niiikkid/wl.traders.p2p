@@ -20,37 +20,67 @@ class TraderLeaderboardController extends Controller
         }
 
         $validated = request()->validate([
+            'top_type' => ['nullable', 'string', 'in:weekly,monthly'],
             'week_offset' => ['nullable', 'integer', 'min:0', 'max:1'],
+            'month_offset' => ['nullable', 'integer', 'min:0', 'max:1'],
         ]);
+        $topType = (string) ($validated['top_type'] ?? 'weekly');
         $weekOffset = (int) ($validated['week_offset'] ?? 0);
-
-        $payload = $leaderboardService->getWeeklyTop(null, (int) $user->id, 10, true, $weekOffset);
+        $monthOffset = (int) ($validated['month_offset'] ?? 0);
+        $payload = $topType === 'monthly'
+            ? $leaderboardService->getMonthlyTop(null, (int) $user->id, 10, true, $monthOffset)
+            : $leaderboardService->getWeeklyTop(null, (int) $user->id, 10, true, $weekOffset);
         $top = collect($payload['top'])
-            ->map(fn (array $item) => [
-                'rank' => (int) $item['rank'],
-                'trader_id' => (int) $item['trader_id'],
-                'nickname' => (string) $item['nickname'],
-                'is_online' => (bool) $item['is_online'],
-                'operations_count' => (int) $item['operations_count'],
-                'avg_processing_seconds' => (int) $item['avg_processing_seconds'],
-                'avg_processing_human' => (string) $item['avg_processing_human'],
-            ])
+            ->map(function (array $item) use ($topType) {
+                $base = [
+                    'rank' => (int) $item['rank'],
+                    'trader_id' => (int) $item['trader_id'],
+                    'nickname' => (string) $item['nickname'],
+                    'is_online' => (bool) $item['is_online'],
+                ];
+
+                if ($topType === 'monthly') {
+                    return [
+                        ...$base,
+                        'total_amount_units' => (int) $item['total_amount_units'],
+                        'total_amount_human' => (string) $item['total_amount_human'],
+                    ];
+                }
+
+                return [
+                    ...$base,
+                    'operations_count' => (int) $item['operations_count'],
+                    'avg_processing_seconds' => (int) $item['avg_processing_seconds'],
+                    'avg_processing_human' => (string) $item['avg_processing_human'],
+                ];
+            })
             ->values()
             ->all();
 
         $currentTrader = $payload['current_trader'];
-        $currentTraderPrepared = $currentTrader === null ? null : [
-            'rank' => (int) $currentTrader['rank'],
-            'trader_id' => (int) $currentTrader['trader_id'],
-            'nickname' => (string) $currentTrader['nickname'],
-            'is_online' => (bool) $currentTrader['is_online'],
-            'operations_count' => (int) $currentTrader['operations_count'],
-            'avg_processing_seconds' => (int) $currentTrader['avg_processing_seconds'],
-            'avg_processing_human' => (string) $currentTrader['avg_processing_human'],
-        ];
+        $currentTraderPrepared = null;
+        if ($currentTrader !== null) {
+            $currentTraderPrepared = [
+                'rank' => (int) $currentTrader['rank'],
+                'trader_id' => (int) $currentTrader['trader_id'],
+                'nickname' => (string) $currentTrader['nickname'],
+                'is_online' => (bool) $currentTrader['is_online'],
+            ];
+
+            if ($topType === 'monthly') {
+                $currentTraderPrepared['total_amount_units'] = (int) $currentTrader['total_amount_units'];
+                $currentTraderPrepared['total_amount_human'] = (string) $currentTrader['total_amount_human'];
+            } else {
+                $currentTraderPrepared['operations_count'] = (int) $currentTrader['operations_count'];
+                $currentTraderPrepared['avg_processing_seconds'] = (int) $currentTrader['avg_processing_seconds'];
+                $currentTraderPrepared['avg_processing_human'] = (string) $currentTrader['avg_processing_human'];
+            }
+        }
 
         return response()->json([
+            'top_type' => $topType,
             'week_offset' => $weekOffset,
+            'month_offset' => $monthOffset,
             'period_start' => $payload['period_start'],
             'period_end' => $payload['period_end'],
             'reset_at' => $payload['reset_at'],

@@ -12,11 +12,15 @@ const isTraderTopOpen = ref(false);
 const isTraderTopLoading = ref(false);
 const traderTopError = ref('');
 const traderTopLoaded = ref(false);
+const selectedTraderTopType = ref('weekly');
 const selectedTraderTopWeekOffset = ref(0);
+const selectedTraderTopMonthOffset = ref(0);
 const traderTopData = ref({
     top: [],
     current_trader: null,
+    top_type: 'weekly',
     week_offset: 0,
+    month_offset: 0,
     period_start: null,
     period_end: null,
     reset_at: null,
@@ -92,6 +96,11 @@ const login = computed(() =>
 )
 
 const currentTraderTopRankLabel = computed(() => {
+    const currentRank = traderTopData.value.current_trader?.rank ?? null;
+    if (currentRank) {
+        return `${currentRank} место`;
+    }
+
     const rank = authUser.value?.weekly_top_rank ?? null;
 
     if (!rank) {
@@ -156,14 +165,41 @@ const selectedTraderTopWeekLabel = computed(() => {
     return selectedTraderTopWeekOffset.value === 1 ? 'прошлую неделю' : 'текущую неделю';
 });
 
-const loadTraderTop = async (weekOffset = selectedTraderTopWeekOffset.value) => {
+const selectedTraderTopMonthLabel = computed(() => {
+    return selectedTraderTopMonthOffset.value === 1 ? 'прошлый месяц' : 'текущий месяц';
+});
+
+const selectedTraderTopTypeLabel = computed(() => {
+    return selectedTraderTopType.value === 'monthly' ? 'Месячный топ' : 'Недельный топ';
+});
+
+const traderTopTitle = computed(() => {
+    return selectedTraderTopType.value === 'monthly'
+        ? 'ТОП-10 трейдеров за месяц'
+        : 'ТОП-10 трейдеров за неделю';
+});
+
+const traderTopEmptyLabel = computed(() => {
+    if (selectedTraderTopType.value === 'monthly') {
+        return `За ${selectedTraderTopMonthLabel.value} пока нет данных для топа.`;
+    }
+
+    return `За ${selectedTraderTopWeekLabel.value} пока нет данных для топа.`;
+});
+
+const loadTraderTop = async ({
+    weekOffset = selectedTraderTopWeekOffset.value,
+    monthOffset = selectedTraderTopMonthOffset.value,
+    topType = selectedTraderTopType.value,
+} = {}) => {
     isTraderTopLoading.value = true;
     traderTopError.value = '';
 
     try {
         const response = await window.axios.get(getTraderLeaderboardIndexUrl(), {
             params: {
-                week_offset: weekOffset,
+                top_type: topType,
+                ...(topType === 'weekly' ? {week_offset: weekOffset} : {month_offset: monthOffset}),
             },
             headers: {
                 'Accept': 'application/json',
@@ -183,12 +219,16 @@ const loadTraderTop = async (weekOffset = selectedTraderTopWeekOffset.value) => 
         traderTopData.value = {
             top: payload.top,
             current_trader: payload?.current_trader ?? null,
+            top_type: payload?.top_type === 'monthly' ? 'monthly' : 'weekly',
             week_offset: Number(payload?.week_offset ?? weekOffset) || 0,
+            month_offset: Number(payload?.month_offset ?? monthOffset) || 0,
             period_start: payload?.period_start ?? null,
             period_end: payload?.period_end ?? null,
             reset_at: payload?.reset_at ?? null,
         };
+        selectedTraderTopType.value = traderTopData.value.top_type;
         selectedTraderTopWeekOffset.value = traderTopData.value.week_offset;
+        selectedTraderTopMonthOffset.value = traderTopData.value.month_offset;
         traderTopLoaded.value = true;
     } catch (error) {
         traderTopError.value = error?.response?.data?.message ?? 'Не удалось загрузить топ трейдеров';
@@ -223,7 +263,33 @@ const selectTraderTopWeek = async (weekOffset) => {
     }
 
     selectedTraderTopWeekOffset.value = weekOffset;
-    await loadTraderTop(weekOffset);
+    await loadTraderTop({
+        weekOffset,
+        topType: 'weekly',
+    });
+};
+
+const selectTraderTopMonth = async (monthOffset) => {
+    if (selectedTraderTopMonthOffset.value === monthOffset && traderTopLoaded.value) {
+        return;
+    }
+
+    selectedTraderTopMonthOffset.value = monthOffset;
+    await loadTraderTop({
+        monthOffset,
+        topType: 'monthly',
+    });
+};
+
+const selectTraderTopType = async (topType) => {
+    if (selectedTraderTopType.value === topType && traderTopLoaded.value) {
+        return;
+    }
+
+    selectedTraderTopType.value = topType;
+    await loadTraderTop({
+        topType,
+    });
 };
 
 const toggleHideNameInTop = async () => {
@@ -340,7 +406,7 @@ onMounted(async () => {
                             @click.prevent="toggleTraderTop"
                         >
                             <span class="flex flex-col items-start">
-                                <span class="text-xs">Топ трейдеров</span>
+                                <span class="text-xs">{{ selectedTraderTopTypeLabel }}</span>
                                 <span class="text-[11px] opacity-70">{{ currentTraderTopRankLabel }}</span>
                             </span>
                         </button>
@@ -348,11 +414,11 @@ onMounted(async () => {
                             <div class="card-body p-4 space-y-3 whitespace-normal">
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
-                                        <h3 class="font-semibold text-sm">ТОП-10 трейдеров за неделю</h3>
-                                        <p class="text-xs text-base-content/70 mt-1 leading-tight break-words whitespace-normal">
+                                        <h3 class="font-semibold text-sm">{{ traderTopTitle }}</h3>
+                                        <p v-if="selectedTraderTopType === 'weekly'" class="text-xs text-base-content/70 mt-1 leading-tight break-words whitespace-normal">
                                             При равном количестве сделок выше тот, у кого меньше среднее время обработки.
                                         </p>
-                                        <div class="join mt-2">
+                                        <div v-if="selectedTraderTopType === 'weekly'" class="join mt-2">
                                             <button
                                                 type="button"
                                                 class="btn btn-xs join-item"
@@ -370,6 +436,24 @@ onMounted(async () => {
                                                 Прошлая неделя
                                             </button>
                                         </div>
+                                        <div v-if="selectedTraderTopType === 'monthly'" class="join mt-2">
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs join-item"
+                                                :class="selectedTraderTopMonthOffset === 0 ? 'btn-accent' : 'btn-ghost'"
+                                                @click.prevent="selectTraderTopMonth(0)"
+                                            >
+                                                Текущий месяц
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs join-item"
+                                                :class="selectedTraderTopMonthOffset === 1 ? 'btn-accent' : 'btn-ghost'"
+                                                @click.prevent="selectTraderTopMonth(1)"
+                                            >
+                                                Прошлый месяц
+                                            </button>
+                                        </div>
                                         <p class="text-xs text-base-content/70 break-words whitespace-normal  mt-2">
                                             {{ formatTraderTopPeriod }}
                                         </p>
@@ -384,25 +468,51 @@ onMounted(async () => {
                                     <span class="text-xs">{{ traderTopError }}</span>
                                 </div>
                                 <div v-else-if="!traderTopData.top.length" class="alert py-2">
-                                    <span class="text-xs">За {{ selectedTraderTopWeekLabel }} пока нет данных для топа.</span>
+                                    <span class="text-xs">{{ traderTopEmptyLabel }}</span>
                                 </div>
                                 <div v-else class="space-y-1">
-                                    <div class="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem] items-center gap-2 px-2 pb-1 border-b border-base-300">
+                                    <div
+                                        class="grid items-center gap-2 px-2 pb-1 border-b border-base-300"
+                                        :class="selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]'"
+                                    >
                                         <span class="text-[10px] uppercase tracking-wide text-base-content/60">#</span>
                                         <span class="text-[10px] uppercase tracking-wide text-base-content/60">Трейдер</span>
-                                        <span class="text-[10px] uppercase tracking-wide text-base-content/60 text-right whitespace-nowrap">Сделки</span>
-                                        <span class="text-[10px] uppercase tracking-wide text-base-content/60 text-right whitespace-nowrap">Среднее время</span>
+                                        <span
+                                            class="text-[10px] uppercase tracking-wide text-base-content/60 text-right whitespace-nowrap"
+                                            :class="selectedTraderTopType === 'monthly' ? 'col-start-3' : ''"
+                                        >
+                                            {{ selectedTraderTopType === 'monthly' ? 'Оборот' : 'Сделки' }}
+                                        </span>
+                                        <span
+                                            v-if="selectedTraderTopType === 'weekly'"
+                                            class="text-[10px] uppercase tracking-wide text-base-content/60 text-right whitespace-nowrap"
+                                        >
+                                            Среднее время
+                                        </span>
                                     </div>
                                     <div
                                         v-for="item in traderTopData.top"
                                         :key="`top-${item.trader_id}`"
-                                        class="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem] items-center gap-2 rounded-lg px-2 py-1.5"
-                                        :class="Number(item.trader_id) === Number(authUser?.id ?? 0) ? 'bg-primary/10 border border-primary/20' : 'bg-base-200/40'"
+                                        class="grid items-center gap-2 rounded-lg px-2 py-1.5"
+                                        :class="[
+                                            selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]',
+                                            Number(item.trader_id) === Number(authUser?.id ?? 0) ? 'bg-primary/10 border border-primary/20' : 'bg-base-200/40',
+                                        ]"
                                     >
                                         <span class="text-xs font-semibold">#{{ item.rank }}</span>
                                         <span class="text-xs truncate">{{ item.nickname }}</span>
-                                        <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ item.operations_count }} сделок</span>
-                                        <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ item.avg_processing_human }}</span>
+                                        <span
+                                            class="text-xs text-right whitespace-nowrap tabular-nums"
+                                            :class="selectedTraderTopType === 'monthly' ? 'col-start-3' : ''"
+                                        >
+                                            {{ selectedTraderTopType === 'monthly' ? `$${item.total_amount_human}` : `${item.operations_count} сделок` }}
+                                        </span>
+                                        <span
+                                            v-if="selectedTraderTopType === 'weekly'"
+                                            class="text-xs text-right whitespace-nowrap tabular-nums"
+                                        >
+                                            {{ item.avg_processing_human }}
+                                        </span>
                                     </div>
 
                                     <div v-if="shouldShowCurrentTraderSeparated" class="space-y-1 pt-1">
@@ -413,12 +523,23 @@ onMounted(async () => {
                                         </div>
 
                                         <div
-                                            class="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem] items-center gap-2 rounded-lg px-2 py-1.5 bg-primary/10 border border-primary/20"
+                                            class="grid items-center gap-2 rounded-lg px-2 py-1.5 bg-primary/10 border border-primary/20"
+                                            :class="selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]'"
                                         >
                                             <span class="text-xs font-semibold">#{{ traderTopData.current_trader.rank }}</span>
                                             <span class="text-xs truncate">{{ traderTopData.current_trader.nickname }}</span>
-                                            <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ traderTopData.current_trader.operations_count }} сделок</span>
-                                            <span class="text-xs text-right whitespace-nowrap tabular-nums">{{ traderTopData.current_trader.avg_processing_human }}</span>
+                                            <span
+                                                class="text-xs text-right whitespace-nowrap tabular-nums"
+                                                :class="selectedTraderTopType === 'monthly' ? 'col-start-3' : ''"
+                                            >
+                                                {{ selectedTraderTopType === 'monthly' ? `$${traderTopData.current_trader.total_amount_human}` : `${traderTopData.current_trader.operations_count} сделок` }}
+                                            </span>
+                                            <span
+                                                v-if="selectedTraderTopType === 'weekly'"
+                                                class="text-xs text-right whitespace-nowrap tabular-nums"
+                                            >
+                                                {{ traderTopData.current_trader.avg_processing_human }}
+                                            </span>
                                         </div>
                                     </div>
 
@@ -430,6 +551,28 @@ onMounted(async () => {
                                             :checked="hideNameInTraderTop"
                                             @change="toggleHideNameInTop"
                                         >
+                                    </div>
+
+                                </div>
+
+                                <div class="border-t border-base-300 pt-2 mt-2">
+                                    <div class="join w-full">
+                                        <button
+                                            type="button"
+                                            class="btn btn-xs join-item flex-1"
+                                            :class="selectedTraderTopType === 'weekly' ? 'btn-accent' : 'btn-ghost'"
+                                            @click.prevent="selectTraderTopType('weekly')"
+                                        >
+                                            Недельный топ
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn btn-xs join-item flex-1"
+                                            :class="selectedTraderTopType === 'monthly' ? 'btn-accent' : 'btn-ghost'"
+                                            @click.prevent="selectTraderTopType('monthly')"
+                                        >
+                                            Месячный топ
+                                        </button>
                                     </div>
                                 </div>
                             </div>

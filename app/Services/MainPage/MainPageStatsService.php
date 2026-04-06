@@ -6,6 +6,7 @@ use App\Contracts\MainPageStatsServiceContract;
 use App\Enums\BalanceType;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
+use App\Models\Merchant;
 use App\Enums\OrderStatus;
 use App\Models\Invoice;
 use App\Models\Order;
@@ -708,9 +709,262 @@ class MainPageStatsService implements MainPageStatsServiceContract
         ];
     }
 
+    public function buildMerchantMainPageStats(
+        User $user,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        array $filters = [],
+    ): array {
+        $normalizedFilters = $this->normalizeMerchantDashboardFilters($user, $filters);
+        $resolvedPeriod = $this->resolvePeriodRange($periodPreset, $dateFrom, $dateTo);
+        $startDate = $resolvedPeriod['startDate'];
+        $endDate = $resolvedPeriod['endDate'];
+
+        if ($resolvedPeriod['preset'] === 'all') {
+            $allBoundsQuery = Order::query();
+            $this->scopeMerchantOrders($allBoundsQuery, $user, $normalizedFilters['merchantIds']);
+            $this->applyMerchantDashboardOrderFilters($allBoundsQuery, $normalizedFilters);
+
+            $minCreatedAt = $allBoundsQuery->min('created_at');
+            if ($minCreatedAt) {
+                $startDate = Carbon::parse($minCreatedAt)->startOfDay();
+            } else {
+                $startDate = now()->startOfDay();
+            }
+
+            $endDate = now()->endOfDay();
+            $resolvedPeriod['dateFrom'] = $startDate->toDateString();
+            $resolvedPeriod['dateTo'] = $endDate->toDateString();
+        }
+
+        $isHourly = $startDate->isSameDay($endDate);
+        $bucketSql = $isHourly
+            ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
+            : "DATE(created_at)";
+
+        $query = Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($query, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($query, $normalizedFilters);
+
+        $totalTurnover = Money::fromUnits($query->clone()->sum('total_profit'), Currency::USDT());
+        $totalProfit = Money::fromUnits($query->clone()->sum('merchant_profit'), Currency::USDT());
+
+        $successOrderQuery = Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($successOrderQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($successOrderQuery, $normalizedFilters);
+        $successOrderCount = $successOrderQuery->count();
+
+        $failedOrderQuery = Order::query()
+            ->where('status', OrderStatus::FAIL)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($failedOrderQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($failedOrderQuery, $normalizedFilters);
+        $failedOrderCount = $failedOrderQuery->count();
+
+        $totalOrderCount = $successOrderCount + $failedOrderCount;
+        $conversionRate = $totalOrderCount > 0
+            ? round(($successOrderCount / $totalOrderCount) * 100, 2)
+            : 0;
+
+        $earningsByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($earningsByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($earningsByDayQuery, $normalizedFilters);
+        $earningsByDay = $earningsByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(merchant_profit) as total_earnings")
+            ->groupBy('bucket_key')
+            ->pluck('total_earnings', 'bucket_key');
+
+        $turnoverByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($turnoverByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($turnoverByDayQuery, $normalizedFilters);
+        $turnoverByDay = $turnoverByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_turnover")
+            ->groupBy('bucket_key')
+            ->pluck('total_turnover', 'bucket_key');
+
+        $successOrdersByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($successOrdersByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($successOrdersByDayQuery, $normalizedFilters);
+        $successOrdersByDay = $successOrdersByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('bucket_key')
+            ->pluck('count', 'bucket_key');
+
+        $failedOrdersByDayQuery = Order::where('status', OrderStatus::FAIL)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($failedOrdersByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($failedOrdersByDayQuery, $normalizedFilters);
+        $failedOrdersByDay = $failedOrdersByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('bucket_key')
+            ->pluck('count', 'bucket_key');
+
+        $totalAmountByDayQuery = Order::query()
+            ->whereIn('status', [OrderStatus::SUCCESS, OrderStatus::FAIL])
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($totalAmountByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($totalAmountByDayQuery, $normalizedFilters);
+        $totalAmountByDay = $totalAmountByDayQuery
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_amount")
+            ->groupBy('bucket_key')
+            ->pluck('total_amount', 'bucket_key');
+
+        $labels = [];
+        $incomeData = [];
+        $turnoverData = [];
+        $conversionData = [];
+        $ordersData = [];
+        $averageCheckData = [];
+
+        $buckets = [];
+        $currentBucketDate = $startDate->copy();
+        while ($currentBucketDate->lte($endDate)) {
+            $bucketKey = $isHourly
+                ? $currentBucketDate->format('Y-m-d H:00:00')
+                : $currentBucketDate->toDateString();
+
+            $label = $isHourly
+                ? $currentBucketDate->format('H:i')
+                : $currentBucketDate->format('d.m');
+            $income = Money::fromUnits(
+                (int) ($earningsByDay[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $turnover = Money::fromUnits(
+                (int) ($turnoverByDay[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $successCount = (int) ($successOrdersByDay[$bucketKey] ?? 0);
+            $failedCount = (int) ($failedOrdersByDay[$bucketKey] ?? 0);
+            $totalAmount = Money::fromUnits(
+                (int) ($totalAmountByDay[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $buckets[] = [
+                'label' => $label,
+                'income' => $income,
+                'turnover' => $turnover,
+                'successCount' => $successCount,
+                'failedCount' => $failedCount,
+                'totalAmount' => $totalAmount,
+            ];
+
+            if ($isHourly) {
+                $currentBucketDate->addHour();
+            } else {
+                $currentBucketDate->addDay();
+            }
+        }
+
+        if (in_array($resolvedPeriod['preset'], ['custom', 'all'], true) && count($buckets) > 30) {
+            $chunkSize = (int) ceil(count($buckets) / 30);
+            $groupedBuckets = [];
+
+            for ($i = 0; $i < count($buckets); $i += $chunkSize) {
+                $chunk = array_slice($buckets, $i, $chunkSize);
+                $firstLabel = $chunk[0]['label'];
+                $lastLabel = $chunk[count($chunk) - 1]['label'];
+
+                $groupedBuckets[] = [
+                    'label' => $firstLabel === $lastLabel ? $firstLabel : "{$firstLabel}-{$lastLabel}",
+                    'income' => array_sum(array_column($chunk, 'income')),
+                    'turnover' => array_sum(array_column($chunk, 'turnover')),
+                    'successCount' => array_sum(array_column($chunk, 'successCount')),
+                    'failedCount' => array_sum(array_column($chunk, 'failedCount')),
+                    'totalAmount' => array_sum(array_column($chunk, 'totalAmount')),
+                ];
+            }
+
+            $buckets = $groupedBuckets;
+        }
+
+        foreach ($buckets as $bucket) {
+            $totalCount = $bucket['successCount'] + $bucket['failedCount'];
+
+            $labels[] = $bucket['label'];
+            $incomeData[] = $bucket['income'];
+            $turnoverData[] = $bucket['turnover'];
+            $ordersData[] = $totalCount;
+            $averageCheckData[] = $totalCount > 0
+                ? round($bucket['totalAmount'] / $totalCount, 2)
+                : 0;
+            $conversionData[] = $totalCount > 0
+                ? round(($bucket['successCount'] / $totalCount) * 100, 2)
+                : 0;
+        }
+
+        $pendingOrdersQuery = Order::query()
+            ->where('status', OrderStatus::PENDING)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->scopeMerchantOrders($pendingOrdersQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardOrderFilters($pendingOrdersQuery, $normalizedFilters);
+        $pendingOrderCount = $pendingOrdersQuery->count();
+
+        return [
+            'statistics' => [
+                'totalTurnover' => $totalTurnover->toBeauty(),
+                'totalProfit' => $totalProfit->toBeauty(),
+                'totalOrderCount' => $totalOrderCount,
+                'successOrderCount' => $successOrderCount,
+                'failedOrderCount' => $failedOrderCount,
+                'conversionRate' => $conversionRate . '%',
+                'pendingOrderCount' => $pendingOrderCount,
+            ],
+            'chart' => [
+                'labels' => $labels,
+                'data' => $incomeData,
+            ],
+            'conversionChart' => [
+                'labels' => $labels,
+                'data' => $conversionData,
+            ],
+            'turnoverChart' => [
+                'labels' => $labels,
+                'data' => $turnoverData,
+            ],
+            'ordersChart' => [
+                'labels' => $labels,
+                'data' => $ordersData,
+            ],
+            'averageCheckChart' => [
+                'labels' => $labels,
+                'data' => $averageCheckData,
+            ],
+            'selectedPeriodPreset' => $resolvedPeriod['preset'],
+            'selectedDateFrom' => $resolvedPeriod['dateFrom'],
+            'selectedDateTo' => $resolvedPeriod['dateTo'],
+            'selectedFilters' => $normalizedFilters,
+        ];
+    }
+
     private function scopeTraderOrders(Builder $query, User $user): void
     {
         $query->whereRelation('paymentDetail', 'user_id', $user->id);
+    }
+
+    private function scopeMerchantOrders(Builder $query, User $user, array $merchantIds = []): void
+    {
+        $allowedMerchantIds = $this->resolveUserMerchantIds($user);
+
+        if (!empty($merchantIds)) {
+            $allowedSet = array_flip($allowedMerchantIds);
+            $scopedMerchantIds = array_values(array_filter(
+                $merchantIds,
+                fn (int $id) => isset($allowedSet[$id])
+            ));
+            $query->whereIn('merchant_id', $scopedMerchantIds);
+            return;
+        }
+
+        $query->whereIn('merchant_id', $allowedMerchantIds);
     }
 
     private function normalizeTraderDashboardFilters(User $user, array $filters): array
@@ -757,6 +1011,53 @@ class MainPageStatsService implements MainPageStatsServiceContract
         if (!empty($filters['paymentDetailIds'])) {
             $query->whereIn('payment_detail_id', $filters['paymentDetailIds']);
         }
+    }
+
+    private function normalizeMerchantDashboardFilters(User $user, array $filters): array
+    {
+        $allowedMerchantIds = $this->resolveUserMerchantIds($user);
+        $allowedMerchantSet = array_flip($allowedMerchantIds);
+
+        $merchantIds = array_values(array_filter(
+            $this->normalizeIdArray($filters['merchantIds'] ?? []),
+            fn (int $id) => isset($allowedMerchantSet[$id])
+        ));
+
+        $allowedGatewayIds = empty($allowedMerchantIds)
+            ? []
+            : Order::query()
+                ->whereIn('merchant_id', $allowedMerchantIds)
+                ->distinct()
+                ->pluck('payment_gateway_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+        $gatewaySet = array_flip($allowedGatewayIds);
+
+        $methodIds = array_values(array_filter(
+            $this->normalizeIdArray($filters['paymentMethodIds'] ?? []),
+            fn (int $id) => isset($gatewaySet[$id])
+        ));
+
+        return [
+            'paymentMethodIds' => $methodIds,
+            'merchantIds' => $merchantIds,
+        ];
+    }
+
+    private function applyMerchantDashboardOrderFilters(Builder $query, array $filters): void
+    {
+        if (!empty($filters['paymentMethodIds'])) {
+            $query->whereIn('payment_gateway_id', $filters['paymentMethodIds']);
+        }
+    }
+
+    private function resolveUserMerchantIds(User $user): array
+    {
+        return Merchant::query()
+            ->where('user_id', $user->id)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     private function normalizeFilters(array $filters): array

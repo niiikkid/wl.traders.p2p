@@ -13,6 +13,7 @@ use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,7 +31,22 @@ class MainPageController extends Controller
 
     public function merchant()
     {
-        $stats = $this->mainPageCacheService->rememberMerchant(auth()->user());
+        $user = auth()->user();
+        $periodPreset = (string) request()->get('period', 'month');
+        $dateFrom = request()->get('date_from');
+        $dateTo = request()->get('date_to');
+        $filters = [
+            'paymentMethodIds' => request()->input('payment_method_ids', []),
+            'merchantIds' => request()->input('merchant_ids', []),
+        ];
+
+        $stats = $this->mainPageStatsService->buildMerchantMainPageStats(
+            $user,
+            $periodPreset,
+            $dateFrom !== null ? (string) $dateFrom : null,
+            $dateTo !== null ? (string) $dateTo : null,
+            $filters,
+        );
 
         return Inertia::render('MainPage/Merchant/Index', $stats);
     }
@@ -136,6 +152,38 @@ class MainPageController extends Controller
         $options = match ($type) {
             'payment_method' => $this->searchTraderPaymentMethods($user, $search, $selectedIds),
             'payment_detail' => $this->searchTraderPaymentDetails($user, $search, $selectedIds),
+            default => collect(),
+        };
+
+        return response()->json($options->values());
+    }
+
+    public function merchantFilterOptions(Request $request, string $type): JsonResponse
+    {
+        $user = auth()->user();
+        $search = trim((string) $request->get('query', ''));
+        $selectedIds = collect($request->input('selected_ids', []))
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->toArray();
+        $merchantIds = collect($request->input('merchant_ids', []))
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->toArray();
+        $dateFrom = $this->parseFilterDate($request->input('date_from'));
+        $dateTo = $this->parseFilterDate($request->input('date_to'));
+
+        if ($dateFrom && $dateTo && $dateFrom->gt($dateTo)) {
+            [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+        }
+
+        $options = match ($type) {
+            'payment_method' => $this->searchMerchantPaymentMethods($user, $search, $selectedIds, $merchantIds, $dateFrom, $dateTo),
+            'merchant' => $this->searchUserMerchants($user, $search, $selectedIds),
             default => collect(),
         };
 
@@ -316,6 +364,114 @@ class MainPageController extends Controller
                     'value' => $detail->id,
                     'label' => $detail->name,
                     'subtitle' => $this->formatPaymentDetailSubtitle($detail),
+                ]),
+        );
+    }
+
+    private function searchMerchantPaymentMethods(
+        User $user,
+        string $search,
+        array $selectedIds,
+        array $merchantIds = [],
+        ?Carbon $dateFrom = null,
+        ?Carbon $dateTo = null,
+    ): Collection
+    {
+        $allowedMerchantIds = Merchant::query()
+            ->where('user_id', $user->id)
+            ->pluck('id');
+
+        if ($allowedMerchantIds->isEmpty()) {
+            return collect();
+        }
+
+        $scopedMerchantIds = collect($merchantIds)
+            ->filter(fn (int $id) => $allowedMerchantIds->contains($id))
+            ->values();
+
+        if ($scopedMerchantIds->isEmpty()) {
+            $scopedMerchantIds = $allowedMerchantIds->values();
+        }
+
+        $gatewayIdsQuery = Order::query()
+            ->whereIn('merchant_id', $scopedMerchantIds)
+            ->distinct();
+
+        if ($dateFrom && $dateTo) {
+            $gatewayIdsQuery->whereBetween('created_at', [
+                $dateFrom->copy()->startOfDay(),
+                $dateTo->copy()->endOfDay(),
+            ]);
+        }
+
+        $allowedGatewayIds = $gatewayIdsQuery->pluck('payment_gateway_id');
+
+        $query = PaymentGateway::query()
+            ->whereIn('id', $allowedGatewayIds)
+            ->select(['id', 'name', 'code', 'currency']);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->mergeSelectedFirst(
+            $query->limit(10)->get()->map(fn (PaymentGateway $gateway) => [
+                'value' => $gateway->id,
+                'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+            ]),
+            PaymentGateway::query()
+                ->whereIn('id', $selectedIds)
+                ->whereIn('id', $allowedGatewayIds)
+                ->get()
+                ->map(fn (PaymentGateway $gateway) => [
+                    'value' => $gateway->id,
+                    'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                ]),
+        );
+    }
+
+    private function parseFilterDate(mixed $value): ?Carbon
+    {
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $value);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    private function searchUserMerchants(User $user, string $search, array $selectedIds): Collection
+    {
+        $query = Merchant::query()
+            ->where('user_id', $user->id)
+            ->select(['id', 'name']);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->mergeSelectedFirst(
+            $query->limit(10)->get()->map(fn (Merchant $merchant) => [
+                'value' => $merchant->id,
+                'label' => $merchant->name,
+            ]),
+            Merchant::query()
+                ->where('user_id', $user->id)
+                ->whereIn('id', $selectedIds)
+                ->get()
+                ->map(fn (Merchant $merchant) => [
+                    'value' => $merchant->id,
+                    'label' => $merchant->name,
                 ]),
         );
     }
