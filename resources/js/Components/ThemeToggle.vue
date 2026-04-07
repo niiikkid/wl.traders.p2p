@@ -1,8 +1,6 @@
 <script setup>
 import {computed, onMounted, ref} from "vue";
-console.log(import.meta.env.VITE_THEME_LIGHT);
-console.log(import.meta.env.VITE_THEME_DARK);
-console.log(import.meta.env.VITE_THEME_STORAGE_KEY);
+
 const props = defineProps({
     lightTheme: {
         type: String,
@@ -66,7 +64,7 @@ const updateHtmlTheme = (theme) => {
     const html = document.documentElement;
     html.setAttribute('data-theme', theme);
 
-    if (theme === 'dark') {
+    if (theme === props.darkTheme) {
         html.classList.add('dark');
     } else {
         html.classList.remove('dark');

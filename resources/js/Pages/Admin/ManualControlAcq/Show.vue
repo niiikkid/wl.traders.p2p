@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
+import ThemeToggle from '@/Components/ThemeToggle.vue';
 import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
 
 const INTRO_LOADING_MS = 3000;
@@ -260,9 +261,10 @@ onBeforeUnmount(() => {
     <ManualControlLayout>
         <Head title="Manual Control ACQ" />
 
+        <div class="flex min-h-0 w-full flex-1 flex-col">
         <div
             v-if="page_phase === 'loading'"
-            class="flex min-h-[min(70vh,32rem)] w-full flex-col items-center justify-center gap-3 px-4 text-center"
+            class="flex w-full flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center"
         >
             <h2 class="text-base font-semibold text-base-content sm:text-lg">
                 Loading Pay In
@@ -273,7 +275,7 @@ onBeforeUnmount(() => {
             <span class="loading loading-spinner loading-md text-primary" aria-hidden="true" />
         </div>
 
-        <div v-else-if="page_phase === 'workspace'" class="w-full">
+        <div v-else-if="page_phase === 'workspace'" class="w-full flex-1">
             <div class="mx-auto flex w-full max-w-xl flex-col gap-4">
                 <header class="card border border-base-300 bg-base-100 shadow">
                     <div class="card-body gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -527,6 +529,12 @@ onBeforeUnmount(() => {
             </div>
         </div>
 
+        <div
+            v-else
+            class="w-full flex-1"
+            aria-hidden="true"
+        />
+
         <dialog
             ref="newPayInModalDialog"
             class="modal modal-middle"
@@ -647,5 +655,10 @@ onBeforeUnmount(() => {
                 </button>
             </form>
         </dialog>
+
+        <footer class="mt-auto flex w-full shrink-0 justify-center border-t border-base-300 pt-6">
+            <ThemeToggle />
+        </footer>
+        </div>
     </ManualControlLayout>
 </template>

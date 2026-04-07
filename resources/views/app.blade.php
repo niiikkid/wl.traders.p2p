@@ -14,7 +14,7 @@
         <script>
             (function() {
                 try {
-                    var saved = localStorage.getItem('theme');
+                    var saved = localStorage.getItem('color-theme-payment') || localStorage.getItem('theme');
                     if (saved) {
                         document.documentElement.setAttribute('data-theme', saved);
                     }
