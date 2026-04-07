@@ -1,7 +1,17 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
+
+const INTRO_LOADING_MS = 3000;
+const TAKE_WORK_COUNTDOWN_SECONDS = 10;
+
+/** @type {import('vue').Ref<'loading' | 'assignment_modal' | 'workspace'>} */
+const page_phase = ref('loading');
+const newPayInModalDialog = ref(null);
+const take_work_seconds_remaining = ref(TAKE_WORK_COUNTDOWN_SECONDS);
+let loading_timeout_id = null;
+let take_work_interval_id = null;
 
 const confirmationCol1 = [
     { title: 'OTP code' },
@@ -42,6 +52,9 @@ const fields = {
     payinId: {
         display: '220045893',
         copy: '220045893',
+    },
+    incomingBank: {
+        display: 'PrivatBank',
     },
     amount: {
         display: '1,000 UAH',
@@ -85,7 +98,24 @@ const confirmTimeDisplay = computed(() => {
 
 const canConfirm = computed(() => confirmSecondsRemaining.value > 0);
 
-onMounted(() => {
+const schedule_loading_then_assignment_modal = () => {
+    if (loading_timeout_id !== null) {
+        window.clearTimeout(loading_timeout_id);
+        loading_timeout_id = null;
+    }
+
+    page_phase.value = 'loading';
+    loading_timeout_id = window.setTimeout(() => {
+        loading_timeout_id = null;
+        open_assignment_modal_flow();
+    }, INTRO_LOADING_MS);
+};
+
+const start_workspace_timers = () => {
+    if (timerInterval !== null) {
+        return;
+    }
+
     timerInterval = window.setInterval(() => {
         elapsedSeconds.value += 1;
 
@@ -93,6 +123,58 @@ onMounted(() => {
             confirmSecondsRemaining.value -= 1;
         }
     }, 1000);
+};
+
+const clear_take_work_timer = () => {
+    if (take_work_interval_id !== null) {
+        window.clearInterval(take_work_interval_id);
+        take_work_interval_id = null;
+    }
+};
+
+const open_assignment_modal_flow = () => {
+    page_phase.value = 'assignment_modal';
+    take_work_seconds_remaining.value = TAKE_WORK_COUNTDOWN_SECONDS;
+    clear_take_work_timer();
+    take_work_interval_id = window.setInterval(() => {
+        if (take_work_seconds_remaining.value > 0) {
+            take_work_seconds_remaining.value -= 1;
+        }
+    }, 1000);
+
+    nextTick(() => {
+        newPayInModalDialog.value?.showModal();
+    });
+};
+
+const on_new_pay_in_dialog_close = () => {
+    if (page_phase.value !== 'assignment_modal') {
+        return;
+    }
+
+    clear_take_work_timer();
+    schedule_loading_then_assignment_modal();
+};
+
+const on_cancel_new_pay_in = () => {
+    clear_take_work_timer();
+    schedule_loading_then_assignment_modal();
+    newPayInModalDialog.value?.close();
+};
+
+const on_take_to_work = () => {
+    if (take_work_seconds_remaining.value <= 0) {
+        return;
+    }
+
+    clear_take_work_timer();
+    page_phase.value = 'workspace';
+    newPayInModalDialog.value?.close();
+    start_workspace_timers();
+};
+
+onMounted(() => {
+    schedule_loading_then_assignment_modal();
 });
 
 const selectConfirmationType = (title) => {
@@ -158,7 +240,13 @@ const copyField = async (fieldKey) => {
 };
 
 onBeforeUnmount(() => {
-    if (timerInterval) {
+    if (loading_timeout_id !== null) {
+        window.clearTimeout(loading_timeout_id);
+    }
+
+    clear_take_work_timer();
+
+    if (timerInterval !== null) {
         window.clearInterval(timerInterval);
     }
 
@@ -172,7 +260,20 @@ onBeforeUnmount(() => {
     <ManualControlLayout>
         <Head title="Manual Control ACQ" />
 
-        <div class="w-full">
+        <div
+            v-if="page_phase === 'loading'"
+            class="flex min-h-[min(70vh,32rem)] w-full flex-col items-center justify-center gap-3 px-4 text-center"
+        >
+            <h2 class="text-base font-semibold text-base-content sm:text-lg">
+                Loading Pay In
+            </h2>
+            <p class="max-w-sm text-sm text-base-content/60">
+                We're paying from merchant
+            </p>
+            <span class="loading loading-spinner loading-md text-primary" aria-hidden="true" />
+        </div>
+
+        <div v-else-if="page_phase === 'workspace'" class="w-full">
             <div class="mx-auto flex w-full max-w-xl flex-col gap-4">
                 <header class="card border border-base-300 bg-base-100 shadow">
                     <div class="card-body gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -425,6 +526,75 @@ onBeforeUnmount(() => {
                 </section>
             </div>
         </div>
+
+        <dialog
+            ref="newPayInModalDialog"
+            class="modal modal-middle"
+            tabindex="0"
+            @close="on_new_pay_in_dialog_close"
+        >
+            <div class="modal-box max-w-md p-6">
+                <h3 class="text-lg font-bold text-base-content">
+                    New Pay In
+                </h3>
+
+                <div class="mt-4 space-y-3 text-sm">
+                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2.5">
+                        <p class="text-xs font-medium uppercase tracking-wide text-base-content/55">
+                            Pay In ID
+                        </p>
+                        <p class="mt-1 font-semibold tabular-nums text-base-content">
+                            {{ fields.payinId.display }}
+                        </p>
+                    </div>
+                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2.5">
+                        <p class="text-xs font-medium uppercase tracking-wide text-base-content/55">
+                            Bank
+                        </p>
+                        <p class="mt-1 font-semibold text-base-content">
+                            {{ fields.incomingBank.display }}
+                        </p>
+                    </div>
+                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2.5">
+                        <p class="text-xs font-medium uppercase tracking-wide text-base-content/55">
+                            Amount
+                        </p>
+                        <p class="mt-1 font-semibold text-base-content">
+                            {{ fields.amount.display }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="modal-action mt-6 !justify-stretch gap-2 sm:!justify-end">
+                    <button
+                        type="button"
+                        class="btn btn-error flex-1 sm:flex-none"
+                        @click="on_cancel_new_pay_in"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-primary flex-1 sm:flex-none"
+                        aria-label="Take to work"
+                        :class="{ 'btn-disabled pointer-events-none opacity-60': take_work_seconds_remaining <= 0 }"
+                        :disabled="take_work_seconds_remaining <= 0"
+                        @click.stop="on_take_to_work"
+                    >
+                        <span class="sm:hidden">Take</span>
+                        <span class="hidden sm:inline">Take to work</span>
+                        <span class="ml-1 tabular-nums opacity-90">
+                            ({{ take_work_seconds_remaining }})
+                        </span>
+                    </button>
+                </div>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button type="submit" aria-label="Close">
+                    close
+                </button>
+            </form>
+        </dialog>
 
         <dialog
             ref="rejectModalDialog"
