@@ -79,6 +79,8 @@ const history_total_count = 47;
  * @property {string} pending_confirmation_title
  * @property {number} confirm_seconds_remaining
  * @property {{ display: string, copy: string } | null} confirmation_code Код от банка/шлюза (если уже пришёл)
+ * @property {'accepted' | 'rejected'} [outcome_status] Итог сделки (записи истории).
+ * @property {string | null} [reject_reason] Текст причины отклонения при outcome_status === 'rejected'.
  */
 
 /** @type {import('vue').Ref<PayInQueueItem[]>} */
@@ -145,6 +147,8 @@ const pay_in_queue_history_visible = ref([
         pending_confirmation_title: '',
         confirm_seconds_remaining: 0,
         confirmation_code: null,
+        outcome_status: 'accepted',
+        reject_reason: null,
     },
     {
         id: 'h2',
@@ -159,6 +163,8 @@ const pay_in_queue_history_visible = ref([
         pending_confirmation_title: '',
         confirm_seconds_remaining: 0,
         confirmation_code: null,
+        outcome_status: 'rejected',
+        reject_reason: 'Недостаточно средств',
     },
     {
         id: 'h3',
@@ -173,6 +179,8 @@ const pay_in_queue_history_visible = ref([
         pending_confirmation_title: '',
         confirm_seconds_remaining: 0,
         confirmation_code: null,
+        outcome_status: 'accepted',
+        reject_reason: null,
     },
     {
         id: 'h4',
@@ -187,6 +195,8 @@ const pay_in_queue_history_visible = ref([
         pending_confirmation_title: '',
         confirm_seconds_remaining: 0,
         confirmation_code: null,
+        outcome_status: 'rejected',
+        reject_reason: 'Подозрение на мошенничество',
     },
     {
         id: 'h5',
@@ -201,6 +211,8 @@ const pay_in_queue_history_visible = ref([
         pending_confirmation_title: '',
         confirm_seconds_remaining: 0,
         confirmation_code: null,
+        outcome_status: 'accepted',
+        reject_reason: null,
     },
 ]);
 
@@ -530,15 +542,7 @@ const request_reject_application = () => {
         return;
     }
 
-    modal_store.openConfirmModal({
-        title: 'Отклонить заявку?',
-        body: `Действие: отклонить заявку Pay In ${item.payin_id.display}. Далее откроется выбор причины.`,
-        confirm_button_name: 'Продолжить',
-        cancel_button_name: 'Отмена',
-        confirm: () => {
-            open_reject_reason_dialog();
-        },
-    });
+    open_reject_reason_dialog();
 };
 
 const closeRejectModal = () => {
@@ -1083,6 +1087,42 @@ onBeforeUnmount(() => {
                                     </span>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section
+                    v-if="is_selected_history && selected_item.outcome_status"
+                    class="card border border-base-300 bg-base-100 shadow"
+                >
+                    <div class="card-body gap-2 p-4 sm:p-5">
+                        <p class="text-[10px] font-semibold uppercase tracking-wide text-base-content/50">
+                            Итог сделки
+                        </p>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-3 sm:gap-y-1">
+                            <span
+                                class="badge badge-sm w-fit font-semibold normal-case"
+                                :class="
+                                    selected_item.outcome_status === 'accepted'
+                                        ? 'badge-success'
+                                        : 'badge-error'
+                                "
+                            >
+                                {{
+                                    selected_item.outcome_status === 'accepted'
+                                        ? 'Accepted'
+                                        : 'Rejected'
+                                }}
+                            </span>
+                            <p
+                                v-if="
+                                    selected_item.outcome_status === 'rejected'
+                                        && selected_item.reject_reason
+                                "
+                                class="text-sm leading-snug text-base-content/75"
+                            >
+                                {{ selected_item.reject_reason }}
+                            </p>
                         </div>
                     </div>
                 </section>
