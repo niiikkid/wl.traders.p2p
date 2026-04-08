@@ -223,8 +223,36 @@ const is_selected_history = computed(() => selected_item.value?.is_history === t
 
 const copiedField = ref('');
 const rejectModalDialog = ref(null);
+/** @type {import('vue').Ref<HTMLDialogElement | null>} */
+const notification_settings_dialog = ref(null);
 const selectedRejectReason = ref('');
 let timerInterval = null;
+
+/** Макет: звук «новая заявка» (без бэкенда). */
+const notification_sound_new_offer_enabled = ref(true);
+/** Макет: пресет звука для новой заявки. */
+const notification_sound_new_offer_preset = ref('chime');
+
+/** Макет: звук «код подтверждения». */
+const notification_sound_confirm_code_enabled = ref(true);
+/** Макет: пресет звука для кода подтверждения. */
+const notification_sound_confirm_code_preset = ref('soft');
+
+/** Демо-варианты звука для селектов (только верстка). */
+const notification_sound_preset_options = [
+    { value: 'chime', label: 'Классический звонок' },
+    { value: 'beep', label: 'Короткий сигнал' },
+    { value: 'soft', label: 'Мягкий тон' },
+    { value: 'digital', label: 'Цифровой пинг' },
+];
+
+const open_notification_settings_modal = () => {
+    notification_settings_dialog.value?.showModal();
+};
+
+const close_notification_settings_modal = () => {
+    notification_settings_dialog.value?.close();
+};
 let copiedFieldTimeout = null;
 
 const format_mm_ss = (total_seconds) => {
@@ -600,13 +628,43 @@ onBeforeUnmount(() => {
             <aside
                 class="flex max-h-[40vh] shrink-0 flex-col border-b border-base-300 bg-base-200/80 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r"
             >
-                <div class="border-b border-base-300 px-3 py-2.5">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-base-content/55">
-                        Мои подтверждения
-                    </p>
-                    <p class="mt-0.5 text-[11px] leading-snug text-base-content/45">
-                        Активные заявки и история.
-                    </p>
+                <div class="flex items-start gap-2 border-b border-base-300 px-3 py-2.5">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-base-content/55">
+                            Мои подтверждения
+                        </p>
+                        <p class="mt-0.5 text-[11px] leading-snug text-base-content/45">
+                            Активные заявки и история.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="btn btn-ghost btn-square btn-sm shrink-0"
+                        aria-label="Настройки звуков уведомлений"
+                        title="Настройки уведомлений"
+                        @click="open_notification_settings_modal"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.5"
+                            stroke="currentColor"
+                            class="size-5"
+                            aria-hidden="true"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.281Z"
+                            />
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                            />
+                        </svg>
+                    </button>
                 </div>
                 <nav class="min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label="Очередь Pay In">
                     <div
@@ -1177,6 +1235,123 @@ onBeforeUnmount(() => {
             </div>
             <form method="dialog" class="modal-backdrop">
                 <button type="submit" aria-label="Close">
+                    close
+                </button>
+            </form>
+        </dialog>
+
+        <dialog
+            ref="notification_settings_dialog"
+            class="modal modal-bottom sm:modal-middle"
+            tabindex="0"
+        >
+            <div class="modal-box max-w-md p-6">
+                <form method="dialog">
+                    <button
+                        type="submit"
+                        class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                        aria-label="Закрыть"
+                    >
+                        ✕
+                    </button>
+                </form>
+                <h3 class="pr-10 text-lg font-bold text-base-content">
+                    Звуки уведомлений
+                </h3>
+                <p class="mt-2 text-sm text-base-content/60">
+                    Включите уведомления и выберите звук для каждого события. Сохранение на сервер подключим позже.
+                </p>
+
+                <div class="mt-5 space-y-4">
+                    <div class="rounded-box border border-base-300 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-base-content">
+                                    Новая заявка
+                                </p>
+                                <p class="mt-0.5 text-xs leading-snug text-base-content/50">
+                                    Когда в очередь попадает новая заявка Pay In.
+                                </p>
+                            </div>
+                            <input
+                                v-model="notification_sound_new_offer_enabled"
+                                type="checkbox"
+                                class="toggle toggle-primary shrink-0"
+                                aria-label="Звук при новой заявке"
+                            >
+                        </div>
+                        <div class="form-control mt-3 w-full">
+                            <label class="label py-1 pt-0" for="mc-acq-sound-new-offer">
+                                <span class="label-text text-xs text-base-content/55">Звук</span>
+                            </label>
+                            <select
+                                id="mc-acq-sound-new-offer"
+                                v-model="notification_sound_new_offer_preset"
+                                class="select select-bordered select-sm w-full"
+                                :disabled="!notification_sound_new_offer_enabled"
+                            >
+                                <option
+                                    v-for="opt in notification_sound_preset_options"
+                                    :key="`new-${opt.value}`"
+                                    :value="opt.value"
+                                >
+                                    {{ opt.label }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="rounded-box border border-base-300 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-semibold text-base-content">
+                                    Код подтверждения
+                                </p>
+                                <p class="mt-0.5 text-xs leading-snug text-base-content/50">
+                                    Когда приходит OTP или другой код от банка.
+                                </p>
+                            </div>
+                            <input
+                                v-model="notification_sound_confirm_code_enabled"
+                                type="checkbox"
+                                class="toggle toggle-primary shrink-0"
+                                aria-label="Звук при коде подтверждения"
+                            >
+                        </div>
+                        <div class="form-control mt-3 w-full">
+                            <label class="label py-1 pt-0" for="mc-acq-sound-confirm">
+                                <span class="label-text text-xs text-base-content/55">Звук</span>
+                            </label>
+                            <select
+                                id="mc-acq-sound-confirm"
+                                v-model="notification_sound_confirm_code_preset"
+                                class="select select-bordered select-sm w-full"
+                                :disabled="!notification_sound_confirm_code_enabled"
+                            >
+                                <option
+                                    v-for="opt in notification_sound_preset_options"
+                                    :key="`confirm-${opt.value}`"
+                                    :value="opt.value"
+                                >
+                                    {{ opt.label }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-action mt-6 !justify-end">
+                    <button
+                        type="button"
+                        class="btn btn-primary btn-sm"
+                        @click="close_notification_settings_modal"
+                    >
+                        Готово
+                    </button>
+                </div>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button type="submit" aria-label="Закрыть">
                     close
                 </button>
             </form>
