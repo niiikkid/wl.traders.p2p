@@ -1,18 +1,31 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
+import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
 import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
+import { useModalStore } from '@/store/modal.js';
 
-const INTRO_LOADING_MS = 3000;
-const TAKE_WORK_COUNTDOWN_SECONDS = 10;
+const modal_store = useModalStore();
 
-/** @type {import('vue').Ref<'loading' | 'assignment_modal' | 'workspace'>} */
-const page_phase = ref('loading');
-const newPayInModalDialog = ref(null);
-const take_work_seconds_remaining = ref(TAKE_WORK_COUNTDOWN_SECONDS);
-let loading_timeout_id = null;
-let take_work_interval_id = null;
+const INCOMING_OFFER_COUNTDOWN_SECONDS = 10;
+
+/**
+ * Входящая заявка (ещё не в очереди оператора).
+ *
+ * @type {import('vue').Ref<{ payin_id: { display: string }, incoming_bank: { display: string }, amount: { display: string } } | null>}
+ */
+const incoming_offer_preview = ref({
+    payin_id: { display: '220046020' },
+    incoming_bank: { display: 'Sense Bank' },
+    amount: { display: '4,200 UAH' },
+});
+
+/** Показать блок новой заявки над списком «Текущие». */
+const incoming_offer_visible = ref(true);
+
+const incoming_offer_seconds_remaining = ref(INCOMING_OFFER_COUNTDOWN_SECONDS);
+let incoming_offer_interval_id = null;
 
 const confirmationCol1 = [
     { title: 'OTP code' },
@@ -40,17 +53,17 @@ const PROCESSING_TOTAL_SECONDS = 15 * 60;
 const processingRingRadius = 42;
 const processingRingCircumference = 2 * Math.PI * processingRingRadius;
 
-/** Сколько последних записей истории отображаем (макет лимита API). */
+/** Сколько последних записей истории отображаем в списке. */
 const HISTORY_DISPLAY_LIMIT = 5;
 
 /**
- * Мок: всего записей в истории у оператора (как с бэкенда).
+ * Всего записей в истории у оператора.
  * В списке только последние HISTORY_DISPLAY_LIMIT; остальные в UI не подгружаются.
  */
-const mock_history_total_count = 47;
+const history_total_count = 47;
 
 /**
- * Мок-очередь: только верстка / фронт, без бэкенда.
+ * Очередь Pay In оператора.
  * У каждого элемента свои таймеры processing и опционально confirm.
  *
  * @typedef {object} PayInQueueItem
@@ -115,7 +128,7 @@ const pay_in_queue_active = ref([
 ]);
 
 /**
- * Последние HISTORY_DISPLAY_LIMIT записей истории (мок ответа API).
+ * Последние HISTORY_DISPLAY_LIMIT записей истории.
  * @type {import('vue').Ref<PayInQueueItem[]>}
  */
 const pay_in_queue_history_visible = ref([
@@ -193,7 +206,7 @@ const pay_in_queue_history_visible = ref([
 
 const pay_in_queue_all = computed(() => [...pay_in_queue_active.value, ...pay_in_queue_history_visible.value]);
 
-const history_hidden_count = computed(() => Math.max(0, mock_history_total_count - HISTORY_DISPLAY_LIMIT));
+const history_hidden_count = computed(() => Math.max(0, history_total_count - HISTORY_DISPLAY_LIMIT));
 
 /** @type {import('vue').Ref<string | null>} */
 const selected_item_id = ref(null);
@@ -207,8 +220,6 @@ const active_queue_items = computed(() => pay_in_queue_active.value);
 const history_queue_items = computed(() => pay_in_queue_history_visible.value);
 
 const is_selected_history = computed(() => selected_item.value?.is_history === true);
-
-const assignment_preview_item = computed(() => active_queue_items.value[0] ?? null);
 
 const copiedField = ref('');
 const rejectModalDialog = ref(null);
@@ -273,19 +284,6 @@ const canConfirm = computed(() => {
     return Boolean(item && !item.is_history && item.confirm_seconds_remaining > 0);
 });
 
-const schedule_loading_then_assignment_modal = () => {
-    if (loading_timeout_id !== null) {
-        window.clearTimeout(loading_timeout_id);
-        loading_timeout_id = null;
-    }
-
-    page_phase.value = 'loading';
-    loading_timeout_id = window.setTimeout(() => {
-        loading_timeout_id = null;
-        open_assignment_modal_flow();
-    }, INTRO_LOADING_MS);
-};
-
 const start_workspace_timers = () => {
     if (timerInterval !== null) {
         return;
@@ -302,56 +300,118 @@ const start_workspace_timers = () => {
     }, 1000);
 };
 
-const clear_take_work_timer = () => {
-    if (take_work_interval_id !== null) {
-        window.clearInterval(take_work_interval_id);
-        take_work_interval_id = null;
+const clear_incoming_offer_timer = () => {
+    if (incoming_offer_interval_id !== null) {
+        window.clearInterval(incoming_offer_interval_id);
+        incoming_offer_interval_id = null;
     }
 };
 
-const open_assignment_modal_flow = () => {
-    page_phase.value = 'assignment_modal';
-    take_work_seconds_remaining.value = TAKE_WORK_COUNTDOWN_SECONDS;
-    clear_take_work_timer();
-    take_work_interval_id = window.setInterval(() => {
-        if (take_work_seconds_remaining.value > 0) {
-            take_work_seconds_remaining.value -= 1;
+const start_incoming_offer_countdown = () => {
+    if (!incoming_offer_visible.value || !incoming_offer_preview.value) {
+        return;
+    }
+
+    clear_incoming_offer_timer();
+    incoming_offer_seconds_remaining.value = INCOMING_OFFER_COUNTDOWN_SECONDS;
+    incoming_offer_interval_id = window.setInterval(() => {
+        if (incoming_offer_seconds_remaining.value > 0) {
+            incoming_offer_seconds_remaining.value -= 1;
         }
     }, 1000);
+};
 
-    nextTick(() => {
-        newPayInModalDialog.value?.showModal();
+/**
+ * Собрать полный элемент очереди из превью входящей заявки.
+ * @returns {PayInQueueItem | null}
+ */
+const build_queue_item_from_incoming_preview = () => {
+    const preview = incoming_offer_preview.value;
+
+    if (!preview) {
+        return null;
+    }
+
+    const id = `q_in_${Date.now()}`;
+
+    return {
+        id,
+        is_history: false,
+        payin_id: { display: preview.payin_id.display, copy: preview.payin_id.display.replace(/\s/g, '') },
+        incoming_bank: { display: preview.incoming_bank.display },
+        amount: {
+            display: preview.amount.display,
+            copy: preview.amount.display.replace(/[^\d]/g, '') || '0',
+        },
+        card_number: { display: '—', copy: '' },
+        expiry_date: { display: '—', copy: '' },
+        cvv: { display: '—', copy: '' },
+        processing_elapsed_seconds: 0,
+        pending_confirmation_title: '',
+        confirm_seconds_remaining: 0,
+        confirmation_code: null,
+    };
+};
+
+const can_take_incoming_offer = computed(
+    () => incoming_offer_visible.value && incoming_offer_seconds_remaining.value > 0,
+);
+
+const execute_take_incoming_offer = () => {
+    if (!can_take_incoming_offer.value) {
+        return;
+    }
+
+    const new_item = build_queue_item_from_incoming_preview();
+
+    clear_incoming_offer_timer();
+    incoming_offer_visible.value = false;
+    incoming_offer_preview.value = null;
+
+    if (new_item) {
+        pay_in_queue_active.value = [new_item, ...pay_in_queue_active.value];
+        selected_item_id.value = new_item.id;
+    }
+};
+
+const request_take_incoming_offer = () => {
+    if (!can_take_incoming_offer.value) {
+        return;
+    }
+
+    const preview = incoming_offer_preview.value;
+    const payin_label = preview?.payin_id.display ?? '—';
+
+    modal_store.openConfirmModal({
+        title: 'Взять заявку в работу?',
+        body: `Вы подтверждаете взятие новой заявки Pay In ${payin_label}. Она появится в списке «Текущие».`,
+        confirm_button_name: 'Взять',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            execute_take_incoming_offer();
+        },
     });
 };
 
-const on_new_pay_in_dialog_close = () => {
-    if (page_phase.value !== 'assignment_modal') {
-        return;
-    }
-
-    clear_take_work_timer();
-    schedule_loading_then_assignment_modal();
+const execute_decline_incoming_offer = () => {
+    clear_incoming_offer_timer();
+    incoming_offer_visible.value = false;
+    incoming_offer_preview.value = null;
 };
 
-const on_cancel_new_pay_in = () => {
-    clear_take_work_timer();
-    schedule_loading_then_assignment_modal();
-    newPayInModalDialog.value?.close();
-};
+const request_decline_incoming_offer = () => {
+    const preview = incoming_offer_preview.value;
+    const payin_label = preview?.payin_id.display ?? '—';
 
-const on_take_to_work = () => {
-    if (take_work_seconds_remaining.value <= 0) {
-        return;
-    }
-
-    clear_take_work_timer();
-    page_phase.value = 'workspace';
-    newPayInModalDialog.value?.close();
-
-    const first_active = pay_in_queue_active.value[0] ?? null;
-
-    selected_item_id.value = first_active?.id ?? pay_in_queue_history_visible.value[0]?.id ?? null;
-    start_workspace_timers();
+    modal_store.openConfirmModal({
+        title: 'Отклонить входящую заявку?',
+        body: `Вы подтверждаете отклонение новой заявки Pay In ${payin_label} без взятия в работу.`,
+        confirm_button_name: 'Отклонить',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            execute_decline_incoming_offer();
+        },
+    });
 };
 
 const select_queue_item = (item_id) => {
@@ -359,10 +419,14 @@ const select_queue_item = (item_id) => {
 };
 
 onMounted(() => {
-    schedule_loading_then_assignment_modal();
+    const first_active = pay_in_queue_active.value[0] ?? null;
+
+    selected_item_id.value = first_active?.id ?? pay_in_queue_history_visible.value[0]?.id ?? null;
+    start_workspace_timers();
+    start_incoming_offer_countdown();
 });
 
-const selectConfirmationType = (title) => {
+const apply_confirmation_type = (title) => {
     const item = selected_item.value;
 
     if (!item || item.is_history) {
@@ -373,6 +437,24 @@ const selectConfirmationType = (title) => {
     item.confirm_seconds_remaining = CONFIRM_COUNTDOWN_SECONDS;
 };
 
+const request_select_confirmation_type = (title) => {
+    const item = selected_item.value;
+
+    if (!item || item.is_history) {
+        return;
+    }
+
+    modal_store.openConfirmModal({
+        title: 'Выбрать тип подтверждения?',
+        body: `Действие: установить тип «${title}» для заявки Pay In ${item.payin_id.display}. Таймер подтверждения будет запущен заново.`,
+        confirm_button_name: 'Выбрать',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            apply_confirmation_type(title);
+        },
+    });
+};
+
 const confirmationButtonClass = (title) => {
     const base = 'btn h-auto min-h-8 w-full whitespace-normal px-3 py-1.5 text-center text-xs font-medium normal-case sm:min-h-9';
     const active = selected_item.value?.pending_confirmation_title === title;
@@ -380,15 +462,55 @@ const confirmationButtonClass = (title) => {
     return active ? `${base} btn-primary` : `${base} btn-outline`;
 };
 
-const onConfirmClick = () => {
+const execute_confirm_payment = () => {
     if (!canConfirm.value) {
         return;
     }
 };
 
-const openRejectModal = () => {
+const request_confirm_payment = () => {
+    if (!canConfirm.value) {
+        return;
+    }
+
+    const item = selected_item.value;
+
+    if (!item) {
+        return;
+    }
+
+    modal_store.openConfirmModal({
+        title: 'Подтвердить операцию?',
+        body: `Действие: подтвердить заявку Pay In ${item.payin_id.display} с типом «${item.pending_confirmation_title}».`,
+        confirm_button_name: 'Confirm',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            execute_confirm_payment();
+        },
+    });
+};
+
+const open_reject_reason_dialog = () => {
     selectedRejectReason.value = '';
     rejectModalDialog.value?.showModal();
+};
+
+const request_reject_application = () => {
+    const item = selected_item.value;
+
+    if (!item || item.is_history) {
+        return;
+    }
+
+    modal_store.openConfirmModal({
+        title: 'Отклонить заявку?',
+        body: `Действие: отклонить заявку Pay In ${item.payin_id.display}. Далее откроется выбор причины.`,
+        confirm_button_name: 'Продолжить',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            open_reject_reason_dialog();
+        },
+    });
 };
 
 const closeRejectModal = () => {
@@ -454,11 +576,7 @@ const copyField = async (fieldKey) => {
 };
 
 onBeforeUnmount(() => {
-    if (loading_timeout_id !== null) {
-        window.clearTimeout(loading_timeout_id);
-    }
-
-    clear_take_work_timer();
+    clear_incoming_offer_timer();
 
     if (timerInterval !== null) {
         window.clearInterval(timerInterval);
@@ -474,22 +592,11 @@ onBeforeUnmount(() => {
     <ManualControlLayout>
         <Head title="Manual Control ACQ" />
 
-        <div class="flex min-h-0 w-full flex-1 flex-col">
-        <div
-            v-if="page_phase === 'loading'"
-            class="flex w-full flex-1 flex-col items-center justify-center gap-3 px-4 py-8 text-center"
-        >
-            <h2 class="text-base font-semibold text-base-content sm:text-lg">
-                Loading Pay In
-            </h2>
-            <p class="max-w-sm text-sm text-base-content/60">
-                We're paying from merchant
-            </p>
-            <span class="loading loading-spinner loading-md text-primary" aria-hidden="true" />
-        </div>
+        <ConfirmModal />
 
-        <div v-else-if="page_phase === 'workspace'" class="flex min-h-0 w-full flex-1 flex-col lg:flex-row lg:items-stretch">
-            <!-- Левая колонка: мок-очередь текущего оператора (DaisyUI menu + badges) -->
+        <div class="flex min-h-0 w-full flex-1 flex-col">
+        <div class="flex min-h-0 w-full flex-1 flex-col lg:flex-row lg:items-stretch">
+            <!-- Левая колонка: очередь оператора (DaisyUI menu + badges) -->
             <aside
                 class="flex max-h-[40vh] shrink-0 flex-col border-b border-base-300 bg-base-200/80 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r"
             >
@@ -498,10 +605,87 @@ onBeforeUnmount(() => {
                         Мои подтверждения
                     </p>
                     <p class="mt-0.5 text-[11px] leading-snug text-base-content/45">
-                        Макет: несколько активных и история (данные не с бэкенда).
+                        Активные заявки и история.
                     </p>
                 </div>
                 <nav class="min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label="Очередь Pay In">
+                    <div
+                        v-if="incoming_offer_visible && incoming_offer_preview"
+                        class="card mb-3 border border-accent/30 bg-base-100 shadow-sm ring-1 ring-accent/15"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        <div class="card-body gap-3 p-3">
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <h3 class="card-title text-sm font-semibold text-base-content">
+                                    Новая заявка
+                                    <span class="badge badge-accent badge-sm font-medium normal-case">Live</span>
+                                </h3>
+                                <div
+                                    class="flex items-center gap-1 rounded-box bg-base-200/80 px-2 py-1 text-xs tabular-nums text-base-content/80"
+                                    title="Время на решение"
+                                >
+                                    <span class="countdown font-mono text-sm leading-none">
+                                        <span
+                                            :style="{ '--value': incoming_offer_seconds_remaining }"
+                                            :aria-label="String(incoming_offer_seconds_remaining)"
+                                        >
+                                            {{ incoming_offer_seconds_remaining }}
+                                        </span>
+                                    </span>
+                                    <span class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">сек</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-2 rounded-box border border-base-200 bg-base-200/30 px-2.5 py-2 text-xs">
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="shrink-0 font-medium uppercase tracking-wide text-base-content/50">Pay In</span>
+                                    <span class="font-mono font-semibold tabular-nums text-base-content">
+                                        {{ incoming_offer_preview.payin_id.display }}
+                                    </span>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="shrink-0 font-medium uppercase tracking-wide text-base-content/50">Банк</span>
+                                    <span class="min-w-0 truncate text-right font-medium text-base-content">
+                                        {{ incoming_offer_preview.incoming_bank.display }}
+                                    </span>
+                                </div>
+                                <div class="flex items-baseline justify-between gap-2">
+                                    <span class="shrink-0 font-medium uppercase tracking-wide text-base-content/50">Сумма</span>
+                                    <span class="shrink-0 font-semibold tabular-nums text-base-content">
+                                        {{ incoming_offer_preview.amount.display }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p
+                                v-if="incoming_offer_seconds_remaining <= 0"
+                                class="text-[11px] leading-snug text-error"
+                            >
+                                Время на взятие заявки истекло.
+                            </p>
+
+                            <div class="card-actions mt-0 grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    class="btn btn-outline btn-error btn-sm h-9 min-h-9 w-full font-medium normal-case"
+                                    @click="request_decline_incoming_offer"
+                                >
+                                    Отклонить
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary btn-sm h-9 min-h-9 w-full font-medium normal-case"
+                                    :class="{ 'btn-disabled pointer-events-none opacity-60': !can_take_incoming_offer }"
+                                    :disabled="!can_take_incoming_offer"
+                                    @click="request_take_incoming_offer"
+                                >
+                                    Взять
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <p class="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-base-content/40">
                         Текущие
                     </p>
@@ -640,7 +824,7 @@ onBeforeUnmount(() => {
                         class="mt-2 rounded-box border border-dashed border-base-300 bg-base-200/50 px-2.5 py-2 text-[10px] leading-snug text-base-content/50"
                         role="note"
                     >
-                        Показаны последние {{ HISTORY_DISPLAY_LIMIT }} из {{ mock_history_total_count }}.
+                        Показаны последние {{ HISTORY_DISPLAY_LIMIT }} из {{ history_total_count }}.
                         Ещё {{ history_hidden_count }} шт. старше в этом списке не подгружаются.
                     </div>
                 </nav>
@@ -852,7 +1036,7 @@ onBeforeUnmount(() => {
                             class="alert alert-info py-2 text-sm"
                             role="status"
                         >
-                            <span>История: только просмотр (макет).</span>
+                            <span>История: только просмотр.</span>
                         </div>
 
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -876,7 +1060,7 @@ onBeforeUnmount(() => {
                                     type="button"
                                     :class="confirmationButtonClass(option.title)"
                                     :disabled="is_selected_history"
-                                    @click="selectConfirmationType(option.title)"
+                                    @click="request_select_confirmation_type(option.title)"
                                 >
                                     {{ option.title }}
                                 </button>
@@ -889,7 +1073,7 @@ onBeforeUnmount(() => {
                                     type="button"
                                     :class="confirmationButtonClass(option.title)"
                                     :disabled="is_selected_history"
-                                    @click="selectConfirmationType(option.title)"
+                                    @click="request_select_confirmation_type(option.title)"
                                 >
                                     {{ option.title }}
                                 </button>
@@ -903,7 +1087,7 @@ onBeforeUnmount(() => {
                                     v-if="!selected_item.pending_confirmation_title && !is_selected_history"
                                     type="button"
                                     class="btn btn-error h-auto min-h-8 w-full whitespace-normal px-3 py-1.5 text-center text-xs font-medium normal-case sm:min-h-9"
-                                    @click="openRejectModal"
+                                    @click="request_reject_application"
                                 >
                                     Reject
                                 </button>
@@ -917,7 +1101,7 @@ onBeforeUnmount(() => {
                                         class="btn btn-primary btn-sm h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs font-medium normal-case"
                                         :class="{ 'btn-disabled pointer-events-none opacity-50': !canConfirm }"
                                         :disabled="!canConfirm"
-                                        @click="onConfirmClick"
+                                        @click="request_confirm_payment"
                                     >
                                         Confirm
                                         <span class="ml-1 tabular-nums opacity-90">
@@ -927,7 +1111,7 @@ onBeforeUnmount(() => {
                                     <button
                                         type="button"
                                         class="btn btn-error btn-sm h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs font-medium normal-case"
-                                        @click="openRejectModal"
+                                        @click="request_reject_application"
                                     >
                                         Reject
                                     </button>
@@ -942,84 +1126,9 @@ onBeforeUnmount(() => {
                 v-else
                 class="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-12 text-center text-sm text-base-content/60"
             >
-                Нет выбранной заявки (макет очереди пуст).
+                Нет выбранной заявки.
             </div>
         </div>
-
-        <div
-            v-else
-            class="w-full flex-1"
-            aria-hidden="true"
-        />
-
-        <dialog
-            ref="newPayInModalDialog"
-            class="modal modal-middle"
-            tabindex="0"
-            @close="on_new_pay_in_dialog_close"
-        >
-            <div class="modal-box max-w-md p-6">
-                <h3 class="text-lg font-bold text-base-content">
-                    New Pay In
-                </h3>
-
-                <div class="mt-4 space-y-3 text-sm">
-                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2.5">
-                        <p class="text-xs font-medium uppercase tracking-wide text-base-content/55">
-                            Pay In ID
-                        </p>
-                        <p class="mt-1 font-semibold tabular-nums text-base-content">
-                            {{ assignment_preview_item?.payin_id.display ?? '—' }}
-                        </p>
-                    </div>
-                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2.5">
-                        <p class="text-xs font-medium uppercase tracking-wide text-base-content/55">
-                            Bank
-                        </p>
-                        <p class="mt-1 font-semibold text-base-content">
-                            {{ assignment_preview_item?.incoming_bank.display ?? '—' }}
-                        </p>
-                    </div>
-                    <div class="rounded-box border border-base-300 bg-base-200/40 px-3 py-2.5">
-                        <p class="text-xs font-medium uppercase tracking-wide text-base-content/55">
-                            Amount
-                        </p>
-                        <p class="mt-1 font-semibold text-base-content">
-                            {{ assignment_preview_item?.amount.display ?? '—' }}
-                        </p>
-                    </div>
-                </div>
-
-                <div class="modal-action mt-6 !justify-stretch gap-2 sm:!justify-end">
-                    <button
-                        type="button"
-                        class="btn btn-error flex-1 sm:flex-none"
-                        @click="on_cancel_new_pay_in"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-primary flex-1 sm:flex-none"
-                        aria-label="Take to work"
-                        :class="{ 'btn-disabled pointer-events-none opacity-60': take_work_seconds_remaining <= 0 }"
-                        :disabled="take_work_seconds_remaining <= 0"
-                        @click.stop="on_take_to_work"
-                    >
-                        <span class="sm:hidden">Take</span>
-                        <span class="hidden sm:inline">Take to work</span>
-                        <span class="ml-1 tabular-nums opacity-90">
-                            ({{ take_work_seconds_remaining }})
-                        </span>
-                    </button>
-                </div>
-            </div>
-            <form method="dialog" class="modal-backdrop">
-                <button type="submit" aria-label="Close">
-                    close
-                </button>
-            </form>
-        </dialog>
 
         <dialog
             ref="rejectModalDialog"
