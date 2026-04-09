@@ -58,6 +58,12 @@ class OrderMaker
             'success_url' => $this->data->successURL,
             'fail_url' => $this->data->failURL,
             'is_h2h' => $this->data->h2h,
+            'manual_control_acquiring' => $this->data->manualControlAcquiring,
+            'manual_control_card_number' => $this->data->cardNumber,
+            'manual_control_expiry_month' => $this->data->expiryMonth,
+            'manual_control_expiry_year' => $this->data->expiryYear,
+            'manual_control_cvc' => $this->data->cvc,
+            'manual_control_cardholder_name' => $this->data->cardholderName !== '' ? $this->data->cardholderName : null,
             'payment_gateway_id' => null,
             'payment_detail_id' => null,
             'expires_at' => null,
@@ -83,6 +89,9 @@ class OrderMaker
         }
         if ($this->data->manually && $this->data->h2h) {
             throw OrderException::noH2HAndManually();
+        }
+        if ($this->data->manualControlAcquiring && ! $this->data->h2h) {
+            throw OrderException::make('Параметр manual_control_acquiring доступен только для H2H API.');
         }
 
         $this->validateMerchantApiRate();

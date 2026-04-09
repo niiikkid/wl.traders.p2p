@@ -98,6 +98,7 @@ class StoreRequest extends FormRequest
             'payment_gateway' => [
                 'required_without:currency',
                 'prohibits:currency',
+                Rule::prohibitedIf(fn () => $this->boolean('manual_control_acquiring')),
                 function ($attribute, $value, $fail) {
                     $cacheKey = "payment_gateway_exists_{$value}";
 
@@ -117,7 +118,39 @@ class StoreRequest extends FormRequest
                 'prohibits:payment_gateway',
                 Rule::in(Currency::getAllCodes())
             ],
-            'payment_detail_type' => ['nullable', Rule::in(DetailType::values())],
+            'payment_detail_type' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                Rule::in(DetailType::values()),
+            ],
+            'manual_control_acquiring' => ['nullable', 'boolean'],
+            'card_number' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                'string',
+                'max:32',
+            ],
+            'expiry_month' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                'integer',
+                'min:1',
+                'max:12',
+            ],
+            'expiry_year' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                'integer',
+                'min:2000',
+                'max:2999',
+            ],
+            'cvc' => [
+                'nullable',
+                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                'string',
+                'regex:/^\d{3,4}$/',
+            ],
+            'cardholder_name' => ['nullable', 'string', 'max:255'],
             'merchant_id' => [
                 'required',
                 function ($attribute, $value, $fail) {
@@ -189,6 +222,25 @@ class StoreRequest extends FormRequest
 
             if ($rate !== null && $rate !== '') {
                 $validator->errors()->add('rate', 'Поле rate недоступно для выбранного источника курсов.');
+            }
+
+            if ($this->boolean('manual_control_acquiring')) {
+                $paymentDetailType = (string) $this->input('payment_detail_type');
+
+                if ($paymentDetailType !== DetailType::CARD->value) {
+                    $validator->errors()->add(
+                        'payment_detail_type',
+                        'Для manual_control_acquiring доступен только тип реквизита card.'
+                    );
+                }
+
+                $cardNumber = preg_replace('/\D+/', '', (string) $this->input('card_number'));
+                if (! preg_match('/^\d{12,19}$/', $cardNumber)) {
+                    $validator->errors()->add(
+                        'card_number',
+                        'Поле card_number должно содержать от 12 до 19 цифр.'
+                    );
+                }
             }
         });
     }

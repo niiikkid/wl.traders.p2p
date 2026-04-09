@@ -52,6 +52,12 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property string $fail_url
  * @property array $amount_updates_history
  * @property boolean $is_h2h
+ * @property boolean $manual_control_acquiring
+ * @property string|null $manual_control_card_number
+ * @property int|null $manual_control_expiry_month
+ * @property int|null $manual_control_expiry_year
+ * @property string|null $manual_control_cvc
+ * @property string|null $manual_control_cardholder_name
  * @property int $payment_gateway_id
  * @property int $payment_detail_id
  * @property int $trader_id
@@ -104,6 +110,12 @@ class Order extends Model
         'fail_url',
         'amount_updates_history',
         'is_h2h',
+        'manual_control_acquiring',
+        'manual_control_card_number',
+        'manual_control_expiry_month',
+        'manual_control_expiry_year',
+        'manual_control_cvc',
+        'manual_control_cardholder_name',
         'payment_gateway_id',
         'payment_detail_id',
         'trader_id',
@@ -136,6 +148,9 @@ class Order extends Model
         'conversion_price' => MoneyCast::class,
         'rate_fixed_at' => 'datetime',
         'amount_updates_history' => 'array',
+        'manual_control_acquiring' => 'bool',
+        'manual_control_expiry_month' => 'int',
+        'manual_control_expiry_year' => 'int',
     ];
 
     protected static function booted()

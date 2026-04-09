@@ -34,10 +34,16 @@ const h2hOrderForm = ref({
     external_id: `test_h2h_${Date.now()}`,
     client_id: makeTestClientId(),
     amount: '1000',
+    manual_control_acquiring: false,
     payment_gateway: '',
     currency: 'rub',
     rate: '',
     payment_detail_type: '',
+    card_number: '',
+    expiry_month: '',
+    expiry_year: '',
+    cvc: '',
+    cardholder_name: '',
     merchant_id: initialMerchantId,
     callback_url: '',
     'X-Max-Wait-Ms': '30000'
@@ -98,6 +104,31 @@ watch(
     { immediate: true }
 );
 
+watch(
+    () => h2hOrderForm.value.manual_control_acquiring,
+    (isEnabled) => {
+        if (!isEnabled) {
+            return;
+        }
+
+        h2hOrderForm.value.payment_gateway = '';
+        h2hOrderForm.value.payment_detail_type = 'card';
+    }
+);
+
+const isManualControlCardDataValid = computed(() => {
+    if (!h2hOrderForm.value.manual_control_acquiring) {
+        return true;
+    }
+
+    const hasCardNumber = !!String(h2hOrderForm.value.card_number || '').trim();
+    const hasMonth = !!String(h2hOrderForm.value.expiry_month || '').trim();
+    const hasYear = !!String(h2hOrderForm.value.expiry_year || '').trim();
+    const hasCvc = !!String(h2hOrderForm.value.cvc || '').trim();
+
+    return hasCardNumber && hasMonth && hasYear && hasCvc;
+});
+
 const handleH2HRequest = async (key, method, endpoint, payload = {}, headers = {}) => {
     h2hResponses[key].response = null;
     h2hResponses[key].error = null;
@@ -146,10 +177,25 @@ const clearH2HResponse = (key) => {
                                 <input v-model="h2hOrderForm.amount" type="number" class="input input-bordered w-full" placeholder="1000">
                             </div>
                             <div class="form-control grid">
+                                <label class="label cursor-pointer justify-start gap-3">
+                                    <input v-model="h2hOrderForm.manual_control_acquiring" type="checkbox" class="checkbox checkbox-primary">
+                                    <span class="label-text">manual_control_acquiring</span>
+                                </label>
+                            </div>
+                            <div class="form-control grid">
                                 <label class="label">
                                     <span class="label-text">payment_gateway</span>
                                 </label>
-                                <input v-model="h2hOrderForm.payment_gateway" type="text" class="input input-bordered w-full" placeholder="sberbank">
+                                <input
+                                    v-model="h2hOrderForm.payment_gateway"
+                                    :disabled="h2hOrderForm.manual_control_acquiring"
+                                    type="text"
+                                    class="input input-bordered w-full"
+                                    placeholder="sberbank"
+                                >
+                                <label v-if="h2hOrderForm.manual_control_acquiring" class="label">
+                                    <span class="label-text-alt text-base-content/60">В режиме MCA поле недоступно</span>
+                                </label>
                             </div>
                             <div class="form-control grid">
                                 <label class="label">
@@ -167,7 +213,11 @@ const clearH2HResponse = (key) => {
                                 <label class="label">
                                     <span class="label-text">payment_detail_type</span>
                                 </label>
-                                <select v-model="h2hOrderForm.payment_detail_type" class="select select-bordered w-full">
+                                <select
+                                    v-model="h2hOrderForm.payment_detail_type"
+                                    :disabled="h2hOrderForm.manual_control_acquiring"
+                                    class="select select-bordered w-full"
+                                >
                                     <option value="">Не указано</option>
                                     <option value="card">card</option>
                                     <option value="phone">phone</option>
@@ -177,6 +227,70 @@ const clearH2HResponse = (key) => {
                                     <option value="nspk">nspk</option>
                                     <option value="e-com">e-com</option>
                                 </select>
+                                <label v-if="h2hOrderForm.manual_control_acquiring" class="label">
+                                    <span class="label-text-alt text-base-content/60">В этом режиме используется только card</span>
+                                </label>
+                            </div>
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">card_number <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
+                                </label>
+                                <input
+                                    v-model="h2hOrderForm.card_number"
+                                    type="text"
+                                    class="input input-bordered w-full"
+                                    placeholder="4444333322221111"
+                                >
+                            </div>
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">expiry_month <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
+                                </label>
+                                <input
+                                    v-model="h2hOrderForm.expiry_month"
+                                    type="number"
+                                    min="1"
+                                    max="12"
+                                    class="input input-bordered w-full"
+                                    placeholder="12"
+                                >
+                            </div>
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">expiry_year <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
+                                </label>
+                                <input
+                                    v-model="h2hOrderForm.expiry_year"
+                                    type="number"
+                                    min="2000"
+                                    class="input input-bordered w-full"
+                                    placeholder="2029"
+                                >
+                            </div>
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">cvc <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
+                                </label>
+                                <input
+                                    v-model="h2hOrderForm.cvc"
+                                    type="text"
+                                    class="input input-bordered w-full"
+                                    placeholder="123"
+                                >
+                                <label class="label">
+                                    <span class="label-text-alt text-base-content/60">Код проверки карты (CVV/CVC)</span>
+                                </label>
+                            </div>
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">cardholder_name</span>
+                                </label>
+                                <input
+                                    v-model="h2hOrderForm.cardholder_name"
+                                    type="text"
+                                    class="input input-bordered w-full"
+                                    placeholder="IVAN IVANOV"
+                                >
                             </div>
                             <div class="form-control grid">
                                 <label class="label">
@@ -212,7 +326,7 @@ const clearH2HResponse = (key) => {
                         </div>
                         <div class="card-actions justify-end mt-4">
                             <button @click="handleH2HRequest('createOrder', 'POST', 'h2h/order', Object.fromEntries(Object.entries(h2hOrderForm).filter(([key]) => key !== 'X-Max-Wait-Ms')), { 'X-Max-Wait-Ms': h2hOrderForm['X-Max-Wait-Ms'] })"
-                                    class="btn btn-primary" :disabled="loading">
+                                    class="btn btn-primary" :disabled="loading || !isManualControlCardDataValid">
                                 <span v-if="loading" class="loading loading-spinner loading-sm"></span>
                                 Отправить запрос
                             </button>
