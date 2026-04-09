@@ -1,6 +1,6 @@
 <script setup>
 import {router, usePage} from "@inertiajs/vue3";
-import {computed, ref, getCurrentInstance} from "vue";
+import {computed, ref, getCurrentInstance, watch} from "vue";
 import Pagination from "@/Components/Pagination/Pagination.vue";
 import AlertError from "@/Components/Alerts/AlertError.vue";
 import AlertInfo from "@/Components/Alerts/AlertInfo.vue";
@@ -28,10 +28,23 @@ const props = defineProps({
     info: {
         type: String,
         default: ''
-    }
+    },
+    visitExtraData: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 tableFiltersStore.setMeta(props.data?.meta);
+
+watch(
+    () => props.data?.meta,
+    (meta) => {
+        if (meta && props.paginate) {
+            tableFiltersStore.setMeta(meta);
+        }
+    },
+);
 tableFiltersStore.setFilters(usePage().props.filters);
 tableFiltersStore.setTab(new URL(window.location.href).searchParams.get('tab') || '');
 tableFiltersStore.setFiltersVariants(usePage().props.filtersVariants);
@@ -69,7 +82,7 @@ const changePerPage = (value) => {
 
 const openPage = () => {
     router.visit(page.url?.split('?')[0] || window.location.pathname, {
-        data: tableFiltersStore.getQueryData,
+        data: {...tableFiltersStore.getQueryData, ...props.visitExtraData},
         preserveScroll: true
     })
 }

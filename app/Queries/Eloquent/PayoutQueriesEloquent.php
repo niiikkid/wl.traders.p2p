@@ -47,7 +47,7 @@ class PayoutQueriesEloquent implements PayoutQueries
     /**
      * @inheritDoc
      */
-    public function paginateHistoryForTrader(User $trader, int $perPage = 15): LengthAwarePaginator
+    public function paginateHistoryForTrader(User $trader): LengthAwarePaginator
     {
         return $this->baseQuery()
             ->where('trader_id', $trader->id)
@@ -56,7 +56,7 @@ class PayoutQueriesEloquent implements PayoutQueries
                 PayoutStatus::CANCELED,
             ]))
             ->orderByDesc('id')
-            ->paginate($perPage, ['*'], 'history_page');
+            ->paginate(request()->integer('per_page', 10));
     }
 
     public function countActiveForTrader(User $trader): int

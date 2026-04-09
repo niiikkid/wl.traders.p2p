@@ -19,7 +19,7 @@ interface PayoutQueries
      */
     public function getActiveForTrader(User $trader): Collection;
 
-    public function paginateHistoryForTrader(User $trader, int $perPage = 15): LengthAwarePaginator;
+    public function paginateHistoryForTrader(User $trader): LengthAwarePaginator;
 
     public function countActiveForTrader(User $trader): int;
 

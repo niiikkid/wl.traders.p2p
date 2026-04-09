@@ -3,11 +3,11 @@ import {Head, router, usePage} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
+import {useTableFiltersStore} from '@/store/tableFilters.js';
 import {useViewStore} from '@/store/view.js';
 import GatewayLogo from '@/Components/GatewayLogo.vue';
 import BankManualIcon from '@/Components/BankManualIcon.vue';
 import DateTime from '@/Components/DateTime.vue';
-import Pagination from '@/Components/Pagination/Pagination.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import { formatDistanceStrict } from 'date-fns';
 import DisplayUUID from "../../../Components/DisplayUUID.vue";
@@ -38,6 +38,7 @@ const props = defineProps({
 
 const page = usePage();
 const viewStore = useViewStore();
+const tableFiltersStore = useTableFiltersStore();
 
 const trader = computed(() => page.props.auth?.user ?? {});
 const orderBook = computed(() => props.orderBook ?? []);
@@ -66,14 +67,6 @@ const refreshProgress = ref(0);
 let refreshProgressAnimationId = null;
 const autoRefreshTimer = ref(null);
 const isRefreshing = ref(false);
-const historyPage = ref(history.value?.meta?.current_page ?? 1);
-
-watch(
-    () => history.value?.meta?.current_page,
-    (value) => {
-        historyPage.value = value ?? 1;
-    },
-);
 
 const canTakeMore = computed(() => (props.limits?.currentActive ?? 0) < (props.limits?.maxActive ?? 1));
 
@@ -162,13 +155,14 @@ const animateRefreshProgress = (duration) => {
 
 const refreshProgressOffset = computed(() => 100 - Math.min(Math.max(refreshProgress.value, 0), 100));
 
-const reloadData = (targetHistoryPage = historyPage.value, replace = true) => {
+const reloadData = (targetPage = tableFiltersStore.getCurrentPage, replace = true) => {
     isRefreshing.value = true;
     router.visit(route('trader.payouts.index'), {
         method: 'get',
         data: {
             refresh_interval: refreshInterval.value,
-            history_page: targetHistoryPage,
+            page: targetPage,
+            per_page: tableFiltersStore.getPerPage,
         },
         preserveScroll: true,
         preserveState: true,
@@ -185,7 +179,7 @@ const refreshNow = () => {
     }
 
     startAutoRefresh();
-    reloadData(historyPage.value, false);
+    reloadData(tableFiltersStore.getCurrentPage, false);
 };
 
 const startAutoRefresh = () => {
@@ -195,7 +189,7 @@ const startAutoRefresh = () => {
         animateRefreshProgress(refreshInterval.value * 1000);
         autoRefreshTimer.value = setInterval(() => {
             animateRefreshProgress(refreshInterval.value * 1000);
-            reloadData(historyPage.value, false);
+            reloadData(tableFiltersStore.getCurrentPage, false);
         }, refreshInterval.value * 1000);
     } else {
         stopRefreshProgressAnimation();
@@ -220,7 +214,7 @@ watch(refreshInterval, (value) => {
     startAutoRefresh();
 
     if (value > 0) {
-        reloadData(historyPage.value, false);
+        reloadData(tableFiltersStore.getCurrentPage, false);
     }
 });
 
@@ -244,11 +238,6 @@ const takePayout = (payout) => {
             startAutoRefresh();
         },
     });
-};
-
-const changeHistoryPage = (pageNumber) => {
-    historyPage.value = pageNumber;
-    reloadData(pageNumber, true);
 };
 
 const formatHoldCountdown = (timestamp) => {
@@ -388,6 +377,7 @@ defineOptions({ layout: AuthenticatedLayout });
         <MainTableSection
             title="Выплаты"
             :data="history"
+            :visit-extra-data="{ refresh_interval: refreshInterval }"
         >
             <template #button>
                 <button
@@ -980,18 +970,6 @@ defineOptions({ layout: AuthenticatedLayout });
                             </div>
                         </div>
                     </div>
-                </div>
-            </template>
-            <template #footer>
-                <div class="flex justify-end">
-                    <Pagination
-                        v-if="history?.meta"
-                        :model-value="historyPage"
-                        :total-pages="history.meta.last_page"
-                        :per-page="history.meta.per_page"
-                        :total-items="history.meta.total"
-                        @page-changed="changeHistoryPage"
-                    />
                 </div>
             </template>
         </MainTableSection>

@@ -26,7 +26,7 @@ class PayoutController extends Controller
 
         $orderBook = queries()->payout()->getStackForTrader();
         $activePayouts = queries()->payout()->getActiveForTrader($request->user());
-        $history = queries()->payout()->paginateHistoryForTrader($request->user(), 15);
+        $history = queries()->payout()->paginateHistoryForTrader($request->user());
         $history->appends([
             'refresh_interval' => $refreshInterval,
         ]);
