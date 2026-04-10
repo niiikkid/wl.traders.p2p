@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
@@ -57,7 +58,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property string|null $manual_control_card_number
  * @property int|null $manual_control_expiry_month
  * @property int|null $manual_control_expiry_year
- * @property string|null $manual_control_cvc
  * @property string|null $manual_control_cardholder_name
  * @property int|null $manual_control_taken_by_user_id
  * @property Carbon|null $manual_control_taken_at
@@ -77,6 +77,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property MerchantClient|null $merchantClient
  * @property SmsLog $smsLog
  * @property Dispute $dispute
+ * @property Collection<int, OrderManualControlConfirmationCode> $manualControlConfirmationCodes
  * @property Carbon $finished_at
  * @property Carbon $expires_at
  * @property Carbon $created_at
@@ -119,7 +120,6 @@ class Order extends Model
         'manual_control_card_number',
         'manual_control_expiry_month',
         'manual_control_expiry_year',
-        'manual_control_cvc',
         'manual_control_cardholder_name',
         'manual_control_taken_by_user_id',
         'manual_control_taken_at',
@@ -207,6 +207,11 @@ class Order extends Model
     public function dispute(): HasOne
     {
         return $this->hasOne(Dispute::class);
+    }
+
+    public function manualControlConfirmationCodes(): HasMany
+    {
+        return $this->hasMany(OrderManualControlConfirmationCode::class, 'order_id');
     }
 
     public function merchant(): BelongsTo

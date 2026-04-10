@@ -82,6 +82,16 @@ const format_mm_ss = (total_seconds) => {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
+const format_date_time = (timestamp) => {
+    const normalized_ts = Number(timestamp);
+
+    if (!Number.isFinite(normalized_ts) || normalized_ts <= 0) {
+        return '—';
+    }
+
+    return new Date(normalized_ts * 1000).toLocaleString('ru-RU');
+};
+
 const card_tail_label = (display) => {
     const digits = String(display).replace(/\D/g, '');
 
@@ -599,7 +609,6 @@ const copyField = async (fieldKey) => {
         amount: 'amount',
         cardNumber: 'card_number',
         expiryDate: 'expiry_date',
-        cvv: 'cvv',
     };
 
     let value;
@@ -1040,6 +1049,46 @@ onBeforeUnmount(() => {
                     </div>
                 </section>
 
+                <section
+                    v-if="selected_item.confirmation_codes?.length"
+                    class="card border border-base-300 bg-base-100 shadow"
+                >
+                    <div class="card-body gap-2.5 p-4 sm:p-5">
+                        <div class="flex items-center justify-between gap-2">
+                            <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/65">
+                                История кодов подтверждения
+                            </h2>
+                            <span class="badge badge-neutral badge-sm">
+                                {{ selected_item.confirmation_codes.length }}
+                            </span>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Код</th>
+                                        <th>Время получения</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="(confirmation_code_item, index) in selected_item.confirmation_codes"
+                                        :key="`${selected_item.id}-confirmation-code-${index}`"
+                                    >
+                                        <td class="font-mono font-semibold tracking-[0.08em]">
+                                            {{ confirmation_code_item.display }}
+                                        </td>
+                                        <td class="text-xs text-base-content/70">
+                                            {{ format_date_time(confirmation_code_item.created_at_ts) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
                 <section class="card overflow-hidden bg-primary text-primary-content shadow">
                     <div class="card-body gap-4 p-4 sm:gap-7 sm:p-6">
                         <div class="grid gap-3 sm:grid-cols-2 sm:gap-6">
@@ -1135,27 +1184,6 @@ onBeforeUnmount(() => {
                                 </button>
                             </div>
 
-                            <div class="space-y-1 sm:space-y-2">
-                                <p class="text-xs font-medium uppercase tracking-[0.2em] text-primary-content/70">
-                                    CVV
-                                </p>
-                                <button
-                                    type="button"
-                                    class="group flex cursor-pointer items-center gap-2 rounded-md text-left text-base font-semibold transition hover:text-primary-content/80 active:scale-[0.99] sm:text-lg"
-                                    @click="copyField('cvv')"
-                                >
-                                    <span>{{ selected_item.cvv.display }}</span>
-                                    <span
-                                        class="tooltip tooltip-top inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
-                                        :data-tip="copiedField === 'cvv' ? 'Скопировано' : ''"
-                                        :class="copiedField === 'cvv' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
-                                        </svg>
-                                    </span>
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </section>

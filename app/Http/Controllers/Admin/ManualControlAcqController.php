@@ -8,6 +8,7 @@ use App\Enums\OrderSubStatus;
 use App\Exceptions\OrderException;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderManualControlConfirmationCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Collection;
@@ -40,7 +41,10 @@ class ManualControlAcqController extends Controller
         }
 
         $active_orders = Order::query()
-            ->with('paymentGateway')
+            ->with([
+                'paymentGateway',
+                'manualControlConfirmationCodes' => fn ($query) => $query->orderByDesc('id'),
+            ])
             ->where('manual_control_acquiring', true)
             ->where('status', OrderStatus::PENDING)
             ->where('manual_control_taken_by_user_id', auth()->id())
@@ -58,7 +62,10 @@ class ManualControlAcqController extends Controller
         $incoming_queue_total_count = (clone $incoming_order_query)->count();
 
         $history_orders_query = Order::query()
-            ->with('paymentGateway')
+            ->with([
+                'paymentGateway',
+                'manualControlConfirmationCodes' => fn ($query) => $query->orderByDesc('id'),
+            ])
             ->where('manual_control_acquiring', true)
             ->where('manual_control_taken_by_user_id', auth()->id())
             ->whereNotNull('manual_control_taken_at')
@@ -222,6 +229,19 @@ class ManualControlAcqController extends Controller
             ? min($processing_total_seconds, max(0, now()->timestamp - $created_at_ts))
             : 0;
 
+        $confirmation_codes = $order->manualControlConfirmationCodes
+            ->map(function (OrderManualControlConfirmationCode $confirmation_code): array {
+                return [
+                    'display' => $confirmation_code->confirmation_code,
+                    'copy' => $confirmation_code->confirmation_code,
+                    'created_at_ts' => $confirmation_code->created_at?->timestamp,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $latest_confirmation_code = $confirmation_codes[0] ?? null;
+
         return [
             'id' => (string) $order->id,
             'is_history' => $is_history,
@@ -244,10 +264,6 @@ class ManualControlAcqController extends Controller
                 'display' => $expiry_date,
                 'copy' => $expiry_date === '—' ? '' : $expiry_date,
             ],
-            'cvv' => [
-                'display' => (string) ($order->manual_control_cvc ?? '—'),
-                'copy' => (string) ($order->manual_control_cvc ?? ''),
-            ],
             'processing_elapsed_seconds' => $processing_elapsed_seconds,
             'processing_total_seconds' => $processing_total_seconds,
             'processing_created_at_ts' => $created_at_ts,
@@ -255,7 +271,8 @@ class ManualControlAcqController extends Controller
             'pending_confirmation_title' => $order->manual_control_confirmation_type?->title() ?? '',
             'confirmation_type' => $order->manual_control_confirmation_type?->value,
             'confirm_seconds_remaining' => 0,
-            'confirmation_code' => null,
+            'confirmation_code' => $latest_confirmation_code,
+            'confirmation_codes' => $confirmation_codes,
             'outcome_status' => $is_history ? $this->resolveHistoryOutcomeStatus($order) : null,
             'reject_reason' => $is_history ? $this->resolveHistoryRejectReason($order) : null,
         ];

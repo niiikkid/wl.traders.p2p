@@ -62,7 +62,6 @@ class OrderMaker
             'manual_control_card_number' => $this->data->cardNumber,
             'manual_control_expiry_month' => $this->data->expiryMonth,
             'manual_control_expiry_year' => $this->data->expiryYear,
-            'manual_control_cvc' => $this->data->cvc,
             'manual_control_cardholder_name' => $this->data->cardholderName !== '' ? $this->data->cardholderName : null,
             'payment_gateway_id' => null,
             'payment_detail_id' => null,

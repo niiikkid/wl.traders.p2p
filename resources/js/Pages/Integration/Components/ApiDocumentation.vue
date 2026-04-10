@@ -501,6 +501,46 @@ const tocSections = [
 
                             <div class="border border-base-200 rounded-xl p-4 space-y-4 overflow-x-auto">
                                 <div class="grid gap-3">
+                                    <h3 class="text-xl font-semibold">Передать код подтверждения</h3>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <span class="badge badge-secondary badge-lg">POST</span>
+                                        <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/h2h/order/{order_id}/confirmation-code</code>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-base-content/80">
+                                    Эндпоинт доступен только для сделок с
+                                    <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>
+                                    и статусом <code class="bg-base-200 px-1 rounded text-xs">pending</code>.
+                                </p>
+
+                                <div>
+                                    <h4 class="font-semibold mb-2">Параметры</h4>
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-zebra w-full">
+                                            <thead>
+                                                <tr>
+                                                    <th>Параметр</th>
+                                                    <th>Описание</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td><code class="bg-base-200 px-1 rounded">confirmation_code</code> <span class="text-error">*</span></td>
+                                                    <td>Код подтверждения (OTP/CVC и т.д.), который пришел по сделке.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="font-semibold mb-2">Ответ сервера</h4>
+                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16-...", confirmation_code: { value: "123456", created_at: 1731655862 } } }) }}</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="border border-base-200 rounded-xl p-4 space-y-4 overflow-x-auto">
+                                <div class="grid gap-3">
                                     <h3 class="text-xl font-semibold">Открыть спор</h3>
                                     <div class="flex flex-wrap items-center gap-3">
                                         <span class="badge badge-secondary badge-lg">POST</span>
@@ -594,6 +634,21 @@ const tocSections = [
                                 manual_control_acquiring: true,
                                 merchant_id: "3db07a16-...",
                                 callback_url: "https://example.com/callback"
+                            }) }}</code></pre>
+                        </section>
+
+                        <section class="rounded-xl border border-base-200 p-4 space-y-3 overflow-x-auto">
+                            <h3 class="text-xl font-semibold">Передача Confirmation Code</h3>
+                            <p class="text-sm text-base-content/80">
+                                Для одной сделки можно отправлять несколько кодов подтверждения.
+                                Каждый код сохраняется в истории с временем получения.
+                            </p>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <span class="badge badge-secondary badge-lg">POST</span>
+                                <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/h2h/order/{order_id}/confirmation-code</code>
+                            </div>
+                            <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({
+                                confirmation_code: "123456"
                             }) }}</code></pre>
                         </section>
 

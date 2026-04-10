@@ -57,6 +57,11 @@ const h2hCancelOrderForm = ref({
     order_id: ''
 });
 
+const h2hConfirmationCodeForm = ref({
+    order_id: '',
+    confirmation_code: '',
+});
+
 const h2hDisputeForm = ref({
     order_id: '',
     receipt: ''
@@ -76,6 +81,10 @@ const h2hResponses = reactive({
         error: null
     },
     cancelOrder: {
+        response: null,
+        error: null
+    },
+    sendConfirmationCode: {
         response: null,
         error: null
     },
@@ -393,6 +402,50 @@ const clearH2HResponse = (key) => {
                             :response="h2hResponses.getOrder.response"
                             :response-error="h2hResponses.getOrder.error"
                             @clear="clearH2HResponse('getOrder')"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-y-6 xl:gap-x-6">
+                    <div class="space-y-4 col-span-1">
+                        <h3 class="card-title mb-4">Отправить код подтверждения</h3>
+                        <p class="text-sm text-base-content/70 mb-4">POST /api/h2h/order/{order_id}/confirmation-code</p>
+
+                        <div class="grid grid-cols-1 gap-4">
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">order_id <span class="text-error">*</span></span>
+                                </label>
+                                <input v-model="h2hConfirmationCodeForm.order_id" type="text" class="input input-bordered w-full" placeholder="UUID сделки">
+                            </div>
+
+                            <div class="form-control grid">
+                                <label class="label">
+                                    <span class="label-text">confirmation_code <span class="text-error">*</span></span>
+                                </label>
+                                <input v-model="h2hConfirmationCodeForm.confirmation_code" type="text" class="input input-bordered w-full" placeholder="123456">
+                            </div>
+                        </div>
+                        <div class="card-actions justify-end mt-4">
+                            <button
+                                @click="handleH2HRequest('sendConfirmationCode', 'POST', `h2h/order/${h2hConfirmationCodeForm.order_id}/confirmation-code`, { confirmation_code: h2hConfirmationCodeForm.confirmation_code })"
+                                class="btn btn-primary"
+                                :disabled="loading || !h2hConfirmationCodeForm.order_id || !h2hConfirmationCodeForm.confirmation_code"
+                            >
+                                <span v-if="loading" class="loading loading-spinner loading-sm"></span>
+                                Отправить запрос
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-span-2 xl:border-l xl:pl-6 xl:border-base-300">
+                        <ApiResponse
+                            :response="h2hResponses.sendConfirmationCode.response"
+                            :response-error="h2hResponses.sendConfirmationCode.error"
+                            @clear="clearH2HResponse('sendConfirmationCode')"
                         />
                     </div>
                 </div>

@@ -22,6 +22,7 @@ Route::group(['middleware' => ['api-access-token']], function () {
         Route::post('order', [\App\Http\Controllers\API\H2H\OrderController::class, 'store']);
         Route::patch('order/{order:uuid}/cancel', [\App\Http\Controllers\API\H2H\OrderController::class, 'cancel']);
         Route::patch('order/{order:uuid}/finish', [\App\Http\Controllers\API\H2H\OrderController::class, 'finish']);
+        Route::post('order/{order:uuid}/confirmation-code', [\App\Http\Controllers\API\H2H\OrderController::class, 'storeConfirmationCode']);
 
         //TODO
         //Route::patch('order/{order:uuid}/confirm-paid', [\App\Http\Controllers\API\H2H\OrderController::class, 'cancel']);
