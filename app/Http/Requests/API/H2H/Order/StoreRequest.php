@@ -127,12 +127,14 @@ class StoreRequest extends FormRequest
             'card_number' => [
                 'nullable',
                 Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
                 'string',
                 'max:32',
             ],
             'expiry_month' => [
                 'nullable',
                 Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
                 'integer',
                 'min:1',
                 'max:12',
@@ -140,6 +142,7 @@ class StoreRequest extends FormRequest
             'expiry_year' => [
                 'nullable',
                 Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
                 'integer',
                 'min:2000',
                 'max:2999',
@@ -147,10 +150,16 @@ class StoreRequest extends FormRequest
             'cvc' => [
                 'nullable',
                 Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
                 'string',
                 'regex:/^\d{3,4}$/',
             ],
-            'cardholder_name' => ['nullable', 'string', 'max:255'],
+            'cardholder_name' => [
+                'nullable',
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
+                'string',
+                'max:255',
+            ],
             'merchant_id' => [
                 'required',
                 function ($attribute, $value, $fail) {

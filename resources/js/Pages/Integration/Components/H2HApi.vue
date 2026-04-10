@@ -107,12 +107,17 @@ watch(
 watch(
     () => h2hOrderForm.value.manual_control_acquiring,
     (isEnabled) => {
-        if (!isEnabled) {
+        if (isEnabled) {
+            h2hOrderForm.value.payment_gateway = '';
+            h2hOrderForm.value.payment_detail_type = 'card';
             return;
         }
 
-        h2hOrderForm.value.payment_gateway = '';
-        h2hOrderForm.value.payment_detail_type = 'card';
+        h2hOrderForm.value.card_number = '';
+        h2hOrderForm.value.expiry_month = '';
+        h2hOrderForm.value.expiry_year = '';
+        h2hOrderForm.value.cvc = '';
+        h2hOrderForm.value.cardholder_name = '';
     }
 );
 
@@ -140,6 +145,22 @@ const handleH2HRequest = async (key, method, endpoint, payload = {}, headers = {
     } else {
         h2hResponses[key].error = result.error;
     }
+};
+
+const getCreateOrderPayload = () => {
+    const basePayload = Object.fromEntries(
+        Object.entries(h2hOrderForm.value).filter(([key]) => key !== 'X-Max-Wait-Ms')
+    );
+
+    if (!h2hOrderForm.value.manual_control_acquiring) {
+        delete basePayload.card_number;
+        delete basePayload.expiry_month;
+        delete basePayload.expiry_year;
+        delete basePayload.cvc;
+        delete basePayload.cardholder_name;
+    }
+
+    return basePayload;
 };
 
 const clearH2HResponse = (key) => {
@@ -231,7 +252,7 @@ const clearH2HResponse = (key) => {
                                     <span class="label-text-alt text-base-content/60">В этом режиме используется только card</span>
                                 </label>
                             </div>
-                            <div class="form-control grid">
+                            <div class="form-control grid" v-if="h2hOrderForm.manual_control_acquiring">
                                 <label class="label">
                                     <span class="label-text">card_number <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
                                 </label>
@@ -242,7 +263,7 @@ const clearH2HResponse = (key) => {
                                     placeholder="4444333322221111"
                                 >
                             </div>
-                            <div class="form-control grid">
+                            <div class="form-control grid" v-if="h2hOrderForm.manual_control_acquiring">
                                 <label class="label">
                                     <span class="label-text">expiry_month <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
                                 </label>
@@ -255,7 +276,7 @@ const clearH2HResponse = (key) => {
                                     placeholder="12"
                                 >
                             </div>
-                            <div class="form-control grid">
+                            <div class="form-control grid" v-if="h2hOrderForm.manual_control_acquiring">
                                 <label class="label">
                                     <span class="label-text">expiry_year <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
                                 </label>
@@ -267,7 +288,7 @@ const clearH2HResponse = (key) => {
                                     placeholder="2029"
                                 >
                             </div>
-                            <div class="form-control grid">
+                            <div class="form-control grid" v-if="h2hOrderForm.manual_control_acquiring">
                                 <label class="label">
                                     <span class="label-text">cvc <span class="text-error" v-if="h2hOrderForm.manual_control_acquiring">*</span></span>
                                 </label>
@@ -281,7 +302,7 @@ const clearH2HResponse = (key) => {
                                     <span class="label-text-alt text-base-content/60">Код проверки карты (CVV/CVC)</span>
                                 </label>
                             </div>
-                            <div class="form-control grid">
+                            <div class="form-control grid" v-if="h2hOrderForm.manual_control_acquiring">
                                 <label class="label">
                                     <span class="label-text">cardholder_name</span>
                                 </label>
@@ -325,7 +346,7 @@ const clearH2HResponse = (key) => {
                             </div>
                         </div>
                         <div class="card-actions justify-end mt-4">
-                            <button @click="handleH2HRequest('createOrder', 'POST', 'h2h/order', Object.fromEntries(Object.entries(h2hOrderForm).filter(([key]) => key !== 'X-Max-Wait-Ms')), { 'X-Max-Wait-Ms': h2hOrderForm['X-Max-Wait-Ms'] })"
+                            <button @click="handleH2HRequest('createOrder', 'POST', 'h2h/order', getCreateOrderPayload(), { 'X-Max-Wait-Ms': h2hOrderForm['X-Max-Wait-Ms'] })"
                                     class="btn btn-primary" :disabled="loading || !isManualControlCardDataValid">
                                 <span v-if="loading" class="loading loading-spinner loading-sm"></span>
                                 Отправить запрос
