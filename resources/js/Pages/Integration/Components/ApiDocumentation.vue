@@ -470,7 +470,7 @@ const tocSections = [
                                     <p class="text-sm text-base-content/80">Поле <code class="bg-base-200 px-1 rounded">base_amount</code> — исходная сумма сделки на момент создания. Поле <code class="bg-base-200 px-1 rounded">amount</code> может быть изменено при пересчёте.</p>
                                     <p class="text-sm text-base-content/80">Поле <code class="bg-base-200 px-1 rounded">payment_detail.additional_info</code> присутствует всегда: если данных нет, вернется <code class="bg-base-200 px-1 rounded">null</code>.</p>
                                     <p class="text-sm text-base-content/80">Для <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code> структура ответа сохраняется: <code class="bg-base-200 px-1 rounded text-xs">payment_gateway</code> и <code class="bg-base-200 px-1 rounded text-xs">payment_gateway_name</code> передаются, а поля реквизитов внутри <code class="bg-base-200 px-1 rounded text-xs">payment_detail</code> возвращаются пустыми (<code class="bg-base-200 px-1 rounded text-xs">null</code>).</p>
-                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16...", external_id: "...", merchant_id: "3db07a16...", base_amount: "1000", amount: "1040", profit: "9.94", merchant_profit: "9.05", currency: "rub", profit_currency: "usdt", conversion_price_currency: "rub", conversion_price: "100.77", status: "pending", sub_status: "pending", callback_url: "...", payment_gateway: "sberbank", payment_gateway_name: "Сбербанк", payment_detail: { detail: "UA543220010000026200353789635", detail_type: "iban_uah", initials: "Крива Алла Сергіївна", additional_info: "3665906843" }, merchant: { name: "...", description: "..." }, finished_at: null, expires_at: 1731375451, created_at: 1731375391, current_server_time: 1731655862 } }) }}</code></pre>
+                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16...", external_id: "...", merchant_id: "3db07a16...", base_amount: "1000", amount: "1040", profit: "9.94", merchant_profit: "9.05", currency: "rub", profit_currency: "usdt", conversion_price_currency: "rub", conversion_price: "100.77", status: "pending", sub_status: "pending", callback_url: "...", manual_control_confirmation_type: null, payment_gateway: "sberbank", payment_gateway_name: "Сбербанк", payment_detail: { detail: "UA543220010000026200353789635", detail_type: "iban_uah", initials: "Крива Алла Сергіївна", additional_info: "3665906843" }, merchant: { name: "...", description: "..." }, finished_at: null, expires_at: 1731375451, created_at: 1731375391, current_server_time: 1731655862 } }) }}</code></pre>
                                 </div>
                             </div>
                         </section>
@@ -595,6 +595,46 @@ const tocSections = [
                                 merchant_id: "3db07a16-...",
                                 callback_url: "https://example.com/callback"
                             }) }}</code></pre>
+                        </section>
+
+                        <section class="rounded-xl border border-base-200 p-4 space-y-3 overflow-x-auto">
+                            <h3 class="text-xl font-semibold">Значения manual_control_confirmation_type</h3>
+                            <p class="text-sm text-base-content/80">
+                                Поле устанавливается оператором после взятия заявки в работу. Пока тип не выбран, возвращается
+                                <code class="bg-base-200 px-1 rounded text-xs">null</code>.
+                            </p>
+                            <div class="overflow-x-auto">
+                                <table class="table table-zebra w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Значение</th>
+                                            <th>Описание</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">otp_code</code></td>
+                                            <td>OTP code</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">in_app_confirmation</code></td>
+                                            <td>In-app confirmation</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">bank_call</code></td>
+                                            <td>Bank call</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">otp_code_and_pin_code</code></td>
+                                            <td>OTP code and PIN code</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">sms_with_instructions</code></td>
+                                            <td>SMS with instructions</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </section>
                     </div>
                 </article>

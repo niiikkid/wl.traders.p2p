@@ -36,6 +36,7 @@ class OrderResource extends JsonResource
             'sub_status' => $this->sub_status->value,
             'callback_url' => $this->callback_url,
             'manual_control_acquiring' => (bool) $this->manual_control_acquiring,
+            'manual_control_confirmation_type' => $this->manual_control_confirmation_type?->value,
             'payment_gateway' => $this->paymentGateway?->code,
             'payment_gateway_name' => $this->paymentGateway?->name,
             'payment_detail' => [

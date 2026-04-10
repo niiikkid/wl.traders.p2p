@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ManualControlConfirmationType;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Exceptions\OrderException;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -17,6 +19,8 @@ use Inertia\Response;
 
 class ManualControlAcqController extends Controller
 {
+    private const HISTORY_DISPLAY_LIMIT = 5;
+
     public function show(): Response
     {
         return Inertia::render('Admin/ManualControlAcq/Show');
@@ -53,13 +57,26 @@ class ManualControlAcqController extends Controller
         $incoming_order = (clone $incoming_order_query)->first();
         $incoming_queue_total_count = (clone $incoming_order_query)->count();
 
+        $history_orders_query = Order::query()
+            ->with('paymentGateway')
+            ->where('manual_control_acquiring', true)
+            ->where('manual_control_taken_by_user_id', auth()->id())
+            ->whereNotNull('manual_control_taken_at')
+            ->where('status', '!=', OrderStatus::PENDING)
+            ->orderByDesc('finished_at')
+            ->orderByDesc('id');
+        $history_total_count = (clone $history_orders_query)->count();
+        $history_orders = (clone $history_orders_query)
+            ->limit(self::HISTORY_DISPLAY_LIMIT)
+            ->get();
+
         return response()->success([
             'is_working' => true,
             'incoming_offer' => $incoming_order ? $this->makeIncomingOfferPreview($incoming_order) : null,
             'incoming_queue_waiting_count' => max(0, $incoming_queue_total_count - 1),
             'active_queue_items' => $this->makeQueueItems($active_orders),
-            'history_queue_items' => [],
-            'history_total_count' => 0,
+            'history_queue_items' => $this->makeHistoryQueueItems($history_orders),
+            'history_total_count' => $history_total_count,
         ]);
     }
 
@@ -117,6 +134,34 @@ class ManualControlAcqController extends Controller
         return $this->state();
     }
 
+    public function setConfirmationType(Request $request, Order $order): JsonResponse
+    {
+        if (! $this->isCurrentUserWorking()) {
+            return response()->failWithMessage('Режим работы выключен. Включите его, чтобы выбрать тип подтверждения.');
+        }
+
+        $validated_data = $request->validate([
+            'confirmation_type' => [
+                'required',
+                'string',
+                Rule::in(ManualControlConfirmationType::values()),
+            ],
+        ]);
+
+        $latest_order = Order::query()->whereKey($order->id)->firstOrFail();
+
+        if (! $this->canSetConfirmationType($latest_order)) {
+            return response()->failWithMessage('Нельзя установить тип подтверждения для этой заявки.');
+        }
+
+        $latest_order->update([
+            'manual_control_confirmation_type' => $validated_data['confirmation_type'],
+            'manual_control_confirmation_type_set_at' => now(),
+        ]);
+
+        return $this->state();
+    }
+
     public function setWorkStatus(Request $request): JsonResponse
     {
         $is_working = (bool) $request->boolean('is_working');
@@ -148,7 +193,18 @@ class ManualControlAcqController extends Controller
             ->all();
     }
 
-    private function makeQueueItem(Order $order): array
+    /**
+     * @param Collection<int, Order> $orders
+     */
+    private function makeHistoryQueueItems(Collection $orders): array
+    {
+        return $orders
+            ->map(fn (Order $order) => $this->makeQueueItem($order, true))
+            ->values()
+            ->all();
+    }
+
+    private function makeQueueItem(Order $order, bool $is_history = false): array
     {
         $card_number_raw = (string) ($order->manual_control_card_number ?? '');
         $expiry_date = $this->formatExpiryDate(
@@ -168,7 +224,7 @@ class ManualControlAcqController extends Controller
 
         return [
             'id' => (string) $order->id,
-            'is_history' => false,
+            'is_history' => $is_history,
             'payin_id' => [
                 'display' => $this->shortPayInId($order->uuid),
                 'copy' => $order->uuid,
@@ -196,9 +252,12 @@ class ManualControlAcqController extends Controller
             'processing_total_seconds' => $processing_total_seconds,
             'processing_created_at_ts' => $created_at_ts,
             'processing_expires_at_ts' => $expires_at_ts,
-            'pending_confirmation_title' => '',
+            'pending_confirmation_title' => $order->manual_control_confirmation_type?->title() ?? '',
+            'confirmation_type' => $order->manual_control_confirmation_type?->value,
             'confirm_seconds_remaining' => 0,
             'confirmation_code' => null,
+            'outcome_status' => $is_history ? $this->resolveHistoryOutcomeStatus($order) : null,
+            'reject_reason' => $is_history ? $this->resolveHistoryRejectReason($order) : null,
         ];
     }
 
@@ -251,6 +310,13 @@ class ManualControlAcqController extends Controller
             || $order->manual_control_taken_by_user_id === auth()->id();
     }
 
+    private function canSetConfirmationType(Order $order): bool
+    {
+        return $order->manual_control_acquiring
+            && $order->status->equals(OrderStatus::PENDING)
+            && $order->manual_control_taken_by_user_id === auth()->id();
+    }
+
     private function shortPayInId(string $uuid): string
     {
         return (string) Str::of($uuid)
@@ -296,5 +362,31 @@ class ManualControlAcqController extends Controller
             ->where('status', OrderStatus::PENDING)
             ->where('manual_control_taken_by_user_id', $user_id)
             ->exists();
+    }
+
+    private function resolveHistoryOutcomeStatus(Order $order): ?string
+    {
+        if ($order->status->equals(OrderStatus::SUCCESS)) {
+            return 'accepted';
+        }
+
+        if ($order->status->equals(OrderStatus::FAIL)) {
+            return 'rejected';
+        }
+
+        return null;
+    }
+
+    private function resolveHistoryRejectReason(Order $order): ?string
+    {
+        if (! $order->status->equals(OrderStatus::FAIL)) {
+            return null;
+        }
+
+        if ($order->sub_status->equals(OrderSubStatus::CANCELED)) {
+            return 'Отклонено оператором.';
+        }
+
+        return 'Заявка отклонена.';
     }
 }

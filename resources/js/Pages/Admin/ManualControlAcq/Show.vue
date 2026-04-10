@@ -10,14 +10,14 @@ import { useModalStore } from '@/store/modal.js';
 const modal_store = useModalStore();
 
 const confirmationCol1 = [
-    { title: 'OTP code' },
-    { title: 'In-app confirmation' },
-    { title: 'Bank call' },
+    { value: 'otp_code', title: 'OTP code' },
+    { value: 'in_app_confirmation', title: 'In-app confirmation' },
+    { value: 'bank_call', title: 'Bank call' },
 ];
 
 const confirmationCol2 = [
-    { title: 'OTP code and PIN code' },
-    { title: 'SMS with instructions' },
+    { value: 'otp_code_and_pin_code', title: 'OTP code and PIN code' },
+    { value: 'sms_with_instructions', title: 'SMS with instructions' },
 ];
 
 const CONFIRM_COUNTDOWN_SECONDS = 2 * 60;
@@ -41,6 +41,7 @@ const notification_sound_confirm_code_preset = ref('soft');
 const is_state_loading = ref(false);
 const is_take_processing = ref(false);
 const is_reject_processing = ref(false);
+const is_confirmation_type_processing = ref(false);
 const is_working = ref(false);
 const is_work_toggle_processing = ref(false);
 const action_error_message = ref('');
@@ -485,38 +486,56 @@ const select_queue_item = (item_id) => {
     selected_item_id.value = item_id;
 };
 
-const apply_confirmation_type = (title) => {
+const apply_confirmation_type = async (confirmation_type, confirmation_title) => {
     const item = selected_item.value;
 
     if (!item || item.is_history) {
         return;
     }
 
-    item.pending_confirmation_title = title;
-    item.confirm_seconds_remaining = CONFIRM_COUNTDOWN_SECONDS;
+    if (is_confirmation_type_processing.value) {
+        return;
+    }
+
+    is_confirmation_type_processing.value = true;
+
+    try {
+        await axios.post(route('admin.manual-control-acq.set-confirmation-type', { order: item.id }), {
+            confirmation_type,
+        });
+        action_error_message.value = '';
+        item.pending_confirmation_title = confirmation_title;
+        item.confirm_seconds_remaining = CONFIRM_COUNTDOWN_SECONDS;
+        await load_state();
+    } catch (error) {
+        action_error_message.value = error?.response?.data?.message ?? 'Не удалось установить тип подтверждения.';
+        await load_state();
+    } finally {
+        is_confirmation_type_processing.value = false;
+    }
 };
 
-const request_select_confirmation_type = (title) => {
+const request_select_confirmation_type = (confirmation_type, confirmation_title) => {
     const item = selected_item.value;
 
-    if (!is_working.value || !item || item.is_history) {
+    if (!is_working.value || !item || item.is_history || is_confirmation_type_processing.value) {
         return;
     }
 
     modal_store.openConfirmModal({
         title: 'Выбрать тип подтверждения?',
-        body: `Действие: установить тип «${title}» для заявки Pay In ${item.payin_id.display}.`,
+        body: `Действие: установить тип «${confirmation_title}» для заявки Pay In ${item.payin_id.display}.`,
         confirm_button_name: 'Выбрать',
         cancel_button_name: 'Отмена',
         confirm: () => {
-            apply_confirmation_type(title);
+            apply_confirmation_type(confirmation_type, confirmation_title);
         },
     });
 };
 
-const confirmationButtonClass = (title) => {
+const confirmationButtonClass = (option) => {
     const base = 'btn h-auto min-h-8 w-full whitespace-normal px-3 py-1.5 text-center text-xs font-medium normal-case sm:min-h-9';
-    const active = selected_item.value?.pending_confirmation_title === title;
+    const active = selected_item.value?.confirmation_type === option.value;
 
     return active ? `${base} btn-primary` : `${base} btn-outline`;
 };
@@ -1206,9 +1225,9 @@ onBeforeUnmount(() => {
                                     v-for="option in confirmationCol1"
                                     :key="option.title"
                                     type="button"
-                                    :class="confirmationButtonClass(option.title)"
-                                    :disabled="is_selected_history"
-                                    @click="request_select_confirmation_type(option.title)"
+                                    :class="confirmationButtonClass(option)"
+                                    :disabled="is_selected_history || is_confirmation_type_processing"
+                                    @click="request_select_confirmation_type(option.value, option.title)"
                                 >
                                     {{ option.title }}
                                 </button>
@@ -1219,9 +1238,9 @@ onBeforeUnmount(() => {
                                     v-for="option in confirmationCol2"
                                     :key="option.title"
                                     type="button"
-                                    :class="confirmationButtonClass(option.title)"
-                                    :disabled="is_selected_history"
-                                    @click="request_select_confirmation_type(option.title)"
+                                    :class="confirmationButtonClass(option)"
+                                    :disabled="is_selected_history || is_confirmation_type_processing"
+                                    @click="request_select_confirmation_type(option.value, option.title)"
                                 >
                                     {{ option.title }}
                                 </button>
