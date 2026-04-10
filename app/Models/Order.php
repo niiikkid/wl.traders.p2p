@@ -58,6 +58,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property int|null $manual_control_expiry_year
  * @property string|null $manual_control_cvc
  * @property string|null $manual_control_cardholder_name
+ * @property int|null $manual_control_taken_by_user_id
+ * @property Carbon|null $manual_control_taken_at
  * @property int $payment_gateway_id
  * @property int $payment_detail_id
  * @property int $trader_id
@@ -116,6 +118,8 @@ class Order extends Model
         'manual_control_expiry_year',
         'manual_control_cvc',
         'manual_control_cardholder_name',
+        'manual_control_taken_by_user_id',
+        'manual_control_taken_at',
         'payment_gateway_id',
         'payment_detail_id',
         'trader_id',
@@ -151,6 +155,7 @@ class Order extends Model
         'manual_control_acquiring' => 'bool',
         'manual_control_expiry_month' => 'int',
         'manual_control_expiry_year' => 'int',
+        'manual_control_taken_at' => 'datetime',
     ];
 
     protected static function booted()

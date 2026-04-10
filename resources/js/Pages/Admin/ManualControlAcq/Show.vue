@@ -1,4 +1,5 @@
 <script setup>
+import axios from 'axios';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
@@ -7,25 +8,6 @@ import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
 import { useModalStore } from '@/store/modal.js';
 
 const modal_store = useModalStore();
-
-const INCOMING_OFFER_COUNTDOWN_SECONDS = 10;
-
-/**
- * Входящая заявка (ещё не в очереди оператора).
- *
- * @type {import('vue').Ref<{ payin_id: { display: string }, incoming_bank: { display: string }, amount: { display: string } } | null>}
- */
-const incoming_offer_preview = ref({
-    payin_id: { display: '220046020' },
-    incoming_bank: { display: 'Sense Bank' },
-    amount: { display: '4,200 UAH' },
-});
-
-/** Показать блок новой заявки над списком «Текущие». */
-const incoming_offer_visible = ref(true);
-
-const incoming_offer_seconds_remaining = ref(INCOMING_OFFER_COUNTDOWN_SECONDS);
-let incoming_offer_interval_id = null;
 
 const confirmationCol1 = [
     { title: 'OTP code' },
@@ -39,224 +21,46 @@ const confirmationCol2 = [
 ];
 
 const CONFIRM_COUNTDOWN_SECONDS = 2 * 60;
-
-const rejectReasons = [
-    'Ошибка обработки',
-    'Недостаточно средств',
-    'Недействительные реквизиты карты',
-    'Превышен лимит карты',
-    'Подозрение на мошенничество',
-    'Отменено плательщиком',
-];
-
-const PROCESSING_TOTAL_SECONDS = 15 * 60;
 const processingRingRadius = 42;
 const processingRingCircumference = 2 * Math.PI * processingRingRadius;
-
-/** Сколько последних записей истории отображаем в списке. */
 const HISTORY_DISPLAY_LIMIT = 5;
+const POLL_INTERVAL_MS = 3000;
 
-/**
- * Всего записей в истории у оператора.
- * В списке только последние HISTORY_DISPLAY_LIMIT; остальные в UI не подгружаются.
- */
-const history_total_count = 47;
-
-/**
- * Очередь Pay In оператора.
- * У каждого элемента свои таймеры processing и опционально confirm.
- *
- * @typedef {object} PayInQueueItem
- * @property {string} id
- * @property {boolean} is_history
- * @property {{ display: string, copy: string }} payin_id
- * @property {{ display: string }} incoming_bank
- * @property {{ display: string, copy: string }} amount
- * @property {{ display: string, copy: string }} card_number
- * @property {{ display: string, copy: string }} expiry_date
- * @property {{ display: string, copy: string }} cvv
- * @property {number} processing_elapsed_seconds
- * @property {string} pending_confirmation_title
- * @property {number} confirm_seconds_remaining
- * @property {{ display: string, copy: string } | null} confirmation_code Код от банка/шлюза (если уже пришёл)
- * @property {'accepted' | 'rejected'} [outcome_status] Итог сделки (записи истории).
- * @property {string | null} [reject_reason] Текст причины отклонения при outcome_status === 'rejected'.
- */
-
-/** @type {import('vue').Ref<PayInQueueItem[]>} */
-const pay_in_queue_active = ref([
-    {
-        id: 'q1',
-        is_history: false,
-        payin_id: { display: '220045893', copy: '220045893' },
-        incoming_bank: { display: 'PrivatBank' },
-        amount: { display: '1,000 UAH', copy: '1000' },
-        card_number: { display: '4444 3333 2222 1111', copy: '4444333322221111' },
-        expiry_date: { display: '07/30', copy: '07/30' },
-        cvv: { display: '128', copy: '128' },
-        processing_elapsed_seconds: 42,
-        pending_confirmation_title: 'OTP code',
-        confirm_seconds_remaining: 95,
-        confirmation_code: { display: '482 919', copy: '482919' },
-    },
-    {
-        id: 'q2',
-        is_history: false,
-        payin_id: { display: '220045901', copy: '220045901' },
-        incoming_bank: { display: 'Monobank' },
-        amount: { display: '2,500 UAH', copy: '2500' },
-        card_number: { display: '5555 6666 7777 8888', copy: '5555666677778888' },
-        expiry_date: { display: '12/28', copy: '12/28' },
-        cvv: { display: '042', copy: '042' },
-        processing_elapsed_seconds: 380,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-    },
-    {
-        id: 'q3',
-        is_history: false,
-        payin_id: { display: '220045912', copy: '220045912' },
-        incoming_bank: { display: 'PrivatBank' },
-        amount: { display: '750 UAH', copy: '750' },
-        card_number: { display: '4111 1111 1111 9999', copy: '4111111111119999' },
-        expiry_date: { display: '03/31', copy: '03/31' },
-        cvv: { display: '901', copy: '901' },
-        processing_elapsed_seconds: 15,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-    },
-]);
-
-/**
- * Последние HISTORY_DISPLAY_LIMIT записей истории.
- * @type {import('vue').Ref<PayInQueueItem[]>}
- */
-const pay_in_queue_history_visible = ref([
-    {
-        id: 'h1',
-        is_history: true,
-        payin_id: { display: '220044100', copy: '220044100' },
-        incoming_bank: { display: 'PrivatBank' },
-        amount: { display: '500 UAH', copy: '500' },
-        card_number: { display: '4000 1234 5678 9010', copy: '4000123456789010' },
-        expiry_date: { display: '01/29', copy: '01/29' },
-        cvv: { display: '000', copy: '000' },
-        processing_elapsed_seconds: 14 * 60 + 12,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-        outcome_status: 'accepted',
-        reject_reason: null,
-    },
-    {
-        id: 'h2',
-        is_history: true,
-        payin_id: { display: '220044088', copy: '220044088' },
-        incoming_bank: { display: 'Monobank' },
-        amount: { display: '3,200 UAH', copy: '3200' },
-        card_number: { display: '3782 822463 10005', copy: '378282246310005' },
-        expiry_date: { display: '09/27', copy: '09/27' },
-        cvv: { display: '321', copy: '321' },
-        processing_elapsed_seconds: 8 * 60 + 55,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-        outcome_status: 'rejected',
-        reject_reason: 'Недостаточно средств',
-    },
-    {
-        id: 'h3',
-        is_history: true,
-        payin_id: { display: '220044072', copy: '220044072' },
-        incoming_bank: { display: 'PrivatBank' },
-        amount: { display: '1,850 UAH', copy: '1850' },
-        card_number: { display: '5168 0012 3456 7890', copy: '5168001234567890' },
-        expiry_date: { display: '05/31', copy: '05/31' },
-        cvv: { display: '456', copy: '456' },
-        processing_elapsed_seconds: 11 * 60 + 3,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-        outcome_status: 'accepted',
-        reject_reason: null,
-    },
-    {
-        id: 'h4',
-        is_history: true,
-        payin_id: { display: '220044061', copy: '220044061' },
-        incoming_bank: { display: 'Monobank' },
-        amount: { display: '420 UAH', copy: '420' },
-        card_number: { display: '4242 4242 4242 4242', copy: '4242424242424242' },
-        expiry_date: { display: '11/28', copy: '11/28' },
-        cvv: { display: '777', copy: '777' },
-        processing_elapsed_seconds: 6 * 60 + 40,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-        outcome_status: 'rejected',
-        reject_reason: 'Подозрение на мошенничество',
-    },
-    {
-        id: 'h5',
-        is_history: true,
-        payin_id: { display: '220044055', copy: '220044055' },
-        incoming_bank: { display: 'PrivatBank' },
-        amount: { display: '9,999 UAH', copy: '9999' },
-        card_number: { display: '6011 0009 9013 9424', copy: '6011000990139424' },
-        expiry_date: { display: '02/30', copy: '02/30' },
-        cvv: { display: '112', copy: '112' },
-        processing_elapsed_seconds: 12 * 60 + 18,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-        outcome_status: 'accepted',
-        reject_reason: null,
-    },
-]);
-
-const pay_in_queue_all = computed(() => [...pay_in_queue_active.value, ...pay_in_queue_history_visible.value]);
-
-const history_hidden_count = computed(() => Math.max(0, history_total_count - HISTORY_DISPLAY_LIMIT));
-
-/** @type {import('vue').Ref<string | null>} */
+const incoming_offer_preview = ref(null);
+const pay_in_queue_active = ref([]);
+const pay_in_queue_history_visible = ref([]);
+const history_total_count = ref(0);
 const selected_item_id = ref(null);
-
-const selected_item = computed(() => {
-    return pay_in_queue_all.value.find((item) => item.id === selected_item_id.value) ?? null;
-});
-
-const active_queue_items = computed(() => pay_in_queue_active.value);
-
-const history_queue_items = computed(() => pay_in_queue_history_visible.value);
-
-const is_selected_history = computed(() => selected_item.value?.is_history === true);
-
 const copiedField = ref('');
-const rejectModalDialog = ref(null);
-/** @type {import('vue').Ref<HTMLDialogElement | null>} */
 const notification_settings_dialog = ref(null);
-const selectedRejectReason = ref('');
-let timerInterval = null;
-
-/** Макет: звук «новая заявка» (без бэкенда). */
 const notification_sound_new_offer_enabled = ref(true);
-/** Макет: пресет звука для новой заявки. */
 const notification_sound_new_offer_preset = ref('chime');
-
-/** Макет: звук «код подтверждения». */
 const notification_sound_confirm_code_enabled = ref(true);
-/** Макет: пресет звука для кода подтверждения. */
 const notification_sound_confirm_code_preset = ref('soft');
+const is_state_loading = ref(false);
+const is_take_processing = ref(false);
+const is_reject_processing = ref(false);
+const action_error_message = ref('');
 
-/** Демо-варианты звука для селектов (только верстка). */
+let timerInterval = null;
+let statePollInterval = null;
+let copiedFieldTimeout = null;
+let stateRequestSerial = 0;
+
 const notification_sound_preset_options = [
     { value: 'chime', label: 'Классический звонок' },
     { value: 'beep', label: 'Короткий сигнал' },
     { value: 'soft', label: 'Мягкий тон' },
     { value: 'digital', label: 'Цифровой пинг' },
 ];
+
+const pay_in_queue_all = computed(() => [...pay_in_queue_active.value, ...pay_in_queue_history_visible.value]);
+const incoming_offer_visible = computed(() => Boolean(incoming_offer_preview.value));
+const history_hidden_count = computed(() => Math.max(0, history_total_count.value - HISTORY_DISPLAY_LIMIT));
+const selected_item = computed(() => pay_in_queue_all.value.find((item) => item.id === selected_item_id.value) ?? null);
+const active_queue_items = computed(() => pay_in_queue_active.value);
+const history_queue_items = computed(() => pay_in_queue_history_visible.value);
+const is_selected_history = computed(() => selected_item.value?.is_history === true);
 
 const open_notification_settings_modal = () => {
     notification_settings_dialog.value?.showModal();
@@ -265,11 +69,11 @@ const open_notification_settings_modal = () => {
 const close_notification_settings_modal = () => {
     notification_settings_dialog.value?.close();
 };
-let copiedFieldTimeout = null;
 
 const format_mm_ss = (total_seconds) => {
-    const minutes = Math.floor(total_seconds / 60);
-    const seconds = total_seconds % 60;
+    const normalized_seconds = Math.max(0, Number(total_seconds) || 0);
+    const minutes = Math.floor(normalized_seconds / 60);
+    const seconds = normalized_seconds % 60;
 
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
@@ -291,9 +95,16 @@ const processingTime = computed(() => {
 });
 
 const processingProgress = computed(() => {
-    const seconds = selected_item.value?.processing_elapsed_seconds ?? 0;
+    const item = selected_item.value;
 
-    return Math.min(seconds / PROCESSING_TOTAL_SECONDS, 1);
+    if (!item) {
+        return 0;
+    }
+
+    const total_seconds = Math.max(1, Number(item.processing_total_seconds) || 1);
+    const elapsed_seconds = Math.max(0, Number(item.processing_elapsed_seconds) || 0);
+
+    return Math.min(elapsed_seconds / total_seconds, 1);
 });
 
 const processingRingDashoffset = computed(() => {
@@ -305,7 +116,10 @@ const processing_progress_ratio_for_item = (item) => {
         return 0;
     }
 
-    return Math.min(item.processing_elapsed_seconds / PROCESSING_TOTAL_SECONDS, 1);
+    const total_seconds = Math.max(1, Number(item.processing_total_seconds) || 1);
+    const elapsed_seconds = Math.max(0, Number(item.processing_elapsed_seconds) || 0);
+
+    return Math.min(elapsed_seconds / total_seconds, 1);
 };
 
 const processing_ring_dashoffset_for_item = (item) => {
@@ -324,6 +138,79 @@ const canConfirm = computed(() => {
     return Boolean(item && !item.is_history && item.confirm_seconds_remaining > 0);
 });
 
+const can_take_incoming_offer = computed(() => {
+    return Boolean(incoming_offer_preview.value && !is_take_processing.value);
+});
+
+const sync_selected_item = () => {
+    if (selected_item_id.value && pay_in_queue_all.value.some((item) => item.id === selected_item_id.value)) {
+        return;
+    }
+
+    const first_active = pay_in_queue_active.value[0] ?? null;
+    selected_item_id.value = first_active?.id ?? pay_in_queue_history_visible.value[0]?.id ?? null;
+};
+
+const load_state = async () => {
+    const requestSerial = ++stateRequestSerial;
+    is_state_loading.value = true;
+
+    try {
+        const response = await axios.get(route('admin.manual-control-acq.state'));
+        if (requestSerial !== stateRequestSerial) {
+            return;
+        }
+
+        const state = response?.data?.data ?? {};
+        const next_active_items = state.active_queue_items ?? [];
+        const current_active_by_id = new Map(
+            pay_in_queue_active.value.map((item) => [String(item.id), item]),
+        );
+
+        pay_in_queue_active.value = next_active_items.map((item) => {
+            const previous_item = current_active_by_id.get(String(item.id));
+            const created_ts = Number(item.processing_created_at_ts);
+            const expires_ts = Number(item.processing_expires_at_ts);
+            let elapsed_from_server_time = Number(item.processing_elapsed_seconds) || 0;
+
+            if (Number.isFinite(created_ts) && created_ts > 0) {
+                elapsed_from_server_time = Math.max(0, Math.floor(Date.now() / 1000) - created_ts);
+            }
+
+            let total_from_server_time = Number(item.processing_total_seconds) || 1;
+            if (Number.isFinite(created_ts) && Number.isFinite(expires_ts) && expires_ts > created_ts) {
+                total_from_server_time = expires_ts - created_ts;
+            }
+
+            const normalized_total = Math.max(1, total_from_server_time);
+            const normalized_elapsed = Math.min(
+                normalized_total,
+                Math.max(
+                    elapsed_from_server_time,
+                    Number(previous_item?.processing_elapsed_seconds) || 0,
+                ),
+            );
+
+            return {
+                ...item,
+                processing_total_seconds: normalized_total,
+                processing_elapsed_seconds: normalized_elapsed,
+            };
+        });
+
+        incoming_offer_preview.value = state.incoming_offer ?? null;
+        pay_in_queue_history_visible.value = state.history_queue_items ?? [];
+        history_total_count.value = Number(state.history_total_count ?? 0);
+        sync_selected_item();
+    } catch (error) {
+        // ignored
+    } finally {
+        if (requestSerial === stateRequestSerial) {
+            is_state_loading.value = false;
+        }
+    }
+};
+
 const start_workspace_timers = () => {
     if (timerInterval !== null) {
         return;
@@ -331,7 +218,27 @@ const start_workspace_timers = () => {
 
     timerInterval = window.setInterval(() => {
         pay_in_queue_active.value.forEach((item) => {
-            item.processing_elapsed_seconds += 1;
+            const created_ts = Number(item.processing_created_at_ts);
+            const expires_ts = Number(item.processing_expires_at_ts);
+            const now_ts = Math.floor(Date.now() / 1000);
+
+            let total_seconds = Math.max(1, Number(item.processing_total_seconds) || 1);
+            if (Number.isFinite(created_ts) && Number.isFinite(expires_ts) && expires_ts > created_ts) {
+                total_seconds = expires_ts - created_ts;
+                item.processing_total_seconds = total_seconds;
+            }
+
+            if (Number.isFinite(created_ts) && created_ts > 0) {
+                item.processing_elapsed_seconds = Math.min(
+                    total_seconds,
+                    Math.max(0, now_ts - created_ts),
+                );
+            } else {
+                item.processing_elapsed_seconds = Math.min(
+                    total_seconds,
+                    (Number(item.processing_elapsed_seconds) || 0) + 1,
+                );
+            }
 
             if (item.pending_confirmation_title && item.confirm_seconds_remaining > 0) {
                 item.confirm_seconds_remaining -= 1;
@@ -340,77 +247,53 @@ const start_workspace_timers = () => {
     }, 1000);
 };
 
-const clear_incoming_offer_timer = () => {
-    if (incoming_offer_interval_id !== null) {
-        window.clearInterval(incoming_offer_interval_id);
-        incoming_offer_interval_id = null;
-    }
-};
-
-const start_incoming_offer_countdown = () => {
-    if (!incoming_offer_visible.value || !incoming_offer_preview.value) {
+const start_state_polling = () => {
+    if (statePollInterval !== null) {
         return;
     }
 
-    clear_incoming_offer_timer();
-    incoming_offer_seconds_remaining.value = INCOMING_OFFER_COUNTDOWN_SECONDS;
-    incoming_offer_interval_id = window.setInterval(() => {
-        if (incoming_offer_seconds_remaining.value > 0) {
-            incoming_offer_seconds_remaining.value -= 1;
-        }
-    }, 1000);
+    statePollInterval = window.setInterval(() => {
+        load_state();
+    }, POLL_INTERVAL_MS);
 };
 
-/**
- * Собрать полный элемент очереди из превью входящей заявки.
- * @returns {PayInQueueItem | null}
- */
-const build_queue_item_from_incoming_preview = () => {
-    const preview = incoming_offer_preview.value;
+const execute_take_incoming_offer = async () => {
+    const incoming_offer = incoming_offer_preview.value;
 
-    if (!preview) {
-        return null;
-    }
-
-    const id = `q_in_${Date.now()}`;
-
-    return {
-        id,
-        is_history: false,
-        payin_id: { display: preview.payin_id.display, copy: preview.payin_id.display.replace(/\s/g, '') },
-        incoming_bank: { display: preview.incoming_bank.display },
-        amount: {
-            display: preview.amount.display,
-            copy: preview.amount.display.replace(/[^\d]/g, '') || '0',
-        },
-        card_number: { display: '—', copy: '' },
-        expiry_date: { display: '—', copy: '' },
-        cvv: { display: '—', copy: '' },
-        processing_elapsed_seconds: 0,
-        pending_confirmation_title: '',
-        confirm_seconds_remaining: 0,
-        confirmation_code: null,
-    };
-};
-
-const can_take_incoming_offer = computed(
-    () => incoming_offer_visible.value && incoming_offer_seconds_remaining.value > 0,
-);
-
-const execute_take_incoming_offer = () => {
-    if (!can_take_incoming_offer.value) {
+    if (!incoming_offer || is_take_processing.value) {
         return;
     }
 
-    const new_item = build_queue_item_from_incoming_preview();
+    is_take_processing.value = true;
 
-    clear_incoming_offer_timer();
-    incoming_offer_visible.value = false;
-    incoming_offer_preview.value = null;
+    try {
+        await axios.post(route('admin.manual-control-acq.take', { order: incoming_offer.id }));
+        action_error_message.value = '';
+        await load_state();
+    } catch (error) {
+        action_error_message.value = error?.response?.data?.message ?? 'Не удалось взять заявку в обработку.';
+        await load_state();
+    } finally {
+        is_take_processing.value = false;
+    }
+};
 
-    if (new_item) {
-        pay_in_queue_active.value = [new_item, ...pay_in_queue_active.value];
-        selected_item_id.value = new_item.id;
+const execute_reject_offer = async (order_id) => {
+    if (!order_id || is_reject_processing.value) {
+        return;
+    }
+
+    is_reject_processing.value = true;
+
+    try {
+        await axios.post(route('admin.manual-control-acq.reject', { order: order_id }));
+        action_error_message.value = '';
+        await load_state();
+    } catch (error) {
+        action_error_message.value = error?.response?.data?.message ?? 'Не удалось отклонить заявку.';
+        await load_state();
+    } finally {
+        is_reject_processing.value = false;
     }
 };
 
@@ -424,7 +307,7 @@ const request_take_incoming_offer = () => {
 
     modal_store.openConfirmModal({
         title: 'Взять заявку в работу?',
-        body: `Вы подтверждаете взятие новой заявки Pay In ${payin_label}. Она появится в списке «Текущие».`,
+        body: `Вы подтверждаете взятие новой заявки Pay In ${payin_label}.`,
         confirm_button_name: 'Взять',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -433,23 +316,22 @@ const request_take_incoming_offer = () => {
     });
 };
 
-const execute_decline_incoming_offer = () => {
-    clear_incoming_offer_timer();
-    incoming_offer_visible.value = false;
-    incoming_offer_preview.value = null;
-};
-
 const request_decline_incoming_offer = () => {
     const preview = incoming_offer_preview.value;
-    const payin_label = preview?.payin_id.display ?? '—';
+
+    if (!preview) {
+        return;
+    }
+
+    const payin_label = preview.payin_id.display ?? '—';
 
     modal_store.openConfirmModal({
         title: 'Отклонить входящую заявку?',
-        body: `Вы подтверждаете отклонение новой заявки Pay In ${payin_label} без взятия в работу.`,
+        body: `Вы подтверждаете отклонение заявки Pay In ${payin_label}.`,
         confirm_button_name: 'Отклонить',
         cancel_button_name: 'Отмена',
         confirm: () => {
-            execute_decline_incoming_offer();
+            execute_reject_offer(preview.id);
         },
     });
 };
@@ -457,14 +339,6 @@ const request_decline_incoming_offer = () => {
 const select_queue_item = (item_id) => {
     selected_item_id.value = item_id;
 };
-
-onMounted(() => {
-    const first_active = pay_in_queue_active.value[0] ?? null;
-
-    selected_item_id.value = first_active?.id ?? pay_in_queue_history_visible.value[0]?.id ?? null;
-    start_workspace_timers();
-    start_incoming_offer_countdown();
-});
 
 const apply_confirmation_type = (title) => {
     const item = selected_item.value;
@@ -486,7 +360,7 @@ const request_select_confirmation_type = (title) => {
 
     modal_store.openConfirmModal({
         title: 'Выбрать тип подтверждения?',
-        body: `Действие: установить тип «${title}» для заявки Pay In ${item.payin_id.display}. Таймер подтверждения будет запущен заново.`,
+        body: `Действие: установить тип «${title}» для заявки Pay In ${item.payin_id.display}.`,
         confirm_button_name: 'Выбрать',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -530,11 +404,6 @@ const request_confirm_payment = () => {
     });
 };
 
-const open_reject_reason_dialog = () => {
-    selectedRejectReason.value = '';
-    rejectModalDialog.value?.showModal();
-};
-
 const request_reject_application = () => {
     const item = selected_item.value;
 
@@ -542,24 +411,15 @@ const request_reject_application = () => {
         return;
     }
 
-    open_reject_reason_dialog();
-};
-
-const closeRejectModal = () => {
-    rejectModalDialog.value?.close();
-    selectedRejectReason.value = '';
-};
-
-const pickRejectReason = (reason) => {
-    selectedRejectReason.value = reason;
-};
-
-const confirmReject = () => {
-    if (!selectedRejectReason.value) {
-        return;
-    }
-
-    closeRejectModal();
+    modal_store.openConfirmModal({
+        title: 'Отклонить заявку?',
+        body: `Вы подтверждаете отклонение заявки Pay In ${item.payin_id.display}.`,
+        confirm_button_name: 'Отклонить',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            execute_reject_offer(item.id);
+        },
+    });
 };
 
 const copyField = async (fieldKey) => {
@@ -607,11 +467,19 @@ const copyField = async (fieldKey) => {
     }
 };
 
-onBeforeUnmount(() => {
-    clear_incoming_offer_timer();
+onMounted(async () => {
+    await load_state();
+    start_workspace_timers();
+    start_state_polling();
+});
 
+onBeforeUnmount(() => {
     if (timerInterval !== null) {
         window.clearInterval(timerInterval);
+    }
+
+    if (statePollInterval !== null) {
+        window.clearInterval(statePollInterval);
     }
 
     if (copiedFieldTimeout) {
@@ -683,20 +551,6 @@ onBeforeUnmount(() => {
                                     Новая заявка
                                     <span class="badge badge-accent badge-sm font-medium normal-case">Live</span>
                                 </h3>
-                                <div
-                                    class="flex items-center gap-1 rounded-box bg-base-200/80 px-2 py-1 text-xs tabular-nums text-base-content/80"
-                                    title="Время на решение"
-                                >
-                                    <span class="countdown font-mono text-sm leading-none">
-                                        <span
-                                            :style="{ '--value': incoming_offer_seconds_remaining }"
-                                            :aria-label="String(incoming_offer_seconds_remaining)"
-                                        >
-                                            {{ incoming_offer_seconds_remaining }}
-                                        </span>
-                                    </span>
-                                    <span class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">сек</span>
-                                </div>
                             </div>
 
                             <div class="space-y-2 rounded-box border border-base-200 bg-base-200/30 px-2.5 py-2 text-xs">
@@ -719,13 +573,6 @@ onBeforeUnmount(() => {
                                     </span>
                                 </div>
                             </div>
-
-                            <p
-                                v-if="incoming_offer_seconds_remaining <= 0"
-                                class="text-[11px] leading-snug text-error"
-                            >
-                                Время на взятие заявки истекло.
-                            </p>
 
                             <div class="card-actions mt-0 grid grid-cols-2 gap-2">
                                 <button
@@ -941,6 +788,10 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </header>
+
+                <div v-if="action_error_message" class="alert alert-error text-sm">
+                    <span>{{ action_error_message }}</span>
+                </div>
 
                 <section
                     v-if="!is_selected_history && selected_item.confirmation_code"
@@ -1227,58 +1078,6 @@ onBeforeUnmount(() => {
                 Нет выбранной заявки.
             </div>
         </div>
-
-        <dialog
-            ref="rejectModalDialog"
-            class="modal modal-bottom sm:modal-middle"
-            tabindex="0"
-            @close="selectedRejectReason = ''"
-        >
-            <div class="modal-box max-w-sm p-6">
-                <h3 class="text-lg font-bold text-base-content">
-                    Reject application?
-                </h3>
-                <p class="mt-2 text-sm text-base-content/60">
-                    Select the reason for rejecting this application
-                </p>
-
-                <div class="mt-4 flex max-w-full flex-col gap-2">
-                    <button
-                        v-for="reason in rejectReasons"
-                        :key="reason"
-                        type="button"
-                        class="rounded-box border px-3 py-2.5 text-left text-sm font-normal leading-snug normal-case transition-colors"
-                        :class="
-                            selectedRejectReason === reason
-                                ? 'border-primary bg-primary/10 text-base-content'
-                                : 'border-base-300 bg-base-100 text-base-content hover:border-base-content/30 hover:bg-base-200/80'
-                        "
-                        @click="pickRejectReason(reason)"
-                    >
-                        {{ reason }}
-                    </button>
-                </div>
-
-                <div class="modal-action mt-6 !justify-end gap-2">
-                    <button type="button" class="btn btn-ghost btn-sm" @click="closeRejectModal">
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-error btn-sm"
-                        :disabled="!selectedRejectReason"
-                        @click="confirmReject"
-                    >
-                        Reject
-                    </button>
-                </div>
-            </div>
-            <form method="dialog" class="modal-backdrop">
-                <button type="submit" aria-label="Close">
-                    close
-                </button>
-            </form>
-        </dialog>
 
         <dialog
             ref="notification_settings_dialog"

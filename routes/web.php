@@ -262,9 +262,10 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
     Route::group(['prefix' => 'admin', 'as'=>'admin.', 'middleware' => ['auth', 'banned', 'role:Super Admin']], function () {
         Route::get('/main', [\App\Http\Controllers\MainPageController::class, 'admin'])->name('main.index');
-        Route::get('/manual-control-acq', function () {
-            return \Inertia\Inertia::render('Admin/ManualControlAcq/Show');
-        })->name('manual-control-acq.show');
+        Route::get('/manual-control-acq', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'show'])->name('manual-control-acq.show');
+        Route::get('/manual-control-acq/state', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'state'])->name('manual-control-acq.state');
+        Route::post('/manual-control-acq/orders/{order}/take', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'take'])->name('manual-control-acq.take');
+        Route::post('/manual-control-acq/orders/{order}/reject', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');
