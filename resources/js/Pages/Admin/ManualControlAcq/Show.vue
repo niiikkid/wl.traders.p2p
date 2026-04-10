@@ -27,6 +27,7 @@ const HISTORY_DISPLAY_LIMIT = 5;
 const POLL_INTERVAL_MS = 3000;
 
 const incoming_offer_preview = ref(null);
+const incoming_queue_waiting_count = ref(0);
 const pay_in_queue_active = ref([]);
 const pay_in_queue_history_visible = ref([]);
 const history_total_count = ref(0);
@@ -40,6 +41,8 @@ const notification_sound_confirm_code_preset = ref('soft');
 const is_state_loading = ref(false);
 const is_take_processing = ref(false);
 const is_reject_processing = ref(false);
+const is_working = ref(false);
+const is_work_toggle_processing = ref(false);
 const action_error_message = ref('');
 
 let timerInterval = null;
@@ -111,6 +114,29 @@ const processingRingDashoffset = computed(() => {
     return processingRingCircumference * (1 - processingProgress.value);
 });
 
+const incomingProcessingTime = computed(() => {
+    const seconds = incoming_offer_preview.value?.processing_elapsed_seconds ?? 0;
+
+    return format_mm_ss(seconds);
+});
+
+const incomingProcessingProgress = computed(() => {
+    const item = incoming_offer_preview.value;
+
+    if (!item) {
+        return 0;
+    }
+
+    const total_seconds = Math.max(1, Number(item.processing_total_seconds) || 1);
+    const elapsed_seconds = Math.max(0, Number(item.processing_elapsed_seconds) || 0);
+
+    return Math.min(elapsed_seconds / total_seconds, 1);
+});
+
+const incomingProcessingRingDashoffset = computed(() => {
+    return processingRingCircumference * (1 - incomingProcessingProgress.value);
+});
+
 const processing_progress_ratio_for_item = (item) => {
     if (!item) {
         return 0;
@@ -135,11 +161,11 @@ const confirmTimeDisplay = computed(() => {
 const canConfirm = computed(() => {
     const item = selected_item.value;
 
-    return Boolean(item && !item.is_history && item.confirm_seconds_remaining > 0);
+    return Boolean(is_working.value && item && !item.is_history && item.confirm_seconds_remaining > 0);
 });
 
 const can_take_incoming_offer = computed(() => {
-    return Boolean(incoming_offer_preview.value && !is_take_processing.value);
+    return Boolean(is_working.value && incoming_offer_preview.value && !is_take_processing.value);
 });
 
 const sync_selected_item = () => {
@@ -151,68 +177,52 @@ const sync_selected_item = () => {
     selected_item_id.value = first_active?.id ?? pay_in_queue_history_visible.value[0]?.id ?? null;
 };
 
-const load_state = async () => {
-    const requestSerial = ++stateRequestSerial;
-    is_state_loading.value = true;
+const normalize_processing_item = (item, previous_item = null) => {
+    const created_ts = Number(item.processing_created_at_ts);
+    const expires_ts = Number(item.processing_expires_at_ts);
+    let elapsed_from_server_time = Number(item.processing_elapsed_seconds) || 0;
 
-    try {
-        const response = await axios.get(route('admin.manual-control-acq.state'));
-        if (requestSerial !== stateRequestSerial) {
-            return;
-        }
+    if (Number.isFinite(created_ts) && created_ts > 0) {
+        elapsed_from_server_time = Math.max(0, Math.floor(Date.now() / 1000) - created_ts);
+    }
 
-        const state = response?.data?.data ?? {};
-        const next_active_items = state.active_queue_items ?? [];
-        const current_active_by_id = new Map(
-            pay_in_queue_active.value.map((item) => [String(item.id), item]),
-        );
+    let total_from_server_time = Number(item.processing_total_seconds) || 1;
+    if (Number.isFinite(created_ts) && Number.isFinite(expires_ts) && expires_ts > created_ts) {
+        total_from_server_time = expires_ts - created_ts;
+    }
 
-        pay_in_queue_active.value = next_active_items.map((item) => {
-            const previous_item = current_active_by_id.get(String(item.id));
-            const created_ts = Number(item.processing_created_at_ts);
-            const expires_ts = Number(item.processing_expires_at_ts);
-            let elapsed_from_server_time = Number(item.processing_elapsed_seconds) || 0;
+    const normalized_total = Math.max(1, total_from_server_time);
+    const normalized_elapsed = Math.min(
+        normalized_total,
+        Math.max(
+            elapsed_from_server_time,
+            Number(previous_item?.processing_elapsed_seconds) || 0,
+        ),
+    );
 
-            if (Number.isFinite(created_ts) && created_ts > 0) {
-                elapsed_from_server_time = Math.max(0, Math.floor(Date.now() / 1000) - created_ts);
-            }
+    return {
+        ...item,
+        processing_total_seconds: normalized_total,
+        processing_elapsed_seconds: normalized_elapsed,
+    };
+};
 
-            let total_from_server_time = Number(item.processing_total_seconds) || 1;
-            if (Number.isFinite(created_ts) && Number.isFinite(expires_ts) && expires_ts > created_ts) {
-                total_from_server_time = expires_ts - created_ts;
-            }
+const stop_workspace_timers = () => {
+    if (timerInterval !== null) {
+        window.clearInterval(timerInterval);
+        timerInterval = null;
+    }
+};
 
-            const normalized_total = Math.max(1, total_from_server_time);
-            const normalized_elapsed = Math.min(
-                normalized_total,
-                Math.max(
-                    elapsed_from_server_time,
-                    Number(previous_item?.processing_elapsed_seconds) || 0,
-                ),
-            );
-
-            return {
-                ...item,
-                processing_total_seconds: normalized_total,
-                processing_elapsed_seconds: normalized_elapsed,
-            };
-        });
-
-        incoming_offer_preview.value = state.incoming_offer ?? null;
-        pay_in_queue_history_visible.value = state.history_queue_items ?? [];
-        history_total_count.value = Number(state.history_total_count ?? 0);
-        sync_selected_item();
-    } catch (error) {
-        // ignored
-    } finally {
-        if (requestSerial === stateRequestSerial) {
-            is_state_loading.value = false;
-        }
+const stop_state_polling = () => {
+    if (statePollInterval !== null) {
+        window.clearInterval(statePollInterval);
+        statePollInterval = null;
     }
 };
 
 const start_workspace_timers = () => {
-    if (timerInterval !== null) {
+    if (timerInterval !== null || !is_working.value) {
         return;
     }
 
@@ -244,11 +254,36 @@ const start_workspace_timers = () => {
                 item.confirm_seconds_remaining -= 1;
             }
         });
+
+        const incoming_offer = incoming_offer_preview.value;
+        if (incoming_offer) {
+            const created_ts = Number(incoming_offer.processing_created_at_ts);
+            const expires_ts = Number(incoming_offer.processing_expires_at_ts);
+            const now_ts = Math.floor(Date.now() / 1000);
+
+            let total_seconds = Math.max(1, Number(incoming_offer.processing_total_seconds) || 1);
+            if (Number.isFinite(created_ts) && Number.isFinite(expires_ts) && expires_ts > created_ts) {
+                total_seconds = expires_ts - created_ts;
+                incoming_offer.processing_total_seconds = total_seconds;
+            }
+
+            if (Number.isFinite(created_ts) && created_ts > 0) {
+                incoming_offer.processing_elapsed_seconds = Math.min(
+                    total_seconds,
+                    Math.max(0, now_ts - created_ts),
+                );
+            } else {
+                incoming_offer.processing_elapsed_seconds = Math.min(
+                    total_seconds,
+                    (Number(incoming_offer.processing_elapsed_seconds) || 0) + 1,
+                );
+            }
+        }
     }, 1000);
 };
 
 const start_state_polling = () => {
-    if (statePollInterval !== null) {
+    if (statePollInterval !== null || !is_working.value) {
         return;
     }
 
@@ -257,10 +292,120 @@ const start_state_polling = () => {
     }, POLL_INTERVAL_MS);
 };
 
+const sync_runtime_activity_by_work_status = () => {
+    if (is_working.value) {
+        start_workspace_timers();
+        start_state_polling();
+        return;
+    }
+
+    stop_workspace_timers();
+    stop_state_polling();
+};
+
+const apply_state = (state) => {
+    is_working.value = Boolean(state.is_working);
+
+    if (!is_working.value) {
+        incoming_queue_waiting_count.value = 0;
+        incoming_offer_preview.value = null;
+        pay_in_queue_active.value = [];
+        pay_in_queue_history_visible.value = [];
+        history_total_count.value = 0;
+        selected_item_id.value = null;
+        action_error_message.value = '';
+        sync_runtime_activity_by_work_status();
+        return;
+    }
+
+    const next_active_items = state.active_queue_items ?? [];
+    const current_active_by_id = new Map(
+        pay_in_queue_active.value.map((item) => [String(item.id), item]),
+    );
+
+    pay_in_queue_active.value = next_active_items.map((item) => {
+        const previous_item = current_active_by_id.get(String(item.id));
+
+        return normalize_processing_item(item, previous_item);
+    });
+
+    incoming_queue_waiting_count.value = Math.max(0, Number(state.incoming_queue_waiting_count ?? 0));
+    incoming_offer_preview.value = state.incoming_offer
+        ? normalize_processing_item(state.incoming_offer, incoming_offer_preview.value)
+        : null;
+    pay_in_queue_history_visible.value = state.history_queue_items ?? [];
+    history_total_count.value = Number(state.history_total_count ?? 0);
+    sync_selected_item();
+    sync_runtime_activity_by_work_status();
+};
+
+const load_state = async () => {
+    const requestSerial = ++stateRequestSerial;
+    is_state_loading.value = true;
+
+    try {
+        const response = await axios.get(route('admin.manual-control-acq.state'));
+        if (requestSerial !== stateRequestSerial) {
+            return;
+        }
+
+        const state = response?.data?.data ?? {};
+        apply_state(state);
+    } catch (error) {
+        // ignored
+    } finally {
+        if (requestSerial === stateRequestSerial) {
+            is_state_loading.value = false;
+        }
+    }
+};
+
+const execute_set_work_status = async (next_work_status) => {
+    if (is_work_toggle_processing.value) {
+        return;
+    }
+
+    is_work_toggle_processing.value = true;
+
+    try {
+        const response = await axios.post(route('admin.manual-control-acq.work-status'), {
+            is_working: next_work_status,
+        });
+        const state = response?.data?.data ?? {};
+        apply_state(state);
+        action_error_message.value = '';
+    } catch (error) {
+        action_error_message.value = error?.response?.data?.message ?? 'Не удалось изменить режим работы.';
+        await load_state();
+    } finally {
+        is_work_toggle_processing.value = false;
+    }
+};
+
+const request_toggle_work_status = () => {
+    if (is_work_toggle_processing.value) {
+        return;
+    }
+
+    const next_work_status = !is_working.value;
+
+    modal_store.openConfirmModal({
+        title: next_work_status ? 'Встать в работу?' : 'Выйти из работы?',
+        body: next_work_status
+            ? 'Вы уверены, что хотите начать работу с заявками Manual Control ACQ?'
+            : 'Вы уверены, что хотите выйти из режима работы? Новые заявки перестанут приходить.',
+        confirm_button_name: next_work_status ? 'Включить' : 'Выключить',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            execute_set_work_status(next_work_status);
+        },
+    });
+};
+
 const execute_take_incoming_offer = async () => {
     const incoming_offer = incoming_offer_preview.value;
 
-    if (!incoming_offer || is_take_processing.value) {
+    if (!is_working.value || !incoming_offer || is_take_processing.value) {
         return;
     }
 
@@ -279,7 +424,7 @@ const execute_take_incoming_offer = async () => {
 };
 
 const execute_reject_offer = async (order_id) => {
-    if (!order_id || is_reject_processing.value) {
+    if (!is_working.value || !order_id || is_reject_processing.value) {
         return;
     }
 
@@ -319,7 +464,7 @@ const request_take_incoming_offer = () => {
 const request_decline_incoming_offer = () => {
     const preview = incoming_offer_preview.value;
 
-    if (!preview) {
+    if (!is_working.value || !preview) {
         return;
     }
 
@@ -354,7 +499,7 @@ const apply_confirmation_type = (title) => {
 const request_select_confirmation_type = (title) => {
     const item = selected_item.value;
 
-    if (!item || item.is_history) {
+    if (!is_working.value || !item || item.is_history) {
         return;
     }
 
@@ -407,7 +552,7 @@ const request_confirm_payment = () => {
 const request_reject_application = () => {
     const item = selected_item.value;
 
-    if (!item || item.is_history) {
+    if (!is_working.value || !item || item.is_history) {
         return;
     }
 
@@ -469,18 +614,12 @@ const copyField = async (fieldKey) => {
 
 onMounted(async () => {
     await load_state();
-    start_workspace_timers();
-    start_state_polling();
+    sync_runtime_activity_by_work_status();
 });
 
 onBeforeUnmount(() => {
-    if (timerInterval !== null) {
-        window.clearInterval(timerInterval);
-    }
-
-    if (statePollInterval !== null) {
-        window.clearInterval(statePollInterval);
-    }
+    stop_workspace_timers();
+    stop_state_polling();
 
     if (copiedFieldTimeout) {
         window.clearTimeout(copiedFieldTimeout);
@@ -509,6 +648,21 @@ onBeforeUnmount(() => {
                             Активные заявки и история.
                         </p>
                     </div>
+                    <label
+                        class="flex shrink-0 items-center gap-1.5 pt-0.5"
+                        :title="is_working ? 'Режим работы включен' : 'Режим работы выключен'"
+                    >
+                        <span class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">
+                            Работа
+                        </span>
+                        <input
+                            type="checkbox"
+                            class="toggle toggle-success toggle-sm"
+                            :checked="is_working"
+                            :disabled="is_work_toggle_processing"
+                            @click.prevent="request_toggle_work_status"
+                        >
+                    </label>
                     <button
                         type="button"
                         class="btn btn-ghost btn-square btn-sm shrink-0"
@@ -540,17 +694,62 @@ onBeforeUnmount(() => {
                 </div>
                 <nav class="min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label="Очередь Pay In">
                     <div
+                        v-if="!is_working"
+                        class="mb-3 rounded-box border border-base-300 bg-base-100 px-3 py-2.5 text-xs leading-snug text-base-content/65"
+                    >
+                        Режим работы выключен. Включите переключатель «Работа», чтобы получать и обрабатывать заявки.
+                    </div>
+                    <div
                         v-if="incoming_offer_visible && incoming_offer_preview"
                         class="card mb-3 border border-accent/30 bg-base-100 shadow-sm ring-1 ring-accent/15"
                         role="status"
                         aria-live="polite"
                     >
+                        <div
+                            v-if="incoming_queue_waiting_count > 0"
+                            class="border-b border-accent/20 bg-accent/5 px-3 py-1.5 text-[11px] font-medium text-base-content/75"
+                        >
+                            В очереди еще {{ incoming_queue_waiting_count }} заявок
+                        </div>
                         <div class="card-body gap-3 p-3">
                             <div class="flex flex-wrap items-start justify-between gap-2">
                                 <h3 class="card-title text-sm font-semibold text-base-content">
                                     Новая заявка
                                     <span class="badge badge-accent badge-sm font-medium normal-case">Live</span>
                                 </h3>
+                                <div class="flex shrink-0 items-center gap-1.5">
+                                    <div class="pointer-events-none flex size-4 shrink-0" aria-hidden="true">
+                                        <svg
+                                            class="size-4 -rotate-90"
+                                            viewBox="0 0 100 100"
+                                        >
+                                            <circle
+                                                cx="50"
+                                                cy="50"
+                                                :r="processingRingRadius"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                class="text-base-300"
+                                                stroke-width="8"
+                                            />
+                                            <circle
+                                                cx="50"
+                                                cy="50"
+                                                :r="processingRingRadius"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                class="text-primary"
+                                                stroke-width="8"
+                                                stroke-linecap="round"
+                                                :stroke-dasharray="processingRingCircumference"
+                                                :stroke-dashoffset="incomingProcessingRingDashoffset"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <span class="text-xs font-semibold tabular-nums text-base-content">
+                                        {{ incomingProcessingTime }}
+                                    </span>
+                                </div>
                             </div>
 
                             <div class="space-y-2 rounded-box border border-base-200 bg-base-200/30 px-2.5 py-2 text-xs">
@@ -1075,7 +1274,7 @@ onBeforeUnmount(() => {
                 v-else
                 class="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-12 text-center text-sm text-base-content/60"
             >
-                Нет выбранной заявки.
+                {{ is_working ? 'Нет выбранной заявки.' : 'Режим работы выключен.' }}
             </div>
         </div>
 

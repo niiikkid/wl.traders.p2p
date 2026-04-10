@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,6 +24,17 @@ class ManualControlAcqController extends Controller
 
     public function state(): JsonResponse
     {
+        if (! $this->isCurrentUserWorking()) {
+            return response()->success([
+                'is_working' => false,
+                'incoming_offer' => null,
+                'incoming_queue_waiting_count' => 0,
+                'active_queue_items' => [],
+                'history_queue_items' => [],
+                'history_total_count' => 0,
+            ]);
+        }
+
         $active_orders = Order::query()
             ->with('paymentGateway')
             ->where('manual_control_acquiring', true)
@@ -32,16 +44,19 @@ class ManualControlAcqController extends Controller
             ->orderBy('id')
             ->get();
 
-        $incoming_order = Order::query()
+        $incoming_order_query = Order::query()
             ->with('paymentGateway')
             ->where('manual_control_acquiring', true)
             ->where('status', OrderStatus::PENDING)
             ->whereNull('manual_control_taken_by_user_id')
-            ->orderBy('created_at')
-            ->first();
+            ->orderBy('created_at');
+        $incoming_order = (clone $incoming_order_query)->first();
+        $incoming_queue_total_count = (clone $incoming_order_query)->count();
 
         return response()->success([
+            'is_working' => true,
             'incoming_offer' => $incoming_order ? $this->makeIncomingOfferPreview($incoming_order) : null,
+            'incoming_queue_waiting_count' => max(0, $incoming_queue_total_count - 1),
             'active_queue_items' => $this->makeQueueItems($active_orders),
             'history_queue_items' => [],
             'history_total_count' => 0,
@@ -50,6 +65,10 @@ class ManualControlAcqController extends Controller
 
     public function take(Order $order): JsonResponse
     {
+        if (! $this->isCurrentUserWorking()) {
+            return response()->failWithMessage('Режим работы выключен. Включите его, чтобы брать заявки.');
+        }
+
         $lock = Cache::lock($this->makeTakeLockKey($order->id), 5);
 
         if (! $lock->get()) {
@@ -79,6 +98,10 @@ class ManualControlAcqController extends Controller
 
     public function reject(Order $order): JsonResponse
     {
+        if (! $this->isCurrentUserWorking()) {
+            return response()->failWithMessage('Режим работы выключен. Включите его, чтобы отклонять заявки.');
+        }
+
         $latest_order = Order::query()->whereKey($order->id)->firstOrFail();
 
         if (! $this->canRejectOrder($latest_order)) {
@@ -90,6 +113,26 @@ class ManualControlAcqController extends Controller
         } catch (OrderException $e) {
             return response()->failWithMessage($e->getMessage());
         }
+
+        return $this->state();
+    }
+
+    public function setWorkStatus(Request $request): JsonResponse
+    {
+        $is_working = (bool) $request->boolean('is_working');
+        $user = auth()->user();
+
+        if (! $user) {
+            return response()->failWithMessage('Пользователь не найден.');
+        }
+
+        if (! $is_working && $this->hasActiveOrders((int) $user->id)) {
+            return response()->failWithMessage('Нельзя выключить режим работы, пока есть активная заявка.');
+        }
+
+        $user->update([
+            'manual_control_acq_is_working' => $is_working,
+        ]);
 
         return $this->state();
     }
@@ -134,8 +177,8 @@ class ManualControlAcqController extends Controller
                 'display' => $order->paymentGateway?->name ?? '—',
             ],
             'amount' => [
-                'display' => $order->amount->toBeauty(),
-                'copy' => $order->amount->toPrecision(),
+                'display' => sprintf('%s %s', $order->amount->toBeauty(), strtoupper($order->currency->getCode())),
+                'copy' => (string) $order->amount->toInt(),
             ],
             'card_number' => [
                 'display' => $this->formatCardNumber($card_number_raw),
@@ -161,6 +204,16 @@ class ManualControlAcqController extends Controller
 
     private function makeIncomingOfferPreview(Order $order): array
     {
+        $created_at_ts = $order->created_at?->timestamp;
+        $expires_at_ts = $order->expires_at?->timestamp;
+
+        $processing_total_seconds = (is_int($created_at_ts) && is_int($expires_at_ts))
+            ? max(1, $expires_at_ts - $created_at_ts)
+            : (15 * 60);
+        $processing_elapsed_seconds = is_int($created_at_ts)
+            ? min($processing_total_seconds, max(0, now()->timestamp - $created_at_ts))
+            : 0;
+
         return [
             'id' => (string) $order->id,
             'payin_id' => [
@@ -171,9 +224,13 @@ class ManualControlAcqController extends Controller
                 'display' => $order->paymentGateway?->name ?? '—',
             ],
             'amount' => [
-                'display' => $order->amount->toBeauty(),
-                'copy' => $order->amount->toPrecision(),
+                'display' => sprintf('%s %s', $order->amount->toBeauty(), strtoupper($order->currency->getCode())),
+                'copy' => (string) $order->amount->toInt(),
             ],
+            'processing_elapsed_seconds' => $processing_elapsed_seconds,
+            'processing_total_seconds' => $processing_total_seconds,
+            'processing_created_at_ts' => $created_at_ts,
+            'processing_expires_at_ts' => $expires_at_ts,
         ];
     }
 
@@ -225,5 +282,19 @@ class ManualControlAcqController extends Controller
     private function makeTakeLockKey(int $order_id): string
     {
         return "manual-control-acq:take:{$order_id}";
+    }
+
+    private function isCurrentUserWorking(): bool
+    {
+        return (bool) auth()->user()?->manual_control_acq_is_working;
+    }
+
+    private function hasActiveOrders(int $user_id): bool
+    {
+        return Order::query()
+            ->where('manual_control_acquiring', true)
+            ->where('status', OrderStatus::PENDING)
+            ->where('manual_control_taken_by_user_id', $user_id)
+            ->exists();
     }
 }
