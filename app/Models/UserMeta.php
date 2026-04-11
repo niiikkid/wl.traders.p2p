@@ -13,6 +13,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $notification_sound_enabled
  * @property string|null $notification_sound_track
  * @property \Carbon\Carbon|null $news_last_read_at
+ * @property bool $manual_control_acq_new_offer_sound_enabled
+ * @property string|null $manual_control_acq_new_offer_sound_track
+ * @property bool $manual_control_acq_confirm_code_sound_enabled
+ * @property string|null $manual_control_acq_confirm_code_sound_track
  * @property int $user_id
  * @property User $user
  */
@@ -26,6 +30,10 @@ class UserMeta extends Model
         'notification_sound_enabled',
         'notification_sound_track',
         'news_last_read_at',
+        'manual_control_acq_new_offer_sound_enabled',
+        'manual_control_acq_new_offer_sound_track',
+        'manual_control_acq_confirm_code_sound_enabled',
+        'manual_control_acq_confirm_code_sound_track',
     ];
 
     protected $casts = [
@@ -33,6 +41,8 @@ class UserMeta extends Model
         'allowed_categories' => 'array',
         'notification_sound_enabled' => 'boolean',
         'news_last_read_at' => 'datetime',
+        'manual_control_acq_new_offer_sound_enabled' => 'boolean',
+        'manual_control_acq_confirm_code_sound_enabled' => 'boolean',
     ];
 
     public $timestamps = false;

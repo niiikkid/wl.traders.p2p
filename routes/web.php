@@ -265,6 +265,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/manual-control-acq', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'show'])->name('manual-control-acq.show');
         Route::get('/manual-control-acq/state', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'state'])->name('manual-control-acq.state');
         Route::post('/manual-control-acq/work-status', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'setWorkStatus'])->name('manual-control-acq.work-status');
+        Route::patch('/manual-control-acq/sound-settings', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'updateSoundSettings'])->name('manual-control-acq.sound-settings.update');
         Route::post('/manual-control-acq/orders/{order}/take', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'take'])->name('manual-control-acq.take');
         Route::post('/manual-control-acq/orders/{order}/confirmation-type', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
         Route::post('/manual-control-acq/orders/{order}/reject', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');

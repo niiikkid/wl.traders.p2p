@@ -1,11 +1,12 @@
 <script setup>
 import axios from 'axios';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
 import ThemeToggle from '@/Components/ThemeToggle.vue';
 import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
 import { useModalStore } from '@/store/modal.js';
+import { playNotificationAudio } from '@/utils/notificationAudioPlayer.js';
 
 const modal_store = useModalStore();
 
@@ -25,6 +26,44 @@ const processingRingRadius = 42;
 const processingRingCircumference = 2 * Math.PI * processingRingRadius;
 const HISTORY_DISPLAY_LIMIT = 5;
 const POLL_INTERVAL_MS = 3000;
+const DEFAULT_NEW_OFFER_SOUND_TRACK = 'radwimps.mp3';
+const DEFAULT_CONFIRM_CODE_SOUND_TRACK = 'LetWealthCome.mp3';
+
+const page_props = usePage().props;
+const audio_tracks = ref(page_props.audioTracks ?? []);
+
+const resolve_default_sound_track = (track, fallback_track) => {
+    const allowed_tracks = audio_tracks.value.map((item) => item.value);
+
+    if (track && allowed_tracks.includes(track)) {
+        return track;
+    }
+
+    if (fallback_track && allowed_tracks.includes(fallback_track)) {
+        return fallback_track;
+    }
+
+    return audio_tracks.value[0]?.value ?? null;
+};
+
+const normalize_sound_settings = (settings) => {
+    const next_settings = settings ?? {};
+    const new_offer = next_settings.new_offer ?? {};
+    const confirm_code = next_settings.confirm_code ?? {};
+
+    return {
+        new_offer: {
+            enabled: Boolean(new_offer.enabled ?? true),
+            track: resolve_default_sound_track(new_offer.track ?? null, DEFAULT_NEW_OFFER_SOUND_TRACK),
+        },
+        confirm_code: {
+            enabled: Boolean(confirm_code.enabled ?? true),
+            track: resolve_default_sound_track(confirm_code.track ?? null, DEFAULT_CONFIRM_CODE_SOUND_TRACK),
+        },
+    };
+};
+
+const sound_settings = ref(normalize_sound_settings(page_props.soundSettings));
 
 const incoming_offer_preview = ref(null);
 const incoming_queue_waiting_count = ref(0);
@@ -34,29 +73,24 @@ const history_total_count = ref(0);
 const selected_item_id = ref(null);
 const copiedField = ref('');
 const notification_settings_dialog = ref(null);
-const notification_sound_new_offer_enabled = ref(true);
-const notification_sound_new_offer_preset = ref('chime');
-const notification_sound_confirm_code_enabled = ref(true);
-const notification_sound_confirm_code_preset = ref('soft');
+const notification_sound_new_offer_enabled = ref(sound_settings.value.new_offer.enabled);
+const notification_sound_new_offer_preset = ref(sound_settings.value.new_offer.track);
+const notification_sound_confirm_code_enabled = ref(sound_settings.value.confirm_code.enabled);
+const notification_sound_confirm_code_preset = ref(sound_settings.value.confirm_code.track);
 const is_state_loading = ref(false);
 const is_take_processing = ref(false);
 const is_reject_processing = ref(false);
 const is_confirmation_type_processing = ref(false);
 const is_working = ref(false);
 const is_work_toggle_processing = ref(false);
+const is_sound_settings_processing = ref(false);
+const is_initial_state_loaded = ref(false);
 const action_error_message = ref('');
 
 let timerInterval = null;
 let statePollInterval = null;
 let copiedFieldTimeout = null;
 let stateRequestSerial = 0;
-
-const notification_sound_preset_options = [
-    { value: 'chime', label: 'Классический звонок' },
-    { value: 'beep', label: 'Короткий сигнал' },
-    { value: 'soft', label: 'Мягкий тон' },
-    { value: 'digital', label: 'Цифровой пинг' },
-];
 
 const pay_in_queue_all = computed(() => [...pay_in_queue_active.value, ...pay_in_queue_history_visible.value]);
 const incoming_offer_visible = computed(() => Boolean(incoming_offer_preview.value));
@@ -65,6 +99,82 @@ const selected_item = computed(() => pay_in_queue_all.value.find((item) => item.
 const active_queue_items = computed(() => pay_in_queue_active.value);
 const history_queue_items = computed(() => pay_in_queue_history_visible.value);
 const is_selected_history = computed(() => selected_item.value?.is_history === true);
+const notification_sound_options = computed(() => {
+    return audio_tracks.value.map((item) => ({
+        ...item,
+        label: String(item.name ?? '')
+            .replace(/\.mp3$/i, ''),
+    }));
+});
+
+const resolve_track_url = (track_name) => {
+    if (!track_name) {
+        return null;
+    }
+
+    return audio_tracks.value.find((item) => item.value === track_name)?.url ?? null;
+};
+
+const current_sound_settings_payload = () => {
+    return {
+        new_offer: {
+            enabled: notification_sound_new_offer_enabled.value,
+            track: notification_sound_new_offer_preset.value,
+        },
+        confirm_code: {
+            enabled: notification_sound_confirm_code_enabled.value,
+            track: notification_sound_confirm_code_preset.value,
+        },
+    };
+};
+
+const apply_sound_settings = (settings) => {
+    sound_settings.value = normalize_sound_settings(settings);
+    notification_sound_new_offer_enabled.value = sound_settings.value.new_offer.enabled;
+    notification_sound_new_offer_preset.value = sound_settings.value.new_offer.track;
+    notification_sound_confirm_code_enabled.value = sound_settings.value.confirm_code.enabled;
+    notification_sound_confirm_code_preset.value = sound_settings.value.confirm_code.track;
+};
+
+const save_sound_settings = async () => {
+    if (is_sound_settings_processing.value) {
+        return;
+    }
+
+    is_sound_settings_processing.value = true;
+
+    try {
+        const response = await axios.patch(
+            route('admin.manual-control-acq.sound-settings.update'),
+            current_sound_settings_payload(),
+        );
+
+        const next_sound_settings = response?.data?.data?.sound_settings ?? current_sound_settings_payload();
+        apply_sound_settings(next_sound_settings);
+        action_error_message.value = '';
+    } catch (error) {
+        action_error_message.value = error?.response?.data?.message ?? 'Не удалось сохранить настройки звука.';
+        apply_sound_settings(sound_settings.value);
+    } finally {
+        is_sound_settings_processing.value = false;
+    }
+};
+
+const toggle_new_offer_sound_enabled = async () => {
+    await save_sound_settings();
+};
+
+const toggle_confirm_code_sound_enabled = async () => {
+    await save_sound_settings();
+};
+
+const select_new_offer_sound = async () => {
+    await save_sound_settings();
+};
+
+const select_confirm_code_sound = async () => {
+    await save_sound_settings();
+};
 
 const open_notification_settings_modal = () => {
     notification_settings_dialog.value?.showModal();
@@ -408,7 +518,67 @@ const sync_runtime_activity_by_work_status = () => {
     stop_state_polling();
 };
 
+const latest_confirmation_code_key = (item) => {
+    const latest_code = item?.confirmation_codes?.[0] ?? item?.confirmation_code ?? null;
+
+    if (!latest_code?.display) {
+        return null;
+    }
+
+    return `${latest_code.display}|${latest_code.created_at_ts ?? ''}`;
+};
+
+const make_active_confirmation_code_snapshot = (items) => {
+    return new Map(
+        (items ?? []).map((item) => [String(item.id), latest_confirmation_code_key(item)]),
+    );
+};
+
+const play_new_offer_sound_if_needed = (has_new_incoming_offer) => {
+    if (!has_new_incoming_offer || !notification_sound_new_offer_enabled.value) {
+        return;
+    }
+
+    const sound_url = resolve_track_url(notification_sound_new_offer_preset.value);
+    if (!sound_url) {
+        return;
+    }
+
+    playNotificationAudio(sound_url, { interrupt: true });
+};
+
+const play_confirm_code_sound_if_needed = (active_items, previous_snapshot) => {
+    if (!notification_sound_confirm_code_enabled.value) {
+        return;
+    }
+
+    const has_new_code = (active_items ?? []).some((item) => {
+        const item_id = String(item.id);
+        if (!previous_snapshot.has(item_id)) {
+            return false;
+        }
+
+        const key = latest_confirmation_code_key(item);
+        const previous_key = previous_snapshot.get(item_id);
+
+        return Boolean(key && key !== previous_key);
+    });
+
+    if (!has_new_code) {
+        return;
+    }
+
+    const sound_url = resolve_track_url(notification_sound_confirm_code_preset.value);
+    if (!sound_url) {
+        return;
+    }
+
+    playNotificationAudio(sound_url, { interrupt: true });
+};
+
 const apply_state = (state) => {
+    const previous_incoming_offer_id = incoming_offer_preview.value?.id ?? null;
+    const previous_confirmation_snapshot = make_active_confirmation_code_snapshot(pay_in_queue_active.value);
     is_working.value = Boolean(state.is_working);
 
     if (!is_working.value) {
@@ -451,6 +621,18 @@ const apply_state = (state) => {
     history_total_count.value = Number(state.history_total_count ?? 0);
     sync_selected_item();
     sync_runtime_activity_by_work_status();
+
+    if (is_initial_state_loaded.value) {
+        const has_new_incoming_offer = Boolean(
+            incoming_offer_preview.value
+            && incoming_offer_preview.value.id !== previous_incoming_offer_id,
+        );
+
+        play_new_offer_sound_if_needed(has_new_incoming_offer);
+        play_confirm_code_sound_if_needed(pay_in_queue_active.value, previous_confirmation_snapshot);
+    } else {
+        is_initial_state_loaded.value = true;
+    }
 };
 
 const load_state = async () => {
@@ -1477,7 +1659,7 @@ onBeforeUnmount(() => {
                     Звуки уведомлений
                 </h3>
                 <p class="mt-2 text-sm text-base-content/60">
-                    Включите уведомления и выберите звук для каждого события. Сохранение на сервер подключим позже.
+                    Включите уведомления и выберите звук для каждого события.
                 </p>
 
                 <div class="mt-5 space-y-4">
@@ -1496,6 +1678,8 @@ onBeforeUnmount(() => {
                                 type="checkbox"
                                 class="toggle toggle-primary shrink-0"
                                 aria-label="Звук при новой заявке"
+                                :disabled="is_sound_settings_processing"
+                                @change="toggle_new_offer_sound_enabled"
                             >
                         </div>
                         <div class="form-control mt-3 w-full">
@@ -1506,14 +1690,15 @@ onBeforeUnmount(() => {
                                 id="mc-acq-sound-new-offer"
                                 v-model="notification_sound_new_offer_preset"
                                 class="select select-bordered select-sm w-full"
-                                :disabled="!notification_sound_new_offer_enabled"
+                                :disabled="!notification_sound_new_offer_enabled || is_sound_settings_processing || !notification_sound_options.length"
+                                @change="select_new_offer_sound"
                             >
                                 <option
-                                    v-for="opt in notification_sound_preset_options"
-                                    :key="`new-${opt.value}`"
-                                    :value="opt.value"
+                                    v-for="track in notification_sound_options"
+                                    :key="`new-${track.value}`"
+                                    :value="track.value"
                                 >
-                                    {{ opt.label }}
+                                    {{ track.label }}
                                 </option>
                             </select>
                         </div>
@@ -1534,6 +1719,8 @@ onBeforeUnmount(() => {
                                 type="checkbox"
                                 class="toggle toggle-primary shrink-0"
                                 aria-label="Звук при коде подтверждения"
+                                :disabled="is_sound_settings_processing"
+                                @change="toggle_confirm_code_sound_enabled"
                             >
                         </div>
                         <div class="form-control mt-3 w-full">
@@ -1544,18 +1731,23 @@ onBeforeUnmount(() => {
                                 id="mc-acq-sound-confirm"
                                 v-model="notification_sound_confirm_code_preset"
                                 class="select select-bordered select-sm w-full"
-                                :disabled="!notification_sound_confirm_code_enabled"
+                                :disabled="!notification_sound_confirm_code_enabled || is_sound_settings_processing || !notification_sound_options.length"
+                                @change="select_confirm_code_sound"
                             >
                                 <option
-                                    v-for="opt in notification_sound_preset_options"
-                                    :key="`confirm-${opt.value}`"
-                                    :value="opt.value"
+                                    v-for="track in notification_sound_options"
+                                    :key="`confirm-${track.value}`"
+                                    :value="track.value"
                                 >
-                                    {{ opt.label }}
+                                    {{ track.label }}
                                 </option>
                             </select>
                         </div>
                     </div>
+                </div>
+
+                <div v-if="!notification_sound_options.length" class="mt-4 text-xs text-base-content/60">
+                    Аудиофайлы не найдены в `public/audio`.
                 </div>
 
                 <div class="modal-action mt-6 !justify-end">

@@ -9,10 +9,12 @@ use App\Exceptions\OrderException;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderManualControlConfirmationCode;
+use App\Models\UserMeta;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,10 +23,27 @@ use Inertia\Response;
 class ManualControlAcqController extends Controller
 {
     private const HISTORY_DISPLAY_LIMIT = 5;
+    private const DEFAULT_NEW_OFFER_SOUND_TRACK = 'radwimps.mp3';
+    private const DEFAULT_CONFIRM_CODE_SOUND_TRACK = 'LetWealthCome.mp3';
+    private const PRIORITY_SOUND_TRACKS = [
+        'DreamsAreMessagesFromTheDeep.mp3',
+        'LetWealthCome.mp3',
+        'Loshadka-1.mp3',
+        'Loshadka-2.mp3',
+        'MoneyPowerWomanDrugs.mp3',
+        'Pressure.mp3',
+        'SixDays.mp3',
+    ];
 
     public function show(): Response
     {
-        return Inertia::render('Admin/ManualControlAcq/Show');
+        $audio_tracks = $this->getAudioTracks();
+        $sound_settings = $this->resolveSoundSettings(auth()->user()?->meta, $audio_tracks);
+
+        return Inertia::render('Admin/ManualControlAcq/Show', [
+            'audioTracks' => $audio_tracks,
+            'soundSettings' => $sound_settings,
+        ]);
     }
 
     public function state(): JsonResponse
@@ -187,6 +206,47 @@ class ManualControlAcqController extends Controller
         ]);
 
         return $this->state();
+    }
+
+    public function updateSoundSettings(Request $request): JsonResponse
+    {
+        $audio_tracks = $this->getAudioTracks();
+        $allowed_tracks = array_column($audio_tracks, 'value');
+
+        $validated_data = $request->validate([
+            'new_offer' => ['required', 'array'],
+            'new_offer.enabled' => ['required', 'boolean'],
+            'new_offer.track' => ['nullable', 'string', Rule::in($allowed_tracks)],
+            'confirm_code' => ['required', 'array'],
+            'confirm_code.enabled' => ['required', 'boolean'],
+            'confirm_code.track' => ['nullable', 'string', Rule::in($allowed_tracks)],
+        ]);
+
+        $resolved_new_offer_track = $this->resolveSoundTrack(
+            $validated_data['new_offer']['track'] ?? null,
+            $audio_tracks,
+            self::DEFAULT_NEW_OFFER_SOUND_TRACK,
+        );
+        $resolved_confirm_code_track = $this->resolveSoundTrack(
+            $validated_data['confirm_code']['track'] ?? null,
+            $audio_tracks,
+            self::DEFAULT_CONFIRM_CODE_SOUND_TRACK,
+        );
+
+        $request->user()->meta()->updateOrCreate(
+            ['user_id' => $request->user()->id],
+            [
+                'manual_control_acq_new_offer_sound_enabled' => (bool) $validated_data['new_offer']['enabled'],
+                'manual_control_acq_new_offer_sound_track' => $resolved_new_offer_track,
+                'manual_control_acq_confirm_code_sound_enabled' => (bool) $validated_data['confirm_code']['enabled'],
+                'manual_control_acq_confirm_code_sound_track' => $resolved_confirm_code_track,
+            ],
+        );
+        $fresh_meta = $request->user()->meta()->first();
+
+        return response()->success([
+            'sound_settings' => $this->resolveSoundSettings($fresh_meta, $audio_tracks),
+        ]);
     }
 
     /**
@@ -425,5 +485,109 @@ class ManualControlAcqController extends Controller
         }
 
         return 'Заявка отклонена.';
+    }
+
+    private function getAudioTracks(): array
+    {
+        $audio_directory = public_path('audio');
+
+        if (! File::isDirectory($audio_directory)) {
+            return [];
+        }
+
+        $priority_sort_map = array_flip(self::PRIORITY_SOUND_TRACKS);
+
+        $all_tracks = collect(File::files($audio_directory))
+            ->filter(function ($file) {
+                return $file->getExtension() === 'mp3';
+            });
+
+        $named_tracks = $all_tracks
+            ->reject(function ($file) {
+                return preg_match('/^\d+\.mp3$/i', $file->getFilename()) === 1;
+            })
+            ->sort(function ($left_file, $right_file) use ($priority_sort_map) {
+                $left_name = $left_file->getFilename();
+                $right_name = $right_file->getFilename();
+
+                $left_priority = $priority_sort_map[$left_name] ?? PHP_INT_MAX;
+                $right_priority = $priority_sort_map[$right_name] ?? PHP_INT_MAX;
+
+                if ($left_priority !== $right_priority) {
+                    return $left_priority <=> $right_priority;
+                }
+
+                return strcmp($left_name, $right_name);
+            })
+            ->values();
+
+        $numeric_tracks = $all_tracks
+            ->filter(function ($file) {
+                return preg_match('/^\d+\.mp3$/i', $file->getFilename()) === 1;
+            })
+            ->sort(function ($left_file, $right_file) {
+                $left_numeric_value = (int) preg_replace('/\.mp3$/i', '', $left_file->getFilename());
+                $right_numeric_value = (int) preg_replace('/\.mp3$/i', '', $right_file->getFilename());
+
+                return $left_numeric_value <=> $right_numeric_value;
+            })
+            ->values();
+
+        return $named_tracks
+            ->concat($numeric_tracks)
+            ->map(function ($file) {
+                $name = $file->getFilename();
+
+                return [
+                    'name' => $name,
+                    'value' => $name,
+                    'url' => '/audio/' . $name,
+                ];
+            })
+            ->toArray();
+    }
+
+    private function resolveSoundSettings(?UserMeta $user_meta, array $audio_tracks): array
+    {
+        $new_offer_track = $this->resolveSoundTrack(
+            $user_meta?->manual_control_acq_new_offer_sound_track,
+            $audio_tracks,
+            self::DEFAULT_NEW_OFFER_SOUND_TRACK,
+        );
+        $confirm_code_track = $this->resolveSoundTrack(
+            $user_meta?->manual_control_acq_confirm_code_sound_track,
+            $audio_tracks,
+            self::DEFAULT_CONFIRM_CODE_SOUND_TRACK,
+        );
+
+        return [
+            'new_offer' => [
+                'enabled' => $user_meta?->manual_control_acq_new_offer_sound_enabled ?? true,
+                'track' => $new_offer_track,
+            ],
+            'confirm_code' => [
+                'enabled' => $user_meta?->manual_control_acq_confirm_code_sound_enabled ?? true,
+                'track' => $confirm_code_track,
+            ],
+        ];
+    }
+
+    private function resolveSoundTrack(?string $track, array $audio_tracks, string $default_track): ?string
+    {
+        if (empty($audio_tracks)) {
+            return null;
+        }
+
+        $allowed_tracks = array_column($audio_tracks, 'value');
+
+        if ($track && in_array($track, $allowed_tracks, true)) {
+            return $track;
+        }
+
+        if (in_array($default_track, $allowed_tracks, true)) {
+            return $default_track;
+        }
+
+        return $audio_tracks[0]['value'];
     }
 }
