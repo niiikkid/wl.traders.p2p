@@ -65,6 +65,9 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property ManualControlConfirmationType|null $manual_control_confirmation_type
  * @property Carbon|null $manual_control_confirmation_type_set_at
  * @property ManualControlProcessingStatus|null $manual_control_processing_status
+ * @property string|null $manual_control_reject_reason
+ * @property Carbon|null $manual_control_confirmed_at
+ * @property Carbon|null $manual_control_rejected_at
  * @property User|null $manualControlTakenByUser
  * @property int $payment_gateway_id
  * @property int $payment_detail_id
@@ -130,6 +133,8 @@ class Order extends Model
         'manual_control_confirmation_type_set_at',
         'manual_control_processing_status',
         'manual_control_reject_reason',
+        'manual_control_confirmed_at',
+        'manual_control_rejected_at',
         'payment_gateway_id',
         'payment_detail_id',
         'trader_id',
@@ -169,6 +174,8 @@ class Order extends Model
         'manual_control_confirmation_type' => ManualControlConfirmationType::class,
         'manual_control_confirmation_type_set_at' => 'datetime',
         'manual_control_processing_status' => ManualControlProcessingStatus::class,
+        'manual_control_confirmed_at' => 'datetime',
+        'manual_control_rejected_at' => 'datetime',
     ];
 
     protected static function booted()

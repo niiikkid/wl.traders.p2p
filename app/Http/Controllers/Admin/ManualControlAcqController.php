@@ -27,6 +27,7 @@ class ManualControlAcqController extends Controller
     private const HISTORY_DISPLAY_LIMIT = 5;
     private const DEFAULT_NEW_OFFER_SOUND_TRACK = 'radwimps.mp3';
     private const DEFAULT_CONFIRM_CODE_SOUND_TRACK = 'LetWealthCome.mp3';
+    private const DEFAULT_REJECT_REASON = 'Отклонено оператором.';
     private const PRIORITY_SOUND_TRACKS = [
         'DreamsAreMessagesFromTheDeep.mp3',
         'LetWealthCome.mp3',
@@ -188,17 +189,24 @@ class ManualControlAcqController extends Controller
             ],
         ]);
 
+        $raw_reject_reason = isset($validated_data['reject_reason'])
+            ? trim((string) $validated_data['reject_reason'])
+            : '';
+        $resolved_reject_reason = $raw_reject_reason !== ''
+            ? $raw_reject_reason
+            : self::DEFAULT_REJECT_REASON;
+
         try {
-            DB::transaction(function () use ($latest_order, $validated_data): void {
+            DB::transaction(function () use ($latest_order, $resolved_reject_reason): void {
                 services()->order()->finishOrderAsFailed($latest_order->id, OrderSubStatus::CANCELED);
 
                 Order::query()
                     ->whereKey($latest_order->id)
                     ->update([
                         'manual_control_processing_status' => ManualControlProcessingStatus::REJECTED,
-                        'manual_control_reject_reason' => isset($validated_data['reject_reason'])
-                            ? trim((string) $validated_data['reject_reason'])
-                            : null,
+                        'manual_control_reject_reason' => $resolved_reject_reason,
+                        'manual_control_rejected_at' => now(),
+                        'manual_control_confirmed_at' => null,
                     ]);
             });
         } catch (OrderException $e) {
@@ -222,6 +230,8 @@ class ManualControlAcqController extends Controller
 
         $latest_order->update([
             'manual_control_processing_status' => ManualControlProcessingStatus::CONFIRMED,
+            'manual_control_confirmed_at' => now(),
+            'manual_control_rejected_at' => null,
         ]);
 
         return $this->state();

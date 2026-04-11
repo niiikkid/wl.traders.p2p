@@ -543,6 +543,12 @@ const copyCallbackUrl = async (callback_url) => {
                                                 </span>
                                             </dd>
                                         </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Причина отклонения</dt>
+                                            <dd class="font-medium text-base-content text-right">
+                                                {{ order.manual_control?.reject_reason || '—' }}
+                                            </dd>
+                                        </dl>
                                         <div class="rounded-xl border border-base-300/50 bg-base-100/90 p-3 shadow-sm">
                                             <div class="mb-2 flex items-center justify-between gap-2">
                                                 <p class="text-[11px] font-semibold uppercase tracking-wide text-base-content/50">
@@ -613,6 +619,20 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Установлен тип подтверждения</dt>
                                             <dd class="font-medium text-base-content">
                                                 <DateTime v-if="order.manual_control?.confirmation_type_set_at" :data="order.manual_control.confirmation_type_set_at" :simple="true" />
+                                                <span v-else>—</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Подтверждена оператором</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime v-if="order.manual_control?.confirmed_at" :data="order.manual_control.confirmed_at" :simple="true" />
+                                                <span v-else>—</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Отклонена оператором</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime v-if="order.manual_control?.rejected_at" :data="order.manual_control.rejected_at" :simple="true" />
                                                 <span v-else>—</span>
                                             </dd>
                                         </dl>
