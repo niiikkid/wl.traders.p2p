@@ -72,6 +72,7 @@ const pay_in_queue_history_visible = ref([]);
 const history_total_count = ref(0);
 const selected_item_id = ref(null);
 const copiedField = ref('');
+const copied_confirmation_history_key = ref('');
 const notification_settings_dialog = ref(null);
 const notification_sound_new_offer_enabled = ref(sound_settings.value.new_offer.enabled);
 const notification_sound_new_offer_preset = ref(sound_settings.value.new_offer.track);
@@ -90,6 +91,7 @@ const action_error_message = ref('');
 let timerInterval = null;
 let statePollInterval = null;
 let copiedFieldTimeout = null;
+let copied_confirmation_history_timeout = null;
 let stateRequestSerial = 0;
 
 const pay_in_queue_all = computed(() => [...pay_in_queue_active.value, ...pay_in_queue_history_visible.value]);
@@ -902,14 +904,8 @@ const copyField = async (fieldKey) => {
         expiryDate: 'expiry_date',
     };
 
-    let value;
-
-    if (fieldKey === 'confirmationCode') {
-        value = item.confirmation_code?.copy;
-    } else {
-        const prop = key_map[fieldKey];
-        value = prop ? item[prop]?.copy : undefined;
-    }
+    const prop = key_map[fieldKey];
+    const value = prop ? item[prop]?.copy : undefined;
 
     if (!value) {
         return;
@@ -931,6 +927,37 @@ const copyField = async (fieldKey) => {
     }
 };
 
+const confirmation_history_copy_key = (order_id, index) => `${order_id}-confirmation-history-${index}`;
+
+const copy_confirmation_history_code = async (order_id, entry, index) => {
+    const value = entry?.copy;
+
+    if (!value || !order_id) {
+        return;
+    }
+
+    const history_key = confirmation_history_copy_key(order_id, index);
+
+    try {
+        await navigator.clipboard.writeText(value);
+        copied_confirmation_history_key.value = history_key;
+
+        if (copied_confirmation_history_timeout) {
+            window.clearTimeout(copied_confirmation_history_timeout);
+        }
+
+        copied_confirmation_history_timeout = window.setTimeout(() => {
+            copied_confirmation_history_key.value = '';
+        }, 1500);
+    } catch (error) {
+        // ignored
+    }
+};
+
+const is_confirmation_history_copied = (order_id, index) => {
+    return copied_confirmation_history_key.value === confirmation_history_copy_key(order_id, index);
+};
+
 onMounted(async () => {
     await load_state();
     sync_runtime_activity_by_work_status();
@@ -942,6 +969,10 @@ onBeforeUnmount(() => {
 
     if (copiedFieldTimeout) {
         window.clearTimeout(copiedFieldTimeout);
+    }
+
+    if (copied_confirmation_history_timeout) {
+        window.clearTimeout(copied_confirmation_history_timeout);
     }
 });
 </script>
@@ -1336,70 +1367,52 @@ onBeforeUnmount(() => {
                 </div>
 
                 <section
-                    v-if="!is_selected_history && selected_item.confirmation_code"
-                    class="card border-0 bg-warning text-warning-content shadow-md ring-1 ring-warning/35 ring-offset-1 ring-offset-base-100"
-                >
-                    <div class="card-body flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3">
-                        <div class="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2.5">
-                            <p class="shrink-0 text-[9px] font-bold uppercase tracking-[0.18em] text-warning-content/85 sm:text-[10px]">
-                                Код подтверждения
-                            </p>
-                            <p
-                                class="min-w-0 break-words text-base font-bold tabular-nums tracking-[0.08em] sm:text-lg"
-                                :title="selected_item.confirmation_code.display"
-                            >
-                                {{ selected_item.confirmation_code.display }}
-                            </p>
-                        </div>
-                        <button
-                            type="button"
-                            class="btn btn-neutral btn-xs h-7 min-h-7 shrink-0 gap-1 border-0 bg-warning-content/15 px-2.5 text-xs text-warning-content hover:bg-warning-content/25"
-                            @click="copyField('confirmationCode')"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
-                            </svg>
-                            <span>{{ copiedField === 'confirmationCode' ? 'Скопировано' : 'Копировать' }}</span>
-                        </button>
-                    </div>
-                </section>
-
-                <section
                     v-if="selected_item.confirmation_codes?.length"
                     class="card bg-base-100 shadow"
                 >
                     <div class="card-body gap-2.5 p-4 sm:p-5">
                         <div class="flex items-center justify-between gap-2">
                             <h2 class="text-sm font-semibold uppercase tracking-wide text-base-content/65">
-                                История кодов подтверждения
+                                Коды подтверждения
                             </h2>
                             <span class="badge badge-neutral badge-sm">
                                 {{ selected_item.confirmation_codes.length }}
                             </span>
                         </div>
 
-                        <div class="overflow-x-auto">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Код</th>
-                                        <th>Время получения</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="(confirmation_code_item, index) in selected_item.confirmation_codes"
-                                        :key="`${selected_item.id}-confirmation-code-${index}`"
+                        <div class="flex flex-wrap content-start gap-2">
+                            <button
+                                v-for="(confirmation_code_item, index) in selected_item.confirmation_codes"
+                                :key="`${selected_item.id}-confirmation-code-${index}`"
+                                type="button"
+                                class="group flex max-w-full min-w-[5.5rem] flex-col items-stretch gap-0.5 rounded-lg border border-dashed border-primary/35 bg-base-200/40 px-2 py-1.5 text-left transition hover:border-primary/55 hover:bg-base-200/70 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                :title="is_confirmation_history_copied(selected_item.id, index) ? 'Скопировано' : 'Скопировать код'"
+                                @click="copy_confirmation_history_code(selected_item.id, confirmation_code_item, index)"
+                            >
+                                <span class="flex items-center justify-between gap-1">
+                                    <span class="truncate font-mono text-xs font-semibold tracking-[0.06em] text-base-content sm:text-sm">
+                                        {{ confirmation_code_item.display }}
+                                    </span>
+                                    <span
+                                        class="shrink-0 rounded p-0.5 text-primary/70 transition group-hover:bg-primary/10 group-hover:text-primary"
+                                        :class="is_confirmation_history_copied(selected_item.id, index) ? 'bg-success/15 text-success' : ''"
+                                        aria-hidden="true"
                                     >
-                                        <td class="font-mono font-semibold tracking-[0.08em]">
-                                            {{ confirmation_code_item.display }}
-                                        </td>
-                                        <td class="text-xs text-base-content">
-                                            {{ format_date_time(confirmation_code_item.created_at_ts) }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
+                                        </svg>
+                                    </span>
+                                </span>
+                                <span class="text-[10px] leading-tight text-base-content/55">
+                                    {{ format_date_time(confirmation_code_item.created_at_ts) }}
+                                </span>
+                                <span
+                                    v-if="is_confirmation_history_copied(selected_item.id, index)"
+                                    class="text-[10px] font-medium text-success"
+                                >
+                                    Скопировано
+                                </span>
+                            </button>
                         </div>
                     </div>
                 </section>
