@@ -221,13 +221,31 @@ class ManualControlAcqController extends Controller
 
         $created_at_ts = $order->created_at?->timestamp;
         $expires_at_ts = $order->expires_at?->timestamp;
+        $finished_at_ts = $order->finished_at?->timestamp;
 
-        $processing_total_seconds = (is_int($created_at_ts) && is_int($expires_at_ts))
+        $active_total_seconds = (is_int($created_at_ts) && is_int($expires_at_ts))
             ? max(1, $expires_at_ts - $created_at_ts)
             : (15 * 60);
-        $processing_elapsed_seconds = is_int($created_at_ts)
-            ? min($processing_total_seconds, max(0, now()->timestamp - $created_at_ts))
-            : 0;
+        $history_total_seconds = (is_int($created_at_ts) && is_int($finished_at_ts))
+            ? max(1, $finished_at_ts - $created_at_ts)
+            : $active_total_seconds;
+
+        $processing_total_seconds = $is_history ? $history_total_seconds : $active_total_seconds;
+
+        $processing_end_ts = null;
+        if ($is_history && is_int($finished_at_ts)) {
+            $processing_end_ts = $finished_at_ts;
+        } elseif (is_int($expires_at_ts)) {
+            $processing_end_ts = $expires_at_ts;
+        }
+
+        $processing_elapsed_seconds = 0;
+        if (is_int($created_at_ts)) {
+            $elapsed_source_ts = $is_history && is_int($finished_at_ts)
+                ? $finished_at_ts
+                : now()->timestamp;
+            $processing_elapsed_seconds = min($processing_total_seconds, max(0, $elapsed_source_ts - $created_at_ts));
+        }
 
         $confirmation_codes = $order->manualControlConfirmationCodes
             ->map(function (OrderManualControlConfirmationCode $confirmation_code): array {
@@ -268,6 +286,8 @@ class ManualControlAcqController extends Controller
             'processing_total_seconds' => $processing_total_seconds,
             'processing_created_at_ts' => $created_at_ts,
             'processing_expires_at_ts' => $expires_at_ts,
+            'processing_finished_at_ts' => $finished_at_ts,
+            'processing_end_at_ts' => $processing_end_ts,
             'pending_confirmation_title' => $order->manual_control_confirmation_type?->title() ?? '',
             'confirmation_type' => $order->manual_control_confirmation_type?->value,
             'confirm_seconds_remaining' => 0,

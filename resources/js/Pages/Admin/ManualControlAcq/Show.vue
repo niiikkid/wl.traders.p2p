@@ -273,16 +273,27 @@ const sync_selected_item = () => {
 
 const normalize_processing_item = (item, previous_item = null) => {
     const created_ts = Number(item.processing_created_at_ts);
+    const finished_ts = Number(item.processing_finished_at_ts);
     const expires_ts = Number(item.processing_expires_at_ts);
+    const end_ts = Number(item.processing_end_at_ts);
+    const is_history_item = Boolean(item.is_history);
+    const resolved_end_ts = Number.isFinite(end_ts) && end_ts > 0
+        ? end_ts
+        : (is_history_item && Number.isFinite(finished_ts) && finished_ts > 0
+            ? finished_ts
+            : expires_ts);
     let elapsed_from_server_time = Number(item.processing_elapsed_seconds) || 0;
 
     if (Number.isFinite(created_ts) && created_ts > 0) {
-        elapsed_from_server_time = Math.max(0, Math.floor(Date.now() / 1000) - created_ts);
+        const elapsed_source_ts = (is_history_item && Number.isFinite(resolved_end_ts) && resolved_end_ts > 0)
+            ? resolved_end_ts
+            : Math.floor(Date.now() / 1000);
+        elapsed_from_server_time = Math.max(0, elapsed_source_ts - created_ts);
     }
 
     let total_from_server_time = Number(item.processing_total_seconds) || 1;
-    if (Number.isFinite(created_ts) && Number.isFinite(expires_ts) && expires_ts > created_ts) {
-        total_from_server_time = expires_ts - created_ts;
+    if (Number.isFinite(created_ts) && Number.isFinite(resolved_end_ts) && resolved_end_ts > created_ts) {
+        total_from_server_time = resolved_end_ts - created_ts;
     }
 
     const normalized_total = Math.max(1, total_from_server_time);
@@ -428,7 +439,15 @@ const apply_state = (state) => {
     incoming_offer_preview.value = state.incoming_offer
         ? normalize_processing_item(state.incoming_offer, incoming_offer_preview.value)
         : null;
-    pay_in_queue_history_visible.value = state.history_queue_items ?? [];
+    const next_history_items = state.history_queue_items ?? [];
+    const current_history_by_id = new Map(
+        pay_in_queue_history_visible.value.map((item) => [String(item.id), item]),
+    );
+    pay_in_queue_history_visible.value = next_history_items.map((item) => {
+        const previous_item = current_history_by_id.get(String(item.id));
+
+        return normalize_processing_item(item, previous_item);
+    });
     history_total_count.value = Number(state.history_total_count ?? 0);
     sync_selected_item();
     sync_runtime_activity_by_work_status();
