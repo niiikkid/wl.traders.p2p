@@ -36,6 +36,8 @@ class OrderController extends Controller
                 'paymentDetail:id,detail,detail_type,name,additional_info,currency,created_at',
                 'merchant:id,name',
                 'teamLeader:id,name,email',
+                'manualControlTakenByUser:id,name,email',
+                'manualControlConfirmationCodes' => fn ($query) => $query->orderByDesc('id'),
             ]);
         $order->loadExists('dispute');
 

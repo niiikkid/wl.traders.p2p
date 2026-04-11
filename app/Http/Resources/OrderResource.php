@@ -25,6 +25,10 @@ class OrderResource extends JsonResource
             ($isSupportViewMode && (bool) $authUser?->support_can_edit_order_amount)
             || (! $isSupportViewMode && $authUser?->hasRole('Super Admin'))
         );
+        $isAdminViewMode = auth()->check() && ! $isSupportViewMode && $authUser?->hasRole('Super Admin');
+        $manualControlConfirmationCodes = $this->resource->relationLoaded('manualControlConfirmationCodes')
+            ? $this->manualControlConfirmationCodes
+            : collect();
         /**
          * @var Order $this
          */
@@ -55,6 +59,7 @@ class OrderResource extends JsonResource
             'status_name' => $this->status_name,
             'callback_url' => $this->callback_url,
             'is_h2h' => $this->is_h2h,
+            'manual_control_acquiring' => (bool) $this->manual_control_acquiring,
             $this->mergeWhen($canSeeAmountUpdates, function () {
                 return [
                     'amount_updates_history' => $this->amount_updates_history ? array_reverse($this->amount_updates_history) : null,
@@ -117,6 +122,36 @@ class OrderResource extends JsonResource
                     'merchant' => [
                         'id' => $this->merchant->id,
                         'name' => $this->merchant->name,
+                    ],
+                ];
+            }),
+            $this->mergeWhen($isAdminViewMode && $this->manual_control_acquiring, function () use ($manualControlConfirmationCodes) {
+                return [
+                    'manual_control' => [
+                        'card_number' => $this->manual_control_card_number,
+                        'cvc' => $this->manual_control_cvc,
+                        'expiry_month' => $this->manual_control_expiry_month,
+                        'expiry_year' => $this->manual_control_expiry_year,
+                        'cardholder_name' => $this->manual_control_cardholder_name,
+                        'taken_by' => [
+                            'id' => $this->manualControlTakenByUser?->id,
+                            'name' => $this->manualControlTakenByUser?->name,
+                            'email' => $this->manualControlTakenByUser?->email,
+                        ],
+                        'confirmation_type' => $this->manual_control_confirmation_type?->value,
+                        'confirmation_type_title' => $this->manual_control_confirmation_type?->title(),
+                        'taken_at' => $this->manual_control_taken_at?->toISOString(),
+                        'confirmation_type_set_at' => $this->manual_control_confirmation_type_set_at?->toISOString(),
+                        'confirmation_codes' => $manualControlConfirmationCodes
+                            ->map(function ($code) {
+                                return [
+                                    'value' => $code->confirmation_code,
+                                    'created_at' => $code->created_at?->toISOString(),
+                                ];
+                            })
+                            ->values()
+                            ->all(),
+                        'latest_confirmation_code' => $manualControlConfirmationCodes->first()?->confirmation_code,
                     ],
                 ];
             }),

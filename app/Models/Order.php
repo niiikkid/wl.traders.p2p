@@ -63,6 +63,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Carbon|null $manual_control_taken_at
  * @property ManualControlConfirmationType|null $manual_control_confirmation_type
  * @property Carbon|null $manual_control_confirmation_type_set_at
+ * @property User|null $manualControlTakenByUser
  * @property int $payment_gateway_id
  * @property int $payment_detail_id
  * @property int $trader_id
@@ -212,6 +213,11 @@ class Order extends Model
     public function manualControlConfirmationCodes(): HasMany
     {
         return $this->hasMany(OrderManualControlConfirmationCode::class, 'order_id');
+    }
+
+    public function manualControlTakenByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manual_control_taken_by_user_id');
     }
 
     public function merchant(): BelongsTo
