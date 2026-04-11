@@ -948,7 +948,7 @@ const copy_confirmation_history_code = async (order_id, entry, index) => {
 
         copied_confirmation_history_timeout = window.setTimeout(() => {
             copied_confirmation_history_key.value = '';
-        }, 500);
+        }, 1500);
     } catch (error) {
         // ignored
     }
