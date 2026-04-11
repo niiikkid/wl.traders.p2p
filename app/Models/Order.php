@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\BaseCurrencyMoneyCast;
 use App\Casts\CurrencyCast;
 use App\Enums\ManualControlConfirmationType;
+use App\Enums\ManualControlProcessingStatus;
 use App\Casts\MoneyCast;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
@@ -63,6 +64,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Carbon|null $manual_control_taken_at
  * @property ManualControlConfirmationType|null $manual_control_confirmation_type
  * @property Carbon|null $manual_control_confirmation_type_set_at
+ * @property ManualControlProcessingStatus|null $manual_control_processing_status
  * @property User|null $manualControlTakenByUser
  * @property int $payment_gateway_id
  * @property int $payment_detail_id
@@ -126,6 +128,7 @@ class Order extends Model
         'manual_control_taken_at',
         'manual_control_confirmation_type',
         'manual_control_confirmation_type_set_at',
+        'manual_control_processing_status',
         'payment_gateway_id',
         'payment_detail_id',
         'trader_id',
@@ -164,6 +167,7 @@ class Order extends Model
         'manual_control_taken_at' => 'datetime',
         'manual_control_confirmation_type' => ManualControlConfirmationType::class,
         'manual_control_confirmation_type_set_at' => 'datetime',
+        'manual_control_processing_status' => ManualControlProcessingStatus::class,
     ];
 
     protected static function booted()

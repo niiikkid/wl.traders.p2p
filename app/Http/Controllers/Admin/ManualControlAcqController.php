@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ManualControlConfirmationType;
+use App\Enums\ManualControlProcessingStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Exceptions\OrderException;
@@ -15,6 +16,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -66,6 +68,11 @@ class ManualControlAcqController extends Controller
             ])
             ->where('manual_control_acquiring', true)
             ->where('status', OrderStatus::PENDING)
+            ->where(function ($query) {
+                $query
+                    ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
+                    ->orWhereNull('manual_control_processing_status');
+            })
             ->where('manual_control_taken_by_user_id', auth()->id())
             ->orderByDesc('manual_control_taken_at')
             ->orderBy('id')
@@ -75,6 +82,11 @@ class ManualControlAcqController extends Controller
             ->with('paymentGateway')
             ->where('manual_control_acquiring', true)
             ->where('status', OrderStatus::PENDING)
+            ->where(function ($query) {
+                $query
+                    ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
+                    ->orWhereNull('manual_control_processing_status');
+            })
             ->whereNull('manual_control_taken_by_user_id')
             ->orderBy('created_at');
         $incoming_order = (clone $incoming_order_query)->first();
@@ -88,8 +100,19 @@ class ManualControlAcqController extends Controller
             ->where('manual_control_acquiring', true)
             ->where('manual_control_taken_by_user_id', auth()->id())
             ->whereNotNull('manual_control_taken_at')
-            ->where('status', '!=', OrderStatus::PENDING)
-            ->orderByDesc('finished_at')
+            ->where(function ($query) {
+                $query
+                    ->whereIn('manual_control_processing_status', [
+                        ManualControlProcessingStatus::REJECTED,
+                        ManualControlProcessingStatus::CONFIRMED,
+                    ])
+                    ->orWhere(function ($legacy_query) {
+                        $legacy_query
+                            ->whereNull('manual_control_processing_status')
+                            ->where('status', '!=', OrderStatus::PENDING);
+                    });
+            })
+            ->orderByDesc('updated_at')
             ->orderByDesc('id');
         $history_total_count = (clone $history_orders_query)->count();
         $history_orders = (clone $history_orders_query)
@@ -123,10 +146,16 @@ class ManualControlAcqController extends Controller
                 ->whereKey($order->id)
                 ->where('manual_control_acquiring', true)
                 ->where('status', OrderStatus::PENDING)
+                ->where(function ($query) {
+                    $query
+                        ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
+                        ->orWhereNull('manual_control_processing_status');
+                })
                 ->whereNull('manual_control_taken_by_user_id')
                 ->update([
                     'manual_control_taken_by_user_id' => auth()->id(),
                     'manual_control_taken_at' => now(),
+                    'manual_control_processing_status' => ManualControlProcessingStatus::PENDING,
                 ]);
 
             if ($updated_rows === 0) {
@@ -152,10 +181,37 @@ class ManualControlAcqController extends Controller
         }
 
         try {
-            services()->order()->finishOrderAsFailed($latest_order->id, OrderSubStatus::CANCELED);
+            DB::transaction(function () use ($latest_order): void {
+                services()->order()->finishOrderAsFailed($latest_order->id, OrderSubStatus::CANCELED);
+
+                Order::query()
+                    ->whereKey($latest_order->id)
+                    ->update([
+                        'manual_control_processing_status' => ManualControlProcessingStatus::REJECTED,
+                    ]);
+            });
         } catch (OrderException $e) {
             return response()->failWithMessage($e->getMessage());
         }
+
+        return $this->state();
+    }
+
+    public function confirm(Order $order): JsonResponse
+    {
+        if (! $this->isCurrentUserWorking()) {
+            return response()->failWithMessage('Режим работы выключен. Включите его, чтобы подтверждать заявки.');
+        }
+
+        $latest_order = Order::query()->whereKey($order->id)->firstOrFail();
+
+        if (! $this->canConfirmOrder($latest_order)) {
+            return response()->failWithMessage('Заявка уже недоступна для подтверждения.');
+        }
+
+        $latest_order->update([
+            'manual_control_processing_status' => ManualControlProcessingStatus::CONFIRMED,
+        ]);
 
         return $this->state();
     }
@@ -183,6 +239,7 @@ class ManualControlAcqController extends Controller
         $latest_order->update([
             'manual_control_confirmation_type' => $validated_data['confirmation_type'],
             'manual_control_confirmation_type_set_at' => now(),
+            'manual_control_processing_status' => $latest_order->manual_control_processing_status ?? ManualControlProcessingStatus::PENDING,
         ]);
 
         return $this->state();
@@ -355,7 +412,6 @@ class ManualControlAcqController extends Controller
             'processing_end_at_ts' => $processing_end_ts,
             'pending_confirmation_title' => $order->manual_control_confirmation_type?->title() ?? '',
             'confirmation_type' => $order->manual_control_confirmation_type?->value,
-            'confirm_seconds_remaining' => 0,
             'confirmation_code' => $latest_confirmation_code,
             'confirmation_codes' => $confirmation_codes,
             'outcome_status' => $is_history ? $this->resolveHistoryOutcomeStatus($order) : null,
@@ -399,12 +455,17 @@ class ManualControlAcqController extends Controller
     {
         return $order->manual_control_acquiring
             && $order->status->equals(OrderStatus::PENDING)
+            && $this->isPendingProcessingStatus($order)
             && $order->manual_control_taken_by_user_id === null;
     }
 
     private function canRejectOrder(Order $order): bool
     {
         if (! $order->manual_control_acquiring || $order->status->notEquals(OrderStatus::PENDING)) {
+            return false;
+        }
+
+        if (! $this->isPendingProcessingStatus($order)) {
             return false;
         }
 
@@ -416,7 +477,17 @@ class ManualControlAcqController extends Controller
     {
         return $order->manual_control_acquiring
             && $order->status->equals(OrderStatus::PENDING)
+            && $this->isPendingProcessingStatus($order)
             && $order->manual_control_taken_by_user_id === auth()->id();
+    }
+
+    private function canConfirmOrder(Order $order): bool
+    {
+        return $order->manual_control_acquiring
+            && $order->status->equals(OrderStatus::PENDING)
+            && $this->isPendingProcessingStatus($order)
+            && $order->manual_control_taken_by_user_id === auth()->id()
+            && $order->manual_control_confirmation_type !== null;
     }
 
     private function shortPayInId(string $uuid): string
@@ -462,8 +533,19 @@ class ManualControlAcqController extends Controller
         return Order::query()
             ->where('manual_control_acquiring', true)
             ->where('status', OrderStatus::PENDING)
+            ->where(function ($query) {
+                $query
+                    ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
+                    ->orWhereNull('manual_control_processing_status');
+            })
             ->where('manual_control_taken_by_user_id', $user_id)
             ->exists();
+    }
+
+    private function isPendingProcessingStatus(Order $order): bool
+    {
+        return $order->manual_control_processing_status === null
+            || $order->manual_control_processing_status === ManualControlProcessingStatus::PENDING;
     }
 
     private function resolveHistoryOutcomeStatus(Order $order): ?string
@@ -472,7 +554,15 @@ class ManualControlAcqController extends Controller
             return 'accepted';
         }
 
+        if ($order->manual_control_processing_status === ManualControlProcessingStatus::CONFIRMED) {
+            return 'accepted';
+        }
+
         if ($order->status->equals(OrderStatus::FAIL)) {
+            return 'rejected';
+        }
+
+        if ($order->manual_control_processing_status === ManualControlProcessingStatus::REJECTED) {
             return 'rejected';
         }
 

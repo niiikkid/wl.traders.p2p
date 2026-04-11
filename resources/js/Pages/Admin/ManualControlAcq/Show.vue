@@ -2,7 +2,7 @@
 import axios from 'axios';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
-import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
+import ManualControlConfirmModal from './ManualControlConfirmModal.vue';
 import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
 import { useModalStore } from '@/store/modal.js';
 import { playNotificationAudio } from '@/utils/notificationAudioPlayer.js';
@@ -20,7 +20,6 @@ const confirmationCol2 = [
     { value: 'sms_with_instructions', title: 'SMS with instructions' },
 ];
 
-const CONFIRM_COUNTDOWN_SECONDS = 2 * 60;
 const processingRingRadius = 42;
 const processingRingCircumference = 2 * Math.PI * processingRingRadius;
 const HISTORY_DISPLAY_LIMIT = 5;
@@ -81,6 +80,7 @@ const is_state_loading = ref(false);
 const is_take_processing = ref(false);
 const is_reject_processing = ref(false);
 const is_confirmation_type_processing = ref(false);
+const is_confirm_processing = ref(false);
 const is_working = ref(false);
 const is_work_toggle_processing = ref(false);
 const is_sound_settings_processing = ref(false);
@@ -274,16 +274,16 @@ const processing_ring_dashoffset_for_item = (item) => {
     return processingRingCircumference * (1 - processing_progress_ratio_for_item(item));
 };
 
-const confirmTimeDisplay = computed(() => {
-    const remaining = selected_item.value?.confirm_seconds_remaining ?? 0;
-
-    return format_mm_ss(remaining);
-});
-
 const canConfirm = computed(() => {
     const item = selected_item.value;
 
-    return Boolean(is_working.value && item && !item.is_history && item.confirm_seconds_remaining > 0);
+    return Boolean(
+        is_working.value
+        && item
+        && !item.is_history
+        && item.pending_confirmation_title
+        && !is_confirm_processing.value,
+    );
 });
 
 const can_take_incoming_offer = computed(() => {
@@ -466,9 +466,6 @@ const start_workspace_timers = () => {
                 );
             }
 
-            if (item.pending_confirmation_title && item.confirm_seconds_remaining > 0) {
-                item.confirm_seconds_remaining -= 1;
-            }
         });
 
         const incoming_offer = incoming_offer_preview.value;
@@ -807,7 +804,6 @@ const apply_confirmation_type = async (confirmation_type, confirmation_title) =>
         });
         action_error_message.value = '';
         item.pending_confirmation_title = confirmation_title;
-        item.confirm_seconds_remaining = CONFIRM_COUNTDOWN_SECONDS;
         await load_state();
     } catch (error) {
         action_error_message.value = error?.response?.data?.message ?? 'Не удалось установить тип подтверждения.';
@@ -842,9 +838,27 @@ const confirmationButtonClass = (option) => {
     return active ? `${base} btn-primary` : `${base} btn-outline`;
 };
 
-const execute_confirm_payment = () => {
+const execute_confirm_payment = async () => {
     if (!canConfirm.value) {
         return;
+    }
+
+    const item = selected_item.value;
+    if (!item) {
+        return;
+    }
+
+    is_confirm_processing.value = true;
+
+    try {
+        await axios.post(route('admin.manual-control-acq.confirm', { order: item.id }));
+        action_error_message.value = '';
+        await load_state();
+    } catch (error) {
+        action_error_message.value = error?.response?.data?.message ?? 'Не удалось подтвердить заявку.';
+        await load_state();
+    } finally {
+        is_confirm_processing.value = false;
     }
 };
 
@@ -865,7 +879,7 @@ const request_confirm_payment = () => {
         confirm_button_name: 'Confirm',
         cancel_button_name: 'Отмена',
         confirm: () => {
-            execute_confirm_payment();
+            return execute_confirm_payment();
         },
     });
 };
@@ -984,7 +998,7 @@ onBeforeUnmount(() => {
     <ManualControlLayout>
         <Head title="Manual Control ACQ" />
 
-        <ConfirmModal />
+        <ManualControlConfirmModal />
 
         <div class="flex min-h-0 w-full flex-1 flex-col">
         <div class="flex min-h-0 w-full flex-1 flex-col lg:flex-row lg:items-stretch">
@@ -1180,9 +1194,6 @@ onBeforeUnmount(() => {
                                         >
                                             <span class="badge badge-primary badge-xs shrink-0 font-medium normal-case">
                                                 {{ item.pending_confirmation_title }}
-                                            </span>
-                                            <span class="tabular-nums text-base-content">
-                                                {{ format_mm_ss(item.confirm_seconds_remaining) }}
                                             </span>
                                         </span>
                                     </div>
@@ -1664,19 +1675,7 @@ onBeforeUnmount(() => {
                                 class="flex min-h-0 w-full flex-col gap-2 md:h-full"
                                 :class="selected_item.pending_confirmation_title ? 'justify-center' : 'justify-start'"
                             >
-                                <button
-                                    v-if="!selected_item.pending_confirmation_title && !is_selected_history"
-                                    type="button"
-                                    class="btn btn-error h-auto min-h-8 w-full whitespace-normal px-3 py-1.5 text-center text-xs font-medium normal-case sm:min-h-9"
-                                    @click="request_reject_application"
-                                >
-                                    Reject
-                                </button>
-
-                                <div
-                                    v-else-if="selected_item.pending_confirmation_title && !is_selected_history"
-                                    class="flex w-full flex-col gap-2 rounded-box bg-base-200/40 p-3"
-                                >
+                                <div v-if="!is_selected_history" class="flex w-full flex-col gap-2 rounded-box bg-base-200/40 p-3">
                                     <button
                                         type="button"
                                         class="btn btn-primary btn-sm h-auto min-h-9 w-full whitespace-normal px-3 py-2 text-xs font-medium normal-case"
@@ -1685,9 +1684,6 @@ onBeforeUnmount(() => {
                                         @click="request_confirm_payment"
                                     >
                                         Confirm
-                                        <span class="ml-1 tabular-nums opacity-90">
-                                            {{ confirmTimeDisplay }}
-                                        </span>
                                     </button>
                                     <button
                                         type="button"
@@ -1713,10 +1709,10 @@ onBeforeUnmount(() => {
 
         <dialog
             ref="notification_settings_dialog"
-            class="modal modal-bottom sm:modal-middle"
             tabindex="0"
+            class="fixed inset-0 z-[998] m-0 max-h-none w-full max-w-none border-0 bg-transparent p-0 text-base-content outline-none backdrop:bg-base-300/55 [&:not([open])]:hidden open:flex open:flex-col open:items-stretch open:justify-end sm:open:items-center sm:open:justify-center sm:open:p-4"
         >
-            <div class="modal-box max-w-md p-6">
+            <div class="relative z-[1] mt-auto w-full max-w-md rounded-t-box bg-base-100 p-6 shadow-2xl sm:mt-0 sm:rounded-box">
                 <form method="dialog">
                     <button
                         type="submit"
@@ -1821,7 +1817,7 @@ onBeforeUnmount(() => {
                     Аудиофайлы не найдены в `public/audio`.
                 </div>
 
-                <div class="modal-action mt-6 !justify-end">
+                <div class="mt-6 flex justify-end">
                     <button
                         type="button"
                         class="btn btn-primary btn-sm"
@@ -1831,8 +1827,8 @@ onBeforeUnmount(() => {
                     </button>
                 </div>
             </div>
-            <form method="dialog" class="modal-backdrop">
-                <button type="submit" aria-label="Закрыть">
+            <form method="dialog" class="absolute inset-0 z-0 grid place-items-stretch">
+                <button type="submit" class="min-h-full w-full cursor-pointer bg-transparent text-transparent" aria-label="Закрыть">
                     close
                 </button>
             </form>

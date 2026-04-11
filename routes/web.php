@@ -268,6 +268,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/manual-control-acq/sound-settings', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'updateSoundSettings'])->name('manual-control-acq.sound-settings.update');
         Route::post('/manual-control-acq/orders/{order}/take', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'take'])->name('manual-control-acq.take');
         Route::post('/manual-control-acq/orders/{order}/confirmation-type', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
+        Route::post('/manual-control-acq/orders/{order}/confirm', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
         Route::post('/manual-control-acq/orders/{order}/reject', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');

@@ -45,7 +45,19 @@ class OrderQueriesEloquent implements OrderQueries
                         ->select(['id', 'order_id', 'status', 'reason', 'receipt', 'created_at']);
                 },
             ])
-            ->select(['id', 'uuid', 'amount', 'currency', 'total_profit', 'status', 'created_at', 'payment_gateway_id', 'payment_detail_id', 'trader_id'])
+            ->select([
+                'id',
+                'uuid',
+                'amount',
+                'currency',
+                'total_profit',
+                'status',
+                'created_at',
+                'payment_gateway_id',
+                'payment_detail_id',
+                'trader_id',
+                'manual_control_acquiring',
+            ])
             ->withExists('dispute')
             ->when(! empty($filters->orderStatuses), function ($query) use ($filters) {
                 $query->whereIn('status', $filters->orderStatuses);
@@ -142,7 +154,19 @@ class OrderQueriesEloquent implements OrderQueries
                         ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
                 });
             })
-            ->select(['id', 'uuid', 'amount', 'currency', 'total_profit', 'status', 'created_at', 'payment_gateway_id', 'payment_detail_id', 'trader_id'])
+            ->select([
+                'id',
+                'uuid',
+                'amount',
+                'currency',
+                'total_profit',
+                'status',
+                'created_at',
+                'payment_gateway_id',
+                'payment_detail_id',
+                'trader_id',
+                'manual_control_acquiring',
+            ])
             ->withExists('dispute')
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
@@ -198,7 +222,19 @@ class OrderQueriesEloquent implements OrderQueries
                         ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
                 });
             })
-            ->select(['id', 'uuid', 'amount', 'currency', 'total_profit', 'status', 'created_at', 'payment_gateway_id', 'payment_detail_id', 'trader_id'])
+            ->select([
+                'id',
+                'uuid',
+                'amount',
+                'currency',
+                'total_profit',
+                'status',
+                'created_at',
+                'payment_gateway_id',
+                'payment_detail_id',
+                'trader_id',
+                'manual_control_acquiring',
+            ])
             ->withExists('dispute')
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);

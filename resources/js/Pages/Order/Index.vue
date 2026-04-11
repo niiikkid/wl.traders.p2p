@@ -283,7 +283,16 @@ defineOptions({ layout: AuthenticatedLayout })
                                 <tbody>
                                     <tr v-for="order in orders.data" class="bg-base-100 border-b last:border-none border-base-200">
                                     <th scope="row" class="font-medium whitespace-nowrap text-gray-900 dark:text-gray-200">
-                                        <DisplayUUID :uuid="order.uuid"/>
+                                        <div class="inline-flex items-center gap-1.5">
+                                            <span
+                                                v-if="viewStore.isAdminViewMode && order.manual_control_acquiring"
+                                                class="badge badge-primary badge-xs"
+                                                title="Manual Control Acquiring"
+                                            >
+                                                MC
+                                            </span>
+                                            <DisplayUUID :uuid="order.uuid"/>
+                                        </div>
                                     </th>
                                     <td>
                                         <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
@@ -379,7 +388,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <!-- Компактная шапка: логотип, короткий реквизит, сумма и переключатель -->
                                     <div class="flex justify-between items-center border-b border-base-content/10">
                                         <div class="inline-flex items-center">
-                                            <span class="text-base-content/70">UUID:</span> <DisplayUUID :uuid="order.uuid"/>
+                                            <span class="text-base-content/70">UUID:</span>
+                                            <span
+                                                v-if="viewStore.isAdminViewMode && order.manual_control_acquiring"
+                                                class="badge badge-primary badge-xs ml-1.5"
+                                                title="Manual Control Acquiring"
+                                            >
+                                                MC
+                                            </span>
+                                            <DisplayUUID :uuid="order.uuid"/>
                                         </div>
                                         <div class="inline-flex items-center">
                                             <DateTime class="justify-start" :data="order.created_at"/>

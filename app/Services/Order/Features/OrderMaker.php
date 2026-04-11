@@ -4,6 +4,7 @@ namespace App\Services\Order\Features;
 
 use App\DTO\Order\CreateOrderDTO;
 use App\Enums\MarketEnum;
+use App\Enums\ManualControlProcessingStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Exceptions\OrderException;
@@ -59,6 +60,9 @@ class OrderMaker
             'fail_url' => $this->data->failURL,
             'is_h2h' => $this->data->h2h,
             'manual_control_acquiring' => $this->data->manualControlAcquiring,
+            'manual_control_processing_status' => $this->data->manualControlAcquiring
+                ? ManualControlProcessingStatus::PENDING
+                : null,
             'manual_control_card_number' => $this->data->cardNumber,
             'manual_control_expiry_month' => $this->data->expiryMonth,
             'manual_control_expiry_year' => $this->data->expiryYear,

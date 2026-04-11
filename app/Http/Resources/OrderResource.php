@@ -140,6 +140,8 @@ class OrderResource extends JsonResource
                         ],
                         'confirmation_type' => $this->manual_control_confirmation_type?->value,
                         'confirmation_type_title' => $this->manual_control_confirmation_type?->title(),
+                        'processing_status' => $this->manual_control_processing_status?->value,
+                        'processing_status_title' => $this->manual_control_processing_status?->title(),
                         'taken_at' => $this->manual_control_taken_at?->toISOString(),
                         'confirmation_type_set_at' => $this->manual_control_confirmation_type_set_at?->toISOString(),
                         'confirmation_codes' => $manualControlConfirmationCodes

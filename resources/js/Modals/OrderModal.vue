@@ -165,6 +165,24 @@ const displayPercent = (value) => {
     return `${formatted}%`;
 };
 
+const manualControlProcessingStatusClass = computed(() => {
+    const status = order.value?.manual_control?.processing_status;
+
+    if (status === 'confirmed') {
+        return 'badge-success';
+    }
+
+    if (status === 'rejected') {
+        return 'badge-error';
+    }
+
+    if (status === 'pending') {
+        return 'badge-warning';
+    }
+
+    return 'badge-ghost';
+});
+
 const show = () => {
     let order_id = orderModal.value.params.order_id;
     if (order.value?.id !== order_id) {
@@ -512,6 +530,17 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Тип подтверждения</dt>
                                             <dd class="font-medium text-base-content">
                                                 {{ order.manual_control?.confirmation_type_title ?? '—' }}
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Статус обработки</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <span
+                                                    class="badge badge-sm font-medium"
+                                                    :class="manualControlProcessingStatusClass"
+                                                >
+                                                    {{ order.manual_control?.processing_status_title ?? '—' }}
+                                                </span>
                                             </dd>
                                         </dl>
                                         <div class="rounded-xl border border-base-300/50 bg-base-100/90 p-3 shadow-sm">
