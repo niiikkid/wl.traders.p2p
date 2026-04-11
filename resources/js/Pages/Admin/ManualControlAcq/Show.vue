@@ -179,13 +179,96 @@ const can_take_incoming_offer = computed(() => {
     return Boolean(is_working.value && incoming_offer_preview.value && !is_take_processing.value);
 });
 
-const sync_selected_item = () => {
-    if (selected_item_id.value && pay_in_queue_all.value.some((item) => item.id === selected_item_id.value)) {
+const selected_order_query_param = 'order';
+
+const item_id_matches = (item, raw_id) => {
+    if (raw_id === null || raw_id === undefined || raw_id === '') {
+        return false;
+    }
+
+    return item.id === raw_id || String(item.id) === String(raw_id);
+};
+
+const parse_order_query_param_value = (raw) => {
+    if (raw == null || raw === '') {
+        return null;
+    }
+
+    const trimmed = String(raw).trim();
+    const as_num = Number(trimmed);
+
+    if (Number.isFinite(as_num) && String(as_num) === trimmed) {
+        return as_num;
+    }
+
+    return trimmed;
+};
+
+const read_preferred_order_id_from_url = () => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+
+    return parse_order_query_param_value(params.get(selected_order_query_param));
+};
+
+const replace_selected_order_in_url = (order_id) => {
+    if (typeof window === 'undefined') {
         return;
     }
 
+    const url = new URL(window.location.href);
+
+    if (order_id == null) {
+        url.searchParams.delete(selected_order_query_param);
+    } else {
+        url.searchParams.set(selected_order_query_param, String(order_id));
+    }
+
+    const next = `${url.pathname}${url.search}${url.hash}`;
+
+    window.history.replaceState(window.history.state, '', next);
+};
+
+const sync_selected_item = () => {
+    const all = pay_in_queue_all.value;
+    const preferred_url = read_preferred_order_id_from_url();
+
+    const resolve_canonical_id = (raw_id) => {
+        const found = all.find((item) => item_id_matches(item, raw_id));
+
+        return found ? found.id : null;
+    };
+
+    if (selected_item_id.value != null) {
+        const canonical = resolve_canonical_id(selected_item_id.value);
+
+        if (canonical != null) {
+            selected_item_id.value = canonical;
+            replace_selected_order_in_url(selected_item_id.value);
+
+            return;
+        }
+    }
+
+    if (preferred_url != null) {
+        const canonical = resolve_canonical_id(preferred_url);
+
+        if (canonical != null) {
+            selected_item_id.value = canonical;
+            replace_selected_order_in_url(selected_item_id.value);
+
+            return;
+        }
+    }
+
     const first_active = pay_in_queue_active.value[0] ?? null;
-    selected_item_id.value = first_active?.id ?? pay_in_queue_history_visible.value[0]?.id ?? null;
+    const first_history = pay_in_queue_history_visible.value[0] ?? null;
+
+    selected_item_id.value = first_active?.id ?? first_history?.id ?? null;
+    replace_selected_order_in_url(selected_item_id.value);
 };
 
 const normalize_processing_item = (item, previous_item = null) => {
@@ -324,6 +407,7 @@ const apply_state = (state) => {
         pay_in_queue_history_visible.value = [];
         history_total_count.value = 0;
         selected_item_id.value = null;
+        replace_selected_order_in_url(null);
         action_error_message.value = '';
         sync_runtime_activity_by_work_status();
         return;
@@ -420,12 +504,17 @@ const execute_take_incoming_offer = async () => {
         return;
     }
 
+    const taken_order_id = incoming_offer.id;
     is_take_processing.value = true;
 
     try {
-        await axios.post(route('admin.manual-control-acq.take', { order: incoming_offer.id }));
+        await axios.post(route('admin.manual-control-acq.take', { order: taken_order_id }));
         action_error_message.value = '';
         await load_state();
+        if (pay_in_queue_active.value.some((item) => item.id === taken_order_id)) {
+            selected_item_id.value = taken_order_id;
+            replace_selected_order_in_url(taken_order_id);
+        }
     } catch (error) {
         action_error_message.value = error?.response?.data?.message ?? 'Не удалось взять заявку в обработку.';
         await load_state();
@@ -494,6 +583,7 @@ const request_decline_incoming_offer = () => {
 
 const select_queue_item = (item_id) => {
     selected_item_id.value = item_id;
+    replace_selected_order_in_url(item_id);
 };
 
 const apply_confirmation_type = async (confirmation_type, confirmation_title) => {
@@ -667,7 +757,7 @@ onBeforeUnmount(() => {
             <aside
                 class="flex max-h-[40vh] shrink-0 flex-col border-b border-base-300 bg-base-200/80 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r"
             >
-                <div class="flex items-start gap-2 border-b border-base-300 px-3 py-2.5">
+                <div class="flex items-center gap-2 border-b border-base-300 px-3 py-2.5">
                     <div class="min-w-0 flex-1">
                         <p class="text-xs font-semibold uppercase tracking-wide text-base-content/55">
                             Мои подтверждения
@@ -677,7 +767,7 @@ onBeforeUnmount(() => {
                         </p>
                     </div>
                     <label
-                        class="flex shrink-0 items-center gap-1.5 pt-0.5"
+                        class="flex shrink-0 items-center gap-1.5"
                         :title="is_working ? 'Режим работы включен' : 'Режим работы выключен'"
                     >
                         <span class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">
@@ -825,7 +915,10 @@ onBeforeUnmount(() => {
                     <p class="px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-base-content/40">
                         Текущие
                     </p>
-                    <ul class="menu menu-sm w-full rounded-box bg-base-100 p-0 shadow-sm">
+                    <ul
+                        v-if="active_queue_items.length"
+                        class="menu menu-sm w-full rounded-box bg-base-100 p-0 shadow-sm"
+                    >
                         <li v-for="item in active_queue_items" :key="item.id" class="w-full">
                             <button
                                 type="button"
@@ -893,12 +986,24 @@ onBeforeUnmount(() => {
                             </button>
                         </li>
                     </ul>
+                    <div
+                        v-else
+                        class="flex min-h-[4.5rem] w-full flex-col items-center justify-center rounded-box bg-base-100 px-3 py-5 text-center shadow-sm"
+                        role="status"
+                    >
+                        <p class="max-w-[14rem] text-xs leading-snug text-base-content/50">
+                            Пока нет активных сделок.
+                        </p>
+                    </div>
 
                     <div class="divider my-3 text-[10px] font-semibold uppercase tracking-wider text-base-content/40 before:bg-base-300 after:bg-base-300">
                         История (последние {{ HISTORY_DISPLAY_LIMIT }})
                     </div>
 
-                    <ul class="menu menu-sm w-full rounded-box bg-base-100/60 p-0 opacity-90 shadow-sm">
+                    <ul
+                        v-if="history_queue_items.length"
+                        class="menu menu-sm w-full rounded-box bg-base-100/60 p-0 opacity-90 shadow-sm"
+                    >
                         <li v-for="item in history_queue_items" :key="item.id" class="w-full">
                             <button
                                 type="button"
@@ -954,6 +1059,15 @@ onBeforeUnmount(() => {
                             </button>
                         </li>
                     </ul>
+                    <div
+                        v-else
+                        class="flex min-h-[4.5rem] w-full flex-col items-center justify-center rounded-box bg-base-100/60 px-3 py-5 text-center opacity-90 shadow-sm"
+                        role="status"
+                    >
+                        <p class="max-w-[14rem] text-xs leading-snug text-base-content/50">
+                            История пока пуста.
+                        </p>
+                    </div>
 
                     <div
                         v-if="history_hidden_count > 0"
