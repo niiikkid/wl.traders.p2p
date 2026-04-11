@@ -948,7 +948,7 @@ const copy_confirmation_history_code = async (order_id, entry, index) => {
 
         copied_confirmation_history_timeout = window.setTimeout(() => {
             copied_confirmation_history_key.value = '';
-        }, 1500);
+        }, 500);
     } catch (error) {
         // ignored
     }
@@ -1390,8 +1390,18 @@ onBeforeUnmount(() => {
                                 @click="copy_confirmation_history_code(selected_item.id, confirmation_code_item, index)"
                             >
                                 <span class="flex items-center justify-between gap-1">
-                                    <span class="truncate font-mono text-xs font-semibold tracking-[0.06em] text-base-content sm:text-sm">
-                                        {{ confirmation_code_item.display }}
+                                    <span
+                                        class="min-w-0 truncate"
+                                        :class="is_confirmation_history_copied(selected_item.id, index)
+                                            ? 'font-sans text-[10px] font-medium leading-tight tracking-normal text-success/75 sm:text-[11px]'
+                                            : 'font-mono text-xs font-semibold tracking-[0.06em] text-base-content sm:text-sm'"
+                                    >
+                                        <template v-if="is_confirmation_history_copied(selected_item.id, index)">
+                                            Скопировано
+                                        </template>
+                                        <template v-else>
+                                            {{ confirmation_code_item.display }}
+                                        </template>
                                     </span>
                                     <span
                                         class="shrink-0 rounded p-0.5 text-primary/70 transition group-hover:bg-primary/10 group-hover:text-primary"
@@ -1403,14 +1413,8 @@ onBeforeUnmount(() => {
                                         </svg>
                                     </span>
                                 </span>
-                                <span class="text-[10px] leading-tight text-base-content/55">
+                                <span class="block text-[10px] leading-tight text-base-content/55">
                                     {{ format_date_time(confirmation_code_item.created_at_ts) }}
-                                </span>
-                                <span
-                                    v-if="is_confirmation_history_copied(selected_item.id, index)"
-                                    class="text-[10px] font-medium text-success"
-                                >
-                                    Скопировано
                                 </span>
                             </button>
                         </div>
