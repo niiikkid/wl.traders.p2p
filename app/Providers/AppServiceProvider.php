@@ -86,6 +86,7 @@ use App\Services\User\UserService;
 use App\Services\PaymentDetail\PaymentDetailService;
 use App\Services\Logging\MerchantApiLogService;
 use App\Services\Merchant\MerchantService;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
@@ -94,6 +95,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Queue\Events\JobFailed;
 use Carbon\Carbon;
+use Telegram\Bot\HttpClients\GuzzleHttpClient;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -102,6 +104,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->configureTelegramProxy();
+
         //services
         $this->app->singleton(ServiceBuilderContract::class, function () {
             return new ServiceBuilder();
@@ -228,6 +232,23 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PayoutQueries::class, function () {
             return new PayoutQueriesEloquent();
         });
+    }
+
+    private function configureTelegramProxy(): void
+    {
+        $telegramProxy = config('telegram.proxy');
+
+        if (! is_string($telegramProxy) || $telegramProxy === '') {
+            return;
+        }
+
+        config([
+            'telegram.http_client_handler' => new GuzzleHttpClient(
+                new GuzzleClient([
+                    'proxy' => $telegramProxy,
+                ])
+            ),
+        ]);
     }
 
     /**

@@ -4,6 +4,7 @@ use App\Telegram\Commands\StartCommand;
 
 return [
     'default' => env('TELEGRAM_BOT_NAME', 'default'),
+    'proxy' => env('TELEGRAM_PROXY'),
 
     'bots' => [
         env('TELEGRAM_BOT_NAME', 'default') => [
