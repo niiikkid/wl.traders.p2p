@@ -168,7 +168,7 @@ class ManualControlAcqController extends Controller
         return $this->state();
     }
 
-    public function reject(Order $order): JsonResponse
+    public function reject(Request $request, Order $order): JsonResponse
     {
         if (! $this->isCurrentUserWorking()) {
             return response()->failWithMessage('Режим работы выключен. Включите его, чтобы отклонять заявки.');
@@ -180,14 +180,25 @@ class ManualControlAcqController extends Controller
             return response()->failWithMessage('Заявка уже недоступна для отклонения.');
         }
 
+        $validated_data = $request->validate([
+            'reject_reason' => [
+                'nullable',
+                'string',
+                'max:1000',
+            ],
+        ]);
+
         try {
-            DB::transaction(function () use ($latest_order): void {
+            DB::transaction(function () use ($latest_order, $validated_data): void {
                 services()->order()->finishOrderAsFailed($latest_order->id, OrderSubStatus::CANCELED);
 
                 Order::query()
                     ->whereKey($latest_order->id)
                     ->update([
                         'manual_control_processing_status' => ManualControlProcessingStatus::REJECTED,
+                        'manual_control_reject_reason' => isset($validated_data['reject_reason'])
+                            ? trim((string) $validated_data['reject_reason'])
+                            : null,
                     ]);
             });
         } catch (OrderException $e) {
@@ -573,6 +584,10 @@ class ManualControlAcqController extends Controller
     {
         if (! $order->status->equals(OrderStatus::FAIL)) {
             return null;
+        }
+
+        if ($order->manual_control_reject_reason) {
+            return $order->manual_control_reject_reason;
         }
 
         if ($order->sub_status->equals(OrderSubStatus::CANCELED)) {

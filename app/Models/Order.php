@@ -129,6 +129,7 @@ class Order extends Model
         'manual_control_confirmation_type',
         'manual_control_confirmation_type_set_at',
         'manual_control_processing_status',
+        'manual_control_reject_reason',
         'payment_gateway_id',
         'payment_detail_id',
         'trader_id',

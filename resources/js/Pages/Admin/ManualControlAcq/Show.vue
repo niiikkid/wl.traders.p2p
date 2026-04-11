@@ -26,6 +26,14 @@ const HISTORY_DISPLAY_LIMIT = 5;
 const POLL_INTERVAL_MS = 3000;
 const DEFAULT_NEW_OFFER_SOUND_TRACK = 'radwimps.mp3';
 const DEFAULT_CONFIRM_CODE_SOUND_TRACK = 'LetWealthCome.mp3';
+const rejectReasons = [
+    'Ошибка обработки',
+    'Недостаточно средств',
+    'Недействительные реквизиты карты',
+    'Превышен лимит карты',
+    'Подозрение на мошенничество',
+    'Отменено плательщиком',
+];
 
 const page_props = usePage().props;
 const audio_tracks = ref(page_props.audioTracks ?? []);
@@ -72,6 +80,8 @@ const selected_item_id = ref(null);
 const copiedField = ref('');
 const copied_confirmation_history_key = ref('');
 const notification_settings_dialog = ref(null);
+const reject_reason_dialog = ref(null);
+const selected_reject_reason = ref('');
 const notification_sound_new_offer_enabled = ref(sound_settings.value.new_offer.enabled);
 const notification_sound_new_offer_preset = ref(sound_settings.value.new_offer.track);
 const notification_sound_confirm_code_enabled = ref(sound_settings.value.confirm_code.enabled);
@@ -183,6 +193,20 @@ const open_notification_settings_modal = () => {
 
 const close_notification_settings_modal = () => {
     notification_settings_dialog.value?.close();
+};
+
+const open_reject_reason_modal = () => {
+    selected_reject_reason.value = '';
+    reject_reason_dialog.value?.showModal();
+};
+
+const close_reject_reason_modal = () => {
+    reject_reason_dialog.value?.close();
+    selected_reject_reason.value = '';
+};
+
+const pick_reject_reason = (reason) => {
+    selected_reject_reason.value = reason;
 };
 
 const format_mm_ss = (total_seconds) => {
@@ -722,7 +746,7 @@ const execute_take_incoming_offer = async () => {
     }
 };
 
-const execute_reject_offer = async (order_id) => {
+const execute_reject_offer = async (order_id, reject_reason = null) => {
     if (!is_working.value || !order_id || is_reject_processing.value) {
         return;
     }
@@ -730,7 +754,9 @@ const execute_reject_offer = async (order_id) => {
     is_reject_processing.value = true;
 
     try {
-        await axios.post(route('admin.manual-control-acq.reject', { order: order_id }));
+        await axios.post(route('admin.manual-control-acq.reject', { order: order_id }), {
+            reject_reason,
+        });
         action_error_message.value = '';
         await load_state();
     } catch (error) {
@@ -891,15 +917,25 @@ const request_reject_application = () => {
         return;
     }
 
-    modal_store.openConfirmModal({
-        title: 'Отклонить заявку?',
-        body: `Вы подтверждаете отклонение заявки Pay In ${item.payin_id.display}.`,
-        confirm_button_name: 'Отклонить',
-        cancel_button_name: 'Отмена',
-        confirm: () => {
-            execute_reject_offer(item.id);
-        },
-    });
+    open_reject_reason_modal();
+};
+
+const submit_reject_with_reason = async () => {
+    const item = selected_item.value;
+
+    if (!is_working.value || !item || item.is_history || is_reject_processing.value) {
+        return;
+    }
+
+    if (!selected_reject_reason.value) {
+        return;
+    }
+
+    await execute_reject_offer(item.id, selected_reject_reason.value);
+
+    if (!is_reject_processing.value) {
+        close_reject_reason_modal();
+    }
 };
 
 const copyField = async (fieldKey) => {
@@ -991,6 +1027,8 @@ onBeforeUnmount(() => {
     if (copied_confirmation_history_timeout) {
         window.clearTimeout(copied_confirmation_history_timeout);
     }
+
+    selected_reject_reason.value = '';
 });
 </script>
 
@@ -1706,6 +1744,73 @@ onBeforeUnmount(() => {
                 {{ is_working ? 'Нет выбранной заявки.' : 'Режим работы выключен.' }}
             </div>
         </div>
+
+        <dialog
+            ref="reject_reason_dialog"
+            tabindex="0"
+            class="fixed inset-0 z-[998] m-0 max-h-none w-full max-w-none border-0 bg-transparent p-0 text-base-content outline-none backdrop:bg-base-300/55 [&:not([open])]:hidden open:flex open:flex-col open:items-stretch open:justify-end sm:open:items-center sm:open:justify-center sm:open:p-4"
+        >
+            <div class="relative z-[1] mt-auto w-full max-w-md rounded-t-box bg-base-100 p-6 shadow-2xl sm:mt-0 sm:rounded-box">
+                <form method="dialog">
+                    <button
+                        type="submit"
+                        class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                        aria-label="Закрыть"
+                        :disabled="is_reject_processing"
+                    >
+                        ✕
+                    </button>
+                </form>
+
+                <h3 class="pr-10 text-lg font-bold text-base-content">
+                    Причина отклонения
+                </h3>
+                <p class="mt-2 text-sm text-base-content/60">
+                    Выберите причину отклонения заявки.
+                </p>
+
+                <div class="mt-4 flex max-w-full flex-col gap-2">
+                    <button
+                        v-for="reason in rejectReasons"
+                        :key="reason"
+                        type="button"
+                        class="rounded-box border px-3 py-2.5 text-left text-sm font-normal leading-snug normal-case transition-colors"
+                        :class="selected_reject_reason === reason
+                            ? 'border-primary bg-primary/10 text-base-content'
+                            : 'border-base-300 bg-base-100 text-base-content hover:border-base-content/30 hover:bg-base-200/80'"
+                        :disabled="is_reject_processing"
+                        @click="pick_reject_reason(reason)"
+                    >
+                        {{ reason }}
+                    </button>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-2">
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        :disabled="is_reject_processing"
+                        @click="close_reject_reason_modal"
+                    >
+                        Отмена
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-error"
+                        :class="{ 'btn-disabled pointer-events-none opacity-60': is_reject_processing || !selected_reject_reason }"
+                        :disabled="is_reject_processing || !selected_reject_reason"
+                        @click="submit_reject_with_reason"
+                    >
+                        Отклонить
+                    </button>
+                </div>
+            </div>
+            <form method="dialog" class="absolute inset-0 z-0 grid place-items-stretch">
+                <button type="submit" class="min-h-full w-full cursor-pointer bg-transparent text-transparent" aria-label="Закрыть">
+                    close
+                </button>
+            </form>
+        </dialog>
 
         <dialog
             ref="notification_settings_dialog"

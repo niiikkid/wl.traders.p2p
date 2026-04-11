@@ -34,6 +34,7 @@ class OrderResource extends JsonResource
             'conversion_price' => $this->conversion_price->toBeauty(),
             'status' => $this->status->value,
             'sub_status' => $this->sub_status->value,
+            'reject_reason' => $this->manual_control_reject_reason,
             'callback_url' => $this->callback_url,
             'manual_control_acquiring' => (bool) $this->manual_control_acquiring,
             'manual_control_confirmation_type' => $this->manual_control_confirmation_type?->value,
