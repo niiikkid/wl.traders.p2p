@@ -570,7 +570,7 @@ const copyCallbackUrl = async (callback_url) => {
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Имя держателя</dt>
                                             <dd class="font-medium text-base-content">
-                                                {{ order.manual_control?.cardholder_name || '—' }}
+                                                <span class="uppercase">{{ order.manual_control?.cardholder_name || '—' }}</span>
                                             </dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">

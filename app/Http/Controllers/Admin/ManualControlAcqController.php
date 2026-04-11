@@ -274,6 +274,7 @@ class ManualControlAcqController extends Controller
     private function makeQueueItem(Order $order, bool $is_history = false): array
     {
         $card_number_raw = (string) ($order->manual_control_card_number ?? '');
+        $cardholder_trimmed = trim((string) ($order->manual_control_cardholder_name ?? ''));
         $expiry_date = $this->formatExpiryDate(
             $order->manual_control_expiry_month,
             $order->manual_control_expiry_year,
@@ -341,6 +342,10 @@ class ManualControlAcqController extends Controller
             'expiry_date' => [
                 'display' => $expiry_date,
                 'copy' => $expiry_date === '—' ? '' : $expiry_date,
+            ],
+            'cardholder_name' => [
+                'display' => $cardholder_trimmed !== '' ? $cardholder_trimmed : '',
+                'copy' => $cardholder_trimmed,
             ],
             'processing_elapsed_seconds' => $processing_elapsed_seconds,
             'processing_total_seconds' => $processing_total_seconds,

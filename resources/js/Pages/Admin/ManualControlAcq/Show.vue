@@ -902,6 +902,7 @@ const copyField = async (fieldKey) => {
         amount: 'amount',
         cardNumber: 'card_number',
         expiryDate: 'expiry_date',
+        cardholderName: 'cardholder_name',
     };
 
     const prop = key_map[fieldKey];
@@ -1493,14 +1494,66 @@ onBeforeUnmount(() => {
                             </button>
                         </div>
 
-                        <div class="grid gap-3 sm:grid-cols-2 sm:gap-4">
-                            <div class="space-y-1 sm:space-y-2">
+                        <div
+                            class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6"
+                        >
+                            <div
+                                class="min-w-0 space-y-1 sm:space-y-2"
+                                :class="selected_item.cardholder_name?.display ? 'flex-1' : ''"
+                            >
+                                <template v-if="selected_item.cardholder_name?.display">
+                                    <p class="text-xs font-medium uppercase tracking-[0.2em] text-primary-content/70">
+                                        Cardholder
+                                    </p>
+                                    <button
+                                        type="button"
+                                        class="group flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-md text-left text-base font-semibold transition hover:text-primary-content/80 active:scale-[0.99] sm:text-lg"
+                                        @click="copyField('cardholderName')"
+                                    >
+                                        <span class="min-w-0 truncate uppercase">{{ selected_item.cardholder_name.display }}</span>
+                                        <span
+                                            class="tooltip tooltip-top inline-flex shrink-0 items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
+                                            :data-tip="copiedField === 'cardholderName' ? 'Скопировано' : ''"
+                                            :class="copiedField === 'cardholderName' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
+                                            </svg>
+                                        </span>
+                                    </button>
+                                </template>
+                                <template v-else>
+                                    <p class="text-xs font-medium uppercase tracking-[0.2em] text-primary-content/70">
+                                        Expiry Date
+                                    </p>
+                                    <button
+                                        type="button"
+                                        class="group flex cursor-pointer items-center gap-2 rounded-md text-left text-base font-semibold transition hover:text-primary-content/80 active:scale-[0.99] sm:text-lg"
+                                        @click="copyField('expiryDate')"
+                                    >
+                                        <span>{{ selected_item.expiry_date.display }}</span>
+                                        <span
+                                            class="tooltip tooltip-top inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
+                                            :data-tip="copiedField === 'expiryDate' ? 'Скопировано' : ''"
+                                            :class="copiedField === 'expiryDate' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
+                                            </svg>
+                                        </span>
+                                    </button>
+                                </template>
+                            </div>
+                            <div
+                                v-if="selected_item.cardholder_name?.display"
+                                class="min-w-0 space-y-1 text-left sm:space-y-2 sm:shrink-0 sm:text-right"
+                            >
                                 <p class="text-xs font-medium uppercase tracking-[0.2em] text-primary-content/70">
                                     Expiry Date
                                 </p>
                                 <button
                                     type="button"
-                                    class="group flex cursor-pointer items-center gap-2 rounded-md text-left text-base font-semibold transition hover:text-primary-content/80 active:scale-[0.99] sm:text-lg"
+                                    class="group flex cursor-pointer items-center gap-2 rounded-md text-left text-base font-semibold transition hover:text-primary-content/80 active:scale-[0.99] sm:ml-auto sm:justify-end sm:text-lg"
                                     @click="copyField('expiryDate')"
                                 >
                                     <span>{{ selected_item.expiry_date.display }}</span>
@@ -1515,7 +1568,6 @@ onBeforeUnmount(() => {
                                     </span>
                                 </button>
                             </div>
-
                         </div>
                     </div>
                 </section>
