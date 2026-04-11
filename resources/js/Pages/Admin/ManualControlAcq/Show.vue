@@ -813,7 +813,7 @@ onBeforeUnmount(() => {
                 <nav class="min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label="Очередь Pay In">
                     <div
                         v-if="!is_working"
-                        class="mb-3 rounded-box border border-base-300 bg-base-100 px-3 py-2.5 text-xs leading-snug text-base-content/65"
+                        class="mb-3 rounded-box bg-base-100 px-3 py-2.5 text-xs leading-snug text-base-content/65"
                     >
                         Режим работы выключен. Включите переключатель «Работа», чтобы получать и обрабатывать заявки.
                     </div>
@@ -946,7 +946,7 @@ onBeforeUnmount(() => {
                                             <span class="badge badge-primary badge-xs shrink-0 font-medium normal-case">
                                                 {{ item.pending_confirmation_title }}
                                             </span>
-                                            <span class="tabular-nums text-base-content/70">
+                                            <span class="tabular-nums text-base-content">
                                                 {{ format_mm_ss(item.confirm_seconds_remaining) }}
                                             </span>
                                         </span>
@@ -1012,10 +1012,10 @@ onBeforeUnmount(() => {
                                 @click="select_queue_item(item.id)"
                             >
                                 <div class="flex w-full items-start justify-between gap-2">
-                                    <span class="font-mono text-xs font-medium tabular-nums text-base-content/70">
+                                    <span class="font-mono text-xs font-medium tabular-nums text-base-content">
                                         {{ card_tail_label(item.card_number.display) }}
                                     </span>
-                                    <span class="shrink-0 text-xs font-medium tabular-nums text-base-content/70">
+                                    <span class="shrink-0 text-xs font-medium tabular-nums text-base-content">
                                         {{ item.amount.display }}
                                     </span>
                                 </div>
@@ -1071,7 +1071,7 @@ onBeforeUnmount(() => {
 
                     <div
                         v-if="history_hidden_count > 0"
-                        class="mt-2 rounded-box border border-dashed border-base-300 bg-base-200/50 px-2.5 py-2 text-[10px] leading-snug text-base-content/50"
+                        class="mt-2 rounded-box bg-base-200/50 px-2.5 py-2 text-[10px] leading-snug text-base-content/50"
                         role="note"
                     >
                         Показаны последние {{ HISTORY_DISPLAY_LIMIT }} из {{ history_total_count }}.
@@ -1082,7 +1082,7 @@ onBeforeUnmount(() => {
 
             <!-- Основная рабочая зона -->
             <div v-if="selected_item" class="mx-auto flex min-h-0 w-full min-w-0 max-w-2xl flex-1 flex-col gap-4 overflow-y-auto px-3 py-4 lg:px-6 lg:py-5">
-                <header class="card border border-base-300 bg-base-100 shadow">
+                <header class="card bg-base-100 shadow">
                     <div class="card-body gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <h1 class="text-lg font-semibold text-base-content sm:text-xl">
                             Manual Control ACQ
@@ -1165,7 +1165,7 @@ onBeforeUnmount(() => {
 
                 <section
                     v-if="selected_item.confirmation_codes?.length"
-                    class="card border border-base-300 bg-base-100 shadow"
+                    class="card bg-base-100 shadow"
                 >
                     <div class="card-body gap-2.5 p-4 sm:p-5">
                         <div class="flex items-center justify-between gap-2">
@@ -1193,7 +1193,7 @@ onBeforeUnmount(() => {
                                         <td class="font-mono font-semibold tracking-[0.08em]">
                                             {{ confirmation_code_item.display }}
                                         </td>
-                                        <td class="text-xs text-base-content/70">
+                                        <td class="text-xs text-base-content">
                                             {{ format_date_time(confirmation_code_item.created_at_ts) }}
                                         </td>
                                     </tr>
@@ -1304,7 +1304,7 @@ onBeforeUnmount(() => {
 
                 <section
                     v-if="is_selected_history && selected_item.outcome_status"
-                    class="card border border-base-300 bg-base-100 shadow"
+                    class="card bg-base-100 shadow"
                 >
                     <div class="card-body gap-2 p-4 sm:p-5">
                         <p class="text-[10px] font-semibold uppercase tracking-wide text-base-content/50">
@@ -1338,7 +1338,7 @@ onBeforeUnmount(() => {
                     </div>
                 </section>
 
-                <section class="card border border-base-300 bg-base-100 shadow">
+                <section class="card bg-base-100 shadow">
                     <div class="card-body gap-4 p-4 sm:p-5">
                         <div
                             v-if="is_selected_history"
@@ -1403,7 +1403,7 @@ onBeforeUnmount(() => {
 
                                 <div
                                     v-else-if="selected_item.pending_confirmation_title && !is_selected_history"
-                                    class="flex w-full flex-col gap-2 rounded-box border border-base-300 bg-base-200/40 p-3"
+                                    class="flex w-full flex-col gap-2 rounded-box bg-base-200/40 p-3"
                                 >
                                     <button
                                         type="button"
@@ -1462,7 +1462,7 @@ onBeforeUnmount(() => {
                 </p>
 
                 <div class="mt-5 space-y-4">
-                    <div class="rounded-box border border-base-300 p-4">
+                    <div class="rounded-box p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-base-content">
@@ -1500,7 +1500,7 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div class="rounded-box border border-base-300 p-4">
+                    <div class="rounded-box p-4">
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <p class="text-sm font-semibold text-base-content">
