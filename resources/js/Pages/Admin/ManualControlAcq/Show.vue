@@ -3,7 +3,6 @@ import axios from 'axios';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
-import ThemeToggle from '@/Components/ThemeToggle.vue';
 import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
 import { useModalStore } from '@/store/modal.js';
 import { playNotificationAudio } from '@/utils/notificationAudioPlayer.js';
@@ -906,11 +905,14 @@ const copyField = async (fieldKey) => {
     };
 
     const prop = key_map[fieldKey];
-    const value = prop ? item[prop]?.copy : undefined;
+    const raw_value = prop ? item[prop]?.copy : undefined;
 
-    if (!value) {
+    if (!raw_value) {
         return;
     }
+
+    const value =
+        fieldKey === 'cardholderName' ? String(raw_value).toUpperCase() : raw_value;
 
     try {
         await navigator.clipboard.writeText(value);
@@ -1836,9 +1838,6 @@ onBeforeUnmount(() => {
             </form>
         </dialog>
 
-        <footer class="mt-auto flex w-full shrink-0 justify-center border-t border-base-300 pt-6">
-            <ThemeToggle />
-        </footer>
         </div>
     </ManualControlLayout>
 </template>
