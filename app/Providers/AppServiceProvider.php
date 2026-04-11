@@ -95,6 +95,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Queue\Events\JobFailed;
 use Carbon\Carbon;
+use Telegram\Bot\BotsManager;
 use Telegram\Bot\HttpClients\GuzzleHttpClient;
 
 class AppServiceProvider extends ServiceProvider
@@ -104,7 +105,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->configureTelegramProxy();
+        $this->app->singleton(BotsManager::class, function ($app): BotsManager {
+            $telegramConfig = config('telegram');
+            $telegramProxy = data_get($telegramConfig, 'proxy');
+
+            if (is_string($telegramProxy) && $telegramProxy !== '') {
+                $telegramConfig['http_client_handler'] = new GuzzleHttpClient(
+                    new GuzzleClient([
+                        'proxy' => $telegramProxy,
+                    ])
+                );
+            }
+
+            return (new BotsManager($telegramConfig))->setContainer($app);
+        });
+        $this->app->alias(BotsManager::class, 'telegram');
 
         //services
         $this->app->singleton(ServiceBuilderContract::class, function () {
@@ -232,23 +247,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PayoutQueries::class, function () {
             return new PayoutQueriesEloquent();
         });
-    }
-
-    private function configureTelegramProxy(): void
-    {
-        $telegramProxy = config('telegram.proxy');
-
-        if (! is_string($telegramProxy) || $telegramProxy === '') {
-            return;
-        }
-
-        config([
-            'telegram.http_client_handler' => new GuzzleHttpClient(
-                new GuzzleClient([
-                    'proxy' => $telegramProxy,
-                ])
-            ),
-        ]);
     }
 
     /**
