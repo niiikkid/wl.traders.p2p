@@ -152,7 +152,8 @@ class StoreRequest extends FormRequest
                 Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
                 Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
                 'string',
-                'regex:/^\d{3,4}$/',
+                'min:1',
+                'max:20',
             ],
             'cardholder_name' => [
                 'nullable',
