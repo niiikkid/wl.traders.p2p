@@ -203,6 +203,14 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/orders', [\App\Http\Controllers\Support\OrderController::class, 'index'])->name('orders.index');
         Route::patch('/orders/{order}/accept', [\App\Http\Controllers\Support\OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::patch('/orders/{order}/amount', [\App\Http\Controllers\Support\OrderController::class, 'updateAmount'])->name('orders.update.amount');
+        Route::get('/manual-control-acq', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'show'])->name('manual-control-acq.show');
+        Route::get('/manual-control-acq/state', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'state'])->name('manual-control-acq.state');
+        Route::post('/manual-control-acq/work-status', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'setWorkStatus'])->name('manual-control-acq.work-status');
+        Route::patch('/manual-control-acq/sound-settings', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'updateSoundSettings'])->name('manual-control-acq.sound-settings.update');
+        Route::post('/manual-control-acq/orders/{order}/take', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'take'])->name('manual-control-acq.take');
+        Route::post('/manual-control-acq/orders/{order}/confirmation-type', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
+        Route::post('/manual-control-acq/orders/{order}/confirm', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
+        Route::post('/manual-control-acq/orders/{order}/reject', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
         Route::get('/deposits', [\App\Http\Controllers\Support\DepositController::class, 'index'])->name('deposits.index');
         Route::get('/disputes', [\App\Http\Controllers\Support\DisputeController::class, 'index'])->name('disputes.index');
         Route::post('/disputes/{order}', [\App\Http\Controllers\Support\DisputeController::class, 'store'])->name('disputes.store');
@@ -262,9 +270,14 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
     Route::group(['prefix' => 'admin', 'as'=>'admin.', 'middleware' => ['auth', 'banned', 'role:Super Admin']], function () {
         Route::get('/main', [\App\Http\Controllers\MainPageController::class, 'admin'])->name('main.index');
-        Route::get('/manual-control-acq', function () {
-            return \Inertia\Inertia::render('Admin/ManualControlAcq/Show');
-        })->name('manual-control-acq.show');
+        Route::get('/manual-control-acq', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'show'])->name('manual-control-acq.show');
+        Route::get('/manual-control-acq/state', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'state'])->name('manual-control-acq.state');
+        Route::post('/manual-control-acq/work-status', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'setWorkStatus'])->name('manual-control-acq.work-status');
+        Route::patch('/manual-control-acq/sound-settings', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'updateSoundSettings'])->name('manual-control-acq.sound-settings.update');
+        Route::post('/manual-control-acq/orders/{order}/take', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'take'])->name('manual-control-acq.take');
+        Route::post('/manual-control-acq/orders/{order}/confirmation-type', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
+        Route::post('/manual-control-acq/orders/{order}/confirm', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
+        Route::post('/manual-control-acq/orders/{order}/reject', [\App\Http\Controllers\Admin\ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');

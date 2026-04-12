@@ -48,6 +48,7 @@ const form = ref({
     team_leader_flexible_trader_commission_max: null,
     support_can_view_deposits: false,
     support_can_edit_order_amount: false,
+    support_can_use_manual_control_acq: false,
     team_leader_id: [],
 });
 
@@ -90,6 +91,7 @@ const resetState = () => {
         team_leader_flexible_trader_commission_max: null,
         support_can_view_deposits: false,
         support_can_edit_order_amount: false,
+        support_can_use_manual_control_acq: false,
         team_leader_id: [],
     };
 };
@@ -139,6 +141,7 @@ const loadUser = () => {
             form.value.team_leader_flexible_trader_commission_max = data.team_leader_flexible_trader_commission_max;
             form.value.support_can_view_deposits = !!data.support_can_view_deposits;
             form.value.support_can_edit_order_amount = !!data.support_can_edit_order_amount;
+            form.value.support_can_use_manual_control_acq = !!data.support_can_use_manual_control_acq;
             form.value.team_leader_id = data.team_leader_id ? [data.team_leader_id] : [];
         });
 };
@@ -767,6 +770,19 @@ watch(
                         </label>
                     </div>
                     <InputError class="mt-1" :message="errors.support_can_edit_order_amount?.[0]" />
+
+                    <div v-if="canManageSupportFeatures(form.role_id)" class="form-control w-fit">
+                        <label class="label cursor-pointer gap-3">
+                            <input
+                                type="checkbox"
+                                class="toggle toggle-primary"
+                                v-model="form.support_can_use_manual_control_acq"
+                                :disabled="processing"
+                            >
+                            <span class="label-text">Manual Control Acquiring</span>
+                        </label>
+                    </div>
+                    <InputError class="mt-1" :message="errors.support_can_use_manual_control_acq?.[0]" />
                 </div>
 
                 <div v-if="(isTrader(form.role_id) || isAdmin(form.role_id)) && user && !user.team_leader_id">

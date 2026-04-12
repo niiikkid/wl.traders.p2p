@@ -21,6 +21,7 @@ import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 
 const orders = ref(usePage().props.orders);
 const modalStore = useModalStore();
+const canUseManualControlAcq = Boolean(usePage().props.auth?.user?.support_can_use_manual_control_acq);
 
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
@@ -91,6 +92,14 @@ const confirmRollbackDispute = (dispute) => {
     });
 };
 
+const openManualControlAcqPage = () => {
+    if (!canUseManualControlAcq) {
+        return;
+    }
+
+    window.open(route('support.manual-control-acq.show'), '_blank', 'noopener');
+};
+
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -139,6 +148,14 @@ defineOptions({ layout: AuthenticatedLayout })
 
                     <div class="flex items-center justify-between">
                         <div>
+                            <button
+                                v-if="canUseManualControlAcq"
+                                type="button"
+                                class="btn btn-primary btn-sm"
+                                @click="openManualControlAcqPage"
+                            >
+                                Manual Control ACQ
+                            </button>
                             <div v-if="reloadingTableData" class="xl:hidden px-2 text-sm text-base-content/80 flex items-center gap-2" aria-live="polite">
                                 <div class="animate-spin inline-block w-5 h-5 border-[3px] border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading">
                                     <span class="sr-only">Загрузка...</span>

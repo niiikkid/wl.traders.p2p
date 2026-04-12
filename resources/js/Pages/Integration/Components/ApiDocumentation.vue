@@ -9,6 +9,7 @@ const tocSections = [
     {id: 'base-methods', title: 'Базовые методы'},
     {id: 'merchant-api', title: 'H2Form API'},
     {id: 'h2h-api', title: 'H2Host API'},
+    {id: 'manual-control-acquiring', title: 'Manual Control Acquiring'},
     {id: 'auto-withdrawals', title: 'Авто вывод'},
     {id: 'payouts-api', title: 'Payouts API'},
     {id: 'statements-api', title: 'Выписки'},
@@ -298,6 +299,36 @@ const tocSections = [
                                                 <td>тип реквизита: card, phone, mobile_commerce, account_number, iban_uah, nspk, e-com.</td>
                                             </tr>
                                             <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">manual_control_acquiring</code></td>
+                                                <td>
+                                                    булевый флаг режима Manual Control Acquiring. Если
+                                                    <code class="bg-base-200 px-1 rounded text-xs">true</code>,
+                                                    то <code class="bg-base-200 px-1 rounded text-xs">payment_gateway</code>
+                                                    указывать нельзя, а <code class="bg-base-200 px-1 rounded text-xs">payment_detail_type</code>
+                                                    должен быть <code class="bg-base-200 px-1 rounded text-xs">card</code>.
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">card_number</code></td>
+                                                <td>номер карты клиента. Обязателен для <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">expiry_month</code></td>
+                                                <td>месяц окончания срока действия карты. Обязателен для <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">expiry_year</code></td>
+                                                <td>год окончания срока действия карты. Обязателен для <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">cvc</code></td>
+                                                <td>код проверки карты (CVV/CVC). Обязателен при <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">cardholder_name</code></td>
+                                                <td>имя держателя карты. Необязательное поле для <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>.</td>
+                                            </tr>
+                                            <tr>
                                                 <td><code class="bg-base-200 px-1 rounded">client_id</code></td>
                                                 <td>id клиента мерчанта (нужен, если включен антифрод).</td>
                                             </tr>
@@ -351,6 +382,12 @@ const tocSections = [
                 <article id="h2h-api" class="card bg-base-100 shadow">
                     <div class="card-body space-y-4">
                         <h2 class="card-title text-2xl">Host To Host API</h2>
+                        <p class="text-sm text-base-content/80">
+                            Для режима Manual Control Acquiring используйте параметр
+                            <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring</code>.
+                            Подробные ограничения и примеры вынесены в отдельный раздел
+                            <a href="#manual-control-acquiring" class="link link-primary">Manual Control Acquiring</a>.
+                        </p>
 
                         <section class="space-y-4">
                             <div class="rounded-xl border border-base-200 p-4 space-y-4">
@@ -432,7 +469,8 @@ const tocSections = [
                                     <h4 class="font-semibold mb-2">Ответ сервера</h4>
                                     <p class="text-sm text-base-content/80">Поле <code class="bg-base-200 px-1 rounded">base_amount</code> — исходная сумма сделки на момент создания. Поле <code class="bg-base-200 px-1 rounded">amount</code> может быть изменено при пересчёте.</p>
                                     <p class="text-sm text-base-content/80">Поле <code class="bg-base-200 px-1 rounded">payment_detail.additional_info</code> присутствует всегда: если данных нет, вернется <code class="bg-base-200 px-1 rounded">null</code>.</p>
-                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16...", external_id: "...", merchant_id: "3db07a16...", base_amount: "1000", amount: "1040", profit: "9.94", merchant_profit: "9.05", currency: "rub", profit_currency: "usdt", conversion_price_currency: "rub", conversion_price: "100.77", status: "pending", sub_status: "pending", callback_url: "...", payment_gateway: "sberbank", payment_gateway_name: "Сбербанк", payment_detail: { detail: "UA543220010000026200353789635", detail_type: "iban_uah", initials: "Крива Алла Сергіївна", additional_info: "3665906843" }, merchant: { name: "...", description: "..." }, finished_at: null, expires_at: 1731375451, created_at: 1731375391, current_server_time: 1731655862 } }) }}</code></pre>
+                                    <p class="text-sm text-base-content/80">Для <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code> структура ответа сохраняется: <code class="bg-base-200 px-1 rounded text-xs">payment_gateway</code> и <code class="bg-base-200 px-1 rounded text-xs">payment_gateway_name</code> передаются, а поля реквизитов внутри <code class="bg-base-200 px-1 rounded text-xs">payment_detail</code> возвращаются пустыми (<code class="bg-base-200 px-1 rounded text-xs">null</code>).</p>
+                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16...", external_id: "...", merchant_id: "3db07a16...", base_amount: "1000", amount: "1040", profit: "9.94", merchant_profit: "9.05", currency: "rub", profit_currency: "usdt", conversion_price_currency: "rub", conversion_price: "100.77", status: "pending", sub_status: "pending", callback_url: "...", manual_control_confirmation_type: null, payment_gateway: "sberbank", payment_gateway_name: "Сбербанк", payment_detail: { detail: "UA543220010000026200353789635", detail_type: "iban_uah", initials: "Крива Алла Сергіївна", additional_info: "3665906843" }, merchant: { name: "...", description: "..." }, finished_at: null, expires_at: 1731375451, created_at: 1731375391, current_server_time: 1731655862 } }) }}</code></pre>
                                 </div>
                             </div>
                         </section>
@@ -459,6 +497,46 @@ const tocSections = [
                                     </div>
                                 </div>
                                 <p class="text-sm text-base-content/80">Досрочно закрывает сделку, если она в статусе pending и без открытых споров.</p>
+                            </div>
+
+                            <div class="border border-base-200 rounded-xl p-4 space-y-4 overflow-x-auto">
+                                <div class="grid gap-3">
+                                    <h3 class="text-xl font-semibold">Передать код подтверждения</h3>
+                                    <div class="flex flex-wrap items-center gap-3">
+                                        <span class="badge badge-secondary badge-lg">POST</span>
+                                        <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/h2h/order/{order_id}/confirmation-code</code>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-base-content/80">
+                                    Эндпоинт доступен только для сделок с
+                                    <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>
+                                    и статусом <code class="bg-base-200 px-1 rounded text-xs">pending</code>.
+                                </p>
+
+                                <div>
+                                    <h4 class="font-semibold mb-2">Параметры</h4>
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-zebra w-full">
+                                            <thead>
+                                                <tr>
+                                                    <th>Параметр</th>
+                                                    <th>Описание</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td><code class="bg-base-200 px-1 rounded">confirmation_code</code> <span class="text-error">*</span></td>
+                                                    <td>Код подтверждения (OTP/CVC и т.д.), который пришел по сделке.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 class="font-semibold mb-2">Ответ сервера</h4>
+                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16-...", confirmation_code: { value: "123456", created_at: 1731655862 } } }) }}</code></pre>
+                                </div>
                             </div>
 
                             <div class="border border-base-200 rounded-xl p-4 space-y-4 overflow-x-auto">
@@ -506,6 +584,116 @@ const tocSections = [
                                     </div>
                                 </div>
                                 <p class="text-sm text-base-content/80">Ответ такой же, как при открытии спора.</p>
+                            </div>
+                        </section>
+                    </div>
+                </article>
+
+                <article id="manual-control-acquiring" class="card bg-base-100 shadow">
+                    <div class="card-body space-y-4">
+                        <h2 class="card-title text-2xl">Manual Control Acquiring</h2>
+                        <p class="text-sm text-base-content/80">
+                            Manual Control Acquiring — режим для H2H API, в котором сделка создается с принудительным
+                            использованием конкретного реквизита типа <code class="bg-base-200 px-1 rounded text-xs">card</code>.
+                        </p>
+                        <p class="text-sm text-base-content/80">
+                            В этом режиме структура ответа не меняется:
+                            <code class="bg-base-200 px-1 rounded text-xs">payment_gateway</code> и
+                            <code class="bg-base-200 px-1 rounded text-xs">payment_gateway_name</code> остаются в ответе,
+                            а поля реквизитов в <code class="bg-base-200 px-1 rounded text-xs">payment_detail</code>
+                            возвращаются пустыми (<code class="bg-base-200 px-1 rounded text-xs">null</code>).
+                        </p>
+                        <p class="text-sm text-base-content/80">
+                            Переданные реквизиты карты клиента сохраняются в самой сделке и не создают отдельный реквизит в системе.
+                        </p>
+                        <p class="text-sm text-base-content/80">
+                            Перед подбором реквизитов проверяется, что в панели Manual Control Acquiring есть хотя бы один оператор с включённым режимом работы.
+                            Одновременно допускается до трёх сделок в статусе <code class="bg-base-200 px-1 rounded text-xs">pending</code> с этим режимом на каждого такого оператора (лимит суммируется по числу операторов в работе).
+                            Если операторов нет или лимит исчерпан, создание отклоняется с отдельной ошибкой в каждом случае.
+                        </p>
+
+                        <section class="rounded-xl border border-base-200 p-4 space-y-3 overflow-x-auto">
+                            <h3 class="text-xl font-semibold">Ограничения при создании сделки</h3>
+                            <ul class="list-disc list-inside space-y-2 text-sm text-base-content/80 ml-2">
+                                <li>Передайте <code class="bg-base-200 px-1 rounded text-xs">manual_control_acquiring=true</code>.</li>
+                                <li><code class="bg-base-200 px-1 rounded text-xs">payment_gateway</code> указывать нельзя.</li>
+                                <li>Можно передавать только валюту через <code class="bg-base-200 px-1 rounded text-xs">currency</code>.</li>
+                                <li><code class="bg-base-200 px-1 rounded text-xs">payment_detail_type</code> должен быть только <code class="bg-base-200 px-1 rounded text-xs">card</code>.</li>
+                                <li>Обязательные данные карты клиента: <code class="bg-base-200 px-1 rounded text-xs">card_number</code>, <code class="bg-base-200 px-1 rounded text-xs">expiry_month</code>, <code class="bg-base-200 px-1 rounded text-xs">expiry_year</code>, <code class="bg-base-200 px-1 rounded text-xs">cvc</code>.</li>
+                                <li><code class="bg-base-200 px-1 rounded text-xs">cardholder_name</code> — опциональный.</li>
+                            </ul>
+                        </section>
+
+                        <section class="rounded-xl border border-base-200 p-4 space-y-3 overflow-x-auto">
+                            <h3 class="text-xl font-semibold">Пример запроса</h3>
+                            <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({
+                                external_id: "mca-order-1001",
+                                amount: 1500,
+                                currency: "rub",
+                                payment_detail_type: "card",
+                                card_number: "4444333322221111",
+                                expiry_month: 12,
+                                expiry_year: 2029,
+                                cvc: "123",
+                                cardholder_name: "IVAN IVANOV",
+                                manual_control_acquiring: true,
+                                merchant_id: "3db07a16-...",
+                                callback_url: "https://example.com/callback"
+                            }) }}</code></pre>
+                        </section>
+
+                        <section class="rounded-xl border border-base-200 p-4 space-y-3 overflow-x-auto">
+                            <h3 class="text-xl font-semibold">Передача Confirmation Code</h3>
+                            <p class="text-sm text-base-content/80">
+                                Для одной сделки можно отправлять несколько кодов подтверждения.
+                                Каждый код сохраняется в истории с временем получения.
+                            </p>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <span class="badge badge-secondary badge-lg">POST</span>
+                                <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/h2h/order/{order_id}/confirmation-code</code>
+                            </div>
+                            <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({
+                                confirmation_code: "123456"
+                            }) }}</code></pre>
+                        </section>
+
+                        <section class="rounded-xl border border-base-200 p-4 space-y-3 overflow-x-auto">
+                            <h3 class="text-xl font-semibold">Значения manual_control_confirmation_type</h3>
+                            <p class="text-sm text-base-content/80">
+                                Поле устанавливается оператором после взятия заявки в работу. Пока тип не выбран, возвращается
+                                <code class="bg-base-200 px-1 rounded text-xs">null</code>.
+                            </p>
+                            <div class="overflow-x-auto">
+                                <table class="table table-zebra w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Значение</th>
+                                            <th>Описание</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">otp_code</code></td>
+                                            <td>OTP code</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">in_app_confirmation</code></td>
+                                            <td>In-app confirmation</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">bank_call</code></td>
+                                            <td>Bank call</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">otp_code_and_pin_code</code></td>
+                                            <td>OTP code and PIN code</td>
+                                        </tr>
+                                        <tr>
+                                            <td><code class="bg-base-200 px-1 rounded">sms_with_instructions</code></td>
+                                            <td>SMS with instructions</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </section>
                     </div>

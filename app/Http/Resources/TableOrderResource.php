@@ -74,6 +74,7 @@ class TableOrderResource extends JsonResource
             'trader_email' => $this->trader->email,
             'trader_name' => $this->trader->name,
             'created_at' => $this->created_at->toISOString(),
+            'manual_control_acquiring' => (bool) $this->manual_control_acquiring,
         ];
     }
 }

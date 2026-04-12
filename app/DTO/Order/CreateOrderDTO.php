@@ -16,12 +16,18 @@ readonly class CreateOrderDTO extends BaseDTO
         public Merchant        $merchant,
         public bool            $h2h = false,
         public bool            $manually = false,
+        public bool            $manualControlAcquiring = false,
         public ?string         $externalID = null,
         public ?string         $callbackURL = null,
         public ?string         $successURL = null,
         public ?string         $failURL = null,
         public ?PaymentGateway $paymentGateway = null,
         public ?DetailType     $paymentDetailType = null,
+        public ?string         $cardNumber = null,
+        public ?int            $expiryMonth = null,
+        public ?int            $expiryYear = null,
+        public ?string         $cvc = null,
+        public ?string         $cardholderName = null,
         public ?int            $merchantClientId = null,
         public ?Money          $merchantRate = null,
     )
@@ -63,17 +69,30 @@ readonly class CreateOrderDTO extends BaseDTO
             $merchantRate = Money::fromPrecision((string) $data['rate'], $currencyCode);
         }
 
+        $cardNumber = null;
+        if (! empty($data['card_number'])) {
+            $cardNumber = preg_replace('/\D+/', '', (string) $data['card_number']);
+        }
+
+        $cvc = ! empty($data['cvc']) ? (string) $data['cvc'] : null;
+
         return new static(
             amount: $data['amount'],
             merchant: $data['merchant'],
             h2h: $data['h2h'] ?? false,
             manually: $data['manually'] ?? false,
+            manualControlAcquiring: (bool) ($data['manual_control_acquiring'] ?? false),
             externalID: $data['external_id'] ?? null,
             callbackURL: $data['callback_url'] ?? null,
             successURL: $data['success_url'] ?? null,
             failURL: $data['fail_url'] ?? null,
             paymentGateway: $data['payment_gateway'] ?? null,
             paymentDetailType: $data['payment_detail_type'] ?? null,
+            cardNumber: $cardNumber,
+            expiryMonth: isset($data['expiry_month']) ? (int) $data['expiry_month'] : null,
+            expiryYear: isset($data['expiry_year']) ? (int) $data['expiry_year'] : null,
+            cvc: $cvc,
+            cardholderName: isset($data['cardholder_name']) ? trim((string) $data['cardholder_name']) : null,
             merchantClientId: $data['merchant_client_id'] ?? null,
             merchantRate: $merchantRate,
         );

@@ -72,6 +72,7 @@ class UserService implements UserServiceContract
                 ? ($extendedAccessEnabled && $data->team_leader_flexible_trader_commission_enabled)
                 : false;
             $supportFeatureAllowed = in_array($roleName, ['Support', 'Super Admin'], true);
+            $manualControlAcqAllowed = in_array($roleName, ['Support', 'Super Admin'], true);
 
             $updateData = [
                 'email' => strtolower($data->login),
@@ -104,6 +105,9 @@ class UserService implements UserServiceContract
                     : false,
                 'support_can_edit_order_amount' => $supportFeatureAllowed
                     ? $data->support_can_edit_order_amount
+                    : false,
+                'support_can_use_manual_control_acq' => $manualControlAcqAllowed
+                    ? $data->support_can_use_manual_control_acq
                     : false,
             ];
 

@@ -3,17 +3,21 @@
 namespace App\Services\Order\Features;
 
 use App\DTO\Order\CreateOrderDTO;
+use App\Enums\ManualControlProcessingStatus;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Exceptions\OrderException;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Support\Str;
 
 class OrderMaker
 {
+    private const MAX_ACTIVE_MANUAL_CONTROL_ORDERS_PER_OPERATOR = 3;
+
     protected MarketEnum $geoMarket;
 
     /**
@@ -21,8 +25,7 @@ class OrderMaker
      */
     public function __construct(
         protected CreateOrderDTO $data
-    )
-    {
+    ) {
         $this->geoMarket = $this->resolveGeoMarket();
         $this->validate();
     }
@@ -36,7 +39,7 @@ class OrderMaker
             ?? Money::fromPrecision(0, $this->data->amount->getCurrency());
 
         return Order::create([
-            'uuid' => (string)Str::uuid(),
+            'uuid' => (string) Str::uuid(),
             'external_id' => $this->data->externalID,
             'merchant_id' => $this->data->merchant->id,
             'merchant_client_id' => $this->data->merchantClientId,
@@ -58,6 +61,14 @@ class OrderMaker
             'success_url' => $this->data->successURL,
             'fail_url' => $this->data->failURL,
             'is_h2h' => $this->data->h2h,
+            'manual_control_acquiring' => $this->data->manualControlAcquiring,
+            'manual_control_processing_status' => $this->data->manualControlAcquiring
+                ? ManualControlProcessingStatus::PENDING
+                : null,
+            'manual_control_card_number' => $this->data->cardNumber,
+            'manual_control_expiry_month' => $this->data->expiryMonth,
+            'manual_control_expiry_year' => $this->data->expiryYear,
+            'manual_control_cardholder_name' => $this->data->cardholderName !== '' ? $this->data->cardholderName : null,
             'payment_gateway_id' => null,
             'payment_detail_id' => null,
             'expires_at' => null,
@@ -66,13 +77,13 @@ class OrderMaker
 
     protected function validate(): void
     {
-        if (!$this->data->merchant->validated_at) {
+        if (! $this->data->merchant->validated_at) {
             throw OrderException::merchantIsUnderModeration();
         }
         if ($this->data->merchant->banned_at) {
             throw OrderException::merchantBlocked();
         }
-        if (!$this->data->merchant->active) {
+        if (! $this->data->merchant->active) {
             throw OrderException::merchantDisabled();
         }
         if ($this->data->h2h && $this->data->successURL) {
@@ -84,8 +95,51 @@ class OrderMaker
         if ($this->data->manually && $this->data->h2h) {
             throw OrderException::noH2HAndManually();
         }
+        if ($this->data->manualControlAcquiring && ! $this->data->h2h) {
+            throw OrderException::make('Параметр manual_control_acquiring доступен только для H2H API.');
+        }
+        if ($this->data->manualControlAcquiring) {
+            $activeOperatorsCount = $this->countActiveManualControlAcqOperators();
+            if ($activeOperatorsCount === 0) {
+                throw OrderException::noActiveManualControlAcqOperators();
+            }
+
+            $maxActiveOrders = $activeOperatorsCount * self::MAX_ACTIVE_MANUAL_CONTROL_ORDERS_PER_OPERATOR;
+            $activeOrdersCount = $this->countActiveManualControlAcqOrders();
+            if ($activeOrdersCount >= $maxActiveOrders) {
+                throw OrderException::manualControlAcqCapacityReached($activeOrdersCount, $maxActiveOrders);
+            }
+        }
 
         $this->validateMerchantApiRate();
+    }
+
+    protected function countActiveManualControlAcqOperators(): int
+    {
+        return User::query()
+            ->where('manual_control_acq_is_working', true)
+            ->where(function ($query) {
+                $query
+                    ->where(function ($supportQuery) {
+                        $supportQuery
+                            ->where('support_can_use_manual_control_acq', true)
+                            ->whereHas('roles', function ($rolesQuery) {
+                                $rolesQuery->where('name', 'Support');
+                            });
+                    })
+                    ->orWhereHas('roles', function ($rolesQuery) {
+                        $rolesQuery->where('name', 'Super Admin');
+                    });
+            })
+            ->count();
+    }
+
+    protected function countActiveManualControlAcqOrders(): int
+    {
+        return Order::query()
+            ->where('manual_control_acquiring', true)
+            ->where('status', OrderStatus::PENDING)
+            ->count();
     }
 
     /**

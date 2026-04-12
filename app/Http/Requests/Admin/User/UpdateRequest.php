@@ -52,6 +52,7 @@ class UpdateRequest extends FormRequest
             'team_leader_flexible_trader_commission_max' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'support_can_view_deposits' => ['required', 'boolean'],
             'support_can_edit_order_amount' => ['required', 'boolean'],
+            'support_can_use_manual_control_acq' => ['required', 'boolean'],
         ];
     }
 
@@ -124,6 +125,7 @@ class UpdateRequest extends FormRequest
             'team_leader_flexible_trader_commission_max' => __('максимальная комиссия тимлида'),
             'support_can_view_deposits' => __('доступ саппорта к депозитам'),
             'support_can_edit_order_amount' => __('доступ саппорта к изменению суммы сделки'),
+            'support_can_use_manual_control_acq' => __('доступ саппорта к Manual Control Acquiring'),
         ];
     }
 }

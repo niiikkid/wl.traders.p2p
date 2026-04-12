@@ -21,17 +21,17 @@ class OrderException extends BaseException
 
     public static function merchantIsUnderModeration(): OrderException
     {
-        return new self("Мерчант находится на модерации.");
+        return new self('Мерчант находится на модерации.');
     }
 
     public static function merchantBlocked(): OrderException
     {
-        return new self("Мерчант заблокирован.");
+        return new self('Мерчант заблокирован.');
     }
 
     public static function merchantDisabled(): OrderException
     {
-        return new self("Мерчант отключен.");
+        return new self('Мерчант отключен.');
     }
 
     public static function noSuccessUrlForH2HOrders(): OrderException
@@ -92,10 +92,23 @@ class OrderException extends BaseException
         string $allowedMaxRate,
     ): OrderException {
         return new self(
-            "Недопустимый курс для {$currency}. " .
-            "Передан: {$requestedRate}. " .
-            "Опорный курс: {$referenceRate}, допустимое отклонение: ±{$deviationPercent}% " .
+            "Недопустимый курс для {$currency}. ".
+            "Передан: {$requestedRate}. ".
+            "Опорный курс: {$referenceRate}, допустимое отклонение: ±{$deviationPercent}% ".
             "(допустимый диапазон: {$allowedMinRate} - {$allowedMaxRate})."
+        );
+    }
+
+    public static function noActiveManualControlAcqOperators(): OrderException
+    {
+        return new self('Нет активных операторов Manual Control Acquiring в режиме работы.');
+    }
+
+    public static function manualControlAcqCapacityReached(int $currentActiveOrders, int $maxActiveOrders): OrderException
+    {
+        return new self(
+            "Сейчас слишком много активных сделок Manual Control Acquiring ({$currentActiveOrders}/{$maxActiveOrders}). ".
+            'Дождитесь освобождения операторов и повторите попытку.'
         );
     }
 }

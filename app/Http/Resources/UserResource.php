@@ -49,6 +49,7 @@ class UserResource extends JsonResource
                 : null,
             'support_can_view_deposits' => (bool) $this->support_can_view_deposits,
             'support_can_edit_order_amount' => (bool) $this->support_can_edit_order_amount,
+            'support_can_use_manual_control_acq' => (bool) $this->support_can_use_manual_control_acq,
             'team_leader_individual_commission_percentage' => $this->team_leader_individual_commission_percentage !== null
                 ? (float) $this->team_leader_individual_commission_percentage
                 : null,

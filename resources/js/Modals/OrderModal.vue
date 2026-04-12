@@ -101,6 +101,7 @@ const confirmCreateDispute = (order) => {
 
 const order = ref(null);
 const callbackCopied = ref(false);
+const detailsTab = ref('main');
 const canEditOrderAmountInCurrentView = computed(() => {
     if (viewStore.isAdminViewMode) {
         return true;
@@ -111,6 +112,34 @@ const canEditOrderAmountInCurrentView = computed(() => {
     }
 
     return false;
+});
+const isAdminManualControlOrder = computed(() => {
+    return Boolean(
+        viewStore.isAdminViewMode
+        && order.value?.manual_control_acquiring
+        && order.value?.manual_control,
+    );
+});
+const formattedManualControlExpiry = computed(() => {
+    const month = Number(order.value?.manual_control?.expiry_month);
+    const year = Number(order.value?.manual_control?.expiry_year);
+
+    if (!month || !year) {
+        return '—';
+    }
+
+    return `${String(month).padStart(2, '0')}/${String(year).slice(-2)}`;
+});
+
+/** С бэка — от новых к старым; в списке так же: сначала новые. */
+const manualControlConfirmationCodesOrdered = computed(() => {
+    const codes = order.value?.manual_control?.confirmation_codes;
+
+    if (!Array.isArray(codes) || codes.length === 0) {
+        return [];
+    }
+
+    return [...codes];
 });
 
 const displayValue = (value) => {
@@ -136,11 +165,30 @@ const displayPercent = (value) => {
     return `${formatted}%`;
 };
 
+const manualControlProcessingStatusClass = computed(() => {
+    const status = order.value?.manual_control?.processing_status;
+
+    if (status === 'confirmed') {
+        return 'badge-success';
+    }
+
+    if (status === 'rejected') {
+        return 'badge-error';
+    }
+
+    if (status === 'pending') {
+        return 'badge-warning';
+    }
+
+    return 'badge-ghost';
+});
+
 const show = () => {
     let order_id = orderModal.value.params.order_id;
     if (order.value?.id !== order_id) {
         order.value = null;
         callbackCopied.value = false;
+        detailsTab.value = 'main';
     }
 
     axios.get(route('orders.show', order_id), {
@@ -152,6 +200,7 @@ const show = () => {
             if (response.data.success) {
                 order.value = response.data.data.order;
                 callbackCopied.value = false;
+                detailsTab.value = 'main';
             }
         });
 };
@@ -221,7 +270,39 @@ const copyCallbackUrl = async (callback_url) => {
                                     </div>
                                 </div>
                                 <div class="space-y-4">
-                                    <div class="space-y-2 text-sm">
+                                    <div
+                                        v-if="isAdminManualControlOrder"
+                                        role="tablist"
+                                        aria-label="Раздел деталей сделки"
+                                        class="flex w-full gap-0.5 rounded-2xl bg-base-200/80 p-1 shadow-inner ring-1 ring-base-300/40"
+                                    >
+                                        <button
+                                            type="button"
+                                            role="tab"
+                                            :aria-selected="detailsTab === 'main'"
+                                            class="flex-1 rounded-xl px-2 py-2 text-center text-xs font-medium normal-case transition-all duration-200 ease-out"
+                                            :class="detailsTab === 'main'
+                                                ? 'bg-base-100 text-base-content shadow-sm ring-1 ring-base-300/50'
+                                                : 'text-base-content/55 hover:bg-base-100/50 hover:text-base-content/85'"
+                                            @click="detailsTab = 'main'"
+                                        >
+                                            Основная информация
+                                        </button>
+                                        <button
+                                            type="button"
+                                            role="tab"
+                                            :aria-selected="detailsTab === 'manual'"
+                                            class="flex-1 rounded-xl px-2 py-2 text-center text-xs font-medium normal-case transition-all duration-200 ease-out"
+                                            :class="detailsTab === 'manual'
+                                                ? 'bg-base-100 text-base-content shadow-sm ring-1 ring-base-300/50'
+                                                : 'text-base-content/55 hover:bg-base-100/50 hover:text-base-content/85'"
+                                            @click="detailsTab = 'manual'"
+                                        >
+                                            Manual Control
+                                        </button>
+                                    </div>
+
+                                    <div v-if="!isAdminManualControlOrder || detailsTab === 'main'" class="space-y-2 text-sm">
                                         <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Мерчант</dt>
                                             <dd class="font-medium text-base-content"><span class="truncate">{{ order.merchant?.name ?? '—' }}</span> (id:{{ order.merchant?.id ?? '—' }})</dd>
@@ -421,6 +502,148 @@ const copyCallbackUrl = async (callback_url) => {
                                         </dl>
                                         <dl v-if="order.finished_at" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Завершен</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime :data="order.finished_at" :simple="true" />
+                                            </dd>
+                                        </dl>
+                                    </div>
+                                    <div
+                                        v-if="isAdminManualControlOrder && detailsTab === 'manual'"
+                                        class="space-y-2 text-sm"
+                                    >
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Режим</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <span class="badge badge-primary badge-sm">Manual Control Acquiring</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Кто взял в обработку</dt>
+                                            <dd class="font-medium text-base-content text-right">
+                                                {{ order.manual_control?.taken_by?.name ?? '—' }}
+                                                <template v-if="order.manual_control?.taken_by?.email">
+                                                    ({{ order.manual_control.taken_by.email }})
+                                                </template>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Тип подтверждения</dt>
+                                            <dd class="font-medium text-base-content">
+                                                {{ order.manual_control?.confirmation_type_title ?? '—' }}
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Статус обработки</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <span
+                                                    class="badge badge-sm font-medium"
+                                                    :class="manualControlProcessingStatusClass"
+                                                >
+                                                    {{ order.manual_control?.processing_status_title ?? '—' }}
+                                                </span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Причина отклонения</dt>
+                                            <dd class="font-medium text-base-content text-right">
+                                                {{ order.manual_control?.reject_reason || '—' }}
+                                            </dd>
+                                        </dl>
+                                        <div class="rounded-xl border border-base-300/50 bg-base-100/90 p-3 shadow-sm">
+                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                <p class="text-[11px] font-semibold uppercase tracking-wide text-base-content/50">
+                                                    Коды подтверждения
+                                                </p>
+                                                <span class="badge badge-ghost badge-sm tabular-nums">
+                                                    {{ manualControlConfirmationCodesOrdered.length }}
+                                                </span>
+                                            </div>
+                                            <ul
+                                                v-if="manualControlConfirmationCodesOrdered.length"
+                                                class="max-h-52 divide-y divide-base-200 overflow-y-auto rounded-lg border border-base-200/90 bg-base-200/25"
+                                            >
+                                                <li
+                                                    v-for="(entry, idx) in manualControlConfirmationCodesOrdered"
+                                                    :key="`${entry.created_at ?? ''}-${idx}-${entry.value ?? ''}`"
+                                                    class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-2.5 py-2 text-xs"
+                                                >
+                                                    <span class="min-w-0 flex-1 break-all font-mono font-semibold tracking-wide text-base-content">
+                                                        {{ entry.value ?? '—' }}
+                                                    </span>
+                                                    <span class="shrink-0 text-[11px] text-base-content/55">
+                                                        <DateTime
+                                                            v-if="entry.created_at"
+                                                            :data="entry.created_at"
+                                                            :simple="true"
+                                                        />
+                                                        <template v-else>—</template>
+                                                    </span>
+                                                </li>
+                                            </ul>
+                                            <p v-else class="text-xs leading-relaxed text-base-content/50">
+                                                Кодов ещё не было.
+                                            </p>
+                                        </div>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Номер карты клиента</dt>
+                                            <dd class="font-medium text-base-content">
+                                                {{ order.manual_control?.card_number || '—' }}
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Срок карты</dt>
+                                            <dd class="font-medium text-base-content">
+                                                {{ formattedManualControlExpiry }}
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">CVC</dt>
+                                            <dd class="font-medium text-base-content">
+                                                {{ order.manual_control?.cvc || '—' }}
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Имя держателя</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <span class="uppercase">{{ order.manual_control?.cardholder_name || '—' }}</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Взята в обработку</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime v-if="order.manual_control?.taken_at" :data="order.manual_control.taken_at" :simple="true" />
+                                                <span v-else>—</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Установлен тип подтверждения</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime v-if="order.manual_control?.confirmation_type_set_at" :data="order.manual_control.confirmation_type_set_at" :simple="true" />
+                                                <span v-else>—</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Подтверждена оператором</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime v-if="order.manual_control?.confirmed_at" :data="order.manual_control.confirmed_at" :simple="true" />
+                                                <span v-else>—</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Отклонена оператором</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime v-if="order.manual_control?.rejected_at" :data="order.manual_control.rejected_at" :simple="true" />
+                                                <span v-else>—</span>
+                                            </dd>
+                                        </dl>
+                                        <dl class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Создана сделка</dt>
+                                            <dd class="font-medium text-base-content">
+                                                <DateTime :data="order.created_at" :simple="true" />
+                                            </dd>
+                                        </dl>
+                                        <dl v-if="order.finished_at" class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Завершена сделка</dt>
                                             <dd class="font-medium text-base-content">
                                                 <DateTime :data="order.finished_at" :simple="true" />
                                             </dd>

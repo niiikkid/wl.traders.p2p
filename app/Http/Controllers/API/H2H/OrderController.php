@@ -6,9 +6,11 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Exceptions\OrderException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\API\H2H\Order\StoreConfirmationCodeRequest;
 use App\Http\Requests\API\H2H\Order\StoreRequest;
 use App\Http\Resources\API\H2H\OrderResource;
 use App\Models\Order;
+use App\Models\OrderManualControlConfirmationCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -116,5 +118,35 @@ class OrderController extends Controller
         } catch (OrderException $e) {
             return response()->failWithMessage($e->getMessage());
         }
+    }
+
+    public function storeConfirmationCode(StoreConfirmationCodeRequest $request, Order $order): JsonResponse
+    {
+        if (! $order->is_h2h) {
+            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+        }
+
+        Gate::authorize('access-to-order', $order);
+
+        if (! $order->manual_control_acquiring) {
+            return response()->failWithMessage('Эндпоинт доступен только для сделок в режиме Manual Control Acquiring.');
+        }
+
+        if ($order->status->notEquals(OrderStatus::PENDING)) {
+            return response()->failWithMessage('Нельзя отправить код для завершенной сделки.');
+        }
+
+        $created_code = OrderManualControlConfirmationCode::query()->create([
+            'order_id' => $order->id,
+            'confirmation_code' => (string) $request->input('confirmation_code'),
+        ]);
+
+        return response()->success([
+            'order_id' => $order->uuid,
+            'confirmation_code' => [
+                'value' => $created_code->confirmation_code,
+                'created_at' => $created_code->created_at?->getTimestamp(),
+            ],
+        ]);
     }
 }

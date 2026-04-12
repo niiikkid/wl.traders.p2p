@@ -20,7 +20,6 @@ class OrderResource extends JsonResource
          */
 
         $merchant = queries()->merchant()->findByID($this->merchant_id);
-
         return [
             'order_id' => $this->uuid,
             'external_id' => $this->external_id,
@@ -35,14 +34,16 @@ class OrderResource extends JsonResource
             'conversion_price' => $this->conversion_price->toBeauty(),
             'status' => $this->status->value,
             'sub_status' => $this->sub_status->value,
+            'reject_reason' => $this->manual_control_reject_reason,
             'callback_url' => $this->callback_url,
-            'payment_gateway' => $this->paymentGateway->code,
-            'payment_gateway_name' => $this->paymentGateway->name,
+            'manual_control_acquiring' => (bool) $this->manual_control_acquiring,
+            'manual_control_confirmation_type' => $this->manual_control_confirmation_type?->value,
+            'payment_gateway' => $this->paymentGateway?->code,
+            'payment_gateway_name' => $this->paymentGateway?->name,
             'payment_detail' => [
-                'detail' => $this->paymentDetail->detail,
-                'detail_type' => $this->paymentDetail->detail_type,
-                'initials' => $this->paymentDetail->initials,
-                'additional_info' => $this->paymentDetail->additional_info,
+                'detail' => $this->manual_control_acquiring ? null : $this->paymentDetail?->detail,
+                'detail_type' => $this->manual_control_acquiring ? null : $this->paymentDetail?->detail_type,
+                'initials' => $this->manual_control_acquiring ? null : $this->paymentDetail?->initials,
                 'dispute' => $this->whenLoaded('dispute', function () {
                     return [
                         'status' => $this->dispute?->status->value,

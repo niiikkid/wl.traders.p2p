@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Casts\BaseCurrencyMoneyCast;
 use App\Casts\CurrencyCast;
+use App\Enums\ManualControlConfirmationType;
+use App\Enums\ManualControlProcessingStatus;
 use App\Casts\MoneyCast;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
@@ -52,6 +55,20 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property string $fail_url
  * @property array $amount_updates_history
  * @property boolean $is_h2h
+ * @property boolean $manual_control_acquiring
+ * @property string|null $manual_control_card_number
+ * @property int|null $manual_control_expiry_month
+ * @property int|null $manual_control_expiry_year
+ * @property string|null $manual_control_cardholder_name
+ * @property int|null $manual_control_taken_by_user_id
+ * @property Carbon|null $manual_control_taken_at
+ * @property ManualControlConfirmationType|null $manual_control_confirmation_type
+ * @property Carbon|null $manual_control_confirmation_type_set_at
+ * @property ManualControlProcessingStatus|null $manual_control_processing_status
+ * @property string|null $manual_control_reject_reason
+ * @property Carbon|null $manual_control_confirmed_at
+ * @property Carbon|null $manual_control_rejected_at
+ * @property User|null $manualControlTakenByUser
  * @property int $payment_gateway_id
  * @property int $payment_detail_id
  * @property int $trader_id
@@ -66,6 +83,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property MerchantClient|null $merchantClient
  * @property SmsLog $smsLog
  * @property Dispute $dispute
+ * @property Collection<int, OrderManualControlConfirmationCode> $manualControlConfirmationCodes
  * @property Carbon $finished_at
  * @property Carbon $expires_at
  * @property Carbon $created_at
@@ -104,6 +122,19 @@ class Order extends Model
         'fail_url',
         'amount_updates_history',
         'is_h2h',
+        'manual_control_acquiring',
+        'manual_control_card_number',
+        'manual_control_expiry_month',
+        'manual_control_expiry_year',
+        'manual_control_cardholder_name',
+        'manual_control_taken_by_user_id',
+        'manual_control_taken_at',
+        'manual_control_confirmation_type',
+        'manual_control_confirmation_type_set_at',
+        'manual_control_processing_status',
+        'manual_control_reject_reason',
+        'manual_control_confirmed_at',
+        'manual_control_rejected_at',
         'payment_gateway_id',
         'payment_detail_id',
         'trader_id',
@@ -136,6 +167,15 @@ class Order extends Model
         'conversion_price' => MoneyCast::class,
         'rate_fixed_at' => 'datetime',
         'amount_updates_history' => 'array',
+        'manual_control_acquiring' => 'bool',
+        'manual_control_expiry_month' => 'int',
+        'manual_control_expiry_year' => 'int',
+        'manual_control_taken_at' => 'datetime',
+        'manual_control_confirmation_type' => ManualControlConfirmationType::class,
+        'manual_control_confirmation_type_set_at' => 'datetime',
+        'manual_control_processing_status' => ManualControlProcessingStatus::class,
+        'manual_control_confirmed_at' => 'datetime',
+        'manual_control_rejected_at' => 'datetime',
     ];
 
     protected static function booted()
@@ -180,6 +220,16 @@ class Order extends Model
     public function dispute(): HasOne
     {
         return $this->hasOne(Dispute::class);
+    }
+
+    public function manualControlConfirmationCodes(): HasMany
+    {
+        return $this->hasMany(OrderManualControlConfirmationCode::class, 'order_id');
+    }
+
+    public function manualControlTakenByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'manual_control_taken_by_user_id');
     }
 
     public function merchant(): BelongsTo
