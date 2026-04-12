@@ -57,16 +57,7 @@ class ManualControlAcqController extends Controller
             return $this->forbiddenResponse();
         }
 
-        if (! $this->isCurrentUserWorking()) {
-            return response()->success([
-                'is_working' => false,
-                'incoming_offer' => null,
-                'incoming_queue_waiting_count' => 0,
-                'active_queue_items' => [],
-                'history_queue_items' => [],
-                'history_total_count' => 0,
-            ]);
-        }
+        $is_working = $this->isCurrentUserWorking();
 
         $active_orders = Order::query()
             ->with([
@@ -85,19 +76,23 @@ class ManualControlAcqController extends Controller
             ->orderBy('id')
             ->get();
 
-        $incoming_order_query = Order::query()
-            ->with('paymentGateway')
-            ->where('manual_control_acquiring', true)
-            ->where('status', OrderStatus::PENDING)
-            ->where(function ($query) {
-                $query
-                    ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
-                    ->orWhereNull('manual_control_processing_status');
-            })
-            ->whereNull('manual_control_taken_by_user_id')
-            ->orderBy('created_at');
-        $incoming_order = (clone $incoming_order_query)->first();
-        $incoming_queue_total_count = (clone $incoming_order_query)->count();
+        $incoming_order = null;
+        $incoming_queue_waiting_count = 0;
+        if ($is_working) {
+            $incoming_order_query = Order::query()
+                ->with('paymentGateway')
+                ->where('manual_control_acquiring', true)
+                ->where('status', OrderStatus::PENDING)
+                ->where(function ($query) {
+                    $query
+                        ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
+                        ->orWhereNull('manual_control_processing_status');
+                })
+                ->whereNull('manual_control_taken_by_user_id')
+                ->orderBy('created_at');
+            $incoming_order = (clone $incoming_order_query)->first();
+            $incoming_queue_waiting_count = max(0, (clone $incoming_order_query)->count() - 1);
+        }
 
         $history_orders_query = Order::query()
             ->with([
@@ -127,9 +122,9 @@ class ManualControlAcqController extends Controller
             ->get();
 
         return response()->success([
-            'is_working' => true,
+            'is_working' => $is_working,
             'incoming_offer' => $incoming_order ? $this->makeIncomingOfferPreview($incoming_order) : null,
-            'incoming_queue_waiting_count' => max(0, $incoming_queue_total_count - 1),
+            'incoming_queue_waiting_count' => $incoming_queue_waiting_count,
             'active_queue_items' => $this->makeQueueItems($active_orders),
             'history_queue_items' => $this->makeHistoryQueueItems($history_orders),
             'history_total_count' => $history_total_count,
@@ -185,13 +180,10 @@ class ManualControlAcqController extends Controller
             return $this->forbiddenResponse();
         }
 
-        if (! $this->isCurrentUserWorking()) {
-            return response()->failWithMessage('Режим работы выключен. Включите его, чтобы отклонять заявки.');
-        }
-
         $latest_order = Order::query()->whereKey($order->id)->firstOrFail();
+        $allow_unassigned_order_reject = $this->isCurrentUserWorking();
 
-        if (! $this->canRejectOrder($latest_order)) {
+        if (! $this->canRejectOrder($latest_order, $allow_unassigned_order_reject)) {
             return response()->failWithMessage('Заявка уже недоступна для отклонения.');
         }
 
@@ -236,10 +228,6 @@ class ManualControlAcqController extends Controller
             return $this->forbiddenResponse();
         }
 
-        if (! $this->isCurrentUserWorking()) {
-            return response()->failWithMessage('Режим работы выключен. Включите его, чтобы подтверждать заявки.');
-        }
-
         $latest_order = Order::query()->whereKey($order->id)->firstOrFail();
 
         if (! $this->canConfirmOrder($latest_order)) {
@@ -259,10 +247,6 @@ class ManualControlAcqController extends Controller
     {
         if (! $this->hasManualControlAcqAccess()) {
             return $this->forbiddenResponse();
-        }
-
-        if (! $this->isCurrentUserWorking()) {
-            return response()->failWithMessage('Режим работы выключен. Включите его, чтобы выбрать тип подтверждения.');
         }
 
         $validated_data = $request->validate([
@@ -299,10 +283,6 @@ class ManualControlAcqController extends Controller
 
         if (! $user) {
             return response()->failWithMessage('Пользователь не найден.');
-        }
-
-        if (! $is_working && $this->hasActiveOrders((int) $user->id)) {
-            return response()->failWithMessage('Нельзя выключить режим работы, пока есть активная заявка.');
         }
 
         if (! $is_working && $this->hasIncomingQueueOrders()) {
@@ -511,7 +491,7 @@ class ManualControlAcqController extends Controller
             && $order->manual_control_taken_by_user_id === null;
     }
 
-    private function canRejectOrder(Order $order): bool
+    private function canRejectOrder(Order $order, bool $allow_unassigned_order_reject = true): bool
     {
         if (! $order->manual_control_acquiring || $order->status->notEquals(OrderStatus::PENDING)) {
             return false;
@@ -521,8 +501,11 @@ class ManualControlAcqController extends Controller
             return false;
         }
 
-        return $order->manual_control_taken_by_user_id === null
-            || $order->manual_control_taken_by_user_id === auth()->id();
+        if ($order->manual_control_taken_by_user_id === auth()->id()) {
+            return true;
+        }
+
+        return $allow_unassigned_order_reject && $order->manual_control_taken_by_user_id === null;
     }
 
     private function canSetConfirmationType(Order $order): bool
@@ -599,20 +582,6 @@ class ManualControlAcqController extends Controller
         return response()->json([
             'message' => 'Нет доступа к Manual Control Acquiring.',
         ], 403);
-    }
-
-    private function hasActiveOrders(int $user_id): bool
-    {
-        return Order::query()
-            ->where('manual_control_acquiring', true)
-            ->where('status', OrderStatus::PENDING)
-            ->where(function ($query) {
-                $query
-                    ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
-                    ->orWhereNull('manual_control_processing_status');
-            })
-            ->where('manual_control_taken_by_user_id', $user_id)
-            ->exists();
     }
 
     private function hasIncomingQueueOrders(): bool

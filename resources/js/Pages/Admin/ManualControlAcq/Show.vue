@@ -304,8 +304,7 @@ const canConfirm = computed(() => {
     const item = selected_item.value;
 
     return Boolean(
-        is_working.value
-        && item
+        item
         && !item.is_history
         && item.pending_confirmation_title
         && !is_confirm_processing.value,
@@ -471,7 +470,9 @@ const stop_state_polling = () => {
 };
 
 const start_workspace_timers = () => {
-    if (timerInterval !== null || !is_working.value) {
+    const has_runtime_items = pay_in_queue_active.value.length > 0 || Boolean(incoming_offer_preview.value);
+
+    if (timerInterval !== null || !has_runtime_items) {
         return;
     }
 
@@ -529,7 +530,7 @@ const start_workspace_timers = () => {
 };
 
 const start_state_polling = () => {
-    if (statePollInterval !== null || !is_working.value) {
+    if (statePollInterval !== null) {
         return;
     }
 
@@ -539,14 +540,15 @@ const start_state_polling = () => {
 };
 
 const sync_runtime_activity_by_work_status = () => {
-    if (is_working.value) {
+    const has_runtime_items = pay_in_queue_active.value.length > 0 || Boolean(incoming_offer_preview.value);
+    start_state_polling();
+
+    if (has_runtime_items) {
         start_workspace_timers();
-        start_state_polling();
         return;
     }
 
     stop_workspace_timers();
-    stop_state_polling();
 };
 
 const latest_confirmation_code_key = (item) => {
@@ -611,19 +613,6 @@ const apply_state = (state) => {
     const previous_incoming_offer_id = incoming_offer_preview.value?.id ?? null;
     const previous_confirmation_snapshot = make_active_confirmation_code_snapshot(pay_in_queue_active.value);
     is_working.value = Boolean(state.is_working);
-
-    if (!is_working.value) {
-        incoming_queue_waiting_count.value = 0;
-        incoming_offer_preview.value = null;
-        pay_in_queue_active.value = [];
-        pay_in_queue_history_visible.value = [];
-        history_total_count.value = 0;
-        selected_item_id.value = null;
-        replace_selected_order_in_url(null);
-        action_error_message.value = '';
-        sync_runtime_activity_by_work_status();
-        return;
-    }
 
     const next_active_items = state.active_queue_items ?? [];
     const current_active_by_id = new Map(
@@ -720,7 +709,7 @@ const request_toggle_work_status = () => {
         title: next_work_status ? 'Встать в работу?' : 'Выйти из работы?',
         body: next_work_status
             ? 'Вы уверены, что хотите начать работу с заявками Manual Control ACQ?'
-            : 'Вы уверены, что хотите выйти из режима работы? Новые заявки перестанут приходить.',
+            : 'Вы уверены, что хотите выйти из режима работы? Новые заявки перестанут приходить, а текущие можно будет завершить.',
         confirm_button_name: next_work_status ? 'Включить' : 'Выключить',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -756,7 +745,7 @@ const execute_take_incoming_offer = async () => {
 };
 
 const execute_reject_offer = async (order_id, reject_reason = null) => {
-    if (!is_working.value || !order_id || is_reject_processing.value) {
+    if (!order_id || is_reject_processing.value) {
         return;
     }
 
@@ -851,7 +840,7 @@ const apply_confirmation_type = async (confirmation_type, confirmation_title) =>
 const request_select_confirmation_type = (confirmation_type, confirmation_title) => {
     const item = selected_item.value;
 
-    if (!is_working.value || !item || item.is_history || is_confirmation_type_processing.value) {
+    if (!item || item.is_history || is_confirmation_type_processing.value) {
         return;
     }
 
@@ -922,7 +911,7 @@ const request_confirm_payment = () => {
 const request_reject_application = () => {
     const item = selected_item.value;
 
-    if (!is_working.value || !item || item.is_history) {
+    if (!item || item.is_history) {
         return;
     }
 
@@ -932,7 +921,7 @@ const request_reject_application = () => {
 const submit_reject_with_reason = async () => {
     const item = selected_item.value;
 
-    if (!is_working.value || !item || item.is_history || is_reject_processing.value) {
+    if (!item || item.is_history || is_reject_processing.value) {
         return;
     }
 
@@ -1111,7 +1100,7 @@ onBeforeUnmount(() => {
                         v-if="!is_working"
                         class="mb-3 rounded-box bg-base-100 px-3 py-2.5 text-xs leading-snug text-base-content/65"
                     >
-                        Режим работы выключен. Включите переключатель «Работа», чтобы получать и обрабатывать заявки.
+                        Режим работы выключен. Новые заявки не поступают, но текущие можно завершить.
                     </div>
                     <div
                         v-if="incoming_offer_visible && incoming_offer_preview"
@@ -1750,7 +1739,7 @@ onBeforeUnmount(() => {
                 v-else
                 class="flex flex-1 flex-col items-center justify-center gap-2 px-4 py-12 text-center text-sm text-base-content/60"
             >
-                {{ is_working ? 'Нет выбранной заявки.' : 'Режим работы выключен.' }}
+                {{ is_working ? 'Нет выбранной заявки.' : 'Новые заявки отключены. Выберите текущую заявку в очереди.' }}
             </div>
         </div>
 
