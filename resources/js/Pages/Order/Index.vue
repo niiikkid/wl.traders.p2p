@@ -135,6 +135,10 @@ const closeExportModal = () => {
     showExportModal.value = false;
 };
 
+const openManualControlAcqPage = () => {
+    window.open(route('admin.manual-control-acq.show'), '_blank', 'noopener');
+};
+
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -208,6 +212,14 @@ defineOptions({ layout: AuthenticatedLayout })
 
                     <div class="flex items-center justify-between">
                         <div>
+                            <button
+                                v-if="viewStore.isAdminViewMode"
+                                type="button"
+                                class="btn btn-primary btn-sm"
+                                @click="openManualControlAcqPage"
+                            >
+                                Manual Control ACQ
+                            </button>
                             <div v-if="reloadingTableData" class="xl:hidden px-2 text-sm text-base-content/80 flex items-center gap-2" aria-live="polite">
                                 <div class="animate-spin inline-block w-5 h-5 border-[3px] border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading">
                                     <span class="sr-only">Загрузка...</span>
