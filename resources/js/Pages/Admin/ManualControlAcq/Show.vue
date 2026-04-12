@@ -37,6 +37,8 @@ const rejectReasons = [
 
 const page_props = usePage().props;
 const audio_tracks = ref(page_props.audioTracks ?? []);
+const manual_control_route_prefix = computed(() => route().current('support.*') ? 'support' : 'admin');
+const manual_control_route_name = (action) => `${manual_control_route_prefix.value}.manual-control-acq.${action}`;
 
 const resolve_default_sound_track = (track, fallback_track) => {
     const allowed_tracks = audio_tracks.value.map((item) => item.value);
@@ -156,7 +158,7 @@ const save_sound_settings = async () => {
 
     try {
         const response = await axios.patch(
-            route('admin.manual-control-acq.sound-settings.update'),
+            route(manual_control_route_name('sound-settings.update')),
             current_sound_settings_payload(),
         );
 
@@ -669,7 +671,7 @@ const load_state = async () => {
     is_state_loading.value = true;
 
     try {
-        const response = await axios.get(route('admin.manual-control-acq.state'));
+        const response = await axios.get(route(manual_control_route_name('state')));
         if (requestSerial !== stateRequestSerial) {
             return;
         }
@@ -693,7 +695,7 @@ const execute_set_work_status = async (next_work_status) => {
     is_work_toggle_processing.value = true;
 
     try {
-        const response = await axios.post(route('admin.manual-control-acq.work-status'), {
+        const response = await axios.post(route(manual_control_route_name('work-status')), {
             is_working: next_work_status,
         });
         const state = response?.data?.data ?? {};
@@ -738,7 +740,7 @@ const execute_take_incoming_offer = async () => {
     is_take_processing.value = true;
 
     try {
-        await axios.post(route('admin.manual-control-acq.take', { order: taken_order_id }));
+        await axios.post(route(manual_control_route_name('take'), { order: taken_order_id }));
         action_error_message.value = '';
         await load_state();
         if (pay_in_queue_active.value.some((item) => item.id === taken_order_id)) {
@@ -761,7 +763,7 @@ const execute_reject_offer = async (order_id, reject_reason = null) => {
     is_reject_processing.value = true;
 
     try {
-        await axios.post(route('admin.manual-control-acq.reject', { order: order_id }), {
+        await axios.post(route(manual_control_route_name('reject'), { order: order_id }), {
             reject_reason,
         });
         action_error_message.value = '';
@@ -832,7 +834,7 @@ const apply_confirmation_type = async (confirmation_type, confirmation_title) =>
     is_confirmation_type_processing.value = true;
 
     try {
-        await axios.post(route('admin.manual-control-acq.set-confirmation-type', { order: item.id }), {
+        await axios.post(route(manual_control_route_name('set-confirmation-type'), { order: item.id }), {
             confirmation_type,
         });
         action_error_message.value = '';
@@ -884,7 +886,7 @@ const execute_confirm_payment = async () => {
     is_confirm_processing.value = true;
 
     try {
-        await axios.post(route('admin.manual-control-acq.confirm', { order: item.id }));
+        await axios.post(route(manual_control_route_name('confirm'), { order: item.id }));
         action_error_message.value = '';
         await load_state();
     } catch (error) {

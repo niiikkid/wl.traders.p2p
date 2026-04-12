@@ -72,6 +72,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property float|null $team_leader_flexible_trader_commission_max
  * @property bool $support_can_view_deposits
  * @property bool $support_can_edit_order_amount
+ * @property bool $support_can_use_manual_control_acq
  * @property bool $manual_control_acq_is_working
  * @property Carbon|null $archived_at
  * @property float|null $team_leader_individual_commission_percentage
@@ -129,6 +130,7 @@ class User extends Authenticatable
         'team_leader_flexible_trader_commission_max',
         'support_can_view_deposits',
         'support_can_edit_order_amount',
+        'support_can_use_manual_control_acq',
         'manual_control_acq_is_working',
         'team_leader_individual_commission_percentage',
         'banned_at',
@@ -179,6 +181,7 @@ class User extends Authenticatable
             'team_leader_flexible_trader_commission_max' => 'float',
             'support_can_view_deposits' => 'boolean',
             'support_can_edit_order_amount' => 'boolean',
+            'support_can_use_manual_control_acq' => 'boolean',
             'manual_control_acq_is_working' => 'boolean',
             'team_leader_individual_commission_percentage' => 'float',
             'hide_name_in_trader_top' => 'boolean',

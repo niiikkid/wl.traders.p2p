@@ -40,6 +40,8 @@ class ManualControlAcqController extends Controller
 
     public function show(): Response
     {
+        abort_unless($this->hasManualControlAcqAccess(), 403);
+
         $audio_tracks = $this->getAudioTracks();
         $sound_settings = $this->resolveSoundSettings(auth()->user()?->meta, $audio_tracks);
 
@@ -51,6 +53,10 @@ class ManualControlAcqController extends Controller
 
     public function state(): JsonResponse
     {
+        if (! $this->hasManualControlAcqAccess()) {
+            return $this->forbiddenResponse();
+        }
+
         if (! $this->isCurrentUserWorking()) {
             return response()->success([
                 'is_working' => false,
@@ -132,6 +138,10 @@ class ManualControlAcqController extends Controller
 
     public function take(Order $order): JsonResponse
     {
+        if (! $this->hasManualControlAcqAccess()) {
+            return $this->forbiddenResponse();
+        }
+
         if (! $this->isCurrentUserWorking()) {
             return response()->failWithMessage('Режим работы выключен. Включите его, чтобы брать заявки.');
         }
@@ -171,6 +181,10 @@ class ManualControlAcqController extends Controller
 
     public function reject(Request $request, Order $order): JsonResponse
     {
+        if (! $this->hasManualControlAcqAccess()) {
+            return $this->forbiddenResponse();
+        }
+
         if (! $this->isCurrentUserWorking()) {
             return response()->failWithMessage('Режим работы выключен. Включите его, чтобы отклонять заявки.');
         }
@@ -218,6 +232,10 @@ class ManualControlAcqController extends Controller
 
     public function confirm(Order $order): JsonResponse
     {
+        if (! $this->hasManualControlAcqAccess()) {
+            return $this->forbiddenResponse();
+        }
+
         if (! $this->isCurrentUserWorking()) {
             return response()->failWithMessage('Режим работы выключен. Включите его, чтобы подтверждать заявки.');
         }
@@ -239,6 +257,10 @@ class ManualControlAcqController extends Controller
 
     public function setConfirmationType(Request $request, Order $order): JsonResponse
     {
+        if (! $this->hasManualControlAcqAccess()) {
+            return $this->forbiddenResponse();
+        }
+
         if (! $this->isCurrentUserWorking()) {
             return response()->failWithMessage('Режим работы выключен. Включите его, чтобы выбрать тип подтверждения.');
         }
@@ -268,6 +290,10 @@ class ManualControlAcqController extends Controller
 
     public function setWorkStatus(Request $request): JsonResponse
     {
+        if (! $this->hasManualControlAcqAccess()) {
+            return $this->forbiddenResponse();
+        }
+
         $is_working = (bool) $request->boolean('is_working');
         $user = auth()->user();
 
@@ -288,6 +314,10 @@ class ManualControlAcqController extends Controller
 
     public function updateSoundSettings(Request $request): JsonResponse
     {
+        if (! $this->hasManualControlAcqAccess()) {
+            return $this->forbiddenResponse();
+        }
+
         $audio_tracks = $this->getAudioTracks();
         $allowed_tracks = array_column($audio_tracks, 'value');
 
@@ -544,6 +574,27 @@ class ManualControlAcqController extends Controller
     private function isCurrentUserWorking(): bool
     {
         return (bool) auth()->user()?->manual_control_acq_is_working;
+    }
+
+    private function hasManualControlAcqAccess(): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->hasRole('Super Admin')) {
+            return true;
+        }
+
+        return $user->hasRole('Support') && (bool) $user->support_can_use_manual_control_acq;
+    }
+
+    private function forbiddenResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Нет доступа к Manual Control Acquiring.',
+        ], 403);
     }
 
     private function hasActiveOrders(int $user_id): bool
