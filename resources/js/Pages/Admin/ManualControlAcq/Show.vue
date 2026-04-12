@@ -427,7 +427,14 @@ const normalize_processing_item = (item, previous_item = null) => {
     }
 
     let total_from_server_time = Number(item.processing_total_seconds) || 1;
-    if (Number.isFinite(created_ts) && Number.isFinite(resolved_end_ts) && resolved_end_ts > created_ts) {
+    if (Number.isFinite(created_ts) && Number.isFinite(expires_ts) && expires_ts > created_ts) {
+        total_from_server_time = expires_ts - created_ts;
+    } else if (
+        !is_history_item
+        && Number.isFinite(created_ts)
+        && Number.isFinite(resolved_end_ts)
+        && resolved_end_ts > created_ts
+    ) {
         total_from_server_time = resolved_end_ts - created_ts;
     }
 

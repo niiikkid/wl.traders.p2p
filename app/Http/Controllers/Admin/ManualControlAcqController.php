@@ -365,11 +365,8 @@ class ManualControlAcqController extends Controller
         $active_total_seconds = (is_int($created_at_ts) && is_int($expires_at_ts))
             ? max(1, $expires_at_ts - $created_at_ts)
             : (15 * 60);
-        $history_total_seconds = (is_int($created_at_ts) && is_int($finished_at_ts))
-            ? max(1, $finished_at_ts - $created_at_ts)
-            : $active_total_seconds;
 
-        $processing_total_seconds = $is_history ? $history_total_seconds : $active_total_seconds;
+        $processing_total_seconds = $active_total_seconds;
 
         $processing_end_ts = null;
         if ($is_history && is_int($finished_at_ts)) {
