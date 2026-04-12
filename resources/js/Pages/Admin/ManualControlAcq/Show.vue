@@ -786,7 +786,7 @@ const request_take_incoming_offer = () => {
 
     modal_store.openConfirmModal({
         title: 'Взять заявку в работу?',
-        body: `Вы подтверждаете взятие новой заявки Pay In ${payin_label}.`,
+        body: `Вы подтверждаете взятие новой заявки с Order ID ${payin_label}.`,
         confirm_button_name: 'Взять',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -806,7 +806,7 @@ const request_decline_incoming_offer = () => {
 
     modal_store.openConfirmModal({
         title: 'Отклонить входящую заявку?',
-        body: `Вы подтверждаете отклонение заявки Pay In ${payin_label}.`,
+        body: `Вы подтверждаете отклонение заявки с Order ID ${payin_label}.`,
         confirm_button_name: 'Отклонить',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -857,7 +857,7 @@ const request_select_confirmation_type = (confirmation_type, confirmation_title)
 
     modal_store.openConfirmModal({
         title: 'Выбрать тип подтверждения?',
-        body: `Действие: установить тип «${confirmation_title}» для заявки Pay In ${item.payin_id.display}.`,
+        body: `Действие: установить тип «${confirmation_title}» для заявки с Order ID ${item.payin_id.display}.`,
         confirm_button_name: 'Выбрать',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -910,7 +910,7 @@ const request_confirm_payment = () => {
 
     modal_store.openConfirmModal({
         title: 'Подтвердить операцию?',
-        body: `Действие: подтвердить заявку Pay In ${item.payin_id.display} с типом «${item.pending_confirmation_title}».`,
+        body: `Действие: подтвердить заявку с Order ID ${item.payin_id.display} с типом «${item.pending_confirmation_title}».`,
         confirm_button_name: 'Confirm',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -1106,7 +1106,7 @@ onBeforeUnmount(() => {
                         </svg>
                     </button>
                 </div>
-                <nav class="min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label="Очередь Pay In">
+                <nav class="min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label="Очередь заявок">
                     <div
                         v-if="!is_working"
                         class="mb-3 rounded-box bg-base-100 px-3 py-2.5 text-xs leading-snug text-base-content/65"
@@ -1168,7 +1168,7 @@ onBeforeUnmount(() => {
 
                             <div class="space-y-2 rounded-box border border-base-200 bg-base-200/30 px-2.5 py-2 text-xs">
                                 <div class="flex items-baseline justify-between gap-2">
-                                    <span class="shrink-0 font-medium uppercase tracking-wide text-base-content/50">Pay In</span>
+                                    <span class="shrink-0 font-medium uppercase tracking-wide text-base-content/50">Order ID</span>
                                     <span class="font-mono font-semibold tabular-nums text-base-content">
                                         {{ incoming_offer_preview.payin_id.display }}
                                     </span>
@@ -1487,7 +1487,7 @@ onBeforeUnmount(() => {
                         <div class="grid gap-3 sm:grid-cols-2 sm:gap-6">
                             <div class="space-y-1 sm:space-y-2">
                                 <p class="text-xs font-medium uppercase tracking-[0.2em] text-primary-content/70">
-                                    PAYIN ID
+                                    ORDER ID
                                 </p>
                                 <button
                                     type="button"
@@ -1851,7 +1851,7 @@ onBeforeUnmount(() => {
                                     Новая заявка
                                 </p>
                                 <p class="mt-0.5 text-xs leading-snug text-base-content/50">
-                                    Когда в очередь попадает новая заявка Pay In.
+                                    Когда в очередь попадает новая заявка.
                                 </p>
                             </div>
                             <input
