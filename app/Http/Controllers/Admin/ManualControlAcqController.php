@@ -305,6 +305,10 @@ class ManualControlAcqController extends Controller
             return response()->failWithMessage('Нельзя выключить режим работы, пока есть активная заявка.');
         }
 
+        if (! $is_working && $this->hasIncomingQueueOrders()) {
+            return response()->failWithMessage('Нельзя выключить режим работы, пока есть заявки в очереди. Сначала возьмите их в работу или отклоните.');
+        }
+
         $user->update([
             'manual_control_acq_is_working' => $is_working,
         ]);
@@ -608,6 +612,20 @@ class ManualControlAcqController extends Controller
                     ->orWhereNull('manual_control_processing_status');
             })
             ->where('manual_control_taken_by_user_id', $user_id)
+            ->exists();
+    }
+
+    private function hasIncomingQueueOrders(): bool
+    {
+        return Order::query()
+            ->where('manual_control_acquiring', true)
+            ->where('status', OrderStatus::PENDING)
+            ->where(function ($query) {
+                $query
+                    ->where('manual_control_processing_status', ManualControlProcessingStatus::PENDING)
+                    ->orWhereNull('manual_control_processing_status');
+            })
+            ->whereNull('manual_control_taken_by_user_id')
             ->exists();
     }
 
