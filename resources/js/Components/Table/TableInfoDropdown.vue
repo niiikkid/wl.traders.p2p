@@ -1,6 +1,13 @@
 <script setup>
 import { ref, onMounted, onUnmounted, provide, nextTick } from "vue";
 
+const props = defineProps({
+    buttonClass: {
+        type: String,
+        default: "btn btn-ghost btn-circle btn-sm",
+    },
+});
+
 const isOpen = ref(false);
 const dropdown = ref(null);
 const button = ref(null);
@@ -57,7 +64,7 @@ onUnmounted(() => {
         <button
             @click="toggleDropdown"
             ref="button"
-            class="btn btn-ghost btn-circle btn-sm"
+            :class="props.buttonClass"
             type="button"
             aria-label="Информация"
         >

@@ -50,11 +50,6 @@ const isTraderView = computed(() => viewStore.isTraderViewMode);
 const displayShortDetail = ref(getCookieValue('displayShortDetail', true));
 const displayDetailTags = ref(getCookieValue('displayDetailTags', false));
 
-const expandedCards = ref({});
-const toggleExpand = (id) => {
-    expandedCards.value[id] = !expandedCards.value[id];
-};
-
 function getCookieValue(name, defaultValue) {
     const currentRoute = route().current();
     const cookieName = `${name}_${currentRoute}`;
@@ -725,224 +720,160 @@ defineOptions({ layout: AuthenticatedLayout })
                                 class="card bg-base-100 shadow-sm"
                             >
                                 <div class="card-body p-4 pt-2 pb-3">
-                                    <!-- Шапка: ID и статус-переключатель -->
-                                    <div class="flex justify-between items-center">
-                                        <div class="inline-flex items-center gap-2">
-                                            <span class="text-base-content/70">ID:</span>
-                                            <span class="font-medium text-base-content">{{ payment_detail.id }}</span>
+                                    <div class="flex justify-between items-center gap-2">
+                                        <div class="inline-flex items-center gap-2 min-w-0 text-xs">
+                                            <span class="text-base-content/70 shrink-0">ID:</span>
+                                            <span class="font-medium text-base-content truncate">{{ payment_detail.id }}</span>
                                         </div>
-                                        <div class="inline-flex items-center">
-                                            <label class="label cursor-pointer justify-start gap-2">
-                                                <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-sm" @change="toggleActive(payment_detail.id)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
+                                        <div class="inline-flex items-center gap-0 shrink-0 gap-3">
+                                            <label class="label cursor-pointer justify-start gap-2 p-0">
+                                                <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-xs" @change="toggleActive(payment_detail.id)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
                                             </label>
+                                            <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
+                                                <template v-if="currentTab === 'active'">
+                                                    <TableAction @click="openEditModal(payment_detail)">
+                                                        Редактировать
+                                                    </TableAction>
+                                                    <TableAction @click="confirmArchiveDetail(payment_detail)">
+                                                        Архивировать
+                                                    </TableAction>
+                                                </template>
+                                                <template v-else>
+                                                    <TableAction @click="confirmUnarchiveDetail(payment_detail)">
+                                                        Вернуть из архива
+                                                    </TableAction>
+                                                </template>
+                                            </TableActionsDropdown>
                                         </div>
                                     </div>
 
                                     <div class="border-b border-base-content/10"></div>
 
-                                    <!-- Для >= sm -->
-                                    <div class="hidden sm:flex items-center justify-between gap-2">
-                                        <div class="flex items-center gap-2 min-w-0">
-                                            <GatewayLogo :img_path="payment_detail.payment_gateway.logo_path" :name="payment_detail.payment_gateway.name" class="w-10 h-10"/>
-                                            <PaymentDetail
-                                                :detail="payment_detail.detail"
-                                                :type="payment_detail.detail_type"
-                                                :name="payment_detail.name"
-                                            ></PaymentDetail>
-                                        </div>
-                                        <div class="text-sm text-nowrap">
+                                    <div class="flex items-start gap-2 min-w-0">
+                                        <GatewayLogo :img_path="payment_detail.payment_gateway.logo_path" :name="payment_detail.payment_gateway.name" class="w-10 h-10 shrink-0"/>
+                                        <PaymentDetail
+                                            :detail="payment_detail.detail"
+                                            :type="payment_detail.detail_type"
+                                            :name="payment_detail.name"
+                                        />
+                                    </div>
+
+                                    <div class="border-b border-base-content/10"></div>
+
+                                    <div class="flex items-start justify-between gap-2 text-xs text-base-content/80">
+                                        <span class="text-nowrap pt-1">
                                             <span
                                                 class="font-semibold"
                                                 :class="{
-                                                    'text-success': payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity < 0.5,
-                                                    'text-warning': payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity >= 0.5 && payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity < 0.8,
-                                                    'text-error': payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity >= 0.8
+                                                    'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
+                                                    'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
+                                                    'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
                                                 }"
                                             >
                                                 {{ payment_detail.pending_orders_count }}
                                             </span>
-                                            <span class="mx-1 opacity-70">из</span>
-                                            <span class="font-semibold">
-                                                {{ payment_detail.max_pending_orders_quantity }}
-                                            </span>
-                                        </div>
-                                        <div class="text-right" v-if="viewStore.isAdminViewMode || isVipUser">
-                                            <div class="text-nowrap text-xs"><span class="opacity-70">min:</span> {{ payment_detail.min_order_amount !== null ? payment_detail.min_order_amount : '∞' }}</div>
-                                            <div class="text-nowrap text-xs"><span class="opacity-70">max:</span> {{ payment_detail.max_order_amount !== null ? payment_detail.max_order_amount : '∞' }}</div>
-                                        </div>
-                                        <div class="text-nowrap text-xs">
-                                            {{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}
-                                        </div>
-                                        <div>
-                                            <button
-                                                class="btn btn-primary btn-xs"
-                                                @click.stop="toggleExpand(payment_detail.id)"
-                                                :aria-expanded="!!expandedCards[payment_detail.id]"
-                                                :aria-label="!!expandedCards[payment_detail.id] ? 'Скрыть' : 'Показать детали'"
-                                            >
-                                                <svg
-                                                    :class="['w-4 h-4 transition-transform', {'rotate-180': !!expandedCards[payment_detail.id]}]"
-                                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
+                                            <span class="mx-0.5 opacity-70">из</span>
+                                            <span class="font-semibold">{{ payment_detail.max_pending_orders_quantity }}</span>
+                                            <span class="text-base-content/50 ml-1">активных</span>
+                                        </span>
 
-                                    <!-- Для xs -->
-                                    <div class="sm:hidden">
-                                        <div class="flex items-center justify-between">
-                                            <div class="flex items-center gap-2 min-w-0">
-                                                <GatewayLogo :img_path="payment_detail.payment_gateway.logo_path" :name="payment_detail.payment_gateway.name" class="w-10 h-10"/>
-                                                <PaymentDetail
-                                                    :detail="payment_detail.detail"
-                                                    :type="payment_detail.detail_type"
-                                                    :name="payment_detail.name"
-                                                ></PaymentDetail>
-                                            </div>
-                                        </div>
-                                        <div class="border-b border-base-content/10 my-2"></div>
-                                        <div class="flex items-center justify-between">
-                                            <div class="text-nowrap text-xs">
-                                                <span
-                                                    class="font-semibold"
-                                                    :class="{
-                                                        'text-success': payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity < 0.5,
-                                                        'text-warning': payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity >= 0.5 && payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity < 0.8,
-                                                        'text-error': payment_detail.pending_orders_count / payment_detail.max_pending_orders_quantity >= 0.8
-                                                    }"
-                                                >
-                                                    {{ payment_detail.pending_orders_count }}
-                                                </span>
-                                                <span class="mx-1 opacity-70">из</span>
-                                                <span class="font-semibold">
-                                                    {{ payment_detail.max_pending_orders_quantity }}
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <button
-                                                    class="btn btn-primary btn-xs"
-                                                    @click.stop="toggleExpand(payment_detail.id)"
-                                                    :aria-expanded="!!expandedCards[payment_detail.id]"
-                                                    :aria-label="!!expandedCards[payment_detail.id] ? 'Скрыть' : 'Показать детали'"
-                                                >
-                                                    <svg
-                                                        :class="['w-4 h-4 transition-transform', {'rotate-180': !!expandedCards[payment_detail.id]}]"
-                                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                        stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Раскрываемая часть -->
-                                    <div v-show="!!expandedCards[payment_detail.id]" class="mt-3 grid gap-2 bg-base-300/50 rounded-box p-2">
-                                        <div class="hidden sm:flex justify-between gap-2">
-                                            <div>
-                                                <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-2 text-sm">
-                                                    <svg class="w-4 h-4 text-info shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                                                    </svg>
-                                                    <span class="truncate">{{ payment_detail.owner_email }}</span>
+                                        <TableInfoDropdown button-class="btn btn-ghost btn-circle btn-xs">
+                                            <div class="grid gap-1.5 text-xs leading-tight">
+                                                <div v-if="viewStore.isAdminViewMode" class="flex items-center justify-between gap-2">
+                                                    <span class="text-base-content/70">Профиль:</span>
+                                                    <span class="text-right">{{ payment_detail.owner_email }}</span>
                                                 </div>
-                                                <div class="flex items-center gap-2 text-sm">
-                                                    <svg class="w-4 h-4 text-info shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
-                                                    </svg>
-                                                <span class="truncate">
-                                                    {{ payment_detail.device_name ?? 'Без устройства' }}
-                                                </span>
+                                                <div v-if="showDeviceColumn" class="flex items-center justify-between gap-2">
+                                                    <span class="text-base-content/70">Устройство:</span>
+                                                    <span class="text-right">{{ payment_detail.device_name ?? 'Без устройства' }}</span>
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <div class="grid gap-2 text-sm w-35">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-base-content/70">Интервал:</span>
+                                                    <span class="text-right">{{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}</span>
+                                                </div>
+                                                <div v-if="viewStore.isAdminViewMode || isVipUser" class="grid gap-1">
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="text-base-content/70">Мин:</span>
+                                                        <span class="text-right">{{ payment_detail.min_order_amount !== null ? payment_detail.min_order_amount : '∞' }}</span>
+                                                    </div>
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="text-base-content/70">Макс:</span>
+                                                        <span class="text-right">{{ payment_detail.max_order_amount !== null ? payment_detail.max_order_amount : '∞' }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="divider my-0.5"></div>
+                                                <div class="grid gap-1">
+                                                    <div class="text-[10px] text-base-content/70">Активных сделок</div>
+                                                    <div class="flex justify-end">
+                                                        <div class="relative text-nowrap">
+                                                            <span
+                                                                class="text-xs font-semibold"
+                                                                :class="{
+                                                                    'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
+                                                                    'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
+                                                                    'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
+                                                                }"
+                                                            >
+                                                                {{ payment_detail.pending_orders_count }}
+                                                            </span>
+                                                            <span class="mx-1 opacity-70">из</span>
+                                                            <span class="text-xs font-semibold">
+                                                                {{ payment_detail.max_pending_orders_quantity }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <progress
+                                                        class="progress w-full"
+                                                        :class="{
+                                                            'progress-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
+                                                            'progress-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
+                                                            'progress-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
+                                                        }"
+                                                        :value="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
+                                                        max="100"
+                                                    ></progress>
+                                                </div>
+                                                <div class="grid gap-1 mt-1.5">
+                                                    <div class="text-[10px] text-base-content/70">Количество сделок за день</div>
+                                                    <PaymentDetailOrdersLimit
+                                                        :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
+                                                        :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
+                                                    />
+                                                </div>
+                                                <div class="grid gap-1 mt-1.5">
+                                                    <div class="text-[10px] text-base-content/70">Объём сделок за день</div>
                                                     <PaymentDetailLimit
                                                         :current_daily_limit="payment_detail.current_daily_limit"
                                                         :daily_limit="payment_detail.daily_limit"
                                                     />
-                                                    <PaymentDetailOrdersLimit
-                                                        :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
-                                                        :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
+                                                </div>
+                                                <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1 mt-1.5">
+                                                    <div class="text-[10px] text-base-content/70">Объём сделок за месяц</div>
+                                                    <PaymentDetailLimit
+                                                        :current_daily_limit="payment_detail.current_monthly_limit"
+                                                        :daily_limit="payment_detail.monthly_limit"
                                                     />
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <div class="sm:hidden grid gap-2">
-                                            <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-2 text-sm">
-                                                <svg class="w-4 h-4 text-info shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                                                </svg>
-                                                <span class="truncate">{{ payment_detail.owner_email }}</span>
-                                            </div>
-                                            <div v-if="showDeviceColumn" class="flex items-center gap-2 text-sm">
-                                                <svg class="w-4 h-4 text-info shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
-                                                </svg>
-                                                <span class="truncate">
-                                                    {{ payment_detail.device_name ?? 'Без устройства' }}
-                                                </span>
-                                            </div>
-                                            <div class="grid gap-1 text-sm" v-if="viewStore.isAdminViewMode || isVipUser">
-                                                <span>Сумма сделки:</span>
-                                                <div class="text-nowrap text-xs" >
-                                                    <span class="opacity-70">min:</span> {{ payment_detail.min_order_amount !== null ? payment_detail.min_order_amount : '∞' }}
-                                                    <span class="opacity-70">max:</span> {{ payment_detail.max_order_amount !== null ? payment_detail.max_order_amount : '∞' }}
-                                                </div>
-                                            </div>
-                                            <div class="grid gap-1 text-sm">
-                                                <span>Интервал:</span>
-                                                <div class="text-nowrap text-xs">
-                                                    {{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}
-                                                </div>
-                                            </div>
-                                            <div class="grid gap-1 text-sm">
-                                                <span class="text-base-content/50">Статистика:</span>
-                                                <div class="grid gap-0.5 text-xs">
-                                                    <div>
-                                                        <span class="opacity-60">Сделок:</span>
-                                                        {{ formatInteger(payment_detail.successful_orders_total_count) }}
+                                                <div class="divider my-0.5"></div>
+                                                <div class="grid gap-1">
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="text-base-content/50">Сделок:</span>
+                                                        <span class="text-right font-medium">{{ formatInteger(payment_detail.successful_orders_total_count) }}</span>
                                                     </div>
-                                                    <div>
-                                                        <span class="opacity-60">Оборот:</span>
-                                                        {{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_fiat) }} <span class="text-primary">{{ payment_detail.currency?.toUpperCase?.() }}</span>
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="text-base-content/50">Оборот:</span>
+                                                        <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_fiat) }} <span class="text-primary">{{ payment_detail.currency?.toUpperCase?.() }}</span></span>
                                                     </div>
-                                                    <div>
-                                                        <span class="opacity-60">Оборот:</span>
-                                                        {{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_usdt) }} <span class="text-primary">USDT</span>
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="text-base-content/50">Оборот:</span>
+                                                        <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_usdt) }} <span class="text-primary">USDT</span></span>
                                                     </div>
-                                                    <div class="pt-1 text-[11px] text-base-content/50 text-center">
+                                                    <div class="pt-0.5 text-[10px] text-base-content/50 text-center">
                                                         Обновляется раз в 15 минут
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div class="grid gap-1 text-sm">
-                                                <span>Дневной лимит:</span>
-                                                <div class="flex items-center gap-2 w-50">
-                                                    <PaymentDetailLimit :current_daily_limit="payment_detail.current_daily_limit" :daily_limit="payment_detail.daily_limit"></PaymentDetailLimit>
-                                                </div>
-                                            </div>
-                                            <div class="grid gap-1 text-sm">
-                                                <span>Лимит сделок:</span>
-                                                <div class="flex items-center gap-2 w-50">
-                                                    <PaymentDetailOrdersLimit
-                                                        :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
-                                                        :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="flex items-center sm:justify-end justify-center gap-2 mt-1">
-                                            <template v-if="currentTab === 'active'">
-                                                <button class="btn btn-xs sm:btn-sm btn-outline" @click="openEditModal(payment_detail)">Редактировать</button>
-                                                <button class="btn btn-xs sm:btn-sm btn-outline" @click="confirmArchiveDetail(payment_detail)">Архивировать</button>
-                                            </template>
-                                            <template v-else>
-                                                <button class="btn btn-xs sm:btn-sm btn-outline" @click="confirmUnarchiveDetail(payment_detail)">Вернуть из архива</button>
-                                            </template>
-                                        </div>
+                                        </TableInfoDropdown>
                                     </div>
                                 </div>
                             </div>
