@@ -394,29 +394,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <!-- Компактная шапка: логотип, короткий реквизит, сумма и переключатель -->
                                     <div class="flex justify-between items-center border-b border-base-content/10">
                                         <div class="inline-flex items-center">
-                                            <span class="text-base-content/70">UUID:</span>
                                             <span
                                                 v-if="viewStore.isAdminViewMode && order.manual_control_acquiring"
-                                                class="badge badge-primary badge-xs ml-1.5"
+                                                class="badge badge-primary badge-xs mr-1.5"
                                                 title="Manual Control Acquiring"
                                             >
                                                 MC
                                             </span>
+                                            <span class="text-base-content/70">UUID:</span>
                                             <DisplayUUID :uuid="order.uuid"/>
                                         </div>
                                         <div class="inline-flex items-center">
                                             <DateTime class="justify-start" :data="order.created_at"/>
                                         </div>
-                                    </div>
-                                    <div
-                                        v-if="viewStore.isAdminViewMode"
-                                        class="mt-2 flex min-w-0 items-center gap-2 text-xs text-base-content/80"
-                                    >
-                                        <svg class="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                                        </svg>
-                                        <span class="truncate">{{ order.trader_email }}</span>
-                                    </div>
+                                    </div> 
                                     <div class="hidden sm:flex items-center justify-between gap-2">
                                         <div class="flex items-center gap-2">
                                             <GatewayLogo :img_path="order.payment_gateway_logo_path" :name="order.payment_gateway_name" class="w-10 h-10 text-base-content/50"/>
