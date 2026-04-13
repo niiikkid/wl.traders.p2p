@@ -440,6 +440,10 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Трейдер</dt>
                                             <dd class="font-medium text-base-content">{{ order.user.email }}</dd>
                                         </dl>
+                                        <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Устройство</dt>
+                                            <dd class="font-medium text-base-content">{{ order.device_name ?? 'Без устройства' }}</dd>
+                                        </dl>
                                         <dl v-if="viewStore.isAdminViewMode && order.team_leader" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Тимлидер</dt>
                                             <dd class="font-medium text-base-content">{{ order.team_leader.email }}</dd>

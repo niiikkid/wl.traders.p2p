@@ -9,7 +9,6 @@ import OrderModal from "@/Modals/OrderModal.vue";
 import {useModalStore} from "@/store/modal.js";
 import DateTime from "@/Components/DateTime.vue";
 import {useViewStore} from "@/store/view.js";
-import ShowAction from "@/Components/Table/ShowAction.vue";
 import {ref, watch} from "vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
@@ -31,11 +30,6 @@ const tempVip = usePage().props.auth?.user?.temp_vip_progress || null;
 const modalStore = useModalStore();
 
 const displayShortDetail = ref(getCookieValue('displayShortDetail', false));
-const expandedCards = ref({});
-
-const toggleExpand = (id) => {
-    expandedCards.value[id] = !expandedCards.value[id];
-};
 
 function getCookieValue(name, defaultValue) {
     const currentRoute = route().current();
@@ -414,6 +408,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <DateTime class="justify-start" :data="order.created_at"/>
                                         </div>
                                     </div>
+                                    <div
+                                        v-if="viewStore.isAdminViewMode"
+                                        class="mt-2 flex min-w-0 items-center gap-2 text-xs text-base-content/80"
+                                    >
+                                        <svg class="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                        </svg>
+                                        <span class="truncate">{{ order.trader_email }}</span>
+                                    </div>
                                     <div class="hidden sm:flex items-center justify-between gap-2">
                                         <div class="flex items-center gap-2">
                                             <GatewayLogo :img_path="order.payment_gateway_logo_path" :name="order.payment_gateway_name" class="w-10 h-10 text-base-content/50"/>
@@ -430,19 +433,41 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div>
                                             <OrderStatus :status="order.status" :status_name="order.status_name"></OrderStatus>
                                         </div>
-                                        <div>
+                                        <div class="inline-flex shrink-0 items-center justify-end gap-1 w-15">
                                             <button
-                                                class="btn btn-primary btn-xs"
-                                                @click.stop="toggleExpand(order.id)"
-                                                :aria-expanded="!!expandedCards[order.id]"
-                                                :aria-label="!!expandedCards[order.id] ? 'Скрыть' : 'Показать детали'"
+                                                v-if="order.dispute"
+                                                type="button"
+                                                class="btn btn-square btn-error btn-outline btn-xs"
+                                                @click.prevent="modalStore.openDisputeModal({dispute: order.dispute})"
                                                 :disabled="reloadingTableData"
+                                                aria-label="Открыть спор"
                                             >
-                                                <svg
-                                                    :class="['w-4 h-4 transition-transform', {'rotate-180': !!expandedCards[order.id]}]"
-                                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+                                                <svg class="h-3 w-3" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 13V8m0 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                                                </svg>
+                                            </button>
+                                            <button
+                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
+                                                type="button"
+                                                class="btn btn-square btn-success btn-outline btn-xs"
+                                                @click.prevent="confirmAcceptOrder(order)"
+                                                :disabled="reloadingTableData"
+                                                aria-label="Оплачено"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3 w-3">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-square btn-primary btn-outline btn-xs"
+                                                @click.prevent="openOrderModal(order)"
+                                                :disabled="reloadingTableData"
+                                                aria-label="Открыть сделку"
+                                            >
+                                                <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                    <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                 </svg>
                                             </button>
                                         </div>
@@ -470,80 +495,44 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <div class="text-nowrap text-xs text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
                                                 <div class="text-nowrap text-xs opacity-70">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
                                             </div>
-                                            <div>
+                                            <div class="inline-flex shrink-0 items-center gap-1">
                                                 <button
-                                                    class="btn btn-primary btn-xs"
-                                                    @click.stop="toggleExpand(order.id)"
-                                                    :aria-expanded="!!expandedCards[order.id]"
-                                                    :aria-label="!!expandedCards[order.id] ? 'Скрыть' : 'Показать детали'"
+                                                    v-if="order.dispute"
+                                                    type="button"
+                                                    class="btn btn-square btn-error btn-outline btn-xs"
+                                                    @click.prevent="modalStore.openDisputeModal({dispute: order.dispute})"
                                                     :disabled="reloadingTableData"
+                                                    aria-label="Открыть спор"
                                                 >
-                                                    <svg
-                                                        :class="['w-4 h-4 transition-transform', {'rotate-180': !!expandedCards[order.id]}]"
-                                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                        stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+                                                    <svg class="h-3 w-3" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 13V8m0 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
+                                                    type="button"
+                                                    class="btn btn-square btn-success btn-outline btn-xs"
+                                                    @click.prevent="confirmAcceptOrder(order)"
+                                                    :disabled="reloadingTableData"
+                                                    aria-label="Оплачено"
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-3 w-3">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-square btn-primary btn-outline btn-xs"
+                                                    @click.prevent="openOrderModal(order)"
+                                                    :disabled="reloadingTableData"
+                                                    aria-label="Открыть сделку"
+                                                >
+                                                    <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                        <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                     </svg>
                                                 </button>
                                             </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Раскрываемая часть -->
-                                    <div v-show="!!expandedCards[order.id]" class="mt-3 flex items-center justify-between gap-2 bg-base-300/50 rounded-box p-2">
-                                        <!-- Доп.инфо для админа -->
-                                        <div v-if="viewStore.isAdminViewMode" class="grid grid-cols-1 gap-1.5">
-                                            <div class="flex items-center gap-2 text-sm">
-                                                <svg class="w-4 h-4 text-primary shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                                                </svg>
-                                                <span class="text-base-content/80 truncate">{{ order.trader_email }}</span>
-                                            </div>
-                                            <div class="flex items-center gap-2 text-sm">
-                                                <svg class="w-4 h-4 text-primary shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-                                                </svg>
-                                                <span class="text-base-content/60 truncate">{{ order.device_name ?? 'Без устройства' }}</span>
-                                            </div>
-                                        </div>
-
-                                        <!-- UUID и действие -->
-                                        <div class="flex items-center justify-between gap-2">
-                                            <button
-                                                v-if="order.dispute"
-                                                type="button"
-                                                class="btn btn-error btn-outline btn-sm"
-                                                @click.prevent="modalStore.openDisputeModal({dispute: order.dispute})"
-                                                :disabled="reloadingTableData"
-                                                aria-label="Открыть спор"
-                                            >
-                                                <svg class="w-4 h-4" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 13V8m0 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                                                </svg>
-                                            </button>
-                                            <button
-                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
-                                                @click.prevent="confirmAcceptOrder(order)"
-                                                type="button"
-                                                class="btn btn-success btn-outline btn-sm"
-                                                :disabled="reloadingTableData"
-                                                aria-label="Оплачено"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                class="btn btn-primary btn-outline btn-sm"
-                                                @click.prevent="openOrderModal(order)"
-                                                :disabled="reloadingTableData"
-                                                aria-label="Открыть сделку"
-                                            >
-                                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                    <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
-                                                    <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                                                </svg>
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
