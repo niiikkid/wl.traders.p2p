@@ -20,7 +20,7 @@ class PayoutQueriesEloquent implements PayoutQueries
     ];
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function getStackForTrader(): Collection
     {
@@ -31,7 +31,20 @@ class PayoutQueriesEloquent implements PayoutQueries
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
+     */
+    public function paginateStackForTrader(int $perPage = 10, ?int $page = null): LengthAwarePaginator
+    {
+        $page ??= max(1, (int) request()->input('stack_page', 1));
+
+        return $this->baseQuery()
+            ->where('status', PayoutStatus::OPEN->value)
+            ->orderByDesc('id')
+            ->paginate($perPage, ['*'], 'stack_page', $page);
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function getActiveForTrader(User $trader): Collection
     {
@@ -45,7 +58,7 @@ class PayoutQueriesEloquent implements PayoutQueries
     }
 
     /**
-     * @inheritDoc
+     * {@inheritDoc}
      */
     public function paginateHistoryForTrader(User $trader): LengthAwarePaginator
     {
@@ -56,7 +69,7 @@ class PayoutQueriesEloquent implements PayoutQueries
                 PayoutStatus::CANCELED,
             ]))
             ->orderByDesc('id')
-            ->paginate(request()->integer('per_page', 10));
+            ->paginate(10);
     }
 
     public function countActiveForTrader(User $trader): int
@@ -90,31 +103,31 @@ class PayoutQueriesEloquent implements PayoutQueries
                 $query->whereDate('created_at', '<=', $filters->endDate);
             })
             ->when($filters->uuid, function (Builder $query) use ($filters) {
-                $query->where('uuid', 'LIKE', '%' . $filters->uuid . '%');
+                $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
             })
             ->when($filters->externalID, function (Builder $query) use ($filters) {
-                $query->where('external_id', 'LIKE', '%' . $filters->externalID . '%');
+                $query->where('external_id', 'LIKE', '%'.$filters->externalID.'%');
             })
             ->when($filters->paymentDetail, function (Builder $query) use ($filters) {
-                $query->where('requisites', 'LIKE', '%' . $filters->paymentDetail . '%');
+                $query->where('requisites', 'LIKE', '%'.$filters->paymentDetail.'%');
             })
             ->when($filters->merchant, function (Builder $query) use ($filters) {
-                $query->whereRelation('merchant', 'name', 'LIKE', '%' . $filters->merchant . '%');
+                $query->whereRelation('merchant', 'name', 'LIKE', '%'.$filters->merchant.'%');
             })
             ->when($filters->merchantIds, function (Builder $query) use ($filters) {
                 $query->whereIn('merchant_id', $filters->merchantIds);
             })
             ->when($filters->user, function (Builder $query) use ($filters) {
                 $query->where(function (Builder $relation) use ($filters) {
-                    $relation->whereRelation('trader', 'name', 'LIKE', '%' . $filters->user . '%')
-                        ->orWhereRelation('trader', 'email', 'LIKE', '%' . $filters->user . '%');
+                    $relation->whereRelation('trader', 'name', 'LIKE', '%'.$filters->user.'%')
+                        ->orWhereRelation('trader', 'email', 'LIKE', '%'.$filters->user.'%');
                 });
             })
             ->when($filters->paymentGateway, function (Builder $query) use ($filters) {
                 $query->where(function (Builder $relation) use ($filters) {
-                    $relation->whereRelation('paymentGateway', 'name', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhereRelation('paymentGateway', 'code', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhere('bank_name', 'LIKE', '%' . $filters->paymentGateway . '%');
+                    $relation->whereRelation('paymentGateway', 'name', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhereRelation('paymentGateway', 'code', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhere('bank_name', 'LIKE', '%'.$filters->paymentGateway.'%');
                 });
             })
             ->when($filters->amount, function (Builder $query) use ($filters, $currency) {
@@ -166,19 +179,19 @@ class PayoutQueriesEloquent implements PayoutQueries
                 $query->whereDate('created_at', '<=', $filters->endDate);
             })
             ->when($filters->uuid, function (Builder $query) use ($filters) {
-                $query->where('uuid', 'LIKE', '%' . $filters->uuid . '%');
+                $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
             })
             ->when($filters->externalID, function (Builder $query) use ($filters) {
-                $query->where('external_id', 'LIKE', '%' . $filters->externalID . '%');
+                $query->where('external_id', 'LIKE', '%'.$filters->externalID.'%');
             })
             ->when($filters->paymentDetail, function (Builder $query) use ($filters) {
-                $query->where('requisites', 'LIKE', '%' . $filters->paymentDetail . '%');
+                $query->where('requisites', 'LIKE', '%'.$filters->paymentDetail.'%');
             })
             ->when($filters->paymentGateway, function (Builder $query) use ($filters) {
                 $query->where(function (Builder $relation) use ($filters) {
-                    $relation->whereRelation('paymentGateway', 'name', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhereRelation('paymentGateway', 'code', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhere('bank_name', 'LIKE', '%' . $filters->paymentGateway . '%');
+                    $relation->whereRelation('paymentGateway', 'name', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhereRelation('paymentGateway', 'code', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhere('bank_name', 'LIKE', '%'.$filters->paymentGateway.'%');
                 });
             })
             ->when($filters->amount, function (Builder $query) use ($filters, $currency) {
@@ -262,7 +275,7 @@ class PayoutQueriesEloquent implements PayoutQueries
     }
 
     /**
-     * @param array<int, PayoutStatus> $statuses
+     * @param  array<int, PayoutStatus>  $statuses
      * @return array<int, string>
      */
     private function statusValues(array $statuses): array
@@ -292,5 +305,3 @@ class PayoutQueriesEloquent implements PayoutQueries
         }
     }
 }
-
-

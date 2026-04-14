@@ -3,19 +3,21 @@ import {Head, router, usePage} from '@inertiajs/vue3';
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
-import {useTableFiltersStore} from '@/store/tableFilters.js';
 import {useViewStore} from '@/store/view.js';
 import GatewayLogo from '@/Components/GatewayLogo.vue';
 import BankManualIcon from '@/Components/BankManualIcon.vue';
 import DateTime from '@/Components/DateTime.vue';
 import Modal from '@/Components/Modals/Modal.vue';
+import Pagination from '@/Components/Pagination/Pagination.vue';
 import { formatDistanceStrict } from 'date-fns';
 import DisplayUUID from "../../../Components/DisplayUUID.vue";
 import TraderExportModal from '@/Components/Export/TraderExportModal.vue';
 
+const PAYOUT_LIST_PER_PAGE = 10;
+
 const props = defineProps({
     orderBook: {
-        type: Array,
+        type: [Array, Object],
         required: true,
     },
     activePayouts: {
@@ -34,14 +36,17 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    activeListTab: {
+        type: String,
+        default: 'stack',
+    },
 });
 
 const page = usePage();
 const viewStore = useViewStore();
-const tableFiltersStore = useTableFiltersStore();
 
 const trader = computed(() => page.props.auth?.user ?? {});
-const orderBook = computed(() => props.orderBook ?? []);
+const orderBook = computed(() => props.orderBook ?? { data: [], meta: {} });
 const activePayouts = computed(() => props.activePayouts ?? []);
 const history = computed(() => props.history ?? { data: [], meta: {} });
 
@@ -59,6 +64,15 @@ const normalizeCollection = (collection) => {
 
 const orderBookList = computed(() => normalizeCollection(orderBook.value));
 const activePayoutsList = computed(() => normalizeCollection(activePayouts.value));
+const historyList = computed(() => normalizeCollection(history.value));
+
+const listTab = computed(() => (props.activeListTab === 'history' ? 'history' : 'stack'));
+
+const orderBookMeta = computed(() => orderBook.value?.meta ?? {});
+const historyMeta = computed(() => history.value?.meta ?? {});
+
+const showStackPagination = computed(() => (orderBookMeta.value?.last_page ?? 1) > 1);
+const showHistoryPagination = computed(() => (historyMeta.value?.last_page ?? 1) > 1);
 
 /** Пока отключено: игнорируем сохранённый интервал и не ставим setInterval. */
 const trader_payouts_auto_refresh_allowed = false;
@@ -164,21 +178,48 @@ const animateRefreshProgress = (duration) => {
 
 const refreshProgressOffset = computed(() => 100 - Math.min(Math.max(refreshProgress.value, 0), 100));
 
-const reloadData = (targetPage = tableFiltersStore.getCurrentPage, replace = true) => {
-    isRefreshing.value = true;
+const visitIndex = ({
+    tab,
+    page,
+    stack_page,
+    replace = true,
+    trackRefreshing = false,
+}) => {
+    const resolved_tab = tab ?? listTab.value;
+    const resolved_page = page ?? (historyMeta.value?.current_page ?? 1);
+    const resolved_stack_page = stack_page ?? (orderBookMeta.value?.current_page ?? 1);
+
+    if (trackRefreshing) {
+        isRefreshing.value = true;
+    }
+
     router.visit(route('trader.payouts.index'), {
         method: 'get',
         data: {
+            tab: resolved_tab === 'history' ? 'history' : 'stack',
+            page: resolved_page,
+            stack_page: resolved_stack_page,
+            per_page: PAYOUT_LIST_PER_PAGE,
             refresh_interval: trader_payouts_auto_refresh_allowed ? refreshInterval.value : 0,
-            page: targetPage,
-            per_page: tableFiltersStore.getPerPage,
         },
         preserveScroll: true,
         preserveState: true,
         replace,
         onFinish: () => {
-            isRefreshing.value = false;
+            if (trackRefreshing) {
+                isRefreshing.value = false;
+            }
         },
+    });
+};
+
+const reloadData = (replace = true) => {
+    visitIndex({
+        tab: listTab.value,
+        page: historyMeta.value?.current_page ?? 1,
+        stack_page: orderBookMeta.value?.current_page ?? 1,
+        replace,
+        trackRefreshing: true,
     });
 };
 
@@ -188,7 +229,43 @@ const refreshNow = () => {
     }
 
     startAutoRefresh();
-    reloadData(tableFiltersStore.getCurrentPage, false);
+    visitIndex({
+        tab: listTab.value,
+        page: historyMeta.value?.current_page ?? 1,
+        stack_page: orderBookMeta.value?.current_page ?? 1,
+        replace: false,
+        trackRefreshing: true,
+    });
+};
+
+const openListTab = (next_tab) => {
+    visitIndex({
+        tab: next_tab,
+        page: 1,
+        stack_page: 1,
+        replace: false,
+        trackRefreshing: false,
+    });
+};
+
+const onStackPagination = (p) => {
+    visitIndex({
+        tab: 'stack',
+        page: historyMeta.value?.current_page ?? 1,
+        stack_page: p,
+        replace: false,
+        trackRefreshing: false,
+    });
+};
+
+const onHistoryPagination = (p) => {
+    visitIndex({
+        tab: 'history',
+        page: p,
+        stack_page: orderBookMeta.value?.current_page ?? 1,
+        replace: false,
+        trackRefreshing: false,
+    });
 };
 
 const startAutoRefresh = () => {
@@ -203,7 +280,7 @@ const startAutoRefresh = () => {
         animateRefreshProgress(refreshInterval.value * 1000);
         autoRefreshTimer.value = setInterval(() => {
             animateRefreshProgress(refreshInterval.value * 1000);
-            reloadData(tableFiltersStore.getCurrentPage, false);
+            reloadData(false);
         }, refreshInterval.value * 1000);
     } else {
         stopRefreshProgressAnimation();
@@ -236,7 +313,7 @@ watch(refreshInterval, (value) => {
     startAutoRefresh();
 
     if (value > 0) {
-        reloadData(tableFiltersStore.getCurrentPage, false);
+        reloadData(false);
     }
 });
 
@@ -400,10 +477,9 @@ defineOptions({ layout: AuthenticatedLayout });
 
         <MainTableSection
             title="Выплаты"
-            :data="history"
-            :visit-extra-data="{
-                refresh_interval: trader_payouts_auto_refresh_allowed ? refreshInterval : 0,
-            }"
+            :data="[1]"
+            :paginate="false"
+            :display-pagination="false"
         >
             <template #button>
                 <button
@@ -434,8 +510,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </div>
                             </div>
                         </div>
-                        <div class="inline-flex items-end gap-3">
-                            <div v-if="trader_payouts_auto_refresh_allowed" class="flex flex-col gap-1">
+                        <div v-if="trader_payouts_auto_refresh_allowed" class="inline-flex items-end gap-3">
+                            <div class="flex flex-col gap-1">
                                 <span class="text-sm font-semibold text-base-content">Автообновление</span>
                                 <div class="flex items-center gap-2">
                                     <div v-show="refreshInterval > 0" class="flex justify-center items-center">
@@ -484,16 +560,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </div>
                                 </div>
                             </div>
-                            <button
-                                class="btn btn-sm btn-outline"
-                                :disabled="isRefreshing"
-                                @click="refreshNow"
-                            >
-                            <span class="flex items-center gap-2">
-                                <span>Обновить</span>
-                                <span v-if="isRefreshing" class="loading loading-spinner loading-xs"></span>
-                            </span>
-                            </button>
                         </div>
                     </div>
 
@@ -619,9 +685,44 @@ defineOptions({ layout: AuthenticatedLayout });
                         </div>
 
                         <div class="space-y-4">
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-between gap-3">
+                                <ul class="flex flex-wrap text-sm font-medium text-center">
+                                    <li class="me-2">
+                                        <a
+                                            href="#"
+                                            class="btn btn-sm"
+                                            :class="listTab === 'stack' ? 'btn-primary' : 'btn-outline'"
+                                            @click.prevent="openListTab('stack')"
+                                        >Стакан доступных выплат</a>
+                                    </li>
+                                    <li class="me-2">
+                                        <a
+                                            href="#"
+                                            class="btn btn-sm"
+                                            :class="listTab === 'history' ? 'btn-primary' : 'btn-outline'"
+                                            @click.prevent="openListTab('history')"
+                                        >История выплат</a>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div v-show="listTab === 'stack'" class="space-y-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
                                 <h2 class="text-xl font-semibold">Стакан доступных выплат</h2>
-                                <span v-if="payoutEmptyState" class="text-sm text-base-content/60">Пока нет заявок</span>
+                                <div class="flex items-center gap-3">
+                                    <span v-if="payoutEmptyState" class="text-sm text-base-content/60">Пока нет заявок</span>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline"
+                                        :disabled="isRefreshing"
+                                        @click="refreshNow"
+                                    >
+                                        <span class="flex items-center gap-2">
+                                            <span>Обновить</span>
+                                            <span v-if="isRefreshing" class="loading loading-spinner loading-xs"></span>
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                             <div class="relative">
                                 <!-- Desktop / tablet (table) -->
@@ -654,6 +755,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                             </tr>
                                             </thead>
                                             <tbody>
+                                            <template v-if="payoutEmptyState">
+                                                <tr>
+                                                    <td colspan="7" class="text-center text-sm text-base-content/60 py-6">Пока нет заявок</td>
+                                                </tr>
+                                            </template>
+                                            <template v-else>
                                             <tr
                                                 v-for="payout in orderBookList"
                                                 :key="payout.id"
@@ -722,20 +829,21 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     </button>
                                                 </td>
                                             </tr>
+                                            </template>
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
 
                                 <!-- Mobile (cards list) -->
-                                <div class="xl:hidden space-y-3">
+                                <div class="xl:hidden space-y-2">
                                     <div
                                         v-for="payout in orderBookList"
                                         :key="payout.id"
-                                        class="card bg-base-100 shadow-sm border border-base-200"
+                                        class="card bg-base-100 shadow-sm"
                                     >
-                                        <div class="card-body space-y-4">
-                                            <div class="flex flex-wrap gap-3 items-center justify-between">
+                                        <div class="card-body p-4 pt-2 pb-3 space-y-3">
+                                            <div class="flex justify-between items-center border-b border-base-content/10 pb-2 gap-3">
                                                 <div class="inline-flex items-center gap-3">
                                                     <div v-if="hasCustomBank(payout)" class="text-base-content/70">
                                                         <BankManualIcon class="w-10 h-10" />
@@ -800,18 +908,29 @@ defineOptions({ layout: AuthenticatedLayout });
                                             </div>
                                         </div>
                                     </div>
+                                    <div v-if="payoutEmptyState" class="py-6 text-center text-sm text-base-content/60">
+                                        Пока нет заявок
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </template>
-            <template #body>
-                <div class="space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-xl font-semibold">История выплат</h2>
-                    </div>
-                    <div class="rounded-table relative">
+                            <div v-if="showStackPagination" class="flex justify-start mt-2">
+                                <Pagination
+                                    :model-value="orderBookMeta.current_page"
+                                    :total-items="orderBookMeta.total"
+                                    :per-page="PAYOUT_LIST_PER_PAGE"
+                                    previous-label="Назад"
+                                    next-label="Вперед"
+                                    :show-icons="false"
+                                    @page-changed="onStackPagination"
+                                />
+                            </div>
+                            </div>
+
+                            <div v-show="listTab === 'history'" class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-xl font-semibold">История выплат</h2>
+                            </div>
+                            <div class="rounded-table relative">
                         <div class="hidden xl:block overflow-x-auto card bg-base-100 shadow">
                             <table class="table table-sm">
                                 <thead class="text-xs uppercase bg-base-300">
@@ -827,7 +946,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </tr>
                                 </thead>
                                 <tbody>
-                                <tr v-for="payout in history.data" :key="payout.id">
+                                <template v-if="historyList.length === 0">
+                                    <tr>
+                                        <td colspan="8" class="text-center text-sm text-base-content/60 py-6">История пока пуста.</td>
+                                    </tr>
+                                </template>
+                                <template v-else>
+                                <tr v-for="payout in historyList" :key="payout.id">
                                     <td class="font-mono text-xs">
                                         <DisplayUUID :uuid="payout.uuid"/>
                                     </td>
@@ -898,17 +1023,18 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <DateTime :data="payout.timings.completed_at" simple class="justify-start" />
                                     </td>
                                 </tr>
+                                </template>
                                 </tbody>
                             </table>
                         </div>
-                        <div class="xl:hidden space-y-3">
+                        <div class="xl:hidden space-y-2">
                             <div
-                                v-for="payout in history.data"
+                                v-for="payout in historyList"
                                 :key="payout.id"
-                                class="card bg-base-100 shadow-sm border border-base-200"
+                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body space-y-4">
-                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div class="card-body p-4 pt-2 pb-3 space-y-3">
+                                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-content/10 pb-2">
                                     <div class="inline-flex items-center gap-2 text-sm text-base-content/70">
                                         <span class="uppercase">UUID</span>
                                         <DisplayUUID :uuid="payout.uuid" />
@@ -991,12 +1117,30 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="(history?.data?.length ?? 0) === 0" class="py-6 text-center text-sm text-base-content/60">
+                            <div v-if="historyList.length === 0" class="py-6 text-center text-sm text-base-content/60 xl:hidden">
                                 История пока пуста.
                             </div>
                         </div>
+                            </div>
+                            <div v-if="showHistoryPagination" class="flex justify-start mt-2">
+                                <Pagination
+                                    :model-value="historyMeta.current_page"
+                                    :total-items="historyMeta.total"
+                                    :per-page="PAYOUT_LIST_PER_PAGE"
+                                    previous-label="Назад"
+                                    next-label="Вперед"
+                                    :show-icons="false"
+                                    @page-changed="onHistoryPagination"
+                                />
+                            </div>
+                            </div>
+
+                        </div>
                     </div>
                 </div>
+            </template>
+            <template #body>
+                <div class="hidden" aria-hidden="true" />
             </template>
         </MainTableSection>
         <Modal :show="receiptModal.open" max-width="md" @close="closeReceiptModal">

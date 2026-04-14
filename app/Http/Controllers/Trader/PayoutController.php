@@ -24,17 +24,28 @@ class PayoutController extends Controller
 
         $refreshInterval = $this->sanitizeRefreshInterval($request->integer('refresh_interval', 15));
 
-        $orderBook = queries()->payout()->getStackForTrader();
+        $tab = $request->query('tab') === 'history' ? 'history' : 'stack';
+
+        $orderBook = queries()->payout()->paginateStackForTrader(10, max(1, $request->integer('stack_page', 1)));
         $activePayouts = queries()->payout()->getActiveForTrader($request->user());
         $history = queries()->payout()->paginateHistoryForTrader($request->user());
+
+        $orderBook->appends([
+            'refresh_interval' => $refreshInterval,
+            'tab' => $tab,
+            'page' => $history->currentPage(),
+        ]);
         $history->appends([
             'refresh_interval' => $refreshInterval,
+            'tab' => $tab,
+            'stack_page' => $orderBook->currentPage(),
         ]);
 
         return Inertia::render('Payout/Trader/Index', [
             'orderBook' => TraderPayoutResource::collection($orderBook),
             'activePayouts' => TraderPayoutResource::collection($activePayouts),
             'history' => TraderPayoutResource::collection($history),
+            'activeListTab' => $tab,
             'refresh' => [
                 'interval' => $refreshInterval,
                 'options' => self::REFRESH_INTERVALS,
@@ -65,7 +76,7 @@ class PayoutController extends Controller
                 $payout,
                 $request->user(),
                 $request->file('receipt'),
-                is_array( $receipts) ? $receipts : []
+                is_array($receipts) ? $receipts : []
             );
         } catch (PayoutException $exception) {
             return redirect()->back()->with('error', $exception->getMessage());
@@ -81,5 +92,3 @@ class PayoutController extends Controller
         return in_array($interval, self::REFRESH_INTERVALS, true) ? $interval : 15;
     }
 }
-
-
