@@ -247,6 +247,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     :detail="dispute.payment_detail.detail"
                                                     :type="dispute.payment_detail.type"
                                                     :name="dispute.payment_detail.name"
+                                                    class="-mt-2"
                                                 ></PaymentDetail>
                                             </div>
                                             <div class="text-right">
@@ -263,7 +264,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     @click.prevent="modalStore.openDisputeModal({dispute})"
                                                     aria-label="Открыть спор"
                                                 >
-                                                    <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <svg class="h-3.5 w-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                                         <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
                                                         <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                     </svg>
@@ -304,7 +305,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         @click.prevent="modalStore.openDisputeModal({dispute})"
                                                         aria-label="Открыть спор"
                                                     >
-                                                        <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <svg class="h-3.5 w-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                                             <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
                                                             <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                         </svg>
