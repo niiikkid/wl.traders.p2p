@@ -694,38 +694,42 @@ defineOptions({ layout: AuthenticatedLayout });
                                                             />
                                                         </div>
                                                         <div class="min-w-0 flex-1 -mt-1">
-                                                            <div class="flex items-center justify-start gap-0.5 min-w-0 xl:gap-1">
-                                                                <div class="min-w-0 text-xs font-medium leading-snug break-words text-base-content xl:text-base xl:font-semibold xl:text-nowrap">
-                                                                    {{ displayActivePayoutRequisites(payout) }}
-                                                                </div>
-                                                                <div
+                                                            <div class="flex min-w-0 items-center justify-start xl:gap-1">
+                                                                <button
                                                                     v-if="payout.payout_method_type.value === 'card'"
-                                                                    class="tooltip tooltip-top shrink-0"
-                                                                    :class="{ 'tooltip-open': active_payout_copied_id === payout.id }"
+                                                                    type="button"
+                                                                    class="group/cardcopy touch-manipulation inline-flex min-w-0 max-w-full select-none items-center gap-1 border-0 bg-transparent p-0 text-left font-inherit text-xs font-medium leading-snug text-base-content max-xl:cursor-default xl:cursor-pointer xl:text-base xl:font-semibold xl:hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100"
+                                                                    :class="
+                                                                        active_payout_copied_id === payout.id
+                                                                            ? 'tooltip tooltip-open tooltip-top'
+                                                                            : 'xl:tooltip xl:tooltip-top'
+                                                                    "
                                                                     :data-tip="active_payout_copied_id === payout.id ? 'Скопировано!' : 'Скопировать'"
+                                                                    aria-label="Копировать номер карты"
+                                                                    @click="copyActivePayoutRawRequisites(payout)"
                                                                 >
-                                                                    <button
-                                                                        type="button"
-                                                                        class="btn btn-ghost btn-circle btn-xs h-5 w-5 min-h-0 p-0 text-base-content/70 hover:text-primary"
-                                                                        aria-label="Копировать номер карты"
-                                                                        @click="copyActivePayoutRawRequisites(payout)"
+                                                                    <span class="min-w-0 break-words xl:text-nowrap">{{ displayActivePayoutRequisites(payout) }}</span>
+                                                                    <svg
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                        fill="none"
+                                                                        viewBox="0 0 24 24"
+                                                                        stroke-width="1.5"
+                                                                        stroke="currentColor"
+                                                                        class="h-3.5 w-3.5 shrink-0 opacity-70 xl:group-hover/cardcopy:opacity-100"
+                                                                        aria-hidden="true"
                                                                     >
-                                                                        <svg
-                                                                            xmlns="http://www.w3.org/2000/svg"
-                                                                            fill="none"
-                                                                            viewBox="0 0 24 24"
-                                                                            stroke-width="1.5"
-                                                                            stroke="currentColor"
-                                                                            class="h-3.5 w-3.5"
-                                                                            aria-hidden="true"
-                                                                        >
-                                                                            <path
-                                                                                stroke-linecap="round"
-                                                                                stroke-linejoin="round"
-                                                                                d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"
-                                                                            />
-                                                                        </svg>
-                                                                    </button>
+                                                                        <path
+                                                                            stroke-linecap="round"
+                                                                            stroke-linejoin="round"
+                                                                            d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                                <div
+                                                                    v-else
+                                                                    class="min-w-0 text-xs font-medium leading-snug break-words text-base-content xl:text-base xl:font-semibold xl:text-nowrap"
+                                                                >
+                                                                    {{ displayActivePayoutRequisites(payout) }}
                                                                 </div>
                                                             </div>
                                                             <div class="text-[11px] text-base-content/60 leading-snug xl:text-xs">
