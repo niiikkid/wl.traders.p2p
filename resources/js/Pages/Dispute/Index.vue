@@ -62,6 +62,13 @@ const confirmAcceptDispute = (dispute) => {
     });
 }
 
+const openDisputeReceipt = (receipt_url) => {
+    if (!receipt_url) {
+        return;
+    }
+    window.open(receipt_url, '_blank')?.focus();
+};
+
 const confirmRollbackDispute = (dispute) => {
     modalStore.openConfirmModal({
         title: 'Вы уверены что хотите открыть спор #' + dispute?.id + '?',
@@ -161,7 +168,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col" v-if="viewStore.isAdminViewMode">Трейдер</th>
                                         <th scope="col">Статус</th>
                                         <th scope="col">Создан</th>
-                                        <th scope="col" class="flex justify-center"><span class="sr-only">Действия</span></th>
+                                        <th scope="col"><span class="sr-only">Действия</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -201,7 +208,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <td>
                                             <DateTime :data="dispute.created_at"></DateTime>
                                         </td>
-                                        <td class="text-right">
+                                        <td class="text-right flex justify-end gap-2">
+                                            <button
+                                                v-if="dispute.receipt_url"
+                                                type="button"
+                                                class="btn btn-xs btn-outline btn-info"
+                                                @click.prevent="openDisputeReceipt(dispute.receipt_url)"
+                                            >
+                                                Квитанция
+                                                <svg class="w-3 h-3 ml-2 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m14 0-4 4m4-4-4-4"/>
+                                                </svg>
+                                            </button>
                                             <button
                                                 type="button"
                                                 class="btn btn-primary btn-outline btn-xs"
@@ -257,7 +275,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div>
                                                 <DisputeStatus :status="dispute.status"></DisputeStatus>
                                             </div>
-                                            <div class="inline-flex shrink-0 items-center justify-end gap-1 w-15">
+                                            <div class="inline-flex shrink-0 items-center justify-end gap-2 w-15">
+                                                <button
+                                                    v-if="dispute.receipt_url"
+                                                    type="button"
+                                                    class="btn btn-square btn-xs btn-outline btn-info"
+                                                    @click.prevent="openDisputeReceipt(dispute.receipt_url)"
+                                                    aria-label="Квитанция"
+                                                >
+                                                    <svg class="h-3.5 w-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m14 0-4 4m4-4-4-4"/>
+                                                    </svg>
+                                                </button>
                                                 <button
                                                     type="button"
                                                     class="btn btn-square btn-primary btn-outline btn-xs"
@@ -298,7 +327,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         {{ dispute.order.total_profit }} {{ dispute.order.base_currency.toUpperCase() }}
                                                     </div>
                                                 </div>
-                                                <div class="inline-flex shrink-0 items-center gap-1">
+                                                <div class="inline-flex shrink-0 items-center gap-2">
+                                                    <button
+                                                        v-if="dispute.receipt_url"
+                                                        type="button"
+                                                        class="btn btn-square btn-xs btn-outline btn-info"
+                                                        @click.prevent="openDisputeReceipt(dispute.receipt_url)"
+                                                        aria-label="Квитанция"
+                                                    >
+                                                        <svg class="h-3.5 w-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m14 0-4 4m4-4-4-4"/>
+                                                        </svg>
+                                                    </button>
                                                     <button
                                                         type="button"
                                                         class="btn btn-square btn-primary btn-outline btn-xs"
