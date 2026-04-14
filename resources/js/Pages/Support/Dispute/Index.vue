@@ -9,7 +9,6 @@ import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import DateTime from "@/Components/DateTime.vue";
-import ShowAction from "@/Components/Table/ShowAction.vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
@@ -171,8 +170,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <td>
                                             <DateTime :data="dispute.created_at"></DateTime>
                                         </td>
-                                        <td class=" text-right">
-                                            <ShowAction @click="modalStore.openDisputeModal({dispute})"></ShowAction>
+                                        <td class="text-right">
+                                            <button
+                                                type="button"
+                                                class="btn btn-primary btn-outline btn-xs"
+                                                @click.prevent="modalStore.openDisputeModal({dispute})"
+                                                aria-label="Открыть спор"
+                                            >
+                                                <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                    <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                                </svg>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -228,12 +237,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <span>Трейдер:</span> <span class="text-base-content">{{ dispute.user.email }}</span>
                                             </div>
                                             <button
-                                                class="btn btn-primary btn-xs"
-                                                @click="modalStore.openDisputeModal({dispute})"
+                                                type="button"
+                                                class="btn btn-square btn-primary btn-outline btn-xs"
+                                                @click.prevent="modalStore.openDisputeModal({dispute})"
+                                                aria-label="Открыть спор"
                                             >
-                                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                                <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                    <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                 </svg>
                                             </button>
                                         </div>
@@ -273,12 +284,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                             <div>
                                                 <button
-                                                    class="btn btn-primary btn-xs"
-                                                    @click="modalStore.openDisputeModal({dispute})"
+                                                    type="button"
+                                                    class="btn btn-square btn-primary btn-outline btn-xs"
+                                                    @click.prevent="modalStore.openDisputeModal({dispute})"
+                                                    aria-label="Открыть спор"
                                                 >
-                                                    <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                                    <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                        <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                     </svg>
                                                 </button>
                                             </div>

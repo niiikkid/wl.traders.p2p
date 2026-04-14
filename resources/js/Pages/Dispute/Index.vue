@@ -10,7 +10,6 @@ import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {useViewStore} from "@/store/view.js";
-import ShowAction from "@/Components/Table/ShowAction.vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
@@ -25,11 +24,6 @@ const disputes = usePage().props.disputes;
 const oldestDisputeCreatedAt = usePage().props.oldestDisputeCreatedAt;
 
 const displayShortDetail = ref(getCookieValue('displayShortDetail', true));
-
-const expandedCards = ref({});
-const toggleExpand = (id) => {
-    expandedCards.value[id] = !expandedCards.value[id];
-};
 
 function getCookieValue(name, defaultValue) {
     const currentRoute = route().current();
@@ -208,7 +202,17 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <DateTime :data="dispute.created_at"></DateTime>
                                         </td>
                                         <td class="text-right">
-                                            <ShowAction @click="modalStore.openDisputeModal({dispute})"></ShowAction>
+                                            <button
+                                                type="button"
+                                                class="btn btn-primary btn-outline btn-xs"
+                                                @click.prevent="modalStore.openDisputeModal({dispute})"
+                                                aria-label="Открыть спор"
+                                            >
+                                                <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                    <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                                </svg>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -226,7 +230,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                 >
                                     <div class="card-body p-4 pt-2 pb-3">
                                         <!-- Компактная шапка: ID и дата -->
-                                        <div class="flex justify-between items-center border-b border-base-content/10 mb-2">
+                                        <div class="flex justify-between items-center border-b border-base-content/10 p-1.5 mb-2">
                                             <div class="inline-flex items-center gap-2">
                                                 <span class="text-base-content/70">ID:</span>
                                                 <span class="font-medium text-base-content">{{ dispute.id }}</span>
@@ -252,18 +256,16 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div>
                                                 <DisputeStatus :status="dispute.status"></DisputeStatus>
                                             </div>
-                                            <div>
+                                            <div class="inline-flex shrink-0 items-center justify-end gap-1 w-15">
                                                 <button
-                                                    class="btn btn-primary btn-xs"
-                                                    @click.stop="toggleExpand(dispute.id)"
-                                                    :aria-expanded="!!expandedCards[dispute.id]"
-                                                    :aria-label="!!expandedCards[dispute.id] ? 'Скрыть' : 'Показать детали'"
+                                                    type="button"
+                                                    class="btn btn-square btn-primary btn-outline btn-xs"
+                                                    @click.prevent="modalStore.openDisputeModal({dispute})"
+                                                    aria-label="Открыть спор"
                                                 >
-                                                    <svg
-                                                        :class="['w-4 h-4 transition-transform', {'rotate-180': !!expandedCards[dispute.id]}]"
-                                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                        stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+                                                    <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                        <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                     </svg>
                                                 </button>
                                             </div>
@@ -277,8 +279,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         :detail="dispute.payment_detail.detail"
                                                         :type="dispute.payment_detail.type"
                                                         :name="dispute.payment_detail.name"
+                                                        class="-mt-2"
                                                     ></PaymentDetail>
                                                 </div>
+                                       
                                                 <div>
                                                     <DisputeStatus :status="dispute.status"></DisputeStatus>
                                                 </div>
@@ -293,44 +297,19 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         {{ dispute.order.total_profit }} {{ dispute.order.base_currency.toUpperCase() }}
                                                     </div>
                                                 </div>
-                                                <div>
+                                                <div class="inline-flex shrink-0 items-center gap-1">
                                                     <button
-                                                        class="btn btn-primary btn-xs"
-                                                        @click.stop="toggleExpand(dispute.id)"
-                                                        :aria-expanded="!!expandedCards[dispute.id]"
-                                                        :aria-label="!!expandedCards[dispute.id] ? 'Скрыть' : 'Показать детали'"
+                                                        type="button"
+                                                        class="btn btn-square btn-primary btn-outline btn-xs"
+                                                        @click.prevent="modalStore.openDisputeModal({dispute})"
+                                                        aria-label="Открыть спор"
                                                     >
-                                                        <svg
-                                                            :class="['w-4 h-4 transition-transform', {'rotate-180': !!expandedCards[dispute.id]}]"
-                                                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                            stroke-width="1.5" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+                                                        <svg class="h-3 w-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                            <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                            <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                         </svg>
                                                     </button>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <!-- Раскрываемая часть -->
-                                        <div v-show="!!expandedCards[dispute.id]" class="mt-3 grid gap-2 bg-base-300/50 rounded-box p-2">
-                                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-2 text-sm">
-                                                    <svg class="w-4 h-4 text-info shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                                                    </svg>
-                                                    <span class="text-base-content/80 truncate">{{ dispute.user.email }}</span>
-                                                </div>
-                                                <div class="flex items-center gap-2 text-sm">
-                                                    <svg class="w-4 h-4 text-info shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75V21a.75.75 0 0 0 .75.75h4.5a.75.75 0 0 0 .75-.75v-4.5a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 .75.75V21a.75.75 0 0 0 .75.75h4.5A.75.75 0 0 0 21 21V9.75" />
-                                                    </svg>
-                                                    <span class="text-base-content/60">UUID сделки:</span>
-                                                    <DisplayUUID :uuid="dispute.order.uuid"/>
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center justify-end mt-1">
-                                                <button class="btn btn-sm btn-outline" @click.prevent="modalStore.openDisputeModal({dispute})">
-                                                    Открыть
-                                                </button>
                                             </div>
                                         </div>
                                     </div>
