@@ -60,7 +60,12 @@ const normalizeCollection = (collection) => {
 const orderBookList = computed(() => normalizeCollection(orderBook.value));
 const activePayoutsList = computed(() => normalizeCollection(activePayouts.value));
 
-const refreshInterval = ref(props.refresh.interval ?? 5);
+/** Пока отключено: игнорируем сохранённый интервал и не ставим setInterval. */
+const trader_payouts_auto_refresh_allowed = false;
+
+const refreshInterval = ref(
+    trader_payouts_auto_refresh_allowed ? (props.refresh.interval ?? 5) : 0,
+);
 const refreshStorageKey = 'trader-payouts-refresh-interval';
 const refreshOptions = computed(() => props.refresh?.options ?? []);
 const refreshProgress = ref(0);
@@ -74,7 +79,7 @@ const refreshOptionLabel = (value) => (value === 0 ? 'Не обновлять' :
 const currentRefreshOptionLabel = computed(() => refreshOptionLabel(refreshInterval.value));
 
 const persistRefreshInterval = (value) => {
-    if (typeof window === 'undefined') {
+    if (!trader_payouts_auto_refresh_allowed || typeof window === 'undefined') {
         return;
     }
 
@@ -82,6 +87,10 @@ const persistRefreshInterval = (value) => {
 };
 
 const selectRefreshInterval = (value) => {
+    if (!trader_payouts_auto_refresh_allowed) {
+        return;
+    }
+
     if (!refreshOptions.value.includes(value) || refreshInterval.value === value) {
         return;
     }
@@ -90,7 +99,7 @@ const selectRefreshInterval = (value) => {
 };
 
 const syncRefreshIntervalFromStorage = () => {
-    if (typeof window === 'undefined') {
+    if (!trader_payouts_auto_refresh_allowed || typeof window === 'undefined') {
         return;
     }
 
@@ -160,7 +169,7 @@ const reloadData = (targetPage = tableFiltersStore.getCurrentPage, replace = tru
     router.visit(route('trader.payouts.index'), {
         method: 'get',
         data: {
-            refresh_interval: refreshInterval.value,
+            refresh_interval: trader_payouts_auto_refresh_allowed ? refreshInterval.value : 0,
             page: targetPage,
             per_page: tableFiltersStore.getPerPage,
         },
@@ -185,6 +194,11 @@ const refreshNow = () => {
 const startAutoRefresh = () => {
     stopAutoRefresh();
 
+    if (!trader_payouts_auto_refresh_allowed) {
+        stopRefreshProgressAnimation();
+        return;
+    }
+
     if (refreshInterval.value > 0) {
         animateRefreshProgress(refreshInterval.value * 1000);
         autoRefreshTimer.value = setInterval(() => {
@@ -204,12 +218,20 @@ const stopAutoRefresh = () => {
 };
 
 watch(refreshOptions, (options) => {
+    if (!trader_payouts_auto_refresh_allowed) {
+        return;
+    }
+
     if (!options.includes(refreshInterval.value)) {
         refreshInterval.value = options[0] ?? 0;
     }
 });
 
 watch(refreshInterval, (value) => {
+    if (!trader_payouts_auto_refresh_allowed) {
+        return;
+    }
+
     persistRefreshInterval(value);
     startAutoRefresh();
 
@@ -219,8 +241,10 @@ watch(refreshInterval, (value) => {
 });
 
 onMounted(() => {
-    syncRefreshIntervalFromStorage();
-    startAutoRefresh();
+    if (trader_payouts_auto_refresh_allowed) {
+        syncRefreshIntervalFromStorage();
+        startAutoRefresh();
+    }
 });
 
 onBeforeUnmount(() => {
@@ -377,7 +401,9 @@ defineOptions({ layout: AuthenticatedLayout });
         <MainTableSection
             title="Выплаты"
             :data="history"
-            :visit-extra-data="{ refresh_interval: refreshInterval }"
+            :visit-extra-data="{
+                refresh_interval: trader_payouts_auto_refresh_allowed ? refreshInterval : 0,
+            }"
         >
             <template #button>
                 <button
@@ -392,7 +418,7 @@ defineOptions({ layout: AuthenticatedLayout });
             <template #header>
                 <div class="space-y-6">
                     <div class="flex flex-wrap items-end justify-between gap-4">
-                        <div class="block sm:inline-flex sm:gap-4 space-y-4 sm:space-y-0">
+                        <div class="block inline-flex gap-2 w-full">
                             <div class="p-5 rounded-box shadow bg-base-100 w-full sm:w-auto border-none">
                                 <div class="stat-title">Активных выплат</div>
                                 <div class="stat-value text-primary text-3xl">{{ limits.currentActive }}</div>
@@ -409,7 +435,7 @@ defineOptions({ layout: AuthenticatedLayout });
                             </div>
                         </div>
                         <div class="inline-flex items-end gap-3">
-                            <div class="flex flex-col gap-1">
+                            <div v-if="trader_payouts_auto_refresh_allowed" class="flex flex-col gap-1">
                                 <span class="text-sm font-semibold text-base-content">Автообновление</span>
                                 <div class="flex items-center gap-2">
                                     <div v-show="refreshInterval > 0" class="flex justify-center items-center">
