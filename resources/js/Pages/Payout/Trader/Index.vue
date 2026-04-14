@@ -994,8 +994,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <tr>
                                     <th>UUID</th>
                                     <th>Реквизит</th>
-                                    <th>Сумма</th>
-                                    <th>Зачислено</th>
+                                    <th>Отправленно</th>
+                                    <th>Получено</th>
                                     <th>Доход</th>
                                     <th>Курс</th>
                                     <th>Статус</th>
@@ -1092,30 +1092,24 @@ defineOptions({ layout: AuthenticatedLayout });
                                     class="card bg-base-100 shadow-sm"
                                 >
                                     <div class="card-body p-4 pt-2 pb-3">
-                                        <div class="flex justify-between items-start gap-2 border-b border-base-content/10 pb-2 min-w-0">
-                                            <div class="min-w-0 flex-1">
-                                                <div class="inline-flex items-center gap-1 text-[11px] text-base-content/70 min-w-0">
-                                                    <span class="shrink-0">UUID:</span>
-                                                    <DisplayUUID :uuid="payout.uuid" :copyable="false" />
-                                                </div>
-                                                <div
-                                                    v-if="payout.external_id"
-                                                    class="mt-0.5 text-[10px] text-base-content/50 truncate"
-                                                >
-                                                    Ext: {{ payout.external_id }}
+                                        <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
+                                            <div class="min-w-0 flex-1 text-[11px]">
+                                                <div class="inline-flex items-center text-base-content/70 min-w-0">
+                                                    <span>UUID:</span>
+                                                    <DisplayUUID :uuid="payout.uuid" />
                                                 </div>
                                             </div>
                                             <div class="shrink-0 text-right leading-tight">
-                                                <div class="text-[10px] text-base-content/50 uppercase">Завершено</div>
+                                                <div class="text-[11px] text-base-content/50 uppercase">Завершено</div>
                                                 <DateTime
                                                     :data="payout.timings.completed_at"
                                                     simple
-                                                    class="justify-end text-xs"
+                                                    class="justify-end text-[11px]"
                                                 />
                                             </div>
                                         </div>
 
-                                        <div class="flex items-start gap-2 min-w-0 pt-2">
+                                        <div class="flex items-center gap-2 min-w-0 pt-2">
                                             <div v-if="hasCustomBank(payout)" class="text-base-content/70 shrink-0">
                                                 <BankManualIcon class="w-8 h-8 sm:w-10 sm:h-10" />
                                             </div>
@@ -1142,62 +1136,112 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
                                                 </div>
                                             </div>
+                                            <div class="shrink-0 self-center">
+                                                <div class="badge badge-primary badge-outline badge-sm font-normal">{{ payout.status_label }}</div>
+                                            </div>
                                         </div>
 
-                                        <div class="border-b border-base-content/10 my-2"></div>
+                                        <div class="border-b border-base-content/10 my-2 mb-1"></div>
 
-                                        <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
-                                            <div>
-                                                <div class="text-[10px] text-base-content/50 uppercase">Сумма</div>
-                                                <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ payout.amount.fiat }} {{ payout.amount.currency }}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="text-[10px] text-base-content/50 uppercase">USDT</div>
-                                                <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="text-[10px] text-base-content/50 uppercase">Зачислено</div>
-                                                <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
-                                                <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
-                                                </div>
-                                            </div>
-                                            <div class="col-span-2">
-                                                <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
-                                                <div class="font-medium text-xs text-base-content">
-                                                    {{ payout.commissions.trader_fee }} USDT
-                                                    <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
-                                                </div>
-                                            </div>
-                                            <div class="col-span-2 flex flex-wrap items-end justify-between gap-2 pt-0.5">
-                                                <div>
-                                                    <div class="text-[10px] text-base-content/50 uppercase">Статус</div>
-                                                    <div class="badge badge-outline badge-xs mt-0.5 font-normal">{{ payout.status_label }}</div>
-                                                </div>
+                                        <div class="hidden sm:flex flex-col gap-2">
+                                            <div class="flex items-end justify-between gap-2">
                                                 <div
-                                                    v-if="payoutReceiptLinks(payout).length"
-                                                    class="flex flex-wrap justify-end gap-1"
+                                                    class="grid gap-y-1.5 gap-x-5 sm:gap-x-6 text-[11px] leading-tight flex-1 min-w-0 grid-cols-[minmax(0,1.28fr)_minmax(0,0.91fr)_minmax(0,0.91fr)_minmax(0,0.91fr)]"
                                                 >
-                                                    <a
-                                                        v-for="(receipt, index) in payoutReceiptLinks(payout)"
-                                                        :key="`mobile-history-receipt-${payout.id}-${receipt.id ?? index}`"
-                                                        :href="receipt.url"
-                                                        target="_blank"
-                                                        rel="noopener"
-                                                        class="btn btn-xs btn-outline min-h-0 h-7 px-2 leading-none"
-                                                    >
-                                                        Чек {{ index + 1 }}
-                                                    </a>
+                                                    <div class="min-w-0">
+                                                        <div class="text-[10px] text-base-content/50 uppercase">Отправленно</div>
+                                                        <div class="font-medium text-xs text-base-content text-nowrap">
+                                                            {{ payout.amount.fiat }} {{ payout.amount.currency }}
+                                                            <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <div class="text-[10px] text-base-content/50 uppercase">Получено</div>
+                                                        <div class="font-medium text-xs text-base-content text-nowrap">
+                                                            {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
+                                                        <div class="font-medium text-xs text-base-content text-nowrap">
+                                                            {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                        </div>
+                                                    </div>
+                                                    <div class="min-w-0">
+                                                        <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
+                                                        <div class="font-medium text-xs text-base-content">
+                                                            {{ payout.commissions.trader_fee }} USDT
+                                                            <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
+                                                        </div>
+                                                    </div>
                                                 </div>
+                                            </div>
+                                            <div
+                                                v-if="payoutReceiptLinks(payout).length"
+                                                class="flex items-center justify-start gap-3 bg-base-200/40 rounded-lg p-1.5 px-2.5"
+                                            >
+                                                <div class="text-[10px] text-base-content/50 uppercase">
+                                                    Чеки:
+                                                </div>
+                                                <a
+                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                    :key="`mobile-history-receipt-xs-${payout.id}-${receipt.id ?? index}`"
+                                                    :href="receipt.url"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    class="btn btn-xs btn-secondary btn-outline min-h-0 h-5 px-2 leading-none"
+                                                >
+                                                    Чек {{ index + 1 }}
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <div class="sm:hidden space-y-2">
+                                            <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
+                                                <div>
+                                                    <div class="text-[10px] text-base-content/50 uppercase">Отправленно</div>
+                                                    <div class="font-medium text-xs text-base-content text-nowrap">
+                                                        {{ payout.amount.fiat }} {{ payout.amount.currency }}
+                                                        <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[10px] text-base-content/50 uppercase">Получено</div>
+                                                    <div class="font-medium text-xs text-base-content text-nowrap">
+                                                        {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
+                                                    <div class="font-medium text-xs text-base-content text-nowrap">
+                                                        {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
+                                                    <div class="font-medium text-xs text-base-content">
+                                                        {{ payout.commissions.trader_fee }} USDT
+                                                        <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div
+                                                v-if="payoutReceiptLinks(payout).length"
+                                                class="flex items-center justify-start gap-3 bg-base-200/40 rounded-lg p-1.5 px-2.5"
+                                            >
+                                                <div class="text-[10px] text-base-content/50 uppercase">
+                                                    Чеки:
+                                                </div>
+                                                <a
+                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                    :key="`mobile-history-receipt-xs-${payout.id}-${receipt.id ?? index}`"
+                                                    :href="receipt.url"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    class="btn btn-xs btn-secondary btn-outline min-h-0 h-5 px-2 leading-none"
+                                                >
+                                                    Чек {{ index + 1 }}
+                                                </a>
                                             </div>
                                         </div>
                                     </div>
