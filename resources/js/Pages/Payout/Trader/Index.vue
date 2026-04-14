@@ -708,7 +708,7 @@ defineOptions({ layout: AuthenticatedLayout });
 
                             <div v-show="listTab === 'stack'" class="space-y-4">
                             <div class="flex flex-wrap items-center justify-between gap-3">
-                                <h2 class="text-xl font-semibold">Стакан доступных выплат</h2>
+                                <h2 class="text-xl font-semibold">Доступные выплаты</h2>
                                 <div class="flex items-center gap-3">
                                     <span v-if="payoutEmptyState" class="text-sm text-base-content/60">Пока нет заявок</span>
                                     <button
@@ -835,75 +835,132 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </div>
                                 </div>
 
-                                <!-- Mobile (cards list) -->
-                                <div class="xl:hidden space-y-2">
-                                    <div
-                                        v-for="payout in orderBookList"
-                                        :key="payout.id"
-                                        class="card bg-base-100 shadow-sm"
-                                    >
-                                        <div class="card-body p-4 pt-2 pb-3 space-y-3">
-                                            <div class="flex justify-between items-center border-b border-base-content/10 pb-2 gap-3">
-                                                <div class="inline-flex items-center gap-3">
-                                                    <div v-if="hasCustomBank(payout)" class="text-base-content/70">
-                                                        <BankManualIcon class="w-10 h-10" />
+                                <!-- Mobile (cards list) — компактно как Order / PaymentDetail -->
+                                <div class="xl:hidden space-y-3">
+                                    <div class="space-y-2">
+                                        <div
+                                            v-for="payout in orderBookList"
+                                            :key="payout.id"
+                                            class="card bg-base-100 shadow-sm"
+                                        >
+                                            <div class="card-body p-4 pt-2 pb-3">
+                                                <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
+                                                    <div class="min-w-0 flex-1 text-[11px]">
+                                                        <div class="inline-flex items-center text-base-content/70 min-w-0">
+                                                            <span>UUID:</span>
+                                                            <DisplayUUID :uuid="payout.uuid"/>
+                                                        </div>
                                                     </div>
-                                                    <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative">
-                                                        <img src="/images/sbp.svg" class="w-10 h-10">
+                                                    <div class="shrink-0 text-right leading-tight">
+                                                        <div class="text-[11px] text-base-content/50 uppercase">Истекает</div>
+                                                        <DateTime
+                                                            :data="payout.timings.expires_at"
+                                                            simple
+                                                            class="justify-end text-[11px]"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div class="flex items-center gap-2 min-w-0 pt-2">
+                                                    <div v-if="hasCustomBank(payout)" class="text-base-content/70 shrink-0">
+                                                        <BankManualIcon class="w-8 h-8 sm:w-10 sm:h-10" />
+                                                    </div>
+                                                    <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative shrink-0">
+                                                        <img src="/images/sbp.svg" alt="" class="w-8 h-8 sm:w-10 sm:h-10">
                                                         <GatewayLogo
                                                             :img_path="payout.payment_gateway?.logo"
                                                             :name="payout.payment_gateway?.name"
-                                                            class="absolute right-[-3px] bottom-[-3px] w-5 h-5 bg-base-100 border border-base-300 rounded-full"
+                                                            class="absolute right-[-2px] bottom-[-2px] w-4 h-4 sm:w-5 sm:h-5 bg-base-100 border border-base-300 rounded-full"
                                                         />
                                                     </div>
-                                                    <div v-else>
+                                                    <div v-else class="shrink-0">
                                                         <GatewayLogo
                                                             :img_path="payout.payment_gateway?.logo"
                                                             :name="payout.payment_gateway?.name"
-                                                            class="w-10 h-10"
+                                                            class="w-8 h-8 sm:w-10 sm:h-10"
                                                         />
                                                     </div>
-                                                    <div>
-                                                        <div class="font-semibold text-base-content">{{ payout.requisites }}</div>
-                                                        <div class="text-sm text-base-content/60">
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-xs font-medium text-base-content leading-snug break-words">
+                                                            {{ payout.requisites }}
+                                                        </div>
+                                                        <div class="text-[11px] text-base-content/60 leading-snug">
                                                             {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
                                                         </div>
                                                     </div>
+
+                                                    <button
+                                                            type="button"
+                                                            class="btn btn-primary btn-xs"
+                                                            @click="takePayout(payout)"
+                                                            :disabled="!canTakeMore || isRefreshing"
+                                                        >
+                                                        Взять
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    class="btn btn-primary btn-sm"
-                                                    @click="takePayout(payout)"
-                                                    :disabled="!canTakeMore || isRefreshing"
-                                                >
-                                                    Взять
-                                                </button>
-                                            </div>
-                                            <div class="grid sm:grid-cols-2 gap-3 text-sm">
-                                                <div class="space-y-1">
-                                                    <div class="text-base-content/60 text-xs uppercase">Отправляете</div>
-                                                    <div class="font-semibold">
-                                                        {{ payout.amount.fiat }} {{ payout.amount.currency }}
+
+                                                <div class="border-b border-base-content/10 my-2 mb-1"></div>
+
+                                                <div class="hidden sm:flex items-end justify-between gap-2">
+                                                    <div
+                                                        class="grid gap-y-1.5 gap-x-5 sm:gap-x-6 text-[11px] leading-tight flex-1 min-w-0 grid-cols-[minmax(0,1.28fr)_minmax(0,0.91fr)_minmax(0,0.91fr)_minmax(0,0.91fr)]"
+                                                    >
+                                                        <div class="min-w-0">
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Отправляете</div>
+                                                            <div class="font-medium text-xs text-base-content text-nowrap">
+                                                                {{ payout.amount.fiat }} {{ payout.amount.currency }} <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Получаете</div>
+                                                            <div class="font-medium text-xs text-base-content text-nowrap">
+                                                                {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                            </div>
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
+                                                            <div class="font-medium text-xs text-base-content text-nowrap">
+                                                                {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                            </div>
+                                                        </div>
+                                                        <div class="min-w-0">
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
+                                                            <div class="font-medium text-xs text-base-content">
+                                                                {{ payout.commissions.trader_fee }} USDT
+                                                                <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="space-y-1">
-                                                    <div class="text-base-content/60 text-xs uppercase">Получаете</div>
-                                                    <div class="font-semibold">
-                                                        {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+
+                                                <div class="sm:hidden space-y-2">
+                                                    <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
+                                                        <div>
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Отправляете</div>
+                                                            <div class="font-medium text-xs text-base-content text-nowrap">
+                                                                {{ payout.amount.fiat }} {{ payout.amount.currency }} <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Получаете</div>
+                                                            <div class="font-medium text-xs text-base-content text-nowrap">
+                                                                {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
+                                                            <div class="font-medium text-xs text-base-content text-nowrap">
+                                                                {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
+                                                            <div class="font-medium text-xs text-base-content">
+                                                                {{ payout.commissions.trader_fee }} USDT
+                                                                <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <div class="text-base-content/60 text-xs uppercase">Курс</div>
-                                                    <div class="font-semibold">
-                                                        {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
-                                                    </div>
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <div class="text-base-content/60 text-xs uppercase">Доход</div>
-                                                    <div class="font-semibold">{{ payout.commissions.trader_fee }} USDT</div>
-                                                </div>
-                                                <div class="space-y-1">
-                                                    <div class="text-base-content/60 text-xs uppercase">Истекает</div>
-                                                    <DateTime :data="payout.timings.expires_at" simple class="justify-start font-semibold" />
                                                 </div>
                                             </div>
                                         </div>
@@ -1027,97 +1084,126 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </tbody>
                             </table>
                         </div>
-                        <div class="xl:hidden space-y-2">
-                            <div
-                                v-for="payout in historyList"
-                                :key="payout.id"
-                                class="card bg-base-100 shadow-sm"
-                            >
-                                <div class="card-body p-4 pt-2 pb-3 space-y-3">
-                                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-content/10 pb-2">
-                                    <div class="inline-flex items-center gap-2 text-sm text-base-content/70">
-                                        <span class="uppercase">UUID</span>
-                                        <DisplayUUID :uuid="payout.uuid" />
-                                    </div>
-                                    <div class="text-right">
-                                        <div class="text-base-content/60 text-xs uppercase">Завершено</div>
-                                        <DateTime :data="payout.timings.completed_at" simple class="justify-end" />
-                                    </div>
-                                </div>
-                                    <div class="flex items-center gap-3">
-                                        <div v-if="hasCustomBank(payout)" class="text-base-content/70">
-                                            <BankManualIcon class="w-10 h-10" />
-                                        </div>
-                                        <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative">
-                                            <img src="/images/sbp.svg" class="w-10 h-10">
-                                            <GatewayLogo
-                                                :img_path="payout.payment_gateway?.logo"
-                                                :name="payout.payment_gateway?.name"
-                                                class="absolute right-[-3px] bottom-[-3px] w-5 h-5 bg-base-100 border border-base-300 rounded-full"
-                                            />
-                                        </div>
-                                        <div v-else>
-                                            <GatewayLogo
-                                                :img_path="payout.payment_gateway?.logo"
-                                                :name="payout.payment_gateway?.name"
-                                                class="w-10 h-10"
-                                            />
-                                        </div>
-                                        <div>
-                                            <div class="font-semibold text-base-content text-sm sm:text-base">
-                                                {{ payout.requisites }}
-                                            </div>
-                                            <div class="text-xs text-base-content/60">
-                                                {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                                        <div class="space-y-1">
-                                            <div class="text-base-content/60 text-xs uppercase">Сумма</div>
-                                            <div class="font-semibold">
-                                                {{ payout.amount.fiat }} {{ payout.amount.currency }}
-                                            </div>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <div class="text-base-content/60 text-xs uppercase">Зачислено</div>
-                                            <div class="font-semibold">
-                                                {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
-                                            </div>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <div class="text-base-content/60 text-xs uppercase">Курс</div>
-                                            <div class="font-semibold">
-                                                {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
-                                            </div>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <div class="text-base-content/60 text-xs uppercase">Доход</div>
-                                            <div class="font-semibold">{{ payout.commissions.trader_fee }} USDT</div>
-                                        </div>
-                                        <div class="space-y-1">
-                                            <div class="text-base-content/60 text-xs uppercase">Статус</div>
-                                            <div class="badge badge-outline badge-sm">{{ payout.status_label }}</div>
-                                        </div>
-                                        <div v-if="payoutReceiptLinks(payout).length" class="space-y-1 sm:col-span-2">
-                                            <div class="text-base-content/60 text-xs uppercase">Чеки</div>
-                                            <div class="flex flex-wrap gap-2">
-                                                <a
-                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
-                                                    :key="`mobile-history-receipt-${payout.id}-${receipt.id ?? index}`"
-                                                    :href="receipt.url"
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                    class="btn btn-xs btn-outline"
+                        <div class="xl:hidden space-y-3">
+                            <div class="space-y-2">
+                                <div
+                                    v-for="payout in historyList"
+                                    :key="payout.id"
+                                    class="card bg-base-100 shadow-sm"
+                                >
+                                    <div class="card-body p-4 pt-2 pb-3">
+                                        <div class="flex justify-between items-start gap-2 border-b border-base-content/10 pb-2 min-w-0">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="inline-flex items-center gap-1 text-[11px] text-base-content/70 min-w-0">
+                                                    <span class="shrink-0">UUID:</span>
+                                                    <DisplayUUID :uuid="payout.uuid" :copyable="false" />
+                                                </div>
+                                                <div
+                                                    v-if="payout.external_id"
+                                                    class="mt-0.5 text-[10px] text-base-content/50 truncate"
                                                 >
-                                                    Чек {{ index + 1 }}
-                                                </a>
+                                                    Ext: {{ payout.external_id }}
+                                                </div>
+                                            </div>
+                                            <div class="shrink-0 text-right leading-tight">
+                                                <div class="text-[10px] text-base-content/50 uppercase">Завершено</div>
+                                                <DateTime
+                                                    :data="payout.timings.completed_at"
+                                                    simple
+                                                    class="justify-end text-xs"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-start gap-2 min-w-0 pt-2">
+                                            <div v-if="hasCustomBank(payout)" class="text-base-content/70 shrink-0">
+                                                <BankManualIcon class="w-8 h-8 sm:w-10 sm:h-10" />
+                                            </div>
+                                            <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative shrink-0">
+                                                <img src="/images/sbp.svg" alt="" class="w-8 h-8 sm:w-10 sm:h-10">
+                                                <GatewayLogo
+                                                    :img_path="payout.payment_gateway?.logo"
+                                                    :name="payout.payment_gateway?.name"
+                                                    class="absolute right-[-2px] bottom-[-2px] w-4 h-4 sm:w-5 sm:h-5 bg-base-100 border border-base-300 rounded-full"
+                                                />
+                                            </div>
+                                            <div v-else class="shrink-0">
+                                                <GatewayLogo
+                                                    :img_path="payout.payment_gateway?.logo"
+                                                    :name="payout.payment_gateway?.name"
+                                                    class="w-8 h-8 sm:w-10 sm:h-10"
+                                                />
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="text-xs font-medium text-base-content leading-snug break-words">
+                                                    {{ payout.requisites }}
+                                                </div>
+                                                <div class="text-[11px] text-base-content/60 leading-snug">
+                                                    {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="border-b border-base-content/10 my-2"></div>
+
+                                        <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
+                                            <div>
+                                                <div class="text-[10px] text-base-content/50 uppercase">Сумма</div>
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ payout.amount.fiat }} {{ payout.amount.currency }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="text-[10px] text-base-content/50 uppercase">USDT</div>
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="text-[10px] text-base-content/50 uppercase">Зачислено</div>
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                </div>
+                                            </div>
+                                            <div class="col-span-2">
+                                                <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
+                                                <div class="font-medium text-xs text-base-content">
+                                                    {{ payout.commissions.trader_fee }} USDT
+                                                    <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-span-2 flex flex-wrap items-end justify-between gap-2 pt-0.5">
+                                                <div>
+                                                    <div class="text-[10px] text-base-content/50 uppercase">Статус</div>
+                                                    <div class="badge badge-outline badge-xs mt-0.5 font-normal">{{ payout.status_label }}</div>
+                                                </div>
+                                                <div
+                                                    v-if="payoutReceiptLinks(payout).length"
+                                                    class="flex flex-wrap justify-end gap-1"
+                                                >
+                                                    <a
+                                                        v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                        :key="`mobile-history-receipt-${payout.id}-${receipt.id ?? index}`"
+                                                        :href="receipt.url"
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        class="btn btn-xs btn-outline min-h-0 h-7 px-2 leading-none"
+                                                    >
+                                                        Чек {{ index + 1 }}
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="historyList.length === 0" class="py-6 text-center text-sm text-base-content/60 xl:hidden">
+                            <div v-if="historyList.length === 0" class="py-6 text-center text-sm text-base-content/60">
                                 История пока пуста.
                             </div>
                         </div>
