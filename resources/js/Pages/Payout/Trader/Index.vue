@@ -685,20 +685,20 @@ defineOptions({ layout: AuthenticatedLayout });
                         </div>
 
                         <div class="space-y-4">
-                            <div class="flex items-center justify-between gap-3">
-                                <ul class="flex flex-wrap text-sm font-medium text-center">
-                                    <li class="me-2">
+                            <div class="flex w-full items-center justify-between gap-3">
+                                <ul class="flex w-full gap-2 text-sm font-medium text-center sm:w-auto sm:flex-wrap sm:gap-0">
+                                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
                                         <a
                                             href="#"
-                                            class="btn btn-sm"
+                                            class="btn btn-sm w-full sm:w-auto"
                                             :class="listTab === 'stack' ? 'btn-primary' : 'btn-outline'"
                                             @click.prevent="openListTab('stack')"
-                                        >Стакан доступных выплат</a>
+                                        >Доступные выплаты</a>
                                     </li>
-                                    <li class="me-2">
+                                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
                                         <a
                                             href="#"
-                                            class="btn btn-sm"
+                                            class="btn btn-sm w-full sm:w-auto"
                                             :class="listTab === 'history' ? 'btn-primary' : 'btn-outline'"
                                             @click.prevent="openListTab('history')"
                                         >История выплат</a>
@@ -708,7 +708,7 @@ defineOptions({ layout: AuthenticatedLayout });
 
                             <div v-show="listTab === 'stack'" class="space-y-4">
                             <div class="flex flex-wrap items-center justify-between gap-3">
-                                <h2 class="text-xl font-semibold">Доступные выплаты</h2>
+                                <h2 class="text-xl font-semibold">Доступных выплат</h2>
                                 <div class="flex items-center gap-3">
                                     <span v-if="payoutEmptyState" class="text-sm text-base-content/60">Пока нет заявок</span>
                                     <button
