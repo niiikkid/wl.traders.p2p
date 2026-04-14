@@ -10,6 +10,7 @@ import DateTime from '@/Components/DateTime.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import Pagination from '@/Components/Pagination/Pagination.vue';
 import { formatDistanceStrict } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import DisplayUUID from "../../../Components/DisplayUUID.vue";
 import TraderExportModal from '@/Components/Export/TraderExportModal.vue';
 
@@ -347,6 +348,7 @@ const takePayout = (payout) => {
     });
 };
 
+/** Текст оставшегося холда только для этой страницы (трейдер): по-русски, без англ. суффиксов date-fns. */
 const formatHoldCountdown = (timestamp) => {
     if (!timestamp) {
         return null;
@@ -355,11 +357,16 @@ const formatHoldCountdown = (timestamp) => {
     const target = new Date(timestamp);
     const now = new Date();
 
-    if (target < now) {
-        return 'ожидает подтверждения';
+    if (target.getTime() <= now.getTime()) {
+        return 'Ожидает подтверждения';
     }
 
-    return formatDistanceStrict(now, target, { roundingMethod: 'floor', addSuffix: true });
+    const fragment = formatDistanceStrict(now, target, {
+        locale: ru,
+        roundingMethod: 'floor',
+    });
+
+    return `Осталось: ${fragment}`;
 };
 
 const hasCustomBank = (payout) => !!payout?.bank_name;
@@ -744,12 +751,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         <div class="text-xs font-medium">{{ payout.initials }}</div>
                                                     </div>
                                                 </div>
-                                                <div
-                                                    v-if="payout.status !== 'taken'"
-                                                    class="text-[11px] text-base-content/70 xl:hidden"
-                                                >
-                                                    Холд: {{ formatHoldCountdown(payout.timings.hold_until) ?? 'ожидаем завершения' }}
-                                                </div>
                                                 <div class="hidden items-center gap-7 xl:flex">
                                                     <div class="space-y-0">
                                                         <div class="text-xs uppercase text-base-content/60">Сумма</div>
@@ -777,25 +778,10 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 </button>
                                                 <div
                                                     v-else
-                                                    class="text-sm text-base-content/70"
+                                                    class="text-sm font-semibold text-secondary"
                                                 >
-                                                    Холд: {{ formatHoldCountdown(payout.timings.hold_until) ?? 'ожидаем завершения' }}
+                                                    {{ formatHoldCountdown(payout.timings.hold_until) ?? 'Ожидаем данные о холде' }}
                                                 </div>
-                                            </div>
-                                        </div>
-                                        <div v-if="payoutReceiptLinks(payout).length" class="pt-0.5 xl:pt-1">
-                                            <div class="text-[10px] text-base-content/50 uppercase mb-1.5 xl:text-xs xl:text-base-content/60 xl:normal-case">Чеки выплаты</div>
-                                            <div class="flex flex-wrap gap-1 xl:gap-2">
-                                                <a
-                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
-                                                    :key="`active-receipt-${payout.id}-${receipt.id ?? index}`"
-                                                    :href="receipt.url"
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                    class="btn btn-xs btn-outline min-h-0 h-7 px-2 leading-none xl:min-h-10 xl:h-10 xl:px-3"
-                                                >
-                                                    Чек {{ index + 1 }}
-                                                </a>
                                             </div>
                                         </div>
                                         <div class="hidden xl:grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 bg-base-300/80 py-3 px-4 rounded-box text-sm">
@@ -826,6 +812,26 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 <DateTime :data="payout.timings.taken_at" simple class="justify-start font-semibold" />
                                             </div>
                                         </div>
+                                        <div
+                                            v-if="payoutReceiptLinks(payout).length"
+                                            class="hidden xl:flex items-center justify-start gap-3 bg-base-200/70 py-3 px-4 rounded-box"
+                                        >
+                                            <div class="text-xs font-medium text-base-content/60 uppercase shrink-0">
+                                                Чеки:
+                                            </div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <a
+                                                    v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                    :key="`active-receipt-xl-${payout.id}-${receipt.id ?? index}`"
+                                                    :href="receipt.url"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    class="btn btn-sm btn-secondary btn-outline min-h-7 h-7 px-3 text-sm"
+                                                >
+                                                    Чек {{ index + 1 }}
+                                                </a>
+                                            </div>
+                                        </div>
                                         <div class="xl:hidden grid grid-cols-2 sm:grid-cols-4 gap-x-2 gap-y-2.5 bg-base-300/80 py-2.5 px-3 rounded-box text-[11px] leading-tight">
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Сумма в USDT</div>
@@ -853,17 +859,42 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 </div>
                                             </div>
                                         </div>
-                                        <div
-                                            v-if="payout.status === 'taken'"
-                                            class="xl:hidden sm:flex sm:justify-end"
-                                        >
-                                            <button
-                                                type="button"
-                                                class="btn btn-success btn-xs w-full sm:w-auto"
-                                                @click="openReceiptModal(payout)"
+                                        <div class="xl:hidden space-y-2 border-t border-base-content/10 pt-2">
+                                            <div
+                                                v-if="payout.status !== 'taken'"
+                                                class="text-[10px] leading-snug font-semibold px-1 flex items-center"
                                             >
-                                                Отправил средства
-                                            </button>
+                                                <span class="text-base-content/60 mr-1">Холд:</span> <span class="text-secondary">{{ formatHoldCountdown(payout.timings.hold_until) ?? 'Ожидаем данные о холде' }}</span>
+                                            </div>
+                                            <div v-if="payout.status === 'taken'">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-success btn-xs w-full"
+                                                    @click="openReceiptModal(payout)"
+                                                >
+                                                    Отправил средства
+                                                </button>
+                                            </div>
+                                            <div
+                                                v-if="payoutReceiptLinks(payout).length"
+                                                class="flex items-center justify-start gap-2 bg-base-200/40 rounded-lg p-1.5 px-2"
+                                            >
+                                                <div class="text-[10px] text-base-content/50 uppercase shrink-0">
+                                                    Чеки:
+                                                </div>
+                                                <div class="flex flex-wrap gap-1">
+                                                    <a
+                                                        v-for="(receipt, index) in payoutReceiptLinks(payout)"
+                                                        :key="`active-receipt-mobile-${payout.id}-${receipt.id ?? index}`"
+                                                        :href="receipt.url"
+                                                        target="_blank"
+                                                        rel="noopener"
+                                                        class="btn btn-xs btn-secondary btn-outline min-h-0 h-5 px-2 text-[10px] leading-none"
+                                                    >
+                                                        Чек {{ index + 1 }}
+                                                    </a>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
