@@ -66,8 +66,10 @@ const open_connect_telegram = () => {
         <header
             class="sticky top-0 z-50 mx-0 border-b border-base-300 bg-base-100/85 backdrop-blur-md md:top-4 md:mx-4 md:rounded-2xl md:border md:shadow-lg md:shadow-black/20"
         >
-            <div class="navbar mx-auto min-h-[4.25rem] max-w-6xl px-4 py-2 md:px-6">
-                <div class="navbar-start min-w-0 flex-1 gap-3 md:flex-none">
+            <div
+                class="navbar relative mx-auto min-h-[4.25rem] min-w-0 max-w-6xl justify-between gap-3 px-4 py-2 md:gap-4 md:px-6"
+            >
+                <div class="navbar-start min-w-0 !w-auto flex-1 basis-0 gap-3 md:flex-none md:basis-auto">
                     <div class="dropdown md:hidden" :class="{ 'dropdown-open': mobile_open }">
                         <div
                             tabindex="0"
@@ -130,7 +132,9 @@ const open_connect_telegram = () => {
                         >
                     </div>
                 </div>
-                <div class="navbar-center hidden shrink-0 md:flex">
+                <div
+                    class="navbar-center absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 md:flex"
+                >
                     <ul class="menu menu-horizontal gap-0.5 px-1 text-base font-medium text-base-content/75">
                         <li>
                             <a href="#features" class="cursor-pointer rounded-btn hover:bg-base-200 hover:text-base-content"
@@ -159,7 +163,7 @@ const open_connect_telegram = () => {
                         </li>
                     </ul>
                 </div>
-                <div class="navbar-end shrink-0">
+                <div class="navbar-end !w-auto shrink-0">
                     <a
                         v-if="connect_telegram_url"
                         :href="connect_telegram_url"

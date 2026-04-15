@@ -13,29 +13,42 @@ use Inertia\Response;
 class LandingPageController extends Controller
 {
     /**
+     * Редирект авторизованного пользователя в соответствующий раздел кабинета.
+     */
+    public static function resolveAuthenticatedHome(Request $request): ?RedirectResponse
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return null;
+        }
+
+        if ($user->hasRole('Merchant')) {
+            return redirect()->route('merchant.main.index');
+        }
+        if ($user->hasRole('Trader')) {
+            return redirect()->route('trader.main.index');
+        }
+        if ($user->hasRole('Support')) {
+            return redirect()->route('support.users.index');
+        }
+        if ($user->hasRole('Team Leader')) {
+            return redirect()->route('leader.main.index');
+        }
+        if ($user->hasRole('Merchant Support')) {
+            return redirect()->route('merchant-support.payments.index');
+        }
+
+        return redirect()->route('admin.main.index');
+    }
+
+    /**
      * Публичная главная: лендинг для гостей, редирект в кабинет для авторизованных.
      */
     public function show(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
-        if ($user !== null) {
-            if ($user->hasRole('Merchant')) {
-                return redirect()->route('merchant.main.index');
-            }
-            if ($user->hasRole('Trader')) {
-                return redirect()->route('trader.main.index');
-            }
-            if ($user->hasRole('Support')) {
-                return redirect()->route('support.users.index');
-            }
-            if ($user->hasRole('Team Leader')) {
-                return redirect()->route('leader.main.index');
-            }
-            if ($user->hasRole('Merchant Support')) {
-                return redirect()->route('merchant-support.payments.index');
-            }
-
-            return redirect()->route('admin.main.index');
+        $authenticatedHome = self::resolveAuthenticatedHome($request);
+        if ($authenticatedHome !== null) {
+            return $authenticatedHome;
         }
 
         $connect_telegram_url = services()->settings()->getSupportLink();

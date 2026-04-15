@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppHomeController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationRuleController;
@@ -29,6 +30,15 @@ Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [\App\Http\
     ->middleware('payment.domain')
     ->name('payment.payment-detail.store');
 
+if (config('domains.split_marketing')) {
+    $marketing_host = config('domains.payment_host');
+    if (is_string($marketing_host) && $marketing_host !== '') {
+        Route::domain($marketing_host)->middleware(['2fa'])->group(function () {
+            Route::get('/', [LandingPageController::class, 'show'])->name('landing.home');
+        });
+    }
+}
+
 Route::post('/telegram/webhook', TelegramWebhookController::class)
     ->middleware(['telegram.secret', 'backoffice.domain'])
     ->name('telegram.webhook');
@@ -43,7 +53,10 @@ Route::post('/impersonate/leave', function () {
 })->middleware('auth', 'banned', 'backoffice.domain')->name('impersonate.leave');
 
 Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
-    Route::get('/', [LandingPageController::class, 'show'])->name('dashboard');
+    Route::get('/', config('domains.split_marketing')
+        ? AppHomeController::class
+        : [LandingPageController::class, 'show']
+    )->name('dashboard');
 
     Route::group(['middleware' => ['auth', 'banned']], function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
