@@ -10,16 +10,30 @@ class EnsureBackofficeDomain
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $appHost = (string) config('domains.app_host');
-        $paymentHost = (string) config('domains.payment_host');
-        $currentHost = $request->getHost();
-
-        // Если payment и backoffice на одном домене, ограничение выключено.
-        if (!$appHost || $appHost === $paymentHost) {
+        $appHost = config('domains.app_host');
+        if (!is_string($appHost) || $appHost === '') {
             return $next($request);
         }
 
-        if ($currentHost !== $appHost) {
+        $currentHost = $request->getHost();
+
+        if (config('domains.split_marketing')) {
+            if (strtolower($currentHost) !== strtolower($appHost)) {
+                abort(404);
+            }
+
+            return $next($request);
+        }
+
+        $paymentHost = config('domains.payment_host');
+        $paymentHostStr = is_string($paymentHost) ? $paymentHost : '';
+
+        // Одна зона: ограничение выключено, если платёжный хост не задан или совпадает с APP.
+        if ($paymentHostStr === '' || strtolower($appHost) === strtolower($paymentHostStr)) {
+            return $next($request);
+        }
+
+        if (strtolower($currentHost) !== strtolower($appHost)) {
             abort(404);
         }
 

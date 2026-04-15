@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->web(prepend: [
+            \App\Http\Middleware\EnsureMarketingSurfaceOnly::class,
+        ]);
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
@@ -23,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'banned' => \App\Http\Middleware\Banned::class,
             'payment.domain' => \App\Http\Middleware\EnsurePaymentDomain::class,
+            'marketing.surface' => \App\Http\Middleware\EnsureMarketingSurfaceOnly::class,
             'backoffice.domain' => \App\Http\Middleware\EnsureBackofficeDomain::class,
             'api-access-token' => \App\Http\Middleware\ApiAccessToken::class,
             'api-bot-access-token' => \App\Http\Middleware\ApiBotAccessToken::class,
