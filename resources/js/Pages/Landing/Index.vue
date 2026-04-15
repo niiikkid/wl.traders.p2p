@@ -64,13 +64,11 @@ const open_connect_telegram = () => {
         >
 
         <header
-            class="sticky top-0 z-50 mx-0 border-b border-base-300 bg-base-100/85 backdrop-blur-md md:top-4 md:mx-4 md:rounded-2xl md:border md:shadow-lg md:shadow-black/20"
+            class="sticky top-0 z-50 mx-0 border-b border-base-300 bg-base-100/85 backdrop-blur-md lg:top-4 lg:mx-4 lg:rounded-2xl lg:border lg:shadow-lg lg:shadow-black/20"
         >
-            <div
-                class="navbar relative mx-auto min-h-[4.25rem] min-w-0 max-w-6xl justify-between gap-3 px-4 py-2 md:gap-4 md:px-6"
-            >
-                <div class="navbar-start min-w-0 !w-auto flex-1 basis-0 gap-3 md:flex-none md:basis-auto">
-                    <div class="dropdown md:hidden" :class="{ 'dropdown-open': mobile_open }">
+            <div class="navbar mx-auto min-h-[4.25rem] max-w-6xl px-4 py-2 lg:px-6">
+                <div class="navbar-start min-w-0 flex-1 gap-3 lg:flex-none">
+                    <div class="dropdown lg:hidden" :class="{ 'dropdown-open': mobile_open }">
                         <div
                             tabindex="0"
                             role="button"
@@ -127,14 +125,12 @@ const open_connect_telegram = () => {
                         </span>
                         <span
                             v-if="app_slogan"
-                            class="mt-0.5 hidden text-sm font-medium text-base-content/65 md:block"
+                            class="mt-0.5 hidden text-sm font-medium text-base-content/65 lg:block"
                             >{{ app_slogan }}</span
                         >
                     </div>
                 </div>
-                <div
-                    class="navbar-center absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 md:flex"
-                >
+                <div class="navbar-center hidden shrink-0 lg:flex">
                     <ul class="menu menu-horizontal gap-0.5 px-1 text-base font-medium text-base-content/75">
                         <li>
                             <a href="#features" class="cursor-pointer rounded-btn hover:bg-base-200 hover:text-base-content"
@@ -163,20 +159,20 @@ const open_connect_telegram = () => {
                         </li>
                     </ul>
                 </div>
-                <div class="navbar-end !w-auto shrink-0">
+                <div class="lg:hidden navbar-end shrink-0">
                     <a
                         v-if="connect_telegram_url"
                         :href="connect_telegram_url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="btn border-0 bg-gradient-to-r from-warning to-secondary px-6 text-base font-bold text-slate-900 shadow-lg shadow-warning/25 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-warning/20 md:px-7"
+                        class="btn border-0 bg-gradient-to-r from-warning to-secondary px-6 text-base font-bold text-slate-900 shadow-lg shadow-warning/25 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-warning/20 lg:px-7"
                     >
                         Подключиться
                     </a>
                     <button
                         v-else
                         type="button"
-                        class="btn border-0 bg-gradient-to-r from-warning to-secondary px-6 text-base font-bold text-slate-900 shadow-lg shadow-warning/25 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-warning/20 md:px-7"
+                        class="btn border-0 bg-gradient-to-r from-warning to-secondary px-6 text-base font-bold text-slate-900 shadow-lg shadow-warning/25 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-warning/20 lg:px-7"
                         @click="open_connect_telegram"
                     >
                         Подключиться
