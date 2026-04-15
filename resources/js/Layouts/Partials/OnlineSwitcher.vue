@@ -8,7 +8,6 @@ router.on('success', (event) => {
     is_online.value = !!usePage().props.auth.user.is_online;
 })
 
-const user = usePage().props.auth.user;
 const form = useForm({});
 const submit = () => {
     form.patch(route('user.online.toggle'), {
@@ -21,25 +20,30 @@ const submit = () => {
 </script>
 
 <template>
-    <div>
-        <div class="inline-flex items-center cursor-pointer">
+    <fieldset
+        class="fieldset border-base-300 bg-base-200/60 w-full min-w-0 rounded-lg border px-2 py-1.5"
+        :class="{ 'pointer-events-none opacity-60': form.processing }"
+    >
+        <label
+            class="label tooltip tooltip-right min-h-0 cursor-pointer justify-between gap-2.5 px-0 py-0"
+            :data-tip="is_online ? 'Трафик включён — новые сделки доступны' : 'Трафик выключен — новые сделки не назначаются'"
+        >
+            <span class="flex min-w-0 flex-1 items-center gap-2 text-left">
+                <span class="truncate text-xs font-semibold leading-tight text-base-content">Трафик</span>
+                <span
+                    class="badge badge-sm badge-outline shrink-0 whitespace-nowrap font-medium normal-case"
+                    :class="is_online ? 'badge-success' : 'badge-ghost'"
+                >
+                    {{ is_online ? 'Онлайн' : 'Офлайн' }}
+                </span>
+            </span>
             <input
                 type="checkbox"
                 v-model="is_online"
+                class="toggle toggle-success toggle-sm shrink-0"
+                :disabled="form.processing"
                 @change="submit"
-                class="toggle toggle-success"
             />
-
-            <span v-if="is_online" class="tooltip" data-tip="Трафик включен">
-                <span class="ml-2 text-xs font-medium text-success">Онлайн</span>
-            </span>
-            <span v-else class="tooltip" data-tip="Трафик выключен">
-                <span class="ml-2 text-xs font-medium">Офлайн</span>
-            </span>
-        </div>
-    </div>
+        </label>
+    </fieldset>
 </template>
-
-<style scoped>
-
-</style>
