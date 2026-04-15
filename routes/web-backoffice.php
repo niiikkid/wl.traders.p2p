@@ -1,5 +1,8 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Http\Controllers\AppHomeController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationRuleController;
@@ -9,25 +12,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TelegramSettingsController;
 use App\Http\Controllers\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
-
-Route::get('/payment/demo', [\App\Http\Controllers\PaymentDemoController::class, 'show'])
-    ->middleware('payment.domain')
-    ->name('payment.demo.show');
-Route::post('/payment/demo/dispute', [\App\Http\Controllers\PaymentDemoController::class, 'storeDispute'])
-    ->middleware('payment.domain')
-    ->name('payment.demo.dispute.store');
-Route::post('/payment/demo/payment-detail/{paymentGateway}', [\App\Http\Controllers\PaymentDemoController::class, 'storePaymentDetail'])
-    ->middleware('payment.domain')
-    ->name('payment.demo.payment-detail.store');
-Route::get('/payment/{order:uuid}', [\App\Http\Controllers\PaymentLinkController::class, 'show'])
-    ->middleware('payment.domain')
-    ->name('payment.show');
-Route::post('/payment/{order:uuid}/dispute', [\App\Http\Controllers\PaymentLinkController::class, 'storeDispute'])
-    ->middleware('payment.domain')
-    ->name('payment.dispute.store');
-Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [\App\Http\Controllers\PaymentLinkController::class, 'storePaymentDetail'])
-    ->middleware('payment.domain')
-    ->name('payment.payment-detail.store');
 
 Route::post('/telegram/webhook', TelegramWebhookController::class)
     ->middleware(['telegram.secret', 'backoffice.domain'])
@@ -42,8 +26,12 @@ Route::post('/impersonate/leave', function () {
     return redirect()->back()->with('error', 'Вы не в режиме Impersonate');
 })->middleware('auth', 'banned', 'backoffice.domain')->name('impersonate.leave');
 
+
 Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
-    Route::get('/', [LandingPageController::class, 'show'])->name('dashboard');
+    Route::get('/', config('domains.split_marketing')
+        ? AppHomeController::class
+        : [LandingPageController::class, 'show']
+    )->name('dashboard');
 
     Route::group(['middleware' => ['auth', 'banned']], function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -408,6 +396,3 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
 
 Route::get('/phpinfo', fn () => phpinfo())->middleware('backoffice.domain');
-
-require __DIR__.'/auth.php';
-
