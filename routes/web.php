@@ -31,7 +31,7 @@ Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [\App\Http\
     ->name('payment.payment-detail.store');
 
 if (config('domains.split_marketing')) {
-    $marketing_host = config('domains.payment_host');
+    $marketing_host = config('domains.marketing_host');
     if (is_string($marketing_host) && $marketing_host !== '') {
         Route::domain($marketing_host)->middleware(['2fa'])->group(function () {
             Route::get('/', [LandingPageController::class, 'show'])->name('landing.home');

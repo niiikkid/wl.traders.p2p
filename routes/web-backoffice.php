@@ -14,7 +14,7 @@ use App\Http\Controllers\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
 if (config('domains.split_marketing')) {
-    $marketing_host = config('domains.payment_host');
+    $marketing_host = config('domains.marketing_host');
     if (is_string($marketing_host) && $marketing_host !== '') {
         Route::domain($marketing_host)->middleware(['2fa'])->group(function () {
             Route::get('/', [LandingPageController::class, 'show'])->name('landing.home');
