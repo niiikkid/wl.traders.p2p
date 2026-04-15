@@ -21,7 +21,7 @@ const submit = () => {
 
 <template>
     <fieldset
-        class="fieldset border-base-300 bg-base-200/60 w-full min-w-0 rounded-lg border px-2 py-1.5"
+        class="fieldset border-base-300 bg-base-200/60 w-full min-w-0 rounded-lg border px-3 py-2"
         :class="{ 'pointer-events-none opacity-60': form.processing }"
     >
         <label

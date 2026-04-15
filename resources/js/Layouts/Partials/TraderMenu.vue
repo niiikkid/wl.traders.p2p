@@ -21,7 +21,7 @@ router.on('success', (event) => {
 <template>
     <ul class="menu menu-md w-full space-y-0.5">
         <ViewModeSwitcher v-if="userStore.isAdmin" class="mb-2"/>
-        <li class="not-prose mb-2 mt-0.5 min-w-0 py-0.5">
+        <li class="not-prose mb-3 mt-0.5 min-w-0 py-0.5">
             <OnlineSwitcher/>
         </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.main.index') }]">
