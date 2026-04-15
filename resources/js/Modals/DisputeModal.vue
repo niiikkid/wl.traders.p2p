@@ -88,19 +88,19 @@ const dispute_footer_actions_visible = computed(
             @close="close"
         />
         <ModalBodyNext>
-            <div class="w-full min-w-0 space-y-3">
+            <div class="w-full min-w-0 space-y-2 sm:space-y-3">
                 <div
-                    class="flex flex-wrap items-center justify-between gap-3 rounded-box border px-3 py-2.5"
+                    class="flex flex-wrap items-center justify-between gap-2 rounded-box border px-2.5 py-2 sm:gap-3 sm:px-3 sm:py-2.5"
                     :class="statusBannerClass"
                 >
-                    <div class="flex min-w-0 flex-1 items-center gap-3">
+                    <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                         <span
-                            class="flex size-9 shrink-0 items-center justify-center rounded-full"
+                            class="flex size-8 shrink-0 items-center justify-center rounded-full sm:size-9"
                             :class="statusIconCircleClass"
                         >
                             <template v-if="dispute.status === 'accepted'">
                                 <svg
-                                    class="size-7"
+                                    class="size-6 sm:size-7"
                                     aria-hidden="true"
                                     xmlns="http://www.w3.org/2000/svg"
                                     width="24"
@@ -119,7 +119,7 @@ const dispute_footer_actions_visible = computed(
                             </template>
                             <template v-else-if="dispute.status === 'canceled'">
                                 <svg
-                                    class="size-7"
+                                    class="size-6 sm:size-7"
                                     aria-hidden="true"
                                     xmlns="http://www.w3.org/2000/svg"
                                     width="24"
@@ -138,7 +138,7 @@ const dispute_footer_actions_visible = computed(
                             </template>
                             <template v-else>
                                 <svg
-                                    class="size-7"
+                                    class="size-6 sm:size-7"
                                     aria-hidden="true"
                                     xmlns="http://www.w3.org/2000/svg"
                                     width="24"
@@ -156,12 +156,12 @@ const dispute_footer_actions_visible = computed(
                                 </svg>
                             </template>
                         </span>
-                        <p class="min-w-0 text-sm font-semibold leading-snug text-base-content">
+                        <p class="min-w-0 text-xs font-semibold leading-snug text-base-content sm:text-sm">
                             {{ statusHeadline }}
                         </p>
                     </div>
                     <div
-                        class="flex shrink-0 items-center text-sm leading-none text-base-content/70"
+                        class="flex shrink-0 items-center text-xs leading-none text-base-content/70 sm:text-sm"
                     >
                         <DateTime :data="dispute.created_at" :copyable="false" />
                     </div>
@@ -170,24 +170,24 @@ const dispute_footer_actions_visible = computed(
                 <div
                     class="grid grid-cols-2 overflow-hidden rounded-box border border-base-300/80 shadow-sm"
                 >
-                    <div class="flex min-w-0 flex-col justify-center bg-base-300/50 px-3 py-2.5">
-                        <p class="text-xs font-semibold uppercase tracking-wider text-base-content/55">
+                    <div class="flex min-w-0 flex-col justify-center bg-base-300/50 px-2.5 py-2 sm:px-3 sm:py-2.5">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-base-content/55 sm:text-xs">
                             Сумма спора
                         </p>
-                        <p class="mt-1 text-lg font-bold tabular-nums leading-none tracking-tight text-base-content">
+                        <p class="mt-1 text-base font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-lg">
                             {{ dispute.order.amount }}
-                            <span class="text-sm font-semibold text-primary/70">
+                            <span class="text-xs font-semibold text-primary/70 sm:text-sm">
                                 {{ dispute.order.currency.toUpperCase() }}
                             </span>
                         </p>
                     </div>
-                    <div class="flex min-w-0 flex-col justify-center bg-base-300/50 px-3 py-2.5 text-end">
-                        <p class="text-xs font-semibold uppercase tracking-wider text-base-content/55">
+                    <div class="flex min-w-0 flex-col justify-center bg-base-300/50 px-2.5 py-2 text-end sm:px-3 sm:py-2.5">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-base-content/55 sm:text-xs">
                             В {{ dispute.order.base_currency.toUpperCase() }}
                         </p>
-                        <p class="mt-1 text-lg font-bold tabular-nums leading-none tracking-tight text-base-content">
+                        <p class="mt-1 text-base font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-lg">
                             {{ dispute.order.total_profit }}
-                            <span class="text-sm font-semibold text-primary/70">
+                            <span class="text-xs font-semibold text-primary/70 sm:text-sm">
                                 {{ dispute.order.base_currency.toUpperCase() }}
                             </span>
                         </p>
@@ -196,16 +196,16 @@ const dispute_footer_actions_visible = computed(
 
                 <div class="overflow-hidden rounded-box border border-base-300/80 bg-base-300/50 shadow-sm">
                     <dl class="divide-y divide-base-300/80">
-                        <div class="flex flex-row items-center justify-between gap-3 px-3 py-2">
-                            <dt class="shrink-0 text-xs font-semibold uppercase tracking-wider text-base-content/50">
+                        <div class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
+                            <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
                                 Сделка
                             </dt>
-                            <dd class="min-w-0 break-all text-end text-sm text-base-content">
-                                <CopyableOrderUid :uuid="dispute.order.uuid" class="text-sm text-base-content" />
+                            <dd class="min-w-0 break-all text-end text-xs text-base-content sm:text-sm">
+                                <CopyableOrderUid :uuid="dispute.order.uuid" class="text-xs text-base-content sm:text-sm" />
                             </dd>
                         </div>
-                        <div class="flex flex-row items-center justify-between gap-3 px-3 py-2">
-                            <dt class="shrink-0 text-xs font-semibold uppercase tracking-wider text-base-content/50">
+                        <div class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
+                            <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
                                 Реквизит
                                 <span class="font-normal text-primary/70">#{{ dispute.payment_detail.id }}</span>
                             </dt>
@@ -214,44 +214,44 @@ const dispute_footer_actions_visible = computed(
                                     :detail="dispute.payment_detail.detail"
                                     :type="dispute.payment_detail.type"
                                     :copyable="false"
-                                    class="text-sm text-base-content"
+                                    class="text-xs text-base-content sm:text-sm"
                                 />
-                                <div class="mt-0.5 text-sm text-base-content/65">
+                                <div class="mt-0.5 text-xs text-base-content/65 sm:text-sm">
                                     {{ dispute.payment_detail.name }}
                                 </div>
                             </dd>
                         </div>
                         <div
                             v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode"
-                            class="flex flex-row items-center justify-between gap-3 px-3 py-2"
+                            class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2"
                         >
-                            <dt class="shrink-0 text-xs font-semibold uppercase tracking-wider text-base-content/50">
+                            <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
                                 Трейдер
                                 <span class="font-normal text-primary/70">#{{ dispute.user.id }}</span>
                             </dt>
                             <dd class="min-w-0 text-end">
-                                <div class="text-sm font-semibold text-base-content">
+                                <div class="text-xs font-semibold text-base-content sm:text-sm">
                                     {{ dispute.user.name }}
                                 </div>
-                                <div class="break-all text-sm text-base-content/65">
+                                <div class="break-all text-xs text-base-content/65 sm:text-sm">
                                     {{ dispute.user.email }}
                                 </div>
                             </dd>
                         </div>
-                        <div class="flex flex-row items-center justify-between gap-3 px-3 py-2">
-                            <dt class="shrink-0 text-xs font-semibold uppercase tracking-wider text-base-content/50">
+                        <div class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
+                            <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
                                 Квитанция
                             </dt>
                             <dd class="flex shrink-0 justify-end">
                                 <button
                                     v-if="dispute.receipt_url"
                                     type="button"
-                                    class="btn btn-sm btn-outline btn-info touch-manipulation"
+                                    class="btn btn-xs btn-outline btn-info touch-manipulation"
                                     @click.prevent="showReceipt"
                                 >
                                     Открыть
                                     <svg
-                                        class="ms-1 size-3.5 shrink-0"
+                                        class="ms-1 size-3 shrink-0 sm:size-3.5"
                                         aria-hidden="true"
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="24"
@@ -268,18 +268,18 @@ const dispute_footer_actions_visible = computed(
                                         />
                                     </svg>
                                 </button>
-                                <span v-else class="text-sm text-base-content/55">Нет файла</span>
+                                <span v-else class="text-xs text-base-content/55 sm:text-sm">Нет файла</span>
                             </dd>
                         </div>
                     </dl>
                     <div
                         v-if="dispute.status === 'canceled'"
-                        class="border-t border-base-300/60 bg-base-200/25 px-3 py-2.5"
+                        class="border-t border-base-300/60 bg-base-200/25 px-2.5 py-2 sm:px-3 sm:py-2.5"
                     >
-                        <p class="text-xs font-semibold uppercase tracking-wider text-base-content/50">
+                        <p class="text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
                             Причина отклонения
                         </p>
-                        <p class="mt-1 text-sm leading-relaxed text-base-content/90">
+                        <p class="mt-1 text-xs leading-relaxed text-base-content/90 sm:text-sm">
                             {{ dispute.reason }}
                         </p>
                     </div>
@@ -289,16 +289,16 @@ const dispute_footer_actions_visible = computed(
         <ModalFooterNext>
             <div
                 v-if="dispute_footer_actions_visible"
-                class="flex w-full flex-wrap items-center justify-center gap-2"
+                class="flex w-full flex-wrap items-center justify-center gap-1.5 sm:gap-2"
             >
                 <template v-if="dispute.status === 'pending'">
                     <button
                         type="button"
-                        class="btn btn-sm btn-error btn-outline touch-manipulation"
+                        class="btn btn-xs btn-error btn-outline touch-manipulation sm:btn-sm"
                         @click.prevent="cancel(dispute)"
                     >
                         <svg
-                            class="me-1.5 size-3.5"
+                            class="me-1 size-3 sm:me-1.5 sm:size-3.5"
                             aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"
@@ -318,11 +318,11 @@ const dispute_footer_actions_visible = computed(
                     </button>
                     <button
                         type="button"
-                        class="btn btn-sm btn-primary btn-outline touch-manipulation"
+                        class="btn btn-xs btn-primary btn-outline touch-manipulation sm:btn-sm"
                         @click.prevent="accept(dispute)"
                     >
                         <svg
-                            class="me-1.5 size-3.5"
+                            class="me-1 size-3 sm:me-1.5 sm:size-3.5"
                             aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"
@@ -344,11 +344,11 @@ const dispute_footer_actions_visible = computed(
                 <template v-if="dispute.status !== 'pending'">
                     <button
                         type="button"
-                        class="btn btn-sm btn-warning btn-outline touch-manipulation"
+                        class="btn btn-xs btn-warning btn-outline touch-manipulation sm:btn-sm"
                         @click.prevent="rollback(dispute)"
                     >
                         <svg
-                            class="me-1.5 size-3.5"
+                            class="me-1 size-3 sm:me-1.5 sm:size-3.5"
                             aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"

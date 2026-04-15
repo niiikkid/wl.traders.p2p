@@ -186,10 +186,10 @@ const { copy, copied } = useClipboard();
         </template>
         <template v-else>
             <div
-                class="flex select-none items-center gap-1.5 text-nowrap leading-none text-base-content"
+                class="flex select-none items-center gap-1 text-nowrap leading-none text-base-content sm:gap-1.5"
             >
                 <svg
-                    class="size-3.5 shrink-0 text-base-content/70 sm:size-4"
+                    class="size-3 shrink-0 text-base-content/70 sm:size-4"
                     aria-hidden="true"
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"

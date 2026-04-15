@@ -71,11 +71,11 @@ const maxWidthClass = computed(() => {
     <Teleport defer to="body">
         <div
             data-modal-next-root
-            :class="['modal modal-middle p-2 sm:p-5', show ? 'modal-open' : '']"
+            :class="['modal modal-middle p-1.5 sm:p-5', show ? 'modal-open' : '']"
             @keydown.esc.prevent="close"
         >
             <div
-                class="modal-box relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-base-300/60 bg-base-100 p-0 text-base leading-normal text-base-content antialiased shadow-xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)]"
+                class="modal-box relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-2xl border border-base-300/60 bg-base-100 p-0 text-sm leading-normal text-base-content antialiased shadow-xl sm:text-base max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2.5rem)]"
                 :class="maxWidthClass"
             >
                 <slot v-if="show" />
