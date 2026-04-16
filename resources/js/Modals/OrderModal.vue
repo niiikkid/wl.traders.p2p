@@ -1,18 +1,19 @@
 <script setup>
-import ModalFooter from "@/Components/Modals/Components/ModalFooter.vue";
-import Modal from "@/Components/Modals/Modal.vue";
+import ModalFooterNext from "@/Components/Modals/Next/ModalFooterNext.vue";
+import ModalNext from "@/Components/Modals/Next/ModalNext.vue";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
 import {Link, router, useForm, usePage} from "@inertiajs/vue3";
-import ModalHeader from "@/Components/Modals/Components/ModalHeader.vue";
-import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
+import ModalHeaderNext from "@/Components/Modals/Next/ModalHeaderNext.vue";
+import ModalBodyNext from "@/Components/Modals/Next/ModalBodyNext.vue";
 import {useModalStore} from "@/store/modal.js";
 import {storeToRefs} from "pinia";
 import {useViewStore} from "@/store/view.js";
 import {computed, ref} from "vue";
 import DateTime from "@/Components/DateTime.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
 import DUUID from "@/Components/DUUID.vue";
+import CopyableExternalId from "@/Components/CopyableExternalId.vue";
 import EditOrderAmountModal from "@/Modals/Order/EditOrderAmountModal.vue";
+import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 
 const viewStore = useViewStore();
 const modalStore = useModalStore();
@@ -183,6 +184,42 @@ const manualControlProcessingStatusClass = computed(() => {
     return 'badge-ghost';
 });
 
+const statusBannerClass = computed(() => {
+    if (order.value?.status === 'success') {
+        return 'border-success/25 bg-success/5';
+    }
+
+    if (order.value?.status === 'fail') {
+        return 'border-error/25 bg-error/5';
+    }
+
+    return 'border-warning/30 bg-warning/5';
+});
+
+const statusIconCircleClass = computed(() => {
+    if (order.value?.status === 'success') {
+        return 'bg-success/15 text-success ring-1 ring-success/25 ring-inset';
+    }
+
+    if (order.value?.status === 'fail') {
+        return 'bg-error/15 text-error ring-1 ring-error/25 ring-inset';
+    }
+
+    return 'bg-warning/15 text-warning ring-1 ring-warning/30 ring-inset';
+});
+
+const statusHeadline = computed(() => {
+    if (order.value?.status === 'success') {
+        return 'Платеж зачислен';
+    }
+
+    if (order.value?.status === 'fail') {
+        return 'Платеж отменен';
+    }
+
+    return 'Платеж еще не поступил';
+});
+
 const show = () => {
     let order_id = orderModal.value.params.order_id;
     if (order.value?.id !== order_id) {
@@ -224,52 +261,125 @@ const copyCallbackUrl = async (callback_url) => {
 </script>
 
 <template>
-    <Modal
+    <ModalNext
         :show="!! orderModal.showed"
         @close="closeModal"
         maxWidth="md"
         @on-show="show"
     >
         <template v-if="order">
-            <ModalHeader
+            <ModalHeaderNext
                 :title="'Сделка #' + order.uuid_short"
                 @close="closeModal"
             />
-            <ModalBody>
-                <form action="#" class="mx-auto max-w-screen-xl px-2 2xl:px-0">
-                    <div class="mx-auto max-w-3xl">
-                        <div>
-                            <div>
-                                <div class="mb-5">
-                                    <div v-if="order.status === 'success'">
-                                        <div class="flex items-center justify-center mb-3">
-                                            <svg class="w-18 h-18 text-success" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                                            </svg>
-                                        </div>
-                                        <p class="mb-1 text-lg font-semibold text-base-content text-center">Платеж зачислен</p>
-                                        <p class="text-sm font-semibold text-base-content/70 text-center">
-                                            <DateTime :data="order.finished_at" :simple="true" />
-                                        </p>
-                                    </div>
-                                    <div v-else-if="order.status === 'fail'">
-                                        <div class="flex items-center justify-center mb-3">
-                                            <svg class="w-18 h-18 text-error" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 9-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                                            </svg>
-                                        </div>
-                                        <p class="text-lg font-semibold text-base-content text-center">Платеж отменен</p>
-                                    </div>
-                                    <div v-else-if="order.status === 'pending'">
-                                        <div class="flex items-center justify-center mb-3">
-                                            <svg class="w-18 h-18 text-warning" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                                            </svg>
-                                        </div>
-                                        <p class="text-lg font-semibold text-base-content text-center">Платеж еще не поступил</p>
-                                    </div>
-                                </div>
-                                <div class="space-y-4">
+            <ModalBodyNext>
+                <div class="w-full min-w-0 space-y-2 sm:space-y-3">
+                    <div
+                        class="flex flex-wrap items-center justify-between gap-2 rounded-box border px-2.5 py-2 sm:gap-3 sm:px-3 sm:py-2.5"
+                        :class="statusBannerClass"
+                    >
+                        <div class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                            <span
+                                class="flex size-8 shrink-0 items-center justify-center rounded-full sm:size-9"
+                                :class="statusIconCircleClass"
+                            >
+                                <template v-if="order.status === 'success'">
+                                    <svg
+                                        class="size-6 sm:size-7"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke="currentColor"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M8.5 11.5 11 14l4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                        />
+                                    </svg>
+                                </template>
+                                <template v-else-if="order.status === 'fail'">
+                                    <svg
+                                        class="size-6 sm:size-7"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke="currentColor"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="m15 9-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                        />
+                                    </svg>
+                                </template>
+                                <template v-else>
+                                    <svg
+                                        class="size-6 sm:size-7"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke="currentColor"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                        />
+                                    </svg>
+                                </template>
+                            </span>
+                            <p class="min-w-0 text-xs font-semibold leading-snug text-base-content sm:text-sm">
+                                {{ statusHeadline }}
+                            </p>
+                        </div>
+                        <div
+                            class="flex shrink-0 items-center text-xs leading-none text-base-content/70 sm:text-sm"
+                        >
+                            <DateTime :data="order.finished_at || order.created_at" :simple="true" />
+                        </div>
+                    </div>
+
+                    <div
+                        class="grid grid-cols-2 overflow-hidden rounded-box border border-base-300/80 shadow-sm"
+                    >
+                        <div class="flex min-w-0 flex-col justify-center bg-base-300/50 px-2.5 py-2 sm:px-3 sm:py-2.5">
+                            <p class="text-[10px] font-semibold uppercase tracking-wider text-base-content/55 sm:text-xs">
+                                Сумма сделки
+                            </p>
+                            <p class="mt-1 text-base font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-lg">
+                                {{ order.amount }}
+                                <span class="text-xs font-semibold text-primary/70 sm:text-sm">
+                                    {{ order.currency.toUpperCase() }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="flex min-w-0 flex-col justify-center bg-base-300/50 px-2.5 py-2 text-end sm:px-3 sm:py-2.5">
+                            <p class="text-[10px] font-semibold uppercase tracking-wider text-base-content/55 sm:text-xs">
+                                Тело
+                            </p>
+                            <p class="mt-1 text-base font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-lg">
+                                {{ order.total_profit }}
+                                <span class="text-xs font-semibold text-primary/70 sm:text-sm">
+                                    {{ order.base_currency.toUpperCase() }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
                                     <div
                                         v-if="isAdminManualControlOrder"
                                         role="tablist"
@@ -302,20 +412,29 @@ const copyCallbackUrl = async (callback_url) => {
                                         </button>
                                     </div>
 
-                                    <div v-if="!isAdminManualControlOrder || detailsTab === 'main'" class="space-y-2 text-sm">
+                                    <div
+                                        v-if="!isAdminManualControlOrder || detailsTab === 'main'"
+                                        class="overflow-hidden rounded-box border border-base-300/80 bg-base-300/50 text-xs shadow-sm divide-y divide-base-300/80 sm:text-sm
+                                        [&>dl]:flex [&>dl]:items-center [&>dl]:justify-between [&>dl]:gap-2 [&>dl]:px-2.5 [&>dl]:py-1.5
+                                        sm:[&>dl]:gap-3 sm:[&>dl]:px-3 sm:[&>dl]:py-2
+                                        [&>dl>dt]:shrink-0 [&>dl>dt]:text-[10px] [&>dl>dt]:font-semibold [&>dl>dt]:uppercase [&>dl>dt]:tracking-wider [&>dl>dt]:text-base-content/50 sm:[&>dl>dt]:text-xs
+                                        [&>dl>dd]:min-w-0 [&>dl>dd]:text-end [&>dl>dd]:text-xs sm:[&>dl>dd]:text-sm"
+                                    >
                                         <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Мерчант</dt>
                                             <dd class="font-medium text-base-content"><span class="truncate">{{ order.merchant?.name ?? '—' }}</span> (id:{{ order.merchant?.id ?? '—' }})</dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">UUID</dt>
-                                            <dd class="text-xs font-medium text-base-content">
-                                                <DUUID :uuid="order.uuid"/>
+                                            <dd class="font-medium text-base-content">
+                                                <CopyableOrderUid :uuid="order.uuid"/>
                                             </dd>
                                         </dl>
                                         <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Внешний ID</dt>
-                                            <dd class="font-medium text-base-content">{{ order.external_id }}</dd>
+                                            <dd class="font-medium text-base-content">
+                                                <CopyableExternalId :id="order.external_id" />
+                                            </dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Сумма</dt>
@@ -327,7 +446,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                         class="px-0 py-0 text-info inline-flex items-center hover:underline"
                                                         @click.prevent="modalStore.openEditOrderAmountModal({order: order})"
                                                     >
-                                                        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <svg class="size-4 sm:size-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.779 17.779 4.36 19.918 6.5 13.5m4.279 4.279 8.364-8.643a3.027 3.027 0 0 0-2.14-5.165 3.03 3.03 0 0 0-2.14.886L6.5 13.5m4.279 4.279L6.499 13.5m2.14 2.14 6.213-6.504M12.75 7.04 17 11.28"/>
                                                         </svg>
                                                     </a>
@@ -513,7 +632,11 @@ const copyCallbackUrl = async (callback_url) => {
                                     </div>
                                     <div
                                         v-if="isAdminManualControlOrder && detailsTab === 'manual'"
-                                        class="space-y-2 text-sm"
+                                        class="overflow-hidden rounded-box border border-base-300/80 bg-base-300/50 text-xs shadow-sm divide-y divide-base-300/80 sm:text-sm
+                                        [&>dl]:flex [&>dl]:items-center [&>dl]:justify-between [&>dl]:gap-2 [&>dl]:px-2.5 [&>dl]:py-1.5
+                                        sm:[&>dl]:gap-3 sm:[&>dl]:px-3 sm:[&>dl]:py-2
+                                        [&>dl>dt]:shrink-0 [&>dl>dt]:text-[10px] [&>dl>dt]:font-semibold [&>dl>dt]:uppercase [&>dl>dt]:tracking-wider [&>dl>dt]:text-base-content/50 sm:[&>dl>dt]:text-xs
+                                        [&>dl>dd]:min-w-0 [&>dl>dd]:text-end [&>dl>dd]:text-xs sm:[&>dl>dd]:text-sm"
                                     >
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Режим</dt>
@@ -653,11 +776,14 @@ const copyCallbackUrl = async (callback_url) => {
                                             </dd>
                                         </dl>
                                     </div>
-                                    <div v-if="order.sms_log" class="p-4 pb-3 card bg-base-200">
+                                    <div
+                                        v-if="order.sms_log"
+                                        class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm"
+                                    >
                                         <div class="flex justify-between items-center mb-2">
                                             <div class="flex items-center">
-                                                <p class="inline-flex items-center mr-3 text-sm text-base-content/70 font-semibold">
-                                                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <p class="inline-flex items-center mr-3 text-xs text-base-content/70 font-semibold sm:text-sm">
+                                                    <svg class="size-3.5 sm:size-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Zm0 0a8.949 8.949 0 0 0 4.951-1.488A3.987 3.987 0 0 0 13 16h-2a3.987 3.987 0 0 0-3.951 3.512A8.948 8.948 0 0 0 12 21Zm3-11a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                     </svg>
                                                     <span class="pl-1 w-35 sm:w-full truncate sm:truncate-none">{{ order.payment_gateway_name }}</span>
@@ -668,28 +794,28 @@ const copyCallbackUrl = async (callback_url) => {
                                             {{ order.sms_log.message }}
                                         </p>
                                         <div>
-                                            <p class="flex items-center text-sm text-base-content/70">
+                                            <p class="flex items-center text-xs text-base-content/70 sm:text-sm">
                                                 <span><DateTime :data="order.sms_log.created_at" :simple="true" /></span>
                                             </p>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
-                </form>
-            </ModalBody>
+                </div>
+            </ModalBodyNext>
 
-            <ModalFooter v-if="order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode || viewStore.isSupportViewMode">
-                <div class="flex justify-center w-full">
-                    <template v-if="! order.has_dispute">
+            <ModalFooterNext>
+                <div
+                    v-if="order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode || viewStore.isSupportViewMode"
+                    class="flex w-full flex-wrap items-center justify-center gap-1.5 sm:gap-2"
+                >
+                    <template v-if="!order.has_dispute">
                         <button
                             v-if="order.status === 'pending' || order.status === 'fail'"
                             @click.prevent="confirmAcceptOrder(order)"
                             type="button"
-                            class="btn btn-primary btn-sm me-2"
+                            class="btn btn-xs btn-primary btn-outline touch-manipulation sm:btn-sm"
                         >
-                            <svg class="w-3.5 h-3.5 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                            <svg class="me-1 size-3 sm:me-1.5 sm:size-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 11.917 9.724 16.5 19 7.5"/>
                             </svg>
                             Оплачен
@@ -698,18 +824,18 @@ const copyCallbackUrl = async (callback_url) => {
                             v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode"
                             @click.prevent="confirmCreateDispute(order)"
                             type="button"
-                            class="btn btn-warning btn-sm me-2"
+                            class="btn btn-xs btn-warning btn-outline touch-manipulation sm:btn-sm"
                         >
-                            <svg class="w-3.5 h-3.5 me-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                            <svg class="me-1 size-3 sm:me-1.5 sm:size-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
                             </svg>
                             Открыть спор
                         </button>
                     </template>
                     <template v-if="order.has_dispute">
-                        <div>
-                            <h2 class="text-base-content">По этой сделке был открыт спор</h2>
-                            <div class="flex justify-center">
+                        <div class="text-center">
+                            <h2 class="text-sm text-base-content sm:text-base">По этой сделке был открыт спор</h2>
+                            <div class="mt-1 flex justify-center">
                                 <Link
                                     @click="modalStore.closeAll()"
                                     :href="route(disputesIndexRouteName())"
@@ -724,10 +850,10 @@ const copyCallbackUrl = async (callback_url) => {
                         </div>
                     </template>
                 </div>
-            </ModalFooter>
+            </ModalFooterNext>
         </template>
-    </Modal>
-    <EditOrderAmountModal/>
+    </ModalNext>
+    <EditOrderAmountModal />
 </template>
 
 <style scoped>
