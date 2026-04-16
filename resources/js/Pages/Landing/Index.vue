@@ -11,18 +11,6 @@ const props = defineProps({
         type: String,
         default: null,
     },
-    landing_stats: {
-        type: Object,
-        required: true,
-    },
-});
-
-const avg_processing_label = computed(() => {
-    const v = props.landing_stats?.today?.avg_processing_minutes;
-    if (v === null || v === undefined) {
-        return '—';
-    }
-    return `${String(v).replace('.', ',')} мин`;
 });
 
 const page = usePage();
@@ -94,7 +82,7 @@ const open_connect_telegram = () => {
                                 <a href="#features" class="text-base-content" @click="close_mobile">Возможности</a>
                             </li>
                             <li>
-                                <a href="#stats" class="text-base-content" @click="close_mobile">Сводка</a>
+                                <a href="#stats" class="text-base-content" @click="close_mobile">Вкратце</a>
                             </li>
                             <li>
                                 <a href="#how" class="text-base-content" @click="close_mobile">Как это работает</a>
@@ -139,7 +127,7 @@ const open_connect_telegram = () => {
                         </li>
                         <li>
                             <a href="#stats" class="cursor-pointer rounded-btn hover:bg-base-200 hover:text-base-content"
-                                >Сводка</a
+                                >Вкратце</a
                             >
                         </li>
                         <li>
@@ -182,7 +170,7 @@ const open_connect_telegram = () => {
         </header>
 
         <main id="main">
-            <!-- Герой: копирайт проекта + «абстрактная» панель-превью -->
+            <!-- Герой: копирайт + карточка подключения (DaisyUI card) -->
             <section class="relative mx-auto max-w-6xl px-4 pb-16 pt-10 md:px-6 md:pb-24 md:pt-14 lg:pt-16" aria-labelledby="hero-title">
                 <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-14">
                     <div>
@@ -210,49 +198,6 @@ const open_connect_telegram = () => {
                             {{ app_name }} связывает мерчантов и трейдеров: приём и выплаты в фиате, учёт в USDT, API и
                             webhooks — без лишней операционки между вашим продуктом и ликвидностью.
                         </p>
-                        <div class="mt-8 flex flex-wrap items-center gap-3">
-                            <a
-                                v-if="connect_telegram_url"
-                                :href="connect_telegram_url"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="btn group border-0 bg-gradient-to-r from-info to-primary px-8 text-base font-bold text-slate-900 shadow-lg shadow-info/30 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-info/25"
-                            >
-                                Подключиться в Telegram
-                                <svg
-                                    class="ml-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    aria-hidden="true"
-                                >
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                </svg>
-                            </a>
-                            <button
-                                v-else
-                                type="button"
-                                class="btn group border-0 bg-gradient-to-r from-info to-primary px-8 text-base font-bold text-slate-900 shadow-lg shadow-info/30 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-info/25"
-                                @click="open_connect_telegram"
-                            >
-                                Подключиться в Telegram
-                                <svg
-                                    class="ml-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    aria-hidden="true"
-                                >
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                </svg>
-                            </button>
-                            <a
-                                href="#features"
-                                class="btn btn-outline cursor-pointer border-base-300 text-base font-semibold text-base-content hover:border-primary/40 hover:bg-base-200"
-                            >
-                                Смотреть возможности
-                            </a>
-                        </div>
                         <div class="mt-10 flex flex-wrap gap-4 text-sm text-base-content/70" role="list">
                             <span class="inline-flex items-center gap-2" role="listitem">
                                 <svg class="h-5 w-5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -263,7 +208,7 @@ const open_connect_telegram = () => {
                                         d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
                                     />
                                 </svg>
-                                Роли и разграничение доступа
+                                Безопасность и надёжность сервиса
                             </span>
                             <span class="inline-flex items-center gap-2" role="listitem">
                                 <svg class="h-5 w-5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -282,40 +227,98 @@ const open_connect_telegram = () => {
                         </div>
                     </div>
                     <div
-                        class="relative overflow-hidden rounded-2xl border border-base-300 bg-base-200/80 p-6 shadow-2xl shadow-black/25 backdrop-blur-sm md:p-8"
-                        aria-label="Сводка оборота и показателей за сегодня"
+                        class="card relative overflow-hidden border border-base-300 bg-base-200/80 shadow-2xl shadow-black/25 backdrop-blur-sm"
+                        aria-labelledby="hero-connect-title"
                     >
                         <div
                             class="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-gradient-to-br from-primary/25 to-accent/20 blur-3xl"
                             aria-hidden="true"
                         />
-                        <div class="relative">
-                            <div class="flex items-start justify-between gap-4 border-b border-base-300 pb-4">
-                                <div>
-                                    <div class="text-xs font-medium uppercase tracking-wider text-base-content/50">Сводка</div>
-                                    <div class="mt-1 text-2xl font-bold tabular-nums text-base-content md:text-3xl">
-                                        {{ props.landing_stats.orders_total_usdt }}
-                                    </div>
-                                    <div class="text-sm text-base-content/60">Оборот всех сделок в USDT</div>
+                        <div class="card-body relative gap-6 p-6 md:p-8">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <span class="badge badge-primary badge-outline shrink-0">Старт</span>
+                                    <h2 id="hero-connect-title" class="card-title mt-3 block text-2xl font-bold tracking-tight text-base-content md:text-3xl">
+                                        Подключение в пару шагов
+                                    </h2>
+                                    <p class="mt-2 text-sm leading-relaxed text-base-content/70 md:text-base">
+                                        Напишите нам в Telegram, чтобы подключиться.
+                                    </p>
                                 </div>
-                                <span class="badge badge-success badge-lg shrink-0">Live</span>
                             </div>
-                            <p class="mt-4 text-xs leading-snug text-base-content/55">
-                                {{ props.landing_stats.period_label }}
-                            </p>
-                            <div class="mt-3 space-y-3 text-sm">
-                                <div class="flex items-center justify-between rounded-xl bg-base-100/50 px-4 py-3">
-                                    <span class="text-base-content/70">Объём за сегодня</span>
-                                    <strong class="tabular-nums text-base-content">{{ props.landing_stats.today.api_volume_usdt }}</strong>
-                                </div>
-                                <div class="flex items-center justify-between rounded-xl bg-base-100/50 px-4 py-3">
-                                    <span class="text-base-content/70">Объём выплат за сегодня</span>
-                                    <strong class="tabular-nums text-base-content">{{ props.landing_stats.today.payouts_volume_usdt }}</strong>
-                                </div>
-                                <div class="flex items-center justify-between rounded-xl bg-base-100/50 px-4 py-3">
-                                    <span class="text-base-content/70">Среднее время до успешного закрытия</span>
-                                    <strong class="tabular-nums text-base-content">{{ avg_processing_label }}</strong>
-                                </div>
+                            <ul class="space-y-3 text-sm text-base-content/80">
+                                <li class="flex items-center gap-3">
+                                    <span
+                                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-sm font-bold text-primary"
+                                        aria-hidden="true"
+                                        >1</span
+                                    >
+                                    <span><strong class="text-base-content">Контакт</strong> — коротко описываете продукт и объёмы.</span>
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <span
+                                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary/15 text-sm font-bold text-secondary"
+                                        aria-hidden="true"
+                                        >2</span
+                                    >
+                                    <span
+                                        ><strong class="text-base-content">Доступ</strong> — выдаём кабинет и при необходимости помогаем с
+                                        API.</span
+                                    >
+                                </li>
+                                <li class="flex items-center gap-3">
+                                    <span
+                                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-sm font-bold text-accent"
+                                        aria-hidden="true"
+                                        >3</span
+                                    >
+                                    <span
+                                        ><strong class="text-base-content">Запуск</strong> — тестовые заявки, webhooks, сопровождение.</span
+                                    >
+                                </li>
+                            </ul>
+                            <div class="card-actions w-full flex-col gap-3">
+                                <a
+                                    v-if="connect_telegram_url"
+                                    :href="connect_telegram_url"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="btn group w-full border-0 bg-gradient-to-r from-info to-primary text-base font-bold text-slate-900 shadow-lg shadow-info/30 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-info/25 md:btn-lg"
+                                >
+                                    Подключиться в Telegram
+                                    <svg
+                                        class="ml-2 h-5 w-5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        aria-hidden="true"
+                                    >
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                    </svg>
+                                </a>
+                                <button
+                                    v-else
+                                    type="button"
+                                    class="btn group w-full border-0 bg-gradient-to-r from-info to-primary text-base font-bold text-slate-900 shadow-lg shadow-info/30 transition duration-200 hover:brightness-110 hover:shadow-xl hover:shadow-info/25 md:btn-lg"
+                                    @click="open_connect_telegram"
+                                >
+                                    Подключиться в Telegram
+                                    <svg
+                                        class="ml-2 h-5 w-5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                        aria-hidden="true"
+                                    >
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                    </svg>
+                                </button>
+                                <a
+                                    href="#features"
+                                    class="btn btn-outline w-full cursor-pointer border-base-300 font-semibold text-base-content hover:border-primary/40 hover:bg-base-200 md:btn-lg"
+                                >
+                                    Смотреть возможности
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -343,7 +346,7 @@ const open_connect_telegram = () => {
                 </div>
             </section>
 
-            <!-- Краткая сводка-цифры (без выдуманных SLA) -->
+            <!-- Кратко о модели (статичный блок) -->
             <section id="stats" class="scroll-mt-28 border-b border-base-300 py-14 md:py-16">
                 <div class="mx-auto max-w-6xl px-4 md:px-6">
                     <h2 class="sr-only">Ключевые характеристики</h2>

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Services\Landing\LandingPublicStatsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -58,7 +57,6 @@ class LandingPageController extends Controller
 
         return Inertia::render('Landing/Index', [
             'connect_telegram_url' => $connect_telegram_url,
-            'landing_stats' => app(LandingPublicStatsService::class)->getSnapshot(),
         ]);
     }
 }
