@@ -26,7 +26,7 @@ class StatementController extends Controller
             ->when($merchant, function ($query) use ($merchant) {
                 $query->where('merchant_id', $merchant->id);
             })
-            ->orderBy('created_at', $this->resolveSortDirection($request))
+            ->orderBy('id', $this->resolveSortDirection($request))
             ->paginate($this->resolvePerPage($request));
 
         return response()->success(
@@ -46,7 +46,7 @@ class StatementController extends Controller
             ->when($merchant, function ($query) use ($merchant) {
                 $query->where('merchant_id', $merchant->id);
             })
-            ->orderBy('created_at', $this->resolveSortDirection($request))
+            ->orderBy('id', $this->resolveSortDirection($request))
             ->paginate($this->resolvePerPage($request));
 
         return response()->success(
