@@ -20,6 +20,7 @@ class SettingsService implements SettingsServiceContract
     const PRIME_TIME_BONUS_RATE = 'prime_time_bonus_rate';
     const CURRENCY_PRICE_PARSER_SETTINGS = 'currency_price_parser_settings';
     const SUPPORT_LINK = 'support_link';
+    const LANDING_TELEGRAM_LINK = 'landing_telegram_link';
     const FUNDS_ON_HOLD_TIME = 'funds_on_hold_time';
     const MAX_PENDING_DISPUTES = 'max_pending_disputes';
     const MAX_REJECTED_DISPUTES = 'max_rejected_disputes';
@@ -124,6 +125,26 @@ class SettingsService implements SettingsServiceContract
     public function updateSupportLink(string $link): void
     {
         $this->updateParam(self::SUPPORT_LINK, $link);
+    }
+
+    public function getLandingTelegramLink(): ?string
+    {
+        $value = $this->getParam(self::LANDING_TELEGRAM_LINK);
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    public function updateLandingTelegramLink(?string $link): void
+    {
+        $normalized = ($link !== null && trim($link) !== '') ? trim($link) : null;
+
+        Setting::updateOrCreate(
+            ['key' => self::LANDING_TELEGRAM_LINK],
+            ['value' => $normalized]
+        );
+
+        cache()->put('app-settings', Setting::all());
+        $this->settings = null;
     }
 
     public function getFundsOnHoldTime(): int
@@ -301,6 +322,10 @@ class SettingsService implements SettingsServiceContract
         ]);
         Setting::firstOrCreate([
             'key' => self::SUPPORT_LINK,
+            'value' => null,
+        ]);
+        Setting::firstOrCreate([
+            'key' => self::LANDING_TELEGRAM_LINK,
             'value' => null,
         ]);
         Setting::firstOrCreate([

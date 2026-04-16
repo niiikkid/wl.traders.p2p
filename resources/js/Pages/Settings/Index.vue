@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PrimeTimeBonus from "@/Pages/Settings/Partials/PrimeTimeBonus.vue";
 import AppSlogan from "@/Pages/Settings/Partials/AppSlogan.vue";
 import SupportLink from "@/Pages/Settings/Partials/SupportLink.vue";
+import LandingTelegramLink from "@/Pages/Settings/Partials/LandingTelegramLink.vue";
 import FundsOnHold from "@/Pages/Settings/Partials/FundsOnHold.vue";
 import MaxPendingDisputes from "@/Pages/Settings/Partials/MaxPendingDisputes.vue";
 import MaxRejectedDisputes from "@/Pages/Settings/Partials/MaxRejectedDisputes.vue";
@@ -46,6 +47,11 @@ defineOptions({ layout: AuthenticatedLayout })
                 <div class="card bg-base-100 shadow">
                     <div class="card-body">
                         <SupportLink class="max-w-xl"></SupportLink>
+                    </div>
+                </div>
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body">
+                        <LandingTelegramLink class="max-w-xl"></LandingTelegramLink>
                     </div>
                 </div>
                 <div class="card bg-base-100 shadow">

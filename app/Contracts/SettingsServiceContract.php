@@ -44,6 +44,8 @@ interface SettingsServiceContract
 
     public function getSupportLink(): ?string;
 
+    public function getLandingTelegramLink(): ?string;
+
     public function getFundsOnHoldTime(): int;
 
     public function updateFundsOnHoldTime(int $minutes);
@@ -57,6 +59,8 @@ interface SettingsServiceContract
     public function updateMaxRejectedDisputes(int $count, int $period): void;
 
     public function updateSupportLink(string $link): void;
+
+    public function updateLandingTelegramLink(?string $link): void;
 
     public function getDefaultReserveBalanceLimit(): int;
 

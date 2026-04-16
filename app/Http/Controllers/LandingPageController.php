@@ -50,7 +50,7 @@ class LandingPageController extends Controller
             return $authenticatedHome;
         }
 
-        $connect_telegram_url = services()->settings()->getSupportLink();
+        $connect_telegram_url = services()->settings()->getLandingTelegramLink();
         $connect_telegram_url = is_string($connect_telegram_url) && $connect_telegram_url !== ''
             ? $connect_telegram_url
             : null;

@@ -14,6 +14,7 @@ class SettingsController extends Controller
         $appSlogan = services()->settings()->getAppSlogan();
         $primeTimeBonus = services()->settings()->getPrimeTimeBonus()->toArray();
         $supportLink = services()->settings()->getSupportLink();
+        $landingTelegramLink = services()->settings()->getLandingTelegramLink();
         $fundsOnHoldTime = services()->settings()->getFundsOnHoldTime();
         $maxPendingDisputes = services()->settings()->getMaxPendingDisputes();
         $maxRejectedDisputes = services()->settings()->getMaxRejectedDisputes();
@@ -26,6 +27,7 @@ class SettingsController extends Controller
             'appSlogan',
             'primeTimeBonus',
             'supportLink',
+            'landingTelegramLink',
             'fundsOnHoldTime',
             'maxPendingDisputes',
             'maxRejectedDisputes',
@@ -63,6 +65,25 @@ class SettingsController extends Controller
         $request->validate(['support_link' => 'required', 'url:https']);
 
         services()->settings()->updateSupportLink($request->support_link);
+
+        return redirect()->route('admin.settings.index');
+    }
+
+    public function updateLandingTelegramLink(Request $request)
+    {
+        $raw = $request->input('landing_telegram_link');
+
+        if (! is_string($raw) || trim($raw) === '') {
+            services()->settings()->updateLandingTelegramLink(null);
+
+            return redirect()->route('admin.settings.index');
+        }
+
+        $request->validate([
+            'landing_telegram_link' => ['required', 'string', 'url:https', 'max:512'],
+        ]);
+
+        services()->settings()->updateLandingTelegramLink(trim($raw));
 
         return redirect()->route('admin.settings.index');
     }

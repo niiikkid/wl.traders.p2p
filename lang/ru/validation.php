@@ -291,6 +291,7 @@ return [
         'receipt'                  => 'чек',
         'merchant_id'              => 'мерчант',
         'support_link'             => 'ссылка',
+        'landing_telegram_link'    => 'ссылка Telegram для лендинга',
         'payment_detail_type'      => 'тип реквизитов',
         'logo'                     => 'логотип',
         'manually'                 => 'ручной выбор',

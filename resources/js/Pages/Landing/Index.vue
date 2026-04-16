@@ -699,9 +699,9 @@ const open_connect_telegram = () => {
             <div class="modal-box border border-base-300 bg-base-200 text-base-content">
                 <h3 id="connect-missing-title" class="text-lg font-bold">Ссылка на Telegram не настроена</h3>
                 <p class="mt-3 text-sm text-base-content/70">
-                    Укажите публичную ссылку на чат или канал в админке: раздел настроек — поле «Ссылка поддержки»
-                    (HTTPS, например <span class="whitespace-nowrap">https://t.me/…</span>). После сохранения кнопка
-                    «Подключиться» откроет её в новой вкладке.
+                    Укажите публичную ссылку на чат или бота в админке: раздел настроек — «Ссылка Telegram для
+                    маркетинговой страницы» (HTTPS, например <span class="whitespace-nowrap">https://t.me/…</span>).
+                    После сохранения кнопки на лендинге откроют её в новой вкладке.
                 </p>
                 <div class="modal-action">
                     <form method="dialog">
