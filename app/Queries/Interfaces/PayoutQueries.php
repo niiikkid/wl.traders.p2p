@@ -6,6 +6,7 @@ use App\Models\Payout\Payout;
 use App\Models\User;
 use App\ObjectValues\TableFilters\TableFiltersValue;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 interface PayoutQueries
@@ -28,6 +29,11 @@ interface PayoutQueries
     public function countActiveForTrader(User $trader): int;
 
     public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator;
+
+    /**
+     * Полный список выплат для админ-экспорта с теми же фильтрами, что и в таблице.
+     */
+    public function queryForAdminExport(TableFiltersValue $filters): Builder;
 
     public function paginateForMerchant(User $user, TableFiltersValue $filters): LengthAwarePaginator;
 }

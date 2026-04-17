@@ -82,6 +82,17 @@ class PayoutQueriesEloquent implements PayoutQueries
 
     public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator
     {
+        return $this->adminFilteredQuery($filters)
+            ->paginate(request()->integer('per_page', 10));
+    }
+
+    public function queryForAdminExport(TableFiltersValue $filters): Builder
+    {
+        return $this->adminFilteredQuery($filters);
+    }
+
+    private function adminFilteredQuery(TableFiltersValue $filters): Builder
+    {
         $currency = $filters->currency ?? 'RUB';
 
         return $this->baseQuery()
@@ -148,8 +159,7 @@ class PayoutQueriesEloquent implements PayoutQueries
                     $query->where('amount_fiat', '<=', $maxUnits);
                 }
             })
-            ->orderByDesc('id')
-            ->paginate(request()->integer('per_page', 10));
+            ->orderByDesc('id');
     }
 
     public function paginateForMerchant(User $user, TableFiltersValue $filters): LengthAwarePaginator

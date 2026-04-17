@@ -18,7 +18,10 @@ import TableAction from '@/Components/Table/TableAction.vue';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import {useModalStore} from '@/store/modal.js';
+import {useTableFiltersStore} from '@/store/tableFilters.js';
 import PayoutSettingsModal from '@/Modals/Payout/PayoutSettingsModal.vue';
+
+const tableFiltersStore = useTableFiltersStore();
 
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
@@ -260,6 +263,11 @@ const shortReceiptLabel = (filename) => {
     return String(filename).slice(0, 8);
 };
 
+const openAdminPayoutsExport = () => {
+    const url = route('admin.payouts.export', tableFiltersStore.getQueryData);
+    window.open(url, '_blank');
+};
+
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -272,13 +280,22 @@ defineOptions({ layout: AuthenticatedLayout });
             :data="payouts"
         >
             <template #button>
-                <button
-                    type="button"
-                    class="btn btn-outline btn-sm"
-                    @click="modalStore.openPayoutSettingsModal()"
-                >
-                    Настройки выплат
-                </button>
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        class="btn btn-primary btn-sm"
+                        @click="openAdminPayoutsExport"
+                    >
+                        Выгрузить
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-outline btn-sm"
+                        @click="modalStore.openPayoutSettingsModal()"
+                    >
+                        Настройки выплат
+                    </button>
+                </div>
             </template>
             <template #header>
                 <div class="space-y-4">
