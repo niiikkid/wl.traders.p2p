@@ -6,6 +6,7 @@ import ApexCharts from 'apexcharts';
 import axios from 'axios';
 
 const page = usePage();
+const activeStatsMode = computed(() => (page.props.activeStatsMode === 'payouts' ? 'payouts' : 'deals'));
 const statistics = computed(() => page.props.statistics || {});
 const incomeChartData = computed(() => page.props.chart || { labels: [], data: [] });
 const conversionChartData = computed(() => page.props.conversionChart || { labels: [], data: [] });
@@ -34,6 +35,7 @@ const statisticsFormated = computed(() => ({
     totalProfit: statistics.value?.totalProfit ?? '0.00',
     balance: statistics.value?.balance ?? '0.00',
     successOrderCount: statistics.value?.successOrderCount ?? 0,
+    successPayoutCount: statistics.value?.successPayoutCount ?? 0,
 }));
 
 const parseAmount = (value) => {
@@ -147,13 +149,25 @@ const loadingOptions = ref({
 
 const searchDebounceTimers = {};
 
-const chartTabs = [
-    { value: 'income', label: 'Доход', colorToken: 'primary', seriesName: 'Доход ($)' },
-    { value: 'turnover', label: 'Оборот', colorToken: 'secondary', seriesName: 'Оборот ($)' },
-    { value: 'conversion', label: 'Конверсия', colorToken: 'success', seriesName: 'Конверсия (%)' },
-    { value: 'orders', label: 'Количество сделок', colorToken: 'accent', seriesName: 'Сделок' },
-    { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
-];
+const chartTabs = computed(() => {
+    const baseTabs = [
+        { value: 'income', label: 'Доход', colorToken: 'primary', seriesName: 'Доход ($)' },
+        { value: 'turnover', label: 'Оборот', colorToken: 'secondary', seriesName: 'Оборот ($)' },
+    ];
+    if (activeStatsMode.value === 'deals') {
+        return [
+            ...baseTabs,
+            { value: 'conversion', label: 'Конверсия', colorToken: 'success', seriesName: 'Конверсия (%)' },
+            { value: 'orders', label: 'Количество сделок', colorToken: 'accent', seriesName: 'Сделок' },
+            { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
+        ];
+    }
+    return [
+        ...baseTabs,
+        { value: 'orders', label: 'Количество выплат', colorToken: 'accent', seriesName: 'Выплат' },
+        { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
+    ];
+});
 
 const periodPresetOptions = [
     { value: 'today', label: 'Сегодня' },
@@ -387,7 +401,7 @@ const chartDataByTab = computed(() => ({
     average_check: getLastPoints(normalizeChartLabels(averageCheckChartData.value, selectedPeriodPreset.value)),
 }));
 
-const activeTabConfig = computed(() => chartTabs.find((tab) => tab.value === activeChartTab.value) || chartTabs[0]);
+const activeTabConfig = computed(() => chartTabs.value.find((tab) => tab.value === activeChartTab.value) || chartTabs.value[0]);
 const activeTabTitle = computed(() => activeTabConfig.value.label);
 const activeData = computed(() => chartDataByTab.value[activeChartTab.value] || { labels: [], data: [] });
 
@@ -464,6 +478,12 @@ const renderChart = () => {
     }, false, false);
 };
 
+watch(chartTabs, (tabs) => {
+    if (!tabs.some((t) => t.value === activeChartTab.value)) {
+        activeChartTab.value = 'income';
+    }
+}, { deep: true });
+
 watch(activeChartTab, () => {
     renderChart();
 });
@@ -472,6 +492,22 @@ watch(activeData, () => {
     renderChart();
 }, { deep: true });
 
+const switchStatsMode = (mode) => {
+    if (activeStatsMode.value === mode) {
+        return;
+    }
+    processing.value = true;
+    router.visit(route('trader.main.index'), {
+        data: { mode, period: 'month' },
+        replace: true,
+        preserveScroll: true,
+        preserveState: false,
+        onFinish: () => {
+            processing.value = false;
+        },
+    });
+};
+
 const applyFilter = (options = {}) => {
     if (processing.value) {
         return;
@@ -479,6 +515,7 @@ const applyFilter = (options = {}) => {
     processing.value = true;
     const requestData = {
         period: selectedPeriodPreset.value,
+        mode: activeStatsMode.value,
     };
     if (selectedPeriodPreset.value === 'month') {
         const monthAnchorDate = resolvePeriodAnchorDate(options.periodCursor || selectedPeriodCursor.value, 'month');
@@ -513,12 +550,14 @@ const applyFilter = (options = {}) => {
         requestData.date_from = selectedDateFrom.value;
         requestData.date_to = selectedDateTo.value;
     }
-    filterTypes.forEach((filterType) => {
-        const selectedIds = selectedFilters.value[filterType.key] || [];
-        if (selectedIds.length > 0) {
-            requestData[filterType.requestKey] = selectedIds;
-        }
-    });
+    if (activeStatsMode.value === 'deals') {
+        filterTypes.forEach((filterType) => {
+            const selectedIds = selectedFilters.value[filterType.key] || [];
+            if (selectedIds.length > 0) {
+                requestData[filterType.requestKey] = selectedIds;
+            }
+        });
+    }
     router.visit(route('trader.main.index'), {
         data: requestData,
         preserveScroll: true,
@@ -819,11 +858,13 @@ onMounted(() => {
         setPresetCursor(selectedPeriodPreset.value, nextCursor);
     }
     renderChart();
-    filterTypes.forEach((filterType) => {
-        if ((selectedFilters.value[filterType.key] || []).length > 0) {
-            loadFilterOptions(filterType.key, '');
-        }
-    });
+    if (activeStatsMode.value === 'deals') {
+        filterTypes.forEach((filterType) => {
+            if ((selectedFilters.value[filterType.key] || []).length > 0) {
+                loadFilterOptions(filterType.key, '');
+            }
+        });
+    }
     themeObserver = new MutationObserver(() => {
         if (scheduledThemeUpdate) {
             return;
@@ -879,6 +920,27 @@ defineOptions({ layout: AuthenticatedLayout });
                 <slot name="button"></slot>
             </div>
 
+            <div class="mt-2">
+                <ul class="flex w-full gap-2 text-sm font-medium text-center sm:w-auto sm:flex-wrap sm:gap-0">
+                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
+                        <a
+                            href="#"
+                            class="btn btn-sm w-full sm:w-auto"
+                            :class="activeStatsMode === 'deals' ? 'btn-primary' : 'btn-outline'"
+                            @click.prevent="switchStatsMode('deals')"
+                        >Сделки</a>
+                    </li>
+                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
+                        <a
+                            href="#"
+                            class="btn btn-sm w-full sm:w-auto"
+                            :class="activeStatsMode === 'payouts' ? 'btn-primary' : 'btn-outline'"
+                            @click.prevent="switchStatsMode('payouts')"
+                        >Выплаты</a>
+                    </li>
+                </ul>
+            </div>
+
             <div>
                 <section>
                     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -921,8 +983,8 @@ defineOptions({ layout: AuthenticatedLayout });
                         <div class="card bg-base-100 shadow px-5 py-3.5">
                             <div class="flex items-center justify-between gap-2">
                                 <div class="min-w-0">
-                                    <p class="text-base-content/70 text-xs">Сделки</p>
-                                    <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.successOrderCount }}</p>
+                                    <p class="text-base-content/70 text-xs">{{ activeStatsMode === 'payouts' ? 'Выплаты' : 'Сделки' }}</p>
+                                    <p class="text-lg font-semibold text-base-content">{{ activeStatsMode === 'payouts' ? statisticsFormated.successPayoutCount : statisticsFormated.successOrderCount }}</p>
                                 </div>
                                 <svg class="w-5 h-5 text-warning shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
@@ -973,7 +1035,7 @@ defineOptions({ layout: AuthenticatedLayout });
 
                         <div class="flex flex-col gap-2 lg:items-end">
                             <div class="flex items-start gap-2">
-                                <div ref="filterDropdownRef" class="dropdown" :class="{ 'dropdown-open': filterDropdownOpen }">
+                                <div v-if="activeStatsMode === 'deals'" ref="filterDropdownRef" class="dropdown" :class="{ 'dropdown-open': filterDropdownOpen }">
                                     <button
                                         type="button"
                                         class="btn btn-sm btn-square relative"

@@ -57,18 +57,30 @@ class MainPageController extends Controller
         $periodPreset = (string) request()->get('period', 'month');
         $dateFrom = request()->get('date_from');
         $dateTo = request()->get('date_to');
-        $filters = [
-            'paymentMethodIds' => request()->input('payment_method_ids', []),
-            'paymentDetailIds' => request()->input('payment_detail_ids', []),
-        ];
+        $mode = (string) request()->input('mode', 'deals');
+        $activeStatsMode = $mode === 'payouts' ? 'payouts' : 'deals';
 
-        $stats = $this->mainPageStatsService->buildTraderMainPageStats(
-            $user,
-            $periodPreset,
-            $dateFrom !== null ? (string) $dateFrom : null,
-            $dateTo !== null ? (string) $dateTo : null,
-            $filters,
-        );
+        if ($activeStatsMode === 'payouts') {
+            $stats = $this->mainPageStatsService->buildTraderPayoutMainPageStats(
+                $user,
+                $periodPreset,
+                $dateFrom !== null ? (string) $dateFrom : null,
+                $dateTo !== null ? (string) $dateTo : null,
+            );
+        } else {
+            $filters = [
+                'paymentMethodIds' => request()->input('payment_method_ids', []),
+                'paymentDetailIds' => request()->input('payment_detail_ids', []),
+            ];
+
+            $stats = $this->mainPageStatsService->buildTraderMainPageStats(
+                $user,
+                $periodPreset,
+                $dateFrom !== null ? (string) $dateFrom : null,
+                $dateTo !== null ? (string) $dateTo : null,
+                $filters,
+            );
+        }
 
         $balance = $user->wallet
             ? services()->wallet()->getTotalAvailableBalance($user->wallet, BalanceType::TRUST)
@@ -80,6 +92,7 @@ class MainPageController extends Controller
 
         return Inertia::render('MainPage/Trader/Index', [
             ...$stats,
+            'activeStatsMode' => $activeStatsMode,
             'walletStats' => $walletStats,
             'tempVip' => $tempVip,
         ]);

@@ -8,9 +8,11 @@ use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
 use App\Models\Merchant;
 use App\Enums\OrderStatus;
+use App\Enums\PayoutStatus;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\PaymentDetail;
+use App\Models\Payout\Payout;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use App\Services\Money\Currency;
@@ -706,6 +708,191 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
             'selectedDateTo' => $resolvedPeriod['dateTo'],
             'selectedFilters' => $normalizedFilters,
+        ];
+    }
+
+    public function buildTraderPayoutMainPageStats(
+        User $user,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+    ): array {
+        $resolvedPeriod = $this->resolvePeriodRange($periodPreset, $dateFrom, $dateTo);
+        $startDate = $resolvedPeriod['startDate'];
+        $endDate = $resolvedPeriod['endDate'];
+
+        $completedAtExpression = 'COALESCE(completed_at, updated_at)';
+
+        if ($resolvedPeriod['preset'] === 'all') {
+            $allBoundsQuery = Payout::query()
+                ->where('trader_id', $user->id)
+                ->where('status', PayoutStatus::COMPLETED->value);
+
+            $minCompletedAt = $allBoundsQuery->min(DB::raw($completedAtExpression));
+            if ($minCompletedAt) {
+                $startDate = Carbon::parse($minCompletedAt)->startOfDay();
+            } else {
+                $startDate = now()->startOfDay();
+            }
+
+            $endDate = now()->endOfDay();
+            $resolvedPeriod['dateFrom'] = $startDate->toDateString();
+            $resolvedPeriod['dateTo'] = $endDate->toDateString();
+        }
+
+        $isHourly = $startDate->isSameDay($endDate);
+        $bucketSql = $isHourly
+            ? "DATE_FORMAT({$completedAtExpression}, '%Y-%m-%d %H:00:00')"
+            : "DATE({$completedAtExpression})";
+
+        $applyCompletedBetween = static function (Builder $query) use ($startDate, $endDate, $completedAtExpression): void {
+            $query->whereRaw("{$completedAtExpression} between ? and ?", [$startDate, $endDate]);
+        };
+
+        $basePayoutQuery = static fn (): Builder => Payout::query()
+            ->where('trader_id', $user->id)
+            ->where('status', PayoutStatus::COMPLETED->value);
+
+        $aggregatedQuery = $basePayoutQuery();
+        $applyCompletedBetween($aggregatedQuery);
+
+        $totalTurnover = Money::fromUnits(
+            (int) $aggregatedQuery->clone()->sum(DB::raw('CAST(IFNULL(usdt_body, 0) AS SIGNED)')),
+            Currency::USDT(),
+        );
+        $totalProfit = Money::fromUnits(
+            (int) $aggregatedQuery->clone()->sum(DB::raw('CAST(IFNULL(trader_fee, 0) AS SIGNED)')),
+            Currency::USDT(),
+        );
+        $successPayoutCount = (int) $aggregatedQuery->clone()->count();
+
+        $earningsByBucket = $basePayoutQuery();
+        $applyCompletedBetween($earningsByBucket);
+        $earningsByBucket = $earningsByBucket
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(CAST(IFNULL(trader_fee, 0) AS SIGNED)) as total_earnings")
+            ->groupBy(DB::raw($bucketSql))
+            ->pluck('total_earnings', 'bucket_key');
+
+        $turnoverByBucket = $basePayoutQuery();
+        $applyCompletedBetween($turnoverByBucket);
+        $turnoverByBucket = $turnoverByBucket
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(CAST(IFNULL(usdt_body, 0) AS SIGNED)) as total_turnover")
+            ->groupBy(DB::raw($bucketSql))
+            ->pluck('total_turnover', 'bucket_key');
+
+        $countByBucket = $basePayoutQuery();
+        $applyCompletedBetween($countByBucket);
+        $countByBucket = $countByBucket
+            ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as cnt")
+            ->groupBy(DB::raw($bucketSql))
+            ->pluck('cnt', 'bucket_key');
+
+        $labels = [];
+        $incomeData = [];
+        $turnoverData = [];
+        $ordersData = [];
+        $averageCheckData = [];
+
+        $buckets = [];
+        $currentBucketDate = $startDate->copy();
+        while ($currentBucketDate->lte($endDate)) {
+            $bucketKey = $isHourly
+                ? $currentBucketDate->format('Y-m-d H:00:00')
+                : $currentBucketDate->toDateString();
+
+            $label = $isHourly
+                ? $currentBucketDate->format('H:i')
+                : $currentBucketDate->format('d.m');
+
+            $income = Money::fromUnits(
+                (int) ($earningsByBucket[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $turnover = Money::fromUnits(
+                (int) ($turnoverByBucket[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $payoutCount = (int) ($countByBucket[$bucketKey] ?? 0);
+
+            $buckets[] = [
+                'label' => $label,
+                'income' => $income,
+                'turnover' => $turnover,
+                'payoutCount' => $payoutCount,
+            ];
+
+            if ($isHourly) {
+                $currentBucketDate->addHour();
+            } else {
+                $currentBucketDate->addDay();
+            }
+        }
+
+        if (in_array($resolvedPeriod['preset'], ['custom', 'all'], true) && count($buckets) > 30) {
+            $chunkSize = (int) ceil(count($buckets) / 30);
+            $groupedBuckets = [];
+
+            for ($i = 0; $i < count($buckets); $i += $chunkSize) {
+                $chunk = array_slice($buckets, $i, $chunkSize);
+                $firstLabel = $chunk[0]['label'];
+                $lastLabel = $chunk[count($chunk) - 1]['label'];
+
+                $groupedBuckets[] = [
+                    'label' => $firstLabel === $lastLabel ? $firstLabel : "{$firstLabel}-{$lastLabel}",
+                    'income' => array_sum(array_column($chunk, 'income')),
+                    'turnover' => array_sum(array_column($chunk, 'turnover')),
+                    'payoutCount' => array_sum(array_column($chunk, 'payoutCount')),
+                ];
+            }
+
+            $buckets = $groupedBuckets;
+        }
+
+        foreach ($buckets as $bucket) {
+            $labels[] = $bucket['label'];
+            $incomeData[] = $bucket['income'];
+            $turnoverData[] = $bucket['turnover'];
+            $ordersData[] = $bucket['payoutCount'];
+            $averageCheckData[] = $bucket['payoutCount'] > 0
+                ? round($bucket['turnover'] / $bucket['payoutCount'], 2)
+                : 0;
+        }
+
+        $emptyFilters = [
+            'paymentMethodIds' => [],
+            'paymentDetailIds' => [],
+        ];
+
+        return [
+            'statistics' => [
+                'totalTurnover' => $totalTurnover->toBeauty(),
+                'totalProfit' => $totalProfit->toBeauty(),
+                'successPayoutCount' => $successPayoutCount,
+            ],
+            'chart' => [
+                'labels' => $labels,
+                'data' => $incomeData,
+            ],
+            'conversionChart' => [
+                'labels' => [],
+                'data' => [],
+            ],
+            'turnoverChart' => [
+                'labels' => $labels,
+                'data' => $turnoverData,
+            ],
+            'ordersChart' => [
+                'labels' => $labels,
+                'data' => $ordersData,
+            ],
+            'averageCheckChart' => [
+                'labels' => $labels,
+                'data' => $averageCheckData,
+            ],
+            'selectedPeriodPreset' => $resolvedPeriod['preset'],
+            'selectedDateFrom' => $resolvedPeriod['dateFrom'],
+            'selectedDateTo' => $resolvedPeriod['dateTo'],
+            'selectedFilters' => $emptyFilters,
         ];
     }
 

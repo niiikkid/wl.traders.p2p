@@ -29,6 +29,13 @@ interface MainPageStatsServiceContract
         array $filters = [],
     ): array;
 
+    public function buildTraderPayoutMainPageStats(
+        User $user,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+    ): array;
+
     public function buildMerchantMainPageStats(
         User $user,
         string $periodPreset = 'all',
