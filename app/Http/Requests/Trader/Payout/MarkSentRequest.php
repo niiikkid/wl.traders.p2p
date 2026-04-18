@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Trader\Payout;
 
+use App\Rules\ReceiptFileRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class MarkSentRequest extends FormRequest
@@ -17,8 +18,8 @@ class MarkSentRequest extends FormRequest
             'receipt' => [
                 'required_without:receipts',
                 'file',
-                'mimes:jpg,jpeg,png,pdf',
                 'max:10240',
+                new ReceiptFileRule(),
             ],
             'receipts' => [
                 'required_without:receipt',
@@ -28,8 +29,8 @@ class MarkSentRequest extends FormRequest
             ],
             'receipts.*' => [
                 'file',
-                'mimes:jpg,jpeg,png,pdf',
                 'max:10240',
+                new ReceiptFileRule(),
             ],
         ];
     }
