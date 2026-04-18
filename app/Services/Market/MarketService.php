@@ -5,24 +5,24 @@ namespace App\Services\Market;
 use App\Contracts\MarketServiceContract;
 use App\Enums\MarketEnum;
 use App\Jobs\LoadConversionPricesJob;
-use GuzzleHttp\Exception\ConnectException;
+use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
+use App\Services\Market\Utils\MarketStore;
 use App\Services\Market\Utils\Parser\BinanceParser;
 use App\Services\Market\Utils\Parser\ByBitParser;
-use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
-use App\Services\Money\Currency;
-use App\Services\Market\Utils\MarketStore;
 use App\Services\Market\Utils\Parser\Parser;
+use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use GuzzleHttp\Exception\ConnectException;
 use Illuminate\Support\Collection;
 use Throwable;
 
 class MarketService implements MarketServiceContract
 {
-    protected Parser  $parser;
+    protected Parser $parser;
 
     public function __construct()
     {
-        $this->parser = new Parser();
+        $this->parser = new Parser;
     }
 
     public function loadAllPrices(): void
@@ -105,8 +105,9 @@ class MarketService implements MarketServiceContract
         foreach (MarketEnum::cases() as $market) {
             try {
                 if ($market->equals(MarketEnum::BYBIT)) {
-                    $methods = (new ByBitParser())->parsePaymentMethodsList();
+                    $methods = (new ByBitParser)->parsePaymentMethodsList();
                     MarketStore::putFilterConditions(market: $market, conditions: $methods);
+
                     continue;
                 }
 
@@ -114,7 +115,7 @@ class MarketService implements MarketServiceContract
                     $this->supportedCurrenciesForMarket($market)
                         ->each(function (Currency $currency) use ($market) {
                             try {
-                                $conditions = (new BinanceParser())->parseFilterConditions($currency);
+                                $conditions = (new BinanceParser)->parseFilterConditions($currency);
                                 MarketStore::putFilterConditions(
                                     market: $market,
                                     conditions: $conditions,
@@ -249,9 +250,20 @@ class MarketService implements MarketServiceContract
         $current = $exception;
 
         while ($current instanceof Throwable) {
+            if ($current instanceof ConnectException) {
+                $message = $current->getMessage();
+
+                if (
+                    str_contains($message, 'cURL error 35')
+                    || str_contains($message, 'cURL error 28')
+                ) {
+                    return true;
+                }
+            }
+
             if (
-                $current instanceof ConnectException
-                && str_contains($current->getMessage(), 'cURL error 35')
+                $current instanceof \ErrorException
+                && str_contains($current->getMessage(), 'Trying to access array offset on null')
             ) {
                 return true;
             }
