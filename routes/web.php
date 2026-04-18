@@ -421,8 +421,5 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     });
 });
 
-
-Route::get('/phpinfo', fn () => phpinfo())->middleware('backoffice.domain');
-
 require __DIR__.'/auth.php';
 

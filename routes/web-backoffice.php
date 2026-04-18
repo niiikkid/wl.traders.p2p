@@ -404,6 +404,3 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/payment/{order}/callback/resend', [\App\Http\Controllers\Merchant\ResendCallbackController::class, 'resend'])->name('payment.callback.resend');
     });
 });
-
-
-Route::get('/phpinfo', fn () => phpinfo())->middleware('backoffice.domain');
