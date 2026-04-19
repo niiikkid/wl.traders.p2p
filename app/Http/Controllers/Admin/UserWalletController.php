@@ -20,7 +20,12 @@ class UserWalletController extends Controller
 {
     public function index(User $user)
     {
+        $user->loadMissing(['roles', 'wallet']);
+
         $wallet = $user->wallet;
+
+        $walletAdminFullView = $user->hasRole('Super Admin');
+        $walletSurfaces = $this->walletSurfacesForUser($user);
 
         $tabs = [
             'invoices' => [
@@ -30,56 +35,7 @@ class UserWalletController extends Controller
             'transactions' => [
                 'key' => 'transactions',
                 'name' => 'Транзакции',
-            ]
-        ];
-
-        $filters = [
-            'invoices' => [
-                'invoiceTypes' => [
-                    'all' => [
-                        'key' => 'all',
-                        'name' => 'Тип инвойса',
-                    ],
-                    InvoiceType::DEPOSIT->value => [
-                        'key' => InvoiceType::DEPOSIT->value,
-                        'name' => 'Пополнение',
-                    ],
-                    InvoiceType::WITHDRAWAL->value => [
-                        'key' => InvoiceType::WITHDRAWAL->value,
-                        'name' => 'Вывод',
-                    ],
-                ],
-                'balanceTypes' => [
-                    'all' => [
-                        'key' => 'all',
-                        'name' => 'Тип кошелька',
-                    ],
-                    BalanceType::TRUST->value => [
-                        'key' => BalanceType::TRUST->value,
-                        'name' => 'Траст',
-                    ],
-                    BalanceType::MERCHANT->value => [
-                        'key' => BalanceType::MERCHANT->value,
-                        'name' => 'Мерчант',
-                    ],
-                ],
             ],
-            'transactions' => [
-                'balanceTypes' => [
-                    'all' => [
-                        'key' => 'all',
-                        'name' => 'Тип кошелька',
-                    ],
-                    BalanceType::TRUST->value => [
-                        'key' => BalanceType::TRUST->value,
-                        'name' => 'Траст',
-                    ],
-                    BalanceType::MERCHANT->value => [
-                        'key' => BalanceType::MERCHANT->value,
-                        'name' => 'Мерчант',
-                    ],
-                ],
-            ]
         ];
 
         $currentTab = request()->input('tab', 'invoices');
@@ -87,15 +43,113 @@ class UserWalletController extends Controller
             $currentTab = 'invoices';
         }
 
-        $currentFilters = [
-            'invoices' => [
-                'invoiceTypes' => request()->input('currentFilters.invoices.invoiceTypes', 'all'),
-                'balanceTypes' => request()->input('currentFilters.invoices.balanceTypes', 'all'),
-            ],
-            'transactions' => [
-                'balanceTypes' => request()->input('currentFilters.transactions.balanceTypes', 'all'),
-            ]
-        ];
+        if ($walletAdminFullView) {
+            $filters = [
+                'invoices' => [
+                    'invoiceTypes' => [
+                        'all' => [
+                            'key' => 'all',
+                            'name' => 'Тип инвойса',
+                        ],
+                        InvoiceType::DEPOSIT->value => [
+                            'key' => InvoiceType::DEPOSIT->value,
+                            'name' => 'Пополнение',
+                        ],
+                        InvoiceType::WITHDRAWAL->value => [
+                            'key' => InvoiceType::WITHDRAWAL->value,
+                            'name' => 'Вывод',
+                        ],
+                    ],
+                    'balanceTypes' => [
+                        'all' => [
+                            'key' => 'all',
+                            'name' => 'Тип кошелька',
+                        ],
+                        BalanceType::TRUST->value => [
+                            'key' => BalanceType::TRUST->value,
+                            'name' => 'Траст',
+                        ],
+                        BalanceType::MERCHANT->value => [
+                            'key' => BalanceType::MERCHANT->value,
+                            'name' => 'Мерчант',
+                        ],
+                        BalanceType::TEAMLEADER->value => [
+                            'key' => BalanceType::TEAMLEADER->value,
+                            'name' => 'Тимлид',
+                        ],
+                    ],
+                ],
+                'transactions' => [
+                    'balanceTypes' => [
+                        'all' => [
+                            'key' => 'all',
+                            'name' => 'Тип кошелька',
+                        ],
+                        BalanceType::TRUST->value => [
+                            'key' => BalanceType::TRUST->value,
+                            'name' => 'Траст',
+                        ],
+                        BalanceType::MERCHANT->value => [
+                            'key' => BalanceType::MERCHANT->value,
+                            'name' => 'Мерчант',
+                        ],
+                        BalanceType::TEAMLEADER->value => [
+                            'key' => BalanceType::TEAMLEADER->value,
+                            'name' => 'Тимлид',
+                        ],
+                    ],
+                ],
+            ];
+
+            $currentFilters = [
+                'invoices' => [
+                    'invoiceTypes' => request()->input('currentFilters.invoices.invoiceTypes', 'all'),
+                    'balanceTypes' => request()->input('currentFilters.invoices.balanceTypes', 'all'),
+                ],
+                'transactions' => [
+                    'balanceTypes' => request()->input('currentFilters.transactions.balanceTypes', 'all'),
+                ],
+            ];
+
+            $invoiceBalanceFilter = $currentFilters['invoices']['balanceTypes'];
+            $transactionBalanceFilter = $currentFilters['transactions']['balanceTypes'];
+
+            $invoicesBalanceType = $invoiceBalanceFilter === 'all'
+                ? null
+                : BalanceType::tryFrom($invoiceBalanceFilter);
+            $transactionsBalanceType = $transactionBalanceFilter === 'all'
+                ? null
+                : BalanceType::tryFrom($transactionBalanceFilter);
+        } else {
+            $filters = [
+                'invoices' => [
+                    'invoiceTypes' => [
+                        'all' => [
+                            'key' => 'all',
+                            'name' => 'Тип инвойса',
+                        ],
+                        InvoiceType::DEPOSIT->value => [
+                            'key' => InvoiceType::DEPOSIT->value,
+                            'name' => 'Пополнение',
+                        ],
+                        InvoiceType::WITHDRAWAL->value => [
+                            'key' => InvoiceType::WITHDRAWAL->value,
+                            'name' => 'Вывод',
+                        ],
+                    ],
+                ],
+            ];
+
+            $currentFilters = [
+                'invoices' => [
+                    'invoiceTypes' => request()->input('currentFilters.invoices.invoiceTypes', 'all'),
+                ],
+            ];
+
+            $scopedBalanceType = $this->resolveScopedBalanceType($user);
+            $invoicesBalanceType = $scopedBalanceType;
+            $transactionsBalanceType = $scopedBalanceType;
+        }
 
         $walletStats = services()->wallet()->getWalletStats($wallet)->toArray();
 
@@ -106,20 +160,131 @@ class UserWalletController extends Controller
             $invoices = queries()->invoice()->paginate(
                 wallet: $wallet,
                 invoiceType: InvoiceType::tryFrom($currentFilters['invoices']['invoiceTypes']),
-                balanceType: BalanceType::tryFrom($currentFilters['invoices']['balanceTypes']),
+                balanceType: $invoicesBalanceType,
             );
             $invoices = InvoiceResource::collection($invoices);
-        } else if ($currentTab === 'transactions') {
+        } elseif ($currentTab === 'transactions') {
             $transactions = queries()->transaction()->paginate(
                 wallet: $wallet,
-                balanceType: BalanceType::tryFrom($currentFilters['transactions']['balanceTypes']),
+                balanceType: $transactionsBalanceType,
             );
             $transactions = TransactionResource::collection($transactions);
         }
 
         $user = UserResource::make($user)->resolve();
 
-        return Inertia::render('Wallet/Index', compact('walletStats', 'invoices', 'transactions', 'user', 'tabs', 'filters', 'currentTab', 'currentFilters'));
+        return Inertia::render('Wallet/Index', compact(
+            'walletStats',
+            'invoices',
+            'transactions',
+            'user',
+            'tabs',
+            'filters',
+            'currentTab',
+            'currentFilters',
+            'walletSurfaces',
+            'walletAdminFullView',
+        ));
+    }
+
+    /**
+     * Карточки балансов на странице «как у пользователя с этой ролью», кроме Super Admin (ему — все сразу).
+     *
+     * @return array{trust: bool, merchant: bool, teamleader: bool, escrow: bool, dispute: bool}
+     */
+    private function walletSurfacesForUser(User $user): array
+    {
+        if ($user->hasRole('Super Admin')) {
+            return [
+                'trust' => true,
+                'merchant' => true,
+                'teamleader' => true,
+                'escrow' => true,
+                'dispute' => true,
+            ];
+        }
+
+        if ($user->hasRole('Merchant')) {
+            return [
+                'trust' => false,
+                'merchant' => true,
+                'teamleader' => false,
+                'escrow' => false,
+                'dispute' => false,
+            ];
+        }
+
+        if ($user->hasRole('Trader')) {
+            return [
+                'trust' => true,
+                'merchant' => false,
+                'teamleader' => false,
+                'escrow' => true,
+                'dispute' => true,
+            ];
+        }
+
+        if ($user->hasRole('Team Leader')) {
+            return [
+                'trust' => false,
+                'merchant' => false,
+                'teamleader' => true,
+                'escrow' => false,
+                'dispute' => false,
+            ];
+        }
+
+        if ($user->hasRole('Support')) {
+            return [
+                'trust' => true,
+                'merchant' => false,
+                'teamleader' => false,
+                'escrow' => true,
+                'dispute' => true,
+            ];
+        }
+
+        if ($user->hasRole('Merchant Support')) {
+            return [
+                'trust' => false,
+                'merchant' => true,
+                'teamleader' => false,
+                'escrow' => false,
+                'dispute' => false,
+            ];
+        }
+
+        return [
+            'trust' => true,
+            'merchant' => false,
+            'teamleader' => false,
+            'escrow' => true,
+            'dispute' => true,
+        ];
+    }
+
+    /**
+     * Один тип баланса для истории инвойсов/транзакций (как на wallet.index / merchant.finances / leader.finances).
+     */
+    private function resolveScopedBalanceType(User $user): BalanceType
+    {
+        if ($user->hasRole('Merchant')) {
+            return BalanceType::MERCHANT;
+        }
+        if ($user->hasRole('Trader')) {
+            return BalanceType::TRUST;
+        }
+        if ($user->hasRole('Team Leader')) {
+            return BalanceType::TEAMLEADER;
+        }
+        if ($user->hasRole('Support')) {
+            return BalanceType::TRUST;
+        }
+        if ($user->hasRole('Merchant Support')) {
+            return BalanceType::MERCHANT;
+        }
+
+        return BalanceType::TRUST;
     }
 
     public function deposit(DepositRequest $request, User $user)

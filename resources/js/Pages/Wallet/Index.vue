@@ -16,10 +16,54 @@ import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
 import {useModalStore} from "@/store/modal.js";
 
-const user = usePage().props.user;
-const walletStats = usePage().props.walletStats;
+const page = usePage();
+const user = page.props.user;
+const walletStats = page.props.walletStats;
 const viewStore = useViewStore();
 const modalStore = useModalStore();
+
+/** На admin.users.wallet приходит из бэка; на своём кошельке отсутствует — используем только viewStore. */
+const walletSurfaces = computed(() => page.props.walletSurfaces ?? null);
+
+const showTrustBalanceCard = computed(() => {
+    const ws = walletSurfaces.value;
+    if (ws) {
+        return ws.trust;
+    }
+    return viewStore.isTraderViewMode || viewStore.isAdminViewMode;
+});
+
+const showMerchantBalanceCard = computed(() => {
+    const ws = walletSurfaces.value;
+    if (ws) {
+        return ws.merchant;
+    }
+    return viewStore.isMerchantViewMode || viewStore.isAdminViewMode;
+});
+
+const showTeamleaderBalanceCard = computed(() => {
+    const ws = walletSurfaces.value;
+    if (ws) {
+        return ws.teamleader;
+    }
+    return viewStore.isTeamLeaderViewMode || viewStore.isAdminViewMode;
+});
+
+const showEscrowBalanceCard = computed(() => {
+    const ws = walletSurfaces.value;
+    if (ws) {
+        return ws.escrow;
+    }
+    return viewStore.isTraderViewMode || viewStore.isAdminViewMode;
+});
+
+const showDisputeBalanceCard = computed(() => {
+    const ws = walletSurfaces.value;
+    if (ws) {
+        return ws.dispute;
+    }
+    return viewStore.isTraderViewMode || viewStore.isAdminViewMode;
+});
 
 const balanceType = ref('trust');
 const fiatCurrencyForm = useForm({
@@ -27,7 +71,7 @@ const fiatCurrencyForm = useForm({
 });
 
 const availableFiatCurrencies = computed(() => {
-    return (usePage().props.data?.rates ?? []).map((rate) => ({
+    return (page.props.data?.rates ?? []).map((rate) => ({
         code: rate.code,
         label: rate.code.toUpperCase(),
     }));
@@ -56,7 +100,10 @@ defineOptions({ layout: AuthenticatedLayout })
     <div>
         <h2 class="text-3xl font-bold text-base-content mb-6">Финансы</h2>
 
-        <div v-if="viewStore.isTraderViewMode" class="mb-4 flex items-center justify-end gap-2">
+        <div
+            v-if="viewStore.isTraderViewMode || (showTrustBalanceCard && viewStore.isAdminViewMode)"
+            class="mb-4 flex items-center justify-end gap-2"
+        >
             <span class="text-sm opacity-70">Валюта отображения</span>
             <select
                 v-model="fiatCurrencyForm.fiat_currency"
@@ -112,11 +159,11 @@ defineOptions({ layout: AuthenticatedLayout })
         </div>
 
         <div class="grid xl:grid-cols-2 grid-cols-1 gap-6 mb-6">
-            <TrustBalance v-show="viewStore.isTraderViewMode || viewStore.isAdminViewMode" @setBalanceType="setBalanceType"/>
-            <MerchantBalance v-show="viewStore.isMerchantViewMode || viewStore.isAdminViewMode" @setBalanceType="setBalanceType"/>
-            <TeamleaderBalance v-show="viewStore.isTeamLeaderViewMode || viewStore.isAdminViewMode" @setBalanceType="setBalanceType"/>
-            <EscrowBalance v-show="viewStore.isTraderViewMode || viewStore.isAdminViewMode" @setBalanceType="setBalanceType"/>
-            <DisputeBalance v-show="viewStore.isTraderViewMode || viewStore.isAdminViewMode" @setBalanceType="setBalanceType"/>
+            <TrustBalance v-show="showTrustBalanceCard" @setBalanceType="setBalanceType"/>
+            <MerchantBalance v-show="showMerchantBalanceCard" @setBalanceType="setBalanceType"/>
+            <TeamleaderBalance v-show="showTeamleaderBalanceCard" @setBalanceType="setBalanceType"/>
+            <EscrowBalance v-show="showEscrowBalanceCard" @setBalanceType="setBalanceType"/>
+            <DisputeBalance v-show="showDisputeBalanceCard" @setBalanceType="setBalanceType"/>
         </div>
 
         <OperationsHistory/>

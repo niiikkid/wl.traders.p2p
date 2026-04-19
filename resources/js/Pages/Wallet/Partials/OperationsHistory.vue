@@ -1,7 +1,7 @@
 <script setup>
 import EmptyTable from "@/Components/EmptyTable.vue";
 import {router, usePage} from "@inertiajs/vue3";
-import {onMounted, ref} from "vue";
+import {computed, onMounted, ref} from "vue";
 import {useViewStore} from "@/store/view.js";
 import Pagination from "@/Components/Pagination/Pagination.vue";
 import Select from "@/Components/Select.vue";
@@ -10,17 +10,22 @@ import CopyAddress from "@/Components/CopyAddress.vue";
 
 const viewStore = useViewStore();
 
-const user = usePage().props.user;
-const invoices = ref(usePage().props.invoices);
-const transactions = ref(usePage().props.transactions);
-const tabs = ref(usePage().props.tabs);
-const filters = ref(usePage().props.filters);
-const currentTab = ref(usePage().props.currentTab);
-const currentFilters = ref(usePage().props.currentFilters);
+const page = usePage();
+
+/** Полный доступ к типам балансов в таблице — только при просмотре кошелька Super Admin в админке. */
+const walletAdminFullView = computed(() => Boolean(page.props.walletAdminFullView));
+
+const user = page.props.user;
+const invoices = ref(page.props.invoices);
+const transactions = ref(page.props.transactions);
+const tabs = ref(page.props.tabs);
+const filters = ref(page.props.filters);
+const currentTab = ref(page.props.currentTab);
+const currentFilters = ref(page.props.currentFilters);
 
 router.on('success', (event) => {
-    invoices.value = usePage().props.invoices;
-    transactions.value = usePage().props.transactions;
+    invoices.value = page.props.invoices;
+    transactions.value = page.props.transactions;
 })
 
 const openPage = (page) => {
@@ -135,10 +140,11 @@ onMounted(() => {
                                         <template v-if="invoice.type === 'withdrawal'">Вывод</template>
                                     </div>
                                 </td>
-                                <td v-show="viewStore.isAdminViewMode">
+                                <td v-show="viewStore.isAdminViewMode && walletAdminFullView">
                                     <div class="text-nowrap text-center">
                                         <template v-if="invoice.balance_type === 'trust'">Траст</template>
-                                        <template v-if="invoice.balance_type === 'merchant'">Мерчант</template>
+                                        <template v-else-if="invoice.balance_type === 'merchant'">Мерчант</template>
+                                        <template v-else-if="invoice.balance_type === 'teamleader'">Тимлид</template>
                                     </div>
                                 </td>
                                 <td>
@@ -201,11 +207,12 @@ onMounted(() => {
                                 <div class="text-right">
                                     <DateTime :data="invoice.created_at" />
                                 </div>
-                                <template v-if="viewStore.isAdminViewMode">
+                                <template v-if="viewStore.isAdminViewMode && walletAdminFullView">
                                     <div class="text-base-content/70 text-sm">Баланс</div>
                                     <div class="text-right">
                                         <template v-if="invoice.balance_type === 'trust'">Траст</template>
                                         <template v-else-if="invoice.balance_type === 'merchant'">Мерчант</template>
+                                        <template v-else-if="invoice.balance_type === 'teamleader'">Тимлид</template>
                                     </div>
                                 </template>
                             </div>
