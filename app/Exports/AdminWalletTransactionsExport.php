@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Exports;
 
+use App\Enums\BalanceType;
 use App\Models\Transaction;
-use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
@@ -27,12 +27,14 @@ class AdminWalletTransactionsExport implements FromQuery, WithColumnFormatting, 
 
     public function __construct(
         private readonly Wallet $wallet,
+        private readonly BalanceType $balanceType,
     ) {}
 
     public function query(): Builder
     {
         return Transaction::query()
             ->where('wallet_id', $this->wallet->id)
+            ->where('balance_type', $this->balanceType)
             ->orderByDesc('id');
     }
 
@@ -102,52 +104,22 @@ class AdminWalletTransactionsExport implements FromQuery, WithColumnFormatting, 
 
     private function walletSummaryLine(): string
     {
-        $this->wallet->loadMissing(['user.roles']);
+        $this->wallet->loadMissing('user');
 
         return sprintf(
             'Транзакции по кошельку (%s) — пользователь: %s',
-            $this->primaryBalanceKindLabel(),
+            $this->exportedBalanceKindLabel(),
             $this->wallet->user?->email ?? '—',
         );
     }
 
-    /**
-     * Основной «тип» кошелька для владельца — как роль на странице финансов (Merchant → мерчант, Trader → траст и т.д.).
-     */
-    private function primaryBalanceKindLabel(): string
+    private function exportedBalanceKindLabel(): string
     {
-        $user = $this->wallet->user;
-
-        if (! $user instanceof User) {
-            return '—';
-        }
-
-        $user->loadMissing('roles');
-
-        if ($user->hasRole('Super Admin')) {
-            return 'Траст, Мерчант, Тимлид';
-        }
-
-        if ($user->hasRole('Merchant')) {
-            return 'Мерчант';
-        }
-
-        if ($user->hasRole('Trader')) {
-            return 'Траст';
-        }
-
-        if ($user->hasRole('Team Leader')) {
-            return 'Тимлид';
-        }
-
-        if ($user->hasRole('Support')) {
-            return 'Траст';
-        }
-
-        if ($user->hasRole('Merchant Support')) {
-            return 'Мерчант';
-        }
-
-        return 'Траст';
+        return match ($this->balanceType) {
+            BalanceType::TRUST => 'Траст',
+            BalanceType::MERCHANT => 'Мерчант',
+            BalanceType::TEAMLEADER => 'Тимлид',
+            BalanceType::COMMISSION => 'Комиссия',
+        };
     }
 }

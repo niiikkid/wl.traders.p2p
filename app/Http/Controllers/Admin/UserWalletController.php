@@ -15,6 +15,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -190,20 +191,44 @@ class UserWalletController extends Controller
         ));
     }
 
-    public function exportTransactions(User $user): BinaryFileResponse
+    public function exportTransactions(Request $request, User $user): BinaryFileResponse
     {
-        $user->loadMissing('wallet');
+        $user->loadMissing(['wallet', 'roles']);
 
         if (! $user->wallet) {
             abort(404);
         }
 
+        $balanceType = $user->hasRole('Super Admin')
+            ? $this->resolveExportBalanceTypeForSuperAdmin($request)
+            : $this->resolveScopedBalanceType($user);
+
         $filename = now()->format('Y-m-d_H-i-s').'_wallet-transactions-user-'.$user->id.'.xlsx';
 
         return Excel::download(
-            new AdminWalletTransactionsExport($user->wallet),
+            new AdminWalletTransactionsExport($user->wallet, $balanceType),
             $filename
         );
+    }
+
+    /**
+     * Для кошелька Super Admin выгрузка только по явно выбранному типу кошелька (не «все»).
+     */
+    private function resolveExportBalanceTypeForSuperAdmin(Request $request): BalanceType
+    {
+        $raw = $request->query('balance_type');
+
+        if ($raw === null || $raw === '' || $raw === 'all') {
+            abort(422, 'Выберите тип кошелька для выгрузки.');
+        }
+
+        $balanceType = BalanceType::tryFrom((string) $raw);
+
+        if ($balanceType === null) {
+            abort(422, 'Недопустимый тип кошелька.');
+        }
+
+        return $balanceType;
     }
 
     /**

@@ -110,6 +110,14 @@ const openPage = (tab) => {
 
 const isTraderRole = (user) => user.role?.name === 'Trader';
 
+/** Баланс и переход в кошелёк — только для ролей с финансовым кошельком в админке. */
+const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Super Admin'];
+
+const userShowsWalletBalanceAndLink = (user) => {
+    const role_name = user?.role?.name;
+    return Boolean(role_name && ADMIN_WALLET_ROLES.includes(role_name));
+};
+
 const confirmArchiveUser = (user) => {
     modalStore.openConfirmModal({
         title: 'Вы уверены что хотите архивировать пользователя #' + user.id + '?',
@@ -304,7 +312,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </UserSummaryPopover>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
-                                        {{ user.balance }} $
+                                        <template v-if="userShowsWalletBalanceAndLink(user)">{{ user.balance }} $</template>
+                                        <template v-else>—</template>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
                                         <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
@@ -339,7 +348,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
                                                     Войти как пользователь
                                                 </TableAction>
-                                                <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
+                                                <TableAction
+                                                    v-if="userShowsWalletBalanceAndLink(user)"
+                                                    @click="router.visit(route('admin.users.wallet.index', user.id))"
+                                                >
                                                     Кошелек
                                                 </TableAction>
                                                 <TableAction @click="openUserNotesModal(user)">
@@ -461,7 +473,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="text-xs text-base-content/70 grid grid-cols-2 gap-x-4 gap-y-1 flex-1">
                                                 <div class="inline-flex items-center">
                                                     <span>Баланс:</span>
-                                                    <span class="text-base-content ml-1">{{ user.balance }} $</span>
+                                                    <span class="text-base-content ml-1">
+                                                        <template v-if="userShowsWalletBalanceAndLink(user)">{{ user.balance }} $</template>
+                                                        <template v-else>—</template>
+                                                    </span>
                                                 </div>
                                                 <div class="inline-flex items-center">
                                                     <span>Временный VIP:</span>
@@ -483,7 +498,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
                                                             Войти как пользователь
                                                         </TableAction>
-                                                        <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
+                                                        <TableAction
+                                                            v-if="userShowsWalletBalanceAndLink(user)"
+                                                            @click="router.visit(route('admin.users.wallet.index', user.id))"
+                                                        >
                                                             Кошелек
                                                         </TableAction>
                                                         <TableAction @click="openUserNotesModal(user)">
@@ -569,7 +587,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="text-xs text-base-content/70 grid gap-1 mb-2">
                                             <div>
                                                 <span>Баланс:</span>
-                                                <span class="text-base-content ml-1">{{ user.balance }} $</span>
+                                                <span class="text-base-content ml-1">
+                                                    <template v-if="userShowsWalletBalanceAndLink(user)">{{ user.balance }} $</template>
+                                                    <template v-else>—</template>
+                                                </span>
                                             </div>
                                             <div>
                                                 <span>Временный VIP:</span>
@@ -599,7 +620,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <TableAction v-if="user.can_be_impersonated" @click="impersonate(user)">
                                                         Войти как пользователь
                                                     </TableAction>
-                                                    <TableAction @click="router.visit(route('admin.users.wallet.index', user.id))">
+                                                    <TableAction
+                                                        v-if="userShowsWalletBalanceAndLink(user)"
+                                                        @click="router.visit(route('admin.users.wallet.index', user.id))"
+                                                    >
                                                         Кошелек
                                                     </TableAction>
                                                     <TableAction @click="openUserNotesModal(user)">

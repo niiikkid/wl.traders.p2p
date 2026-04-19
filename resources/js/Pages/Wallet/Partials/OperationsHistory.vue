@@ -26,7 +26,8 @@ const currentFilters = ref(page.props.currentFilters);
 router.on('success', (event) => {
     invoices.value = page.props.invoices;
     transactions.value = page.props.transactions;
-})
+    currentFilters.value = page.props.currentFilters;
+});
 
 const openPage = (page) => {
     if (viewStore.isAdminViewMode) {
@@ -59,12 +60,27 @@ onMounted(() => {
     currentPage.value = urlParams.get('page') ?? 1;
 })
 
+/** Только при просмотре кошелька Super Admin: выгрузка после выбора типа кошелька, не «все». */
+const isWalletExportBlocked = computed(() => {
+    if (!walletAdminFullView.value) {
+        return false;
+    }
+    const balanceTypes = currentFilters.value?.transactions?.balanceTypes;
+    return !balanceTypes || balanceTypes === 'all';
+});
+
 const openTransactionsExport = () => {
-    if (!user?.id) {
+    if (!user?.id || isWalletExportBlocked.value) {
         return;
     }
 
-    window.open(route('admin.users.wallet.transactions.export', user.id), '_blank');
+    let url = route('admin.users.wallet.transactions.export', user.id);
+    if (walletAdminFullView.value) {
+        const balanceType = currentFilters.value?.transactions?.balanceTypes;
+        const joiner = url.includes('?') ? '&' : '?';
+        url += joiner + 'balance_type=' + encodeURIComponent(balanceType);
+    }
+    window.open(url, '_blank');
 };
 </script>
 
@@ -91,6 +107,8 @@ const openTransactionsExport = () => {
                 v-if="currentTab === 'transactions' && viewStore.isAdminViewMode && user?.id"
                 type="button"
                 class="btn btn-secondary btn-sm shrink-0"
+                :disabled="isWalletExportBlocked"
+                :title="isWalletExportBlocked ? 'Сначала выберите тип кошелька в фильтре' : undefined"
                 @click="openTransactionsExport"
             >
                 Выгрузить в Excel
