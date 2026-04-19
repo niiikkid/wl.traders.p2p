@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\BalanceType;
 use App\Enums\InvoiceType;
 use App\Exceptions\InvoiceException;
+use App\Exports\AdminWalletTransactionsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\Wallet\DepositRequest;
 use App\Http\Requests\Admin\User\Wallet\WithdrawRequest;
@@ -15,6 +16,8 @@ use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class UserWalletController extends Controller
 {
@@ -185,6 +188,22 @@ class UserWalletController extends Controller
             'walletSurfaces',
             'walletAdminFullView',
         ));
+    }
+
+    public function exportTransactions(User $user): BinaryFileResponse
+    {
+        $user->loadMissing('wallet');
+
+        if (! $user->wallet) {
+            abort(404);
+        }
+
+        $filename = now()->format('Y-m-d_H-i-s').'_wallet-transactions-user-'.$user->id.'.xlsx';
+
+        return Excel::download(
+            new AdminWalletTransactionsExport($user->wallet),
+            $filename
+        );
     }
 
     /**

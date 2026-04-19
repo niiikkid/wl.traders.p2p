@@ -58,25 +58,44 @@ onMounted(() => {
 
     currentPage.value = urlParams.get('page') ?? 1;
 })
+
+const openTransactionsExport = () => {
+    if (!user?.id) {
+        return;
+    }
+
+    window.open(route('admin.users.wallet.transactions.export', user.id), '_blank');
+};
 </script>
 
 <template>
     <div>
         <h2 class="text-xl font-medium sm:text-2xl mb-3">История операций</h2>
 
-        <ul class="flex flex-wrap text-sm font-medium text-center">
-            <li class="me-2" v-for="tab in tabs">
-                <a
-                    @click.prevent="currentTab = tab.key; openPage(1)"
-                    href="#"
-                    :class="currentTab === tab.key ? 'btn btn-primary' : 'btn btn-outline'"
-                    class="inline-flex items-center px-4 py-2 rounded-xl"
-                    aria-current="page"
-                >
-                    <span>{{ tab.name }}</span>
-                </a>
-            </li>
-        </ul>
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <ul class="flex flex-wrap text-sm font-medium text-center">
+                <li class="me-2" v-for="tab in tabs" :key="tab.key">
+                    <a
+                        @click.prevent="currentTab = tab.key; openPage(1)"
+                        href="#"
+                        :class="currentTab === tab.key ? 'btn btn-primary' : 'btn btn-outline'"
+                        class="inline-flex items-center px-4 py-2 rounded-xl"
+                        aria-current="page"
+                    >
+                        <span>{{ tab.name }}</span>
+                    </a>
+                </li>
+            </ul>
+
+            <button
+                v-if="currentTab === 'transactions' && viewStore.isAdminViewMode && user?.id"
+                type="button"
+                class="btn btn-secondary btn-sm shrink-0"
+                @click="openTransactionsExport"
+            >
+                Выгрузить в Excel
+            </button>
+        </div>
 
         <div
             v-if="filters[currentTab]"
