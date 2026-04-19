@@ -10,6 +10,7 @@ use App\Models\Wallet;
 use Illuminate\Database\Eloquent\Builder;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
+use Maatwebsite\Excel\Concerns\WithCustomChunkSize;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -18,9 +19,16 @@ use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class AdminWalletTransactionsExport implements FromQuery, WithColumnFormatting, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
+class AdminWalletTransactionsExport implements FromQuery, WithColumnFormatting, WithCustomChunkSize, WithCustomStartCell, WithEvents, WithHeadings, WithMapping
 {
     private const string EXPORT_LOCALE = 'ru';
+
+    /**
+     * Меньше строк за проход — ниже пик памяти на гидратацию; сам XLSX всё равно растёт в памяти PhpSpreadsheet.
+     *
+     * @see https://docs.laravel-excel.com/3.1/exports/from-query.html
+     */
+    private const int EXPORT_CHUNK_SIZE = 500;
 
     /** Объединение подписи по числу колонок данных (A–F). */
     private const string SUMMARY_MERGE_RANGE = 'A1:F1';
@@ -33,9 +41,21 @@ class AdminWalletTransactionsExport implements FromQuery, WithColumnFormatting, 
     public function query(): Builder
     {
         return Transaction::query()
+            ->select([
+                'id',
+                'amount',
+                'direction',
+                'type',
+                'created_at',
+            ])
             ->where('wallet_id', $this->wallet->id)
             ->where('balance_type', $this->balanceType)
             ->orderByDesc('id');
+    }
+
+    public function chunkSize(): int
+    {
+        return self::EXPORT_CHUNK_SIZE;
     }
 
     public function startCell(): string
@@ -65,7 +85,7 @@ class AdminWalletTransactionsExport implements FromQuery, WithColumnFormatting, 
         return [
             (string) $row->id,
             $row->created_at?->format('d.m.Y H:i:s') ?? '',
-            $row->amount->toBeauty(),
+            $row->amount->toPrecision(),
             mb_strtoupper((string) $row->amount->getCurrency()->getCode()),
             __('transaction-direction.'.$row->direction->value, [], $locale),
             __('transaction-type.'.$row->type->value, [], $locale),
