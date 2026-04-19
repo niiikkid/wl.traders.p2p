@@ -18,16 +18,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class MainPageController extends Controller
 {
     public function __construct(
         private readonly MainPageCacheServiceContract $mainPageCacheService,
         private readonly MainPageStatsServiceContract $mainPageStatsService,
-    ) {
-    }
+    ) {}
 
     public function merchant()
     {
@@ -128,6 +127,36 @@ class MainPageController extends Controller
         );
 
         return Inertia::render('MainPage/Admin/Index', $stats);
+    }
+
+    /**
+     * Главная для роли Analyst: те же метрики, что у администратора, но без данных о доходе сервиса.
+     */
+    public function analyst()
+    {
+        $merchantId = request()->get('merchant_id');
+        $periodPreset = (string) request()->get('period', 'month');
+        $dateFrom = request()->get('date_from');
+        $dateTo = request()->get('date_to');
+        $filters = [
+            'traderIds' => request()->input('trader_ids', []),
+            'paymentMethodIds' => request()->input('payment_method_ids', []),
+            'paymentDetailIds' => request()->input('payment_detail_ids', []),
+            'merchantIds' => request()->input('merchant_ids', []),
+        ];
+
+        $stats = $this->mainPageStatsService->buildAdminStats(
+            auth()->user(),
+            $merchantId,
+            $periodPreset,
+            $dateFrom,
+            $dateTo,
+            $filters,
+        );
+
+        unset($stats['statistics']['totalProfit'], $stats['chart']);
+
+        return Inertia::render('MainPage/Analyst/Index', $stats);
     }
 
     public function adminFilterOptions(Request $request, string $type): JsonResponse
@@ -246,11 +275,11 @@ class MainPageController extends Controller
         return $this->mergeSelectedFirst(
             $query->limit(10)->get()->map(fn (PaymentGateway $gateway) => [
                 'value' => $gateway->id,
-                'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                'label' => "{$gateway->name} ".strtoupper((string) $gateway->currency?->getCode()),
             ]),
             PaymentGateway::query()->whereIn('id', $selectedIds)->get()->map(fn (PaymentGateway $gateway) => [
                 'value' => $gateway->id,
-                'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                'label' => "{$gateway->name} ".strtoupper((string) $gateway->currency?->getCode()),
             ]),
         );
     }
@@ -336,7 +365,7 @@ class MainPageController extends Controller
         return $this->mergeSelectedFirst(
             $query->limit(10)->get()->map(fn (PaymentGateway $gateway) => [
                 'value' => $gateway->id,
-                'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                'label' => "{$gateway->name} ".strtoupper((string) $gateway->currency?->getCode()),
             ]),
             PaymentGateway::query()
                 ->whereIn('id', $selectedIds)
@@ -344,7 +373,7 @@ class MainPageController extends Controller
                 ->get()
                 ->map(fn (PaymentGateway $gateway) => [
                     'value' => $gateway->id,
-                    'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                    'label' => "{$gateway->name} ".strtoupper((string) $gateway->currency?->getCode()),
                 ]),
         );
     }
@@ -388,8 +417,7 @@ class MainPageController extends Controller
         array $merchantIds = [],
         ?Carbon $dateFrom = null,
         ?Carbon $dateTo = null,
-    ): Collection
-    {
+    ): Collection {
         $allowedMerchantIds = Merchant::query()
             ->where('user_id', $user->id)
             ->pluck('id');
@@ -434,7 +462,7 @@ class MainPageController extends Controller
         return $this->mergeSelectedFirst(
             $query->limit(10)->get()->map(fn (PaymentGateway $gateway) => [
                 'value' => $gateway->id,
-                'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                'label' => "{$gateway->name} ".strtoupper((string) $gateway->currency?->getCode()),
             ]),
             PaymentGateway::query()
                 ->whereIn('id', $selectedIds)
@@ -442,14 +470,14 @@ class MainPageController extends Controller
                 ->get()
                 ->map(fn (PaymentGateway $gateway) => [
                     'value' => $gateway->id,
-                    'label' => "{$gateway->name} " . strtoupper((string) $gateway->currency?->getCode()),
+                    'label' => "{$gateway->name} ".strtoupper((string) $gateway->currency?->getCode()),
                 ]),
         );
     }
 
     private function parseFilterDate(mixed $value): ?Carbon
     {
-        if (!is_string($value) || trim($value) === '') {
+        if (! is_string($value) || trim($value) === '') {
             return null;
         }
 
@@ -509,10 +537,8 @@ class MainPageController extends Controller
             : DetailType::tryFrom((string) $detail->detail_type);
 
         $shortValue = match ($detailType) {
-            DetailType::CARD, DetailType::ACCOUNT_NUMBER, DetailType::IBAN_UAH =>
-                '•••• ' . Str::of($rawDetail)->replaceMatches('/\D+/', '')->substr(-4),
-            DetailType::PHONE, DetailType::MOBILE_COMMERCE =>
-                $this->maskPhoneValue($rawDetail),
+            DetailType::CARD, DetailType::ACCOUNT_NUMBER, DetailType::IBAN_UAH => '•••• '.Str::of($rawDetail)->replaceMatches('/\D+/', '')->substr(-4),
+            DetailType::PHONE, DetailType::MOBILE_COMMERCE => $this->maskPhoneValue($rawDetail),
             default => Str::limit($rawDetail, 18, '...'),
         };
 
@@ -522,7 +548,7 @@ class MainPageController extends Controller
     private function maskPhoneValue(string $value): string
     {
         $normalized = preg_replace('/\s+/', '', $value);
-        if (!$normalized) {
+        if (! $normalized) {
             return '';
         }
 

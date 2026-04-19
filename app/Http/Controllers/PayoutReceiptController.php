@@ -36,7 +36,7 @@ class PayoutReceiptController extends Controller
 
         return response()->file($path, [
             'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+            'Content-Disposition' => 'inline; filename="'.basename($path).'"',
         ]);
     }
 
@@ -63,7 +63,7 @@ class PayoutReceiptController extends Controller
 
         return response()->file($path, [
             'Content-Type' => $mime,
-            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+            'Content-Disposition' => 'inline; filename="'.basename($path).'"',
         ]);
     }
 
@@ -75,7 +75,7 @@ class PayoutReceiptController extends Controller
             return false;
         }
 
-        if ($user->hasRole('Super Admin') || $user->hasRole('Support')) {
+        if ($user->hasRole('Super Admin') || $user->hasRole('Support') || $user->hasRole('Analyst')) {
             return true;
         }
 
@@ -90,5 +90,3 @@ class PayoutReceiptController extends Controller
         return false;
     }
 }
-
-

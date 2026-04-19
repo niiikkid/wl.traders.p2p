@@ -20,6 +20,14 @@ use App\Http\Controllers\Admin\UserNoteController;
 use App\Http\Controllers\Admin\UserTeamController;
 use App\Http\Controllers\Admin\UserWalletController;
 use App\Http\Controllers\Admin\WithdrawalController;
+use App\Http\Controllers\Analyst\DepositController as AnalystDepositController;
+use App\Http\Controllers\Analyst\DisputeController as AnalystDisputeController;
+use App\Http\Controllers\Analyst\EnabledCardsController as AnalystEnabledCardsController;
+use App\Http\Controllers\Analyst\FilterController as AnalystFilterController;
+use App\Http\Controllers\Analyst\OrderController as AnalystOrderController;
+use App\Http\Controllers\Analyst\PayoutController as AnalystPayoutController;
+use App\Http\Controllers\Analyst\TraderAnalyticsController as AnalystTraderAnalyticsController;
+use App\Http\Controllers\Analyst\UserController as AnalystUserController;
 use App\Http\Controllers\ApiIntegrationController;
 use App\Http\Controllers\ApkController;
 use App\Http\Controllers\AppHomeController;
@@ -165,12 +173,12 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/traders/{trader}/finances', [TraderFinanceController::class, 'index'])->name('traders.finances.index');
     });
 
-    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Super Admin']], function () {
+    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Super Admin']], function () {
         Route::resource('/orders', OrderController::class)->only(['show']);
         Route::get('/disputes/{dispute}/receipt', [DisputeController::class, 'receipt'])->name('disputes.receipt');
     });
 
-    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Team Leader|Super Admin']], function () {
+    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Team Leader|Super Admin']], function () {
         Route::post('/news/views', [NewsController::class, 'trackViews'])->name('news.views.store');
         Route::post('/news/reactions', [NewsController::class, 'react'])->name('news.reactions.store');
     });
@@ -274,6 +282,44 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/filters/detail-types', [FilterController::class, 'getDetailTypes']);
         Route::get('/filters/payment-gateways', [FilterController::class, 'searchPaymentGateways']);
         Route::get('/filters/users', [FilterController::class, 'searchUsers']);
+    });
+
+    Route::group(['prefix' => 'analyst', 'as' => 'analyst.', 'middleware' => ['auth', 'banned', 'role:Analyst|Super Admin']], function () {
+        Route::get('/main', [MainPageController::class, 'analyst'])->name('main.index');
+        Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
+        Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant-api-logs.index');
+
+        Route::get('/users', [AnalystUserController::class, 'index'])->name('users.index');
+        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+        Route::patch('/users/{user}/toggle-traffic', [AnalystUserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
+        Route::get('/enabled-cards', [AnalystEnabledCardsController::class, 'index'])->name('enabled-cards.index');
+        Route::post('/enabled-cards/limit-levels', [AnalystEnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
+        Route::delete('/enabled-cards/limit-levels', [AnalystEnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
+        Route::get('/traders/analytics', [AnalystTraderAnalyticsController::class, 'index'])->name('traders-analytics.index');
+        Route::patch('/traders/analytics/operations-threshold', [AnalystTraderAnalyticsController::class, 'updateOperationsThreshold'])->name('traders-analytics.operations-threshold.update');
+        Route::get('/traders/analytics/traders/search', [AnalystTraderAnalyticsController::class, 'searchTraders'])->name('traders-analytics.traders.search');
+        Route::get('/orders', [AnalystOrderController::class, 'index'])->name('orders.index');
+        Route::patch('/orders/{order}/accept', [AnalystOrderController::class, 'acceptOrder'])->name('orders.accept');
+        Route::patch('/orders/{order}/amount', [AnalystOrderController::class, 'updateAmount'])->name('orders.update.amount');
+        Route::get('/manual-control-acq', [ManualControlAcqController::class, 'show'])->name('manual-control-acq.show');
+        Route::get('/manual-control-acq/state', [ManualControlAcqController::class, 'state'])->name('manual-control-acq.state');
+        Route::post('/manual-control-acq/work-status', [ManualControlAcqController::class, 'setWorkStatus'])->name('manual-control-acq.work-status');
+        Route::patch('/manual-control-acq/sound-settings', [ManualControlAcqController::class, 'updateSoundSettings'])->name('manual-control-acq.sound-settings.update');
+        Route::post('/manual-control-acq/orders/{order}/take', [ManualControlAcqController::class, 'take'])->name('manual-control-acq.take');
+        Route::post('/manual-control-acq/orders/{order}/confirmation-type', [ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
+        Route::post('/manual-control-acq/orders/{order}/confirm', [ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
+        Route::post('/manual-control-acq/orders/{order}/reject', [ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
+        Route::get('/deposits', [AnalystDepositController::class, 'index'])->name('deposits.index');
+        Route::get('/disputes', [AnalystDisputeController::class, 'index'])->name('disputes.index');
+        Route::post('/disputes/{order}', [AnalystDisputeController::class, 'store'])->name('disputes.store');
+        Route::patch('/disputes/{dispute}/accept', [AnalystDisputeController::class, 'accept'])->name('disputes.accept');
+        Route::patch('/disputes/{dispute}/cancel', [AnalystDisputeController::class, 'cancel'])->name('disputes.cancel');
+        Route::patch('/disputes/{dispute}/rollback', [AnalystDisputeController::class, 'rollback'])->name('disputes.rollback');
+        Route::get('/payouts', [AnalystPayoutController::class, 'index'])->name('payouts.index');
+
+        Route::get('/filters/detail-types', [AnalystFilterController::class, 'getDetailTypes']);
+        Route::get('/filters/payment-gateways', [AnalystFilterController::class, 'searchPaymentGateways']);
+        Route::get('/filters/users', [AnalystFilterController::class, 'searchUsers']);
     });
 
     // common

@@ -76,6 +76,7 @@ const dispute_footer_actions_visible = computed(
     () =>
         viewStore.isAdminViewMode
         || viewStore.isSupportViewMode
+        || viewStore.isAnalystViewMode
         || dispute.value.status === 'pending'
         || dispute.value.status === 'canceled'
 );
@@ -222,7 +223,7 @@ const dispute_footer_actions_visible = computed(
                             </dd>
                         </div>
                         <div
-                            v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode"
+                            v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode"
                             class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2"
                         >
                             <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">

@@ -352,7 +352,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </svg>
                                             </button>
                                             <button
-                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
+                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode && !viewStore.isAnalystViewMode"
                                                 @click.prevent="confirmAcceptOrder(order)"
                                                 type="button"
                                                 class="btn btn-success btn-outline btn-xs"
@@ -438,7 +438,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </svg>
                                             </button>
                                             <button
-                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
+                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode && !viewStore.isAnalystViewMode"
                                                 type="button"
                                                 class="btn btn-square btn-success btn-outline btn-xs"
                                                 @click.prevent="confirmAcceptOrder(order)"
@@ -500,7 +500,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </svg>
                                                 </button>
                                                 <button
-                                                    v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
+                                                    v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode && !viewStore.isAnalystViewMode"
                                                     type="button"
                                                     class="btn btn-square btn-success btn-outline btn-xs"
                                                     @click.prevent="confirmAcceptOrder(order)"

@@ -37,7 +37,16 @@ const rejectReasons = [
 
 const page_props = usePage().props;
 const audio_tracks = ref(page_props.audioTracks ?? []);
-const manual_control_route_prefix = computed(() => route().current('support.*') ? 'support' : 'admin');
+const manual_control_route_prefix = computed(() => {
+    if (route().current('support.*')) {
+        return 'support';
+    }
+    if (route().current('analyst.*')) {
+        return 'analyst';
+    }
+
+    return 'admin';
+});
 const manual_control_route_name = (action) => `${manual_control_route_prefix.value}.manual-control-acq.${action}`;
 
 const resolve_default_sound_track = (track, fallback_track) => {

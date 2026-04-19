@@ -6,14 +6,16 @@ import DateTime from "@/Components/DateTime.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import DisplayID from "@/Components/DisplayID.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal";
 
 const modalStore = useModalStore();
+const page = usePage();
 const logs = usePage().props.logs;
+const canManageMerchantApiLogDeletion = computed(() => Boolean(page.props.can_manage_merchant_api_log_deletion));
 const expandedRows = ref({}); // Для отслеживания развернутых строк (desktop)
 const expandedCards = ref({}); // Для отслеживания развернутых карточек (mobile)
 
@@ -292,7 +294,7 @@ defineOptions({ layout: AuthenticatedLayout })
                     </div>
 
                     <!-- Панель управления логами -->
-                    <div class="mt-6">
+                    <div v-if="canManageMerchantApiLogDeletion" class="mt-6">
                         <div class="card bg-base-100 shadow">
                             <div class="card-body">
                             <h4 class="text-md font-medium mb-2">Управление логами</h4>

@@ -8,15 +8,15 @@ use App\Enums\InvoiceType;
 use App\Enums\NotificationChannel;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
-use App\Http\Resources\WalletResource;
 use App\Http\Resources\UserResource;
+use App\Http\Resources\WalletResource;
 use App\Models\Dispute;
 use App\Models\Invoice;
-use App\Models\Notification;
 use App\Models\NewsPost;
+use App\Models\Notification;
 use App\Models\Order;
-use App\Models\Payout\Payout;
 use App\Models\PaymentDetail;
+use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Models\UserMeta;
 use App\Services\Money\Currency;
@@ -38,7 +38,7 @@ class HandleInertiaRequests extends Middleware
     /**
      * Determine the current asset version.
      */
-    public function version(Request $request): string|null
+    public function version(Request $request): ?string
     {
         return parent::version($request);
     }
@@ -62,6 +62,7 @@ class HandleInertiaRequests extends Middleware
                 'news.index',
                 'admin.news.index',
                 'support.news.index',
+                'analyst.news.index',
                 'leader.news.index',
             ])) {
                 $user->meta()->updateOrCreate(
@@ -164,30 +165,30 @@ class HandleInertiaRequests extends Middleware
             $userId = auth()->id();
 
             if (isRouteFor('Super Admin')) {
-                $onlineUsers = cache()->remember("online_users", 15, function () {
+                $onlineUsers = cache()->remember('online_users', 15, function () {
                     return User::query()
                         ->where('is_online', true)
                         ->count();
                 });
 
-                $pendingWithdrawals = cache()->remember("pending_withdrawals", 15, function () {
+                $pendingWithdrawals = cache()->remember('pending_withdrawals', 15, function () {
                     return Invoice::query()
                         ->where('status', InvoiceStatus::PENDING)
                         ->where('type', InvoiceType::WITHDRAWAL)
                         ->count();
                 });
-            } elseif (isRouteFor('Support')) {
-                $onlineUsers = cache()->remember("online_users_support", 15, function () {
+            } elseif (isRouteFor('Support') || isRouteFor('Analyst')) {
+                $onlineUsers = cache()->remember('online_users_support', 15, function () {
                     return User::query()
                         ->where('is_online', true)
                         ->count();
                 });
 
-                $pendingOrdersCount = cache()->remember("pending_orders_support", 15, function () use ($orderQuery) {
+                $pendingOrdersCount = cache()->remember('pending_orders_support', 15, function () use ($orderQuery) {
                     return $orderQuery->clone()->count();
                 });
 
-                $pendingDisputesCount = cache()->remember("pending_disputes_support", 15, function () use ($disputeQuery) {
+                $pendingDisputesCount = cache()->remember('pending_disputes_support', 15, function () use ($disputeQuery) {
                     return $disputeQuery->clone()->count();
                 });
 
@@ -213,7 +214,7 @@ class HandleInertiaRequests extends Middleware
                         ->count();
                 });
             } elseif (isRouteFor('Super Admin')) {
-                $activeDetails = cache()->remember("active_details_admin", 15, function () {
+                $activeDetails = cache()->remember('active_details_admin', 15, function () {
                     return PaymentDetail::query()
                         ->whereNull('archived_at')
                         ->where('is_active', true)
@@ -257,14 +258,14 @@ class HandleInertiaRequests extends Middleware
         }
 
         $menu = [
-            'pendingOrdersCount' => (int)$pendingOrdersCount,
-            'pendingDisputesCount' => (int)$pendingDisputesCount,
-            'onlineUsers' => (int)$onlineUsers,
-            'activeDetails' => (int)$activeDetails,
-            'pendingWithdrawals' => (int)$pendingWithdrawals,
-            'notificationsUnreadCount' => (int)$notificationsUnreadCount,
-            'newsUnreadCount' => (int)$newsUnreadCount,
-            'payoutsActiveCount' => (int)$payoutsActiveCount,
+            'pendingOrdersCount' => (int) $pendingOrdersCount,
+            'pendingDisputesCount' => (int) $pendingDisputesCount,
+            'onlineUsers' => (int) $onlineUsers,
+            'activeDetails' => (int) $activeDetails,
+            'pendingWithdrawals' => (int) $pendingWithdrawals,
+            'notificationsUnreadCount' => (int) $notificationsUnreadCount,
+            'newsUnreadCount' => (int) $newsUnreadCount,
+            'payoutsActiveCount' => (int) $payoutsActiveCount,
         ];
 
         $sharedWalletStats = null;
@@ -286,10 +287,10 @@ class HandleInertiaRequests extends Middleware
                     : null,
                 'role' => $request->user()?->roles()?->first(),
                 'is_admin' => $request->user()?->hasRole('Super Admin'),
-                'is_impersonated' => $request->user()?->isImpersonated()
+                'is_impersonated' => $request->user()?->isImpersonated(),
             ],
             'ziggy' => fn () => [
-               // ...(new Ziggy)->toArray(),
+                // ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
             'flash' => [
@@ -306,7 +307,7 @@ class HandleInertiaRequests extends Middleware
                 'enabled' => (bool) $notificationsSoundEnabled,
                 'track' => (string) $notificationsSoundTrack,
             ],
-            'menu' => $menu
+            'menu' => $menu,
         ];
     }
 }

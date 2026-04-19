@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Contracts\AntiFraudServiceContract;
+use App\Contracts\AntiFraudSettingServiceContract;
+use App\Contracts\CallbackServiceContract;
 use App\Contracts\DeviceServiceContract;
 use App\Contracts\DisputeServiceContract;
 use App\Contracts\FundsHolderServiceContract;
@@ -10,25 +13,22 @@ use App\Contracts\LoginHistoryServiceContract;
 use App\Contracts\MainPageCacheServiceContract;
 use App\Contracts\MainPageStatsServiceContract;
 use App\Contracts\MarketServiceContract;
-use App\Contracts\CallbackServiceContract;
 use App\Contracts\MerchantApiLogServiceContract;
 use App\Contracts\MerchantApiStatisticsServiceContract;
+use App\Contracts\MerchantServiceContract;
+use App\Contracts\NotificationServiceContract;
 use App\Contracts\OrderPoolingServiceContract;
 use App\Contracts\OrderServiceContract;
+use App\Contracts\PaymentDetailServiceContract;
 use App\Contracts\PayoutServiceContract;
 use App\Contracts\ProfitServiceContract;
-use App\Contracts\AntiFraudSettingServiceContract;
-use App\Contracts\AntiFraudServiceContract;
-use App\Contracts\NotificationServiceContract;
-use App\Contracts\TelegramServiceContract;
 use App\Contracts\QueriesBuilderContract;
 use App\Contracts\ServiceBuilderContract;
 use App\Contracts\SettingsServiceContract;
 use App\Contracts\SmsServiceContract;
-use App\Contracts\WalletServiceContract;
+use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
-use App\Contracts\PaymentDetailServiceContract;
-use App\Contracts\MerchantServiceContract;
+use App\Contracts\WalletServiceContract;
 use App\Events\OrderSucceeded;
 use App\Listeners\UpdateTempVipProgressListener;
 use App\Mixins\ResponseMixins;
@@ -39,62 +39,63 @@ use App\Models\PaymentDetail;
 use App\Models\Payout\Payout as PayoutModel;
 use App\Models\User;
 use App\Queries\Cache\MerchantQueriesCache;
+use App\Queries\Eloquent\CallbackLogQueriesEloquent;
 use App\Queries\Eloquent\DisputeQueriesEloquent;
 use App\Queries\Eloquent\InvoiceQueriesEloquent;
+use App\Queries\Eloquent\MerchantApiLogQueriesEloquent;
 use App\Queries\Eloquent\MerchantQueriesEloquent;
 use App\Queries\Eloquent\OrderQueriesEloquent;
 use App\Queries\Eloquent\PaymentDetailQueriesEloquent;
 use App\Queries\Eloquent\PaymentGatewayQueriesEloquent;
-use App\Queries\Eloquent\TransactionQueriesEloquent;
 use App\Queries\Eloquent\PayoutQueriesEloquent;
-use App\Queries\Eloquent\MerchantApiLogQueriesEloquent;
-use App\Queries\Eloquent\CallbackLogQueriesEloquent;
+use App\Queries\Eloquent\TransactionQueriesEloquent;
+use App\Queries\Interfaces\CallbackLogQueries;
 use App\Queries\Interfaces\DisputeQueries;
 use App\Queries\Interfaces\InvoiceQueries;
+use App\Queries\Interfaces\MerchantApiLogQueries;
 use App\Queries\Interfaces\MerchantQueries;
 use App\Queries\Interfaces\OrderQueries;
-use App\Queries\Interfaces\PayoutQueries;
 use App\Queries\Interfaces\PaymentDetailQueries;
 use App\Queries\Interfaces\PaymentGatewayQueries;
+use App\Queries\Interfaces\PayoutQueries;
 use App\Queries\Interfaces\TransactionQueries;
-use App\Queries\Interfaces\MerchantApiLogQueries;
-use App\Queries\Interfaces\CallbackLogQueries;
 use App\Queries\QueriesBuilder;
+use App\Services\AntiFraud\AntiFraudService;
+use App\Services\AntiFraud\AntiFraudSettingService;
 use App\Services\Auth\LoginHistoryService;
 use App\Services\Device\DeviceService;
 use App\Services\Dispute\DisputeService;
 use App\Services\Invoice\InvoiceService;
+use App\Services\Logging\MerchantApiLogService;
 use App\Services\MainPage\MainPageCacheService;
 use App\Services\MainPage\MainPageStatsService;
 use App\Services\Market\MarketService;
+use App\Services\Merchant\MerchantService;
 use App\Services\MoneyHolder\FundsHolderService;
+use App\Services\Notification\NotificationService;
+use App\Services\Notification\Templates\NotificationTemplateResolver;
 use App\Services\Order\OrderService;
 use App\Services\OrderCallback\CallbackService;
 use App\Services\OrderPooling\OrderPoolingService;
+use App\Services\PaymentDetail\PaymentDetailService;
 use App\Services\Payout\PayoutService;
 use App\Services\Profit\ProfitService;
-use App\Services\AntiFraud\AntiFraudSettingService;
-use App\Services\AntiFraud\AntiFraudService;
-use App\Services\Notification\NotificationService;
 use App\Services\ServiceBuilder;
 use App\Services\Settings\SettingsService;
 use App\Services\Sms\SmsService;
 use App\Services\Statistics\MerchantApiStatisticsService;
 use App\Services\Telegram\TelegramService;
-use App\Services\Wallet\WalletService;
 use App\Services\User\UserService;
-use App\Services\PaymentDetail\PaymentDetailService;
-use App\Services\Logging\MerchantApiLogService;
-use App\Services\Merchant\MerchantService;
+use App\Services\Wallet\WalletService;
+use App\Support\LoginLogger;
 use GuzzleHttp\Client as GuzzleClient;
+use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Queue\Events\JobFailed;
-use Carbon\Carbon;
 use Telegram\Bot\BotsManager;
 use Telegram\Bot\HttpClients\GuzzleHttpClient;
 
@@ -121,83 +122,83 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->alias(BotsManager::class, 'telegram');
 
-        //services
+        // services
         $this->app->singleton(ServiceBuilderContract::class, function () {
-            return new ServiceBuilder();
+            return new ServiceBuilder;
         });
         $this->app->bind(OrderServiceContract::class, function () {
-            return new OrderService();
+            return new OrderService;
         });
         $this->app->bind(SmsServiceContract::class, function () {
-            return new SmsService();
+            return new SmsService;
         });
         $this->app->bind(CallbackServiceContract::class, function () {
-            return new CallbackService();
+            return new CallbackService;
         });
         $this->app->singleton(MarketServiceContract::class, function () {
-            return new MarketService();
+            return new MarketService;
         });
         $this->app->singleton(DisputeServiceContract::class, function () {
-            return new DisputeService();
+            return new DisputeService;
         });
         $this->app->singleton(WalletServiceContract::class, function () {
-            return new WalletService();
+            return new WalletService;
         });
         $this->app->singleton(InvoiceServiceContract::class, function () {
-            return new InvoiceService();
+            return new InvoiceService;
         });
         $this->app->singleton(SettingsServiceContract::class, function () {
-            return new SettingsService();
+            return new SettingsService;
         });
         $this->app->singleton(FundsHolderServiceContract::class, function () {
-            return new FundsHolderService();
+            return new FundsHolderService;
         });
         $this->app->bind(LoginHistoryServiceContract::class, function () {
-            return new LoginHistoryService();
+            return new LoginHistoryService;
         });
         $this->app->singleton(MerchantApiLogServiceContract::class, function () {
-            return new MerchantApiLogService();
+            return new MerchantApiLogService;
         });
         $this->app->singleton(OrderPoolingServiceContract::class, function () {
-            return new OrderPoolingService();
+            return new OrderPoolingService;
         });
         $this->app->singleton(UserServiceContract::class, function () {
-            return new UserService();
+            return new UserService;
         });
         $this->app->singleton(PaymentDetailServiceContract::class, function () {
-            return new PaymentDetailService();
+            return new PaymentDetailService;
         });
         $this->app->singleton(DeviceServiceContract::class, function () {
-            return new DeviceService();
+            return new DeviceService;
         });
         $this->app->singleton(MerchantApiStatisticsServiceContract::class, function () {
-            return new MerchantApiStatisticsService();
+            return new MerchantApiStatisticsService;
         });
         $this->app->singleton(MerchantServiceContract::class, function () {
-            return new MerchantService();
+            return new MerchantService;
         });
         $this->app->singleton(PayoutServiceContract::class, function () {
-            return new PayoutService();
+            return new PayoutService;
         });
         $this->app->singleton(ProfitServiceContract::class, function () {
-            return new ProfitService();
+            return new ProfitService;
         });
         $this->app->singleton(AntiFraudSettingServiceContract::class, function () {
-            return new AntiFraudSettingService();
+            return new AntiFraudSettingService;
         });
         $this->app->singleton(AntiFraudServiceContract::class, function () {
-            return new AntiFraudService();
+            return new AntiFraudService;
         });
         $this->app->singleton(NotificationServiceContract::class, function () {
             return new NotificationService(
-                templateResolver: new \App\Services\Notification\Templates\NotificationTemplateResolver()
+                templateResolver: new NotificationTemplateResolver
             );
         });
         $this->app->singleton(TelegramServiceContract::class, function () {
-            return new TelegramService();
+            return new TelegramService;
         });
         $this->app->singleton(MainPageStatsServiceContract::class, function () {
-            return new MainPageStatsService();
+            return new MainPageStatsService;
         });
         $this->app->singleton(MainPageCacheServiceContract::class, function () {
             return new MainPageCacheService(
@@ -207,45 +208,45 @@ class AppServiceProvider extends ServiceProvider
 
         // Регистрация LoginLogger
         $this->app->singleton('login-logger', function () {
-            return new \App\Support\LoginLogger();
+            return new LoginLogger;
         });
 
-        //queries
+        // queries
         $this->app->singleton(QueriesBuilderContract::class, function () {
-            return new QueriesBuilder();
+            return new QueriesBuilder;
         });
         $this->app->bind(OrderQueries::class, function () {
-            return new OrderQueriesEloquent();
+            return new OrderQueriesEloquent;
         });
         $this->app->bind(PaymentGatewayQueries::class, function () {
-            return new PaymentGatewayQueriesEloquent();
+            return new PaymentGatewayQueriesEloquent;
         });
         $this->app->bind(PaymentDetailQueries::class, function () {
-            return new PaymentDetailQueriesEloquent();
+            return new PaymentDetailQueriesEloquent;
         });
         $this->app->bind(DisputeQueries::class, function () {
-            return new DisputeQueriesEloquent();
+            return new DisputeQueriesEloquent;
         });
         $this->app->bind(MerchantQueries::class, function () {
             return new MerchantQueriesCache(
-                eloquentQueries: new MerchantQueriesEloquent(),
+                eloquentQueries: new MerchantQueriesEloquent,
                 cacheTtl: 60
             );
         });
         $this->app->bind(InvoiceQueries::class, function () {
-            return new InvoiceQueriesEloquent();
+            return new InvoiceQueriesEloquent;
         });
         $this->app->bind(TransactionQueries::class, function () {
-            return new TransactionQueriesEloquent();
+            return new TransactionQueriesEloquent;
         });
         $this->app->bind(MerchantApiLogQueries::class, function () {
-            return new MerchantApiLogQueriesEloquent();
+            return new MerchantApiLogQueriesEloquent;
         });
         $this->app->bind(CallbackLogQueries::class, function () {
-            return new CallbackLogQueriesEloquent();
+            return new CallbackLogQueriesEloquent;
         });
         $this->app->bind(PayoutQueries::class, function () {
-            return new PayoutQueriesEloquent();
+            return new PayoutQueriesEloquent;
         });
     }
 
@@ -265,7 +266,7 @@ class AppServiceProvider extends ServiceProvider
             return $user->hasRole('Super Admin');
         });
 
-        Response::mixin(new ResponseMixins());
+        Response::mixin(new ResponseMixins);
 
         Event::listen(OrderSucceeded::class, UpdateTempVipProgressListener::class);
 
@@ -276,7 +277,8 @@ class AppServiceProvider extends ServiceProvider
             return $user->id === $order->paymentDetail?->user_id
                 || $user->id === $order->merchant->user_id
                 || $user->hasRole('Super Admin')
-                || $user->hasRole('Support');
+                || $user->hasRole('Support')
+                || $user->hasRole('Analyst');
         });
         Gate::define('access-to-order-for-merchant-support', function (User $user, Order $order) {
             return $user->merchant?->id === $order->merchant->user_id || $user->id === $order->merchant->user_id || $user->hasRole('Super Admin');
@@ -287,20 +289,21 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-to-dispute', function (User $user, Dispute $dispute) {
             return $user->id === optional($dispute->order->paymentDetail)->user_id
                 || $user->hasRole('Super Admin')
-                || $user->hasRole('Support');
+                || $user->hasRole('Support')
+                || $user->hasRole('Analyst');
         });
         Gate::define('access-to-dispute-receipt', function (User $user, Dispute $dispute) {
-            return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin') || $user->hasRole('Support');
+            return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin') || $user->hasRole('Support') || $user->hasRole('Analyst');
         });
         Gate::define('access-to-self', function (User $user) {
             return $user->id === auth()->id() || $user->hasRole('Super Admin');
         });
-        //api
+        // api
         Gate::define('api-access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id;
         });
 
-        Route::bind('order', function($id, \Illuminate\Routing\Route $route) {
+        Route::bind('order', function ($id, \Illuminate\Routing\Route $route) {
             if ($route->bindingFieldFor('order') === 'uuid') {
                 return Order::withoutGlobalScopes()->where('uuid', $id)->firstOrFail();
             }

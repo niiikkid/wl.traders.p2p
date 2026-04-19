@@ -25,6 +25,10 @@ const form = useForm({
 });
 
 const cancelDisputeRouteName = () => {
+    if (viewStore.isAnalystViewMode) {
+        return 'analyst.disputes.cancel';
+    }
+
     if (viewStore.isSupportViewMode) {
         return 'support.disputes.cancel';
     }

@@ -15,10 +15,11 @@ alwaysApply: false
 
 ## Бэкенд: роли/доступы/роутинг
 
-- **Роли**: Spatie Permission, middleware `role:`. Роли в проекте: `Super Admin`, `Trader`, `Merchant`, `Support`, `Team Leader`, `Merchant Support`.
+- **Роли**: Spatie Permission, middleware `role:`. Роли в проекте: `Super Admin`, `Trader`, `Merchant`, `Support`, `Analyst`, `Team Leader`, `Merchant Support`.
 - **Роутинг по ролям**: `routes/web.php` содержит группы с `middleware: auth, banned, role:...` и неймспейсы имён роутов:
   - `admin.*` (prefix `admin`) — `role:Super Admin`
   - `support.*` (prefix `support`) — `role:Support|Super Admin`
+  - `analyst.*` (prefix `analyst`) — `role:Analyst|Super Admin`
   - `leader.*` (prefix `leader`) — `role:Team Leader|Super Admin`
   - `merchant-support.*` (prefix `merchant-support`) — `role:Merchant Support|Super Admin`
   - `merchant.*`, `trader.*` и “общие” (`orders.*`, `disputes.*`, `payment-details.*`) — см. `routes/web.php`
@@ -37,7 +38,7 @@ alwaysApply: false
 
 - **Источник состояния**: `resources/js/store/view.js` хранит `viewMode`.
 - **Переключение**: `resources/js/Layouts/AuthenticatedLayout.vue` выставляет `viewMode` на `onMounted` и на `router.on('success')`.
-- **Как определяется режим**: в основном через `route().current('admin.*')` / `leader.*` / `support.*` / `merchant-support.*` / `merchant.*` и отдельные ветки для `integration.*`, `payments.*`, `merchants.*`.
+- **Как определяется режим**: в основном через `route().current('admin.*')` / `leader.*` / `support.*` / `analyst.*` / `merchant-support.*` / `merchant.*` и отдельные ветки для `integration.*`, `payments.*`, `merchants.*`.
 - Есть отдельная логика для `profile.*`, где режим выбирается по `usePage().props.auth.role.name`.
 
 ## Практическая проверка при добавлении новой страницы/раздела

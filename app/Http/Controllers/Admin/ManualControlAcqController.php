@@ -12,22 +12,26 @@ use App\Models\Order;
 use App\Models\OrderManualControlConfirmationCode;
 use App\Models\UserMeta;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ManualControlAcqController extends Controller
 {
     private const HISTORY_DISPLAY_LIMIT = 5;
+
     private const DEFAULT_NEW_OFFER_SOUND_TRACK = 'radwimps.mp3';
+
     private const DEFAULT_CONFIRM_CODE_SOUND_TRACK = 'LetWealthCome.mp3';
+
     private const DEFAULT_REJECT_REASON = 'Отклонено оператором.';
+
     private const PRIORITY_SOUND_TRACKS = [
         'DreamsAreMessagesFromTheDeep.mp3',
         'LetWealthCome.mp3',
@@ -342,7 +346,7 @@ class ManualControlAcqController extends Controller
     }
 
     /**
-     * @param Collection<int, Order> $orders
+     * @param  Collection<int, Order>  $orders
      */
     private function makeQueueItems(Collection $orders): array
     {
@@ -353,7 +357,7 @@ class ManualControlAcqController extends Controller
     }
 
     /**
-     * @param Collection<int, Order> $orders
+     * @param  Collection<int, Order>  $orders
      */
     private function makeHistoryQueueItems(Collection $orders): array
     {
@@ -574,7 +578,7 @@ class ManualControlAcqController extends Controller
             return true;
         }
 
-        return $user->hasRole('Support') && (bool) $user->support_can_use_manual_control_acq;
+        return ($user->hasRole('Support') || $user->hasRole('Analyst')) && (bool) $user->support_can_use_manual_control_acq;
     }
 
     private function forbiddenResponse(): JsonResponse
@@ -696,7 +700,7 @@ class ManualControlAcqController extends Controller
                 return [
                     'name' => $name,
                     'value' => $name,
-                    'url' => '/audio/' . $name,
+                    'url' => '/audio/'.$name,
                 ];
             })
             ->toArray();

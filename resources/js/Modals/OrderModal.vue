@@ -29,6 +29,10 @@ const ordersIndexRouteName = () => {
         return 'admin.orders.index';
     }
 
+    if (viewStore.isAnalystViewMode) {
+        return 'analyst.orders.index';
+    }
+
     if (viewStore.isSupportViewMode) {
         return 'support.orders.index';
     }
@@ -41,6 +45,10 @@ const disputesIndexRouteName = () => {
         return 'admin.disputes.index';
     }
 
+    if (viewStore.isAnalystViewMode) {
+        return 'analyst.disputes.index';
+    }
+
     if (viewStore.isSupportViewMode) {
         return 'support.disputes.index';
     }
@@ -49,6 +57,10 @@ const disputesIndexRouteName = () => {
 };
 
 const acceptOrderRouteName = () => {
+    if (viewStore.isAnalystViewMode) {
+        return 'analyst.orders.accept';
+    }
+
     if (viewStore.isSupportViewMode) {
         return 'support.orders.accept';
     }
@@ -57,6 +69,10 @@ const acceptOrderRouteName = () => {
 };
 
 const createDisputeRouteName = () => {
+    if (viewStore.isAnalystViewMode) {
+        return 'analyst.disputes.store';
+    }
+
     if (viewStore.isSupportViewMode) {
         return 'support.disputes.store';
     }
@@ -108,7 +124,7 @@ const canEditOrderAmountInCurrentView = computed(() => {
         return true;
     }
 
-    if (viewStore.isSupportViewMode) {
+    if (viewStore.isSupportViewMode || viewStore.isAnalystViewMode) {
         return !!user?.support_can_edit_order_amount;
     }
 
@@ -230,7 +246,7 @@ const show = () => {
 
     axios.get(route('orders.show', order_id), {
         params: {
-            view_mode: viewStore.isSupportViewMode ? 'support' : 'default',
+            view_mode: (viewStore.isSupportViewMode || viewStore.isAnalystViewMode) ? 'support' : 'default',
         },
     })
         .then(response => {
@@ -420,7 +436,7 @@ const copyCallbackUrl = async (callback_url) => {
                                         [&>dl>dt]:shrink-0 [&>dl>dt]:text-[10px] [&>dl>dt]:font-semibold [&>dl>dt]:uppercase [&>dl>dt]:tracking-wider [&>dl>dt]:text-base-content/50 sm:[&>dl>dt]:text-xs
                                         [&>dl>dd]:min-w-0 [&>dl>dd]:text-end [&>dl>dd]:text-xs sm:[&>dl>dd]:text-sm"
                                     >
-                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
+                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Мерчант</dt>
                                             <dd class="font-medium text-base-content"><span class="truncate">{{ order.merchant?.name ?? '—' }}</span> (id:{{ order.merchant?.id ?? '—' }})</dd>
                                         </dl>
@@ -430,7 +446,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                 <CopyableOrderUid :uuid="order.uuid"/>
                                             </dd>
                                         </dl>
-                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
+                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Внешний ID</dt>
                                             <dd class="font-medium text-base-content">
                                                 <CopyableExternalId :id="order.external_id" />
@@ -456,7 +472,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                 </div>
                                             </dd>
                                         </dl>
-                                        <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode) && order.amount_updates_history">
+                                        <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode) && order.amount_updates_history">
                                             <div class="overflow-x-auto card bg-base-100">
                                                 <table class="w-full table bg-base-200/50 table-xs">
                                                     <thead class="text-xs bg-base-300">
@@ -496,7 +512,7 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Тело</dt>
                                             <dd class="font-medium text-base-content">{{ order.total_profit }} {{order.base_currency.toUpperCase()}}</dd>
                                         </dl>
-                                        <template v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode">
+                                        <template v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode">
                                             <dl class="block sm:flex items-center justify-between gap-4">
                                                 <dt class="text-base-content/70">Комиссия всего</dt>
                                                 <dd class="font-medium text-base-content">{{ displayMoney(order.total_fee, order.base_currency) }}</dd>
@@ -595,7 +611,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                 </div>
                                             </dd>
                                         </dl>
-                                        <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode) && ! order.is_h2h" class="block sm:flex items-center justify-between gap-4">
+                                        <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode) && ! order.is_h2h" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Страница оплаты</dt>
                                             <dd class="font-medium text-base-content">
                                                 <div class="tooltip tooltip-right sm:tooltip-left" data-tip="Перейти">
@@ -805,7 +821,7 @@ const copyCallbackUrl = async (callback_url) => {
 
             <ModalFooterNext>
                 <div
-                    v-if="order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode || viewStore.isSupportViewMode"
+                    v-if="order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode"
                     class="flex w-full flex-wrap items-center justify-center gap-1.5 sm:gap-2"
                 >
                     <template v-if="!order.has_dispute">
@@ -821,7 +837,7 @@ const copyCallbackUrl = async (callback_url) => {
                             Оплачен
                         </button>
                         <button
-                            v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode"
+                            v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode"
                             @click.prevent="confirmCreateDispute(order)"
                             type="button"
                             class="btn btn-xs btn-warning btn-outline touch-manipulation sm:btn-sm"

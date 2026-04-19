@@ -34,9 +34,11 @@ watch(() => editOrderAmountModal.value.showed, (showed) => {
 });
 
 const submit = () => {
-    const routeName = viewStore.isSupportViewMode
-        ? 'support.orders.update.amount'
-        : 'orders.update.amount';
+    const routeName = viewStore.isAnalystViewMode
+        ? 'analyst.orders.update.amount'
+        : viewStore.isSupportViewMode
+            ? 'support.orders.update.amount'
+            : 'orders.update.amount';
 
     form
         .patch(route(routeName, editOrderAmountModal.value.params.order.id), {

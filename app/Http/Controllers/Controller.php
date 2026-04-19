@@ -12,13 +12,14 @@ use App\Models\Merchant;
 use App\ObjectValues\TableFilters\TableFiltersValue;
 use App\Services\Money\Currency;
 use Carbon\Carbon;
+use Spatie\Permission\Models\Role;
 
 abstract class Controller
 {
     public function getTableFilters(): TableFiltersValue
     {
         $currentRoute = request()->route()->getName();
-        $sessionKey = 'table_filters_' . $currentRoute;
+        $sessionKey = 'table_filters_'.$currentRoute;
 
         // Проверяем, что это GET-запрос
         if (request()->isMethod('GET')) {
@@ -28,7 +29,7 @@ abstract class Controller
                 if ($savedFilters) {
                     $routeParameters = request()->route()?->parameters() ?? [];
                     // Перенаправляем на этот же роут, но с сохраненными параметрами без возврата
-                    header('Location: ' . route($currentRoute, array_merge($savedFilters, $routeParameters)));
+                    header('Location: '.route($currentRoute, array_merge($savedFilters, $routeParameters)));
                     exit();
                 }
             } else {
@@ -262,7 +263,7 @@ abstract class Controller
         }
 
         // Получаем список всех ролей из БД
-        $roles = \Spatie\Permission\Models\Role::all()
+        $roles = Role::all()
             ->map(function ($role) {
                 return [
                     'name' => $role->name,
@@ -277,7 +278,7 @@ abstract class Controller
         if ($user) {
             if ($user->hasRole('Super Admin')) {
                 $merchantQuery = Merchant::query();
-            } elseif ($user->hasRole('Support') || $user->hasRole('Merchant Support')) {
+            } elseif ($user->hasRole('Support') || $user->hasRole('Analyst') || $user->hasRole('Merchant Support')) {
                 $merchantQuery = $user->merchants();
             } else {
                 $merchantQuery = Merchant::query()->where('user_id', $user->id);
