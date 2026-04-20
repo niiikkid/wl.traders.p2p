@@ -208,29 +208,43 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <td>
                                             <DateTime :data="dispute.created_at"></DateTime>
                                         </td>
-                                        <td class="text-right flex justify-end gap-2">
-                                            <button
-                                                v-if="dispute.receipt_url"
-                                                type="button"
-                                                class="btn btn-xs btn-outline btn-info"
-                                                @click.prevent="openDisputeReceipt(dispute.receipt_url)"
-                                            >
-                                                Квитанция
-                                                <svg class="w-3 h-3 ml-2 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m14 0-4 4m4-4-4-4"/>
-                                                </svg>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-primary btn-outline btn-xs"
-                                                @click.prevent="modalStore.openDisputeModal({dispute})"
-                                                aria-label="Открыть спор"
-                                            >
-                                                <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                    <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
-                                                    <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                                                </svg>
-                                            </button>
+                                        <td>
+                                            <div class="flex justify-end gap-2">
+                                                <button
+                                                    v-if="dispute.receipt_url"
+                                                    type="button"
+                                                    class="btn btn-square btn-xs btn-outline btn-info"
+                                                    @click.prevent="openDisputeReceipt(dispute.receipt_url)"
+                                                    aria-label="Квитанция"
+                                                >
+                                                    <svg
+                                                        class="h-3.5 w-3.5 shrink-0"
+                                                        aria-hidden="true"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            d="M9 11H15M9 7H13M9 15H15M5 6.2V21L7.5 19L10 21L12 19L14 21L16.5 19L19 21V6.2C19 5.0799 19 4.51984 18.782 4.09202C18.5903 3.71569 18.2843 3.40973 17.908 3.21799C17.4802 3 16.9201 3 15.8 3H8.2C7.0799 3 6.51984 3 6.09202 3.21799C5.71569 3.40973 5.40973 3.71569 5.21799 4.09202C5 4.51984 5 5.0799 5 6.2Z"
+                                                            stroke="currentColor"
+                                                            stroke-width="2"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-primary btn-outline btn-xs"
+                                                    @click.prevent="modalStore.openDisputeModal({dispute})"
+                                                    aria-label="Открыть спор"
+                                                >
+                                                    <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                        <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                        <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -283,8 +297,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     @click.prevent="openDisputeReceipt(dispute.receipt_url)"
                                                     aria-label="Квитанция"
                                                 >
-                                                    <svg class="h-3.5 w-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m14 0-4 4m4-4-4-4"/>
+                                                    <svg
+                                                        class="h-3.5 w-3.5"
+                                                        aria-hidden="true"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            d="M9 11H15M9 7H13M9 15H15M5 6.2V21L7.5 19L10 21L12 19L14 21L16.5 19L19 21V6.2C19 5.0799 19 4.51984 18.782 4.09202C18.5903 3.71569 18.2843 3.40973 17.908 3.21799C17.4802 3 16.9201 3 15.8 3H8.2C7.0799 3 6.51984 3 6.09202 3.21799C5.71569 3.40973 5.40973 3.71569 5.21799 4.09202C5 4.51984 5 5.0799 5 6.2Z"
+                                                            stroke="currentColor"
+                                                            stroke-width="2"
+                                                            stroke-linecap="round"
+                                                            stroke-linejoin="round"
+                                                        />
                                                     </svg>
                                                 </button>
                                                 <button
@@ -335,8 +361,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         @click.prevent="openDisputeReceipt(dispute.receipt_url)"
                                                         aria-label="Квитанция"
                                                     >
-                                                        <svg class="h-3.5 w-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m14 0-4 4m4-4-4-4"/>
+                                                        <svg
+                                                            class="h-3.5 w-3.5"
+                                                            aria-hidden="true"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                d="M9 11H15M9 7H13M9 15H15M5 6.2V21L7.5 19L10 21L12 19L14 21L16.5 19L19 21V6.2C19 5.0799 19 4.51984 18.782 4.09202C18.5903 3.71569 18.2843 3.40973 17.908 3.21799C17.4802 3 16.9201 3 15.8 3H8.2C7.0799 3 6.51984 3 6.09202 3.21799C5.71569 3.40973 5.40973 3.71569 5.21799 4.09202C5 4.51984 5 5.0799 5 6.2Z"
+                                                                stroke="currentColor"
+                                                                stroke-width="2"
+                                                                stroke-linecap="round"
+                                                                stroke-linejoin="round"
+                                                            />
                                                         </svg>
                                                     </button>
                                                     <button
