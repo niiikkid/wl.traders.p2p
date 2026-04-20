@@ -68,6 +68,7 @@ use App\Http\Controllers\TeamLeader\TraderPaymentDetailController;
 use App\Http\Controllers\TelegramSettingsController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Trader\DepositInvoiceController;
+use App\Http\Controllers\Trader\EconomyController;
 use App\Http\Controllers\Trader\ExportController;
 use App\Http\Controllers\Trader\FeedbackController;
 use App\Http\Controllers\Trader\PayoutController;
@@ -190,6 +191,13 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/trader/temp-vip/activate', [TempVipController::class, 'activate'])->name('trader.temp-vip.activate');
         Route::get('/trader/feedbacks', [FeedbackController::class, 'index'])->name('trader.feedback.index');
         Route::post('/trader/feedbacks', [FeedbackController::class, 'store'])->name('trader.feedback.store');
+
+        Route::get('/trader/economy', [EconomyController::class, 'index'])->name('trader.economy.index');
+        Route::post('/trader/economy', [EconomyController::class, 'store'])->name('trader.economy.store');
+        Route::delete('/trader/economy/{month}', [EconomyController::class, 'destroy'])->name('trader.economy.destroy');
+        Route::patch('/trader/economy/{month}/days/{day}', [EconomyController::class, 'updateDay'])
+            ->whereNumber('day')
+            ->name('trader.economy.days.update');
 
         Route::get('/notifications', [App\Http\Controllers\Trader\NotificationController::class, 'index'])->name('notifications.index');
 

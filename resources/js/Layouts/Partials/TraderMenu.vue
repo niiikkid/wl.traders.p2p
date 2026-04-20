@@ -178,6 +178,21 @@ router.on('success', (event) => {
                 Устройства
             </span>
         </li>
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.economy.*') }]">
+            <span
+                @click="router.visit(route('trader.economy.index'), { preserveScroll: true })"
+                @keydown.enter.space="router.visit(route('trader.economy.index'), { preserveScroll: true })"
+                role="link"
+                tabindex="0"
+            >
+                <svg class="size-5 opacity-30" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true">
+                    <path d="M32 13.22V29H4V7h18.57a8.35 8.35 0 0 1-.07-1 8.35 8.35 0 0 1 .07-1H4a2 2 0 0 0-2 2v22a2 2 0 0 0 2 2h28a2 2 0 0 0 2-2V12.34a8.45 8.45 0 0 1-2 .88Z"/>
+                    <path d="m15.62 15.22-6.02 8.75-4.05-3.58 1.06-1.2 2.7 2.39 6.32-9.2 6.75 10.02 6.76-8.93 1.27.97-8.1 10.71-6.69-9.93Z"/>
+                    <circle cx="30" cy="6" r="5"/>
+                </svg>
+                Экономика
+            </span>
+        </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.feedback.*') }]">
             <span
                 @click="router.visit(route('trader.feedback.index'), { preserveScroll: true })"
