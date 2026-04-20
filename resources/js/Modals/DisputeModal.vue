@@ -207,6 +207,14 @@ const dispute_footer_actions_visible = computed(
                         </div>
                         <div class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
                             <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
+                                Сделка создана
+                            </dt>
+                            <dd class="min-w-0 shrink text-end text-xs text-base-content sm:text-sm">
+                                <DateTime :data="dispute.order.created_at" :copyable="false" />
+                            </dd>
+                        </div>
+                        <div class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
+                            <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
                                 Реквизит
                                 <span class="font-normal text-primary/70">#{{ dispute.payment_detail.id }}</span>
                             </dt>
