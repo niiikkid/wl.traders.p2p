@@ -178,7 +178,7 @@ router.on('success', (event) => {
                 Устройства
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.economy.*') }]">
+       <!-- <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.economy.*') }]">
             <span
                 @click="router.visit(route('trader.economy.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('trader.economy.index'), { preserveScroll: true })"
@@ -192,7 +192,7 @@ router.on('success', (event) => {
                 </svg>
                 Экономика
             </span>
-        </li>
+        </li>-->
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.feedback.*') }]">
             <span
                 @click="router.visit(route('trader.feedback.index'), { preserveScroll: true })"

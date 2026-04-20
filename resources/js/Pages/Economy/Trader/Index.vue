@@ -288,19 +288,19 @@ defineOptions({layout: AuthenticatedLayout});
                             <tr>
                                 <th class="text-center">День</th>
                                 <th class="text-center">Курс</th>
-                                <th class="text-center">Баланс на поч.</th>
-                                <th class="text-center">Залиш. грн на картах</th>
-                                <th class="text-center">Залиш. в $</th>
-                                <th class="text-center">Баланс на кін</th>
-                                <th class="text-center">Баланс на біржі</th>
-                                <th class="text-center">Кін + біржа + $</th>
-                                <th class="text-center">К-сть кругів</th>
-                                <th class="text-center">Профіт</th>
-                                <th class="text-center">Арбітраж $</th>
-                                <th class="text-center">Витрати грн</th>
-                                <th class="text-center">Витрати в $</th>
-                                <th class="text-center">Чистий приб.</th>
-                                <th class="text-center">Приб в грн</th>
+                                <th class="text-center">Баланс на начало</th>
+                                <th class="text-center">Остаток грн на картах</th>
+                                <th class="text-center">Остаток в $</th>
+                                <th class="text-center">Баланс на конец</th>
+                                <th class="text-center">Баланс на бирже</th>
+                                <th class="text-center">Конец + биржа + $</th>
+                                <th class="text-center">Кол-во кругов</th>
+                                <th class="text-center">Прибыль</th>
+                                <th class="text-center">Арбитраж $</th>
+                                <th class="text-center">Расходы грн</th>
+                                <th class="text-center">Расходы в $</th>
+                                <th class="text-center">Чистая прибыль</th>
+                                <th class="text-center">Прибыль в грн</th>
                             </tr>
                         </thead>
                         <tbody class="text-[11px]">
@@ -423,7 +423,7 @@ defineOptions({layout: AuthenticatedLayout});
                         </tbody>
                         <tfoot class="text-[11px] bg-base-200 font-semibold">
                             <tr>
-                                <td colspan="9" class="text-right pr-2">Заг. проф і круг.</td>
+                                <td colspan="9" class="text-right pr-2">Итого</td>
                                 <td
                                     class="text-right"
                                     :class="totals.profit === null ? ''
