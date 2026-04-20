@@ -10,6 +10,7 @@ use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\PaymentGateway;
+use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -110,6 +111,9 @@ class MainPageController extends Controller
         $periodPreset = (string) request()->get('period', 'month');
         $dateFrom = request()->get('date_from');
         $dateTo = request()->get('date_to');
+        $mode = (string) request()->input('mode', 'deals');
+        $activeStatsMode = $mode === 'payouts' ? 'payouts' : 'deals';
+
         $filters = [
             'traderIds' => request()->input('trader_ids', []),
             'paymentMethodIds' => request()->input('payment_method_ids', []),
@@ -117,16 +121,32 @@ class MainPageController extends Controller
             'merchantIds' => request()->input('merchant_ids', []),
         ];
 
-        $stats = $this->mainPageStatsService->buildAdminStats(
-            auth()->user(),
-            $merchantId,
-            $periodPreset,
-            $dateFrom,
-            $dateTo,
-            $filters,
-        );
+        $scopedMerchantId = is_numeric($merchantId) ? (int) $merchantId : null;
 
-        return Inertia::render('MainPage/Admin/Index', $stats);
+        if ($activeStatsMode === 'payouts') {
+            $stats = $this->mainPageStatsService->buildAdminPayoutMainPageStats(
+                auth()->user(),
+                $scopedMerchantId,
+                $periodPreset,
+                $dateFrom !== null ? (string) $dateFrom : null,
+                $dateTo !== null ? (string) $dateTo : null,
+                $filters,
+            );
+        } else {
+            $stats = $this->mainPageStatsService->buildAdminStats(
+                auth()->user(),
+                $scopedMerchantId,
+                $periodPreset,
+                $dateFrom !== null ? (string) $dateFrom : null,
+                $dateTo !== null ? (string) $dateTo : null,
+                $filters,
+            );
+        }
+
+        return Inertia::render('MainPage/Admin/Index', [
+            ...$stats,
+            'activeStatsMode' => $activeStatsMode,
+        ]);
     }
 
     /**
@@ -162,6 +182,8 @@ class MainPageController extends Controller
     public function adminFilterOptions(Request $request, string $type): JsonResponse
     {
         $search = trim((string) $request->get('query', ''));
+        $statsMode = (string) $request->get('mode', 'deals');
+        $fromPayouts = $statsMode === 'payouts';
         $selectedIds = collect($request->input('selected_ids', []))
             ->filter(fn ($id) => is_numeric($id))
             ->map(fn ($id) => (int) $id)
@@ -170,10 +192,14 @@ class MainPageController extends Controller
             ->toArray();
 
         $options = match ($type) {
-            'trader' => $this->searchTraders($search, $selectedIds),
+            'trader' => $fromPayouts
+                ? $this->searchTradersFromPayouts($search, $selectedIds)
+                : $this->searchTraders($search, $selectedIds),
             'payment_method' => $this->searchPaymentMethods($search, $selectedIds),
             'payment_detail' => $this->searchPaymentDetails($search, $selectedIds),
-            'merchant' => $this->searchMerchants($search, $selectedIds),
+            'merchant' => $fromPayouts
+                ? $this->searchMerchantsFromPayouts($search, $selectedIds)
+                : $this->searchMerchants($search, $selectedIds),
             default => collect(),
         };
 
@@ -230,6 +256,57 @@ class MainPageController extends Controller
         };
 
         return response()->json($options->values());
+    }
+
+    private function searchTradersFromPayouts(string $search, array $selectedIds): Collection
+    {
+        $query = User::query()
+            ->whereIn('id', Payout::query()->whereNotNull('trader_id')->select('trader_id')->distinct())
+            ->select(['id', 'name', 'email']);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->mergeSelectedFirst(
+            $query->limit(10)->get()->map(fn (User $user) => [
+                'value' => $user->id,
+                'label' => $user->name ?: $user->email,
+            ]),
+            User::query()->whereIn('id', $selectedIds)->get()->map(fn (User $user) => [
+                'value' => $user->id,
+                'label' => $user->name ?: $user->email,
+            ]),
+        );
+    }
+
+    private function searchMerchantsFromPayouts(string $search, array $selectedIds): Collection
+    {
+        $query = Merchant::query()
+            ->whereIn('id', Payout::query()->select('merchant_id')->distinct())
+            ->select(['id', 'name']);
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('name', 'like', "%{$search}%")
+                    ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        return $this->mergeSelectedFirst(
+            $query->limit(10)->get()->map(fn (Merchant $merchant) => [
+                'value' => $merchant->id,
+                'label' => $merchant->name,
+            ]),
+            Merchant::query()->whereIn('id', $selectedIds)->get()->map(fn (Merchant $merchant) => [
+                'value' => $merchant->id,
+                'label' => $merchant->name,
+            ]),
+        );
     }
 
     private function searchTraders(string $search, array $selectedIds): Collection

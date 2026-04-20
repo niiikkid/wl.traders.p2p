@@ -6,6 +6,7 @@ import ApexCharts from 'apexcharts';
 import axios from 'axios';
 
 const page = usePage();
+const activeStatsMode = computed(() => (page.props.activeStatsMode === 'payouts' ? 'payouts' : 'deals'));
 const statistics = computed(() => page.props.statistics || {});
 const incomeChartData = computed(() => page.props.chart || { labels: [], data: [] });
 const conversionChartData = computed(() => page.props.conversionChart || { labels: [], data: [] });
@@ -49,12 +50,19 @@ const selectedFilters = ref({
     merchant: selectedFiltersProp.value.merchantIds || [],
 });
 
-const filterTypes = [
+const dealsGearFilterTypes = [
     { key: 'trader', label: 'Трейдер', requestKey: 'trader_ids', placeholder: 'Поиск по имени трейдера...' },
     { key: 'payment_method', label: 'Метод', requestKey: 'payment_method_ids', placeholder: 'Поиск платежного метода...' },
     { key: 'payment_detail', label: 'Реквизит', requestKey: 'payment_detail_ids', placeholder: 'Поиск реквизита...' },
     { key: 'merchant', label: 'Мерчант', requestKey: 'merchant_ids', placeholder: 'Поиск магазина мерчанта...' },
 ];
+
+const payoutsGearFilterTypes = [
+    { key: 'trader', label: 'Трейдер', requestKey: 'trader_ids', placeholder: 'Поиск по имени трейдера...' },
+    { key: 'merchant', label: 'Мерчант', requestKey: 'merchant_ids', placeholder: 'Поиск магазина мерчанта...' },
+];
+
+const gearFilterTypes = computed(() => (activeStatsMode.value === 'payouts' ? payoutsGearFilterTypes : dealsGearFilterTypes));
 
 const searchQueries = ref({
     trader: '',
@@ -86,13 +94,25 @@ const loadingOptions = ref({
 
 const searchDebounceTimers = {};
 
-const chartTabs = [
-    { value: 'income', label: 'Доход', colorToken: 'primary', seriesName: 'Доход ($)' },
-    { value: 'turnover', label: 'Оборот', colorToken: 'secondary', seriesName: 'Оборот ($)' },
-    { value: 'conversion', label: 'Конверсия', colorToken: 'success', seriesName: 'Конверсия (%)' },
-    { value: 'orders', label: 'Количество сделок', colorToken: 'accent', seriesName: 'Сделок' },
-    { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
-];
+const chartTabs = computed(() => {
+    const baseTabs = [
+        { value: 'income', label: 'Доход', colorToken: 'primary', seriesName: 'Доход ($)' },
+        { value: 'turnover', label: 'Оборот', colorToken: 'secondary', seriesName: 'Оборот ($)' },
+        { value: 'conversion', label: 'Конверсия', colorToken: 'success', seriesName: 'Конверсия (%)' },
+    ];
+    if (activeStatsMode.value === 'deals') {
+        return [
+            ...baseTabs,
+            { value: 'orders', label: 'Количество сделок', colorToken: 'accent', seriesName: 'Сделок' },
+            { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
+        ];
+    }
+    return [
+        ...baseTabs,
+        { value: 'orders', label: 'Количество выплат', colorToken: 'accent', seriesName: 'Выплат' },
+        { value: 'average_check', label: 'Средний чек', colorToken: 'info', seriesName: 'Средний чек ($)' },
+    ];
+});
 
 const periodPresetOptions = [
     { value: 'today', label: 'Сегодня' },
@@ -323,7 +343,7 @@ const chartDataByTab = computed(() => ({
 }));
 
 const activeTabConfig = computed(() => {
-    return chartTabs.find((tab) => tab.value === activeChartTab.value) || chartTabs[0];
+    return chartTabs.value.find((tab) => tab.value === activeChartTab.value) || chartTabs.value[0];
 });
 
 const activeTabTitle = computed(() => activeTabConfig.value.label);
@@ -435,6 +455,12 @@ const renderChart = () => {
     }, false, false);
 };
 
+watch(chartTabs, (tabs) => {
+    if (!tabs.some((t) => t.value === activeChartTab.value)) {
+        activeChartTab.value = 'income';
+    }
+}, { deep: true });
+
 watch(activeChartTab, () => {
     renderChart();
 });
@@ -442,6 +468,22 @@ watch(activeChartTab, () => {
 watch(activeData, () => {
     renderChart();
 }, { deep: true });
+
+const switchStatsMode = (mode) => {
+    if (activeStatsMode.value === mode) {
+        return;
+    }
+    processing.value = true;
+    router.visit(route('admin.main.index'), {
+        data: { mode, period: 'month' },
+        replace: true,
+        preserveScroll: true,
+        preserveState: false,
+        onFinish: () => {
+            processing.value = false;
+        },
+    });
+};
 
 const applyFilter = (options = {}) => {
     if (processing.value) {
@@ -451,6 +493,7 @@ const applyFilter = (options = {}) => {
     processing.value = true;
     const requestData = {
         period: selectedPeriodPreset.value,
+        mode: activeStatsMode.value,
     };
 
     if (selectedPeriodPreset.value === 'month') {
@@ -487,7 +530,8 @@ const applyFilter = (options = {}) => {
         requestData.date_to = selectedDateTo.value;
     }
 
-    filterTypes.forEach((filterType) => {
+    const filterDefs = activeStatsMode.value === 'payouts' ? payoutsGearFilterTypes : dealsGearFilterTypes;
+    filterDefs.forEach((filterType) => {
         const selectedIds = selectedFilters.value[filterType.key] || [];
         if (selectedIds.length > 0) {
             requestData[filterType.requestKey] = selectedIds;
@@ -515,6 +559,7 @@ const loadFilterOptions = async (typeKey, query = '') => {
                 params: {
                     query,
                     selected_ids: selectedFilters.value[typeKey] || [],
+                    mode: activeStatsMode.value,
                 },
             },
         );
@@ -766,9 +811,10 @@ const statisticsFormated = computed(() => ({
     conversionRate: statistics.value?.conversionRate ?? '0%',
 }));
 
-const hasActiveAdvancedFilters = computed(() => {
-    return Object.values(selectedFilters.value).some((items) => Array.isArray(items) && items.length > 0);
-});
+const hasActiveAdvancedFilters = computed(() => gearFilterTypes.value.some((filterType) => {
+    const items = selectedFilters.value[filterType.key] || [];
+    return Array.isArray(items) && items.length > 0;
+}));
 
 watch([selectedDateFrom, selectedDateTo], () => {
     if (
@@ -815,7 +861,7 @@ watch(selectedFiltersProp, (newFilters) => {
     };
 }, { deep: true });
 
-filterTypes.forEach((filterType) => {
+dealsGearFilterTypes.forEach((filterType) => {
     watch(() => searchQueries.value[filterType.key], (query) => {
         clearTimeout(searchDebounceTimers[filterType.key]);
         searchDebounceTimers[filterType.key] = setTimeout(() => {
@@ -839,7 +885,8 @@ onMounted(() => {
         setPresetCursor(selectedPeriodPreset.value, nextCursor);
     }
     renderChart();
-    filterTypes.forEach((filterType) => {
+    const typesToPrefetch = activeStatsMode.value === 'payouts' ? payoutsGearFilterTypes : dealsGearFilterTypes;
+    typesToPrefetch.forEach((filterType) => {
         if ((selectedFilters.value[filterType.key] || []).length > 0) {
             loadFilterOptions(filterType.key, '');
         }
@@ -905,6 +952,27 @@ defineOptions({ layout: AuthenticatedLayout });
                 <slot name="button"></slot>
             </div>
 
+            <div class="mt-2">
+                <ul class="flex w-full gap-2 text-sm font-medium text-center sm:w-auto sm:flex-wrap sm:gap-0">
+                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
+                        <a
+                            href="#"
+                            class="btn btn-sm w-full sm:w-auto"
+                            :class="activeStatsMode === 'deals' ? 'btn-primary' : 'btn-outline'"
+                            @click.prevent="switchStatsMode('deals')"
+                        >Сделки</a>
+                    </li>
+                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
+                        <a
+                            href="#"
+                            class="btn btn-sm w-full sm:w-auto"
+                            :class="activeStatsMode === 'payouts' ? 'btn-primary' : 'btn-outline'"
+                            @click.prevent="switchStatsMode('payouts')"
+                        >Выплаты</a>
+                    </li>
+                </ul>
+            </div>
+
             <section>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     <div class="card bg-base-100 shadow px-6 py-5">
@@ -938,7 +1006,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div class="card bg-base-100 shadow px-6 py-5">
                         <div class="flex items-center justify-between">
                             <div>
-                                <p class="text-base-content/70 text-lg">Все сделки</p>
+                                <p class="text-base-content/70 text-lg">{{ activeStatsMode === 'payouts' ? 'Все выплаты' : 'Все сделки' }}</p>
                                 <p class="text-2xl font-bold text-base-content">{{ statisticsFormated.totalOrderCount }}</p>
                             </div>
                             <div class="bg-base-200 p-2.5 rounded-full">
@@ -954,7 +1022,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div class="card bg-base-100 shadow px-4 py-3">
                         <div class="flex items-center justify-between gap-2">
                             <div>
-                                <p class="text-base-content/70 text-xs">Успешные сделки</p>
+                                <p class="text-base-content/70 text-xs">{{ activeStatsMode === 'payouts' ? 'Успешные выплаты' : 'Успешные сделки' }}</p>
                                 <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.successOrderCount }}</p>
                             </div>
                             <svg class="w-5 h-5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -966,7 +1034,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div class="card bg-base-100 shadow px-4 py-3">
                         <div class="flex items-center justify-between gap-2">
                             <div>
-                                <p class="text-base-content/70 text-xs">Неуспешные сделки</p>
+                                <p class="text-base-content/70 text-xs">{{ activeStatsMode === 'payouts' ? 'Отменённые выплаты' : 'Неуспешные сделки' }}</p>
                                 <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.failedOrderCount }}</p>
                             </div>
                             <svg class="w-5 h-5 text-error shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -978,7 +1046,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div class="card bg-base-100 shadow px-4 py-3">
                         <div class="flex items-center justify-between gap-2">
                             <div>
-                                <p class="text-base-content/70 text-xs">Активные сделки</p>
+                                <p class="text-base-content/70 text-xs">{{ activeStatsMode === 'payouts' ? 'Активные выплаты' : 'Активные сделки' }}</p>
                                 <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.pendingOrderCount }}</p>
                             </div>
                             <svg class="w-5 h-5 text-warning shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -990,7 +1058,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div class="card bg-base-100 shadow px-4 py-3">
                         <div class="flex items-center justify-between gap-2">
                             <div>
-                                <p class="text-base-content/70 text-xs">Конверсия</p>
+                                <p class="text-base-content/70 text-xs">{{ activeStatsMode === 'payouts' ? 'Конверсия выплат' : 'Конверсия' }}</p>
                                 <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.conversionRate }}</p>
                             </div>
                             <svg class="w-5 h-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1004,7 +1072,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         <div class="hidden md:join md:join-horizontal md:flex md:flex-wrap">
                             <button
                                 v-for="tab in chartTabs"
-                                :key="tab.value"
+                                :key="`chart-tab-${tab.value}`"
                                 type="button"
                                 class="btn btn-sm join-item"
                                 :class="activeChartTab === tab.value ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
@@ -1045,7 +1113,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <div ref="filterDropdownRef" class="dropdown" :class="{ 'dropdown-open': filterDropdownOpen }">
                                     <button
                                     type="button"
-                                    class="btn btn-sm btn-square"
+                                    class="btn btn-sm btn-square relative"
                                     :class="hasActiveAdvancedFilters ? 'btn-primary border-transparent' : 'bg-base-100 border-transparent text-base-content hover:bg-primary hover:border-primary hover:text-primary-content'"
                                     title="Фильтры"
                                     @click.stop="toggleFilterDropdown"
@@ -1064,7 +1132,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="grid grid-cols-1 md:grid-cols-[8.5rem_1fr] gap-3">
                                         <div class="border border-base-300 rounded-md p-2 space-y-1">
                                             <button
-                                                v-for="filterType in filterTypes"
+                                                v-for="filterType in gearFilterTypes"
                                                 :key="filterType.key"
                                                 type="button"
                                                 class="btn btn-xs w-full justify-between"
@@ -1086,7 +1154,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 v-model="searchQueries[activeFilterType]"
                                                 type="text"
                                                 class="input input-bordered input-sm w-full"
-                                                :placeholder="filterTypes.find(f => f.key === activeFilterType)?.placeholder"
+                                                :placeholder="gearFilterTypes.find(f => f.key === activeFilterType)?.placeholder"
                                             >
 
                                             <div class="max-h-64 overflow-y-auto border border-base-300 rounded-md p-2 space-y-1">

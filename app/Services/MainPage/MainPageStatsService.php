@@ -6,20 +6,20 @@ use App\Contracts\MainPageStatsServiceContract;
 use App\Enums\BalanceType;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
-use App\Models\Merchant;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
 use App\Models\Invoice;
+use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\Payout\Payout;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Carbon\Carbon;
-use Throwable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class MainPageStatsService implements MainPageStatsServiceContract
 {
@@ -78,7 +78,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'chart' => [
                 'labels' => $labels,
                 'data' => $data,
-            ]
+            ],
         ];
     }
 
@@ -130,7 +130,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'chart' => [
                 'labels' => $labels,
                 'data' => $data,
-            ]
+            ],
         ];
     }
 
@@ -187,7 +187,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'chart' => [
                 'labels' => $labels,
                 'data' => $data,
-            ]
+            ],
         ];
     }
 
@@ -198,8 +198,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         ?string $dateFrom = null,
         ?string $dateTo = null,
         array $filters = [],
-    ): array
-    {
+    ): array {
         $normalizedFilters = $this->normalizeFilters($filters);
         $resolvedPeriod = $this->resolvePeriodRange($periodPreset, $dateFrom, $dateTo);
         $startDate = $resolvedPeriod['startDate'];
@@ -227,7 +226,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $isHourly = $startDate->isSameDay($endDate);
         $bucketSql = $isHourly
             ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
-            : "DATE(created_at)";
+            : 'DATE(created_at)';
 
         $query = Order::query()
             ->where('status', OrderStatus::SUCCESS)
@@ -445,7 +444,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'totalOrderCount' => $totalOrderCount,
                 'successOrderCount' => $successOrderCount,
                 'failedOrderCount' => $failedOrderCount,
-                'conversionRate' => $conversionRate . '%',
+                'conversionRate' => $conversionRate.'%',
                 'pendingOrderCount' => $pendingOrderCount,
             ],
             'chart' => [
@@ -472,6 +471,257 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
             'selectedDateTo' => $resolvedPeriod['dateTo'],
             'selectedFilters' => $normalizedFilters,
+        ];
+    }
+
+    public function buildAdminPayoutMainPageStats(
+        User $user,
+        ?int $merchantId = null,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        array $filters = [],
+    ): array {
+        $normalizedFilters = $this->normalizeAdminPayoutFilters($filters);
+        $resolvedPeriod = $this->resolvePeriodRange($periodPreset, $dateFrom, $dateTo);
+        $startDate = $resolvedPeriod['startDate'];
+        $endDate = $resolvedPeriod['endDate'];
+
+        $completedAtExpression = 'COALESCE(completed_at, updated_at)';
+        $canceledAtExpression = 'COALESCE(canceled_at, updated_at)';
+
+        if ($resolvedPeriod['preset'] === 'all') {
+            $allBoundsQuery = Payout::query()
+                ->where('status', PayoutStatus::COMPLETED->value);
+            $this->applyAdminPayoutFilters($allBoundsQuery, $merchantId, $normalizedFilters);
+
+            $minCompletedAt = $allBoundsQuery->min(DB::raw($completedAtExpression));
+            if ($minCompletedAt) {
+                $startDate = Carbon::parse($minCompletedAt)->startOfDay();
+            } else {
+                $startDate = now()->startOfDay();
+            }
+
+            $endDate = now()->endOfDay();
+            $resolvedPeriod['dateFrom'] = $startDate->toDateString();
+            $resolvedPeriod['dateTo'] = $endDate->toDateString();
+        }
+
+        $isHourly = $startDate->isSameDay($endDate);
+        $bucketSql = $isHourly
+            ? "DATE_FORMAT({$completedAtExpression}, '%Y-%m-%d %H:00:00')"
+            : "DATE({$completedAtExpression})";
+
+        $applyCompletedBetween = static function (Builder $query) use ($startDate, $endDate, $completedAtExpression): void {
+            $query->whereRaw("{$completedAtExpression} between ? and ?", [$startDate, $endDate]);
+        };
+
+        $baseCompletedPayoutQuery = function () use ($merchantId, $normalizedFilters): Builder {
+            $query = Payout::query()
+                ->where('status', PayoutStatus::COMPLETED->value);
+            $this->applyAdminPayoutFilters($query, $merchantId, $normalizedFilters);
+
+            return $query;
+        };
+
+        $aggregatedQuery = $baseCompletedPayoutQuery();
+        $applyCompletedBetween($aggregatedQuery);
+
+        $totalTurnover = Money::fromUnits(
+            (int) $aggregatedQuery->clone()->sum(DB::raw('CAST(IFNULL(usdt_body, 0) AS SIGNED)')),
+            Currency::USDT(),
+        );
+        $totalProfit = Money::fromUnits(
+            (int) $aggregatedQuery->clone()->sum(DB::raw('CAST(IFNULL(service_fee, 0) AS SIGNED)')),
+            Currency::USDT(),
+        );
+        $successPayoutCount = (int) $aggregatedQuery->clone()->count();
+
+        $failedPayoutQuery = Payout::query()
+            ->where('status', PayoutStatus::CANCELED->value);
+        $this->applyAdminPayoutFilters($failedPayoutQuery, $merchantId, $normalizedFilters);
+        $failedPayoutQuery->whereRaw("{$canceledAtExpression} between ? and ?", [$startDate, $endDate]);
+        $failedPayoutCount = (int) $failedPayoutQuery->count();
+
+        $pendingPayoutQuery = Payout::query()
+            ->whereIn('status', [
+                PayoutStatus::OPEN->value,
+                PayoutStatus::TAKEN->value,
+                PayoutStatus::SENT->value,
+            ]);
+        $this->applyAdminPayoutFilters($pendingPayoutQuery, $merchantId, $normalizedFilters);
+        $pendingPayoutQuery->whereBetween('created_at', [$startDate, $endDate]);
+        $pendingPayoutCount = (int) $pendingPayoutQuery->count();
+
+        $totalTerminalPayoutCount = $successPayoutCount + $failedPayoutCount;
+        $conversionRate = $totalTerminalPayoutCount > 0
+            ? round(($successPayoutCount / $totalTerminalPayoutCount) * 100, 2)
+            : 0;
+
+        $earningsByBucket = $baseCompletedPayoutQuery();
+        $applyCompletedBetween($earningsByBucket);
+        $earningsByBucket = $earningsByBucket
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(CAST(IFNULL(service_fee, 0) AS SIGNED)) as total_earnings")
+            ->groupBy(DB::raw($bucketSql))
+            ->pluck('total_earnings', 'bucket_key');
+
+        $turnoverByBucket = $baseCompletedPayoutQuery();
+        $applyCompletedBetween($turnoverByBucket);
+        $turnoverByBucket = $turnoverByBucket
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(CAST(IFNULL(usdt_body, 0) AS SIGNED)) as total_turnover")
+            ->groupBy(DB::raw($bucketSql))
+            ->pluck('total_turnover', 'bucket_key');
+
+        $countByBucket = $baseCompletedPayoutQuery();
+        $applyCompletedBetween($countByBucket);
+        $countByBucket = $countByBucket
+            ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as cnt")
+            ->groupBy(DB::raw($bucketSql))
+            ->pluck('cnt', 'bucket_key');
+
+        $canceledBucketSql = $isHourly
+            ? "DATE_FORMAT({$canceledAtExpression}, '%Y-%m-%d %H:00:00')"
+            : "DATE({$canceledAtExpression})";
+
+        $canceledByBucketQuery = Payout::query()
+            ->where('status', PayoutStatus::CANCELED->value);
+        $this->applyAdminPayoutFilters($canceledByBucketQuery, $merchantId, $normalizedFilters);
+        $canceledByBucketQuery->whereRaw("{$canceledAtExpression} between ? and ?", [$startDate, $endDate]);
+        $canceledByBucket = $canceledByBucketQuery
+            ->selectRaw("{$canceledBucketSql} as bucket_key, COUNT(*) as cnt")
+            ->groupBy(DB::raw($canceledBucketSql))
+            ->pluck('cnt', 'bucket_key');
+
+        $labels = [];
+        $incomeData = [];
+        $turnoverData = [];
+        $conversionData = [];
+        $ordersData = [];
+        $averageCheckData = [];
+
+        $buckets = [];
+        $currentBucketDate = $startDate->copy();
+        while ($currentBucketDate->lte($endDate)) {
+            $bucketKey = $isHourly
+                ? $currentBucketDate->format('Y-m-d H:00:00')
+                : $currentBucketDate->toDateString();
+
+            $label = $isHourly
+                ? $currentBucketDate->format('H:i')
+                : $currentBucketDate->format('d.m');
+
+            $income = Money::fromUnits(
+                (int) ($earningsByBucket[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $turnover = Money::fromUnits(
+                (int) ($turnoverByBucket[$bucketKey] ?? 0),
+                Currency::USDT()
+            )->toInt();
+            $payoutCount = (int) ($countByBucket[$bucketKey] ?? 0);
+            $canceledCount = (int) ($canceledByBucket[$bucketKey] ?? 0);
+            $terminalTotal = $payoutCount + $canceledCount;
+            $conversionPercent = $terminalTotal > 0
+                ? round(($payoutCount / $terminalTotal) * 100, 2)
+                : 0;
+
+            $buckets[] = [
+                'label' => $label,
+                'income' => $income,
+                'turnover' => $turnover,
+                'payoutCount' => $payoutCount,
+                'canceledCount' => $canceledCount,
+                'conversionPercent' => $conversionPercent,
+            ];
+
+            if ($isHourly) {
+                $currentBucketDate->addHour();
+            } else {
+                $currentBucketDate->addDay();
+            }
+        }
+
+        if (in_array($resolvedPeriod['preset'], ['custom', 'all'], true) && count($buckets) > 30) {
+            $chunkSize = (int) ceil(count($buckets) / 30);
+            $groupedBuckets = [];
+
+            for ($i = 0; $i < count($buckets); $i += $chunkSize) {
+                $chunk = array_slice($buckets, $i, $chunkSize);
+                $firstLabel = $chunk[0]['label'];
+                $lastLabel = $chunk[count($chunk) - 1]['label'];
+
+                $sumCompleted = array_sum(array_column($chunk, 'payoutCount'));
+                $sumCanceled = array_sum(array_column($chunk, 'canceledCount'));
+                $sumTerminal = $sumCompleted + $sumCanceled;
+                $chunkConversion = $sumTerminal > 0
+                    ? round(($sumCompleted / $sumTerminal) * 100, 2)
+                    : 0;
+
+                $groupedBuckets[] = [
+                    'label' => $firstLabel === $lastLabel ? $firstLabel : "{$firstLabel}-{$lastLabel}",
+                    'income' => array_sum(array_column($chunk, 'income')),
+                    'turnover' => array_sum(array_column($chunk, 'turnover')),
+                    'payoutCount' => $sumCompleted,
+                    'canceledCount' => $sumCanceled,
+                    'conversionPercent' => $chunkConversion,
+                ];
+            }
+
+            $buckets = $groupedBuckets;
+        }
+
+        foreach ($buckets as $bucket) {
+            $labels[] = $bucket['label'];
+            $incomeData[] = $bucket['income'];
+            $turnoverData[] = $bucket['turnover'];
+            $conversionData[] = $bucket['conversionPercent'];
+            $ordersData[] = $bucket['payoutCount'];
+            $averageCheckData[] = $bucket['payoutCount'] > 0
+                ? round($bucket['turnover'] / $bucket['payoutCount'], 2)
+                : 0;
+        }
+
+        $selectedFiltersForResponse = $this->normalizeFilters([
+            'traderIds' => $normalizedFilters['traderIds'],
+            'merchantIds' => $normalizedFilters['merchantIds'],
+            'paymentMethodIds' => [],
+            'paymentDetailIds' => [],
+        ]);
+
+        return [
+            'statistics' => [
+                'totalTurnover' => $totalTurnover->toBeauty(),
+                'totalProfit' => $totalProfit->toBeauty(),
+                'totalOrderCount' => $totalTerminalPayoutCount,
+                'successOrderCount' => $successPayoutCount,
+                'failedOrderCount' => $failedPayoutCount,
+                'pendingOrderCount' => $pendingPayoutCount,
+                'conversionRate' => $conversionRate.'%',
+            ],
+            'chart' => [
+                'labels' => $labels,
+                'data' => $incomeData,
+            ],
+            'conversionChart' => [
+                'labels' => $labels,
+                'data' => $conversionData,
+            ],
+            'turnoverChart' => [
+                'labels' => $labels,
+                'data' => $turnoverData,
+            ],
+            'ordersChart' => [
+                'labels' => $labels,
+                'data' => $ordersData,
+            ],
+            'averageCheckChart' => [
+                'labels' => $labels,
+                'data' => $averageCheckData,
+            ],
+            'selectedPeriodPreset' => $resolvedPeriod['preset'],
+            'selectedDateFrom' => $resolvedPeriod['dateFrom'],
+            'selectedDateTo' => $resolvedPeriod['dateTo'],
+            'selectedFilters' => $selectedFiltersForResponse,
         ];
     }
 
@@ -507,7 +757,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $isHourly = $startDate->isSameDay($endDate);
         $bucketSql = $isHourly
             ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
-            : "DATE(created_at)";
+            : 'DATE(created_at)';
 
         $query = Order::query()
             ->where('status', OrderStatus::SUCCESS)
@@ -681,7 +931,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'totalOrderCount' => $totalOrderCount,
                 'successOrderCount' => $successOrderCount,
                 'failedOrderCount' => $failedOrderCount,
-                'conversionRate' => $conversionRate . '%',
+                'conversionRate' => $conversionRate.'%',
                 'pendingOrderCount' => $pendingOrderCount,
             ],
             'chart' => [
@@ -928,7 +1178,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $isHourly = $startDate->isSameDay($endDate);
         $bucketSql = $isHourly
             ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
-            : "DATE(created_at)";
+            : 'DATE(created_at)';
 
         $query = Order::query()
             ->where('status', OrderStatus::SUCCESS)
@@ -1102,7 +1352,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'totalOrderCount' => $totalOrderCount,
                 'successOrderCount' => $successOrderCount,
                 'failedOrderCount' => $failedOrderCount,
-                'conversionRate' => $conversionRate . '%',
+                'conversionRate' => $conversionRate.'%',
                 'pendingOrderCount' => $pendingOrderCount,
             ],
             'chart' => [
@@ -1141,13 +1391,14 @@ class MainPageStatsService implements MainPageStatsServiceContract
     {
         $allowedMerchantIds = $this->resolveUserMerchantIds($user);
 
-        if (!empty($merchantIds)) {
+        if (! empty($merchantIds)) {
             $allowedSet = array_flip($allowedMerchantIds);
             $scopedMerchantIds = array_values(array_filter(
                 $merchantIds,
                 fn (int $id) => isset($allowedSet[$id])
             ));
             $query->whereIn('merchant_id', $scopedMerchantIds);
+
             return;
         }
 
@@ -1191,11 +1442,11 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
     private function applyTraderDashboardOrderFilters(Builder $query, array $filters): void
     {
-        if (!empty($filters['paymentMethodIds'])) {
+        if (! empty($filters['paymentMethodIds'])) {
             $query->whereIn('payment_gateway_id', $filters['paymentMethodIds']);
         }
 
-        if (!empty($filters['paymentDetailIds'])) {
+        if (! empty($filters['paymentDetailIds'])) {
             $query->whereIn('payment_detail_id', $filters['paymentDetailIds']);
         }
     }
@@ -1233,7 +1484,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
     private function applyMerchantDashboardOrderFilters(Builder $query, array $filters): void
     {
-        if (!empty($filters['paymentMethodIds'])) {
+        if (! empty($filters['paymentMethodIds'])) {
             $query->whereIn('payment_gateway_id', $filters['paymentMethodIds']);
         }
     }
@@ -1257,9 +1508,39 @@ class MainPageStatsService implements MainPageStatsServiceContract
         ];
     }
 
+    /**
+     * @param  array{traderIds?: array<int>, merchantIds?: array<int>}  $filters
+     * @return array{traderIds: array<int>, merchantIds: array<int>}
+     */
+    private function normalizeAdminPayoutFilters(array $filters): array
+    {
+        return [
+            'traderIds' => $this->normalizeIdArray($filters['traderIds'] ?? []),
+            'merchantIds' => $this->normalizeIdArray($filters['merchantIds'] ?? []),
+        ];
+    }
+
+    /**
+     * @param  array{traderIds: array<int>, merchantIds: array<int>}  $filters
+     */
+    private function applyAdminPayoutFilters(Builder $query, ?int $scopedMerchantId, array $filters): void
+    {
+        if ($scopedMerchantId) {
+            $query->where('merchant_id', $scopedMerchantId);
+        }
+
+        if (! empty($filters['traderIds'])) {
+            $query->whereIn('trader_id', $filters['traderIds']);
+        }
+
+        if (! empty($filters['merchantIds'])) {
+            $query->whereIn('merchant_id', $filters['merchantIds']);
+        }
+    }
+
     private function normalizeIdArray(mixed $value): array
     {
-        if (!is_array($value)) {
+        if (! is_array($value)) {
             return [];
         }
 
@@ -1273,19 +1554,19 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
     private function applyOrderFilters(Builder $query, array $filters): void
     {
-        if (!empty($filters['traderIds'])) {
+        if (! empty($filters['traderIds'])) {
             $query->whereIn('trader_id', $filters['traderIds']);
         }
 
-        if (!empty($filters['paymentMethodIds'])) {
+        if (! empty($filters['paymentMethodIds'])) {
             $query->whereIn('payment_gateway_id', $filters['paymentMethodIds']);
         }
 
-        if (!empty($filters['paymentDetailIds'])) {
+        if (! empty($filters['paymentDetailIds'])) {
             $query->whereIn('payment_detail_id', $filters['paymentDetailIds']);
         }
 
-        if (!empty($filters['merchantIds'])) {
+        if (! empty($filters['merchantIds'])) {
             $query->whereIn('merchant_id', $filters['merchantIds']);
         }
     }
@@ -1351,7 +1632,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
     private function parseDateValue(?string $value): ?Carbon
     {
-        if (!$value) {
+        if (! $value) {
             return null;
         }
 
@@ -1362,4 +1643,3 @@ class MainPageStatsService implements MainPageStatsServiceContract
         }
     }
 }
-
