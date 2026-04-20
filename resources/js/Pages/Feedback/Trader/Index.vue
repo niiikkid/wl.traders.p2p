@@ -46,6 +46,7 @@ const feedList = computed(() => props.feed?.data ?? []);
 const myList = computed(() => props.myFeedbacks?.data ?? []);
 const hasAnyVisible = computed(() => feedList.value.length > 0 || myList.value.length > 0);
 const feedbackIndexRouteName = computed(() => (props.canModerate ? 'admin.feedback.index' : 'trader.feedback.index'));
+const pageTitle = computed(() => (props.canModerate ? 'Обратная связь' : 'Мои идеи'));
 const nowTimestamp = ref(Date.now());
 
 const cooldownEndTimestamp = computed(() => {
@@ -177,9 +178,9 @@ defineOptions({layout: AuthenticatedLayout});
 
 <template>
     <div>
-        <Head title="Обратная связь" />
+        <Head :title="pageTitle" />
 
-        <MainTableSection title="Обратная связь" :data="feed" :paginate="true" :display-pagination="false">
+        <MainTableSection :title="pageTitle" :data="feed" :paginate="true" :display-pagination="false">
             <template #header>
                 <div class="space-y-4">
                     <div v-if="!canModerate" class="card bg-base-100 shadow">
