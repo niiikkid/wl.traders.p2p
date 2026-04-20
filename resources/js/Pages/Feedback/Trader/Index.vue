@@ -186,7 +186,7 @@ defineOptions({layout: AuthenticatedLayout});
                     <div v-if="!canModerate" class="card bg-base-100 shadow">
                         <div class="card-body space-y-4">
                             <div class="flex items-center justify-between gap-3">
-                                <h2 class="card-title">Новый фидбек</h2>
+                                <h2 class="card-title">Новая идея</h2>
                                 <span class="badge badge-outline">
                                     {{ contentLength }}/{{ maxContentLength }}
                                 </span>
@@ -197,7 +197,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     v-model="form.content"
                                     class="textarea textarea-bordered w-full min-h-32"
                                     maxlength="1000"
-                                    placeholder="Опишите баг, предложение или идею по улучшению."
+                                    placeholder="Кратко опишите проблему, предложение или идею по улучшению проекта."
                                 />
                                 <div class="flex items-center justify-between gap-2">
                                     <p class="text-xs text-base-content/60">
@@ -334,7 +334,7 @@ defineOptions({layout: AuthenticatedLayout});
 
                 <div class="space-y-3" v-else>
                     <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-semibold">Мои фидбеки</h3>
+                        <h3 class="text-lg font-semibold">Ваши идеи</h3>
                         <span class="text-sm text-base-content/60">
                             {{ feed?.meta?.total ?? 0 }} записей
                         </span>
@@ -354,7 +354,7 @@ defineOptions({layout: AuthenticatedLayout});
                             </div>
                         </article>
                         <div v-if="feedList.length === 0" class="text-sm text-base-content/60">
-                            Вы пока не отправляли фидбек.
+                            Вы пока не отправили ни одной идеи.
                         </div>
                     </div>
 
