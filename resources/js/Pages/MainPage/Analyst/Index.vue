@@ -893,11 +893,11 @@ defineOptions({ layout: AuthenticatedLayout });
 
 <template>
     <div>
-        <Head title="Главная" />
+        <Head title="Панель управления" />
 
         <div class="mx-auto space-y-6">
             <div class="flex justify-between items-center">
-                <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Главная</h2>
+                <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Панель управления</h2>
                 <slot name="button"></slot>
             </div>
 
