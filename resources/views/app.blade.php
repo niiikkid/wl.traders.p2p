@@ -1,5 +1,10 @@
+@php
+    $themeLight = (string) (env('VITE_THEME_LIGHT') ?: 'winter') ?: 'winter';
+    $themeDark = (string) (env('VITE_THEME_DARK') ?: 'dim') ?: 'dim';
+    $themeStorageKey = (string) (env('VITE_THEME_STORAGE_KEY') ?: 'color-theme-payment') ?: 'color-theme-payment';
+@endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="winter">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark" data-theme="{{ $themeDark }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,10 +18,20 @@
 
         <script>
             (function() {
+                var THEME_LIGHT = @json($themeLight);
+                var THEME_DARK = @json($themeDark);
+                var THEME_KEY = @json($themeStorageKey);
                 try {
-                    var saved = localStorage.getItem('color-theme-payment') || localStorage.getItem('theme');
-                    if (saved) {
-                        document.documentElement.setAttribute('data-theme', saved);
+                    var saved = localStorage.getItem(THEME_KEY) || localStorage.getItem('theme');
+                    var theme = saved;
+                    if (!theme) {
+                        theme = THEME_DARK;
+                    }
+                    document.documentElement.setAttribute('data-theme', theme);
+                    if (theme === THEME_DARK) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
                     }
                 } catch (e) {
                     // silent

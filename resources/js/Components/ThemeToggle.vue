@@ -38,8 +38,8 @@ const props = defineProps({
 });
 
 const themes = computed(() => [props.lightTheme, props.darkTheme]);
-const defaultTheme = props.lightTheme;
-const currentTheme = ref(defaultTheme);
+const defaultForNewVisitor = props.darkTheme;
+const currentTheme = ref(defaultForNewVisitor);
 
 const isDark = computed(() => currentTheme.value === props.darkTheme);
 const label = computed(() => isDark.value ? 'Тёмная тема' : 'Светлая тема');
@@ -86,7 +86,7 @@ const applyTheme = (theme) => {
 
 const getPreferredTheme = () => {
     if (typeof window === 'undefined') {
-        return defaultTheme;
+        return defaultForNewVisitor;
     }
 
     const savedTheme = window.localStorage.getItem(props.storageKey);
@@ -94,7 +94,7 @@ const getPreferredTheme = () => {
         return savedTheme;
     }
 
-    return defaultTheme;
+    return defaultForNewVisitor;
 };
 
 const toggleTheme = () => {
