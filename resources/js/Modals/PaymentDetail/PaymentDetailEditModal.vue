@@ -99,6 +99,10 @@ const selectedGatewaySupportsFlexibleCommission = computed(() => {
     return !!selectedPaymentGateway.value?.use_flexible_trader_commission_for_orders;
 });
 
+const isManualProcessing = computed(() => {
+    return canWorkWithoutDevice.value && !Number(form.value.user_device_id);
+});
+
 const currentDetailHint = computed(() => {
     return paymentDetailTypeHints[payment_detail.value?.detail_type] ?? null;
 });
@@ -161,7 +165,7 @@ const resetState = () => {
         min_order_amount: null,
         max_order_amount: null,
         order_interval_minutes: null,
-        user_device_id: null,
+        user_device_id: 0,
         payment_gateway_ids: [],
     };
     canWorkWithoutDevice.value = usePage().props.auth?.user?.can_work_without_device ?? false;
@@ -212,7 +216,7 @@ const loadPaymentDetail = (id) => {
             min_order_amount: detail.min_order_amount,
             max_order_amount: detail.max_order_amount,
             order_interval_minutes: detail.order_interval_minutes,
-            user_device_id: detail.user_device_id ?? null,
+            user_device_id: detail.user_device_id ?? 0,
             payment_gateway_ids: detail.payment_gateway_ids ?? [],
         };
 
@@ -317,36 +321,48 @@ watch(
                         <span>Платежные данные</span>
                         <FieldHint :text="paymentDetailSectionHints.paymentData" />
                     </div>
-                    <div v-if="!canWorkWithoutDevice || viewStore.isAdminViewMode">
-                        <div v-if="!canWorkWithoutDevice">
-                            <InputLabel
-                                for="user_device_id"
-                                value="Устройство"
-                                :error="!!errors.user_device_id?.[0]"
-                                :hint="paymentDetailFieldHints.user_device_id"
-                                class="mb-1"
-                            />
-                            <Select
-                                id="user_device_id"
-                                v-model="form.user_device_id"
-                                :error="!!errors.user_device_id?.[0]"
-                                :items="formattedDevices"
-                                value="id"
-                                name="name"
-                                default_title="Выберите устройство"
-                                @change="errors.user_device_id = null"
-                                :disabled="processing"
-                            />
-                            <InputError :message="errors.user_device_id?.[0]" class="mt-2"/>
-                        </div>
-                        <div v-else-if="viewStore.isAdminViewMode" class="text-sm text-base-content/70">
-                            Для этого трейдера работа без устройства включена. Привязка устройства не требуется.
+                    <div>
+                        <InputLabel
+                            for="user_device_id"
+                            :value="canWorkWithoutDevice ? 'Способ обработки' : 'Устройство'"
+                            :error="!!errors.user_device_id?.[0]"
+                            :hint="paymentDetailFieldHints.user_device_id"
+                            class="mb-1"
+                        />
+                        <Select
+                            id="user_device_id"
+                            v-model="form.user_device_id"
+                            :error="!!errors.user_device_id?.[0]"
+                            :items="formattedDevices"
+                            value="id"
+                            name="name"
+                            :default_title="canWorkWithoutDevice ? 'Ручной режим' : 'Выберите устройство'"
+                            :default_value="0"
+                            @change="errors.user_device_id = null"
+                            :disabled="processing"
+                        />
+                        <InputError :message="errors.user_device_id?.[0]" class="mt-2"/>
+                        <div v-if="canWorkWithoutDevice" class="mt-3">
+                            <div
+                                role="alert"
+                                class="alert text-sm"
+                                :class="isManualProcessing ? 'alert-warning alert-outline' : 'alert-success alert-outline'"
+                            >
+                                <span class="badge badge-sm" :class="isManualProcessing ? 'badge-warning badge-outline' : 'badge-success badge-outline'">
+                                    {{ isManualProcessing ? 'Ручной' : 'Автоматика' }}
+                                </span>
+                                <span>
+                                    {{ isManualProcessing
+                                        ? 'Устройство не назначено: необходимо обрабатывать платежи вручную.'
+                                        : 'Назначено устройство: для реквизита будет доступна автоматическая обработка.' }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div>
-                        <div class="text-xs text-base-content/70 mb-2">
+                        <div class="mb-2">
                             <span class="inline-flex max-w-full flex-wrap items-center gap-1.5">
-                                <span>Реквизит</span>
+                                <span class="label-text break-words text-inherit">Реквизит</span>
                                 <FieldHint v-if="currentDetailHint" :text="currentDetailHint" />
                             </span>
                         </div>

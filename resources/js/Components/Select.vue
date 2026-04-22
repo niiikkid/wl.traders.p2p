@@ -20,7 +20,6 @@ defineProps({
         type: String,
     },
     default_value: {
-        type: String,
         default: "0",
     },
     required: {

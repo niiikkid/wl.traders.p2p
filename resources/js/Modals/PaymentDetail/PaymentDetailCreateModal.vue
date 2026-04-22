@@ -49,7 +49,7 @@ const form = ref({
     max_pending_orders_quantity: 1,
     payment_gateway_ids: [],
     detail_type: null,
-    user_device_id: null,
+    user_device_id: 0,
     order_interval_minutes: '',
     currency: null,
     min_order_amount: '',
@@ -136,6 +136,10 @@ const selectedGatewaySupportsFlexibleCommission = computed(() => {
     return !!selectedPaymentGateway.value?.use_flexible_trader_commission_for_orders;
 });
 
+const isManualProcessing = computed(() => {
+    return canWorkWithoutDevice.value && !Number(form.value.user_device_id);
+});
+
 const currentDetailHint = computed(() => {
     return paymentDetailTypeHints[selectedDetailType.value] ?? null;
 });
@@ -214,7 +218,7 @@ const resetState = () => {
         max_pending_orders_quantity: 1,
         payment_gateway_ids: [],
         detail_type: null,
-        user_device_id: null,
+        user_device_id: 0,
         order_interval_minutes: '',
         currency: null,
         min_order_amount: '',
@@ -241,7 +245,14 @@ const close = () => {
 
 const loadCreateData = () => {
     loading.value = true;
-    axios.get(route('payment-details.create-data'))
+    const requestedUserId = paymentDetailCreateModal.value.params?.user_id
+        ?? paymentDetailCreateModal.value.params?.paymentDetail?.owner_id
+        ?? paymentDetailCreateModal.value.params?.paymentDetail?.user_id
+        ?? null;
+
+    const params = requestedUserId ? { user_id: requestedUserId } : {};
+
+    axios.get(route('payment-details.create-data'), { params })
         .then((res) => {
             const data = res.data?.data || res.data || {};
             payment_gateways.value = data.paymentGateways || [];
@@ -250,9 +261,7 @@ const loadCreateData = () => {
                 name: `${device.name}`
             }));
             canWorkWithoutDevice.value = !!data.canWorkWithoutDevice;
-            if (canWorkWithoutDevice.value) {
-                form.value.user_device_id = null;
-            }
+            form.value.user_device_id = 0;
         })
         .finally(() => {
             loading.value = false;
@@ -389,10 +398,10 @@ watch(
                             />
                             <InputError :message="errors.payment_gateway_ids?.[0]" class="mt-2"/>
                         </div>
-                        <div v-if="!canWorkWithoutDevice">
+                        <div>
                             <InputLabel
                                 for="user_device_id"
-                                value="Устройство"
+                                :value="canWorkWithoutDevice ? 'Способ обработки' : 'Устройство'"
                                 :error="!!errors.user_device_id?.[0]"
                                 :hint="paymentDetailFieldHints.user_device_id"
                                 class="mb-1"
@@ -404,11 +413,28 @@ watch(
                                 :items="devices"
                                 value="id"
                                 name="name"
-                                default_title="Выберите устройство"
+                                :default_title="canWorkWithoutDevice ? 'Ручной режим' : 'Выберите устройство'"
+                                :default_value="0"
                                 @change="errors.user_device_id = null"
                                 :disabled="processing"
                             ></Select>
                             <InputError :message="errors.user_device_id?.[0]" class="mt-2"/>
+                            <div v-if="canWorkWithoutDevice" class="mt-3">
+                                <div
+                                    role="alert"
+                                    class="alert text-sm"
+                                    :class="isManualProcessing ? 'alert-warning alert-outline' : 'alert-success alert-outline'"
+                                >
+                                    <span class="badge badge-sm" :class="isManualProcessing ? 'badge-warning badge-outline' : 'badge-success badge-outline'">
+                                        {{ isManualProcessing ? 'Ручной' : 'Автоматика' }}
+                                    </span>
+                                    <span>
+                                        {{ isManualProcessing
+                                            ? 'Устройство не назначено: трейдер будет обрабатывать платежи вручную.'
+                                            : 'Назначено устройство: для реквизита будет доступна автоматическая обработка.' }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         <div v-if="selectedDetailType === 'phone'">
                             <InputLabel

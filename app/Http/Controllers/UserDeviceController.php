@@ -3,24 +3,21 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\UserDeviceResource;
-use App\Models\UserDevice;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class UserDeviceController extends Controller
 {
     /**
      * Отображает список устройств пользователя
      *
-     * @return \Inertia\Response
+     * @return Response
      */
     public function index()
     {
-        if (Auth::user()->can_work_without_device) {
-            abort(403);
-        }
-
         $devices = Auth::user()
             ->devices()
             ->orderBy('created_at', 'desc')
@@ -33,15 +30,10 @@ class UserDeviceController extends Controller
     /**
      * Создает новое устройство
      *
-     * @param Request $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store(Request $request)
     {
-        if (Auth::user()->can_work_without_device) {
-            abort(403);
-        }
-
         $request->validate([
             'name' => 'required|string|max:255',
         ]);

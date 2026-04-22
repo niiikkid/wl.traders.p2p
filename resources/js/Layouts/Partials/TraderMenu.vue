@@ -9,7 +9,6 @@ import {useNotificationCenterStore} from "@/store/notificationCenter.js";
 const menu = ref(usePage().props.menu);
 const userStore = useUserStore();
 const notificationCenterStore = useNotificationCenterStore();
-const canWorkWithoutDevice = computed(() => !!usePage().props.auth?.user?.can_work_without_device);
 const payoutsEnabled = computed(() => !!usePage().props.auth?.user?.payouts_enabled);
 const unreadNotificationsCount = computed(() => notificationCenterStore.unreadCount);
 
@@ -152,7 +151,7 @@ router.on('success', (event) => {
                 Финансы
             </span>
         </li>
-        <li v-if="!canWorkWithoutDevice" :class="[{ 'bg-base-content/10 rounded-lg': route().current('sms-logs.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('sms-logs.*') }]">
             <span
                 @click="router.visit(route('sms-logs.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('sms-logs.index'), { preserveScroll: true })"
@@ -165,7 +164,7 @@ router.on('success', (event) => {
                 Сообщения
             </span>
         </li>
-        <li v-if="!canWorkWithoutDevice" :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.devices.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.devices.*') }]">
             <span
                 @click="router.visit(route('trader.devices.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('trader.devices.index'), { preserveScroll: true })"

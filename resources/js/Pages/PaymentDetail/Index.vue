@@ -43,8 +43,6 @@ const detailActiveToggleForm = useForm({});
 const currentTab = ref('active');
 const tableFiltersStore = useTableFiltersStore();
 const toggleBlocked = ref(false);
-const canWorkWithoutDevice = computed(() => !!usePage().props.auth?.user?.can_work_without_device);
-const showDeviceColumn = computed(() => viewStore.isAdminViewMode || !canWorkWithoutDevice.value);
 const isTraderView = computed(() => viewStore.isTraderViewMode);
 
 const displayShortDetail = ref(getCookieValue('displayShortDetail', true));
@@ -257,6 +255,20 @@ const tagBadgeStyle = (color) => {
         backgroundColor: color,
         color: '#ffffff',
     };
+};
+
+const detailUsesManualProcessing = (paymentDetail) => {
+    return !paymentDetail.user_device_id;
+};
+
+const processingModeBadgeClass = (paymentDetail) => {
+    return detailUsesManualProcessing(paymentDetail)
+        ? 'badge-warning badge-outline'
+        : 'badge-success badge-outline';
+};
+
+const processingModeLabel = (paymentDetail) => {
+    return detailUsesManualProcessing(paymentDetail) ? 'Ручной' : 'Автоматика';
 };
 
 const syncDetailTags = (paymentDetail, tagId) => {
@@ -651,9 +663,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                                                 <span class="text-base-content/70">Профиль:</span>
                                                                 <span class="text-right">{{ payment_detail.owner_email }}</span>
                                                             </div>
-                                                            <div v-if="showDeviceColumn" class="flex items-center justify-between gap-2">
+                                                            <div class="flex items-center justify-between gap-2">
+                                                                <span class="text-base-content/70">Обработка:</span>
+                                                                <span class="badge badge-sm" :class="processingModeBadgeClass(payment_detail)">
+                                                                    {{ processingModeLabel(payment_detail) }}
+                                                                </span>
+                                                            </div>
+                                                            <div v-if="payment_detail.user_device_id" class="flex items-center justify-between gap-2">
                                                                 <span class="text-base-content/70">Устройство:</span>
-                                                                <span class="text-right">{{ payment_detail.device_name ?? 'Без устройства' }}</span>
+                                                                <span class="text-right">{{ payment_detail.device_name }}</span>
                                                             </div>
                                                             <div class="flex items-center justify-between gap-2">
                                                                 <span class="text-base-content/70">Интервал:</span>
@@ -783,9 +801,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <span class="text-base-content/70">Профиль:</span>
                                                     <span class="text-right">{{ payment_detail.owner_email }}</span>
                                                 </div>
-                                                <div v-if="showDeviceColumn" class="flex items-center justify-between gap-2">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="text-base-content/70">Обработка:</span>
+                                                    <span class="badge badge-xs" :class="processingModeBadgeClass(payment_detail)">
+                                                        {{ processingModeLabel(payment_detail) }}
+                                                    </span>
+                                                </div>
+                                                <div v-if="payment_detail.user_device_id" class="flex items-center justify-between gap-2">
                                                     <span class="text-base-content/70">Устройство:</span>
-                                                    <span class="text-right">{{ payment_detail.device_name ?? 'Без устройства' }}</span>
+                                                    <span class="text-right">{{ payment_detail.device_name }}</span>
                                                 </div>
                                                 <div class="flex items-center justify-between gap-2">
                                                     <span class="text-base-content/70">Интервал:</span>
