@@ -50,7 +50,7 @@ class SmsLogResource extends JsonResource
                     'logo_path' => $paymentGateway?->logo ? asset('storage/logos/'.$paymentGateway->logo) : null,
                 ];
             }),
-            'parsing_result' => (new Parser())->parseRaw($this->message),
+            'parsing_result' => (new Parser())->parseRaw($this->message, $this->sender),
             'timestamp' => Carbon::createFromTimestamp($this->timestamp)->toDateTimeString(),
             'type' => $this->type->value,
             'created_at' => $this->created_at->toDateTimeString(),

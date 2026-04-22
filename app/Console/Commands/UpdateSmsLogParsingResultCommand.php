@@ -35,7 +35,7 @@ class UpdateSmsLogParsingResultCommand extends Command
                 Transaction::run(function () use ($logs, $parser) {
                     $logs->each(function (SmsLog $log) use ($parser) {
                         $log->update([
-                            'parsing_result' => $parser->parseRaw($log->message),
+                            'parsing_result' => $parser->parseRaw($log->message, $log->sender),
                         ]);
                     });
                 });

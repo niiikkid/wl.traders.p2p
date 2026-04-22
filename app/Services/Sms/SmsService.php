@@ -65,7 +65,7 @@ class SmsService implements SmsServiceContract
         return SmsLog::create([
             'sender' => $this->normalizeMessage($sms->sender),
             'message' => $this->normalizeMessage($sms->message),
-            'parsing_result' => (new Parser())->parseRaw($sms->message),
+            'parsing_result' => (new Parser())->parseRaw($sms->message, $sms->sender),
             'timestamp' => $sms->timestamp / 1000,
             'type' => $sms->type,
             'user_device_id' => $device->id,

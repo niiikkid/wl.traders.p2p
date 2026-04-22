@@ -6,31 +6,39 @@ use App\Models\PaymentGateway;
 use App\Models\SmsStopWord;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\Sms\Profiles\Contracts\SmsAmountParsingProfileContract;
+use App\Services\Sms\Profiles\SmsAmountParsingProfileResolver;
 use App\Services\Sms\Utils\NormalizeMessage;
 use App\Services\Sms\ValueObjects\ParserResultValue;
 use Illuminate\Support\Facades\Cache;
 
 class Parser
 {
+    protected ?PaymentGateway $paymentGateway = null;
+
+    public function __construct(
+        protected SmsAmountParsingProfileResolver $profileResolver = new SmsAmountParsingProfileResolver(),
+    ) {}
+
     public function parse(string $sender, string $message): ?ParserResultValue
     {
-        $gateway = $this->getGatewayBySender($sender);
+        $this->paymentGateway = $this->getGatewayBySender($sender);
 
-        if (empty($gateway)) {
+        if (empty($this->paymentGateway)) {
             return null;
         }
 
-        $amount = $this->parseAmountFromMessage($message);
+        $amount = $this->parseAmountFromMessage($message, $this->paymentGateway->currency);
 
         if (empty($amount)) {
             return null;
         }
 
-        $card = $this->parseCardLastDigitsFromMessage($message);
+        $card = $this->parseCardLastDigitsFromMessage($message, $this->paymentGateway->currency);
 
         return new ParserResultValue(
-            amount: Money::fromPrecision($amount, $gateway->currency),
-            paymentGateway: $gateway,
+            amount: Money::fromPrecision($amount, $this->paymentGateway->currency),
+            paymentGateway: $this->paymentGateway,
             card_last_digits: $card
         );
     }
@@ -77,54 +85,17 @@ class Parser
         return (fmod($value, 1.0) === 0.0) ? (int) $value : $value;
     }
 
-    public function parseAmountFromMessage($message): ?string
+    public function parseAmountFromMessage(string $message, ?Currency $currency = null): ?string
     {
-        $triggerPatterns = [
-            'перевод\s(?<amount>\d+(.\d+){0,3})р\sот\s.+\sбаланс',
-            'перевод\sна\sсумму\s.+\sиз\s.+\sот\s',
-            'perevod\s.+\sot\s.+\siz\s.+\sna\sschet\s',
-            'зачислен перевод по',
-            'поступление',
-            'пополнение',
-            'перевод по сбп',
-            'зачисление',
-            'зачислено',
-            '[а-я]+\sпополнена',
-            'popolnenie scheta',
-            'postuplenie sredstv na schet',
-            'postuplenie',
-            'получен перевод',
-            'popolnenie',
-            'приход на карту',
-            'перевод из',
-            'vneseno',
-            'перевел\(а\) вам',
-            'postupil perevod',
-            'перевод денежных средств',
-            'перевод на карту',
-            'zachislenie',
-            '^перевод\sот\s',
-            'приход',
-            'пополнили карту',
-            '\sперевод\s.+\sна\sкарту',
-            'home\scredit\skazakhstan\sкарточка\s.+\sпополнена\sна\s',
-            '\sвы\sполучили\sперевод:\s',
-        ];
+        $currency ??= Currency::RUB();
+        $profile = $this->profileResolver->resolve($currency);
+
+        $triggerPatterns = $profile->triggerPatterns();
+        $exceptions = $profile->exceptionPatterns();
 
         $stopWords = Cache::remember('sms_stop_words', 60, function () {
             return SmsStopWord::all()->pluck('word')->toArray();
         });
-
-        $exceptions = [
-            '^\+\s(?<amount>\d+(.\d+){0,3})\s₽\.\sтеперь\sна\sкарте\s.+₽$',
-            '^\+\s(?<amount>\d+(.\d+){0,3})\s₽\s-\sбаланс\:\s.+$',
-            '^\d{2}\.\d{2}\.\d{2}\s\d{2}\:\d{2}\sзачисление\s\*(?<card_last_digits>\d{4})\srur\s(?<amount>\d+(.\d+){0,3})\;\sостаток\s.+$',
-            '^\+\s(?<amount>\d+(.\d+){0,3})\s₽\sот\s.+теперь\sна\sсчете\s.+₽$',
-            '^\+\s(?<amount>\d+(.\d+){0,3})\s₽\s—\sтеперь\sу\sвас\:\s.+$',
-            '^\d{2}\:\d{2}\sперевод\s(?<amount>\d+(.\d+){0,3})р\sна\sкарту\s.+\sбаланс\s.+$',
-            '^\+\s(?<amount>\d+(.\d+){0,3})\s₽\s—\sбаланс\:\s.+$',
-            '^совкомбанк\s\+\s(?<amount>\d+(.\d+){0,3})\s₽\s—\sбаланс\:\s.+(?<card_last_digits>\d{4})$'
-        ];
 
         $message = NormalizeMessage::normalize($message);
 
@@ -140,7 +111,7 @@ class Parser
         }
 
         foreach ($exceptions as $exception) {
-            $regex = '/' . $exception . '/mi';
+            $regex = '/' . $exception . '/miu';
             preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
             if (! empty($matches[0]['amount'])) {
@@ -151,13 +122,12 @@ class Parser
 
         if (empty($amount)) {
             foreach ($triggerPatterns as $triggerWord) {
-                $triggerWord = mb_strtolower($triggerWord);
-
-                $regex = '/' . $triggerWord . '/mi';
+                // Сообщение уже в нижнем регистре (NormalizeMessage). mb_strtolower() по шаблону ломает escapes (\S → \s).
+                $regex = '/' . $triggerWord . '/miu';
                 preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
                 if (! empty($matches[0])) {
-                    $amount = $this->findAmount($message);
+                    $amount = $this->findAmount($message, $profile);
                     break;
                 }
             }
@@ -170,11 +140,13 @@ class Parser
         return $amount;
     }
 
-    public function parseCardLastDigitsFromMessage(string $message): ?string
+    public function parseCardLastDigitsFromMessage(string $message, ?Currency $currency = null): ?string
     {
-        $regex = '(\*|^mir|\smir|счёт|mir-|ecmc|\s••\s|\s\d{6}\.\.|карта\s\*\*\*\s|^карта\s|\s··|\sмир)(?<card_last_digits>\d{4})(\D|$)';
+        $currency ??= Currency::RUB();
+        $profile = $this->profileResolver->resolve($currency);
 
-        $regex = '/' . $regex . '/mi';
+        $body = $profile->cardLastDigitsPattern();
+        $regex = '/' . $body . '/miu';
         preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
         $digits = null;
@@ -185,21 +157,26 @@ class Parser
         return $digits;
     }
 
-    public function parseRaw(string $message): ?array
+    /**
+     * @param  string|null  $sender  Нормализованный или сырой отправитель; нужен для валюты шлюза при разборе только текста SMS.
+     */
+    public function parseRaw(string $message, ?string $sender = null): ?array
     {
-        $amount = $this->parseAmountFromMessage($message);
+        $currency = $this->currencyForRawParse($sender);
+        $amount = $this->parseAmountFromMessage($message, $currency);
 
-        return !empty($amount) ? [
+        return ! empty($amount) ? [
             'amount' => $amount,
-            'card' => $this->parseCardLastDigitsFromMessage($message),
+            'card' => $this->parseCardLastDigitsFromMessage($message, $currency),
         ] : null;
     }
 
-    protected function findAmount(string $message): ?string
+    protected function findAmount(string $message, SmsAmountParsingProfileContract $profile): ?string
     {
-        $amountRegex = '(\s|\+)(?<amount>\d+(.\d+){0,3})\s{0,1}(RUB|rub|р|p|₽|RUR|rur|rurcard2card|руб|₸|kzt)(\s|\.|\,|\;|$)';
+        $markers = $profile->amountCurrencyMarkers();
+        $amountRegex = '(\s|\+)(?<amount>\d+(.\d+){0,3})\s{0,1}(' . $markers . ')(\s|\.|\,|\;|$)';
 
-        $regex = '/' . $amountRegex . '/mi';
+        $regex = '/' . $amountRegex . '/miu';
         preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
         $amount = null;
@@ -241,5 +218,16 @@ class Parser
         }
 
         return $paymentGateway;
+    }
+
+    protected function currencyForRawParse(?string $sender): Currency
+    {
+        if ($sender === null || $sender === '') {
+            return Currency::RUB();
+        }
+
+        $gateway = $this->getGatewayBySender($sender);
+
+        return $gateway?->currency ?? Currency::RUB();
     }
 }
