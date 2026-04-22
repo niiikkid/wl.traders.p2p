@@ -261,6 +261,10 @@ const detailUsesManualProcessing = (paymentDetail) => {
     return !paymentDetail.user_device_id;
 };
 
+const shouldShowProcessingIndicator = (paymentDetail) => {
+    return viewStore.isAdminViewMode || !!paymentDetail.owner_can_work_without_device;
+};
+
 const processingModeBadgeClass = (paymentDetail) => {
     return detailUsesManualProcessing(paymentDetail)
         ? 'badge-warning badge-outline'
@@ -482,6 +486,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         :type="payment_detail.detail_type"
                                                         :name="payment_detail.name"
                                                         :short="displayShortDetail"
+                                                        :show-processing-indicator="shouldShowProcessingIndicator(payment_detail)"
+                                                        :uses-manual-processing="detailUsesManualProcessing(payment_detail)"
                                                     ></PaymentDetail>
                                                 </div>
                                             </td>
@@ -773,6 +779,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             :detail="payment_detail.detail"
                                             :type="payment_detail.detail_type"
                                             :name="payment_detail.name"
+                                            :show-processing-indicator="shouldShowProcessingIndicator(payment_detail)"
+                                            :uses-manual-processing="detailUsesManualProcessing(payment_detail)"
                                         />
                                     </div>
 
