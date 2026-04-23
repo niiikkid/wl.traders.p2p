@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SmsLogResource;
+use App\Models\PaymentGateway;
 use App\Models\SenderStopList;
 use App\Models\SmsLog;
 use App\Models\SmsStopWord;
@@ -16,9 +17,9 @@ class SmsLogController extends Controller
         $filters = $this->getTableFilters();
 
         $query = SmsLog::query()
-            ->with('user','device', 'order')
+            ->with('user', 'device', 'order')
             ->when($filters->search, function ($query) use ($filters) {
-                $query->where('message', 'like', '%' . strtolower($filters->search) . '%');
+                $query->where('message', 'like', '%'.strtolower($filters->search).'%');
             })
             ->when($filters->onlySuccessParsing, function ($query) {
                 $query->whereNotNull('parsing_result');
@@ -48,11 +49,38 @@ class SmsLogController extends Controller
                 ];
             });
 
+        $paymentGateways = PaymentGateway::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'logo'])
+            ->transform(function (PaymentGateway $paymentGateway) {
+                return [
+                    'id' => $paymentGateway->id,
+                    'name' => $paymentGateway->name,
+                    'logo_path' => $paymentGateway->logo ? asset('storage/logos/'.$paymentGateway->logo) : null,
+                ];
+            })
+            ->values();
+
+        $recentPaymentGateways = PaymentGateway::query()
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get(['id', 'name', 'logo'])
+            ->transform(function (PaymentGateway $paymentGateway) {
+                return [
+                    'id' => $paymentGateway->id,
+                    'name' => $paymentGateway->name,
+                    'logo_path' => $paymentGateway->logo ? asset('storage/logos/'.$paymentGateway->logo) : null,
+                ];
+            })
+            ->values();
+
         return Inertia::render('SmsLog/Index', compact(
             'smsLogs',
             'smsLogsTotalCount',
             'senderStopList',
             'smsStopWords',
+            'paymentGateways',
+            'recentPaymentGateways',
             'filters'
         ));
     }

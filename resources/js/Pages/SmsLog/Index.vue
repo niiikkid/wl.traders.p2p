@@ -6,7 +6,8 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal.js";
-import {onMounted, ref} from "vue";
+import Modal from "@/Components/Modals/Modal.vue";
+import {computed, onMounted, ref} from "vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
@@ -22,9 +23,19 @@ const expandedCards = ref({});
 const smsLogsTotalCount = usePage().props.smsLogsTotalCount;
 const senderStopList = usePage().props.senderStopList;
 const smsStopWords = usePage().props.smsStopWords;
+const paymentGateways = usePage().props.paymentGateways ?? [];
+const recentPaymentGateways = usePage().props.recentPaymentGateways ?? [];
 const currentTab = ref('logs');
 const newStopWord = ref('');
 const tableFiltersStore = useTableFiltersStore();
+const isAddSenderModalOpen = ref(false);
+const selectedSmsLog = ref(null);
+const selectedPaymentGatewayId = ref(null);
+const gatewaySearch = ref('');
+const pendingConfirmGatewayId = ref(null);
+const addSenderToGatewayForm = useForm({
+    payment_gateway_id: null,
+});
 
 const toggleExpand = (id) => {
     expandedCards.value[id] = !expandedCards.value[id];
@@ -44,6 +55,79 @@ const confirmAddSenderToStopLost = (smsLog) => {
                 },
             });
         }
+    });
+};
+
+const openAddSenderModal = (smsLog) => {
+    selectedSmsLog.value = smsLog;
+    selectedPaymentGatewayId.value = null;
+    gatewaySearch.value = '';
+    pendingConfirmGatewayId.value = null;
+    addSenderToGatewayForm.reset();
+    addSenderToGatewayForm.clearErrors();
+    isAddSenderModalOpen.value = true;
+};
+
+const closeAddSenderModal = () => {
+    isAddSenderModalOpen.value = false;
+    selectedSmsLog.value = null;
+    selectedPaymentGatewayId.value = null;
+    gatewaySearch.value = '';
+    pendingConfirmGatewayId.value = null;
+    addSenderToGatewayForm.reset();
+    addSenderToGatewayForm.clearErrors();
+};
+
+const filteredPaymentGateways = computed(() => {
+    const query = gatewaySearch.value.trim().toLowerCase();
+    if (!query) {
+        return recentPaymentGateways;
+    }
+
+    return paymentGateways.filter((paymentGateway) => {
+        return paymentGateway.name.toLowerCase().includes(query);
+    });
+});
+
+const selectedPaymentGateway = computed(() => {
+    if (!selectedPaymentGatewayId.value) {
+        return null;
+    }
+
+    return paymentGateways.find((paymentGateway) => paymentGateway.id === selectedPaymentGatewayId.value) ?? null;
+});
+
+/** Шаг подтверждения только после «Добавить», не при пустом выборе (null === null давало ложное совпадение). */
+const isAddSenderConfirmStep = computed(() => {
+    return (
+        selectedPaymentGatewayId.value != null
+        && pendingConfirmGatewayId.value != null
+        && pendingConfirmGatewayId.value === selectedPaymentGatewayId.value
+    );
+});
+
+const requestSenderAddingConfirmation = () => {
+    if (!selectedPaymentGatewayId.value) {
+        return;
+    }
+
+    pendingConfirmGatewayId.value = selectedPaymentGatewayId.value;
+};
+
+const addSenderToPaymentGateway = () => {
+    if (!selectedSmsLog.value || !selectedPaymentGatewayId.value) {
+        return;
+    }
+
+    addSenderToGatewayForm.payment_gateway_id = selectedPaymentGatewayId.value;
+    addSenderToGatewayForm.post(route('admin.sender-payment-gateway.store', selectedSmsLog.value.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeAddSenderModal();
+            router.visit(route('admin.sms-logs.index'), {
+                data: tableFiltersStore.getQueryData,
+            });
+        },
     });
 };
 
@@ -109,7 +193,7 @@ defineOptions({ layout: AuthenticatedLayout })
 <template>
     <div>
         <Head title="Сообщения" />
-
+11213
         <MainTableSection
             title="Сообщения"
             :data="smsLogs"
@@ -231,14 +315,26 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </div>
                                                     </div>
                                                     <div v-if="!sms_log.sender_exists">
-                                                        <button
-                                                            @click.prevent="confirmAddSenderToStopLost(sms_log)"
-                                                            class="btn btn-ghost btn-xs text-error"
-                                                        >
-                                                            <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
-                                                            </svg>
-                                                        </button>
+                                                        <div class="flex items-center gap-0.5">
+                                                            <button
+                                                                @click.prevent="openAddSenderModal(sms_log)"
+                                                                class="btn btn-ghost btn-xs text-success"
+                                                                aria-label="Добавить отправителя в банк"
+                                                            >
+                                                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12 4.7 4.5L19 7"/>
+                                                                </svg>
+                                                            </button>
+                                                            <button
+                                                                @click.prevent="confirmAddSenderToStopLost(sms_log)"
+                                                                class="btn btn-ghost btn-xs text-error"
+                                                                aria-label="Добавить в стоп-лист"
+                                                            >
+                                                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                                                </svg>
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </template>
                                             </div>
@@ -321,15 +417,26 @@ defineOptions({ layout: AuthenticatedLayout })
                                                             {{ sms_log.sender }}
                                                         </div>
                                                         <div v-if="viewStore.isAdminViewMode && !sms_log.sender_exists">
-                                                            <button
-                                                                @click.prevent="confirmAddSenderToStopLost(sms_log)"
-                                                                class="btn btn-ghost btn-xs text-error"
-                                                                aria-label="Добавить в стоп-лист"
-                                                            >
-                                                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
-                                                                </svg>
-                                                            </button>
+                                                            <div class="flex items-center gap-0.5">
+                                                                <button
+                                                                    @click.prevent="openAddSenderModal(sms_log)"
+                                                                    class="btn btn-ghost btn-xs text-success"
+                                                                    aria-label="Добавить отправителя в банк"
+                                                                >
+                                                                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12 4.7 4.5L19 7"/>
+                                                                    </svg>
+                                                                </button>
+                                                                <button
+                                                                    @click.prevent="confirmAddSenderToStopLost(sms_log)"
+                                                                    class="btn btn-ghost btn-xs text-error"
+                                                                    aria-label="Добавить в стоп-лист"
+                                                                >
+                                                                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                                                    </svg>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div v-else class="text-nowrap text-xs opacity-70">
@@ -451,6 +558,111 @@ defineOptions({ layout: AuthenticatedLayout })
                 </template>
             </template>
         </MainTableSection>
+
+        <Modal :show="isAddSenderModalOpen" @close="closeAddSenderModal" maxWidth="md">
+            <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold">Добавить отправителя</h3>
+                        <p class="text-sm text-base-content/70">
+                            Отправитель: <span class="font-medium">{{ selectedSmsLog?.sender }}</span>
+                        </p>
+                    </div>
+                    <button class="btn btn-sm btn-ghost" @click="closeAddSenderModal" type="button">✕</button>
+                </div>
+
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text">Поиск банка</span>
+                    </label>
+                    <input
+                        v-model="gatewaySearch"
+                        type="text"
+                        class="input input-bordered w-full"
+                        placeholder="Введите название банка"
+                    >
+                </div>
+
+                <div
+                    class="mx-auto w-full h-52 shrink-0 overflow-y-auto overflow-x-hidden border border-base-300 rounded-box"
+                >
+                    <div v-if="filteredPaymentGateways.length === 0" class="flex h-full items-center justify-center p-4 text-sm text-base-content/70">
+                        Банки не найдены.
+                    </div>
+                    <button
+                        v-for="paymentGateway in filteredPaymentGateways"
+                        :key="paymentGateway.id"
+                        type="button"
+                        class="w-full border-b border-base-300 py-2.5 pl-2.5 pr-3 text-left transition last:border-b-0"
+                        :class="selectedPaymentGatewayId === paymentGateway.id
+                            ? 'border-l-[3px] border-l-base-content/20 bg-base-200/60'
+                            : 'border-l-[3px] border-l-transparent hover:bg-base-200/50'"
+                        @click="selectedPaymentGatewayId = paymentGateway.id; pendingConfirmGatewayId = null"
+                    >
+                        <div class="flex min-w-0 items-center gap-3">
+                            <img
+                                v-if="paymentGateway.logo_path"
+                                :src="paymentGateway.logo_path"
+                                class="size-8 shrink-0 rounded opacity-90"
+                                alt="Логотип банка"
+                            >
+                            <div
+                                class="min-w-0 truncate text-sm"
+                                :class="selectedPaymentGatewayId === paymentGateway.id ? 'font-medium text-base-content' : 'text-base-content/80'"
+                            >
+                                {{ paymentGateway.name }}
+                            </div>
+                        </div>
+                    </button>
+                </div>
+
+                <div
+                    v-if="selectedPaymentGateway"
+                    class="rounded-box border border-base-300/80 bg-base-200/30 p-3"
+                >
+                    <div class="text-xs font-medium text-base-content/55">
+                        Выбран банк
+                    </div>
+                    <div class="mt-1.5 flex min-w-0 items-center gap-3">
+                        <img
+                            v-if="selectedPaymentGateway.logo_path"
+                            :src="selectedPaymentGateway.logo_path"
+                            class="size-9 shrink-0 rounded-md opacity-95"
+                            alt=""
+                        >
+                        <div class="min-w-0 text-base font-semibold text-base-content">
+                            {{ selectedPaymentGateway.name }}
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="addSenderToGatewayForm.errors.payment_gateway_id" class="alert alert-error alert-soft text-sm">
+                    {{ addSenderToGatewayForm.errors.payment_gateway_id }}
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <button type="button" class="btn btn-sm" @click="closeAddSenderModal">Отмена</button>
+                    <button
+                        v-if="!isAddSenderConfirmStep"
+                        type="button"
+                        class="btn btn-sm btn-success"
+                        :disabled="!selectedPaymentGatewayId || addSenderToGatewayForm.processing"
+                        @click="requestSenderAddingConfirmation"
+                    >
+                        Добавить
+                    </button>
+                    <button
+                        v-if="isAddSenderConfirmStep"
+                        type="button"
+                        class="btn btn-sm btn-warning"
+                        :disabled="addSenderToGatewayForm.processing"
+                        @click="addSenderToPaymentGateway"
+                    >
+                        Вы уверены?
+                    </button>
+                </div>
+            </div>
+        </Modal>
 
         <ConfirmModal/>
     </div>

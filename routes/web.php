@@ -458,6 +458,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
         Route::get('/sms-logs', [App\Http\Controllers\Admin\SmsLogController::class, 'index'])->name('sms-logs.index');
         Route::post('/sender-stop-list/{smsLog}', [SenderStopListController::class, 'store'])->name('sender-stop-list.store');
+        Route::post('/sender-payment-gateway/{smsLog}', [SenderStopListController::class, 'attachToPaymentGateway'])->name('sender-payment-gateway.store');
         Route::delete('/sender-stop-list/{senderStopList}', [SenderStopListController::class, 'destroy'])->name('sender-stop-list.destroy');
         Route::post('/sms-stop-word', [SmsStopWordController::class, 'store'])->name('sms-stop-word.store');
         Route::delete('/sms-stop-word/{smsStopWord}', [SmsStopWordController::class, 'destroy'])->name('sms-stop-word.destroy');
