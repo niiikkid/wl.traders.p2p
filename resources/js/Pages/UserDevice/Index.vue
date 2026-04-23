@@ -111,7 +111,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
                     <div class="space-y-6">
                         <div class="card bg-base-100 shadow-md">
-                            <div class="card-body p-4 sm:p-6">
+                            <div class="card-bod yp-4 sm:p-6">
                                 <h3 class="card-title mb-1.5">Скачайте и установите APK</h3>
                                 <p class="text-base-content/70">
                                     Для получения СМС нужно приложение, которое доступно только для Android —
@@ -126,7 +126,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                     <h3 class="card-title">Режим обработки СМС</h3>
                                     <p class="text-sm text-base-content/70 mt-1">
                                         В автоматическом режиме СМС привязывается к найденной сделке и закрывает ее.
-                                        В полуавтоматическом режиме СМС также привязывается, но сделка остается открытой.
+                                        В полуавтоматическом режиме СМС также привязывается, но сделку вам нужно закрыть вручную.
                                     </p>
                                 </div>
 
