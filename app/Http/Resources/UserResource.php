@@ -29,8 +29,8 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'login' => $this->email, // логин совпадает с колонкой email
             'telegram_username' => $this->telegram_username,
-            'telegram_tag' => $this->telegram_username ? '@' . $this->telegram_username : null,
-            'telegram_url' => $this->telegram_username ? 'https://t.me/' . $this->telegram_username : null,
+            'telegram_tag' => $this->telegram_username ? '@'.$this->telegram_username : null,
+            'telegram_url' => $this->telegram_username ? 'https://t.me/'.$this->telegram_username : null,
             'avatar_uuid' => $this->avatar_uuid,
             'avatar_style' => $this->avatar_style,
             'apk_latest_ping_at' => $this->normalizeCachedDate(cache()->get("user-apk-latest-ping-at-$this->id")),
@@ -71,7 +71,7 @@ class UserResource extends JsonResource
             }),
             $this->mergeWhen($this->resource->relationLoaded('roles'), function () {
                 return [
-                    'role' => RoleResource::make($this->roles[0])->resolve()
+                    'role' => RoleResource::make($this->roles[0])->resolve(),
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('wallet'), function () {
@@ -82,9 +82,9 @@ class UserResource extends JsonResource
                 $wallet = $this->wallet;
                 if ($this->hasRole('Merchant')) {
                     $amount = $wallet->merchant_balance;
-                } else if ($this->hasRole('Trader')) {
+                } elseif ($this->hasRole('Trader')) {
                     $amount = $wallet->trust_balance;
-                } else if ($this->hasRole('Team Leader')) {
+                } elseif ($this->hasRole('Team Leader')) {
                     $amount = $wallet->teamleader_balance;
                 }
 
@@ -98,6 +98,7 @@ class UserResource extends JsonResource
                 ? app(TraderLeaderboardService::class)->getTraderWeeklyRank((int) $this->id)
                 : null,
             'can_work_without_device' => (bool) $this->can_work_without_device,
+            'sms_auto_close_orders_enabled' => (bool) $this->sms_auto_close_orders_enabled,
             'traffic_enabled_at' => $this->traffic_enabled_at?->toISOString(),
             'is_online' => $this->is_online,
             'is_vip' => $this->is_vip,
@@ -119,13 +120,13 @@ class UserResource extends JsonResource
             'payout_hold_minutes' => (int) ($this->payout_hold_minutes ?? 0),
             'payout_active_payouts_limit' => (int) ($this->payout_active_payouts_limit ?? 1),
             'can_be_impersonated' => $this->id !== auth()->user()?->id && $this->banned_at === null,
-            'has_2fa' => (bool)$this->google2fa_secret,
+            'has_2fa' => (bool) $this->google2fa_secret,
         ];
     }
 
     private function normalizeCachedDate(mixed $date): ?string
     {
-        if (!is_string($date) || $date === '') {
+        if (! is_string($date) || $date === '') {
             return null;
         }
 

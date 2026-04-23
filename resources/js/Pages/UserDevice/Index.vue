@@ -17,6 +17,10 @@ const form = useForm({
     name: '',
 });
 
+const smsProcessingModeForm = useForm({
+    sms_auto_close_orders_enabled: !!(usePage().props.auth?.user?.sms_auto_close_orders_enabled ?? true),
+});
+
 const submit = () => {
     form.post(route('trader.devices.store'), {
         preserveScroll: true,
@@ -24,7 +28,19 @@ const submit = () => {
     });
 };
 
-router.on('success', (event) => {
+const updateSmsProcessingMode = (isEnabled) => {
+    if (smsProcessingModeForm.processing) {
+        return;
+    }
+
+    smsProcessingModeForm.sms_auto_close_orders_enabled = !!isEnabled;
+    smsProcessingModeForm.patch(route('trader.devices.sms-processing-mode.update'), {
+        preserveScroll: true,
+        preserveState: true,
+    });
+};
+
+router.on('success', () => {
     devices.value = usePage().props.devices.data;
 })
 
@@ -92,65 +108,118 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
 
         <MainTableSection title="Устройства" :data="devices" :paginate="false">
             <template v-slot:header>
-                <div class="card bg-base-100 shadow-md mb-6">
-                    <div class="card-body p-4 sm:p-6">
-                        <h3 class="card-title mb-1.5">Скачайте и установите APK</h3>
-                        <p class="text-base-content/70">
-                            Для получения СМС нужно приложение, которое доступно только для Android —
-                            <a :href="route('app.download')" class="link link-primary">Скачать</a>
-                        </p>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
+                    <div class="space-y-6">
+                        <div class="card bg-base-100 shadow-md">
+                            <div class="card-body p-4 sm:p-6">
+                                <h3 class="card-title mb-1.5">Скачайте и установите APK</h3>
+                                <p class="text-base-content/70">
+                                    Для получения СМС нужно приложение, которое доступно только для Android —
+                                    <a :href="route('app.download')" class="link link-primary">Скачать</a>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow-md">
+                            <div class="card-body p-4 sm:p-6 gap-4">
+                                <div>
+                                    <h3 class="card-title">Режим обработки СМС</h3>
+                                    <p class="text-sm text-base-content/70 mt-1">
+                                        В автоматическом режиме СМС привязывается к найденной сделке и закрывает ее.
+                                        В полуавтоматическом режиме СМС также привязывается, но сделка остается открытой.
+                                    </p>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                    <label class="card bg-base-200 border border-base-300 cursor-pointer">
+                                        <div class="card-body p-3">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <div class="font-medium text-xs">Автоматический</div>
+                                                <input
+                                                    type="radio"
+                                                    name="sms-processing-mode"
+                                                    class="radio radio-xs radio-primary"
+                                                    :checked="smsProcessingModeForm.sms_auto_close_orders_enabled"
+                                                    :disabled="smsProcessingModeForm.processing"
+                                                    @change="updateSmsProcessingMode(true)"
+                                                >
+                                            </div>
+                                        </div>
+                                    </label>
+
+                                    <label class="card bg-base-200 border border-base-300 cursor-pointer">
+                                        <div class="card-body p-3">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <div class="font-medium text-xs">Полуавтоматический</div>
+                                                <input
+                                                    type="radio"
+                                                    name="sms-processing-mode"
+                                                    class="radio radio-xs radio-primary"
+                                                    :checked="!smsProcessingModeForm.sms_auto_close_orders_enabled"
+                                                    :disabled="smsProcessingModeForm.processing"
+                                                    @change="updateSmsProcessingMode(false)"
+                                                >
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="card bg-base-100 shadow-md">
-                    <div class="card-body p-4 sm:p-6">
-                    <section>
-                        <header>
-                            <h2 class="card-title">
-                                Создать новый токен для устройства
-                            </h2>
 
-                            <p class="mt-1 text-sm text-base-content/70">
-                                Создайте новый токен для подключения устройства. Один токен может быть использован только для одного устройства.
-                            </p>
-                        </header>
+                    <div class="card bg-base-100 shadow-md">
+                        <div class="card-body p-4 sm:p-6">
+                            <section>
+                                <header>
+                                    <h2 class="card-title">
+                                        Создать новый токен для устройства
+                                    </h2>
 
-                        <form @submit.prevent="submit" class="mt-6 space-y-6">
-                            <div class="form-control">
-                                <InputLabel for="name" value="Название устройства" class="label">
-                                    <span class="label-text">Название устройства</span>
-                                </InputLabel>
+                                    <p class="mt-1 text-sm text-base-content/70">
+                                        Создайте новый токен для подключения устройства. Один токен может быть использован только для одного устройства.
+                                    </p>
+                                </header>
 
-                                <TextInput
-                                    id="name"
-                                    type="text"
-                                    class="input input-bordered w-full"
-                                    v-model="form.name"
-                                    required
-                                    autofocus
-                                    placeholder="Например: Samsung Galaxy S21"
-                                />
+                                <form @submit.prevent="submit" class="mt-6 space-y-6">
+                                    <div class="form-control">
+                                        <InputLabel for="name" value="Название устройства" class="label">
+                                            <span class="label-text">Название устройства</span>
+                                        </InputLabel>
 
-                                <InputError class="mt-2 text-error" :message="form.errors.name" />
-                            </div>
+                                        <TextInput
+                                            id="name"
+                                            type="text"
+                                            class="input input-bordered w-full"
+                                            v-model="form.name"
+                                            required
+                                            autofocus
+                                            placeholder="Например: Samsung Galaxy S21"
+                                        />
 
-                            <div class="sm:flex items-center gap-4 space-y-2 sm:space-y-0">
-                                <PrimaryButton class="btn btn-primary" :disabled="form.processing">
-                                    Создать токен
-                                </PrimaryButton>
-
-                                <Transition
-                                    enter-active-class="transition ease-in-out"
-                                    enter-from-class="opacity-0"
-                                    leave-active-class="transition ease-in-out"
-                                    leave-to-class="opacity-0"
-                                >
-                                    <div v-if="form.recentlySuccessful" class="alert alert-success py-2 px-3 text-sm">
-                                        <span>Токен создан.</span>
+                                        <InputError class="mt-2 text-error" :message="form.errors.name" />
                                     </div>
-                                </Transition>
-                            </div>
-                        </form>
-                    </section>
+
+                                    <div class="sm:flex items-center gap-4 space-y-2 sm:space-y-0">
+                                        <PrimaryButton class="btn btn-primary" :disabled="form.processing">
+                                            Создать токен
+                                        </PrimaryButton>
+
+                                        <Transition
+                                            enter-active-class="transition ease-in-out"
+                                            enter-from-class="opacity-0"
+                                            leave-active-class="transition ease-in-out"
+                                            leave-to-class="opacity-0"
+                                        >
+                                            <div v-if="form.recentlySuccessful" class="alert alert-success py-2 px-3 text-sm">
+                                                <span>Токен создан.</span>
+                                            </div>
+                                        </Transition>
+                                    </div>
+                                </form>
+                            </section>
+                        </div>
                     </div>
                 </div>
             </template>

@@ -209,6 +209,8 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         // Маршруты для управления устройствами
         Route::get('/trader/devices', [UserDeviceController::class, 'index'])->name('trader.devices.index');
         Route::post('/trader/devices', [UserDeviceController::class, 'store'])->name('trader.devices.store');
+        Route::patch('/trader/devices/sms-processing-mode', [UserDeviceController::class, 'updateSmsProcessingMode'])
+            ->name('trader.devices.sms-processing-mode.update');
         Route::get('/trader/devices/{device}/pings', [UserDevicePingController::class, 'index'])->name('trader.devices.pings');
 
         Route::post('/payment-details/{paymentDetail}/archive', [PaymentDetailArchiveController::class, 'store'])->name('payment-details.archive');

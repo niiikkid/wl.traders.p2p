@@ -42,4 +42,19 @@ class UserDeviceController extends Controller
 
         return redirect()->route('trader.devices.index')->with('success', 'Токен для устройства успешно создан');
     }
+
+    public function updateSmsProcessingMode(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'sms_auto_close_orders_enabled' => ['required', 'boolean'],
+        ]);
+
+        Auth::user()->update([
+            'sms_auto_close_orders_enabled' => (bool) $validated['sms_auto_close_orders_enabled'],
+        ]);
+
+        return redirect()
+            ->route('trader.devices.index')
+            ->with('success', 'Режим обработки SMS успешно обновлен');
+    }
 }

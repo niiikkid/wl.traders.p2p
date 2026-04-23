@@ -42,14 +42,15 @@ use Spatie\Permission\Traits\HasRoles;
  * @property UserMeta $meta
  * @property TelegramAccount|null $telegramAccount
  * @property User $merchant
- * @property boolean $is_online
- * @property boolean $is_vip
+ * @property bool $is_online
+ * @property bool $is_vip
  * @property Carbon|null $temp_vip_active_until
  * @property bool $temp_vip_can_activate
  * @property Carbon|null $temp_vip_progress_start_at
- * @property boolean $stop_traffic
+ * @property bool $stop_traffic
  * @property bool $hide_name_in_trader_top
- * @property boolean $can_work_without_device
+ * @property bool $can_work_without_device
+ * @property bool $sms_auto_close_orders_enabled
  * @property bool $payouts_enabled
  * @property bool $payout_hold_enabled
  * @property int $payout_hold_minutes
@@ -85,7 +86,7 @@ use Spatie\Permission\Traits\HasRoles;
 #[ObservedBy([UserObserver::class])]
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, HasRoles, Impersonate;
+    use HasFactory, HasRoles, Impersonate, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -108,6 +109,7 @@ class User extends Authenticatable
         'stop_traffic',
         'hide_name_in_trader_top',
         'can_work_without_device',
+        'sms_auto_close_orders_enabled',
         'payouts_enabled',
         'payout_hold_enabled',
         'payout_hold_minutes',
@@ -168,6 +170,7 @@ class User extends Authenticatable
             'temp_vip_progress_start_at' => 'datetime',
             'temp_vip_can_activate' => 'boolean',
             'can_work_without_device' => 'boolean',
+            'sms_auto_close_orders_enabled' => 'boolean',
             'payouts_enabled' => 'boolean',
             'payout_hold_enabled' => 'boolean',
             'payout_active_payouts_limit' => 'integer',
@@ -191,8 +194,8 @@ class User extends Authenticatable
     protected function google2faSecret(): Attribute
     {
         return new Attribute(
-            get: fn ($value) =>  $value ? decrypt($value) : null,
-            set: fn ($value) =>  $value ? encrypt($value) : null,
+            get: fn ($value) => $value ? decrypt($value) : null,
+            set: fn ($value) => $value ? encrypt($value) : null,
         );
     }
 
@@ -203,7 +206,7 @@ class User extends Authenticatable
 
     public function canBeImpersonated()
     {
-        return !$this->hasRole('Super Admin');
+        return ! $this->hasRole('Super Admin');
     }
 
     public function paymentDetails(): HasMany

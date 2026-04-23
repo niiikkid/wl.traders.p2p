@@ -23,7 +23,7 @@ class SmsService implements SmsServiceContract
         $sender = $this->normalizeMessage($sms->sender);
 
         $device = cache()->remember(
-            'user_device_' . $sms->deviceID,
+            'user_device_'.$sms->deviceID,
             now()->addMinutes(10),
             function () use ($sms) {
                 return UserDevice::where('id', $sms->deviceID)->with('user')->first();
@@ -33,16 +33,15 @@ class SmsService implements SmsServiceContract
 
         $smsLog = $this->logSms($sms, $device, $user);
 
-        $result = (new Parser())->parse($sender, $sms->message);
+        $result = (new Parser)->parse($sender, $sms->message);
 
         if (empty($result)) {
             return;
         }
 
         /**
-         * @var Order|NULL $order
+         * @var Order|null $order
          */
-
         $order = queries()
             ->order()
             ->findPending($result->amount, $user, $result->paymentGateway, $device);
@@ -51,12 +50,16 @@ class SmsService implements SmsServiceContract
             return;
         }
 
-        if ($order && $order->status->equals(OrderStatus::PENDING)) {
-            services()->order()->finishOrderAsSuccessful($order->id, OrderSubStatus::SUCCESSFULLY_PAID);
+        $smsLog->update([
+            'order_id' => $order->id,
+        ]);
 
-            $smsLog->update([
-                'order_id' => $order->id,
-            ]);
+        if (! $user->sms_auto_close_orders_enabled) {
+            return;
+        }
+
+        if ($order->status->equals(OrderStatus::PENDING)) {
+            services()->order()->finishOrderAsSuccessful($order->id, OrderSubStatus::SUCCESSFULLY_PAID);
         }
     }
 
@@ -65,7 +68,7 @@ class SmsService implements SmsServiceContract
         return SmsLog::create([
             'sender' => $this->normalizeMessage($sms->sender),
             'message' => $this->normalizeMessage($sms->message),
-            'parsing_result' => (new Parser())->parseRaw($sms->message, $sms->sender),
+            'parsing_result' => (new Parser)->parseRaw($sms->message, $sms->sender),
             'timestamp' => $sms->timestamp / 1000,
             'type' => $sms->type,
             'user_device_id' => $device->id,
