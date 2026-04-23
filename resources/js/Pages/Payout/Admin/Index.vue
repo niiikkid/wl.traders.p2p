@@ -7,6 +7,7 @@ import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
 import DateFilter from '@/Components/Filters/Pertials/DateFilter.vue';
 import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
 import DropdownFilter from '@/Components/Filters/Pertials/DropdownFilter.vue';
+import SearchableDropdownFilter from '@/Components/Filters/Pertials/SearchableDropdownFilter.vue';
 import RefreshTableData from '@/Components/Table/RefreshTableData.vue';
 import GatewayLogo from '@/Components/GatewayLogo.vue';
 import BankManualIcon from '@/Components/BankManualIcon.vue';
@@ -305,7 +306,14 @@ defineOptions({ layout: AuthenticatedLayout });
                         <InputFilter name="uuid" placeholder="UUID" />
                         <InputFilter name="externalID" placeholder="External ID" />
                         <InputFilter name="paymentDetail" placeholder="Реквизит" />
-                        <InputFilter name="merchant" placeholder="Мерчант" />
+                        <SearchableDropdownFilter
+                            name="merchantIds"
+                            title="Мерчанты"
+                            placeholder="Поиск магазина мерчанта..."
+                            route-name="admin.main.filter-options"
+                            request-type="merchant"
+                            request-mode="payouts"
+                        />
                         <InputFilter name="user" placeholder="Трейдер" />
                         <DropdownFilter name="payoutStatuses" title="Статусы" />
                         <DropdownFilter name="payoutMethodTypes" title="Типы реквизитов" />
