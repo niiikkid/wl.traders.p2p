@@ -1,7 +1,6 @@
 <script setup>
-import {Head, router, useForm} from '@inertiajs/vue3';
+import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { usePage } from '@inertiajs/vue3';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -18,13 +17,15 @@ import {useTableFiltersStore} from "@/store/tableFilters.js";
 
 const modalStore = useModalStore();
 const viewStore = useViewStore();
-const smsLogs = usePage().props.smsLogs;
+const page = usePage();
+/** Реактивные пропсы страницы — после POST/редиректа таблица обновляется (как Order/Index, PaymentDetail). */
+const smsLogs = computed(() => page.props.smsLogs);
+const smsLogsTotalCount = computed(() => page.props.smsLogsTotalCount);
+const senderStopList = computed(() => page.props.senderStopList);
+const smsStopWords = computed(() => page.props.smsStopWords);
+const paymentGateways = computed(() => page.props.paymentGateways ?? []);
+const recentPaymentGateways = computed(() => page.props.recentPaymentGateways ?? []);
 const expandedCards = ref({});
-const smsLogsTotalCount = usePage().props.smsLogsTotalCount;
-const senderStopList = usePage().props.senderStopList;
-const smsStopWords = usePage().props.smsStopWords;
-const paymentGateways = usePage().props.paymentGateways ?? [];
-const recentPaymentGateways = usePage().props.recentPaymentGateways ?? [];
 const currentTab = ref('logs');
 const newStopWord = ref('');
 const tableFiltersStore = useTableFiltersStore();
@@ -81,10 +82,10 @@ const closeAddSenderModal = () => {
 const filteredPaymentGateways = computed(() => {
     const query = gatewaySearch.value.trim().toLowerCase();
     if (!query) {
-        return recentPaymentGateways;
+        return recentPaymentGateways.value;
     }
 
-    return paymentGateways.filter((paymentGateway) => {
+    return paymentGateways.value.filter((paymentGateway) => {
         return paymentGateway.name.toLowerCase().includes(query);
     });
 });
@@ -94,7 +95,7 @@ const selectedPaymentGateway = computed(() => {
         return null;
     }
 
-    return paymentGateways.find((paymentGateway) => paymentGateway.id === selectedPaymentGatewayId.value) ?? null;
+    return paymentGateways.value.find((paymentGateway) => paymentGateway.id === selectedPaymentGatewayId.value) ?? null;
 });
 
 /** Шаг подтверждения только после «Добавить», не при пустом выборе (null === null давало ложное совпадение). */
@@ -124,8 +125,9 @@ const addSenderToPaymentGateway = () => {
         preserveScroll: true,
         onSuccess: () => {
             closeAddSenderModal();
-            router.visit(route('admin.sms-logs.index'), {
-                data: tableFiltersStore.getQueryData,
+            router.reload({
+                preserveScroll: true,
+                only: ['smsLogs', 'smsLogsTotalCount', 'filters', 'paymentGateways', 'recentPaymentGateways'],
             });
         },
     });
@@ -193,7 +195,7 @@ defineOptions({ layout: AuthenticatedLayout })
 <template>
     <div>
         <Head title="Сообщения" />
-11213
+
         <MainTableSection
             title="Сообщения"
             :data="smsLogs"

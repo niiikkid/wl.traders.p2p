@@ -7,6 +7,7 @@ use App\Models\PaymentGateway;
 use App\Models\SenderStopList;
 use App\Models\SmsLog;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class SenderStopListController extends Controller
 {
@@ -34,9 +35,9 @@ class SenderStopListController extends Controller
         $sender = trim((string) $smsLog->sender);
 
         if ($sender === '') {
-            return response()->json([
-                'message' => 'Невозможно добавить пустого отправителя.',
-            ], 422);
+            throw ValidationException::withMessages([
+                'sender' => ['Невозможно добавить пустого отправителя.'],
+            ]);
         }
 
         $smsSenders = collect($paymentGateway->sms_senders ?? [])
@@ -52,8 +53,6 @@ class SenderStopListController extends Controller
             'sms_senders' => $smsSenders->all(),
         ]);
 
-        return response()->json([
-            'success' => true,
-        ]);
+        return back();
     }
 }
