@@ -1,12 +1,6 @@
 ---
 description: Правила для фронтенда (Vue 3 / InertiaJS / DaisyUI)
-globs:
-  - "resources/js/**/*.{vue,js,ts}"
-  - "resources/css/**/*.css"
-  - "vite.config.js"
-  - "package.json"
-  - "postcss.config.js"
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Правила для фронтенда (Vue 3 / InertiaJS / DaisyUI)
