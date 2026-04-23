@@ -41,7 +41,18 @@
 
         <!-- Scripts -->
         @routes
-        @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+        <!-- добавил это, чтобы локально HERD локально шеррил, ссылку нормально, публичую -->
+        @if (app()->isLocal())
+            {{ Vite::useHotFile(storage_path('vite.hot'))->withEntryPoints([
+
+                'resources/js/app.js',
+
+                "resources/js/Pages/{$page['component']}.vue",
+
+            ]) }}
+        @else
+            @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+        @endif
         @inertiaHead
     </head>
     <body class="font-sans antialiased">
