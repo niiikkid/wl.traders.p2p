@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\MerchantResendCallbackController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\PriceParserController;
 use App\Http\Controllers\Admin\ProfitCalculatorController;
@@ -41,7 +42,6 @@ use App\Http\Controllers\Merchant\Support\SupportController;
 use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\ModalController;
 use App\Http\Controllers\NewsController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationRuleController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
@@ -71,6 +71,7 @@ use App\Http\Controllers\Trader\DepositInvoiceController;
 use App\Http\Controllers\Trader\EconomyController;
 use App\Http\Controllers\Trader\ExportController;
 use App\Http\Controllers\Trader\FeedbackController;
+use App\Http\Controllers\Trader\NotificationController as TraderNotificationController;
 use App\Http\Controllers\Trader\PayoutController;
 use App\Http\Controllers\Trader\TempVipController;
 use App\Http\Controllers\Trader\TraderLeaderboardController;
@@ -116,8 +117,10 @@ Route::post('/telegram/webhook', TelegramWebhookController::class)
 
 // Выход из режима Impersonate
 Route::post('/impersonate/leave', function () {
-    if (auth()->user()->isImpersonated()) {
-        auth()->user()->leaveImpersonation();
+    $currentUser = request()->user();
+
+    if ($currentUser?->isImpersonated()) {
+        $currentUser->leaveImpersonation();
 
         return redirect()->route('admin.users.index');
     }
@@ -147,11 +150,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Merchant|Super Admin']], function () {
-        Route::get('/notifications/ping', [NotificationController::class, 'ping'])->name('notifications.ping');
-        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
-        Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
-        Route::patch('/notifications/{notification}/unread', [NotificationController::class, 'markUnread'])->name('notifications.unread');
-        Route::patch('/notifications/sound-settings', [NotificationController::class, 'updateSoundSettings'])->name('notifications.sound.update');
         Route::post('/notifications/rules', [NotificationRuleController::class, 'store'])->name('notifications.rules.store');
         Route::patch('/notifications/rules/{notificationRule}', [NotificationRuleController::class, 'update'])->name('notifications.rules.update');
         Route::delete('/notifications/rules/{notificationRule}', [NotificationRuleController::class, 'destroy'])->name('notifications.rules.destroy');
@@ -199,7 +197,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
             ->whereNumber('day')
             ->name('trader.economy.days.update');
 
-        Route::get('/notifications', [App\Http\Controllers\Trader\NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications', [TraderNotificationController::class, 'index'])->name('notifications.index');
 
         // payouts
         Route::get('/trader/payouts', [PayoutController::class, 'index'])->name('trader.payouts.index');
@@ -392,7 +390,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/feedbacks/{feedback}/favorite', [FeedbackController::class, 'toggleFavorite'])->name('feedback.favorite');
         Route::patch('/feedbacks/{feedback}/hidden', [FeedbackController::class, 'toggleHidden'])->name('feedback.hidden');
 
-        Route::get('/notifications', [App\Http\Controllers\Admin\NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
 
         Route::get('/app', [App\Http\Controllers\Admin\ApkController::class, 'index'])->name('app.index');
         Route::post('/app', [App\Http\Controllers\Admin\ApkController::class, 'store'])->name('app.store');
@@ -504,8 +502,10 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
         // Вход под другим пользователем
         Route::post('/impersonate/{user}', function (User $user) {
-            if (auth()->user()->canImpersonate()) {
-                auth()->user()->impersonate($user);
+            $currentUser = request()->user();
+
+            if ($currentUser?->canImpersonate()) {
+                $currentUser->impersonate($user);
 
                 if ($user->google2fa_secret) {
                     session()->put('user_2fa_passed', true);

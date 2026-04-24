@@ -6,7 +6,6 @@ use App\Enums\DisputeStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
 use App\Enums\MarketEnum;
-use App\Enums\NotificationChannel;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
 use App\Http\Resources\UserResource;
@@ -14,7 +13,6 @@ use App\Http\Resources\WalletResource;
 use App\Models\Dispute;
 use App\Models\Invoice;
 use App\Models\NewsPost;
-use App\Models\Notification;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\Payout\Payout;
@@ -25,6 +23,7 @@ use App\Services\PaymentDetail\PaymentDetailEnabledPeriodService;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use App\Services\Wallet\Values\WalletStatsValue;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -51,9 +50,12 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        /** @var User|null $authUser */
+        $authUser = $request->user();
+
         // Save latest frontend ping time for authenticated user (Inertia request)
-        if (auth()->check()) {
-            $user = auth()->user();
+        if ($authUser instanceof User) {
+            $user = $authUser;
             $userId = $user->id;
             $now = now();
             cache()->put("user-online-at-{$userId}", $now->toISOString());
@@ -101,6 +103,7 @@ class HandleInertiaRequests extends Middleware
                     // Desired order: uah, rub, kzt, usd, eur
                     $order = ['uah', 'rub', 'kzt', 'usd', 'eur'];
                     $idx = array_search($currency['code'], $order);
+
                     return $idx !== false ? $idx : count($order);
                 })
 
@@ -114,7 +117,7 @@ class HandleInertiaRequests extends Middleware
         $disputeQuery = Dispute::query()
             ->where('status', DisputeStatus::PENDING);
 
-        $userId = auth()->id();
+        $userId = Auth::id();
         $userRole = isRouteFor('Merchant') ? 'merchant' : (isRouteFor('Trader') ? 'trader' : (isRouteFor('Super Admin') ? 'admin' : 'guest'));
 
         $pendingOrdersCount = cache()->remember("pending_orders_{$userRole}_{$userId}", 15, function () use ($orderQuery, $userRole, $userId) {
@@ -170,13 +173,10 @@ class HandleInertiaRequests extends Middleware
         $onlineUsers = 0;
         $activeDetails = 0;
         $pendingWithdrawals = 0;
-        $notificationsUnreadCount = 0;
         $newsUnreadCount = 0;
-        $notificationsSoundEnabled = true;
-        $notificationsSoundTrack = 'radwimps.mp3';
 
-        if (auth()->check()) {
-            $userId = auth()->id();
+        if ($authUser instanceof User) {
+            $userId = $authUser->id;
 
             if (isRouteFor('Super Admin')) {
                 $onlineUsers = cache()->remember('online_users', 15, function () {
@@ -238,19 +238,14 @@ class HandleInertiaRequests extends Middleware
                 });
             }
 
-            $notificationsUnreadCount = cache()->remember("notifications_unread_{$userId}", 15, function () use ($userId) {
-                return Notification::query()
-                    ->where('user_id', $userId)
-                    ->where('channel', NotificationChannel::IN_APP)
-                    ->whereNull('read_at')
-                    ->count();
-            });
-
             $newsUnreadCount = cache()->remember("news_unread_{$userId}", 15, function () use ($userId) {
                 $lastReadAt = UserMeta::query()
                     ->where('user_id', $userId)
                     ->value('news_last_read_at');
-                $user = auth()->user();
+                $user = User::query()->find($userId);
+                if (! $user) {
+                    return 0;
+                }
                 $roleNames = $user->roles()->pluck('name')->values()->all();
 
                 $query = NewsPost::query()
@@ -264,11 +259,6 @@ class HandleInertiaRequests extends Middleware
 
                 return $query->count();
             });
-
-            /** @var UserMeta|null $userMeta */
-            $userMeta = auth()->user()->meta;
-            $notificationsSoundEnabled = $userMeta?->notification_sound_enabled ?? true;
-            $notificationsSoundTrack = $userMeta?->notification_sound_track ?: 'radwimps.mp3';
         }
 
         $menu = [
@@ -277,15 +267,14 @@ class HandleInertiaRequests extends Middleware
             'onlineUsers' => (int) $onlineUsers,
             'activeDetails' => (int) $activeDetails,
             'pendingWithdrawals' => (int) $pendingWithdrawals,
-            'notificationsUnreadCount' => (int) $notificationsUnreadCount,
             'newsUnreadCount' => (int) $newsUnreadCount,
             'payoutsActiveCount' => (int) $payoutsActiveCount,
         ];
 
         $sharedWalletStats = null;
-        if (auth()->check() && (isRouteFor('Trader') || isRouteFor('Merchant'))) {
+        if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant'))) {
             /** @var WalletStatsValue $walletStatsValue */
-            $walletStatsValue = services()->wallet()->getWalletStats($request->user()->wallet);
+            $walletStatsValue = services()->wallet()->getWalletStats($authUser->wallet);
             $sharedWalletStats = $walletStatsValue->toArray();
         }
 
@@ -316,10 +305,6 @@ class HandleInertiaRequests extends Middleware
                 'wallet' => fn () => $request->user() ? WalletResource::make($request->user()->wallet)->resolve() : null,
                 'wallet_stats' => fn () => $sharedWalletStats,
                 'hasPendingDisputes' => fn () => $request->user()?->hasRole('Trader') ? $menu['pendingDisputesCount'] > 0 : 0,
-            ],
-            'notificationsSound' => [
-                'enabled' => (bool) $notificationsSoundEnabled,
-                'track' => (string) $notificationsSoundTrack,
             ],
             'menu' => $menu,
         ];

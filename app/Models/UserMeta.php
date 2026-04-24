@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,9 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property array $allowed_markets
  * @property array $allowed_categories
- * @property bool $notification_sound_enabled
- * @property string|null $notification_sound_track
- * @property \Carbon\Carbon|null $news_last_read_at
+ * @property Carbon|null $news_last_read_at
  * @property bool $manual_control_acq_new_offer_sound_enabled
  * @property string|null $manual_control_acq_new_offer_sound_track
  * @property bool $manual_control_acq_confirm_code_sound_enabled
@@ -27,8 +26,6 @@ class UserMeta extends Model
     protected $fillable = [
         'allowed_markets',
         'allowed_categories',
-        'notification_sound_enabled',
-        'notification_sound_track',
         'news_last_read_at',
         'manual_control_acq_new_offer_sound_enabled',
         'manual_control_acq_new_offer_sound_track',
@@ -39,7 +36,6 @@ class UserMeta extends Model
     protected $casts = [
         'allowed_markets' => 'array',
         'allowed_categories' => 'array',
-        'notification_sound_enabled' => 'boolean',
         'news_last_read_at' => 'datetime',
         'manual_control_acq_new_offer_sound_enabled' => 'boolean',
         'manual_control_acq_confirm_code_sound_enabled' => 'boolean',

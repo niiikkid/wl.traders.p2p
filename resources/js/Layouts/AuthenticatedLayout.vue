@@ -1,6 +1,6 @@
 <script setup>
-import {usePage, router, Link, useForm} from '@inertiajs/vue3';
-import {computed, onMounted, onUnmounted, ref} from 'vue'
+import {usePage, router, useForm} from '@inertiajs/vue3';
+import {computed, onMounted, ref} from 'vue'
 import ViewModeSwitcher from "@/Layouts/Partials/ViewModeSwitcher.vue";
 import TraderMenu from "@/Layouts/Partials/TraderMenu.vue";
 import AdminMenu from "@/Layouts/Partials/AdminMenu.vue";
@@ -8,244 +8,17 @@ import NavBar from "@/Layouts/Partials/NavBar.vue";
 import MerchantMenu from "@/Layouts/Partials/MerchantMenu.vue";
 import MerchantSupportMenu from "@/Layouts/Partials/MerchantSupportMenu.vue";
 import {useViewStore} from "@/store/view.js";
-import {useUserStore} from "@/store/user.js";
 import TeamLeaderMenu from "@/Layouts/Partials/TeamLeaderMenu.vue";
 import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
 import AnalystMenu from "@/Layouts/Partials/AnalystMenu.vue";
 import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
-import ThemeMarquee from "@/Components/ThemeMarquee.vue";
-import {useNotificationCenterStore} from "@/store/notificationCenter.js";
-import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 
 const viewStore = useViewStore();
-const userStore = useUserStore();
-const notificationCenterStore = useNotificationCenterStore();
 
 const rates = ref(usePage().props.data.rates);
 const role = usePage().props.auth.role;
 const showAllRates = ref(false);
 const isImpersonated = ref(usePage().props.auth.is_impersonated);
-const notificationPollInterval = ref(null);
-const isNotificationPollingRequestRunning = ref(false);
-const notificationLeaderHeartbeatInterval = ref(null);
-const notificationSoundLastPlayedAt = ref(0);
-const NOTIFICATION_SOUND_LEADER_TTL_MS = 8000;
-const NOTIFICATION_SOUND_LEADER_HEARTBEAT_MS = 3000;
-const NOTIFICATION_SOUND_COOLDOWN_MS = 2000;
-const notificationTabId = typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-const syncNotificationCenterFromProps = () => {
-    notificationCenterStore.syncFromPageProps(usePage().props);
-};
-
-const canPollNotifications = computed(() => {
-    return ['Trader', 'Super Admin'].includes(usePage().props.auth?.role?.name);
-});
-
-const getNotificationSoundLeaderStorageKey = () => {
-    const userId = usePage().props.auth?.user?.id ?? 'guest';
-    return `notifications:sound:leader:${userId}`;
-};
-
-const readNotificationSoundLeader = () => {
-    try {
-        const rawValue = window.localStorage.getItem(getNotificationSoundLeaderStorageKey());
-
-        if (!rawValue) {
-            return null;
-        }
-
-        const parsedValue = JSON.parse(rawValue);
-        if (!parsedValue?.tabId || !parsedValue?.updatedAt) {
-            return null;
-        }
-
-        return parsedValue;
-    } catch (error) {
-        return null;
-    }
-};
-
-const writeNotificationSoundLeader = () => {
-    try {
-        window.localStorage.setItem(
-            getNotificationSoundLeaderStorageKey(),
-            JSON.stringify({
-                tabId: notificationTabId,
-                updatedAt: Date.now(),
-            })
-        );
-    } catch (error) {
-        // ignored
-    }
-};
-
-const removeNotificationSoundLeaderIfOwned = () => {
-    try {
-        const currentLeader = readNotificationSoundLeader();
-        if (currentLeader?.tabId === notificationTabId) {
-            window.localStorage.removeItem(getNotificationSoundLeaderStorageKey());
-        }
-    } catch (error) {
-        // ignored
-    }
-};
-
-const isNotificationSoundLeaderAlive = (leaderData) => {
-    if (!leaderData?.updatedAt) {
-        return false;
-    }
-
-    return Date.now() - Number(leaderData.updatedAt) < NOTIFICATION_SOUND_LEADER_TTL_MS;
-};
-
-const isCurrentTabNotificationSoundLeader = () => {
-    const currentLeader = readNotificationSoundLeader();
-    return currentLeader?.tabId === notificationTabId;
-};
-
-const tryAcquireNotificationSoundLeader = ({force = false} = {}) => {
-    if (!canPollNotifications.value) {
-        return false;
-    }
-
-    const currentLeader = readNotificationSoundLeader();
-    const shouldAcquire = force
-        || !isNotificationSoundLeaderAlive(currentLeader)
-        || currentLeader?.tabId === notificationTabId;
-
-    if (!shouldAcquire) {
-        return false;
-    }
-
-    writeNotificationSoundLeader();
-
-    return true;
-};
-
-const startNotificationSoundLeaderHeartbeat = () => {
-    stopNotificationSoundLeaderHeartbeat();
-
-    if (!canPollNotifications.value) {
-        return;
-    }
-
-    tryAcquireNotificationSoundLeader();
-
-    notificationLeaderHeartbeatInterval.value = setInterval(() => {
-        if (isCurrentTabNotificationSoundLeader()) {
-            writeNotificationSoundLeader();
-            return;
-        }
-
-        tryAcquireNotificationSoundLeader();
-    }, NOTIFICATION_SOUND_LEADER_HEARTBEAT_MS);
-};
-
-const stopNotificationSoundLeaderHeartbeat = () => {
-    if (notificationLeaderHeartbeatInterval.value) {
-        clearInterval(notificationLeaderHeartbeatInterval.value);
-        notificationLeaderHeartbeatInterval.value = null;
-    }
-};
-
-const canPlayNotificationSound = () => {
-    if (!notificationCenterStore.soundEnabled || !notificationCenterStore.soundTrack) {
-        return false;
-    }
-
-    if (document.visibilityState !== 'visible') {
-        return false;
-    }
-
-    if (!isCurrentTabNotificationSoundLeader()) {
-        return false;
-    }
-
-    return Date.now() - notificationSoundLastPlayedAt.value >= NOTIFICATION_SOUND_COOLDOWN_MS;
-};
-
-const playNotificationSound = () => {
-    if (!canPlayNotificationSound()) {
-        return;
-    }
-
-    playNotificationAudio(`/audio/${notificationCenterStore.soundTrack}`, {interrupt: false});
-    notificationSoundLastPlayedAt.value = Date.now();
-};
-
-const pollNotifications = async () => {
-    if (!canPollNotifications.value || isNotificationPollingRequestRunning.value) {
-        return;
-    }
-
-    isNotificationPollingRequestRunning.value = true;
-
-    try {
-        const previousLatestNotificationId = notificationCenterStore.latestNotificationId;
-        const response = await window.axios.get(route('notifications.ping'));
-
-        const nextLatestNotificationId = response?.data?.latest_notification_id ?? null;
-        const nextUnreadCount = response?.data?.unread_count ?? 0;
-
-        notificationCenterStore.setUnreadCount(nextUnreadCount);
-        notificationCenterStore.setLatestNotificationId(nextLatestNotificationId);
-
-        const hasNewNotification = previousLatestNotificationId !== null
-            && nextLatestNotificationId !== null
-            && Number(nextLatestNotificationId) > Number(previousLatestNotificationId);
-
-        if (hasNewNotification) {
-            playNotificationSound();
-            window.dispatchEvent(new CustomEvent('notifications:received'));
-        }
-    } catch (error) {
-        // ignored
-    } finally {
-        isNotificationPollingRequestRunning.value = false;
-    }
-};
-
-const startNotificationsPolling = () => {
-    stopNotificationsPolling();
-
-    if (!canPollNotifications.value) {
-        return;
-    }
-
-    startNotificationSoundLeaderHeartbeat();
-    pollNotifications();
-    notificationPollInterval.value = setInterval(pollNotifications, 5000);
-};
-
-const stopNotificationsPolling = () => {
-    if (notificationPollInterval.value) {
-        clearInterval(notificationPollInterval.value);
-        notificationPollInterval.value = null;
-    }
-
-    stopNotificationSoundLeaderHeartbeat();
-};
-
-const handleNotificationVisibilityChange = () => {
-    if (!canPollNotifications.value) {
-        return;
-    }
-
-    if (document.visibilityState === 'visible') {
-        // Активная вкладка получает приоритет на воспроизведение звука.
-        tryAcquireNotificationSoundLeader({force: true});
-        return;
-    }
-
-    removeNotificationSoundLeaderIfOwned();
-};
-
-const handleNotificationBeforeUnload = () => {
-    removeNotificationSoundLeaderIfOwned();
-};
 
 const roleToMode = (roleName) => {
     if (roleName === 'Super Admin') {
@@ -362,11 +135,6 @@ const applyViewMode = () => {
 // initialize components based on data attribute selectors
 onMounted(() => {
     applyViewMode();
-
-    syncNotificationCenterFromProps();
-    startNotificationsPolling();
-    window.addEventListener('visibilitychange', handleNotificationVisibilityChange);
-    window.addEventListener('beforeunload', handleNotificationBeforeUnload);
 })
 
 const getMobileDrawer = () => document.getElementById('mobile-drawer');
@@ -389,17 +157,8 @@ router.on('success', (event) => {
     applyViewMode();
     rates.value = usePage().props.data.rates;
     isImpersonated.value = usePage().props.auth.is_impersonated;
-    syncNotificationCenterFromProps();
-    startNotificationsPolling();
     closeMobileDrawer();
 })
-
-onUnmounted(() => {
-    stopNotificationsPolling();
-    window.removeEventListener('visibilitychange', handleNotificationVisibilityChange);
-    window.removeEventListener('beforeunload', handleNotificationBeforeUnload);
-    removeNotificationSoundLeaderIfOwned();
-});
 
 const leaveImpersonate = () => {
     useForm().post(route('impersonate.leave'));

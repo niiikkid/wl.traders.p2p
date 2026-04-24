@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\NotificationController as BaseNotificationController;
-use App\Http\Requests\NotificationFilterRequest;
+use Illuminate\Http\Request;
 
 class NotificationController extends BaseNotificationController
 {
-    public function index(NotificationFilterRequest $request)
+    public function index(Request $request)
     {
         return $this->renderIndex($request, 'Notifications/Index');
     }

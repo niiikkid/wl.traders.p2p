@@ -6,7 +6,6 @@ use App\Contracts\TelegramServiceContract;
 use App\Exceptions\TelegramAccountNotLinkedException;
 use App\Exceptions\TelegramServiceException;
 use App\Exceptions\TelegramStartTokenInvalidException;
-use App\Models\Notification;
 use App\Models\TelegramAccount;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -51,7 +50,7 @@ class TelegramService implements TelegramServiceContract
         $account = TelegramAccount::query()->where('link_token', $token)->first();
 
         if (! $account) {
-            throw new TelegramStartTokenInvalidException();
+            throw new TelegramStartTokenInvalidException;
         }
 
         $account->update([
@@ -66,19 +65,18 @@ class TelegramService implements TelegramServiceContract
         return $account->fresh();
     }
 
-    public function sendNotification(Notification $notification): void
+    public function sendNotification(User $user, string $title, string $body): void
     {
-        $user = $notification->user;
         $account = $this->getOrCreateForUser($user);
 
         if (! $account->is_active || ! $account->chat_id) {
-            throw new TelegramAccountNotLinkedException();
+            throw new TelegramAccountNotLinkedException;
         }
 
         try {
             Telegram::sendMessage([
                 'chat_id' => $account->chat_id,
-                'text' => $this->buildMessage($notification),
+                'text' => $this->buildMessage($title, $body),
             ]);
         } catch (\Throwable $e) {
             throw new TelegramServiceException($e->getMessage(), $e->getCode(), $e);
@@ -109,9 +107,9 @@ class TelegramService implements TelegramServiceContract
         return "https://t.me/{$botUsername}?start={$account->link_token}";
     }
 
-    protected function buildMessage(Notification $notification): string
+    protected function buildMessage(string $title, string $body): string
     {
-        return "{$notification->title}\n\n{$notification->body}";
+        return "{$title}\n\n{$body}";
     }
 
     protected function generateToken(): string

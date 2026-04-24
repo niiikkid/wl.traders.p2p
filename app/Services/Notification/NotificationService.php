@@ -3,9 +3,8 @@
 namespace App\Services\Notification;
 
 use App\Contracts\NotificationServiceContract;
-use App\Enums\NotificationDeliveryStatus;
 use App\Enums\NotificationEvent;
-use App\Models\Notification;
+use App\Jobs\SendNotificationJob;
 use App\Models\NotificationRule;
 use App\Services\Money\Money;
 use App\Services\Notification\Events\NotificationEventInterface;
@@ -48,29 +47,17 @@ class NotificationService implements NotificationServiceContract
                     continue;
                 }
 
-                foreach ($rule->channels as $channel) {
-                    $notification = Notification::create([
-                        'user_id' => $user->id,
-                        'event' => $event->type(),
-                        'channel' => $channel,
-                        'status' => NotificationDeliveryStatus::PENDING,
-                        'title' => $content->title,
-                        'body' => $content->body,
-                        'payload' => $content->payload,
-                    ]);
-
-                    \App\Jobs\SendNotificationJob::dispatch($notification->id)->onQueue('notifications');
-                }
+                SendNotificationJob::dispatch(
+                    $user->id,
+                    $content->title,
+                    $content->body
+                )->onQueue('notifications');
             }
         }
     }
 
     protected function matchesRule(NotificationRule $rule, NotificationEventInterface $event): bool
     {
-        if (empty($rule->channels)) {
-            return false;
-        }
-
         if ($rule->event instanceof NotificationEvent && $rule->event->notEquals($event->type())) {
             return false;
         }
@@ -122,5 +109,4 @@ class NotificationService implements NotificationServiceContract
 
         return true;
     }
-
 }

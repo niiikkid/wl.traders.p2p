@@ -24,7 +24,6 @@ class NotificationRuleResource extends JsonResource
         return [
             'id' => $this->id,
             'event' => $this->event->value,
-            'channels' => $this->channels,
             'statuses' => $this->statuses,
             'currency' => $this->currency?->getCode(),
             'min_amount' => $minAmount,

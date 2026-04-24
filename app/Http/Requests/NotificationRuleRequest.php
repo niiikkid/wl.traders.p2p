@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\NotificationChannel;
 use App\Enums\NotificationEvent;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -24,8 +23,6 @@ class NotificationRuleRequest extends FormRequest
 
         $baseRules = [
             'event' => ['nullable', 'string', Rule::in(NotificationEvent::values())],
-            'channels' => ['nullable', 'array'],
-            'channels.*' => ['string', Rule::in(NotificationChannel::values())],
             'currency' => ['nullable', 'string', Rule::in(Currency::getAllCodes())],
             'min_amount' => ['nullable', 'string', 'regex:/^\d+(\.\d+)?$/'],
             'statuses' => ['nullable', 'array'],
@@ -35,7 +32,6 @@ class NotificationRuleRequest extends FormRequest
 
         if ($this->isMethod('post')) {
             $baseRules['event'][0] = 'required';
-            $baseRules['channels'] = ['required', 'array', 'min:1'];
         }
 
         if ($event?->equals(NotificationEvent::TRUST_BALANCE_LOW)) {

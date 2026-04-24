@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\CurrencyCast;
 use App\Enums\NotificationEvent;
+use App\Services\Money\Currency;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,9 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $user_id
  * @property NotificationEvent $event
- * @property \App\Services\Money\Currency|null $currency
+ * @property Currency|null $currency
  * @property array|null $statuses
- * @property array $channels
  * @property string|null $min_amount_minor
  * @property bool $enabled
  */
@@ -27,7 +27,6 @@ class NotificationRule extends Model
         'event',
         'currency',
         'statuses',
-        'channels',
         'min_amount_minor',
         'enabled',
     ];
@@ -36,7 +35,6 @@ class NotificationRule extends Model
         'event' => NotificationEvent::class,
         'currency' => CurrencyCast::class,
         'statuses' => 'array',
-        'channels' => 'array',
         'enabled' => 'boolean',
     ];
 

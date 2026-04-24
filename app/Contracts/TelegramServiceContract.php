@@ -2,7 +2,6 @@
 
 namespace App\Contracts;
 
-use App\Models\Notification;
 use App\Models\TelegramAccount;
 use App\Models\User;
 
@@ -14,7 +13,7 @@ interface TelegramServiceContract
 
     public function handleStart(string $token, array $telegramUser, string $chatId): TelegramAccount;
 
-    public function sendNotification(Notification $notification): void;
+    public function sendNotification(User $user, string $title, string $body): void;
 
     public function botUsername(): ?string;
 

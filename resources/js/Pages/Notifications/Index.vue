@@ -1,104 +1,29 @@
 <script setup>
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
-import {computed, onMounted, onUnmounted, ref, watch} from "vue";
+import {computed, onMounted, ref} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import MainTableSection from "@/Wrappers/MainTableSection.vue";
-import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
-import DateTime from "@/Components/DateTime.vue";
 import InputError from "@/Components/InputError.vue";
 import CopyPaymentText from "@/Components/CopyPaymentText.vue";
-import {useTableFiltersStore} from "@/store/tableFilters.js";
-import {useModalStore} from "@/store/modal.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
-import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
-import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
+import {useModalStore} from "@/store/modal.js";
 
-const tableFiltersStore = useTableFiltersStore();
+defineOptions({layout: AuthenticatedLayout});
+
 const modalStore = useModalStore();
-
-const notifications = ref(usePage().props.notifications);
-const rules = ref(usePage().props.rules);
-const filtersVariants = ref(usePage().props.filtersVariants);
-const telegramAccount = ref(usePage().props.telegramAccount);
-const audioTracks = ref(usePage().props.audioTracks ?? []);
-const notificationSoundStats = ref(usePage().props.notificationSoundStats ?? null);
-const notificationSoundSettings = ref(usePage().props.notificationSoundSettings ?? {
-    enabled: true,
-    track: audioTracks.value[0]?.value ?? null,
-});
-const currentTab = ref('notifications');
-
-const sectionData = computed(() => {
-    if (currentTab.value === 'notifications') {
-        return notifications.value;
-    }
-
-    return {
-        data: [{}],
-        meta: {
-            current_page: 1,
-            per_page: 1,
-            total: 1,
-        },
-    };
-});
+const rules = ref(usePage().props.rules ?? []);
+const filtersVariants = ref(usePage().props.filtersVariants ?? {event: [], currency: []});
+const telegramAccount = ref(usePage().props.telegramAccount ?? {});
 
 const ruleForm = useForm({
     event: '',
-    channels: ['in_app'],
     currency: '',
     min_amount: '',
     enabled: true,
 });
-
-const markAllForm = useForm({});
 const ruleActionForm = useForm({
     enabled: false,
 });
 const telegramForm = useForm({});
-const notificationActionForm = useForm({});
-const soundForm = useForm({
-    enabled: notificationSoundSettings.value.enabled,
-    track: notificationSoundSettings.value.track,
-});
-
-const eventLabelFallbacks = {
-    'withdrawal.requested': 'Запрос на вывод средств',
-    'order.assigned': 'Новая сделка',
-    'dispute.opened': 'Открыт спор',
-    'trust.balance.low': 'Низкий траст-баланс',
-};
-
-const normalizeEventVariants = () => {
-    const currentFiltersVariants = filtersVariants.value ?? {};
-    const events = currentFiltersVariants.event ?? [];
-
-    if (!events.length) {
-        return;
-    }
-
-    filtersVariants.value = {
-        ...currentFiltersVariants,
-        event: events.map((item) => {
-            const keyName = `notifications.events.${item.value}`;
-            const fallbackName = eventLabelFallbacks[item.value];
-            const shouldUseFallback = !item.name
-                || item.name === keyName
-                || item.name === item.value
-                || item.name.startsWith('notifications.events.');
-            const name = shouldUseFallback ? (fallbackName ?? item.name) : item.name;
-
-            return {
-                ...item,
-                name,
-            };
-        }),
-    };
-
-    tableFiltersStore.setFiltersVariants(filtersVariants.value);
-};
 
 const eventLabels = computed(() => {
     return Object.fromEntries((filtersVariants.value.event ?? []).map((item) => [item.value, item.name]));
@@ -109,14 +34,6 @@ const showCurrencyFilter = computed(() => {
     return ruleForm.event !== 'withdrawal.requested' && ruleForm.event !== 'trust.balance.low';
 });
 const isTrustBalanceLowEvent = computed(() => ruleForm.event === 'trust.balance.low');
-
-const channelLabels = computed(() => {
-    return Object.fromEntries((filtersVariants.value.channels ?? []).map((item) => [item.value, item.name]));
-});
-
-const deliveryStatusLabels = computed(() => {
-    return Object.fromEntries((filtersVariants.value.delivery_status ?? []).map((item) => [item.value, item.name]));
-});
 
 const hasRuleAmount = (rule) => {
     return rule?.min_amount !== null && rule?.min_amount !== '' || rule?.currency !== null && rule?.currency !== '';
@@ -136,39 +53,18 @@ const ruleAmountLabel = (rule) => {
     return parts.join(' ');
 };
 
-const openPage = (tab) => {
-    tableFiltersStore.setTab(tab);
-    tableFiltersStore.setCurrentPage(1);
-
-    router.visit(route(route().current()), {
-        preserveScroll: true,
-        data: tableFiltersStore.getQueryData,
-    });
-};
-
-const initTab = () => {
-    if (tableFiltersStore.getTab === '') {
-        tableFiltersStore.setTab('notifications');
+const telegramAlertText = computed(() => {
+    if (telegramAccount.value?.is_active) {
+        return 'Бот привязан к вашему аккаунту. При необходимости вы можете отвязать его здесь.';
     }
-    currentTab.value = tableFiltersStore.getTab || 'notifications';
-};
+
+    return 'Чтобы получать уведомления в Telegram, привяжите бота через ссылку ниже.';
+});
 
 const initRuleDefaults = () => {
     if (!ruleForm.event && (filtersVariants.value.event ?? []).length) {
         ruleForm.event = filtersVariants.value.event[0].value;
     }
-};
-
-const markAllRead = () => {
-    markAllForm.post(route('notifications.mark-all-read'), {
-        preserveScroll: true,
-    });
-};
-
-const markRead = (notification) => {
-    notificationActionForm.patch(route('notifications.read', notification.id), {
-        preserveScroll: true,
-    });
 };
 
 const createRule = () => {
@@ -180,7 +76,7 @@ const createRule = () => {
             } else {
                 ruleForm.reset('currency', 'min_amount');
             }
-        }
+        },
     });
 };
 
@@ -215,627 +111,187 @@ const unlinkTelegram = () => {
     });
 };
 
-const telegramAlertText = computed(() => {
-    if (telegramAccount.value?.is_active) {
-        return 'Бот привязан к вашему аккаунту. При необходимости вы можете отвязать его здесь.';
-    }
-
-    return 'Чтобы получать уведомления в Telegram, привяжите бота через ссылку ниже.';
+onMounted(() => {
+    initRuleDefaults();
 });
-
-const statusBadgeClass = (status) => {
-    if (status === 'delivered') return 'badge-success';
-    if (status === 'failed') return 'badge-error';
-    return 'badge-warning';
-};
-
-const selectedTrackLabel = computed(() => {
-    const selectedTrack = audioTracks.value.find((track) => track.value === soundForm.track);
-    return selectedTrack ? formatTrackName(selectedTrack.name) : 'Не выбрано';
-});
-
-const formatTrackName = (trackName = '') => {
-    return trackName.replace(/\.mp3$/i, '');
-};
-
-const namedTrackSubtitles = {
-    'DreamsAreMessagesFromTheDeep.mp3': 'Мечты - послания из глубины',
-    'LetWealthCome.mp3': 'Пусть приходит богатство',
-    'Loshadka-1.mp3': 'Лошадка - версия 1',
-    'Loshadka-2.mp3': 'Лошадка - версия 2',
-    'MoneyPowerWomanDrugs.mp3': 'Деньги, власть, женщины, наркотики',
-    'Pressure.mp3': 'Давление',
-    'SixDays.mp3': 'Шесть дней',
-    'radwimps.mp3': 'Судзумэ, закрывающая двери',
-};
-
-const getNamedTrackSubtitle = (track) => {
-    return namedTrackSubtitles[track?.value] ?? '';
-};
-
-const soundStatsItems = computed(() => {
-    return notificationSoundStats.value?.items ?? [];
-});
-
-const soundStatsTotalAssignedUsers = computed(() => {
-    return notificationSoundStats.value?.total_assigned_users ?? 0;
-});
-
-const isNumericTrack = (trackName = '') => {
-    return /^\d+\.mp3$/i.test(trackName);
-};
-
-const groupedAudioTracks = computed(() => {
-    const namedTracks = [];
-    const numericTracks = [];
-
-    audioTracks.value.forEach((track) => {
-        if (isNumericTrack(track.name)) {
-            numericTracks.push(track);
-            return;
-        }
-
-        namedTracks.push(track);
-    });
-
-    numericTracks.sort((leftTrack, rightTrack) => {
-        const leftValue = Number(formatTrackName(leftTrack.name));
-        const rightValue = Number(formatTrackName(rightTrack.name));
-
-        return leftValue - rightValue;
-    });
-
-    return {
-        named: namedTracks,
-        numeric: numericTracks,
-    };
-});
-
-const syncSoundSettings = () => {
-    const pageProps = usePage().props;
-    audioTracks.value = usePage().props.audioTracks ?? [];
-    if (Object.prototype.hasOwnProperty.call(pageProps, 'notificationSoundStats')) {
-        notificationSoundStats.value = pageProps.notificationSoundStats ?? null;
-    }
-    notificationSoundSettings.value = usePage().props.notificationSoundSettings ?? {
-        enabled: true,
-        track: audioTracks.value[0]?.value ?? null,
-    };
-
-    soundForm.enabled = notificationSoundSettings.value.enabled;
-    soundForm.track = notificationSoundSettings.value.track;
-};
-
-const saveSoundSettings = () => {
-    soundForm.patch(route('notifications.sound.update'), {
-        preserveScroll: true,
-    });
-};
-
-const toggleSoundEnabled = () => {
-    soundForm.enabled = !soundForm.enabled;
-    saveSoundSettings();
-};
-
-const selectSoundTrack = (track) => {
-    if (soundForm.track === track.value) {
-        return;
-    }
-
-    soundForm.track = track.value;
-    saveSoundSettings();
-};
-
-const previewSoundTrack = (track) => {
-    playNotificationAudio(track.url, {interrupt: true});
-};
-
-const handleIncomingNotification = () => {
-    if (!route().current('notifications.*') && !route().current('admin.notifications.*')) {
-        return;
-    }
-
-    router.reload({
-        only: ['notifications', 'menu', 'notificationSoundStats', 'audioTracks', 'notificationSoundSettings'],
-        preserveScroll: true,
-        preserveState: true,
-    });
-};
 
 router.on('success', () => {
-    notifications.value = usePage().props.notifications;
-    rules.value = usePage().props.rules;
-    filtersVariants.value = usePage().props.filtersVariants ?? filtersVariants.value ?? {};
-    telegramAccount.value = usePage().props.telegramAccount;
-    syncSoundSettings();
-    normalizeEventVariants();
-    initTab();
+    rules.value = usePage().props.rules ?? [];
+    filtersVariants.value = usePage().props.filtersVariants ?? {event: [], currency: []};
+    telegramAccount.value = usePage().props.telegramAccount ?? {};
     initRuleDefaults();
 });
-
-onMounted(() => {
-    syncSoundSettings();
-    normalizeEventVariants();
-    initTab();
-    initRuleDefaults();
-    window.addEventListener('notifications:received', handleIncomingNotification);
-});
-
-onUnmounted(() => {
-    window.removeEventListener('notifications:received', handleIncomingNotification);
-});
-
-watch(() => ruleForm.event, (value) => {
-    if (value === 'withdrawal.requested') {
-        ruleForm.currency = '';
-        ruleForm.min_amount = '';
-        return;
-    }
-
-    if (value === 'trust.balance.low') {
-        ruleForm.currency = '';
-    }
-});
-
-defineOptions({ layout: AuthenticatedLayout });
 </script>
 
 <template>
     <div>
         <Head title="Уведомления" />
 
-        <MainTableSection
-            title="Уведомления"
-            :data="sectionData"
-            :display-pagination="currentTab === 'notifications'"
-        >
-            <template v-slot:header>
-                <div class="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        @click.prevent="openPage('notifications')"
-                        :class="currentTab === 'notifications' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'"
+        <div class="space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Уведомления</h2>
+            </div>
+
+            <div class="grid gap-6 grid-cols-1 lg:grid-cols-2">
+      
+                <div class="card bg-base-100 shadow">
+                <div class="card-body space-y-4">
+                    <div
+                        class="alert text-sm"
+                        :class="telegramAccount.is_active ? 'alert-success' : 'alert-info'"
                     >
-                        Список
+                        {{ telegramAlertText }}
+                    </div>
+                    <h3 class="text-lg font-semibold">Telegram</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="badge" :class="telegramAccount.is_active ? 'badge-success' : 'badge-warning'">
+                                {{ telegramAccount.is_active ? 'Привязан' : 'Не привязан' }}
+                            </span>
+                            <span v-if="telegramAccount.bot_username" class="text-sm text-base-content/70">
+                                @{{ telegramAccount.bot_username }}
+                            </span>
+                        </div>
+                        <div v-if="!telegramAccount.is_active && telegramAccount.start_link" class="flex flex-wrap items-center gap-3">
+                            <a
+                                class="btn btn-sm btn-outline"
+                                :href="telegramAccount.start_link"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                Открыть Telegram
+                            </a>
+                            <CopyPaymentText text="Скопировать ссылку" :copy_text="telegramAccount.start_link" />
+                        </div>
+                        <div v-else-if="!telegramAccount.is_active" class="text-sm text-base-content/70">
+                            Укажите `TELEGRAM_BOT_NAME`, чтобы сформировать ссылку привязки.
+                        </div>
+                    </div>
+                    <button
+                        v-if="telegramAccount.is_active"
+                        type="button"
+                        class="btn btn-sm btn-outline btn-error"
+                        :disabled="telegramForm.processing"
+                        @click.prevent="unlinkTelegram"
+                    >
+                        Отвязать бота
                     </button>
                     <button
+                        v-else
                         type="button"
-                        @click.prevent="openPage('settings')"
-                        :class="currentTab === 'settings' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'"
+                        class="btn btn-sm btn-primary"
+                        :disabled="telegramForm.processing"
+                        @click.prevent="refreshTelegramLink"
                     >
-                        Настройки
+                        Обновить ссылку
                     </button>
                 </div>
-            </template>
+                </div>
 
-            <template v-slot:table-filters>
-                <FiltersPanel v-if="currentTab === 'notifications'" name="notifications">
-                    <DropdownFilter name="event" title="События" />
-                    <DropdownFilter name="delivery_status" title="Статус доставки" />
-                    <FilterCheckbox name="only_unread" title="Только непрочитанные" />
-                </FiltersPanel>
-            </template>
-
-            <template v-slot:button>
-                <button
-                    v-if="currentTab === 'notifications'"
-                    type="button"
-                    class="btn btn-sm btn-outline"
-                    :disabled="markAllForm.processing"
-                    @click.prevent="markAllRead"
-                >
-                    Все прочитано
-                </button>
-            </template>
-
-            <template v-slot:body>
-                <template v-if="currentTab === 'notifications'">
-                    <div class="hidden xl:block rounded-table relative">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
-                                    <th>Заголовок</th>
-                                    <th>Статус</th>
-                                    <th>Создано</th>
-                                    <th class="text-right">
-                                        <span class="sr-only">Действия</span>
-                                    </th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr v-for="notification in notifications.data" :key="notification.id" class="bg-base-100 border-b last:border-none border-base-200">
-                                    <td>
-                                        <div class="font-medium text-base-content">{{ notification.title }}</div>
-                                        <div class="text-xs text-base-content/70">{{ notification.body }}</div>
-                                        <div class="mt-1">
-                                            <span v-if="notification.read_at" class="badge badge-outline badge-xs">Прочитано</span>
-                                            <span v-else class="badge badge-info badge-xs">Непрочитано</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-sm" :class="statusBadgeClass(notification.status)">
-                                            {{ deliveryStatusLabels[notification.status] ?? notification.status }}
-                                        </span>
-                                    </td>
-                                    <td class="text-nowrap">
-                                        <DateTime :data="notification.created_at" />
-                                    </td>
-                                    <td class="text-right">
-                                        <button
-                                            v-if="!notification.read_at"
-                                            type="button"
-                                            class="btn btn-xs btn-outline"
-                                            :disabled="notificationActionForm.processing"
-                                            @click.prevent="markRead(notification)"
-                                            title="Отметить прочитанным"
-                                            aria-label="Переключить статус прочтения"
-                                        >
-                                            <svg
-                                                class="w-4 h-4"
-                                                viewBox="0 0 20 20"
-                                                fill="currentColor"
-                                                aria-hidden="true"
-                                            >
-                                                <path d="M16.707 5.293a1 1 0 0 1 0 1.414l-7.5 7.5a1 1 0 0 1-1.414 0l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.793 2.793 6.793-6.793a1 1 0 0 1 1.414 0Z" />
-                                            </svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
+                <div class="card bg-base-100 shadow">
+                    <div class="card-body space-y-4">
+                        <h3 class="text-lg font-semibold">Новое правило</h3>
+                        <p class="text-sm text-base-content/70">
+                            Канал доставки всегда Telegram.
+                        </p>
+                        <div class="grid gap-3">
+                            <div>
+                                <label class="label">
+                                    <span class="label-text">Событие</span>
+                                </label>
+                                <select v-model="ruleForm.event" class="select select-bordered w-full">
+                                    <option disabled value="">Выберите событие</option>
+                                    <option v-for="event in filtersVariants.event" :key="event.value" :value="event.value">
+                                        {{ event.name }}
+                                    </option>
+                                </select>
+                                <InputError :message="ruleForm.errors.event" />
+                            </div>
+                            <div v-if="showCurrencyFilter">
+                                <label class="label">
+                                    <span class="label-text">Валюта (опционально)</span>
+                                </label>
+                                <select v-model="ruleForm.currency" class="select select-bordered w-full">
+                                    <option value="">Любая</option>
+                                    <option v-for="currency in filtersVariants.currency" :key="currency.value" :value="currency.value">
+                                        {{ currency.name }}
+                                    </option>
+                                </select>
+                                <InputError :message="ruleForm.errors.currency" />
+                            </div>
+                            <div v-if="showMinAmountFilter">
+                                <label class="label">
+                                    <span class="label-text">{{ isTrustBalanceLowEvent ? 'Порог траст-баланса (USDT)' : 'Мин. сумма (опционально)' }}</span>
+                                </label>
+                                <input
+                                    v-model="ruleForm.min_amount"
+                                    type="text"
+                                    class="input input-bordered w-full"
+                                    placeholder="Например, 100"
+                                />
+                                <InputError :message="ruleForm.errors.min_amount" />
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="xl:hidden space-y-3">
-                        <div
-                            v-for="notification in notifications.data"
-                            :key="notification.id"
-                            class="card bg-base-100 shadow-sm"
+                        <button
+                            type="button"
+                            class="btn btn-primary"
+                            :disabled="ruleForm.processing"
+                            @click.prevent="createRule"
                         >
-                            <div class="card-body p-4 space-y-2">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div>
-                                        <div class="font-medium text-base-content">{{ notification.title }}</div>
-                                        <div class="text-xs text-base-content/70">{{ notification.body }}</div>
-                                    </div>
-                                    <div class="flex flex-col items-end gap-1">
-                                        <span class="badge badge-xs" :class="statusBadgeClass(notification.status)">
-                                            {{ deliveryStatusLabels[notification.status] ?? notification.status }}
-                                        </span>
-                                    </div>
+                            Создать правило
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <h3 class="text-lg font-semibold mb-4">Правила</h3>
+                    <div v-if="!rules.length" class="text-sm text-base-content/70">
+                        Пока что правил нет.
+                    </div>
+                    <div v-else class="space-y-3">
+                        <div
+                            v-for="rule in rules"
+                            :key="rule.id"
+                            class="flex flex-wrap items-center justify-between gap-3 border border-base-300 rounded-box p-3"
+                        >
+                            <div class="space-y-1">
+                                <div class="font-medium">{{ eventLabels[rule.event] ?? rule.event }}</div>
+                                <div class="flex flex-wrap gap-2 text-xs text-base-content/70">
+                                    <span class="badge badge-ghost badge-xs">
+                                        Telegram
+                                    </span>
+                                    <span v-if="hasRuleAmount(rule)" class="badge badge-outline badge-xs">
+                                        {{ ruleAmountLabel(rule) }}
+                                    </span>
                                 </div>
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <span v-if="notification.read_at" class="badge badge-outline badge-xs">Прочитано</span>
-                                        <span v-else class="badge badge-info badge-xs">Непрочитано</span>
-                                    </div>
-                                    <DateTime :data="notification.created_at" />
-                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        class="toggle toggle-sm"
+                                        :checked="rule.enabled"
+                                        :disabled="ruleActionForm.processing"
+                                        @change="toggleRule(rule)"
+                                    />
+                                    <span class="text-sm">{{ rule.enabled ? 'Включено' : 'Выключено' }}</span>
+                                </label>
                                 <button
-                                    v-if="!notification.read_at"
                                     type="button"
-                                    class="btn btn-xs btn-outline"
-                                    :disabled="notificationActionForm.processing"
-                                    @click.prevent="markRead(notification)"
+                                    class="btn btn-xs btn-outline btn-error"
+                                    :disabled="ruleActionForm.processing"
+                                    @click.prevent="deleteRule(rule)"
                                 >
-                                    Отметить прочитанным
+                                    Удалить
                                 </button>
                             </div>
                         </div>
                     </div>
-                </template>
-
-                <template v-else>
-                    <div class="grid gap-6 lg:grid-cols-2">
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body space-y-4">
-                                <h3 class="text-lg font-semibold">Звук уведомлений</h3>
-                                <div class="flex flex-wrap items-center justify-between gap-3">
-                                    <label class="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            class="toggle toggle-sm"
-                                            :checked="soundForm.enabled"
-                                            :disabled="soundForm.processing"
-                                            @change="toggleSoundEnabled"
-                                        />
-                                        <span class="text-sm">{{ soundForm.enabled ? 'Включено' : 'Выключено' }}</span>
-                                    </label>
-                                    <TableCellPopover v-if="audioTracks.length">
-                                        <template #trigger>
-                                            <span class="btn btn-xs btn-outline normal-case">
-                                                Выбрать звук
-                                            </span>
-                                        </template>
-                                        <div class="space-y-2 min-w-64">
-                                            <div class="text-xs text-base-content/70">
-                                                Текущий: <span class="font-medium text-base-content">{{ selectedTrackLabel }}</span>
-                                            </div>
-                                            <div class="space-y-3">
-                                                <div v-if="groupedAudioTracks.named.length" class="space-y-1.5">
-                                                    <div class="text-[11px] font-semibold uppercase text-base-content/60 px-1">
-                                                        Избранные
-                                                    </div>
-                                                    <div
-                                                        v-for="track in groupedAudioTracks.named"
-                                                        :key="track.value"
-                                                        class="flex items-center justify-between gap-3 rounded-box border border-neutral/40 bg-neutral/15 px-2 py-1.5"
-                                                    >
-                                                        <label class="flex items-center gap-2 cursor-pointer">
-                                                            <input
-                                                                type="radio"
-                                                                name="notification-sound-track"
-                                                                class="radio radio-xs"
-                                                                :checked="soundForm.track === track.value"
-                                                                :disabled="soundForm.processing"
-                                                                @change="selectSoundTrack(track)"
-                                                            />
-                                                            <span class="flex flex-col leading-tight">
-                                                                <span class="text-sm">{{ formatTrackName(track.name) }}</span>
-                                                                <span
-                                                                    v-if="getNamedTrackSubtitle(track)"
-                                                                    class="text-[11px] mt-0.5 text-neutral-content/70"
-                                                                >
-                                                                    {{ getNamedTrackSubtitle(track) }}
-                                                                </span>
-                                                            </span>
-                                                        </label>
-                                                        <button
-                                                            type="button"
-                                                            class="btn btn-xs btn-ghost"
-                                                            @click.prevent="previewSoundTrack(track)"
-                                                        >
-                                                            ▶
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <div v-if="groupedAudioTracks.numeric.length" class="space-y-1.5">
-                                                    <div class="text-[11px] font-semibold uppercase text-base-content/60 px-1">
-                                                        Обычные
-                                                    </div>
-                                                    <div
-                                                        v-for="track in groupedAudioTracks.numeric"
-                                                        :key="track.value"
-                                                        class="flex items-center justify-between gap-3 rounded-box border border-base-300 px-2 py-1.5"
-                                                    >
-                                                        <label class="flex items-center gap-2 cursor-pointer">
-                                                            <input
-                                                                type="radio"
-                                                                name="notification-sound-track"
-                                                                class="radio radio-xs"
-                                                                :checked="soundForm.track === track.value"
-                                                                :disabled="soundForm.processing"
-                                                                @change="selectSoundTrack(track)"
-                                                            />
-                                                            <span class="text-sm">{{ formatTrackName(track.name) }}</span>
-                                                        </label>
-                                                        <button
-                                                            type="button"
-                                                            class="btn btn-xs btn-ghost"
-                                                            @click.prevent="previewSoundTrack(track)"
-                                                        >
-                                                            ▶
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </TableCellPopover>
-                                </div>
-                                <div v-if="!audioTracks.length" class="text-sm text-base-content/70">
-                                    Аудиофайлы не найдены в `public/audio`.
-                                </div>
-                                <div v-else class="text-xs text-base-content/70">
-                                    Выбранный звук будет проигрываться при поступлении нового уведомления в панели.
-                                </div>
-                            </div>
-                        </div>
-
-                        <div v-if="notificationSoundStats" class="card bg-base-100 shadow">
-                            <div class="card-body space-y-4">
-                                <h3 class="text-lg font-semibold">Статистика звуков</h3>
-                                <div class="space-y-2 max-h-72 overflow-auto">
-                                    <div
-                                        v-for="item in soundStatsItems"
-                                        :key="item.track"
-                                        class="flex items-center justify-between gap-3 rounded-box border border-base-300 px-3 py-2"
-                                    >
-                                        <span class="text-sm">
-                                            {{ formatTrackName(item.name) }}
-                                        </span>
-                                        <span class="badge badge-sm badge-ghost">
-                                            {{ item.assigned_count }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body space-y-4">
-                                <div
-                                    class="alert text-sm"
-                                    :class="telegramAccount.is_active ? 'alert-success' : 'alert-info'"
-                                >
-                                    {{ telegramAlertText }}
-                                </div>
-                                <h3 class="text-lg font-semibold">Telegram</h3>
-                                <div class="space-y-2">
-                                    <div class="flex items-center gap-2">
-                                        <span class="badge" :class="telegramAccount.is_active ? 'badge-success' : 'badge-warning'">
-                                            {{ telegramAccount.is_active ? 'Привязан' : 'Не привязан' }}
-                                        </span>
-                                        <span v-if="telegramAccount.bot_username" class="text-sm text-base-content/70">
-                                            @{{ telegramAccount.bot_username }}
-                                        </span>
-                                    </div>
-                                    <div v-if="!telegramAccount.is_active && telegramAccount.start_link" class="flex flex-wrap items-center gap-3">
-                                        <a
-                                            class="btn btn-sm btn-outline"
-                                            :href="telegramAccount.start_link"
-                                            target="_blank"
-                                            rel="noopener"
-                                        >
-                                            Открыть Telegram
-                                        </a>
-                                        <CopyPaymentText text="Скопировать ссылку" :copy_text="telegramAccount.start_link" />
-                                    </div>
-                                    <div v-else-if="!telegramAccount.is_active" class="text-sm text-base-content/70">
-                                        Укажите `TELEGRAM_BOT_NAME`, чтобы сформировать ссылку привязки.
-                                    </div>
-                                </div>
-                                <button
-                                    v-if="telegramAccount.is_active"
-                                    type="button"
-                                    class="btn btn-sm btn-outline btn-error"
-                                    :disabled="telegramForm.processing"
-                                    @click.prevent="unlinkTelegram"
-                                >
-                                    Отвязать бота
-                                </button>
-                                <button
-                                    v-else
-                                    type="button"
-                                    class="btn btn-sm btn-primary"
-                                    :disabled="telegramForm.processing"
-                                    @click.prevent="refreshTelegramLink"
-                                >
-                                    Обновить ссылку
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body space-y-4">
-                                <h3 class="text-lg font-semibold">Новое правило</h3>
-                                <div class="grid gap-3">
-                                    <div>
-                                        <label class="label">
-                                            <span class="label-text">Событие</span>
-                                        </label>
-                                        <select v-model="ruleForm.event" class="select select-bordered w-full">
-                                            <option disabled value="">Выберите событие</option>
-                                            <option v-for="event in filtersVariants.event" :key="event.value" :value="event.value">
-                                                {{ event.name }}
-                                            </option>
-                                        </select>
-                                        <InputError :message="ruleForm.errors.event" />
-                                    </div>
-                                    <div>
-                                        <label class="label">
-                                            <span class="label-text">Каналы</span>
-                                        </label>
-                                        <div class="flex flex-wrap gap-4">
-                                            <label class="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    value="in_app"
-                                                    class="checkbox checkbox-sm"
-                                                    v-model="ruleForm.channels"
-                                                />
-                                                <span class="text-sm">В панели</span>
-                                            </label>
-                                            <label class="flex items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    value="telegram"
-                                                    class="checkbox checkbox-sm"
-                                                    v-model="ruleForm.channels"
-                                                />
-                                                <span class="text-sm">Telegram</span>
-                                            </label>
-                                        </div>
-                                        <InputError :message="ruleForm.errors.channels" />
-                                    </div>
-                                    <div v-if="showCurrencyFilter">
-                                        <label class="label">
-                                            <span class="label-text">Валюта (опционально)</span>
-                                        </label>
-                                        <select v-model="ruleForm.currency" class="select select-bordered w-full">
-                                            <option value="">Любая</option>
-                                            <option v-for="currency in filtersVariants.currency" :key="currency.value" :value="currency.value">
-                                                {{ currency.name }}
-                                            </option>
-                                        </select>
-                                        <InputError :message="ruleForm.errors.currency" />
-                                    </div>
-                                    <div v-if="showMinAmountFilter">
-                                        <label class="label">
-                                            <span class="label-text">{{ isTrustBalanceLowEvent ? 'Порог траст-баланса (USDT)' : 'Мин. сумма (опционально)' }}</span>
-                                        </label>
-                                        <input
-                                            v-model="ruleForm.min_amount"
-                                            type="text"
-                                            class="input input-bordered w-full"
-                                            placeholder="Например, 100"
-                                        />
-                                        <InputError :message="ruleForm.errors.min_amount" />
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    class="btn btn-primary"
-                                    :disabled="ruleForm.processing"
-                                    @click.prevent="createRule"
-                                >
-                                    Создать правило
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card bg-base-100 shadow mt-6">
-                        <div class="card-body">
-                            <h3 class="text-lg font-semibold mb-4">Правила</h3>
-                            <div v-if="!rules.length" class="text-sm text-base-content/70">
-                                Пока что правил нет.
-                            </div>
-                            <div v-else class="space-y-3">
-                                <div
-                                    v-for="rule in rules"
-                                    :key="rule.id"
-                                    class="flex flex-wrap items-center justify-between gap-3 border border-base-300 rounded-box p-3"
-                                >
-                                    <div class="space-y-1">
-                                        <div class="font-medium">{{ eventLabels[rule.event] ?? rule.event }}</div>
-                                        <div class="flex flex-wrap gap-2 text-xs text-base-content/70">
-                                            <span class="badge badge-ghost badge-xs" v-for="channel in rule.channels" :key="channel">
-                                                {{ channelLabels[channel] ?? channel }}
-                                            </span>
-                                            <span v-if="hasRuleAmount(rule)" class="badge badge-outline badge-xs">
-                                                {{ ruleAmountLabel(rule) }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-3">
-                                        <label class="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                class="toggle toggle-sm"
-                                                :checked="rule.enabled"
-                                                :disabled="ruleActionForm.processing"
-                                                @change="toggleRule(rule)"
-                                            />
-                                            <span class="text-sm">{{ rule.enabled ? 'Включено' : 'Выключено' }}</span>
-                                        </label>
-                                        <button
-                                            type="button"
-                                            class="btn btn-xs btn-outline btn-error"
-                                            :disabled="ruleActionForm.processing"
-                                            @click.prevent="deleteRule(rule)"
-                                        >
-                                            Удалить
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </template>
-            </template>
-        </MainTableSection>
+                </div>
+            </div>
+        </div>
 
         <ConfirmModal />
     </div>

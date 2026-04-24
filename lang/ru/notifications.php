@@ -7,15 +7,6 @@ return [
         'dispute.opened' => 'Открыт спор',
         'trust.balance.low' => 'Низкий траст-баланс',
     ],
-    'channels' => [
-        'in_app' => 'В панели',
-        'telegram' => 'Telegram',
-    ],
-    'delivery_statuses' => [
-        'pending' => 'В очереди',
-        'delivered' => 'Доставлено',
-        'failed' => 'Ошибка',
-    ],
     'templates' => [
         'withdrawal_requested' => [
             'title' => 'Запрос на вывод средств',

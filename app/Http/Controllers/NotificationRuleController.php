@@ -29,7 +29,6 @@ class NotificationRuleController extends Controller
                 ? null
                 : ($isTrustBalanceLow ? Currency::USDT()->getCode() : $request->validated('currency')),
             'statuses' => $request->validated('statuses'),
-            'channels' => $request->validated('channels'),
             'min_amount_minor' => $usesAmountFilters ? $request->minAmountMinor() : null,
             'enabled' => $request->validated('enabled', true),
         ]);
@@ -59,7 +58,6 @@ class NotificationRuleController extends Controller
                     ? Currency::USDT()->getCode()
                     : $request->validated('currency', $notificationRule->currency?->getCode())),
             'statuses' => $request->validated('statuses', $notificationRule->statuses),
-            'channels' => $request->validated('channels', $notificationRule->channels),
             'min_amount_minor' => $usesAmountFilters
                 ? ($request->has('min_amount') ? $request->minAmountMinor() : $notificationRule->min_amount_minor)
                 : null,

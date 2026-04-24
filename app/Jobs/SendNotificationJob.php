@@ -2,9 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Enums\NotificationDeliveryStatus;
-use App\Models\Notification;
-use App\Services\Notification\Channels\NotificationChannelFactory;
+use App\Contracts\TelegramServiceContract;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,36 +16,25 @@ class SendNotificationJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public int $notificationId
+        public int $userId,
+        public string $title,
+        public string $body
     ) {}
 
-    public function handle(NotificationChannelFactory $factory): void
+    public function handle(TelegramServiceContract $telegramService): void
     {
-        $notification = Notification::query()->find($this->notificationId);
+        $user = User::query()->find($this->userId);
 
-        if (! $notification) {
+        if (! $user) {
             return;
         }
 
         try {
-            $channel = $factory->make($notification->channel);
-            $channel->send($notification);
-
-            $notification->update([
-                'status' => NotificationDeliveryStatus::DELIVERED,
-                'delivered_at' => now(),
-                'error_message' => null,
-            ]);
+            $telegramService->sendNotification($user, $this->title, $this->body);
         } catch (\Throwable $e) {
             Log::warning('Notification delivery failed', [
-                'notification_id' => $notification->id,
-                'channel' => $notification->channel->value,
+                'user_id' => $this->userId,
                 'error' => $e->getMessage(),
-            ]);
-
-            $notification->update([
-                'status' => NotificationDeliveryStatus::FAILED,
-                'error_message' => $e->getMessage(),
             ]);
         }
     }
