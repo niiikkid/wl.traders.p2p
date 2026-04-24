@@ -1,11 +1,25 @@
 <?php
 
 return [
+    /*
+     * Keys match NotificationEvent values (e.g. withdrawal.requested).
+     * Laravel trans() treats dots as nesting, so nested arrays are required here.
+     */
     'events' => [
-        'withdrawal.requested' => 'Запрос на вывод средств',
-        'order.assigned' => 'Новая сделка',
-        'dispute.opened' => 'Открыт спор',
-        'trust.balance.low' => 'Низкий траст-баланс',
+        'withdrawal' => [
+            'requested' => 'Запрос на вывод средств',
+        ],
+        'order' => [
+            'assigned' => 'Новая сделка',
+        ],
+        'dispute' => [
+            'opened' => 'Открыт спор',
+        ],
+        'trust' => [
+            'balance' => [
+                'low' => 'Низкий траст-баланс',
+            ],
+        ],
     ],
     'templates' => [
         'withdrawal_requested' => [
