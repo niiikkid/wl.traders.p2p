@@ -443,7 +443,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col" class="text-nowrap">
                                             Лимиты
                                         </th>
-                                        <th scope="col">
+                                        <th scope="col" class="text-nowrap">
                                             Статус
                                         </th>
                                         <th scope="col" class="text-right">
@@ -656,8 +656,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </td>
                                             <td>
                                                 <div class="flex items-center">
-                                                    <label class="label cursor-pointer justify-start gap-3">
-                                                        <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success" @change="toggleActive(payment_detail.id)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
+                                                    <label class="label cursor-pointer justify-start gap-2 py-0 min-h-0">
+                                                        <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-sm" @change="toggleActive(payment_detail.id)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
                                                     </label>
                                                 </div>
                                             </td>
