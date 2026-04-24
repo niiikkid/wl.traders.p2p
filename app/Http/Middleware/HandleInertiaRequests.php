@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\DisputeStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
+use App\Enums\MarketEnum;
 use App\Enums\NotificationChannel;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
@@ -81,15 +82,28 @@ class HandleInertiaRequests extends Middleware
         $rates = cache()->remember('currency-rates', 60, function () {
             return Currency::getAll()
                 ->transform(function (Currency $currency) {
+                    $isUah = $currency->getCode() === 'uah';
+                    if ($isUah) {
+                        $buy = services()->market()->getBuyPrice($currency, MarketEnum::MANUAL, false);
+                        $sell = services()->market()->getSellPrice($currency, MarketEnum::MANUAL, false);
+                    } else {
+                        $buy = services()->market()->getBuyPrice($currency);
+                        $sell = services()->market()->getSellPrice($currency);
+                    }
+
                     return [
                         'code' => $currency->getCode(),
-                        'buy_price' => services()->market()->getBuyPrice($currency)->toBeauty(),
-                        'sell_price' => services()->market()->getSellPrice($currency)->toBeauty(),
+                        'buy_price' => $buy->toBeauty(),
+                        'sell_price' => $sell->toBeauty(),
                     ];
                 })
-                ->sort(function ($currency) {
-                    return in_array($currency['code'], ['rub', 'usd', 'eur']);
+                ->sortByDesc(function ($currency) {
+                    // Desired order: uah, rub, kzt, usd, eur
+                    $order = ['uah', 'rub', 'kzt', 'usd', 'eur'];
+                    $idx = array_search($currency['code'], $order);
+                    return $idx !== false ? $idx : count($order);
                 })
+
                 ->reverse()
                 ->values()
                 ->toArray();
