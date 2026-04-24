@@ -25,6 +25,7 @@ import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModa
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
+import DateTime from "@/Components/DateTime.vue";
 
 const modalStore = useModalStore();
 const openCreateModal = () => {
@@ -446,6 +447,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col" class="text-nowrap">
                                             Статус
                                         </th>
+                                        <th scope="col" class="text-nowrap">
+                                            Последняя сделка
+                                        </th>
                                         <th scope="col" class="text-right">
                                             <span class="sr-only">Действия</span>
                                             <div v-if="isTraderView" class="flex justify-end">
@@ -660,6 +664,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-sm" @change="toggleActive(payment_detail.id)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
                                                     </label>
                                                 </div>
+                                            </td>
+                                            <td class="text-nowrap text-xs">
+                                                <DateTime
+                                                    v-if="payment_detail.last_deal_at"
+                                                    :data="payment_detail.last_deal_at"
+                                                    :plural="true"
+                                                    :copyable="false"
+                                                />
+                                                <span v-else class="text-base-content/50">—</span>
                                             </td>
                                             <td class="text-right">
                                                 <div class="flex items-center justify-end gap-2">

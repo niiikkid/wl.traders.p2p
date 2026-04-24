@@ -3,8 +3,6 @@
 namespace App\Http\Resources;
 
 use App\Models\PaymentDetail;
-use App\Models\PaymentGateway;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -48,6 +46,7 @@ class PaymentDetailResource extends JsonResource
             'successful_orders_total_count' => $this->resource->successful_orders_total_count ?? 0,
             'successful_orders_total_turnover_fiat' => $this->resource->successful_orders_total_turnover_fiat ?? null,
             'successful_orders_total_turnover_usdt' => $this->resource->successful_orders_total_turnover_usdt ?? null,
+            'last_deal_at' => $this->resource->last_deal_at,
             $this->mergeWhen($this->resource->relationLoaded('paymentGateways'), function () {
                 /**
                  * @var PaymentDetail $this

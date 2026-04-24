@@ -70,6 +70,12 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
             ->withCount(['orders as pending_orders_count' => function ($query) {
                 $query->where('status', OrderStatus::PENDING);
             }])
+            ->addSelect([
+                'last_deal_at' => Order::query()
+                    ->selectRaw('MAX(orders.created_at)')
+                    ->whereColumn('orders.payment_detail_id', 'payment_details.id')
+                    ->where('orders.status', OrderStatus::SUCCESS),
+            ])
             ->when(!$fromArchive, function ($query) use ($filters) {
                 $query->whereNull('archived_at');
             })
