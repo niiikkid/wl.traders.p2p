@@ -48,6 +48,31 @@ const soundEventLabels = {
     message_received: 'Новое сообщение',
 };
 
+/** Убираем расширение из подписи в интерфейсе */
+const formatTrackName = (trackName = '') => trackName.replace(/\.mp3$/i, '');
+
+const namedTrackSubtitles = {
+    'DreamsAreMessagesFromTheDeep.mp3': 'Мечты — послания из глубины',
+    'LetWealthCome.mp3': 'Пусть приходит богатство',
+    'Loshadka-1.mp3': 'Лошадка — версия 1',
+    'Loshadka-2.mp3': 'Лошадка — версия 2',
+    'MoneyPowerWomanDrugs.mp3': 'Деньги, власть, женщины, наркотики',
+    'Pressure.mp3': 'Давление',
+    'SixDays.mp3': 'Шесть дней',
+    'radwimps.mp3': 'Судзумэ, закрывающая двери',
+};
+
+const getNamedTrackSubtitle = (track) => namedTrackSubtitles[track?.value] ?? '';
+
+const trackOptionLabel = (track) => formatTrackName(track?.name ?? '');
+
+const findTrackByValue = (trackValue) => audioTracks.value.find((item) => item.value === trackValue);
+
+const selectedTrackSubtitle = (eventKey) => {
+    const track = findTrackByValue(soundForm.settings[eventKey]?.track);
+    return getNamedTrackSubtitle(track);
+};
+
 const isMessageEvent = computed(() => ruleForm.event === 'message.received');
 const showMinAmountFilter = computed(() => {
     return ruleForm.event !== 'withdrawal.requested' && !isMessageEvent.value;
@@ -260,7 +285,7 @@ router.on('success', () => {
                                     </div>
                                 </div>
 
-                                <div class="flex flex-wrap items-center gap-2">
+                                <div class="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
                                     <label class="flex items-center gap-2">
                                         <input
                                             type="checkbox"
@@ -274,17 +299,25 @@ router.on('success', () => {
                                         </span>
                                     </label>
 
-                                    <select
-                                        class="select select-bordered select-sm w-44"
-                                        :value="soundForm.settings[eventKey]?.track ?? ''"
-                                        :disabled="soundForm.processing || !audioTracks.length"
-                                        @change="selectSoundTrack(eventKey, $event.target.value)"
-                                    >
-                                        <option disabled value="">Выберите звук</option>
-                                        <option v-for="track in audioTracks" :key="track.value" :value="track.value">
-                                            {{ track.name }}
-                                        </option>
-                                    </select>
+                                    <div class="flex min-w-0 flex-col gap-0.5 sm:max-w-sm">
+                                        <select
+                                            class="select select-bordered select-sm min-w-0 w-full"
+                                            :value="soundForm.settings[eventKey]?.track ?? ''"
+                                            :disabled="soundForm.processing || !audioTracks.length"
+                                            @change="selectSoundTrack(eventKey, $event.target.value)"
+                                        >
+                                            <option disabled value="">Выберите звук</option>
+                                            <option v-for="track in audioTracks" :key="track.value" :value="track.value">
+                                                {{ trackOptionLabel(track) }}
+                                            </option>
+                                        </select>
+                                        <span
+                                            v-if="selectedTrackSubtitle(eventKey)"
+                                            class="truncate text-[11px] text-base-content/60"
+                                        >
+                                            {{ selectedTrackSubtitle(eventKey) }}
+                                        </span>
+                                    </div>
 
                                     <button
                                         type="button"
