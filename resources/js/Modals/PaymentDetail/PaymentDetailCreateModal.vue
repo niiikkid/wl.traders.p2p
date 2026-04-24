@@ -420,17 +420,33 @@ watch(
                             ></Select>
                             <InputError :message="errors.user_device_id?.[0]" class="mt-2"/>
                             <div v-if="canWorkWithoutDevice" class="mt-3">
+                                <!-- For screens >= sm -->
                                 <div
                                     role="alert"
-                                    class="alert text-sm"
+                                    class="alert text-sm hidden sm:flex"
                                     :class="isManualProcessing ? 'alert-warning alert-outline' : 'alert-success alert-outline'"
                                 >
-                                    <span class="badge badge-sm" :class="isManualProcessing ? 'badge-warning badge-outline' : 'badge-success badge-outline'">
+                                    <span class="badge badge-xs" :class="isManualProcessing ? 'badge-warning badge-outline' : 'badge-success badge-outline'">
                                         {{ isManualProcessing ? 'Ручной' : 'Автоматика' }}
                                     </span>
-                                    <span>
+                                    <span class="text-xs">
                                         {{ isManualProcessing
-                                            ? 'Устройство не назначено: трейдер будет обрабатывать платежи вручную.'
+                                            ? 'Устройство не назначено: необходимо обрабатывать платежи вручную.'
+                                            : 'Назначено устройство: для реквизита будет доступна автоматическая обработка.' }}
+                                    </span>
+                                </div>
+                                <!-- For screens < sm -->
+                                <div
+                                    role="alert"
+                                    class="flex flex-col gap-2 items-stretch alert text-xs sm:hidden"
+                                    :class="isManualProcessing ? 'alert-warning alert-outline' : 'alert-success alert-outline'"
+                                >
+                                    <span class="badge badge-xs self-start" :class="isManualProcessing ? 'badge-warning badge-outline' : 'badge-success badge-outline'">
+                                        {{ isManualProcessing ? 'Ручной' : 'Автоматика' }}
+                                    </span>
+                                    <span class="text-xs">
+                                        {{ isManualProcessing
+                                            ? 'Устройство не назначено: необходимо обрабатывать платежи вручную.'
                                             : 'Назначено устройство: для реквизита будет доступна автоматическая обработка.' }}
                                     </span>
                                 </div>

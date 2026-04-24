@@ -669,7 +669,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                                 <span class="text-base-content/70">Профиль:</span>
                                                                 <span class="text-right">{{ payment_detail.owner_email }}</span>
                                                             </div>
-                                                            <div class="flex items-center justify-between gap-2">
+                                                            <div v-if="shouldShowProcessingIndicator(payment_detail)" class="flex items-center justify-between gap-2">
                                                                 <span class="text-base-content/70">Обработка:</span>
                                                                 <span class="badge badge-sm" :class="processingModeBadgeClass(payment_detail)">
                                                                     {{ processingModeLabel(payment_detail) }}
