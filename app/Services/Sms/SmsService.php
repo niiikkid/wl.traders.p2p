@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\SmsLog;
 use App\Models\User;
 use App\Models\UserDevice;
+use App\Services\Notification\Events\MessageReceivedNotificationEvent;
 use App\Services\Sms\Utils\NormalizeMessage;
 
 class SmsService implements SmsServiceContract
@@ -21,6 +22,7 @@ class SmsService implements SmsServiceContract
     public function handleSms(SmsDTO $sms): void
     {
         $sender = $this->normalizeMessage($sms->sender);
+        $parser = new Parser;
 
         $device = cache()->remember(
             'user_device_'.$sms->deviceID,
@@ -33,26 +35,36 @@ class SmsService implements SmsServiceContract
 
         $smsLog = $this->logSms($sms, $device, $user);
 
-        $result = (new Parser)->parse($sender, $sms->message);
-
-        if (empty($result)) {
-            return;
-        }
+        $result = $parser->parse($sender, $sms->message);
+        $paymentGateway = $result?->paymentGateway ?? $parser->getGatewayBySender($sender);
 
         /**
          * @var Order|null $order
          */
-        $order = queries()
-            ->order()
-            ->findPending($result->amount, $user, $result->paymentGateway, $device);
+        $order = null;
+
+        if (! empty($result)) {
+            $order = queries()
+                ->order()
+                ->findPending($result->amount, $user, $result->paymentGateway, $device);
+        }
+
+        if ($order) {
+            $smsLog->update([
+                'order_id' => $order->id,
+            ]);
+        }
+
+        $smsLog->loadMissing('user', 'device');
+        $order?->loadMissing('paymentDetail');
+
+        services()->notification()->dispatch(
+            new MessageReceivedNotificationEvent($smsLog, $paymentGateway, $order)
+        );
 
         if (! $order) {
             return;
         }
-
-        $smsLog->update([
-            'order_id' => $order->id,
-        ]);
 
         if (! $user->sms_auto_close_orders_enabled) {
             return;

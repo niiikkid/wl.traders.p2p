@@ -13,6 +13,7 @@ enum NotificationEvent: string
     case ORDER_ASSIGNED = 'order.assigned';
     case DISPUTE_OPENED = 'dispute.opened';
     case TRUST_BALANCE_LOW = 'trust.balance.low';
+    case MESSAGE_RECEIVED = 'message.received';
 
     public function label(): string
     {
@@ -29,13 +30,14 @@ enum NotificationEvent: string
             self::ORDER_ASSIGNED => ['Trader'],
             self::DISPUTE_OPENED => ['Trader'],
             self::TRUST_BALANCE_LOW => ['Trader'],
+            self::MESSAGE_RECEIVED => ['Trader'],
         };
     }
 
     public function isAllowedForUser(User $user): bool
     {
         if ($user->hasRole('Super Admin')) {
-            return true;
+            return $this !== self::MESSAGE_RECEIVED;
         }
 
         return $user->hasRole($this->allowedRoles());
@@ -46,7 +48,7 @@ enum NotificationEvent: string
      */
     public static function forUser(User $user): array
     {
-        return array_values(array_filter(static::cases(), function (self $event) use ($user) {
+        return array_values(array_filter(self::cases(), function (self $event) use ($user) {
             return $event->isAllowedForUser($user);
         }));
     }

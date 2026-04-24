@@ -9,7 +9,7 @@ use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\MerchantResendCallbackController;
-use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\PriceParserController;
 use App\Http\Controllers\Admin\ProfitCalculatorController;
@@ -42,6 +42,7 @@ use App\Http\Controllers\Merchant\Support\SupportController;
 use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\ModalController;
 use App\Http\Controllers\NewsController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationRuleController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
@@ -150,6 +151,8 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Merchant|Super Admin']], function () {
+        Route::get('/notifications/ping', [NotificationController::class, 'ping'])->name('notifications.ping');
+        Route::patch('/notifications/sound-settings', [NotificationController::class, 'updateSoundSettings'])->name('notifications.sound.update');
         Route::post('/notifications/rules', [NotificationRuleController::class, 'store'])->name('notifications.rules.store');
         Route::patch('/notifications/rules/{notificationRule}', [NotificationRuleController::class, 'update'])->name('notifications.rules.update');
         Route::delete('/notifications/rules/{notificationRule}', [NotificationRuleController::class, 'destroy'])->name('notifications.rules.destroy');
@@ -390,7 +393,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/feedbacks/{feedback}/favorite', [FeedbackController::class, 'toggleFavorite'])->name('feedback.favorite');
         Route::patch('/feedbacks/{feedback}/hidden', [FeedbackController::class, 'toggleHidden'])->name('feedback.hidden');
 
-        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
 
         Route::get('/app', [App\Http\Controllers\Admin\ApkController::class, 'index'])->name('app.index');
         Route::post('/app', [App\Http\Controllers\Admin\ApkController::class, 'store'])->name('app.store');

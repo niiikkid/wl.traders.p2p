@@ -4,6 +4,7 @@ namespace App\Services\Notification;
 
 use App\Contracts\NotificationServiceContract;
 use App\Enums\NotificationEvent;
+use App\Enums\NotificationMessageScope;
 use App\Jobs\SendNotificationJob;
 use App\Models\NotificationRule;
 use App\Services\Money\Money;
@@ -60,6 +61,18 @@ class NotificationService implements NotificationServiceContract
     {
         if ($rule->event instanceof NotificationEvent && $rule->event->notEquals($event->type())) {
             return false;
+        }
+
+        if ($event->type()->equals(NotificationEvent::MESSAGE_RECEIVED)) {
+            $messageScope = $rule->message_scope ?? NotificationMessageScope::ALL;
+            $eventPayload = $event->payload();
+            $hasOrder = (bool) ($eventPayload['has_order'] ?? false);
+
+            if ($messageScope === NotificationMessageScope::WITH_ORDER && ! $hasOrder) {
+                return false;
+            }
+
+            return true;
         }
 
         $eventCurrency = $event->currency();

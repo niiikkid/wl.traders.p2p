@@ -1,37 +1,61 @@
 <script setup>
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
-import {computed, onMounted, ref} from "vue";
+import {computed, onMounted, ref, watch} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from "@/Components/InputError.vue";
 import CopyPaymentText from "@/Components/CopyPaymentText.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal.js";
+import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 
 defineOptions({layout: AuthenticatedLayout});
 
+const SOUND_EVENT_KEYS = ['order_assigned', 'dispute_opened', 'message_received'];
+
 const modalStore = useModalStore();
 const rules = ref(usePage().props.rules ?? []);
-const filtersVariants = ref(usePage().props.filtersVariants ?? {event: [], currency: []});
+const filtersVariants = ref(usePage().props.filtersVariants ?? {event: [], currency: [], message_scope: []});
 const telegramAccount = ref(usePage().props.telegramAccount ?? {});
+const audioTracks = ref(usePage().props.audioTracks ?? []);
+const notificationSoundSettings = ref(usePage().props.notificationSoundSettings ?? {});
 
 const ruleForm = useForm({
     event: '',
     currency: '',
     min_amount: '',
+    message_scope: 'all',
     enabled: true,
 });
 const ruleActionForm = useForm({
     enabled: false,
 });
 const telegramForm = useForm({});
+const soundForm = useForm({
+    settings: {},
+});
 
 const eventLabels = computed(() => {
     return Object.fromEntries((filtersVariants.value.event ?? []).map((item) => [item.value, item.name]));
 });
 
-const showMinAmountFilter = computed(() => ruleForm.event !== 'withdrawal.requested');
+const messageScopeLabels = computed(() => {
+    return Object.fromEntries((filtersVariants.value.message_scope ?? []).map((item) => [item.value, item.name]));
+});
+
+const soundEventLabels = {
+    order_assigned: 'Новая сделка',
+    dispute_opened: 'Новый спор',
+    message_received: 'Новое сообщение',
+};
+
+const isMessageEvent = computed(() => ruleForm.event === 'message.received');
+const showMinAmountFilter = computed(() => {
+    return ruleForm.event !== 'withdrawal.requested' && !isMessageEvent.value;
+});
 const showCurrencyFilter = computed(() => {
-    return ruleForm.event !== 'withdrawal.requested' && ruleForm.event !== 'trust.balance.low';
+    return ruleForm.event !== 'withdrawal.requested'
+        && ruleForm.event !== 'trust.balance.low'
+        && !isMessageEvent.value;
 });
 const isTrustBalanceLowEvent = computed(() => ruleForm.event === 'trust.balance.low');
 
@@ -61,9 +85,42 @@ const telegramAlertText = computed(() => {
     return 'Чтобы получать уведомления в Telegram, привяжите бота через ссылку ниже.';
 });
 
+const buildDefaultSoundSettings = () => {
+    const defaultTrack = audioTracks.value[0]?.value ?? null;
+
+    return {
+        order_assigned: {enabled: true, track: defaultTrack},
+        dispute_opened: {enabled: true, track: defaultTrack},
+        message_received: {enabled: true, track: defaultTrack},
+    };
+};
+
+const normalizeSoundSettings = (settings = {}) => {
+    const defaults = buildDefaultSoundSettings();
+    const normalized = {};
+
+    for (const key of SOUND_EVENT_KEYS) {
+        const current = settings?.[key] ?? {};
+        normalized[key] = {
+            enabled: current.enabled ?? defaults[key].enabled,
+            track: current.track ?? defaults[key].track,
+        };
+    }
+
+    return normalized;
+};
+
+const syncSoundForm = () => {
+    soundForm.settings = normalizeSoundSettings(notificationSoundSettings.value);
+};
+
 const initRuleDefaults = () => {
     if (!ruleForm.event && (filtersVariants.value.event ?? []).length) {
         ruleForm.event = filtersVariants.value.event[0].value;
+    }
+
+    if (!ruleForm.message_scope && (filtersVariants.value.message_scope ?? []).length) {
+        ruleForm.message_scope = filtersVariants.value.message_scope[0].value;
     }
 };
 
@@ -93,6 +150,31 @@ const deleteRule = (rule) => {
     });
 };
 
+const saveSoundSettings = () => {
+    soundForm.patch(route('notifications.sound.update'), {
+        preserveScroll: true,
+    });
+};
+
+const toggleSoundEnabled = (eventKey) => {
+    soundForm.settings[eventKey].enabled = !soundForm.settings[eventKey].enabled;
+    saveSoundSettings();
+};
+
+const selectSoundTrack = (eventKey, trackValue) => {
+    soundForm.settings[eventKey].track = trackValue;
+    saveSoundSettings();
+};
+
+const previewSoundTrack = (trackValue) => {
+    const track = audioTracks.value.find((item) => item.value === trackValue);
+    if (!track) {
+        return;
+    }
+
+    playNotificationAudio(track.url, {interrupt: true});
+};
+
 const refreshTelegramLink = () => {
     telegramForm.post(route('notifications.telegram.link'), {
         preserveScroll: true,
@@ -111,15 +193,40 @@ const unlinkTelegram = () => {
     });
 };
 
+watch(() => ruleForm.event, (value) => {
+    if (value === 'withdrawal.requested') {
+        ruleForm.currency = '';
+        ruleForm.min_amount = '';
+        return;
+    }
+
+    if (value === 'trust.balance.low') {
+        ruleForm.currency = '';
+    }
+
+    if (value === 'message.received' && !ruleForm.message_scope) {
+        ruleForm.message_scope = filtersVariants.value.message_scope?.[0]?.value ?? 'all';
+    }
+
+    if (value === 'message.received') {
+        ruleForm.currency = '';
+        ruleForm.min_amount = '';
+    }
+});
+
 onMounted(() => {
     initRuleDefaults();
+    syncSoundForm();
 });
 
 router.on('success', () => {
     rules.value = usePage().props.rules ?? [];
-    filtersVariants.value = usePage().props.filtersVariants ?? {event: [], currency: []};
+    filtersVariants.value = usePage().props.filtersVariants ?? {event: [], currency: [], message_scope: []};
     telegramAccount.value = usePage().props.telegramAccount ?? {};
+    audioTracks.value = usePage().props.audioTracks ?? [];
+    notificationSoundSettings.value = usePage().props.notificationSoundSettings ?? {};
     initRuleDefaults();
+    syncSoundForm();
 });
 </script>
 
@@ -133,6 +240,65 @@ router.on('success', () => {
             </div>
 
             <div class="grid gap-6 grid-cols-1 lg:grid-cols-2">
+                <div class="card bg-base-100 shadow lg:col-span-2">
+                    <div class="card-body space-y-4">
+                        <h3 class="text-lg font-semibold">Звуковые уведомления в панели</h3>
+                        <p class="text-sm text-base-content/70">
+                            Настраивается отдельно от правил Telegram. Если открыто несколько вкладок, звук проигрывается только в одной.
+                        </p>
+
+                        <div class="space-y-3">
+                            <div
+                                v-for="eventKey in SOUND_EVENT_KEYS"
+                                :key="eventKey"
+                                class="flex flex-col gap-3 rounded-box border border-base-300 p-3 lg:flex-row lg:items-center lg:justify-between"
+                            >
+                                <div class="space-y-1">
+                                    <div class="font-medium">{{ soundEventLabels[eventKey] }}</div>
+                                    <div class="text-xs text-base-content/70">
+                                        Звук не наслаивается: пока один трек играет, новый не запускается.
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <label class="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            class="toggle toggle-sm"
+                                            :checked="soundForm.settings[eventKey]?.enabled"
+                                            :disabled="soundForm.processing"
+                                            @change="toggleSoundEnabled(eventKey)"
+                                        />
+                                        <span class="text-sm">
+                                            {{ soundForm.settings[eventKey]?.enabled ? 'Включено' : 'Выключено' }}
+                                        </span>
+                                    </label>
+
+                                    <select
+                                        class="select select-bordered select-sm w-44"
+                                        :value="soundForm.settings[eventKey]?.track ?? ''"
+                                        :disabled="soundForm.processing || !audioTracks.length"
+                                        @change="selectSoundTrack(eventKey, $event.target.value)"
+                                    >
+                                        <option disabled value="">Выберите звук</option>
+                                        <option v-for="track in audioTracks" :key="track.value" :value="track.value">
+                                            {{ track.name }}
+                                        </option>
+                                    </select>
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-outline"
+                                        :disabled="!soundForm.settings[eventKey]?.track"
+                                        @click.prevent="previewSoundTrack(soundForm.settings[eventKey]?.track)"
+                                    >
+                                        Проверить
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
       
                 <div class="card bg-base-100 shadow">
                 <div class="card-body space-y-4">
@@ -207,6 +373,17 @@ router.on('success', () => {
                                 </select>
                                 <InputError :message="ruleForm.errors.event" />
                             </div>
+                            <div v-if="isMessageEvent">
+                                <label class="label">
+                                    <span class="label-text">Условие для сообщений</span>
+                                </label>
+                                <select v-model="ruleForm.message_scope" class="select select-bordered w-full">
+                                    <option v-for="scope in filtersVariants.message_scope" :key="scope.value" :value="scope.value">
+                                        {{ scope.name }}
+                                    </option>
+                                </select>
+                                <InputError :message="ruleForm.errors.message_scope" />
+                            </div>
                             <div v-if="showCurrencyFilter">
                                 <label class="label">
                                     <span class="label-text">Валюта (опционально)</span>
@@ -261,6 +438,9 @@ router.on('success', () => {
                                 <div class="flex flex-wrap gap-2 text-xs text-base-content/70">
                                     <span class="badge badge-ghost badge-xs">
                                         Telegram
+                                    </span>
+                                    <span v-if="rule.message_scope" class="badge badge-outline badge-xs">
+                                        {{ messageScopeLabels[rule.message_scope] ?? rule.message_scope }}
                                     </span>
                                     <span v-if="hasRuleAmount(rule)" class="badge badge-outline badge-xs">
                                         {{ ruleAmountLabel(rule) }}

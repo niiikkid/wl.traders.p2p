@@ -1,6 +1,6 @@
 <script setup>
 import {usePage, router, useForm} from '@inertiajs/vue3';
-import {computed, onMounted, ref} from 'vue'
+import {computed, onMounted, onUnmounted, ref} from 'vue'
 import ViewModeSwitcher from "@/Layouts/Partials/ViewModeSwitcher.vue";
 import TraderMenu from "@/Layouts/Partials/TraderMenu.vue";
 import AdminMenu from "@/Layouts/Partials/AdminMenu.vue";
@@ -12,6 +12,7 @@ import TeamLeaderMenu from "@/Layouts/Partials/TeamLeaderMenu.vue";
 import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
 import AnalystMenu from "@/Layouts/Partials/AnalystMenu.vue";
 import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
+import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 
 const viewStore = useViewStore();
 
@@ -19,6 +20,234 @@ const rates = ref(usePage().props.data.rates);
 const role = usePage().props.auth.role;
 const showAllRates = ref(false);
 const isImpersonated = ref(usePage().props.auth.is_impersonated);
+const notificationSoundSettings = ref(usePage().props.notificationsSound ?? null);
+const notificationLatestEventIds = ref({
+    order_assigned: null,
+    dispute_opened: null,
+    message_received: null,
+});
+const notificationPollInterval = ref(null);
+const notificationLeaderHeartbeatInterval = ref(null);
+const isNotificationPollingRequestRunning = ref(false);
+const notificationTabId = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const NOTIFICATION_SOUND_LEADER_TTL_MS = 8000;
+const NOTIFICATION_SOUND_LEADER_HEARTBEAT_MS = 3000;
+const NOTIFICATION_POLL_INTERVAL_MS = 5000;
+
+const syncNotificationSoundSettingsFromProps = () => {
+    notificationSoundSettings.value = usePage().props.notificationsSound ?? null;
+};
+
+const canPollNotifications = computed(() => {
+    return ['Trader', 'Super Admin'].includes(usePage().props.auth?.role?.name);
+});
+
+const getNotificationSoundLeaderStorageKey = () => {
+    const userId = usePage().props.auth?.user?.id ?? 'guest';
+    return `notifications:sound:leader:${userId}`;
+};
+
+const readNotificationSoundLeader = () => {
+    try {
+        const rawValue = window.localStorage.getItem(getNotificationSoundLeaderStorageKey());
+
+        if (!rawValue) {
+            return null;
+        }
+
+        const parsedValue = JSON.parse(rawValue);
+        if (!parsedValue?.tabId || !parsedValue?.updatedAt) {
+            return null;
+        }
+
+        return parsedValue;
+    } catch (error) {
+        return null;
+    }
+};
+
+const writeNotificationSoundLeader = () => {
+    try {
+        window.localStorage.setItem(
+            getNotificationSoundLeaderStorageKey(),
+            JSON.stringify({
+                tabId: notificationTabId,
+                updatedAt: Date.now(),
+            })
+        );
+    } catch (error) {
+        // ignored
+    }
+};
+
+const removeNotificationSoundLeaderIfOwned = () => {
+    try {
+        const currentLeader = readNotificationSoundLeader();
+        if (currentLeader?.tabId === notificationTabId) {
+            window.localStorage.removeItem(getNotificationSoundLeaderStorageKey());
+        }
+    } catch (error) {
+        // ignored
+    }
+};
+
+const isNotificationSoundLeaderAlive = (leaderData) => {
+    if (!leaderData?.updatedAt) {
+        return false;
+    }
+
+    return Date.now() - Number(leaderData.updatedAt) < NOTIFICATION_SOUND_LEADER_TTL_MS;
+};
+
+const isCurrentTabNotificationSoundLeader = () => {
+    const currentLeader = readNotificationSoundLeader();
+    return currentLeader?.tabId === notificationTabId;
+};
+
+const tryAcquireNotificationSoundLeader = ({force = false} = {}) => {
+    if (!canPollNotifications.value) {
+        return false;
+    }
+
+    const currentLeader = readNotificationSoundLeader();
+    const shouldAcquire = force
+        || !isNotificationSoundLeaderAlive(currentLeader)
+        || currentLeader?.tabId === notificationTabId;
+
+    if (!shouldAcquire) {
+        return false;
+    }
+
+    writeNotificationSoundLeader();
+
+    return true;
+};
+
+const startNotificationSoundLeaderHeartbeat = () => {
+    stopNotificationSoundLeaderHeartbeat();
+
+    if (!canPollNotifications.value) {
+        return;
+    }
+
+    tryAcquireNotificationSoundLeader();
+
+    notificationLeaderHeartbeatInterval.value = setInterval(() => {
+        if (isCurrentTabNotificationSoundLeader()) {
+            writeNotificationSoundLeader();
+            return;
+        }
+
+        tryAcquireNotificationSoundLeader();
+    }, NOTIFICATION_SOUND_LEADER_HEARTBEAT_MS);
+};
+
+const stopNotificationSoundLeaderHeartbeat = () => {
+    if (notificationLeaderHeartbeatInterval.value) {
+        clearInterval(notificationLeaderHeartbeatInterval.value);
+        notificationLeaderHeartbeatInterval.value = null;
+    }
+};
+
+const playNotificationSoundForEvent = (eventKey) => {
+    const eventSettings = notificationSoundSettings.value?.[eventKey];
+    if (!eventSettings?.enabled || !eventSettings?.track) {
+        return;
+    }
+
+    if (document.visibilityState !== 'visible') {
+        return;
+    }
+
+    if (!isCurrentTabNotificationSoundLeader()) {
+        return;
+    }
+
+    playNotificationAudio(`/audio/${eventSettings.track}`, {interrupt: false});
+};
+
+const detectNewestEvent = (latestEventIds) => {
+    const eventPriority = ['message_received', 'dispute_opened', 'order_assigned'];
+
+    for (const eventKey of eventPriority) {
+        const previousValue = Number(notificationLatestEventIds.value?.[eventKey] ?? 0);
+        const nextValue = Number(latestEventIds?.[eventKey] ?? 0);
+
+        if (previousValue > 0 && nextValue > previousValue) {
+            return eventKey;
+        }
+    }
+
+    return null;
+};
+
+const pollNotifications = async () => {
+    if (!canPollNotifications.value || isNotificationPollingRequestRunning.value) {
+        return;
+    }
+
+    isNotificationPollingRequestRunning.value = true;
+
+    try {
+        const response = await window.axios.get(route('notifications.ping'));
+        const latestEventIds = response?.data?.latest_event_ids ?? {
+            order_assigned: 0,
+            dispute_opened: 0,
+            message_received: 0,
+        };
+
+        const newestEvent = detectNewestEvent(latestEventIds);
+        notificationLatestEventIds.value = latestEventIds;
+
+        if (newestEvent) {
+            playNotificationSoundForEvent(newestEvent);
+        }
+    } catch (error) {
+        // ignored
+    } finally {
+        isNotificationPollingRequestRunning.value = false;
+    }
+};
+
+const startNotificationsPolling = () => {
+    stopNotificationsPolling();
+
+    if (!canPollNotifications.value) {
+        return;
+    }
+
+    startNotificationSoundLeaderHeartbeat();
+    pollNotifications();
+    notificationPollInterval.value = setInterval(pollNotifications, NOTIFICATION_POLL_INTERVAL_MS);
+};
+
+const stopNotificationsPolling = () => {
+    if (notificationPollInterval.value) {
+        clearInterval(notificationPollInterval.value);
+        notificationPollInterval.value = null;
+    }
+
+    stopNotificationSoundLeaderHeartbeat();
+};
+
+const handleNotificationVisibilityChange = () => {
+    if (!canPollNotifications.value) {
+        return;
+    }
+
+    if (document.visibilityState === 'visible') {
+        tryAcquireNotificationSoundLeader({force: true});
+        return;
+    }
+
+    removeNotificationSoundLeaderIfOwned();
+};
+
+const handleNotificationBeforeUnload = () => {
+    removeNotificationSoundLeaderIfOwned();
+};
 
 const roleToMode = (roleName) => {
     if (roleName === 'Super Admin') {
@@ -135,6 +364,10 @@ const applyViewMode = () => {
 // initialize components based on data attribute selectors
 onMounted(() => {
     applyViewMode();
+    syncNotificationSoundSettingsFromProps();
+    startNotificationsPolling();
+    window.addEventListener('visibilitychange', handleNotificationVisibilityChange);
+    window.addEventListener('beforeunload', handleNotificationBeforeUnload);
 })
 
 const getMobileDrawer = () => document.getElementById('mobile-drawer');
@@ -157,8 +390,17 @@ router.on('success', (event) => {
     applyViewMode();
     rates.value = usePage().props.data.rates;
     isImpersonated.value = usePage().props.auth.is_impersonated;
+    syncNotificationSoundSettingsFromProps();
+    startNotificationsPolling();
     closeMobileDrawer();
 })
+
+onUnmounted(() => {
+    stopNotificationsPolling();
+    window.removeEventListener('visibilitychange', handleNotificationVisibilityChange);
+    window.removeEventListener('beforeunload', handleNotificationBeforeUnload);
+    removeNotificationSoundLeaderIfOwned();
+});
 
 const leaveImpersonate = () => {
     useForm().post(route('impersonate.leave'));

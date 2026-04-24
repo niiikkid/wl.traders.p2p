@@ -20,6 +20,13 @@ return [
                 'low' => 'Низкий траст-баланс',
             ],
         ],
+        'message' => [
+            'received' => 'Новое сообщение (SMS/PUSH)',
+        ],
+    ],
+    'message_scopes' => [
+        'all' => 'Для всех сообщений',
+        'with_order' => 'Только для сообщений с прикрепленной сделкой',
     ],
     'templates' => [
         'withdrawal_requested' => [
@@ -37,6 +44,10 @@ return [
         'trust_balance_low' => [
             'title' => 'Низкий траст-баланс',
             'body' => 'Ваш траст-баланс снизился до :current_balance :currency. Пополните средства, чтобы избежать остановки работы.',
+        ],
+        'message_received' => [
+            'title' => 'Новое сообщение (SMS/PUSH)',
+            'body' => '',
         ],
     ],
     'telegram' => [

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\NotificationEvent;
+use App\Enums\NotificationMessageScope;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,6 +26,7 @@ class NotificationRuleRequest extends FormRequest
             'event' => ['nullable', 'string', Rule::in(NotificationEvent::values())],
             'currency' => ['nullable', 'string', Rule::in(Currency::getAllCodes())],
             'min_amount' => ['nullable', 'string', 'regex:/^\d+(\.\d+)?$/'],
+            'message_scope' => ['nullable', 'string', Rule::in(NotificationMessageScope::values())],
             'statuses' => ['nullable', 'array'],
             'statuses.*' => ['string'],
             'enabled' => ['nullable', 'boolean'],
@@ -36,6 +38,10 @@ class NotificationRuleRequest extends FormRequest
 
         if ($event?->equals(NotificationEvent::TRUST_BALANCE_LOW)) {
             $baseRules['min_amount'] = ['required', 'string', 'regex:/^\d+(\.\d+)?$/'];
+        }
+
+        if ($event?->equals(NotificationEvent::MESSAGE_RECEIVED) && $this->isMethod('post')) {
+            $baseRules['message_scope'][] = 'required';
         }
 
         if ($this->filled('min_amount') && ! $event?->equals(NotificationEvent::TRUST_BALANCE_LOW)) {
@@ -59,6 +65,11 @@ class NotificationRuleRequest extends FormRequest
         if ($this->has('min_amount') && is_string($this->min_amount)) {
             $amount = trim($this->min_amount);
             $this->merge(['min_amount' => $amount !== '' ? $amount : null]);
+        }
+
+        if ($this->has('message_scope') && is_string($this->message_scope)) {
+            $messageScope = strtolower(trim($this->message_scope));
+            $this->merge(['message_scope' => $messageScope !== '' ? $messageScope : null]);
         }
     }
 

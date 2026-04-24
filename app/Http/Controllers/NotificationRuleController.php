@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\NotificationEvent;
+use App\Enums\NotificationMessageScope;
 use App\Http\Requests\NotificationRuleRequest;
 use App\Models\NotificationRule;
 use App\Services\Money\Currency;
@@ -19,12 +20,18 @@ class NotificationRuleController extends Controller
             return back()->with('error', 'Этот тип уведомления недоступен для вашей роли.');
         }
 
-        $usesAmountFilters = $event !== NotificationEvent::WITHDRAWAL_REQUESTED;
+        $usesAmountFilters = ! in_array($event, [
+            NotificationEvent::WITHDRAWAL_REQUESTED,
+            NotificationEvent::MESSAGE_RECEIVED,
+        ], true);
         $isTrustBalanceLow = $event === NotificationEvent::TRUST_BALANCE_LOW;
 
         NotificationRule::create([
             'user_id' => $user->id,
             'event' => $event,
+            'message_scope' => $event === NotificationEvent::MESSAGE_RECEIVED
+                ? NotificationMessageScope::from($request->validated('message_scope', NotificationMessageScope::ALL->value))
+                : null,
             'currency' => ! $usesAmountFilters
                 ? null
                 : ($isTrustBalanceLow ? Currency::USDT()->getCode() : $request->validated('currency')),
@@ -47,11 +54,19 @@ class NotificationRuleController extends Controller
             return back()->with('error', 'Этот тип уведомления недоступен для вашей роли.');
         }
 
-        $usesAmountFilters = $event !== NotificationEvent::WITHDRAWAL_REQUESTED;
+        $usesAmountFilters = ! in_array($event, [
+            NotificationEvent::WITHDRAWAL_REQUESTED,
+            NotificationEvent::MESSAGE_RECEIVED,
+        ], true);
         $isTrustBalanceLow = $event === NotificationEvent::TRUST_BALANCE_LOW;
 
         $notificationRule->update([
             'event' => $event,
+            'message_scope' => $event === NotificationEvent::MESSAGE_RECEIVED
+                ? NotificationMessageScope::from(
+                    $request->validated('message_scope', $notificationRule->message_scope?->value ?? NotificationMessageScope::ALL->value)
+                )
+                : null,
             'currency' => ! $usesAmountFilters
                 ? null
                 : ($isTrustBalanceLow
