@@ -447,7 +447,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col" class="text-nowrap">
                                             Статус
                                         </th>
-                                        <th scope="col" class="text-nowrap">
+                                        <th v-if="isTraderView" scope="col" class="text-nowrap">
                                             Последняя сделка
                                         </th>
                                         <th scope="col" class="text-right">
@@ -665,7 +665,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </label>
                                                 </div>
                                             </td>
-                                            <td class="text-nowrap text-xs">
+                                            <td v-if="isTraderView" class="text-nowrap text-xs">
                                                 <DateTime
                                                     v-if="payment_detail.last_deal_at"
                                                     :data="payment_detail.last_deal_at"
