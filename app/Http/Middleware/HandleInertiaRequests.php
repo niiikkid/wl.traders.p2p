@@ -290,6 +290,7 @@ class HandleInertiaRequests extends Middleware
                     : null,
                 'role' => $request->user()?->roles()?->first(),
                 'is_admin' => $request->user()?->hasRole('Super Admin'),
+                'is_trader' => $request->user()?->hasRole('Trader'),
                 'is_impersonated' => $request->user()?->isImpersonated(),
             ],
             'ziggy' => fn () => [
@@ -307,7 +308,7 @@ class HandleInertiaRequests extends Middleware
                 'hasPendingDisputes' => fn () => $request->user()?->hasRole('Trader') ? $menu['pendingDisputesCount'] > 0 : 0,
             ],
             'menu' => $menu,
-            'notificationsSound' => $authUser instanceof User && $authUser->hasAnyRole(['Trader', 'Super Admin']) ? [
+            'notificationsSound' => $authUser instanceof User && $authUser->hasRole('Trader') ? [
                 'order_assigned' => [
                     'enabled' => $authUser->meta?->notification_sound_order_enabled ?? true,
                     'track' => $authUser->meta?->notification_sound_order_track ?? 'radwimps.mp3',

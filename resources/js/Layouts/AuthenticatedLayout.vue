@@ -41,7 +41,7 @@ const syncNotificationSoundSettingsFromProps = () => {
 };
 
 const canPollNotifications = computed(() => {
-    return ['Trader', 'Super Admin'].includes(usePage().props.auth?.role?.name);
+    return usePage().props.auth?.is_trader === true;
 });
 
 const getNotificationSoundLeaderStorageKey = () => {

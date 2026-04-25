@@ -36,10 +36,6 @@ enum NotificationEvent: string
 
     public function isAllowedForUser(User $user): bool
     {
-        if ($user->hasRole('Super Admin')) {
-            return $this !== self::MESSAGE_RECEIVED;
-        }
-
         return $user->hasRole($this->allowedRoles());
     }
 

@@ -24,7 +24,8 @@ class NotificationController extends Controller
     protected function buildIndexProps(Request $request): array
     {
         $user = $request->user();
-        $audioTracks = $this->getAudioTracks();
+        $isTrader = $user->hasRole('Trader');
+        $audioTracks = $isTrader ? $this->getAudioTracks() : [];
 
         $rules = NotificationRuleResource::collection(
             NotificationRule::query()
@@ -57,17 +58,22 @@ class NotificationController extends Controller
         return [
             'rules' => $rules,
             'telegramAccount' => $telegramAccount,
+            'showInAppSoundSettings' => $isTrader,
             'audioTracks' => $audioTracks,
-            'notificationSoundSettings' => $this->buildNotificationSoundSettings($user->meta, $audioTracks),
+            'notificationSoundSettings' => $isTrader
+                ? $this->buildNotificationSoundSettings($user->meta, $audioTracks)
+                : [],
             'filtersVariants' => [
                 'event' => $events,
                 'currency' => $currencies,
-                'message_scope' => array_map(function (NotificationMessageScope $scope) {
-                    return [
-                        'name' => $scope->label(),
-                        'value' => $scope->value,
-                    ];
-                }, NotificationMessageScope::cases()),
+                'message_scope' => $isTrader
+                    ? array_map(function (NotificationMessageScope $scope) {
+                        return [
+                            'name' => $scope->label(),
+                            'value' => $scope->value,
+                        ];
+                    }, NotificationMessageScope::cases())
+                    : [],
             ],
         ];
     }
@@ -86,7 +92,7 @@ class NotificationController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user->hasAnyRole(['Trader', 'Super Admin']), 403);
+        abort_unless($user->hasRole('Trader'), 403);
 
         return response()->json([
             'latest_event_ids' => $this->resolveLatestEventIds($request),
@@ -97,7 +103,7 @@ class NotificationController extends Controller
     {
         $user = $request->user();
 
-        abort_unless($user->hasAnyRole(['Trader', 'Super Admin']), 403);
+        abort_unless($user->hasRole('Trader'), 403);
 
         $audioTracks = $this->getAudioTracks();
         $allowedTracks = array_column($audioTracks, 'value');
@@ -132,14 +138,6 @@ class NotificationController extends Controller
     protected function resolveLatestEventIds(Request $request): array
     {
         $user = $request->user();
-
-        if ($user->hasRole('Super Admin')) {
-            return [
-                'order_assigned' => (int) (Order::query()->max('id') ?? 0),
-                'dispute_opened' => (int) (Dispute::query()->max('id') ?? 0),
-                'message_received' => (int) (SmsLog::query()->max('id') ?? 0),
-            ];
-        }
 
         return [
             'order_assigned' => (int) (Order::query()->where('trader_id', $user->id)->max('id') ?? 0),

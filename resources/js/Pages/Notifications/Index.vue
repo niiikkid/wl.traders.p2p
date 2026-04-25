@@ -18,6 +18,7 @@ const filtersVariants = ref(usePage().props.filtersVariants ?? {event: [], curre
 const telegramAccount = ref(usePage().props.telegramAccount ?? {});
 const audioTracks = ref(usePage().props.audioTracks ?? []);
 const notificationSoundSettings = ref(usePage().props.notificationSoundSettings ?? {});
+const showInAppSoundSettings = ref(usePage().props.showInAppSoundSettings ?? false);
 
 const ruleForm = useForm({
     event: '',
@@ -136,6 +137,10 @@ const normalizeSoundSettings = (settings = {}) => {
 };
 
 const syncSoundForm = () => {
+    if (!showInAppSoundSettings.value) {
+        soundForm.settings = {};
+        return;
+    }
     soundForm.settings = normalizeSoundSettings(notificationSoundSettings.value);
 };
 
@@ -241,7 +246,9 @@ watch(() => ruleForm.event, (value) => {
 
 onMounted(() => {
     initRuleDefaults();
-    syncSoundForm();
+    if (showInAppSoundSettings.value) {
+        syncSoundForm();
+    }
 });
 
 router.on('success', () => {
@@ -250,8 +257,13 @@ router.on('success', () => {
     telegramAccount.value = usePage().props.telegramAccount ?? {};
     audioTracks.value = usePage().props.audioTracks ?? [];
     notificationSoundSettings.value = usePage().props.notificationSoundSettings ?? {};
+    showInAppSoundSettings.value = usePage().props.showInAppSoundSettings ?? false;
     initRuleDefaults();
-    syncSoundForm();
+    if (showInAppSoundSettings.value) {
+        syncSoundForm();
+    } else {
+        soundForm.settings = {};
+    }
 });
 </script>
 
@@ -265,7 +277,7 @@ router.on('success', () => {
             </div>
 
             <div class="grid gap-6 grid-cols-1 lg:grid-cols-2">
-                <div class="card bg-base-100 shadow lg:col-span-2">
+                <div v-if="showInAppSoundSettings" class="card bg-base-100 shadow lg:col-span-2">
                     <div class="card-body space-y-4">
                         <h3 class="text-lg font-semibold">Звуковые уведомления в панели</h3>
                         <p class="text-sm text-base-content/70">
