@@ -14,42 +14,42 @@ class NotificationTemplateResolver
 
         return match ($type) {
             NotificationEvent::WITHDRAWAL_REQUESTED => new NotificationContent(
-                title: trans('notifications.templates.withdrawal_requested.title'),
+                title: $this->telegramBoldTitle(trans('notifications.templates.withdrawal_requested.title')),
                 body: trans('notifications.templates.withdrawal_requested.body', [
-                    'user_email' => $payload['user_email'] ?? '',
-                    'amount' => $payload['amount'] ?? '',
-                    'currency' => strtoupper($payload['currency'] ?? ''),
-                    'invoice_id' => $payload['invoice_id'] ?? '',
+                    'user_email' => '<code>'.$this->e($payload['user_email'] ?? null).'</code>',
+                    'amount' => '<b>'.$this->e($payload['amount'] ?? null).'</b>',
+                    'currency' => '<b>'.$this->e(strtoupper((string) ($payload['currency'] ?? ''))).'</b>',
+                    'invoice_id' => '<code>'.$this->e($payload['invoice_id'] ?? null).'</code>',
                 ]),
                 payload: $payload
             ),
             NotificationEvent::ORDER_ASSIGNED => new NotificationContent(
-                title: trans('notifications.templates.order_assigned.title'),
+                title: $this->telegramBoldTitle(trans('notifications.templates.order_assigned.title')),
                 body: trans('notifications.templates.order_assigned.body', [
-                    'order_uuid' => $payload['order_uuid'] ?? '',
-                    'amount' => $payload['amount'] ?? '',
-                    'currency' => strtoupper($payload['currency'] ?? ''),
+                    'order_uuid' => '<code>'.$this->e($payload['order_uuid'] ?? null).'</code>',
+                    'amount' => '<b>'.$this->e($payload['amount'] ?? null).'</b>',
+                    'currency' => '<b>'.$this->e(strtoupper((string) ($payload['currency'] ?? ''))).'</b>',
                 ]),
                 payload: $payload
             ),
             NotificationEvent::DISPUTE_OPENED => new NotificationContent(
-                title: trans('notifications.templates.dispute_opened.title'),
+                title: $this->telegramBoldTitle(trans('notifications.templates.dispute_opened.title')),
                 body: trans('notifications.templates.dispute_opened.body', [
-                    'order_uuid' => $payload['order_uuid'] ?? '',
-                    'dispute_id' => $payload['dispute_id'] ?? '',
+                    'order_uuid' => '<code>'.$this->e($payload['order_uuid'] ?? null).'</code>',
+                    'dispute_id' => '<code>'.$this->e($payload['dispute_id'] ?? null).'</code>',
                 ]),
                 payload: $payload
             ),
             NotificationEvent::TRUST_BALANCE_LOW => new NotificationContent(
-                title: trans('notifications.templates.trust_balance_low.title'),
+                title: $this->telegramBoldTitle(trans('notifications.templates.trust_balance_low.title')),
                 body: trans('notifications.templates.trust_balance_low.body', [
-                    'current_balance' => $payload['current_balance'] ?? '',
-                    'currency' => strtoupper($payload['currency'] ?? ''),
+                    'current_balance' => '<b>'.$this->e($payload['current_balance'] ?? null).'</b>',
+                    'currency' => '<b>'.$this->e(strtoupper((string) ($payload['currency'] ?? ''))).'</b>',
                 ]),
                 payload: $payload
             ),
             NotificationEvent::MESSAGE_RECEIVED => new NotificationContent(
-                title: trans('notifications.templates.message_received.title'),
+                title: $this->telegramBoldTitle(trans('notifications.templates.message_received.title')),
                 body: $this->buildMessageReceivedBody($payload),
                 payload: $payload
             ),
@@ -58,43 +58,56 @@ class NotificationTemplateResolver
 
     protected function buildMessageReceivedBody(array $payload): string
     {
+        $messageType = ($payload['message_type'] ?? '') !== '' ? (string) $payload['message_type'] : 'UNKNOWN';
+        $deviceName = ($payload['device_name'] ?? '') !== '' ? (string) $payload['device_name'] : 'Неизвестно';
+
         $lines = [];
-        $lines[] = 'Тип: '.($payload['message_type'] ?? 'UNKNOWN');
-        $lines[] = 'Устройство: '.($payload['device_name'] ?? 'Неизвестно');
+        $lines[] = '<b>Тип:</b> '.$this->e($messageType);
+        $lines[] = '<b>Устройство:</b> '.$this->e($deviceName);
 
         if (! empty($payload['bank_name'])) {
-            $lines[] = 'Банк: '.$payload['bank_name'];
+            $lines[] = '<b>Банк:</b> '.$this->e((string) $payload['bank_name']);
         } else {
-            $lines[] = 'Отправитель: '.($payload['sender'] ?? 'Неизвестно');
+            $sender = ($payload['sender'] ?? '') !== '' ? (string) $payload['sender'] : 'Неизвестно';
+            $lines[] = '<b>Отправитель:</b> '.$this->e($sender);
         }
 
         if (! empty($payload['amount'])) {
-            $lines[] = 'Сумма в сообщении: '.$payload['amount'];
+            $lines[] = '<b>Сумма в сообщении:</b> '.$this->e((string) $payload['amount']);
         }
 
         if (! empty($payload['card_last_digits'])) {
-            $lines[] = 'Карта: *'.$payload['card_last_digits'];
+            $lines[] = '<b>Карта:</b> <code>•••• '.$this->e((string) $payload['card_last_digits']).'</code>';
         }
 
-        $lines[] = 'Текст: '.($payload['message'] ?? '-');
+        $rawMessage = ($payload['message'] ?? '') !== '' ? (string) $payload['message'] : '-';
+        $lines[] = '<b>Текст</b>';
+        $lines[] = '<blockquote>'.$this->e($rawMessage).'</blockquote>';
 
         if (! empty($payload['has_order'])) {
             $lines[] = '';
-            $lines[] = 'Сделка:';
-            $lines[] = 'UID: '.($payload['order_uid'] ?? '-');
-            $lines[] = 'Создана: '.($payload['order_created_at'] ?? '-');
-            $lines[] = 'Реквизит: '.($payload['payment_detail'] ?? '-');
-            $lines[] = 'Название: '.($payload['payment_detail_name'] ?? '-');
-            $lines[] = 'Владелец: '.($payload['payment_detail_owner'] ?? '-');
-            $lines[] = 'Сумма: '
-                .($payload['order_amount_fiat'] ?? '-')
-                .' '
-                .($payload['order_amount_fiat_currency'] ?? '')
-                .' / '
-                .($payload['order_amount_usdt'] ?? '-')
-                .' USDT';
+            $lines[] = '<b>Сделка</b>';
+            $lines[] = '<b>UID:</b> <code>'.$this->e((string) ($payload['order_uid'] ?? '-')).'</code>';
+            $lines[] = '<b>Создана:</b> '.$this->e((string) ($payload['order_created_at'] ?? '-'));
+            $lines[] = '<b>Реквизит:</b> '.$this->e((string) ($payload['payment_detail'] ?? '-'));
+            $lines[] = '<b>Название:</b> '.$this->e((string) ($payload['payment_detail_name'] ?? '-'));
+            $lines[] = '<b>Владелец:</b> '.$this->e((string) ($payload['payment_detail_owner'] ?? '-'));
+            $fiat = $this->e((string) ($payload['order_amount_fiat'] ?? '-'));
+            $fiatCur = $this->e((string) ($payload['order_amount_fiat_currency'] ?? ''));
+            $usdt = $this->e((string) ($payload['order_amount_usdt'] ?? '-'));
+            $lines[] = '<b>Сумма:</b> '.$fiat.' '.$fiatCur.' / '.$usdt.' USDT';
         }
 
         return implode("\n", $lines);
+    }
+
+    protected function telegramBoldTitle(string $title): string
+    {
+        return '<b>'.$this->e($title).'</b>';
+    }
+
+    protected function e(mixed $value): string
+    {
+        return e((string) ($value ?? ''));
     }
 }

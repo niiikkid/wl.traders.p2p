@@ -63,7 +63,7 @@ class MessageReceivedNotificationEvent implements NotificationEventInterface
             'order_created_at' => $order?->created_at?->format('d.m.Y H:i'),
             'order_amount_fiat' => $order?->amount?->toBeauty(),
             'order_amount_fiat_currency' => $orderCurrency ? strtoupper($orderCurrency) : null,
-            'order_amount_usdt' => $order?->base_amount?->toBeauty(),
+            'order_amount_usdt' => $order?->total_profit?->toBeauty(),
             'payment_detail_name' => $paymentDetail?->name,
             'payment_detail_owner' => $paymentDetail?->initials,
             'payment_detail' => $paymentDetail?->detail,

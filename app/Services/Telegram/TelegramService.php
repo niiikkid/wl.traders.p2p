@@ -77,6 +77,7 @@ class TelegramService implements TelegramServiceContract
             Telegram::sendMessage([
                 'chat_id' => $account->chat_id,
                 'text' => $this->buildMessage($title, $body),
+                'parse_mode' => 'HTML',
             ]);
         } catch (\Throwable $e) {
             throw new TelegramServiceException($e->getMessage(), $e->getCode(), $e);
