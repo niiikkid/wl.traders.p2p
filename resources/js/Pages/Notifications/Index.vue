@@ -67,12 +67,14 @@ const getNamedTrackSubtitle = (track) => namedTrackSubtitles[track?.value] ?? ''
 
 const trackOptionLabel = (track) => formatTrackName(track?.name ?? '');
 
-const findTrackByValue = (trackValue) => audioTracks.value.find((item) => item.value === trackValue);
-
-const selectedTrackSubtitle = (eventKey) => {
-    const track = findTrackByValue(soundForm.settings[eventKey]?.track);
-    return getNamedTrackSubtitle(track);
+/** Подпись + тег-описание в одной строке внутри option (видно в закрытом селекте) */
+const trackOptionDisplay = (track) => {
+    const main = trackOptionLabel(track);
+    const sub = getNamedTrackSubtitle(track);
+    return sub ? `${main} — ${sub}` : main;
 };
+
+const findTrackByValue = (trackValue) => audioTracks.value.find((item) => item.value === trackValue);
 
 const isMessageEvent = computed(() => ruleForm.event === 'message.received');
 const showMinAmountFilter = computed(() => {
@@ -278,62 +280,57 @@ router.on('success', () => {
 
             <div class="grid gap-6 grid-cols-1 lg:grid-cols-2">
                 <div v-if="showInAppSoundSettings" class="card bg-base-100 shadow lg:col-span-2">
-                    <div class="card-body space-y-4">
+                    <div class="card-body space-y-3">
                         <h3 class="text-lg font-semibold">Звуковые уведомления в панели</h3>
                         <p class="text-sm text-base-content/70">
-                            Настраивается отдельно от правил Telegram. Если открыто несколько вкладок, звук проигрывается только в одной.
+                            Здесь можно настроить звуковые уведомления для панели — они работают отдельно от уведомлений в Telegram и на них не влияют.
                         </p>
 
-                        <div class="space-y-3">
+                        <div class="space-y-2">
                             <div
                                 v-for="eventKey in SOUND_EVENT_KEYS"
                                 :key="eventKey"
-                                class="flex flex-col gap-3 rounded-box border border-base-300 p-3 lg:flex-row lg:items-center lg:justify-between"
+                                class="grid grid-cols-1 gap-3 rounded-box border border-base-300 p-3 md:grid-cols-[12rem_11.5rem_minmax(0,1fr)_auto] md:items-stretch md:gap-x-3 md:gap-y-1"
                             >
-                                <div class="space-y-1">
-                                    <div class="font-medium">{{ soundEventLabels[eventKey] }}</div>
-                                    <div class="text-xs text-base-content/70">
-                                        Звук не наслаивается: пока один трек играет, новый не запускается.
-                                    </div>
+                                <div class="flex min-h-0 min-w-0 items-center md:h-full">
+                                    <div class="font-medium leading-snug">{{ soundEventLabels[eventKey] }}</div>
                                 </div>
 
-                                <div class="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-                                    <label class="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            class="toggle toggle-sm"
-                                            :checked="soundForm.settings[eventKey]?.enabled"
-                                            :disabled="soundForm.processing"
-                                            @change="toggleSoundEnabled(eventKey)"
-                                        />
-                                        <span class="text-sm">
-                                            {{ soundForm.settings[eventKey]?.enabled ? 'Включено' : 'Выключено' }}
-                                        </span>
-                                    </label>
+                                <label
+                                    class="flex min-h-0 w-full max-w-full items-center gap-2 md:h-full"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        class="toggle toggle-sm"
+                                        :checked="soundForm.settings[eventKey]?.enabled"
+                                        :disabled="soundForm.processing"
+                                        @change="toggleSoundEnabled(eventKey)"
+                                    />
+                                    <span class="text-sm whitespace-nowrap">
+                                        {{ soundForm.settings[eventKey]?.enabled ? 'Включено' : 'Выключено' }}
+                                    </span>
+                                </label>
 
-                                    <div class="flex min-w-0 flex-col gap-0.5 sm:max-w-sm">
-                                        <select
-                                            class="select select-bordered select-sm min-w-0 w-full"
-                                            :value="soundForm.settings[eventKey]?.track ?? ''"
-                                            :disabled="soundForm.processing || !audioTracks.length"
-                                            @change="selectSoundTrack(eventKey, $event.target.value)"
-                                        >
-                                            <option disabled value="">Выберите звук</option>
-                                            <option v-for="track in audioTracks" :key="track.value" :value="track.value">
-                                                {{ trackOptionLabel(track) }}
-                                            </option>
-                                        </select>
-                                        <span
-                                            v-if="selectedTrackSubtitle(eventKey)"
-                                            class="truncate text-[11px] text-base-content/60"
-                                        >
-                                            {{ selectedTrackSubtitle(eventKey) }}
-                                        </span>
-                                    </div>
+                                <div
+                                    class="flex min-h-0 w-full max-w-full flex-col justify-center gap-0.5 md:h-full md:max-w-none"
+                                >
+                                    <select
+                                        class="select select-bordered select-sm min-w-0 w-full max-w-xs md:max-w-none"
+                                        :value="soundForm.settings[eventKey]?.track ?? ''"
+                                        :disabled="soundForm.processing || !audioTracks.length"
+                                        @change="selectSoundTrack(eventKey, $event.target.value)"
+                                    >
+                                        <option disabled value="">Выберите звук</option>
+                                        <option v-for="track in audioTracks" :key="track.value" :value="track.value">
+                                            {{ trackOptionDisplay(track) }}
+                                        </option>
+                                    </select>
+                                </div>
 
+                                <div class="flex min-h-0 items-center md:h-full md:justify-end">
                                     <button
                                         type="button"
-                                        class="btn btn-sm btn-outline"
+                                        class="btn btn-sm btn-outline w-fit shrink-0"
                                         :disabled="!soundForm.settings[eventKey]?.track"
                                         @click.prevent="previewSoundTrack(soundForm.settings[eventKey]?.track)"
                                     >
