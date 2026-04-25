@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\ProviderType;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,8 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int|null $cascade_deal_id ID каскадной сделки (если запрос связан со сделкой)
  * @property int|null $cascade_transaction_id ID транзакции каскада (если запрос связан с транзакцией)
- * @property string $provider_code Код провайдера (например, 'internal', 'external_provider_1')
- * @property ProviderType $provider_type Тип провайдера (internal/external)
+ * @property int $provider_id ID провайдера
  * @property string $operation Тип операции (createDeal, cancelDeal, getDeal, openDispute, getDispute)
  * @property string $method HTTP метод (GET, POST, PUT, DELETE)
  * @property string $url URL/endpoint запроса к провайдеру
@@ -37,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property CascadeDeal|null $cascadeDeal
  * @property CascadeTransaction|null $cascadeTransaction
+ * @property CascadeProvider $provider
  */
 class CascadeProviderLog extends Model
 {
@@ -45,8 +44,7 @@ class CascadeProviderLog extends Model
     protected $fillable = [
         'cascade_deal_id',
         'cascade_transaction_id',
-        'provider_code',
-        'provider_type',
+        'provider_id',
         'operation',
         'method',
         'url',
@@ -60,7 +58,6 @@ class CascadeProviderLog extends Model
     ];
 
     protected $casts = [
-        'provider_type' => ProviderType::class,
         'request_payload' => 'array',
         'response_payload' => 'array',
         'status_code' => 'integer',
@@ -76,5 +73,10 @@ class CascadeProviderLog extends Model
     public function cascadeTransaction(): BelongsTo
     {
         return $this->belongsTo(CascadeTransaction::class);
+    }
+
+    public function provider(): BelongsTo
+    {
+        return $this->belongsTo(CascadeProvider::class);
     }
 }

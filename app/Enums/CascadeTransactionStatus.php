@@ -10,8 +10,8 @@ enum CascadeTransactionStatus: string
 {
     use Enumable;
 
-    case CREATED = 'created'; // Сделка создана у провайдера
-    case FAILED = 'failed'; // Не удалось создать сделку
-    case CANCELLED = 'cancelled'; // Сделка отменена (не выбрана как победитель)
-    case SUCCESS = 'success'; // Сделка успешно завершена
+    case OPENED = 'opened'; // Сделка успешно открыта у провайдера
+    case FAILED_TO_OPEN = 'failed_to_open'; // Не удалось открыть сделку у провайдера
+    case CANCELLED = 'cancelled'; // Сделка отклонена, закрыта во внешнем сервисе
+    case ACCEPTED = 'accepted'; // Сделка принята в работу, выбрана для использования
 }

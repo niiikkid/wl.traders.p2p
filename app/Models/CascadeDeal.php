@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Casts\BaseCurrencyMoneyCast;
 use App\Casts\CurrencyCast;
 use App\Casts\MoneyCast;
+use App\Enums\CascadePaymentMethod;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
@@ -32,9 +33,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Money $amount Текущая сумма сделки
  * @property Money $initial_amount Изначальная сумма при создании
  * @property Currency $currency Валюта сделки
- * @property Money|null $trader_debit Сумма списания у трейдера в USDT (что списываем у трейдера в PayIn сделке)
- * @property Money|null $provider_cost Себестоимость у провайдера в USDT (что платим провайдеру)
- * @property Money|null $profit Прибыль сервиса в USDT = trader_debit - provider_cost
+ * @property Money|null $debit Сумма, получаемая от провайдера ликвидности в USDT
+ * @property Money|null $credit Сумма, выплачиваемая мерчанту в USDT
+ * @property Money|null $service_profit Прибыль сервиса за операцию в USDT (debit - credit)
+ * @property Money|null $usdt_amount Сумма amount после конвертации по курсу в USDT
+ * @property Money|null $fee Комиссия, забираемая у мерчанта в USDT
+ * @property float|null $fee_rate Комиссия в процентах, забираемая у мерчанта
  *
  * @property MarketEnum $market Рынок (bybit, binance, rapira)
  * @property Money $conversion_price Курс обмена
@@ -43,10 +47,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property OrderStatus $status Статус сделки (pending, success, fail)
  * @property OrderSubStatus $sub_status Подстатус сделки
  *
- * @property string|null $selected_provider Код провайдера-победителя
+ * @property int|null $selected_provider_id ID провайдера-победителя
  * @property int|null $selected_transaction_id ID победившей транзакции из CascadeTransaction
  *
- * @property string $payment_method Метод оплаты (c2c, card и т.д.)
+ * @property CascadePaymentMethod $payment_method Метод оплаты
  * @property array|null $gateway Данные шлюза (code, name, logo_link)
  * @property array|null $details Детали платежа (type, initials, value)
  *
@@ -59,6 +63,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Merchant $merchant
  * @property MerchantClient|null $merchantClient
  * @property Order|null $order
+ * @property CascadeProvider|null $selectedProvider
  */
 class CascadeDeal extends Model
 {
@@ -78,9 +83,14 @@ class CascadeDeal extends Model
         'amount',
         'initial_amount',
         'currency',
-        'trader_debit',
-        'provider_cost',
-        'profit',
+        'debit',
+        'credit',
+        'service_profit',
+        
+        // Внутренние расчеты с мерчантом
+        'usdt_amount',
+        'fee',
+        'fee_rate',
         
         // Курс и рынок
         'market',
@@ -92,7 +102,7 @@ class CascadeDeal extends Model
         'sub_status',
         
         // Провайдер
-        'selected_provider',
+        'selected_provider_id',
         'selected_transaction_id',
         
         // Детали сделки
@@ -114,10 +124,14 @@ class CascadeDeal extends Model
         'market' => MarketEnum::class,
         'amount' => MoneyCast::class,
         'initial_amount' => MoneyCast::class,
-        'trader_debit' => BaseCurrencyMoneyCast::class,
-        'provider_cost' => BaseCurrencyMoneyCast::class,
-        'profit' => BaseCurrencyMoneyCast::class,
+        'debit' => BaseCurrencyMoneyCast::class,
+        'credit' => BaseCurrencyMoneyCast::class,
+        'service_profit' => BaseCurrencyMoneyCast::class,
+        'usdt_amount' => BaseCurrencyMoneyCast::class,
+        'fee' => BaseCurrencyMoneyCast::class,
+        'fee_rate' => 'float',
         'conversion_price' => MoneyCast::class,
+        'payment_method' => CascadePaymentMethod::class,
         'gateway' => 'array',
         'details' => 'array',
         'rate_fixed_at' => 'datetime',
@@ -137,6 +151,11 @@ class CascadeDeal extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function selectedProvider(): BelongsTo
+    {
+        return $this->belongsTo(CascadeProvider::class, 'selected_provider_id');
     }
 
     public function transactions(): HasMany

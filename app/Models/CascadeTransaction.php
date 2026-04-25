@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\CascadeTransactionStatus;
-use App\Enums\ProviderType;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,9 +19,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  *
  * @property int $id
  * @property int $cascade_deal_id ID каскадной сделки
- * @property string $provider_code Код провайдера (например, 'internal', 'external_provider_1')
- * @property ProviderType $provider_type Тип провайдера (internal/external)
- * @property CascadeTransactionStatus $status Статус транзакции (created/failed/cancelled/success)
+ * @property int $provider_id ID провайдера
+ * @property CascadeTransactionStatus $status Статус транзакции (opened/failed_to_open/cancelled/accepted)
  * @property string|null $provider_deal_id ID сделки у провайдера (если создана)
  * @property array|null $request_payload Данные запроса к провайдеру (для аудита)
  * @property array|null $response_payload Данные ответа от провайдера (для аудита)
@@ -32,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Carbon $updated_at
  *
  * @property CascadeDeal $cascadeDeal
+ * @property CascadeProvider $provider
  */
 class CascadeTransaction extends Model
 {
@@ -39,8 +38,7 @@ class CascadeTransaction extends Model
 
     protected $fillable = [
         'cascade_deal_id',
-        'provider_code',
-        'provider_type',
+        'provider_id',
         'status',
         'provider_deal_id',
         'request_payload',
@@ -50,7 +48,6 @@ class CascadeTransaction extends Model
     ];
 
     protected $casts = [
-        'provider_type' => ProviderType::class,
         'status' => CascadeTransactionStatus::class,
         'request_payload' => 'array',
         'response_payload' => 'array',
@@ -59,6 +56,11 @@ class CascadeTransaction extends Model
     public function cascadeDeal(): BelongsTo
     {
         return $this->belongsTo(CascadeDeal::class);
+    }
+
+    public function provider(): BelongsTo
+    {
+        return $this->belongsTo(CascadeProvider::class);
     }
 
     /**
