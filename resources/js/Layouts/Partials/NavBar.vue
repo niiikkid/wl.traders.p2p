@@ -112,7 +112,7 @@ const currentTraderTopRankLabel = computed(() => {
 
 const shouldShowCurrentTraderSeparated = computed(() => {
     const current = traderTopData.value.current_trader;
-    return !!current && Number(current.rank) > 10;
+    return !!current && Number(current.rank) > 15;
 });
 
 const getTraderLeaderboardIndexUrl = () => {
@@ -175,8 +175,8 @@ const selectedTraderTopTypeLabel = computed(() => {
 
 const traderTopTitle = computed(() => {
     return selectedTraderTopType.value === 'monthly'
-        ? 'ТОП-10 трейдеров за месяц'
-        : 'ТОП-10 трейдеров за неделю';
+        ? 'ТОП-15 трейдеров за месяц'
+        : 'ТОП-15 трейдеров за неделю';
 });
 
 const traderTopEmptyLabel = computed(() => {
@@ -472,7 +472,7 @@ onMounted(async () => {
                                 </div>
                                 <div v-else class="space-y-1">
                                     <div
-                                        class="grid items-center gap-2 px-2 pb-1 border-b border-base-300"
+                                        class="grid items-center gap-2 px-2 pb-1 border-b border-base-300 sticky top-0 z-10 bg-base-100"
                                         :class="selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]'"
                                     >
                                         <span class="text-[10px] uppercase tracking-wide text-base-content/60">#</span>
@@ -490,56 +490,58 @@ onMounted(async () => {
                                             Среднее время
                                         </span>
                                     </div>
-                                    <div
-                                        v-for="item in traderTopData.top"
-                                        :key="`top-${item.trader_id}`"
-                                        class="grid items-center gap-2 rounded-lg px-2 py-1.5"
-                                        :class="[
-                                            selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]',
-                                            Number(item.trader_id) === Number(authUser?.id ?? 0) ? 'bg-primary/10 border border-primary/20' : 'bg-base-200/40',
-                                        ]"
-                                    >
-                                        <span class="text-xs font-semibold">#{{ item.rank }}</span>
-                                        <span class="text-xs truncate">{{ item.nickname }}</span>
-                                        <span
-                                            class="text-xs text-right whitespace-nowrap tabular-nums"
-                                            :class="selectedTraderTopType === 'monthly' ? 'col-start-3' : ''"
-                                        >
-                                            {{ selectedTraderTopType === 'monthly' ? `$${item.total_amount_human}` : `${item.operations_count} сделок` }}
-                                        </span>
-                                        <span
-                                            v-if="selectedTraderTopType === 'weekly'"
-                                            class="text-xs text-right whitespace-nowrap tabular-nums"
-                                        >
-                                            {{ item.avg_processing_human }}
-                                        </span>
-                                    </div>
-
-                                    <div v-if="shouldShowCurrentTraderSeparated" class="space-y-1 pt-1">
-                                        <div class="flex items-center gap-2 px-2">
-                                            <div class="h-px flex-1 bg-base-300"></div>
-                                            <span class="text-[10px] uppercase tracking-wide text-base-content/50">другие трейдеры</span>
-                                            <div class="h-px flex-1 bg-base-300"></div>
-                                        </div>
-
+                                    <div class="max-h-72 overflow-y-auto pr-1 space-y-1">
                                         <div
-                                            class="grid items-center gap-2 rounded-lg px-2 py-1.5 bg-primary/10 border border-primary/20"
-                                            :class="selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]'"
+                                            v-for="item in traderTopData.top"
+                                            :key="`top-${item.trader_id}`"
+                                            class="grid items-center gap-2 rounded-lg px-2 py-1.5"
+                                            :class="[
+                                                selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]',
+                                                Number(item.trader_id) === Number(authUser?.id ?? 0) ? 'bg-primary/10 border border-primary/20' : 'bg-base-200/40',
+                                            ]"
                                         >
-                                            <span class="text-xs font-semibold">#{{ traderTopData.current_trader.rank }}</span>
-                                            <span class="text-xs truncate">{{ traderTopData.current_trader.nickname }}</span>
+                                            <span class="text-xs font-semibold">#{{ item.rank }}</span>
+                                            <span class="text-xs truncate">{{ item.nickname }}</span>
                                             <span
                                                 class="text-xs text-right whitespace-nowrap tabular-nums"
                                                 :class="selectedTraderTopType === 'monthly' ? 'col-start-3' : ''"
                                             >
-                                                {{ selectedTraderTopType === 'monthly' ? `$${traderTopData.current_trader.total_amount_human}` : `${traderTopData.current_trader.operations_count} сделок` }}
+                                                {{ selectedTraderTopType === 'monthly' ? `$${item.total_amount_human}` : `${item.operations_count} сделок` }}
                                             </span>
                                             <span
                                                 v-if="selectedTraderTopType === 'weekly'"
                                                 class="text-xs text-right whitespace-nowrap tabular-nums"
                                             >
-                                                {{ traderTopData.current_trader.avg_processing_human }}
+                                                {{ item.avg_processing_human }}
                                             </span>
+                                        </div>
+
+                                        <div v-if="shouldShowCurrentTraderSeparated" class="space-y-1 pt-1">
+                                            <div class="flex items-center gap-2 px-2">
+                                                <div class="h-px flex-1 bg-base-300"></div>
+                                                <span class="text-[10px] uppercase tracking-wide text-base-content/50">другие трейдеры</span>
+                                                <div class="h-px flex-1 bg-base-300"></div>
+                                            </div>
+
+                                            <div
+                                                class="grid items-center gap-2 rounded-lg px-2 py-1.5 bg-primary/10 border border-primary/20"
+                                                :class="selectedTraderTopType === 'monthly' ? 'grid-cols-[2.25rem_minmax(0,1fr)_8rem]' : 'grid-cols-[2.25rem_minmax(0,1fr)_6rem_7rem]'"
+                                            >
+                                                <span class="text-xs font-semibold">#{{ traderTopData.current_trader.rank }}</span>
+                                                <span class="text-xs truncate">{{ traderTopData.current_trader.nickname }}</span>
+                                                <span
+                                                    class="text-xs text-right whitespace-nowrap tabular-nums"
+                                                    :class="selectedTraderTopType === 'monthly' ? 'col-start-3' : ''"
+                                                >
+                                                    {{ selectedTraderTopType === 'monthly' ? `$${traderTopData.current_trader.total_amount_human}` : `${traderTopData.current_trader.operations_count} сделок` }}
+                                                </span>
+                                                <span
+                                                    v-if="selectedTraderTopType === 'weekly'"
+                                                    class="text-xs text-right whitespace-nowrap tabular-nums"
+                                                >
+                                                    {{ traderTopData.current_trader.avg_processing_human }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 

@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 
 class TraderLeaderboardController extends Controller
 {
+    private const LEADERBOARD_LIMIT = 15;
+
     public function index(TraderLeaderboardService $leaderboardService): JsonResponse
     {
         $user = auth()->user();
@@ -28,8 +30,8 @@ class TraderLeaderboardController extends Controller
         $weekOffset = (int) ($validated['week_offset'] ?? 0);
         $monthOffset = (int) ($validated['month_offset'] ?? 0);
         $payload = $topType === 'monthly'
-            ? $leaderboardService->getMonthlyTop(null, (int) $user->id, 10, true, $monthOffset)
-            : $leaderboardService->getWeeklyTop(null, (int) $user->id, 10, true, $weekOffset);
+            ? $leaderboardService->getMonthlyTop(null, (int) $user->id, self::LEADERBOARD_LIMIT, true, $monthOffset)
+            : $leaderboardService->getWeeklyTop(null, (int) $user->id, self::LEADERBOARD_LIMIT, true, $weekOffset);
         $top = collect($payload['top'])
             ->map(function (array $item) use ($topType) {
                 $base = [
