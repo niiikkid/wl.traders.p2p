@@ -15,6 +15,7 @@ use RuntimeException;
 class ExampleCascadeProvider extends AbstractCascadeProvider
 {
     protected array $config;
+
     protected string $code;
 
     public function __construct(string $code, array $config = [])
@@ -29,7 +30,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
 
         $payload = [
             'external_id' => $cascadeDeal->uuid,
-            'amount' => (int) $cascadeDeal->amount->getAmount(),
+            'amount' => $cascadeDeal->amount->toInt(),
             'currency' => $this->resolveCurrency($cascadeDeal),
             'payment_method' => $this->mapPaymentMethod($cascadeDeal),
             'client_id' => $cascadeDeal->merchantClient?->external_id,
@@ -50,7 +51,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
         return [
             'provider_deal_id' => Arr::get($data, 'data.order_id') ?? Arr::get($data, 'order_id'),
             'status' => Arr::get($data, 'data.status') ?? Arr::get($data, 'status'),
-            'amount' => (int) $cascadeDeal->amount->getAmount(),
+            'amount' => $cascadeDeal->amount->toInt(),
             'currency' => $cascadeDeal->currency->getCode(),
             'gateway' => [
                 'code' => Arr::get($data, 'data.payment_gateway') ?? Arr::get($data, 'payment_gateway'),
@@ -76,7 +77,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
         $this->ensureConfigured();
 
         $response = $this->request()->patch(
-            $this->buildUrl('/api/h2h/order/' . $providerDealId . '/cancel')
+            $this->buildUrl('/api/h2h/order/'.$providerDealId.'/cancel')
         );
         $this->throwIfInvalid($response);
 
@@ -94,7 +95,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
         $this->ensureConfigured();
 
         $response = $this->request()->get(
-            $this->buildUrl('/api/h2h/order/' . $providerDealId)
+            $this->buildUrl('/api/h2h/order/'.$providerDealId)
         );
         $this->throwIfInvalid($response);
 
@@ -103,11 +104,20 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
         return [
             'provider_deal_id' => $providerDealId,
             'status' => Arr::get($data, 'data.status') ?? Arr::get($data, 'status'),
-            'amount' => (int) $cascadeDeal->amount->getAmount(),
+            'amount' => $cascadeDeal->amount->toInt(),
             'currency' => $cascadeDeal->currency->getCode(),
             'paid_at' => Arr::get($data, 'data.finished_at') ?? Arr::get($data, 'finished_at'),
             'expires_at' => Arr::get($data, 'data.expires_at') ?? Arr::get($data, 'expires_at'),
             'raw' => $data,
+        ];
+    }
+
+    public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
+    {
+        // TODO: Implement confirmation code forwarding for external providers when supported.
+        return [
+            'status' => 'not_implemented',
+            'provider_deal_id' => $cascadeDeal->selectedTransaction?->provider_deal_id,
         ];
     }
 
@@ -120,7 +130,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
         ];
 
         $response = $this->request()->post(
-            $this->buildUrl('/api/h2h/order/' . $providerDealId . '/dispute'),
+            $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
             $payload
         );
         $this->throwIfInvalid($response);
@@ -141,7 +151,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
         $this->ensureConfigured();
 
         $response = $this->request()->get(
-            $this->buildUrl('/api/h2h/order/' . $providerDealId . '/dispute')
+            $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute')
         );
         $this->throwIfInvalid($response);
 
@@ -186,7 +196,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
 
     private function buildUrl(string $path): string
     {
-        return rtrim((string) $this->configValue('base_url'), '/') . $path;
+        return rtrim((string) $this->configValue('base_url'), '/').$path;
     }
 
     private function throwIfInvalid(Response $response): void
@@ -203,7 +213,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
     {
         foreach (['base_url', 'access_token', 'merchant_id', 'currency_code'] as $key) {
             if (! $this->configValue($key)) {
-                throw new RuntimeException('P2PProcessing provider config is incomplete: ' . $key);
+                throw new RuntimeException('P2PProcessing provider config is incomplete: '.$key);
             }
         }
     }

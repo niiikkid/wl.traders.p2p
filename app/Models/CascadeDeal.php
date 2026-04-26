@@ -154,6 +154,11 @@ class CascadeDeal extends Model
         return $this->belongsTo(CascadeProvider::class, 'selected_provider_id');
     }
 
+    public function selectedTransaction(): BelongsTo
+    {
+        return $this->belongsTo(CascadeTransaction::class, 'selected_transaction_id');
+    }
+
     public function transactions(): HasMany
     {
         return $this->hasMany(CascadeTransaction::class);

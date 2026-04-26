@@ -12,6 +12,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Enums\ProviderType;
 use App\Exceptions\CascadeException;
+use App\Exceptions\OrderException;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\CascadeTransaction;
@@ -143,6 +144,44 @@ class CascadeService implements CascadeServiceContract
         }
 
         throw CascadeException::make('Не удалось обработать запрос вовремя. Повторите попытку позже.');
+    }
+
+    public function findDealByExternalId(string $merchantUuid, string $externalId): CascadeDeal
+    {
+        return CascadeDeal::query()
+            ->whereRelation('merchant', 'uuid', $merchantUuid)
+            ->where('external_id', $externalId)
+            ->firstOrFail();
+    }
+
+    /**
+     * @throws OrderException
+     */
+    public function cancelDeal(CascadeDeal $cascadeDeal): CascadeDeal
+    {
+        $cascadeDeal->loadMissing(['order', 'selectedTransaction']);
+        $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
+        $provider_deal_id = (string) ($cascadeDeal->order?->uuid ?? $cascadeDeal->selectedTransaction?->provider_deal_id ?? '');
+        $response_payload = $provider->cancelDeal($cascadeDeal, $provider_deal_id);
+
+        $this->syncCascadeDealFromProviderResponse($cascadeDeal, $response_payload);
+
+        return $cascadeDeal->refresh();
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws OrderException
+     */
+    public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
+    {
+        $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
+
+        return $provider->storeConfirmationCode(
+            $cascadeDeal->loadMissing(['order', 'selectedTransaction']),
+            $confirmationCode,
+        );
     }
 
     private function createCascadeDeal(CreateCascadeDealDTO $dto): CascadeDeal
@@ -281,5 +320,30 @@ class CascadeService implements CascadeServiceContract
             'details' => Arr::get($response_payload, 'details'),
             'finished_at' => $order?->finished_at,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $response_payload
+     */
+    private function syncCascadeDealFromProviderResponse(CascadeDeal $cascadeDeal, array $response_payload): void
+    {
+        $order = $cascadeDeal->order()->withoutGlobalScopes()->first();
+
+        $cascadeDeal->update([
+            'status' => $order?->status ?? $cascadeDeal->status,
+            'sub_status' => $order?->sub_status ?? $cascadeDeal->sub_status,
+            'gateway' => Arr::get($response_payload, 'gateway', $cascadeDeal->gateway),
+            'details' => Arr::get($response_payload, 'details', $cascadeDeal->details),
+            'finished_at' => $order?->finished_at ?? $cascadeDeal->finished_at,
+        ]);
+
+        if ($cascadeDeal->selectedTransaction) {
+            $cascadeDeal->selectedTransaction->update([
+                'response_payload' => $response_payload,
+                'status' => $order?->status?->equals(OrderStatus::FAIL) === true
+                    ? CascadeTransactionStatus::CANCELLED
+                    : $cascadeDeal->selectedTransaction->status,
+            ]);
+        }
     }
 }

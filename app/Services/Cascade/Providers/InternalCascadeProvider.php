@@ -6,8 +6,13 @@ namespace App\Services\Cascade\Providers;
 
 use App\Enums\DetailType;
 use App\Enums\MarketEnum;
+use App\Enums\OrderStatus;
+use App\Enums\OrderSubStatus;
+use App\Exceptions\OrderException;
 use App\Http\Requests\API\H2H\Order\StoreRequest as H2HStoreRequest;
 use App\Models\CascadeDeal;
+use App\Models\Order;
+use App\Models\OrderManualControlConfirmationCode;
 use Illuminate\Support\Arr;
 use RuntimeException;
 
@@ -93,19 +98,61 @@ class InternalCascadeProvider extends AbstractCascadeProvider
 
     public function cancelDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        // TODO: Реализовать отмену внутренней сделки
-        return [
-            'status' => 'not_implemented',
-            'provider_deal_id' => $providerDealId,
-        ];
+        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+
+        return $this->cancelOrder($order);
     }
 
     public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        // TODO: Реализовать получение состояния внутренней сделки
+        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+
         return [
-            'status' => 'not_implemented',
-            'provider_deal_id' => $providerDealId,
+            'provider_deal_id' => $order->uuid,
+            'status' => $order->status->value,
+            'sub_status' => $order->sub_status?->value,
+            'gateway' => [
+                'code' => $order->paymentGateway?->code,
+                'name' => $order->paymentGateway?->name,
+                'logo_link' => null,
+            ],
+            'details' => [
+                'type' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail_type,
+                'value' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail,
+                'initials' => $order->manual_control_acquiring ? null : $order->paymentDetail?->initials,
+            ],
+            'finished_at' => $order->finished_at?->getTimestamp(),
+            'raw' => [
+                'order_id' => $order->uuid,
+                'status' => $order->status->value,
+                'sub_status' => $order->sub_status?->value,
+            ],
+        ];
+    }
+
+    public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
+    {
+        $order = $this->resolveCascadeOrder($cascadeDeal);
+
+        if (! $order->manual_control_acquiring) {
+            throw OrderException::make('Эндпоинт доступен только для сделок в режиме Manual Control Acquiring.');
+        }
+
+        if ($order->status->notEquals(OrderStatus::PENDING)) {
+            throw OrderException::make('Нельзя отправить код для завершенной сделки.');
+        }
+
+        $created_code = OrderManualControlConfirmationCode::query()->create([
+            'order_id' => $order->id,
+            'confirmation_code' => $confirmationCode,
+        ]);
+
+        return [
+            'order_id' => $order->uuid,
+            'confirmation_code' => [
+                'value' => $created_code->confirmation_code,
+                'created_at' => $created_code->created_at?->getTimestamp(),
+            ],
         ];
     }
 
@@ -131,5 +178,48 @@ class InternalCascadeProvider extends AbstractCascadeProvider
     public function getCode(): string
     {
         return $this->code;
+    }
+
+    private function resolveCascadeOrder(CascadeDeal $cascadeDeal): Order
+    {
+        $order = $cascadeDeal->order;
+
+        if (! $order instanceof Order) {
+            throw OrderException::make('Внутренняя сделка для каскадной сделки не найдена.');
+        }
+
+        return $order;
+    }
+
+    private function resolveOrder(CascadeDeal $cascadeDeal, string $providerDealId): Order
+    {
+        return Order::withoutGlobalScopes()
+            ->where('uuid', $providerDealId)
+            ->where('id', $cascadeDeal->order_id)
+            ->firstOrFail();
+    }
+
+    private function cancelOrder(Order $order): array
+    {
+        if ($order->status->notEquals(OrderStatus::PENDING)) {
+            throw OrderException::make('It is not possible to cancel a completed order.');
+        }
+
+        services()->order()->finishOrderAsFailed($order->id, OrderSubStatus::CANCELED);
+
+        $order->refresh();
+        $order->load('paymentGateway', 'paymentDetail');
+
+        return [
+            'provider_deal_id' => $order->uuid,
+            'status' => $order->status->value,
+            'sub_status' => $order->sub_status?->value,
+            'finished_at' => $order->finished_at?->getTimestamp(),
+            'raw' => [
+                'order_id' => $order->uuid,
+                'status' => $order->status->value,
+                'sub_status' => $order->sub_status?->value,
+            ],
+        ];
     }
 }
