@@ -7,7 +7,6 @@ namespace App\Services\Cascade;
 use App\Contracts\CascadeProviderServiceContract;
 use App\Models\CascadeProvider;
 use App\Services\Cascade\Providers\CascadeProviderInterface;
-use App\Services\Cascade\Providers\ExampleCascadeProvider;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -172,11 +171,6 @@ class CascadeProviderService implements CascadeProviderServiceContract
      */
     private function getProviderClassMap(): array
     {
-        return [
-            'example' => ExampleCascadeProvider::class,
-            InternalCascadeProvider::CODE => InternalCascadeProvider::class,
-            // TODO: Добавить другие провайдеры по мере их реализации
-            // 'external_provider_1' => ExternalProvider1::class,
-        ];
+        return app(CascadeProviderDiscoveryService::class)->classMap();
     }
 }

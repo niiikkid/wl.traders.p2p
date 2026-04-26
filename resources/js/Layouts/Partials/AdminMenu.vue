@@ -172,6 +172,19 @@ router.on('success', (event) => {
                 Каскадные сделки
             </span>
         </li>
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.cascade-providers.*') }]">
+            <span
+                @click="router.visit(route('admin.cascade-providers.index'), { preserveScroll: true })"
+                @keydown.enter.space="router.visit(route('admin.cascade-providers.index'), { preserveScroll: true })"
+                role="link"
+                tabindex="0"
+            >
+                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h6m-6 4h10M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/>
+                </svg>
+                Провайдеры каскада
+            </span>
+        </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.orders.*') }]">
             <span
                 @click="router.visit(route('admin.orders.index'), { preserveScroll: true })"
