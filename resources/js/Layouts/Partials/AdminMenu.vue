@@ -302,6 +302,19 @@ router.on('success', (event) => {
                 API логи
             </span>
         </li>
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.integration-api.*') }]">
+            <span
+                @click="router.visit(route('admin.integration-api.index'), { preserveScroll: true })"
+                @keydown.enter.space="router.visit(route('admin.integration-api.index'), { preserveScroll: true })"
+                role="link"
+                tabindex="0"
+            >
+                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9h8m-8 4h5m-6 8h10a2 2 0 0 0 2-2V7.828a2 2 0 0 0-.586-1.414l-3.828-3.828A2 2 0 0 0 13.172 2H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2Z"/>
+                </svg>
+                Интеграционный API
+            </span>
+        </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.callback-logs.*') }]">
             <span
                 @click="router.visit(route('admin.callback-logs.index'), { preserveScroll: true })"
