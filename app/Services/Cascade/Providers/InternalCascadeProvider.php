@@ -32,7 +32,7 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         $payload = [
             'merchant_id' => $merchant->uuid,
             'external_id' => $cascadeDeal->external_id,
-            'amount' => (int) $cascadeDeal->amount->getAmount(),
+            'amount' => $cascadeDeal->initial_amount->toInt(),
             'currency' => $cascadeDeal->currency->getCode(),
             'client_id' => $cascadeDeal->merchantClient?->client_id,
             'callback_url' => $cascadeDeal->callback_url,

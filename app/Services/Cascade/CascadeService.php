@@ -113,6 +113,7 @@ class CascadeService implements CascadeServiceContract
                     if (is_a($data['exception']['class'], CascadeException::class, true)) {
                         throw CascadeException::make($data['exception']['message']);
                     } elseif (is_a($data['exception']['class'], Throwable::class, true)) {
+                        dd($data['exception']);
                         throw CascadeException::make('Произошла ошибка при обработке запроса');
                     }
 

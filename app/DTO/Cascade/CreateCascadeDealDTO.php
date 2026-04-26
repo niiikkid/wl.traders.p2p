@@ -4,13 +4,14 @@ namespace App\DTO\Cascade;
 
 use App\DTO\BaseDTO;
 use App\Enums\CascadePaymentMethod;
+use App\Services\Money\Money;
 
 readonly class CreateCascadeDealDTO extends BaseDTO
 {
     public function __construct(
         public int $merchantId,
         public string $externalId,
-        public int $amount,
+        public Money $amount,
         public string $currency,
         public CascadePaymentMethod $paymentMethod,
         public ?string $callbackUrl = null,
@@ -36,7 +37,7 @@ readonly class CreateCascadeDealDTO extends BaseDTO
         return new static(
             merchantId: (int) $data['merchant_id'],
             externalId: (string) $data['external_id'],
-            amount: (int) $data['amount'],
+            amount: Money::fromPrecision((string) $data['amount'], (string) $data['currency']),
             currency: (string) $data['currency'],
             paymentMethod: CascadePaymentMethod::from((string) $data['payment_method']),
             callbackUrl: $data['callback_url'] ?? null,

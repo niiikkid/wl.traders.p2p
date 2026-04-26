@@ -52,6 +52,11 @@ Route::group(['middleware' => ['api-access-token']], function () {
         Route::get('payouts', [\App\Http\Controllers\API\Statement\StatementController::class, 'payouts'])
             ->name('api.statements.payouts');
     });
+
+    Route::group(['prefix' => 'v2'], function () {
+        Route::post('order', [\App\Http\Controllers\API\V2\OrderController::class, 'store']);
+        Route::get('order/{cascadeDeal:uuid}', [\App\Http\Controllers\API\V2\OrderController::class, 'show']);
+    });
 });
 
 Route::group(['prefix' => 'deposit', 'middleware' => ['api-deposits-access-token']], function () {
