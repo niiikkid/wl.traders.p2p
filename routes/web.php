@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AntiFraudClientController;
 use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
 use App\Http\Controllers\Admin\CallbackLogController;
+use App\Http\Controllers\Admin\CascadeDealController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
@@ -440,6 +441,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/payment-gateways/{paymentGateway}/edit-data', [PaymentGatewayController::class, 'editData'])->name('payment-gateways.edit-data');
         Route::patch('/payment-gateways/bulk-settings', [PaymentGatewayController::class, 'bulkUpdate'])->name('payment-gateways.bulk-settings.update');
         Route::patch('/payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
+        Route::get('/cascade-deals', [CascadeDealController::class, 'index'])->name('cascade-deals.index');
         Route::get('/orders', [App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
         Route::get('/payouts', [App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('payouts.index');
         Route::get('/payouts/export', [App\Http\Controllers\Admin\PayoutController::class, 'export'])->name('payouts.export');
