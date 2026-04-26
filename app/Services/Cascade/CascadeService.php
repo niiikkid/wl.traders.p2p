@@ -12,7 +12,6 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Enums\ProviderType;
 use App\Exceptions\CascadeException;
-use App\Exceptions\OrderException;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\CascadeTransaction;
@@ -79,12 +78,16 @@ class CascadeService implements CascadeServiceContract
 
             // TODO: Dispatch one attempt job per external provider and let the first successful attempt win.
             // TODO: Add loser cancellation and atomic winner locking when external providers are enabled.
-        } catch (CascadeException|Throwable $e) {
+        } catch (Throwable $e) {
+            $cascade_exception = $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+
             cache()->put("cascade:deal:create:$job_id", json_encode([
                 'status' => 'failed',
                 'exception' => [
-                    'class' => get_class($e),
-                    'message' => $e->getMessage(),
+                    'class' => get_class($cascade_exception),
+                    'message' => $cascade_exception->getMessage(),
                 ],
             ]), 60);
         }
@@ -125,6 +128,10 @@ class CascadeService implements CascadeServiceContract
                     if (is_a($data['exception']['class'], CascadeException::class, true)) {
                         throw CascadeException::make($data['exception']['message']);
                     } elseif (is_a($data['exception']['class'], Throwable::class, true)) {
+                        if (is_local()) {
+                            dd($data['exception']);
+                        }
+                        
                         throw CascadeException::make('Произошла ошибка при обработке запроса');
                     }
 
@@ -154,34 +161,41 @@ class CascadeService implements CascadeServiceContract
             ->firstOrFail();
     }
 
-    /**
-     * @throws OrderException
-     */
     public function cancelDeal(CascadeDeal $cascadeDeal): CascadeDeal
     {
-        $cascadeDeal->loadMissing(['order', 'selectedTransaction']);
-        $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
-        $provider_deal_id = (string) ($cascadeDeal->order?->uuid ?? $cascadeDeal->selectedTransaction?->provider_deal_id ?? '');
-        $response_payload = $provider->cancelDeal($cascadeDeal, $provider_deal_id);
+        try {
+            $cascadeDeal->loadMissing(['order', 'selectedTransaction']);
+            $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
+            $provider_deal_id = (string) ($cascadeDeal->order?->uuid ?? $cascadeDeal->selectedTransaction?->provider_deal_id ?? '');
+            $response_payload = $provider->cancelDeal($cascadeDeal, $provider_deal_id);
 
-        $this->syncCascadeDealFromProviderResponse($cascadeDeal, $response_payload);
+            $this->syncCascadeDealFromProviderResponse($cascadeDeal, $response_payload);
 
-        return $cascadeDeal->refresh();
+            return $cascadeDeal->refresh();
+        } catch (Throwable $e) {
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
     }
 
     /**
      * @return array<string, mixed>
-     *
-     * @throws OrderException
      */
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
     {
-        $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
+        try {
+            $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
 
-        return $provider->storeConfirmationCode(
-            $cascadeDeal->loadMissing(['order', 'selectedTransaction']),
-            $confirmationCode,
-        );
+            return $provider->storeConfirmationCode(
+                $cascadeDeal->loadMissing(['order', 'selectedTransaction']),
+                $confirmationCode,
+            );
+        } catch (Throwable $e) {
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
     }
 
     private function createCascadeDeal(CreateCascadeDealDTO $dto): CascadeDeal
@@ -253,7 +267,9 @@ class CascadeService implements CascadeServiceContract
                 'error_message' => $e->getMessage(),
             ]);
 
-            throw $e;
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
         }
 
         DB::transaction(function () use ($cascade_deal, $provider_model, $payload, $response_payload): void {

@@ -8,13 +8,13 @@ use App\Enums\DetailType;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
-use App\Exceptions\OrderException;
+use App\Exceptions\CascadeException;
 use App\Http\Requests\API\H2H\Order\StoreRequest as H2HStoreRequest;
 use App\Models\CascadeDeal;
 use App\Models\Order;
 use App\Models\OrderManualControlConfirmationCode;
 use Illuminate\Support\Arr;
-use RuntimeException;
+use Throwable;
 
 /**
  * Внутренний провайдер каскада (работа с нашими трейдерами)
@@ -63,15 +63,21 @@ class InternalCascadeProvider extends AbstractCascadeProvider
             ]);
         }
 
-        $request = H2HStoreRequest::create('/', 'POST', $payload);
-        $request->setContainer(app())->setRedirector(app('redirect'));
-        $request->validateResolved();
+        try {
+            $request = H2HStoreRequest::create('/', 'POST', $payload);
+            $request->setContainer(app())->setRedirector(app('redirect'));
+            $request->validateResolved();
 
-        $response = services()->orderPooling()->processOrderPooling($request);
-        $response_data = json_decode($response->getContent(), true);
+            $response = services()->orderPooling()->processOrderPooling($request);
+            $response_data = json_decode($response->getContent(), true);
+        } catch (Throwable $e) {
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
 
         if (! ($response_data['success'] ?? false)) {
-            throw new RuntimeException($response_data['message'] ?? 'Не удалось создать сделку у внутреннего провайдера.');
+            throw CascadeException::make($response_data['message'] ?? 'Не удалось создать сделку у внутреннего провайдера.');
         }
 
         $order_data = $response_data['data'] ?? $response_data;
@@ -136,11 +142,11 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         $order = $this->resolveCascadeOrder($cascadeDeal);
 
         if (! $order->manual_control_acquiring) {
-            throw OrderException::make('Эндпоинт доступен только для сделок в режиме Manual Control Acquiring.');
+            throw CascadeException::make('Эндпоинт доступен только для сделок в режиме Manual Control Acquiring.');
         }
 
         if ($order->status->notEquals(OrderStatus::PENDING)) {
-            throw OrderException::make('Нельзя отправить код для завершенной сделки.');
+            throw CascadeException::make('Нельзя отправить код для завершенной сделки.');
         }
 
         $created_code = OrderManualControlConfirmationCode::query()->create([
@@ -186,7 +192,7 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         $order = $cascadeDeal->order;
 
         if (! $order instanceof Order) {
-            throw OrderException::make('Внутренняя сделка для каскадной сделки не найдена.');
+            throw CascadeException::make('Внутренняя сделка для каскадной сделки не найдена.');
         }
 
         return $order;
@@ -194,33 +200,45 @@ class InternalCascadeProvider extends AbstractCascadeProvider
 
     private function resolveOrder(CascadeDeal $cascadeDeal, string $providerDealId): Order
     {
-        return Order::withoutGlobalScopes()
+        $order = Order::withoutGlobalScopes()
             ->where('uuid', $providerDealId)
             ->where('id', $cascadeDeal->order_id)
-            ->firstOrFail();
+            ->first();
+
+        if (! $order instanceof Order) {
+            throw CascadeException::make('Внутренняя сделка для каскадной сделки не найдена.');
+        }
+
+        return $order;
     }
 
     private function cancelOrder(Order $order): array
     {
-        if ($order->status->notEquals(OrderStatus::PENDING)) {
-            throw OrderException::make('It is not possible to cancel a completed order.');
-        }
+        try {
+            if ($order->status->notEquals(OrderStatus::PENDING)) {
+                throw CascadeException::make('It is not possible to cancel a completed order.');
+            }
 
-        services()->order()->finishOrderAsFailed($order->id, OrderSubStatus::CANCELED);
+            services()->order()->finishOrderAsFailed($order->id, OrderSubStatus::CANCELED);
 
-        $order->refresh();
-        $order->load('paymentGateway', 'paymentDetail');
+            $order->refresh();
+            $order->load('paymentGateway', 'paymentDetail');
 
-        return [
-            'provider_deal_id' => $order->uuid,
-            'status' => $order->status->value,
-            'sub_status' => $order->sub_status?->value,
-            'finished_at' => $order->finished_at?->getTimestamp(),
-            'raw' => [
-                'order_id' => $order->uuid,
+            return [
+                'provider_deal_id' => $order->uuid,
                 'status' => $order->status->value,
                 'sub_status' => $order->sub_status?->value,
-            ],
-        ];
+                'finished_at' => $order->finished_at?->getTimestamp(),
+                'raw' => [
+                    'order_id' => $order->uuid,
+                    'status' => $order->status->value,
+                    'sub_status' => $order->sub_status?->value,
+                ],
+            ];
+        } catch (Throwable $e) {
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
     }
 }
