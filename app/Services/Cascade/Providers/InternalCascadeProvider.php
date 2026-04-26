@@ -42,6 +42,7 @@ class InternalCascadeProvider extends AbstractCascadeProvider
             'external_id' => $cascadeDeal->external_id,
             'amount' => $cascadeDeal->initial_amount->toInt(),
             'currency' => $cascadeDeal->currency->getCode(),
+            'payment_detail_type' => $cascadeDeal->payment_method->detailType()->value,
             'client_id' => $cascadeDeal->merchantClient?->client_id,
             'callback_url' => $cascadeDeal->callback_url,
         ];

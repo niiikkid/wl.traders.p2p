@@ -14,6 +14,9 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
+/**
+ * payment_detail_type Остается только на уровне данного класса. Она обеспечивает синхронизацию интерфейсов. Дальше используется только payment_method.
+ */
 class StoreRequest extends FormRequest
 {
     public static function pendingCascadeDealCacheKey(int $merchant_id, string $external_id): string
@@ -32,21 +35,29 @@ class StoreRequest extends FormRequest
             return;
         }
 
-        if (strtolower(trim((string) $this->input('payment_detail_type'))) !== DetailType::CARD->value) {
+        $detail_type = DetailType::tryFrom(strtolower(trim((string) $this->input('payment_detail_type'))));
+        $payment_method = $detail_type ? CascadePaymentMethod::fromDetailType($detail_type) : null;
+
+        if (! $payment_method) {
             throw ValidationException::withMessages([
-                'payment_detail_type' => ['Из payment_detail_type для каскада поддерживается только card.'],
+                'payment_detail_type' => ['Указанный payment_detail_type не поддерживается каскадом.'],
             ]);
         }
 
+        $this->merge([
+            'payment_detail_type' => $detail_type->value,
+        ]);
+
         if (! $this->filled('payment_method')) {
-            $this->merge(['payment_method' => CascadePaymentMethod::CARD->value]);
+            $this->merge(['payment_method' => $payment_method->value]);
 
             return;
         }
 
-        if (strtolower(trim((string) $this->input('payment_method'))) !== CascadePaymentMethod::CARD->value) {
+        $provided_payment_method = CascadePaymentMethod::tryFrom(strtolower(trim((string) $this->input('payment_method'))));
+        if ($provided_payment_method !== $payment_method) {
             throw ValidationException::withMessages([
-                'payment_method' => ['При payment_detail_type card ожидается payment_method card.'],
+                'payment_method' => ["При payment_detail_type {$detail_type->value} ожидается payment_method {$payment_method->value}."],
             ]);
         }
     }

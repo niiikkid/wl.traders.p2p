@@ -59,3 +59,10 @@ alwaysApply: true
 10. Особенности проекта:
 - Для работы с числами и суммами мы используем App\Services\Money
 - Если у модели поле casts просит сумму в таком виде App\Casts\MoneyCast, то обязательно при создании и обновлении передавать сумму в App\Services\Money
+
+11. Замечания по CascadeDealService
+- 'payment_method' => $dto->paymentMethod->value,
+            'payment_detail_type' => $dto->paymentDetailType->value,
+- payment_detail_type используется только для внутреннего провайдера. Тоесть модель Order
+- payment_method используется для CascadeDeal
+- это нужно для универсализации интерфейса. В App\Enums\CascadePaymentMethod приводятся их соответствия.
