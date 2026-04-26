@@ -52,6 +52,7 @@ alwaysApply: true
 
 8. API и версияция
    - Формировать ответы при помощи Laravel API Resources.
+   - Каскадные сделки (модель `CascadeDeal`) в API v2 доступны по путам с сегментом **`payin`** (например `/api/v2/payin`, `/api/v2/payin/{uuid}`), а не `order` — так отделены от `merchant/order` и `h2h/order`.
 
 9. Локализация и интернационализация
    - При необходимости, подключать и использовать Laravel Localization для поддержки нескольких языков.
