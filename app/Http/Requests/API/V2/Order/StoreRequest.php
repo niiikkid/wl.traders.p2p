@@ -11,6 +11,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
 class StoreRequest extends FormRequest
@@ -23,6 +24,31 @@ class StoreRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('payment_detail_type')) {
+            return;
+        }
+
+        if (strtolower(trim((string) $this->input('payment_detail_type'))) !== DetailType::CARD->value) {
+            throw ValidationException::withMessages([
+                'payment_detail_type' => ['Из payment_detail_type для каскада поддерживается только card.'],
+            ]);
+        }
+
+        if (! $this->filled('payment_method')) {
+            $this->merge(['payment_method' => CascadePaymentMethod::CARD->value]);
+
+            return;
+        }
+
+        if (strtolower(trim((string) $this->input('payment_method'))) !== CascadePaymentMethod::CARD->value) {
+            throw ValidationException::withMessages([
+                'payment_method' => ['При payment_detail_type card ожидается payment_method card.'],
+            ]);
+        }
     }
 
     public function rules(): array
