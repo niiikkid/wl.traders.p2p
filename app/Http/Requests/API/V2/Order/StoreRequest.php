@@ -78,7 +78,22 @@ class StoreRequest extends FormRequest
                 },
                 'max:255',
             ],
-            'merchant_id' => ['required', Rule::exists('merchants', 'uuid')],
+            'merchant_id' => [
+                'required',
+                function ($attribute, $value, $fail) {
+                    $cache_key = "merchant_exists_{$value}";
+
+                    $exists = Cache::remember($cache_key, 3600, function () use ($value) {
+                        return DB::table('merchants')
+                            ->where('uuid', $value)
+                            ->exists();
+                    });
+
+                    if (! $exists) {
+                        $fail('Выбранный мерчант не существует.');
+                    }
+                },
+            ],
             'amount' => ['required', 'integer', "min:$min_amount"],
             'currency' => ['required', Rule::in(Currency::getAllCodes())],
             'payment_method' => ['required', Rule::in(CascadePaymentMethod::values())],
