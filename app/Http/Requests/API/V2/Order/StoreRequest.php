@@ -139,13 +139,12 @@ class StoreRequest extends FormRequest
                 return;
             }
 
-            $currency_code = $this->resolveCurrencyCode();
-            if (! $currency_code) {
+            if (! $this->filled('currency')) {
                 return;
             }
 
             try {
-                $currency = Currency::make($currency_code);
+                $currency = Currency::make((string) $this->input('currency'));
             } catch (\Throwable) {
                 return;
             }
@@ -205,15 +204,6 @@ class StoreRequest extends FormRequest
                 }
             }
         });
-    }
-
-    protected function resolveCurrencyCode(): ?string
-    {
-        if (! empty($this->currency)) {
-            return (string) $this->currency;
-        }
-
-        return null;
     }
 
     protected function isDecimalWithinPrecision(string $value, int $max_scale): bool
