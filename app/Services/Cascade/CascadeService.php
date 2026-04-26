@@ -7,6 +7,7 @@ namespace App\Services\Cascade;
 use App\Contracts\CascadeServiceContract;
 use App\DTO\Cascade\CreateCascadeDealDTO;
 use App\Enums\CascadeTransactionStatus;
+use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Enums\ProviderType;
@@ -16,6 +17,7 @@ use App\Models\CascadeProvider;
 use App\Models\CascadeTransaction;
 use App\Models\MerchantClient;
 use App\Models\Order;
+use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
 use App\Services\Money\Money;
 use Illuminate\Support\Arr;
@@ -53,6 +55,15 @@ class CascadeService implements CascadeServiceContract
             'payment_method' => $dto->paymentMethod->value,
             'callback_url' => $dto->callbackUrl,
             'client_id' => $dto->clientId,
+            'rate' => $dto->rate,
+            'manual_control' => CascadeManualControl::make(
+                manualControlAcquiring: $dto->manualControlAcquiring,
+                cardNumber: $dto->cardNumber,
+                expiryMonth: $dto->expiryMonth,
+                expiryYear: $dto->expiryYear,
+                cvc: $dto->cvc,
+                cardholderName: $dto->cardholderName,
+            )?->toArray(),
         ];
 
         try {
@@ -113,7 +124,6 @@ class CascadeService implements CascadeServiceContract
                     if (is_a($data['exception']['class'], CascadeException::class, true)) {
                         throw CascadeException::make($data['exception']['message']);
                     } elseif (is_a($data['exception']['class'], Throwable::class, true)) {
-                        dd($data['exception']);
                         throw CascadeException::make('Произошла ошибка при обработке запроса');
                     }
 
@@ -146,7 +156,7 @@ class CascadeService implements CascadeServiceContract
             ])->id;
         }
 
-        return CascadeDeal::create([
+        $attributes = [
             'uuid' => (string) Str::uuid(),
             'external_id' => $dto->externalId,
             'merchant_id' => $dto->merchantId,
@@ -157,8 +167,24 @@ class CascadeService implements CascadeServiceContract
             'status' => OrderStatus::PENDING,
             'sub_status' => OrderSubStatus::WAITING_FOR_DETAILS_TO_BE_SELECTED,
             'payment_method' => $dto->paymentMethod,
+            'manual_control' => CascadeManualControl::make(
+                manualControlAcquiring: $dto->manualControlAcquiring,
+                cardNumber: $dto->cardNumber,
+                expiryMonth: $dto->expiryMonth,
+                expiryYear: $dto->expiryYear,
+                cvc: $dto->cvc,
+                cardholderName: $dto->cardholderName,
+            ),
             'callback_url' => $dto->callbackUrl,
-        ]);
+        ];
+
+        if ($dto->rate !== null) {
+            $attributes['market'] = MarketEnum::MERCHANT_API;
+            $attributes['conversion_price'] = Money::fromPrecision($dto->rate, $dto->currency);
+            $attributes['rate_fixed_at'] = now();
+        }
+
+        return CascadeDeal::create($attributes);
     }
 
     private function createInternalProviderDeal(CascadeDeal $cascade_deal, array $payload): void
@@ -244,9 +270,9 @@ class CascadeService implements CascadeServiceContract
             'usdt_amount' => $order?->merchant_profit ?? Money::fromPrecision('0', 'USDT'),
             'fee' => null,
             'fee_rate' => null,
-            'market' => $order?->market,
-            'conversion_price' => $order?->conversion_price,
-            'rate_fixed_at' => $order?->created_at,
+            'market' => $order?->market ?? $cascade_deal->market,
+            'conversion_price' => $order?->conversion_price ?? $cascade_deal->conversion_price,
+            'rate_fixed_at' => $cascade_deal->rate_fixed_at ?? $order?->created_at,
             'status' => $order?->status ?? OrderStatus::PENDING,
             'sub_status' => $order?->sub_status ?? OrderSubStatus::WAITING_FOR_DETAILS_TO_BE_SELECTED,
             'selected_provider_id' => $provider_model->id,

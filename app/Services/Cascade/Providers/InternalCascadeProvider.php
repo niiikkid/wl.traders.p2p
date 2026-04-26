@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Cascade\Providers;
 
+use App\Enums\DetailType;
+use App\Enums\MarketEnum;
 use App\Http\Requests\API\H2H\Order\StoreRequest as H2HStoreRequest;
 use App\Models\CascadeDeal;
 use Illuminate\Support\Arr;
@@ -17,6 +19,7 @@ class InternalCascadeProvider extends AbstractCascadeProvider
     public const CODE = 'internal';
 
     protected array $config;
+
     protected string $code;
 
     public function __construct(string $code, array $config = [])
@@ -37,6 +40,22 @@ class InternalCascadeProvider extends AbstractCascadeProvider
             'client_id' => $cascadeDeal->merchantClient?->client_id,
             'callback_url' => $cascadeDeal->callback_url,
         ];
+
+        if ($cascadeDeal->market?->equals(MarketEnum::MERCHANT_API) && $cascadeDeal->conversion_price !== null) {
+            $payload['rate'] = $cascadeDeal->conversion_price->toPrecision();
+        }
+
+        if ($cascadeDeal->manual_control !== null) {
+            $payload = array_merge($payload, [
+                'manual_control_acquiring' => true,
+                'payment_detail_type' => DetailType::CARD->value,
+                'card_number' => $cascadeDeal->manual_control->cardNumber,
+                'expiry_month' => $cascadeDeal->manual_control->expiryMonth,
+                'expiry_year' => $cascadeDeal->manual_control->expiryYear,
+                'cvc' => $cascadeDeal->manual_control->cvc,
+                'cardholder_name' => $cascadeDeal->manual_control->cardholderName,
+            ]);
+        }
 
         $request = H2HStoreRequest::create('/', 'POST', $payload);
         $request->setContainer(app())->setRedirector(app('redirect'));
