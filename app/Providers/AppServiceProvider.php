@@ -29,6 +29,10 @@ use App\Contracts\SmsServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
+use App\Contracts\CascadeProviderServiceContract;
+use App\Contracts\CascadeServiceContract;
+use App\Services\Cascade\CascadeProviderService;
+use App\Services\Cascade\CascadeService;
 use App\Events\OrderSucceeded;
 use App\Listeners\UpdateTempVipProgressListener;
 use App\Mixins\ResponseMixins;
@@ -204,6 +208,13 @@ class AppServiceProvider extends ServiceProvider
             return new MainPageCacheService(
                 statsService: make(MainPageStatsServiceContract::class),
             );
+        });
+
+        $this->app->singleton(CascadeProviderServiceContract::class, function () {
+            return new CascadeProviderService();
+        });
+        $this->app->singleton(CascadeServiceContract::class, function () {
+            return new CascadeService();
         });
 
         // Регистрация LoginLogger
