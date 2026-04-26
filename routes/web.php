@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
 use App\Http\Controllers\Admin\CallbackLogController;
 use App\Http\Controllers\Admin\CurrencyController;
+use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\MerchantResendCallbackController;
@@ -397,6 +398,8 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
 
         Route::get('/app', [App\Http\Controllers\Admin\ApkController::class, 'index'])->name('app.index');
         Route::post('/app', [App\Http\Controllers\Admin\ApkController::class, 'store'])->name('app.store');
+        Route::get('/integration-api', [IntegrationApiController::class, 'index'])->name('integration-api.index');
+        Route::post('/integration-api/regenerate-token', [IntegrationApiController::class, 'regenerateToken'])->name('integration-api.regenerate-token');
         Route::get('/anti-fraud/settings', [AntiFraudSettingController::class, 'index'])->name('anti-fraud.settings.index');
         Route::post('/anti-fraud/settings', [AntiFraudSettingController::class, 'store'])->name('anti-fraud.settings.store');
         Route::patch('/anti-fraud/settings/{anti_fraud_setting}', [AntiFraudSettingController::class, 'update'])->name('anti-fraud.settings.update');
