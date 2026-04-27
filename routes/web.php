@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AntiFraudSettingController;
 use App\Http\Controllers\Admin\CallbackLogController;
 use App\Http\Controllers\Admin\CascadeDealController;
 use App\Http\Controllers\Admin\CascadeProviderController;
+use App\Http\Controllers\Admin\CascadeProviderLogController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
@@ -449,6 +450,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/cascade-providers', [CascadeProviderController::class, 'store'])->name('cascade-providers.store');
         Route::patch('/cascade-providers/{cascadeProvider}', [CascadeProviderController::class, 'update'])->name('cascade-providers.update');
         Route::get('/cascade-deals', [CascadeDealController::class, 'index'])->name('cascade-deals.index');
+        Route::get('/cascade-provider-logs', [CascadeProviderLogController::class, 'index'])->name('cascade-provider-logs.index');
         Route::get('/orders', [App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
         Route::get('/payouts', [App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('payouts.index');
         Route::get('/payouts/export', [App\Http\Controllers\Admin\PayoutController::class, 'export'])->name('payouts.export');

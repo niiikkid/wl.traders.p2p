@@ -176,7 +176,20 @@ class CascadeService implements CascadeServiceContract
             }
 
             $provider_deal_id = (string) ($cascadeDeal->order?->uuid ?? $cascadeDeal->selectedTransaction?->provider_deal_id ?? '');
+            $started_at = microtime(true);
             $response_payload = $provider->cancelDeal($cascadeDeal, $provider_deal_id);
+
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $provider_model,
+                operation: 'cancelDeal',
+                method: 'PATCH',
+                url: $provider_model->base_url ?? $provider_model->code,
+                requestPayload: ['provider_deal_id' => $provider_deal_id],
+                responsePayload: $response_payload,
+                startedAt: $started_at,
+                isSuccessful: true,
+            );
 
             $this->syncCascadeDealFromProviderResponse($cascadeDeal, $response_payload);
 
@@ -206,10 +219,25 @@ class CascadeService implements CascadeServiceContract
                 throw CascadeException::make('Интеграция провайдера каскада недоступна.');
             }
 
-            return $provider->storeConfirmationCode(
+            $started_at = microtime(true);
+            $response_payload = $provider->storeConfirmationCode(
                 $cascadeDeal,
                 $confirmationCode,
             );
+
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $provider_model,
+                operation: 'storeConfirmationCode',
+                method: 'POST',
+                url: $provider_model->base_url ?? $provider_model->code,
+                requestPayload: ['confirmation_code' => $confirmationCode],
+                responsePayload: $response_payload,
+                startedAt: $started_at,
+                isSuccessful: true,
+            );
+
+            return $response_payload;
         } catch (Throwable $e) {
             throw $e instanceof CascadeException
                 ? $e
@@ -228,15 +256,21 @@ class CascadeService implements CascadeServiceContract
         }
 
         if (! $provider_model->access_token) {
+            $this->recordCallbackFailure($provider_model, $payload, 'provider_token_missing', 'Токен провайдера каскада не настроен.');
+
             throw CascadeException::make('Токен провайдера каскада не настроен.');
         }
 
         if (! hash_equals($provider_model->access_token, (string) $accessToken)) {
+            $this->recordCallbackFailure($provider_model, $payload, 'invalid_provider_token', 'Неверный токен провайдера.');
+
             throw CascadeException::make('Неверный токен провайдера.');
         }
 
         $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
         if (! $provider) {
+            $this->recordCallbackFailure($provider_model, $payload, 'provider_unavailable', 'Интеграция провайдера каскада недоступна.');
+
             throw CascadeException::make('Интеграция провайдера каскада недоступна.');
         }
 
@@ -244,7 +278,7 @@ class CascadeService implements CascadeServiceContract
         $cascade_deal = $this->resolveCallbackCascadeDeal($provider_model, $callback_data);
         $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $provider_model, $callback_data);
 
-        DB::transaction(function () use ($cascade_deal, $cascade_transaction, $provider_model, $payload, $callback_data): void {
+        DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data): void {
             if (
                 (! $cascade_transaction && $cascade_deal->selected_transaction_id === null)
                 || $cascade_deal->selected_transaction_id === $cascade_transaction?->id
@@ -261,27 +295,87 @@ class CascadeService implements CascadeServiceContract
                     ),
                 ]);
             }
-
-            CascadeProviderLog::create([
-                'cascade_deal_id' => $cascade_deal->id,
-                'cascade_transaction_id' => $cascade_transaction?->id,
-                'provider_id' => $provider_model->id,
-                'operation' => 'callback',
-                'method' => 'POST',
-                'url' => request()->fullUrl(),
-                'request_payload' => $payload,
-                'response_payload' => $callback_data,
-                'status_code' => 200,
-                'is_successful' => true,
-            ]);
         });
 
-        return [
+        $response = [
             'provider_code' => $providerCode,
             'cascade_deal_id' => $cascade_deal->uuid,
             'provider_deal_id' => Arr::get($callback_data, 'provider_deal_id'),
             'status' => $cascade_deal->refresh()->status->value,
         ];
+
+        CascadeProviderLog::create([
+            'cascade_deal_id' => $cascade_deal->id,
+            'cascade_transaction_id' => $cascade_transaction?->id,
+            'provider_id' => $provider_model->id,
+            'operation' => 'callback',
+            'method' => 'POST',
+            'url' => request()->fullUrl(),
+            'request_payload' => $payload,
+            'response_payload' => $response,
+            'status_code' => 200,
+            'is_successful' => true,
+        ]);
+
+        return $response;
+    }
+
+    /**
+     * @param  array<string, mixed>  $requestPayload
+     * @param  array<string, mixed>|null  $responsePayload
+     */
+    private function recordProviderLog(
+        CascadeDeal $cascadeDeal,
+        CascadeProvider $providerModel,
+        string $operation,
+        string $method,
+        string $url,
+        array $requestPayload,
+        ?array $responsePayload,
+        float $startedAt,
+        bool $isSuccessful,
+        ?string $errorCode = null,
+        ?string $errorMessage = null,
+    ): void {
+        CascadeProviderLog::create([
+            'cascade_deal_id' => $cascadeDeal->id,
+            'cascade_transaction_id' => $cascadeDeal->selected_transaction_id,
+            'provider_id' => $providerModel->id,
+            'operation' => $operation,
+            'method' => $method,
+            'url' => $url,
+            'request_payload' => $requestPayload,
+            'response_payload' => $responsePayload,
+            'execution_time' => round(microtime(true) - $startedAt, 4),
+            'is_successful' => $isSuccessful,
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function recordCallbackFailure(
+        CascadeProvider $providerModel,
+        array $payload,
+        string $errorCode,
+        string $errorMessage,
+    ): void {
+        CascadeProviderLog::create([
+            'provider_id' => $providerModel->id,
+            'operation' => 'callback',
+            'method' => 'POST',
+            'url' => request()->fullUrl(),
+            'request_payload' => $payload,
+            'response_payload' => [
+                'message' => $errorMessage,
+            ],
+            'status_code' => 422,
+            'is_successful' => false,
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+        ]);
     }
 
     private function createCascadeDeal(CreateCascadeDealDTO $dto): CascadeDeal

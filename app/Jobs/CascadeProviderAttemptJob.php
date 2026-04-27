@@ -77,6 +77,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
             'request_payload' => $this->requestPayload($cascadeDeal),
         ]);
         $responsePayload = null;
+        $startedAt = microtime(true);
 
         try {
             $responsePayload = $provider->createDeal($cascadeDeal);
@@ -85,6 +86,16 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'provider_deal_id' => Arr::get($responsePayload, 'provider_deal_id'),
                 'response_payload' => $responsePayload,
             ]);
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $providerModel,
+                transaction: $transaction,
+                operation: 'createDeal',
+                requestPayload: $transaction->request_payload ?? [],
+                responsePayload: $responsePayload,
+                startedAt: $startedAt,
+                isSuccessful: true,
+            );
 
             $won = $this->tryAcceptWinner($cascadeDeal, $providerModel, $transaction, $responsePayload);
 
@@ -99,6 +110,18 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 errorCode: get_class($e),
                 errorMessage: $e->getMessage(),
                 responsePayload: $responsePayload,
+            );
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $providerModel,
+                transaction: $transaction,
+                operation: 'createDeal',
+                requestPayload: $transaction->request_payload ?? [],
+                responsePayload: $responsePayload,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                errorCode: get_class($e),
+                errorMessage: $e->getMessage(),
             );
         } finally {
             $this->markAttemptFinished();
@@ -185,7 +208,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'provider_id' => $providerModel->id,
                 'operation' => 'cancelDeal',
                 'method' => 'POST',
-                'url' => $providerModel->base_url,
+                'url' => $providerModel->base_url ?? $providerModel->code,
                 'request_payload' => ['provider_deal_id' => $providerDealId],
                 'response_payload' => $cancelPayload,
                 'is_successful' => true,
@@ -223,6 +246,38 @@ class CascadeProviderAttemptJob implements ShouldQueue
         }
 
         CascadeTransaction::create($attributes);
+    }
+
+    /**
+     * @param  array<string, mixed>  $requestPayload
+     * @param  array<string, mixed>|null  $responsePayload
+     */
+    private function recordProviderLog(
+        CascadeDeal $cascadeDeal,
+        CascadeProvider $providerModel,
+        ?CascadeTransaction $transaction,
+        string $operation,
+        array $requestPayload,
+        ?array $responsePayload,
+        float $startedAt,
+        bool $isSuccessful,
+        ?string $errorCode = null,
+        ?string $errorMessage = null,
+    ): void {
+        CascadeProviderLog::create([
+            'cascade_deal_id' => $cascadeDeal->id,
+            'cascade_transaction_id' => $transaction?->id,
+            'provider_id' => $providerModel->id,
+            'operation' => $operation,
+            'method' => 'POST',
+            'url' => $providerModel->base_url ?? $providerModel->code,
+            'request_payload' => $requestPayload,
+            'response_payload' => $responsePayload,
+            'execution_time' => round(microtime(true) - $startedAt, 4),
+            'is_successful' => $isSuccessful,
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+        ]);
     }
 
     private function markAttemptFinished(): void
