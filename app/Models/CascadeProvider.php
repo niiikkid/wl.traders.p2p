@@ -8,6 +8,7 @@ use App\Enums\ProviderType;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Настройки провайдера каскада
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $base_url Базовый URL провайдера
  * @property string|null $access_token Токен доступа к API
  * @property string|null $merchant_id ID мерчанта у провайдера
+ * @property int|null $target_merchant_id ID мерчанта в нашей системе, для которого используется интеграция
  * @property string|null $callback_url Callback URL для провайдера
  * @property string|null $currency_code Валюта для запросов к провайдеру
  * @property int|null $timeout Таймаут запросов (сек)
@@ -48,6 +50,7 @@ class CascadeProvider extends Model
         'base_url',
         'access_token',
         'merchant_id',
+        'target_merchant_id',
         'callback_url',
         'currency_code',
         'timeout',
@@ -60,7 +63,13 @@ class CascadeProvider extends Model
         'is_active' => 'boolean',
         'weight' => 'float',
         'priority' => 'integer',
+        'target_merchant_id' => 'integer',
         'timeout' => 'integer',
         'verify_ssl' => 'boolean',
     ];
+
+    public function targetMerchant(): BelongsTo
+    {
+        return $this->belongsTo(Merchant::class, 'target_merchant_id');
+    }
 }

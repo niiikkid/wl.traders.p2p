@@ -321,6 +321,11 @@ class CascadeProviderAttemptJob implements ShouldQueue
     {
         CascadeProvider::query()
             ->where('is_active', true)
+            ->where(function ($query) use ($cascadeDeal): void {
+                $query
+                    ->where('provider_type', ProviderType::INTERNAL->value)
+                    ->orWhere('target_merchant_id', $cascadeDeal->merchant_id);
+            })
             ->whereKeyNot($winnerTransaction->provider_id)
             ->pluck('id')
             ->each(fn (int $providerId) => cache()->put($this->cancelKey($cascadeDeal->id, $providerId), true, 60));

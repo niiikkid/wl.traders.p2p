@@ -55,7 +55,7 @@ class CascadeService implements CascadeServiceContract
         try {
             $cascade_deal = $this->createCascadeDeal($dto);
 
-            $providers = $this->activeCascadeProviders();
+            $providers = $this->activeCascadeProviders($dto->merchantId);
 
             if ($providers->isEmpty()) {
                 throw CascadeException::make('Нет активных провайдеров каскада.');
@@ -438,6 +438,7 @@ class CascadeService implements CascadeServiceContract
     {
         $provider_model = CascadeProvider::query()
             ->where('code', $providerCode)
+            ->when($accessToken, fn ($query) => $query->where('access_token', $accessToken))
             ->first();
 
         if (! $provider_model instanceof CascadeProvider) {
@@ -726,12 +727,17 @@ class CascadeService implements CascadeServiceContract
     /**
      * @return Collection<int, CascadeProvider>
      */
-    private function activeCascadeProviders(): Collection
+    private function activeCascadeProviders(int $merchantId): Collection
     {
         $this->ensureInternalProvider();
 
         return CascadeProvider::query()
             ->where('is_active', true)
+            ->where(function ($query) use ($merchantId): void {
+                $query
+                    ->where('provider_type', ProviderType::INTERNAL->value)
+                    ->orWhere('target_merchant_id', $merchantId);
+            })
             ->orderBy('priority')
             ->orderByDesc('weight')
             ->orderBy('id')
