@@ -625,6 +625,23 @@ const toggleFilterOption = (typeKey, option, event) => {
     selectedOptions.value[typeKey] = (selectedOptions.value[typeKey] || []).filter((item) => Number(item.value) !== Number(option.value));
 };
 
+/** Массовый выбор по текущей вкладке фильтра: все видимые пункты, сброс, либо только неархивные реквизиты. */
+const bulkSelectFilterOptions = (mode) => {
+    const typeKey = activeFilterType.value;
+    const options = getDisplayedOptions(typeKey);
+    if (mode === 'none') {
+        selectedFilters.value[typeKey] = [];
+        selectedOptions.value[typeKey] = [];
+        return;
+    }
+    let toSelect = options;
+    if (mode === 'active_only' && typeKey === 'payment_detail') {
+        toSelect = options.filter((o) => !o.is_archived);
+    }
+    selectedFilters.value[typeKey] = toSelect.map((o) => Number(o.value));
+    selectedOptions.value[typeKey] = [...toSelect];
+};
+
 const selectFilterType = (typeKey) => {
     activeFilterType.value = typeKey;
     loadFilterOptions(typeKey, searchQueries.value[typeKey] || '');
@@ -1091,18 +1108,41 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         :key="`${activeFilterType}-${option.value}`"
                                                         class="w-full"
                                                     >
-                                                        <label class="flex w-full cursor-pointer items-center gap-3 px-2 py-1">
+                                                        <label
+                                                            class="flex w-full cursor-pointer items-start gap-3 px-2 py-1.5 rounded-md"
+                                                            :class="activeFilterType === 'payment_detail' && option.is_archived
+                                                                ? 'bg-warning/10 border border-warning/25'
+                                                                : ''"
+                                                        >
                                                             <input
                                                                 type="checkbox"
-                                                                class="checkbox checkbox-sm shrink-0"
+                                                                class="checkbox checkbox-sm shrink-0 mt-0.5"
                                                                 :checked="isOptionSelected(activeFilterType, option.value)"
                                                                 @change="toggleFilterOption(activeFilterType, option, $event)"
                                                             >
-                                                            <span class="flex flex-col min-w-0">
-                                                                <span class="text-sm leading-4 break-words">{{ option.label }}</span>
+                                                            <span class="flex flex-col min-w-0 gap-0.5">
+                                                                <span class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                                                    <span
+                                                                        class="text-sm leading-4 break-words"
+                                                                        :class="activeFilterType === 'payment_detail' && option.is_archived
+                                                                            ? 'text-warning'
+                                                                            : 'text-base-content'"
+                                                                    >
+                                                                        {{ option.label }}
+                                                                    </span>
+                                                                    <span
+                                                                        v-if="activeFilterType === 'payment_detail' && option.is_archived"
+                                                                        class="badge badge-warning badge-xs font-medium"
+                                                                    >
+                                                                        Арх
+                                                                    </span>
+                                                                </span>
                                                                 <span
                                                                     v-if="option.subtitle"
-                                                                    class="text-xs leading-4 text-base-content/50 break-words mt-0.5"
+                                                                    class="text-xs leading-4 break-words"
+                                                                    :class="activeFilterType === 'payment_detail' && option.is_archived
+                                                                        ? 'text-warning/80'
+                                                                        : 'text-base-content/50'"
                                                                 >
                                                                     {{ option.subtitle }}
                                                                 </span>
@@ -1117,6 +1157,33 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                        <div
+                                            v-if="!loadingOptions[activeFilterType]"
+                                            class="mt-3 flex flex-wrap justify-end gap-1"
+                                        >
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-ghost h-7 min-h-0 px-2"
+                                                @click="bulkSelectFilterOptions('all')"
+                                            >
+                                                Все
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-ghost h-7 min-h-0 px-2"
+                                                @click="bulkSelectFilterOptions('none')"
+                                            >
+                                                Снять все
+                                            </button>
+                                            <button
+                                                v-if="activeFilterType === 'payment_detail'"
+                                                type="button"
+                                                class="btn btn-xs btn-ghost h-7 min-h-0 px-2"
+                                                @click="bulkSelectFilterOptions('active_only')"
+                                            >
+                                                Без архива
+                                            </button>
                                         </div>
                                         <div class="mt-3 pt-3 border-t border-base-300 flex justify-end gap-2">
                                             <button type="button" class="btn btn-outline btn-sm" :disabled="processing" @click="resetAdvancedFilters">

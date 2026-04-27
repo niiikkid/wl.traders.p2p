@@ -461,7 +461,7 @@ class MainPageController extends Controller
     {
         $query = PaymentDetail::query()
             ->where('user_id', $user->id)
-            ->select(['id', 'name', 'detail', 'detail_type'])
+            ->select(['id', 'name', 'detail', 'detail_type', 'archived_at'])
             ->orderBy('name')
             ->orderBy('id');
 
@@ -474,21 +474,27 @@ class MainPageController extends Controller
         }
 
         return $this->mergeSelectedFirst(
-            $query->get()->map(fn (PaymentDetail $detail) => [
-                'value' => $detail->id,
-                'label' => $detail->name,
-                'subtitle' => $this->formatPaymentDetailSubtitle($detail),
-            ]),
+            $query->get()->map(fn (PaymentDetail $detail) => $this->mapTraderPaymentDetailFilterOption($detail)),
             PaymentDetail::query()
                 ->where('user_id', $user->id)
                 ->whereIn('id', $selectedIds)
+                ->select(['id', 'name', 'detail', 'detail_type', 'archived_at'])
                 ->get()
-                ->map(fn (PaymentDetail $detail) => [
-                    'value' => $detail->id,
-                    'label' => $detail->name,
-                    'subtitle' => $this->formatPaymentDetailSubtitle($detail),
-                ]),
+                ->map(fn (PaymentDetail $detail) => $this->mapTraderPaymentDetailFilterOption($detail)),
         );
+    }
+
+    /**
+     * @return array{value: int, label: string, subtitle: string, is_archived: bool}
+     */
+    private function mapTraderPaymentDetailFilterOption(PaymentDetail $detail): array
+    {
+        return [
+            'value' => $detail->id,
+            'label' => $detail->name,
+            'subtitle' => $this->formatPaymentDetailSubtitle($detail),
+            'is_archived' => $detail->archived_at !== null,
+        ];
     }
 
     private function searchMerchantPaymentMethods(
