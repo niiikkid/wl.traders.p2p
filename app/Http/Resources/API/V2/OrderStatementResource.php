@@ -19,17 +19,16 @@ class OrderStatementResource extends JsonResource
          * @var CascadeDeal $this
          */
         return [
-            'cascade_deal_id' => $this->uuid,
-            'order_id' => $this->uuid,
+            'payin_id' => $this->uuid,
             'external_id' => $this->external_id,
             'payin' => [
                 'initial_amount' => $this->initial_amount?->toPrecision(),
                 'amount' => $this->amount?->toPrecision(),
                 'currency' => $this->currency?->getCode(),
             ],
-            'credit' => [
-                'amount' => $this->service_profit?->toPrecision(),
-                'currency' => $this->service_profit?->getCurrency()->getCode() ?? 'USDT',
+            'profit' => [
+                'amount' => $this->credit?->toPrecision(),
+                'currency' => $this->credit?->getCurrency()->getCode() ?? 'USDT',
             ],
             'status' => $this->status->value,
             'created_at' => $this->created_at?->getTimestamp(),
