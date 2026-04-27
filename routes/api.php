@@ -13,6 +13,7 @@ use App\Http\Controllers\API\PaymentGatewayController;
 use App\Http\Controllers\API\Payout\PayoutController;
 use App\Http\Controllers\API\Payout\PayoutReceiptController;
 use App\Http\Controllers\API\Statement\StatementController;
+use App\Http\Controllers\API\V2\ProviderCallbackController;
 use App\Http\Controllers\API\Withdraw\WithdrawController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -68,13 +69,15 @@ Route::group(['middleware' => ['api-access-token']], function () {
     });
 
     Route::group(['prefix' => 'v2'], function () {
-        Route::post('payin', [\App\Http\Controllers\API\V2\OrderController::class, 'store']);
-        Route::get('payin/{cascadeDeal:uuid}', [\App\Http\Controllers\API\V2\OrderController::class, 'show']);
-        Route::get('payin/{merchant_id}/{external_id}', [\App\Http\Controllers\API\V2\OrderController::class, 'showByExternal']);
-        Route::patch('payin/{cascadeDeal:uuid}/cancel', [\App\Http\Controllers\API\V2\OrderController::class, 'cancel']);
-        Route::post('payin/{cascadeDeal:uuid}/confirmation-code', [\App\Http\Controllers\API\V2\OrderController::class, 'storeConfirmationCode']);
+        Route::post('payin', [App\Http\Controllers\API\V2\OrderController::class, 'store']);
+        Route::get('payin/{cascadeDeal:uuid}', [App\Http\Controllers\API\V2\OrderController::class, 'show']);
+        Route::get('payin/{merchant_id}/{external_id}', [App\Http\Controllers\API\V2\OrderController::class, 'showByExternal']);
+        Route::patch('payin/{cascadeDeal:uuid}/cancel', [App\Http\Controllers\API\V2\OrderController::class, 'cancel']);
+        Route::post('payin/{cascadeDeal:uuid}/confirmation-code', [App\Http\Controllers\API\V2\OrderController::class, 'storeConfirmationCode']);
     });
 });
+
+Route::post('v2/providers/{provider_code}/callback', [ProviderCallbackController::class, 'store']);
 
 Route::group(['prefix' => 'deposit', 'middleware' => ['api-deposits-access-token']], function () {
     Route::post('webhook', [DepositController::class, 'webhook']);

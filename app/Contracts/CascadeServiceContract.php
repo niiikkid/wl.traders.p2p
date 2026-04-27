@@ -19,4 +19,10 @@ interface CascadeServiceContract
      * @return array<string, mixed>
      */
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array;
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function handleProviderCallback(string $providerCode, array $payload, ?string $accessToken = null): array;
 }

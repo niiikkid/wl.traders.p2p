@@ -1,0 +1,240 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Cascade\Providers;
+
+use App\Models\CascadeDeal;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Http;
+use RuntimeException;
+
+class MockProcessingCascadeProvider extends AbstractCascadeProvider
+{
+    public const CODE = 'mock-processing';
+
+    protected array $config;
+
+    protected string $code;
+
+    public function __construct(string $code, array $config = [])
+    {
+        $this->code = $code;
+        $this->config = $config;
+    }
+
+    public function createDeal(CascadeDeal $cascadeDeal): array
+    {
+        $this->ensureConfigured();
+
+        $payload = [
+            'client_reference' => $cascadeDeal->uuid,
+            'money' => [
+                'value' => $cascadeDeal->amount->toInt(),
+                'currency' => $this->resolveCurrency($cascadeDeal),
+            ],
+            'method' => $this->mapPaymentMethod($cascadeDeal),
+            'customer' => [
+                'id' => $cascadeDeal->merchantClient?->client_id,
+            ],
+            'callback_endpoint' => $this->configValue('callback_url'),
+            'metadata' => [
+                'source' => 'cascade',
+            ],
+        ];
+
+        $response = $this->request()->post($this->buildUrl('/provider-api/v1/payins'), $payload);
+        $this->throwIfInvalid($response);
+
+        return $this->normalizePaymentResponse($response->json());
+    }
+
+    public function cancelDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
+    {
+        $this->ensureConfigured();
+
+        $response = $this->request()->post(
+            $this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/void'),
+            ['reason' => 'winner_selected_elsewhere'],
+        );
+        $this->throwIfInvalid($response);
+
+        return $this->normalizePaymentResponse($response->json(), $providerDealId);
+    }
+
+    public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
+    {
+        $this->ensureConfigured();
+
+        $response = $this->request()->get($this->buildUrl('/provider-api/v1/payins/'.$providerDealId));
+        $this->throwIfInvalid($response);
+
+        return $this->normalizePaymentResponse($response->json(), $providerDealId);
+    }
+
+    public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
+    {
+        $this->ensureConfigured();
+
+        $providerDealId = (string) $cascadeDeal->selectedTransaction?->provider_deal_id;
+        if ($providerDealId === '') {
+            throw new RuntimeException('MockProcessing provider deal id is missing.');
+        }
+
+        $response = $this->request()->post(
+            $this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/verification-code'),
+            ['code' => $confirmationCode],
+        );
+        $this->throwIfInvalid($response);
+
+        return $this->normalizePaymentResponse($response->json(), $providerDealId);
+    }
+
+    public function openDispute(CascadeDeal $cascadeDeal, string $providerDealId, array $data = []): array
+    {
+        $this->ensureConfigured();
+
+        $payload = [
+            'reason' => $data['reason'] ?? 'payer_says_paid',
+            'files' => $data['files'] ?? $data['receipts'] ?? [],
+            'comment' => $data['comment'] ?? null,
+        ];
+
+        $response = $this->request()->post(
+            $this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/claims'),
+            $payload,
+        );
+        $this->throwIfInvalid($response);
+
+        $data = $response->json();
+
+        return [
+            'dispute_id' => Arr::get($data, 'claim.claim_id'),
+            'provider_deal_id' => Arr::get($data, 'claim.provider_payment_id', $providerDealId),
+            'status' => Arr::get($data, 'claim.state'),
+            'raw' => $data,
+        ];
+    }
+
+    public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array
+    {
+        $this->ensureConfigured();
+
+        $response = $this->request()->get($this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/claims/current'));
+        $this->throwIfInvalid($response);
+
+        $data = $response->json();
+
+        return [
+            'dispute_id' => Arr::get($data, 'claim.claim_id', $disputeId),
+            'provider_deal_id' => Arr::get($data, 'claim.provider_payment_id', $providerDealId),
+            'status' => Arr::get($data, 'claim.state'),
+            'raw' => $data,
+        ];
+    }
+
+    public function handleCallback(array $payload): array
+    {
+        return [
+            'provider_deal_id' => Arr::get($payload, 'provider_payment_id') ?? Arr::get($payload, 'order_id'),
+            'cascade_deal_uuid' => Arr::get($payload, 'client_reference'),
+            'status' => Arr::get($payload, 'state') ?? Arr::get($payload, 'status', 'unknown'),
+            'sub_status' => Arr::get($payload, 'sub_state'),
+            'event' => Arr::get($payload, 'event') ?? Arr::get($payload, 'event_type', 'status_update'),
+            'data' => $payload,
+        ];
+    }
+
+    public function getCode(): string
+    {
+        return $this->code;
+    }
+
+    private function normalizePaymentResponse(array $data, ?string $fallbackProviderDealId = null): array
+    {
+        return [
+            'provider_deal_id' => Arr::get($data, 'payment.provider_payment_id', $fallbackProviderDealId),
+            'status' => Arr::get($data, 'payment.state'),
+            'sub_status' => Arr::get($data, 'payment.sub_state'),
+            'amount' => Arr::get($data, 'payment.money.value'),
+            'currency' => Arr::get($data, 'payment.money.currency'),
+            'gateway' => [
+                'code' => Arr::get($data, 'payment.payment_credentials.gateway.code'),
+                'name' => Arr::get($data, 'payment.payment_credentials.gateway.title'),
+                'logo_link' => null,
+            ],
+            'details' => [
+                'type' => Arr::get($data, 'payment.payment_credentials.type'),
+                'value' => Arr::get($data, 'payment.payment_credentials.value'),
+                'initials' => Arr::get($data, 'payment.payment_credentials.holder'),
+            ],
+            'created_at' => Arr::get($data, 'payment.created_at'),
+            'expires_at' => Arr::get($data, 'payment.expires_at'),
+            'finished_at' => Arr::get($data, 'payment.closed_at'),
+            'raw' => $data,
+        ];
+    }
+
+    private function request(): PendingRequest
+    {
+        $request = Http::acceptJson()
+            ->withHeaders([
+                'Access-Token' => (string) $this->configValue('access_token'),
+            ])
+            ->timeout((int) ($this->configValue('timeout') ?? 10));
+
+        if ($this->configValue('verify_ssl') === false) {
+            $request = $request->withoutVerifying();
+        }
+
+        return $request;
+    }
+
+    private function buildUrl(string $path): string
+    {
+        return rtrim((string) $this->configValue('base_url'), '/').$path;
+    }
+
+    private function throwIfInvalid(Response $response): void
+    {
+        if ($response->successful() && $response->json('ok') !== false) {
+            return;
+        }
+
+        $message = $response->json('error.message') ?? $response->json('message') ?? $response->body();
+
+        throw new RuntimeException($message ?: 'MockProcessing API error');
+    }
+
+    private function ensureConfigured(): void
+    {
+        foreach (['base_url', 'access_token', 'currency_code'] as $key) {
+            if (! $this->configValue($key)) {
+                throw new RuntimeException('MockProcessing provider config is incomplete: '.$key);
+            }
+        }
+    }
+
+    private function configValue(string $key): mixed
+    {
+        return $this->config[$key] ?? null;
+    }
+
+    private function mapPaymentMethod(CascadeDeal $cascadeDeal): string
+    {
+        return match ($cascadeDeal->payment_method->value) {
+            'card' => 'card',
+            'sbp' => 'sbp',
+            default => $cascadeDeal->payment_method->value,
+        };
+    }
+
+    private function resolveCurrency(CascadeDeal $cascadeDeal): string
+    {
+        $currency = strtoupper((string) $this->configValue('currency_code'));
+
+        return $currency !== '' ? $currency : strtoupper($cascadeDeal->currency->getCode());
+    }
+}

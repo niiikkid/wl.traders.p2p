@@ -14,12 +14,14 @@ use App\Enums\ProviderType;
 use App\Exceptions\CascadeException;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
+use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Models\MerchantClient;
 use App\Models\Order;
 use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
 use App\Services\Money\Money;
+use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -131,7 +133,7 @@ class CascadeService implements CascadeServiceContract
                         if (is_local()) {
                             dd($data['exception']);
                         }
-                        
+
                         throw CascadeException::make('Произошла ошибка при обработке запроса');
                     }
 
@@ -196,6 +198,68 @@ class CascadeService implements CascadeServiceContract
                 ? $e
                 : CascadeException::make($e->getMessage());
         }
+    }
+
+    public function handleProviderCallback(string $providerCode, array $payload, ?string $accessToken = null): array
+    {
+        $provider_model = CascadeProvider::query()
+            ->where('code', $providerCode)
+            ->first();
+
+        if (! $provider_model instanceof CascadeProvider) {
+            throw CascadeException::make('Провайдер каскада не найден.');
+        }
+
+        if (! $provider_model->access_token) {
+            throw CascadeException::make('Токен провайдера каскада не настроен.');
+        }
+
+        if (! hash_equals($provider_model->access_token, (string) $accessToken)) {
+            throw CascadeException::make('Неверный токен провайдера.');
+        }
+
+        $provider = services()->cascadeProvider()->getProviderByModel($provider_model);
+        if (! $provider) {
+            throw CascadeException::make('Интеграция провайдера каскада недоступна.');
+        }
+
+        $callback_data = $provider->handleCallback($payload);
+        $cascade_deal = $this->resolveCallbackCascadeDeal($provider_model, $callback_data);
+        $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $provider_model, $callback_data);
+
+        DB::transaction(function () use ($cascade_deal, $cascade_transaction, $provider_model, $payload, $callback_data): void {
+            $cascade_deal->update($this->callbackCascadeDealAttributes($cascade_deal, $callback_data));
+
+            if ($cascade_transaction) {
+                $cascade_transaction->update([
+                    'response_payload' => $callback_data,
+                    'status' => $this->callbackTransactionStatus(
+                        (string) Arr::get($callback_data, 'status'),
+                        $cascade_transaction->status,
+                    ),
+                ]);
+            }
+
+            CascadeProviderLog::create([
+                'cascade_deal_id' => $cascade_deal->id,
+                'cascade_transaction_id' => $cascade_transaction?->id,
+                'provider_id' => $provider_model->id,
+                'operation' => 'callback',
+                'method' => 'POST',
+                'url' => request()->fullUrl(),
+                'request_payload' => $payload,
+                'response_payload' => $callback_data,
+                'status_code' => 200,
+                'is_successful' => true,
+            ]);
+        });
+
+        return [
+            'provider_code' => $providerCode,
+            'cascade_deal_id' => $cascade_deal->uuid,
+            'provider_deal_id' => Arr::get($callback_data, 'provider_deal_id'),
+            'status' => $cascade_deal->refresh()->status->value,
+        ];
     }
 
     private function createCascadeDeal(CreateCascadeDealDTO $dto): CascadeDeal
@@ -361,5 +425,110 @@ class CascadeService implements CascadeServiceContract
                     : $cascadeDeal->selectedTransaction->status,
             ]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $callback_data
+     */
+    private function resolveCallbackCascadeDeal(CascadeProvider $provider_model, array $callback_data): CascadeDeal
+    {
+        $cascade_deal_uuid = Arr::get($callback_data, 'cascade_deal_uuid');
+        if ($cascade_deal_uuid) {
+            $cascade_deal = CascadeDeal::query()
+                ->where('uuid', $cascade_deal_uuid)
+                ->first();
+
+            if ($cascade_deal instanceof CascadeDeal) {
+                return $cascade_deal;
+            }
+        }
+
+        $provider_deal_id = Arr::get($callback_data, 'provider_deal_id');
+        if ($provider_deal_id) {
+            $cascade_transaction = CascadeTransaction::query()
+                ->where('provider_id', $provider_model->id)
+                ->where('provider_deal_id', $provider_deal_id)
+                ->first();
+
+            if ($cascade_transaction instanceof CascadeTransaction) {
+                return $cascade_transaction->cascadeDeal;
+            }
+        }
+
+        throw CascadeException::make('Каскадная сделка для callback не найдена.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $callback_data
+     */
+    private function resolveCallbackTransaction(
+        CascadeDeal $cascade_deal,
+        CascadeProvider $provider_model,
+        array $callback_data,
+    ): ?CascadeTransaction {
+        $provider_deal_id = Arr::get($callback_data, 'provider_deal_id');
+
+        return $cascade_deal->transactions()
+            ->where('provider_id', $provider_model->id)
+            ->when($provider_deal_id, fn ($query) => $query->where('provider_deal_id', $provider_deal_id))
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $callback_data
+     * @return array<string, mixed>
+     */
+    private function callbackCascadeDealAttributes(CascadeDeal $cascade_deal, array $callback_data): array
+    {
+        $status = (string) Arr::get($callback_data, 'status');
+        $finished_at = $this->callbackFinishedAt($callback_data);
+
+        return [
+            'status' => $this->callbackOrderStatus($status, $cascade_deal->status),
+            'sub_status' => $this->callbackOrderSubStatus($status, $cascade_deal->sub_status),
+            'finished_at' => $finished_at ?? $cascade_deal->finished_at,
+        ];
+    }
+
+    private function callbackOrderStatus(string $provider_status, OrderStatus $current_status): OrderStatus
+    {
+        return match ($provider_status) {
+            'completed', 'success', 'paid' => OrderStatus::SUCCESS,
+            'cancelled', 'canceled', 'expired', 'failed', 'voided' => OrderStatus::FAIL,
+            default => $current_status,
+        };
+    }
+
+    private function callbackOrderSubStatus(string $provider_status, OrderSubStatus $current_sub_status): OrderSubStatus
+    {
+        return match ($provider_status) {
+            'completed', 'success', 'paid' => OrderSubStatus::SUCCESSFULLY_PAID,
+            'cancelled', 'canceled', 'voided' => OrderSubStatus::CANCELED,
+            'expired' => OrderSubStatus::EXPIRED,
+            'waiting_payment', 'pending' => OrderSubStatus::WAITING_FOR_PAYMENT,
+            default => $current_sub_status,
+        };
+    }
+
+    private function callbackTransactionStatus(
+        string $provider_status,
+        CascadeTransactionStatus $current_status,
+    ): CascadeTransactionStatus {
+        return match ($provider_status) {
+            'cancelled', 'canceled', 'expired', 'failed', 'voided' => CascadeTransactionStatus::CANCELLED,
+            default => $current_status,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $callback_data
+     */
+    private function callbackFinishedAt(array $callback_data): ?Carbon
+    {
+        $timestamp = Arr::get($callback_data, 'data.occurred_at')
+            ?? Arr::get($callback_data, 'data.sent_at');
+
+        return is_numeric($timestamp) ? Carbon::createFromTimestamp((int) $timestamp) : null;
     }
 }
