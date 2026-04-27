@@ -429,7 +429,9 @@ class MainPageController extends Controller
 
         $query = PaymentGateway::query()
             ->whereIn('id', $allowedGatewayIds)
-            ->select(['id', 'name', 'code', 'currency']);
+            ->select(['id', 'name', 'code', 'currency'])
+            ->orderBy('name')
+            ->orderBy('id');
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
@@ -440,7 +442,7 @@ class MainPageController extends Controller
         }
 
         return $this->mergeSelectedFirst(
-            $query->limit(10)->get()->map(fn (PaymentGateway $gateway) => [
+            $query->get()->map(fn (PaymentGateway $gateway) => [
                 'value' => $gateway->id,
                 'label' => "{$gateway->name} ".strtoupper((string) $gateway->currency?->getCode()),
             ]),
@@ -459,7 +461,9 @@ class MainPageController extends Controller
     {
         $query = PaymentDetail::query()
             ->where('user_id', $user->id)
-            ->select(['id', 'name', 'detail', 'detail_type']);
+            ->select(['id', 'name', 'detail', 'detail_type'])
+            ->orderBy('name')
+            ->orderBy('id');
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
@@ -470,7 +474,7 @@ class MainPageController extends Controller
         }
 
         return $this->mergeSelectedFirst(
-            $query->limit(10)->get()->map(fn (PaymentDetail $detail) => [
+            $query->get()->map(fn (PaymentDetail $detail) => [
                 'value' => $detail->id,
                 'label' => $detail->name,
                 'subtitle' => $this->formatPaymentDetailSubtitle($detail),
