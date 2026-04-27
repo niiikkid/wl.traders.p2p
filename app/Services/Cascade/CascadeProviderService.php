@@ -20,7 +20,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
     /**
      * Кэш загруженных провайдеров
      *
-     * @var array<int, CascadeProviderInterface>
+     * @var array<string, CascadeProviderInterface>
      */
     private array $providersCache = [];
 
@@ -36,10 +36,11 @@ class CascadeProviderService implements CascadeProviderServiceContract
      */
     public function getProvider(string $code): ?CascadeProviderInterface
     {
-        $providerModel = CascadeProvider::query()
-            ->where('code', $code)
-            ->orderBy('id')
-            ->first();
+        if (isset($this->providersCache[$code])) {
+            return $this->providersCache[$code];
+        }
+
+        $providerModel = CascadeProvider::where('code', $code)->first();
 
         if (! $providerModel) {
             return null;
@@ -55,14 +56,14 @@ class CascadeProviderService implements CascadeProviderServiceContract
      */
     public function getProviderByModel(CascadeProvider $provider): ?CascadeProviderInterface
     {
-        if (isset($this->providersCache[$provider->id])) {
-            return $this->providersCache[$provider->id];
+        if (isset($this->providersCache[$provider->code])) {
+            return $this->providersCache[$provider->code];
         }
 
         $providerInstance = $this->createProviderInstance($provider);
 
         if ($providerInstance) {
-            $this->providersCache[$provider->id] = $providerInstance;
+            $this->providersCache[$provider->code] = $providerInstance;
         }
 
         return $providerInstance;
@@ -80,7 +81,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
             ->mapWithKeys(function (CascadeProvider $provider) {
                 $instance = $this->getProviderByModel($provider);
 
-                return $instance ? [(string) $provider->id => $instance] : [];
+                return $instance ? [$provider->code => $instance] : [];
             })
             ->toArray();
     }
@@ -96,7 +97,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
             ->mapWithKeys(function (CascadeProvider $provider) {
                 $instance = $this->getProviderByModel($provider);
 
-                return $instance ? [(string) $provider->id => $instance] : [];
+                return $instance ? [$provider->code => $instance] : [];
             })
             ->toArray();
     }

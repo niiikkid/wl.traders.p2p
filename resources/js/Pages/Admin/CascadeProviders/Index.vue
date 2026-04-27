@@ -8,9 +8,9 @@ import IsActiveStatus from '@/Components/IsActiveStatus.vue';
 const props = defineProps({
     cascadeProviders: Object,
     implementedProviders: Array,
+    existingProviderCodes: Array,
     providerCallbackBaseUrl: String,
     providerTypes: Array,
-    merchants: Array,
 });
 
 const isModalOpen = ref(false);
@@ -26,14 +26,21 @@ const form = useForm({
     base_url: '',
     access_token: '',
     merchant_id: '',
-    target_merchant_id: null,
     currency_code: '',
     timeout: 10,
     verify_ssl: true,
     description: '',
 });
 
-const providerOptions = computed(() => props.implementedProviders);
+const providerOptions = computed(() => {
+    if (editingProvider.value) {
+        return props.implementedProviders.filter((provider) => (
+            provider.code === editingProvider.value.code || ! props.existingProviderCodes.includes(provider.code)
+        ));
+    }
+
+    return props.implementedProviders.filter((provider) => ! props.existingProviderCodes.includes(provider.code));
+});
 
 const canCreateProvider = computed(() => providerOptions.value.length > 0);
 
@@ -64,7 +71,6 @@ const openCreateModal = () => {
         base_url: '',
         access_token: '',
         merchant_id: '',
-        target_merchant_id: null,
         currency_code: '',
         timeout: 10,
         verify_ssl: true,
@@ -87,7 +93,6 @@ const openEditModal = (provider) => {
         base_url: provider.base_url ?? '',
         access_token: provider.access_token ?? '',
         merchant_id: provider.merchant_id ?? '',
-        target_merchant_id: provider.target_merchant_id,
         currency_code: provider.currency_code ?? '',
         timeout: provider.timeout,
         verify_ssl: provider.verify_ssl,
@@ -103,10 +108,6 @@ const closeModal = () => {
 };
 
 const submit = () => {
-    if (form.provider_type === 'internal') {
-        form.target_merchant_id = null;
-    }
-
     const options = {
         preserveScroll: true,
         onSuccess: closeModal,
@@ -127,9 +128,6 @@ const fillFromImplementation = () => {
 
     form.name = selectedImplementation.value.name;
     form.provider_type = selectedImplementation.value.code === 'internal' ? 'internal' : 'external';
-    if (form.provider_type === 'internal') {
-        form.target_merchant_id = null;
-    }
 };
 
 const selectedProviderCode = computed(() => {
@@ -168,19 +166,6 @@ const copyCallbackEndpoint = async () => {
     }
 };
 
-const selectedTargetMerchantLabel = computed(() => {
-    if (! form.target_merchant_id) {
-        return '';
-    }
-
-    const selected = props.merchants.find((merchant) => merchant.id === Number(form.target_merchant_id));
-    if (! selected) {
-        return '';
-    }
-
-    return `${selected.name} (${selected.uuid})`;
-});
-
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -204,6 +189,10 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
 
             <template v-slot:body>
+                <div v-if="! canCreateProvider" class="alert alert-info mb-4">
+                    <span>Все найденные реализации провайдеров уже добавлены.</span>
+                </div>
+
                 <div class="hidden xl:block overflow-x-auto card bg-base-100 shadow">
                     <table class="table table-sm">
                         <thead class="text-xs uppercase bg-base-300">
@@ -394,25 +383,6 @@ defineOptions({ layout: AuthenticatedLayout });
                         </fieldset>
 
                         <fieldset class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Мерчант (модель)</legend>
-                            <select
-                                v-model="form.target_merchant_id"
-                                class="select select-bordered select-sm w-full"
-                                :disabled="form.provider_type === 'internal'"
-                            >
-                                <option :value="null">Не выбран</option>
-                                <option
-                                    v-for="merchant in merchants"
-                                    :key="merchant.id"
-                                    :value="merchant.id"
-                                >
-                                    {{ merchant.name }} ({{ merchant.uuid }})
-                                </option>
-                            </select>
-                            <p v-if="form.errors.target_merchant_id" class="label text-error text-xs">{{ form.errors.target_merchant_id }}</p>
-                        </fieldset>
-
-                        <fieldset class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Валюта</legend>
                             <input v-model="form.currency_code" type="text" maxlength="10" class="input input-bordered input-sm w-full" placeholder="RUB" />
                             <p v-if="form.errors.currency_code" class="label text-error text-xs">{{ form.errors.currency_code }}</p>
@@ -466,9 +436,6 @@ defineOptions({ layout: AuthenticatedLayout });
                             </div>
                             <p class="text-xs opacity-70">
                                 Эту ссылку передайте внешнему сервису для webhook callback.
-                            </p>
-                            <p v-if="selectedTargetMerchantLabel" class="text-xs opacity-70">
-                                Назначено мерчанту: {{ selectedTargetMerchantLabel }}
                             </p>
                         </div>
                     </fieldset>

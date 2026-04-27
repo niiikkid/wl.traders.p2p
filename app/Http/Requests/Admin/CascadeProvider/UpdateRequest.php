@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\CascadeProvider;
 
 use App\Enums\ProviderType;
+use App\Models\CascadeProvider;
 use App\Services\Cascade\CascadeProviderDiscoveryService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -19,11 +20,14 @@ class UpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $cascadeProvider = $this->route('cascadeProvider');
+
         return [
             'code' => [
                 'required',
                 'string',
                 Rule::in($this->implementedCodes()),
+                Rule::unique(CascadeProvider::class)->ignore($cascadeProvider?->id),
             ],
             'name' => ['required', 'string', 'max:255'],
             'provider_type' => ['required', Rule::in(ProviderType::values())],
@@ -33,7 +37,6 @@ class UpdateRequest extends FormRequest
             'base_url' => ['nullable', 'url', 'max:255'],
             'access_token' => ['nullable', 'string', 'max:255'],
             'merchant_id' => ['nullable', 'string', 'max:255'],
-            'target_merchant_id' => ['required_unless:provider_type,internal', 'nullable', 'integer', 'exists:merchants,id'],
             'currency_code' => ['nullable', 'string', 'max:10'],
             'timeout' => ['nullable', 'integer', 'min:1', 'max:300'],
             'verify_ssl' => ['required', 'boolean'],
@@ -53,7 +56,6 @@ class UpdateRequest extends FormRequest
             'base_url' => __('base URL'),
             'access_token' => __('access token'),
             'merchant_id' => __('merchant ID'),
-            'target_merchant_id' => __('мерчант'),
             'currency_code' => __('валюта'),
             'timeout' => __('таймаут'),
             'verify_ssl' => __('проверка SSL'),
