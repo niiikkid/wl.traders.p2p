@@ -16,6 +16,7 @@ use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Models\Order;
 use App\Services\Money\Money;
+use App\Support\TraderCommissionTierResolver;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Arr;
@@ -96,6 +97,24 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 startedAt: $startedAt,
                 isSuccessful: true,
             );
+
+            $externalProfits = null;
+            if (! $providerModel->provider_type->equals(ProviderType::INTERNAL)) {
+                $externalProfits = $this->persistExternalMerchantEconomics($cascadeDeal);
+            }
+
+            if (
+                ! $providerModel->provider_type->equals(ProviderType::INTERNAL)
+                && ! $this->externalProviderCoversMerchantCredit(
+                    $cascadeDeal,
+                    $responsePayload,
+                    $externalProfits,
+                )
+            ) {
+                $this->cancelLoser($cascadeDeal, $providerModel, $transaction, $responsePayload);
+
+                throw CascadeException::make('Внешний провайдер вернул сумму меньше обязательства перед мерчантом.');
+            }
 
             $won = $this->tryAcceptWinner($cascadeDeal, $providerModel, $transaction, $responsePayload);
 
@@ -345,6 +364,34 @@ class CascadeProviderAttemptJob implements ShouldQueue
         array $responsePayload,
         ?Order $order,
     ): array {
+        if (! $providerModel->provider_type->equals(ProviderType::INTERNAL)) {
+            $profits = $this->cascadeProfits($cascadeDeal);
+            $externalProviderAmount = $this->externalProviderAmount($cascadeDeal, $responsePayload);
+
+            return [
+                'order_id' => null,
+                'amount' => $cascadeDeal->amount,
+                'initial_amount' => $cascadeDeal->initial_amount,
+                'currency' => $cascadeDeal->currency,
+                'debit' => $externalProviderAmount,
+                'credit' => $profits->merchantCredit,
+                'service_profit' => $externalProviderAmount->sub($profits->merchantCredit),
+                'usdt_amount' => $profits->convertedAmount,
+                'fee' => $profits->totalFee,
+                'fee_rate' => $this->merchantCommissionRates($cascadeDeal)['total'],
+                'market' => $cascadeDeal->market,
+                'conversion_price' => $cascadeDeal->conversion_price,
+                'rate_fixed_at' => $cascadeDeal->rate_fixed_at,
+                'status' => OrderStatus::PENDING,
+                'sub_status' => OrderSubStatus::WAITING_FOR_DETAILS_TO_BE_SELECTED,
+                'selected_provider_id' => $providerModel->id,
+                'selected_transaction_id' => $transaction->id,
+                'gateway' => Arr::get($responsePayload, 'gateway'),
+                'details' => Arr::get($responsePayload, 'details'),
+                'finished_at' => Arr::get($responsePayload, 'finished_at'),
+            ];
+        }
+
         return [
             'order_id' => $order?->id,
             'amount' => $order?->amount ?? $cascadeDeal->amount,
@@ -367,6 +414,130 @@ class CascadeProviderAttemptJob implements ShouldQueue
             'details' => Arr::get($responsePayload, 'details'),
             'finished_at' => $order?->finished_at,
         ];
+    }
+
+    private function externalProviderCoversMerchantCredit(
+        CascadeDeal $cascadeDeal,
+        array $responsePayload,
+        ?object $profits = null,
+    ): bool {
+        $profits = $profits ?? $this->cascadeProfits($cascadeDeal);
+        $externalProviderAmount = $this->externalProviderAmount($cascadeDeal, $responsePayload);
+
+        return $externalProviderAmount->greaterOrEquals($profits->merchantCredit);
+    }
+
+    private function persistExternalMerchantEconomics(CascadeDeal $cascadeDeal): object
+    {
+        $profits = $this->cascadeProfits($cascadeDeal);
+        $rates = $this->merchantCommissionRates($cascadeDeal);
+
+        CascadeDeal::query()
+            ->whereKey($cascadeDeal->id)
+            ->whereNull('selected_transaction_id')
+            ->update([
+                'usdt_amount' => $profits->convertedAmount,
+                'fee' => $profits->totalFee,
+                'fee_rate' => $rates['total'],
+                'credit' => $profits->merchantCredit,
+            ]);
+
+        return $profits;
+    }
+
+    private function cascadeProfits(CascadeDeal $cascadeDeal): object
+    {
+        if (! $cascadeDeal->conversion_price instanceof Money) {
+            throw CascadeException::make('Для расчёта экономики каскада не зафиксирован курс.');
+        }
+
+        $rates = $this->merchantCommissionRates($cascadeDeal);
+
+        return services()->profit()->calculateInBody(
+            sourceAmount: $cascadeDeal->amount,
+            exchangeRate: $cascadeDeal->conversion_price,
+            totalFeeRate: $rates['total'],
+            traderFeeRate: $rates['trader'],
+        );
+    }
+
+    /**
+     * @return array{total: float, trader: float}
+     */
+    private function merchantCommissionRates(CascadeDeal $cascadeDeal): array
+    {
+        $commissionSettings = $cascadeDeal->merchant->getCommissionSettingForPair(
+            currency: $cascadeDeal->currency,
+            detailType: $cascadeDeal->payment_method->detailType(),
+        );
+
+        if (! $commissionSettings) {
+            throw CascadeException::make('Для мерчанта не настроена комиссия по валюте и типу реквизита.');
+        }
+
+        $traderRate = $commissionSettings['trader_commission_rate_for_orders'];
+        $totalRate = $commissionSettings['total_service_commission_rate_for_orders'];
+
+        if ($traderRate === null || $totalRate === null) {
+            throw CascadeException::make('Для мерчанта не указана комиссия по каскадной сделке.');
+        }
+
+        if (
+            (bool) ($commissionSettings['use_flexible_trader_commission_for_orders'] ?? false)
+            && ! empty($commissionSettings['trader_commission_tiers_for_orders'])
+            && ! empty($commissionSettings['total_service_commission_tiers_for_orders'])
+        ) {
+            $amount = (float) intval($cascadeDeal->amount->toBeauty());
+            $traderRate = TraderCommissionTierResolver::resolveRate(
+                tiers: $commissionSettings['trader_commission_tiers_for_orders'],
+                amount: $amount,
+                defaultRate: (float) $traderRate,
+            );
+            $totalRate = TraderCommissionTierResolver::resolveRate(
+                tiers: $commissionSettings['total_service_commission_tiers_for_orders'],
+                amount: $amount,
+                defaultRate: (float) $totalRate,
+            );
+        }
+
+        return [
+            'total' => (float) $totalRate,
+            'trader' => (float) $traderRate,
+        ];
+    }
+
+    private function externalProviderAmount(CascadeDeal $cascadeDeal, array $responsePayload): Money
+    {
+        $amount = Arr::get($responsePayload, 'external_provider_amount')
+            ?? Arr::get($responsePayload, 'provider_amount')
+            ?? Arr::get($responsePayload, 'amount_usdt')
+            ?? Arr::get($responsePayload, 'merchant_profit');
+
+        if ($amount !== null) {
+            return Money::fromPrecision((string) $amount, 'USDT');
+        }
+
+        if (Arr::get($responsePayload, 'currency') === 'USDT' && Arr::get($responsePayload, 'amount') !== null) {
+            return Money::fromPrecision((string) Arr::get($responsePayload, 'amount'), 'USDT');
+        }
+
+        $settlementAmount = Arr::get($responsePayload, 'settlement.provider_receivable_amount')
+            ?? Arr::get($responsePayload, 'raw.payment.settlement.provider_receivable_amount');
+        $settlementCurrency = Arr::get($responsePayload, 'settlement.currency')
+            ?? Arr::get($responsePayload, 'raw.payment.settlement.currency');
+
+        if ($settlementAmount !== null && $settlementCurrency === 'USDT') {
+            return Money::fromPrecision((string) $settlementAmount, 'USDT');
+        }
+
+        if ($settlementAmount !== null && $settlementCurrency === $cascadeDeal->currency->getCode()) {
+            return Money::fromPrecision(
+                amount: bcdiv((string) $settlementAmount, $cascadeDeal->conversion_price->toPrecision(), Money::DEFAULT_PRECISION),
+                currency: 'USDT',
+            );
+        }
+
+        throw CascadeException::make('Внешний провайдер не вернул сумму зачисления в USDT.');
     }
 
     /**

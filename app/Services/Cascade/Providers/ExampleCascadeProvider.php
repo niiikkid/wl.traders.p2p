@@ -54,6 +54,7 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
         return [
             'provider_deal_id' => Arr::get($data, 'data.order_id') ?? Arr::get($data, 'order_id'),
             'status' => Arr::get($data, 'data.status') ?? Arr::get($data, 'status'),
+            'external_provider_amount' => Arr::get($data, 'data.merchant_profit') ?? Arr::get($data, 'merchant_profit'),
             'amount' => $cascadeDeal->amount->toInt(),
             'currency' => $cascadeDeal->currency->getCode(),
             'gateway' => [

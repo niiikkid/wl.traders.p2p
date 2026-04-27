@@ -181,6 +181,12 @@ class MockProcessingCascadeProvider extends AbstractCascadeProvider
             'sub_status' => Arr::get($data, 'payment.sub_state'),
             'amount' => Arr::get($data, 'payment.money.value'),
             'currency' => Arr::get($data, 'payment.money.currency'),
+            'settlement' => [
+                'provider_fee_percent' => Arr::get($data, 'payment.settlement.provider_fee_percent'),
+                'provider_fee_amount' => Arr::get($data, 'payment.settlement.provider_fee_amount'),
+                'provider_receivable_amount' => Arr::get($data, 'payment.settlement.provider_receivable_amount'),
+                'currency' => Arr::get($data, 'payment.settlement.currency'),
+            ],
             'gateway' => [
                 'code' => Arr::get($data, 'payment.payment_credentials.gateway.code'),
                 'name' => Arr::get($data, 'payment.payment_credentials.gateway.title'),
