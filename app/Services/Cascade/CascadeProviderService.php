@@ -8,7 +8,6 @@ use App\Contracts\CascadeProviderServiceContract;
 use App\Models\CascadeProvider;
 use App\Services\Cascade\Providers\CascadeProviderInterface;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -26,10 +25,14 @@ class CascadeProviderService implements CascadeProviderServiceContract
     private array $providersCache = [];
 
     /**
+     * @var array<string, bool>|null
+     */
+    private ?array $supportsCallbackEndpointByCode = null;
+
+    /**
      * Получить провайдера по коду
      *
-     * @param string $code Код провайдера
-     * @return CascadeProviderInterface|null
+     * @param  string  $code  Код провайдера
      */
     public function getProvider(string $code): ?CascadeProviderInterface
     {
@@ -39,7 +42,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
 
         $providerModel = CascadeProvider::where('code', $code)->first();
 
-        if (!$providerModel) {
+        if (! $providerModel) {
             return null;
         }
 
@@ -49,8 +52,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
     /**
      * Получить провайдера по модели CascadeProvider
      *
-     * @param CascadeProvider $provider Модель провайдера
-     * @return CascadeProviderInterface|null
+     * @param  CascadeProvider  $provider  Модель провайдера
      */
     public function getProviderByModel(CascadeProvider $provider): ?CascadeProviderInterface
     {
@@ -78,6 +80,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
             ->get()
             ->mapWithKeys(function (CascadeProvider $provider) {
                 $instance = $this->getProviderByModel($provider);
+
                 return $instance ? [$provider->code => $instance] : [];
             })
             ->toArray();
@@ -93,6 +96,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
         return CascadeProvider::all()
             ->mapWithKeys(function (CascadeProvider $provider) {
                 $instance = $this->getProviderByModel($provider);
+
                 return $instance ? [$provider->code => $instance] : [];
             })
             ->toArray();
@@ -126,14 +130,13 @@ class CascadeProviderService implements CascadeProviderServiceContract
     /**
      * Создать экземпляр провайдера на основе модели
      *
-     * @param CascadeProvider $provider Модель провайдера
-     * @return CascadeProviderInterface|null
+     * @param  CascadeProvider  $provider  Модель провайдера
      */
     private function createProviderInstance(CascadeProvider $provider): ?CascadeProviderInterface
     {
         $providerClass = $this->getProviderClassMap()[$provider->code] ?? null;
 
-        if (!$providerClass || !class_exists($providerClass)) {
+        if (! $providerClass || ! class_exists($providerClass)) {
             Log::warning('Cascade provider class not found', [
                 'code' => $provider->code,
                 'class' => $providerClass,
@@ -147,11 +150,12 @@ class CascadeProviderService implements CascadeProviderServiceContract
                 'base_url' => $provider->base_url,
                 'access_token' => $provider->access_token,
                 'merchant_id' => $provider->merchant_id,
-                'callback_url' => $provider->callback_url,
+                'callback_url' => $this->resolveProviderCallbackUrl($provider),
                 'currency_code' => $provider->currency_code,
                 'timeout' => $provider->timeout,
                 'verify_ssl' => $provider->verify_ssl,
             ];
+
             return new $providerClass($provider->code, $config);
         } catch (\Throwable $e) {
             // Логируем ошибку создания провайдера
@@ -159,7 +163,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
                 'code' => $provider->code,
                 'error' => $e->getMessage(),
             ]);
-            
+
             return null;
         }
     }
@@ -172,5 +176,30 @@ class CascadeProviderService implements CascadeProviderServiceContract
     private function getProviderClassMap(): array
     {
         return app(CascadeProviderDiscoveryService::class)->classMap();
+    }
+
+    private function resolveProviderCallbackUrl(CascadeProvider $provider): ?string
+    {
+        if (! $this->providerSupportsCallbackEndpoint($provider->code)) {
+            return null;
+        }
+
+        return url('/api/v2/providers/'.$provider->code.'/callback');
+    }
+
+    private function providerSupportsCallbackEndpoint(string $providerCode): bool
+    {
+        if ($this->supportsCallbackEndpointByCode === null) {
+            $this->supportsCallbackEndpointByCode = app(CascadeProviderDiscoveryService::class)
+                ->implementedProviders()
+                ->mapWithKeys(
+                    fn (array $providerMeta) => [
+                        $providerMeta['code'] => (bool) ($providerMeta['supports_callback_endpoint'] ?? false),
+                    ]
+                )
+                ->all();
+        }
+
+        return $this->supportsCallbackEndpointByCode[$providerCode] ?? false;
     }
 }

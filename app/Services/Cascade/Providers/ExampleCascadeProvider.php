@@ -14,6 +14,8 @@ use RuntimeException;
 
 class ExampleCascadeProvider extends AbstractCascadeProvider
 {
+    public const SUPPORTS_CALLBACK_ENDPOINT = true;
+
     protected array $config;
 
     protected string $code;

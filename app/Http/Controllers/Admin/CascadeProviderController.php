@@ -24,6 +24,7 @@ class CascadeProviderController extends Controller
         $cascadeProviders = TableCascadeProviderResource::collection($providers);
         $implementedProviders = $discoveryService->implementedProviders()->values();
         $existingProviderCodes = CascadeProvider::query()->pluck('code')->all();
+        $providerCallbackBaseUrl = rtrim(url('/api/v2/providers'), '/');
         $providerTypes = collect(ProviderType::cases())
             ->map(fn (ProviderType $type) => [
                 'code' => $type->value,
@@ -35,6 +36,7 @@ class CascadeProviderController extends Controller
             'cascadeProviders',
             'implementedProviders',
             'existingProviderCodes',
+            'providerCallbackBaseUrl',
             'providerTypes'
         ));
     }

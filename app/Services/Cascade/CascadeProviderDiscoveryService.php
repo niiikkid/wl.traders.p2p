@@ -13,7 +13,7 @@ use ReflectionClass;
 class CascadeProviderDiscoveryService
 {
     /**
-     * @return Collection<int, array{code: string, class: class-string<CascadeProviderInterface>, name: string}>
+     * @return Collection<int, array{code: string, class: class-string<CascadeProviderInterface>, name: string, supports_callback_endpoint: bool}>
      */
     public function implementedProviders(): Collection
     {
@@ -35,7 +35,7 @@ class CascadeProviderDiscoveryService
     }
 
     /**
-     * @return array{code: string, class: class-string<CascadeProviderInterface>, name: string}|null
+     * @return array{code: string, class: class-string<CascadeProviderInterface>, name: string, supports_callback_endpoint: bool}|null
      */
     private function providerMetaFromFile(string $className): ?array
     {
@@ -54,6 +54,7 @@ class CascadeProviderDiscoveryService
             'code' => $this->resolveCode($reflection),
             'class' => $class,
             'name' => Str::headline(Str::beforeLast($reflection->getShortName(), 'CascadeProvider')),
+            'supports_callback_endpoint' => $this->supportsCallbackEndpoint($reflection),
         ];
     }
 
@@ -67,5 +68,14 @@ class CascadeProviderDiscoveryService
             ->beforeLast('CascadeProvider')
             ->snake()
             ->toString();
+    }
+
+    private function supportsCallbackEndpoint(ReflectionClass $reflection): bool
+    {
+        if (! $reflection->hasConstant('SUPPORTS_CALLBACK_ENDPOINT')) {
+            return false;
+        }
+
+        return (bool) $reflection->getConstant('SUPPORTS_CALLBACK_ENDPOINT');
     }
 }

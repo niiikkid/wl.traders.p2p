@@ -9,6 +9,7 @@ const props = defineProps({
     cascadeProviders: Object,
     implementedProviders: Array,
     existingProviderCodes: Array,
+    providerCallbackBaseUrl: String,
     providerTypes: Array,
 });
 
@@ -25,7 +26,6 @@ const form = useForm({
     base_url: '',
     access_token: '',
     merchant_id: '',
-    callback_url: '',
     currency_code: '',
     timeout: 10,
     verify_ssl: true,
@@ -71,7 +71,6 @@ const openCreateModal = () => {
         base_url: '',
         access_token: '',
         merchant_id: '',
-        callback_url: '',
         currency_code: '',
         timeout: 10,
         verify_ssl: true,
@@ -94,7 +93,6 @@ const openEditModal = (provider) => {
         base_url: provider.base_url ?? '',
         access_token: provider.access_token ?? '',
         merchant_id: provider.merchant_id ?? '',
-        callback_url: provider.callback_url ?? '',
         currency_code: provider.currency_code ?? '',
         timeout: provider.timeout,
         verify_ssl: provider.verify_ssl,
@@ -130,6 +128,42 @@ const fillFromImplementation = () => {
 
     form.name = selectedImplementation.value.name;
     form.provider_type = selectedImplementation.value.code === 'internal' ? 'internal' : 'external';
+};
+
+const selectedProviderCode = computed(() => {
+    return editingProvider.value?.code ?? form.code ?? '';
+});
+
+const selectedProviderSupportsCallbackEndpoint = computed(() => {
+    if (editingProvider.value) {
+        return Boolean(editingProvider.value.supports_callback_endpoint);
+    }
+
+    return Boolean(selectedImplementation.value?.supports_callback_endpoint);
+});
+
+const selectedProviderCallbackEndpointUrl = computed(() => {
+    if (editingProvider.value?.callback_endpoint_url) {
+        return editingProvider.value.callback_endpoint_url;
+    }
+
+    if (! selectedProviderCode.value || ! props.providerCallbackBaseUrl) {
+        return '';
+    }
+
+    return `${props.providerCallbackBaseUrl}/${selectedProviderCode.value}/callback`;
+});
+
+const copyCallbackEndpoint = async () => {
+    if (! selectedProviderCallbackEndpointUrl.value || typeof navigator?.clipboard?.writeText !== 'function') {
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(selectedProviderCallbackEndpointUrl.value);
+    } catch (error) {
+        console.error('Failed to copy callback URL', error);
+    }
 };
 
 defineOptions({ layout: AuthenticatedLayout });
@@ -349,12 +383,6 @@ defineOptions({ layout: AuthenticatedLayout });
                         </fieldset>
 
                         <fieldset class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Callback URL</legend>
-                            <input v-model="form.callback_url" type="url" class="input input-bordered input-sm w-full" />
-                            <p v-if="form.errors.callback_url" class="label text-error text-xs">{{ form.errors.callback_url }}</p>
-                        </fieldset>
-
-                        <fieldset class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Валюта</legend>
                             <input v-model="form.currency_code" type="text" maxlength="10" class="input input-bordered input-sm w-full" placeholder="RUB" />
                             <p v-if="form.errors.currency_code" class="label text-error text-xs">{{ form.errors.currency_code }}</p>
@@ -378,6 +406,39 @@ defineOptions({ layout: AuthenticatedLayout });
                             <span class="text-sm">SSL</span>
                         </label>
                     </div>
+
+                    <fieldset class="fieldset gap-1">
+                        <legend class="fieldset-legend text-xs">Callback endpoint</legend>
+                        <div class="rounded-box border border-base-300 p-3 bg-base-200/40 space-y-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span
+                                    class="badge"
+                                    :class="selectedProviderSupportsCallbackEndpoint ? 'badge-success' : 'badge-ghost'"
+                                >
+                                    {{ selectedProviderSupportsCallbackEndpoint ? 'Поддерживается в исходящем запросе' : 'В исходящем запросе не используется' }}
+                                </span>
+                            </div>
+                            <div class="join w-full">
+                                <input
+                                    :value="selectedProviderCallbackEndpointUrl"
+                                    type="text"
+                                    class="input input-bordered input-sm join-item w-full"
+                                    readonly
+                                >
+                                <button
+                                    type="button"
+                                    class="btn btn-sm join-item"
+                                    :disabled="! selectedProviderCallbackEndpointUrl"
+                                    @click="copyCallbackEndpoint"
+                                >
+                                    Копировать
+                                </button>
+                            </div>
+                            <p class="text-xs opacity-70">
+                                Эту ссылку передайте внешнему сервису для webhook callback.
+                            </p>
+                        </div>
+                    </fieldset>
 
                     <fieldset class="fieldset gap-1">
                         <legend class="fieldset-legend text-xs">Описание</legend>

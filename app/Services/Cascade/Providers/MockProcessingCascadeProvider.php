@@ -15,6 +15,8 @@ class MockProcessingCascadeProvider extends AbstractCascadeProvider
 {
     public const CODE = 'mock-processing';
 
+    public const SUPPORTS_CALLBACK_ENDPOINT = true;
+
     protected array $config;
 
     protected string $code;

@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\CascadeProvider;
+use App\Services\Cascade\CascadeProviderDiscoveryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,6 +30,8 @@ class TableCascadeProviderResource extends JsonResource
             'access_token' => $this->access_token,
             'merchant_id' => $this->merchant_id,
             'callback_url' => $this->callback_url,
+            'callback_endpoint_url' => url('/api/v2/providers/'.$this->code.'/callback'),
+            'supports_callback_endpoint' => $this->supportsCallbackEndpoint(),
             'currency_code' => $this->currency_code,
             'timeout' => $this->timeout,
             'verify_ssl' => $this->verify_ssl,
@@ -36,5 +39,24 @@ class TableCascadeProviderResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
+    }
+
+    private function supportsCallbackEndpoint(): bool
+    {
+        /** @var array<string, bool>|null $map */
+        static $map = null;
+
+        if ($map === null) {
+            $map = app(CascadeProviderDiscoveryService::class)
+                ->implementedProviders()
+                ->mapWithKeys(
+                    fn (array $providerMeta) => [
+                        $providerMeta['code'] => (bool) ($providerMeta['supports_callback_endpoint'] ?? false),
+                    ]
+                )
+                ->all();
+        }
+
+        return $map[$this->code] ?? false;
     }
 }
