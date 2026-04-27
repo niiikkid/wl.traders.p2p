@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Cascade;
 
+use App\Contracts\CascadeProviderServiceContract;
 use App\Contracts\CascadeServiceContract;
 use App\DTO\Cascade\CreateCascadeDealDTO;
 use App\Enums\CascadeTransactionStatus;
@@ -12,6 +13,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Enums\ProviderType;
 use App\Exceptions\CascadeException;
+use App\Jobs\CascadeProviderAttemptJob;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\CascadeProviderLog;
@@ -23,6 +25,7 @@ use App\Services\Cascade\Providers\InternalCascadeProvider;
 use App\Services\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -30,7 +33,7 @@ use Throwable;
 /**
  * Центральный сервис каскада.
  *
- * На текущем этапе создаёт каскадную сделку через внутреннего провайдера.
+ * Создаёт каскадную сделку и запускает гонку провайдеров через очередь.
  */
 class CascadeService implements CascadeServiceContract
 {
@@ -49,37 +52,31 @@ class CascadeService implements CascadeServiceContract
             'status' => 'processing',
         ]), 60);
 
-        $payload = [
-            'merchant_id' => $dto->merchantId,
-            'external_id' => $dto->externalId,
-            'amount' => $dto->amount,
-            'currency' => $dto->currency,
-            'payment_method' => $dto->paymentMethod->value,
-            'callback_url' => $dto->callbackUrl,
-            'client_id' => $dto->clientId,
-            'rate' => $dto->rate,
-            'manual_control' => CascadeManualControl::make(
-                manualControlAcquiring: $dto->manualControlAcquiring,
-                cardNumber: $dto->cardNumber,
-                expiryMonth: $dto->expiryMonth,
-                expiryYear: $dto->expiryYear,
-                cvc: $dto->cvc,
-                cardholderName: $dto->cardholderName,
-            )?->toArray(),
-        ];
-
         try {
             $cascade_deal = $this->createCascadeDeal($dto);
 
-            $this->createInternalProviderDeal($cascade_deal, $payload);
+            $providers = $this->activeCascadeProviders();
+
+            if ($providers->isEmpty()) {
+                throw CascadeException::make('Нет активных провайдеров каскада.');
+            }
 
             cache()->put("cascade:deal:create:$job_id", json_encode([
-                'status' => 'done',
+                'status' => 'queued',
                 'cascade_deal_id' => $cascade_deal->id,
             ]), 60);
+            cache()->put("cascade:deal:create:$job_id:expected", $providers->count(), 60);
+            cache()->put("cascade:deal:create:$job_id:finished", 0, 60);
 
-            // TODO: Dispatch one attempt job per external provider and let the first successful attempt win.
-            // TODO: Add loser cancellation and atomic winner locking when external providers are enabled.
+            $providers->each(function (CascadeProvider $provider) use ($cascade_deal, $job_id, $max_wait_ms): void {
+                CascadeProviderAttemptJob::dispatch(
+                    $cascade_deal->id,
+                    $provider->id,
+                    $job_id,
+                    now()->getTimestampMs(),
+                    $max_wait_ms,
+                );
+            });
         } catch (Throwable $e) {
             $cascade_exception = $e instanceof CascadeException
                 ? $e
@@ -166,8 +163,18 @@ class CascadeService implements CascadeServiceContract
     public function cancelDeal(CascadeDeal $cascadeDeal): CascadeDeal
     {
         try {
-            $cascadeDeal->loadMissing(['order', 'selectedTransaction']);
-            $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
+            $cascadeDeal->loadMissing(['order', 'selectedProvider', 'selectedTransaction']);
+            $provider_model = $cascadeDeal->selectedProvider;
+
+            if (! $provider_model instanceof CascadeProvider) {
+                throw CascadeException::make('Провайдер каскадной сделки не выбран.');
+            }
+
+            $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
+            if (! $provider) {
+                throw CascadeException::make('Интеграция провайдера каскада недоступна.');
+            }
+
             $provider_deal_id = (string) ($cascadeDeal->order?->uuid ?? $cascadeDeal->selectedTransaction?->provider_deal_id ?? '');
             $response_payload = $provider->cancelDeal($cascadeDeal, $provider_deal_id);
 
@@ -187,10 +194,20 @@ class CascadeService implements CascadeServiceContract
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
     {
         try {
-            $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
+            $cascadeDeal->loadMissing(['order', 'selectedProvider', 'selectedTransaction']);
+            $provider_model = $cascadeDeal->selectedProvider;
+
+            if (! $provider_model instanceof CascadeProvider) {
+                throw CascadeException::make('Провайдер каскадной сделки не выбран.');
+            }
+
+            $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
+            if (! $provider) {
+                throw CascadeException::make('Интеграция провайдера каскада недоступна.');
+            }
 
             return $provider->storeConfirmationCode(
-                $cascadeDeal->loadMissing(['order', 'selectedTransaction']),
+                $cascadeDeal,
                 $confirmationCode,
             );
         } catch (Throwable $e) {
@@ -218,7 +235,7 @@ class CascadeService implements CascadeServiceContract
             throw CascadeException::make('Неверный токен провайдера.');
         }
 
-        $provider = services()->cascadeProvider()->getProviderByModel($provider_model);
+        $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
         if (! $provider) {
             throw CascadeException::make('Интеграция провайдера каскада недоступна.');
         }
@@ -228,7 +245,12 @@ class CascadeService implements CascadeServiceContract
         $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $provider_model, $callback_data);
 
         DB::transaction(function () use ($cascade_deal, $cascade_transaction, $provider_model, $payload, $callback_data): void {
-            $cascade_deal->update($this->callbackCascadeDealAttributes($cascade_deal, $callback_data));
+            if (
+                (! $cascade_transaction && $cascade_deal->selected_transaction_id === null)
+                || $cascade_deal->selected_transaction_id === $cascade_transaction?->id
+            ) {
+                $cascade_deal->update($this->callbackCascadeDealAttributes($cascade_deal, $callback_data));
+            }
 
             if ($cascade_transaction) {
                 $cascade_transaction->update([
@@ -356,6 +378,37 @@ class CascadeService implements CascadeServiceContract
                 order: $order,
             ));
         });
+    }
+
+    /**
+     * @return Collection<int, CascadeProvider>
+     */
+    private function activeCascadeProviders(): Collection
+    {
+        $this->ensureInternalProvider();
+
+        return CascadeProvider::query()
+            ->where('is_active', true)
+            ->orderBy('priority')
+            ->orderByDesc('weight')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (CascadeProvider $provider) => app(CascadeProviderServiceContract::class)->getProviderByModel($provider) !== null)
+            ->values();
+    }
+
+    private function ensureInternalProvider(): CascadeProvider
+    {
+        return CascadeProvider::query()->firstOrCreate(
+            ['code' => InternalCascadeProvider::CODE],
+            [
+                'name' => 'Internal',
+                'provider_type' => ProviderType::INTERNAL,
+                'is_active' => true,
+                'priority' => 0,
+                'description' => 'Internal liquidity provider.',
+            ],
+        );
     }
 
     private function findInternalOrder(array $response_payload): ?Order

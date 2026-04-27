@@ -87,6 +87,7 @@ return [
         'redis:default' => 60,
         'redis:main-page-cache' => 120,
         'redis:notifications' => 60,
+        'redis:cascade-provider-attempts' => 60,
     ],
 
     /*
@@ -313,8 +314,20 @@ return [
             'timeout' => 120,
             'nice' => 0,
         ],
+        'supervisor-cascade-provider-attempts' => [
+            'connection' => 'redis',
+            'queue' => ['cascade-provider-attempts'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 4,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'timeout' => 30,
+            'nice' => 0,
+        ],
     ],
-
 
     'environments' => [
         'production' => [
@@ -328,6 +341,7 @@ return [
             'supervisor-order-pooling' => [],
             'supervisor-main-page-cache' => [],
             'supervisor-payout' => [],
+            'supervisor-cascade-provider-attempts' => [],
         ],
         'development' => [
             'supervisor-base' => [],
@@ -340,6 +354,7 @@ return [
             'supervisor-order-pooling' => [],
             'supervisor-main-page-cache' => [],
             'supervisor-payout' => [],
+            'supervisor-cascade-provider-attempts' => [],
         ],
         'local' => [
             'supervisor-base' => [],
@@ -352,6 +367,7 @@ return [
             'supervisor-order-pooling' => [],
             'supervisor-main-page-cache' => [],
             'supervisor-payout' => [],
+            'supervisor-cascade-provider-attempts' => [],
         ],
     ],
 ];
