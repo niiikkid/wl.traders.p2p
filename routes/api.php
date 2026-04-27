@@ -69,6 +69,8 @@ Route::group(['middleware' => ['api-access-token']], function () {
     });
 
     Route::group(['prefix' => 'v2'], function () {
+        Route::get('payin', [App\Http\Controllers\API\V2\OrderController::class, 'index'])
+            ->name('api.v2.payin.index');
         Route::post('payin', [App\Http\Controllers\API\V2\OrderController::class, 'store']);
         Route::get('payin/{cascadeDeal:uuid}', [App\Http\Controllers\API\V2\OrderController::class, 'show']);
         Route::patch('payin/{cascadeDeal:uuid}/cancel', [App\Http\Controllers\API\V2\OrderController::class, 'cancel']);

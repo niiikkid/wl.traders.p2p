@@ -7,14 +7,37 @@ use App\Exceptions\CascadeException;
 use App\Exceptions\OrderException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\H2H\Order\StoreConfirmationCodeRequest;
+use App\Http\Requests\API\V2\Order\IndexRequest;
 use App\Http\Requests\API\V2\Order\StoreRequest;
 use App\Http\Resources\API\V2\OrderResource;
+use App\Http\Resources\API\V2\OrderStatementResource;
 use App\Models\CascadeDeal;
+use App\Models\Merchant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
 class OrderController extends Controller
 {
+    public function index(IndexRequest $request): JsonResponse
+    {
+        $merchant = $this->resolveIndexMerchant($request);
+        if ($merchant instanceof JsonResponse) {
+            return $merchant;
+        }
+
+        $orders = CascadeDeal::query()
+            ->whereRelation('merchant', 'user_id', $request->user()->id)
+            ->when($merchant, function ($query) use ($merchant) {
+                $query->where('merchant_id', $merchant->id);
+            })
+            ->orderBy('id', $this->resolveIndexSortDirection($request))
+            ->paginate($this->resolveIndexPerPage($request));
+
+        return response()->success(
+            OrderStatementResource::collection($orders)
+        );
+    }
+
     public function show(CascadeDeal $cascadeDeal): JsonResponse
     {
         Gate::authorize('api-access-to-merchant', $cascadeDeal->merchant);
@@ -86,5 +109,34 @@ class OrderController extends Controller
         }
 
         return response()->success($confirmation_code);
+    }
+
+    private function resolveIndexMerchant(IndexRequest $request): Merchant|JsonResponse|null
+    {
+        if (! $request->filled('merchant_id')) {
+            return null;
+        }
+
+        $merchant = queries()->merchant()->findByUUID($request->merchant_id);
+
+        if (! $merchant) {
+            return response()->failWithMessage('Мерчант не найден.', 404);
+        }
+
+        Gate::authorize('api-access-to-merchant', $merchant);
+
+        return $merchant;
+    }
+
+    private function resolveIndexPerPage(IndexRequest $request): int
+    {
+        $perPage = $request->integer('per_page', 20);
+
+        return max(1, min($perPage, 100));
+    }
+
+    private function resolveIndexSortDirection(IndexRequest $request): string
+    {
+        return $request->input('sort', 'new') === 'old' ? 'asc' : 'desc';
     }
 }
