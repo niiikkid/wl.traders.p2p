@@ -16,6 +16,22 @@ interface CascadeServiceContract
     public function cancelDeal(CascadeDeal $cascadeDeal): CascadeDeal;
 
     /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function openDispute(CascadeDeal $cascadeDeal, array $data): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getDispute(CascadeDeal $cascadeDeal): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function cancelDispute(CascadeDeal $cascadeDeal, ?string $reason = null): array;
+
+    /**
      * @return array<string, mixed>
      */
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array;

@@ -7,6 +7,7 @@ namespace App\Services\Cascade\Providers;
 use App\Models\CascadeDeal;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -127,8 +128,15 @@ class ExampleCascadeProvider extends AbstractCascadeProvider
     {
         $this->ensureConfigured();
 
+        $firstReceipt = collect((array) ($data['receipts'] ?? []))
+            ->first(fn ($receipt) => $receipt instanceof UploadedFile);
+
+        $receipt = $firstReceipt instanceof UploadedFile
+            ? base64_encode((string) file_get_contents($firstReceipt->getPathname()))
+            : null;
+
         $payload = [
-            'receipts' => $data['receipts'] ?? [],
+            'receipt' => $receipt,
         ];
 
         $response = $this->request()->post(

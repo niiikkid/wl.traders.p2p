@@ -202,6 +202,195 @@ class CascadeService implements CascadeServiceContract
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function openDispute(CascadeDeal $cascadeDeal, array $data): array
+    {
+        $cascadeDeal->loadMissing(['order.dispute', 'selectedProvider', 'selectedTransaction']);
+
+        [$provider_model, $provider_deal_id] = $this->selectedProviderContext($cascadeDeal);
+        $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
+        if (! $provider) {
+            throw CascadeException::make('Интеграция провайдера каскада недоступна.');
+        }
+
+        $started_at = microtime(true);
+
+        try {
+            $response_payload = $provider->openDispute($cascadeDeal, $provider_deal_id, $data);
+
+            $this->rememberSelectedTransactionDispute($cascadeDeal, $response_payload);
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $provider_model,
+                operation: 'openDispute',
+                method: 'POST',
+                url: $provider_model->base_url ?? $provider_model->code,
+                requestPayload: ['provider_deal_id' => $provider_deal_id, ...$data],
+                responsePayload: $response_payload,
+                startedAt: $started_at,
+                isSuccessful: true,
+            );
+
+            return $this->normalizeDisputeResponse($cascadeDeal, $response_payload);
+        } catch (Throwable $e) {
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $provider_model,
+                operation: 'openDispute',
+                method: 'POST',
+                url: $provider_model->base_url ?? $provider_model->code,
+                requestPayload: ['provider_deal_id' => $provider_deal_id, ...$data],
+                responsePayload: null,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($e),
+                errorMessage: $e->getMessage(),
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getDispute(CascadeDeal $cascadeDeal): array
+    {
+        $cascadeDeal->loadMissing(['order.dispute', 'selectedProvider', 'selectedTransaction']);
+
+        [$provider_model, $provider_deal_id] = $this->selectedProviderContext($cascadeDeal);
+        $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
+        if (! $provider) {
+            throw CascadeException::make('Интеграция провайдера каскада недоступна.');
+        }
+
+        $dispute_id = (string) (
+            Arr::get($cascadeDeal->selectedTransaction?->response_payload ?? [], 'dispute.dispute_id')
+            ?? $cascadeDeal->order?->dispute?->id
+            ?? ''
+        );
+
+        $started_at = microtime(true);
+
+        try {
+            $response_payload = $provider->getDispute($cascadeDeal, $provider_deal_id, $dispute_id);
+
+            $this->rememberSelectedTransactionDispute($cascadeDeal, $response_payload);
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $provider_model,
+                operation: 'getDispute',
+                method: 'GET',
+                url: $provider_model->base_url ?? $provider_model->code,
+                requestPayload: [
+                    'provider_deal_id' => $provider_deal_id,
+                    'dispute_id' => $dispute_id,
+                ],
+                responsePayload: $response_payload,
+                startedAt: $started_at,
+                isSuccessful: true,
+            );
+
+            return $this->normalizeDisputeResponse($cascadeDeal, $response_payload);
+        } catch (Throwable $e) {
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $provider_model,
+                operation: 'getDispute',
+                method: 'GET',
+                url: $provider_model->base_url ?? $provider_model->code,
+                requestPayload: [
+                    'provider_deal_id' => $provider_deal_id,
+                    'dispute_id' => $dispute_id,
+                ],
+                responsePayload: null,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($e),
+                errorMessage: $e->getMessage(),
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function cancelDispute(CascadeDeal $cascadeDeal, ?string $reason = null): array
+    {
+        $cascadeDeal->loadMissing(['order.dispute', 'selectedProvider', 'selectedTransaction']);
+
+        $provider_model = $cascadeDeal->selectedProvider;
+
+        if (! $provider_model instanceof CascadeProvider || $provider_model->code !== InternalCascadeProvider::CODE) {
+            throw CascadeException::make('Выбранный провайдер не поддерживает отмену спора через API.');
+        }
+
+        $dispute = $cascadeDeal->order?->dispute;
+        if (! $dispute) {
+            throw CascadeException::make('По сделке пока что небыло споров.');
+        }
+
+        $started_at = microtime(true);
+
+        try {
+            services()->dispute()->cancel($dispute->id, $reason ?? '');
+        } catch (Throwable $e) {
+            $this->recordProviderLog(
+                cascadeDeal: $cascadeDeal,
+                providerModel: $provider_model,
+                operation: 'cancelDispute',
+                method: 'PATCH',
+                url: $provider_model->code,
+                requestPayload: [
+                    'dispute_id' => $dispute->id,
+                    'reason' => $reason,
+                ],
+                responsePayload: null,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($e),
+                errorMessage: $e->getMessage(),
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
+
+        $response_payload = [
+            'dispute_id' => (string) $dispute->id,
+            'provider_deal_id' => $cascadeDeal->order?->uuid,
+            'status' => 'canceled',
+            'cancel_reason' => $reason,
+        ];
+
+        $this->recordProviderLog(
+            cascadeDeal: $cascadeDeal,
+            providerModel: $provider_model,
+            operation: 'cancelDispute',
+            method: 'PATCH',
+            url: $provider_model->code,
+            requestPayload: [
+                'dispute_id' => $dispute->id,
+                'reason' => $reason,
+            ],
+            responsePayload: $response_payload,
+            startedAt: $started_at,
+            isSuccessful: true,
+        );
+
+        return $this->normalizeDisputeResponse($cascadeDeal->refresh(), $response_payload);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
@@ -318,6 +507,66 @@ class CascadeService implements CascadeServiceContract
         ]);
 
         return $response;
+    }
+
+    /**
+     * @return array{0: CascadeProvider, 1: string}
+     */
+    private function selectedProviderContext(CascadeDeal $cascadeDeal): array
+    {
+        $provider_model = $cascadeDeal->selectedProvider;
+
+        if (! $provider_model instanceof CascadeProvider) {
+            throw CascadeException::make('Провайдер каскадной сделки не выбран.');
+        }
+
+        $provider_deal_id = (string) ($cascadeDeal->order?->uuid ?? $cascadeDeal->selectedTransaction?->provider_deal_id ?? '');
+        if ($provider_deal_id === '') {
+            throw CascadeException::make('ID сделки у провайдера не найден.');
+        }
+
+        return [$provider_model, $provider_deal_id];
+    }
+
+    /**
+     * @param  array<string, mixed>  $responsePayload
+     */
+    private function rememberSelectedTransactionDispute(CascadeDeal $cascadeDeal, array $responsePayload): void
+    {
+        $transaction = $cascadeDeal->selectedTransaction;
+
+        if (! $transaction) {
+            return;
+        }
+
+        $payload = $transaction->response_payload ?? [];
+        $payload['dispute'] = [
+            'dispute_id' => Arr::get($responsePayload, 'dispute_id'),
+            'provider_deal_id' => Arr::get($responsePayload, 'provider_deal_id'),
+            'status' => Arr::get($responsePayload, 'status'),
+            'cancel_reason' => Arr::get($responsePayload, 'cancel_reason'),
+            'raw' => Arr::get($responsePayload, 'raw'),
+        ];
+
+        $transaction->update([
+            'response_payload' => $payload,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $responsePayload
+     * @return array<string, mixed>
+     */
+    private function normalizeDisputeResponse(CascadeDeal $cascadeDeal, array $responsePayload): array
+    {
+        return [
+            'order_id' => $cascadeDeal->uuid,
+            'provider_deal_id' => Arr::get($responsePayload, 'provider_deal_id'),
+            'dispute_id' => Arr::get($responsePayload, 'dispute_id'),
+            'status' => Arr::get($responsePayload, 'status', 'pending'),
+            'cancel_reason' => Arr::get($responsePayload, 'cancel_reason'),
+            'raw' => Arr::get($responsePayload, 'raw'),
+        ];
     }
 
     /**

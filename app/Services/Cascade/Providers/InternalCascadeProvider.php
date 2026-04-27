@@ -13,6 +13,7 @@ use App\Http\Requests\API\H2H\Order\StoreRequest as H2HStoreRequest;
 use App\Models\CascadeDeal;
 use App\Models\Order;
 use App\Models\OrderManualControlConfirmationCode;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Throwable;
 
@@ -165,20 +166,48 @@ class InternalCascadeProvider extends AbstractCascadeProvider
 
     public function openDispute(CascadeDeal $cascadeDeal, string $providerDealId, array $data = []): array
     {
-        // TODO: Реализовать открытие спора по внутренней сделке
+        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+
+        if ($order->dispute) {
+            throw CascadeException::make('Dispute already exists.');
+        }
+
+        /** @var UploadedFile|null $firstReceipt */
+        $firstReceipt = Arr::get($data, 'receipts.0');
+        $dispute = services()->dispute()->create($order->id, $firstReceipt);
+
         return [
-            'status' => 'not_implemented',
-            'provider_deal_id' => $providerDealId,
+            'dispute_id' => (string) $dispute->id,
+            'provider_deal_id' => $order->uuid,
+            'status' => $dispute->status->value,
+            'cancel_reason' => $dispute->reason,
+            'raw' => [
+                'order_id' => $order->uuid,
+                'status' => $dispute->status->value,
+                'cancel_reason' => $dispute->reason,
+            ],
         ];
     }
 
     public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array
     {
-        // TODO: Реализовать получение спора по внутренней сделке
+        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+        $dispute = $order->dispute;
+
+        if (! $dispute) {
+            throw CascadeException::make('По сделке пока что небыло споров.');
+        }
+
         return [
-            'status' => 'not_implemented',
-            'provider_deal_id' => $providerDealId,
-            'dispute_id' => $disputeId,
+            'dispute_id' => (string) $dispute->id,
+            'provider_deal_id' => $order->uuid,
+            'status' => $dispute->status->value,
+            'cancel_reason' => $dispute->reason,
+            'raw' => [
+                'order_id' => $order->uuid,
+                'status' => $dispute->status->value,
+                'cancel_reason' => $dispute->reason,
+            ],
         ];
     }
 
