@@ -36,7 +36,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Collection<int, UserLoginHistory> $loginHistories
  * @property Collection<int, UserDevice> $devices
  * @property Collection<int, UserNote> $notes
- * @property Collection<int, Feedback> $feedbacks
  * @property Collection<int, Merchant> $merchants Мерчанты (магазины), к которым имеет доступ саппорт
  * @property Wallet $wallet
  * @property UserMeta $meta
@@ -280,23 +279,6 @@ class User extends Authenticatable
     public function notes(): HasMany
     {
         return $this->hasMany(UserNote::class);
-    }
-
-    public function feedbacks(): HasMany
-    {
-        return $this->hasMany(Feedback::class);
-    }
-
-    public function favoriteFeedbacks(): BelongsToMany
-    {
-        return $this->belongsToMany(Feedback::class, 'feedback_favorites')
-            ->withTimestamps();
-    }
-
-    public function hiddenFeedbacks(): BelongsToMany
-    {
-        return $this->belongsToMany(Feedback::class, 'feedback_hides')
-            ->withTimestamps();
     }
 
     /**

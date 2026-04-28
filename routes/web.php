@@ -77,7 +77,6 @@ use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Trader\DepositInvoiceController;
 use App\Http\Controllers\Trader\EconomyController;
 use App\Http\Controllers\Trader\ExportController;
-use App\Http\Controllers\Trader\FeedbackController;
 use App\Http\Controllers\Trader\NotificationController as TraderNotificationController;
 use App\Http\Controllers\Trader\PayoutController;
 use App\Http\Controllers\Trader\TempVipController;
@@ -204,8 +203,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/trader/main/filter-options/{type}', [MainPageController::class, 'traderFilterOptions'])->name('trader.main.filter-options');
         Route::post('/trader/temp-vip/activate', [TempVipController::class, 'activate'])->name('trader.temp-vip.activate');
-        Route::get('/trader/feedbacks', [FeedbackController::class, 'index'])->name('trader.feedback.index');
-        Route::post('/trader/feedbacks', [FeedbackController::class, 'store'])->name('trader.feedback.store');
 
         Route::get('/trader/economy', [EconomyController::class, 'index'])->name('trader.economy.index');
         Route::post('/trader/economy', [EconomyController::class, 'store'])->name('trader.economy.store');
@@ -403,10 +400,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');
         Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
-        Route::get('/feedbacks', [FeedbackController::class, 'index'])->name('feedback.index');
-        Route::patch('/feedbacks/{feedback}/favorite', [FeedbackController::class, 'toggleFavorite'])->name('feedback.favorite');
-        Route::patch('/feedbacks/{feedback}/hidden', [FeedbackController::class, 'toggleHidden'])->name('feedback.hidden');
-
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
 
         Route::get('/app', [App\Http\Controllers\Admin\ApkController::class, 'index'])->name('app.index');
