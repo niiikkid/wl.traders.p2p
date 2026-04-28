@@ -35,7 +35,9 @@
         "lodash": "^4.17.21",
         "pikaday": "^1.8.2",
         "pinia": "^2.2.2",
+        "sortablejs": "^1.15.7",
         "tailwind-merge": "^2.5.4",
-        "vue-tg": "^0.8.0"
+        "vue-tg": "^0.8.0",
+        "vuedraggable": "^4.1.0"
     }
 }

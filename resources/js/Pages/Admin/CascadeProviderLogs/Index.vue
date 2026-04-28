@@ -126,7 +126,7 @@ defineOptions({ layout: AuthenticatedLayout });
                             <input v-model="form.search" type="search" class="input input-bordered input-sm w-full" placeholder="UUID, external ID, provider deal ID, URL, ошибка" />
 
                             <select v-model="form.provider_id" class="select select-bordered select-sm w-full">
-                                <option value="">Все провайдеры</option>
+                                <option value="">Все интеграции</option>
                                 <option v-for="provider in filterOptions.providers" :key="provider.id" :value="provider.id">
                                     {{ provider.label }}
                                 </option>
@@ -191,7 +191,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         <thead class="bg-base-300 text-xs uppercase">
                             <tr>
                                 <th>Тип</th>
-                                <th>Провайдер</th>
+                                <th>Интеграция</th>
                                 <th>UUID</th>
                                 <th>Внешний ID</th>
                                 <th>Результат</th>
@@ -244,7 +244,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                             v-if="log.cascade_transaction?.provider_deal_id"
                                             class="mb-4 rounded border border-base-300 bg-base-100 p-3 text-sm"
                                         >
-                                            <div class="mb-2 text-xs opacity-60">ID сделки у провайдера</div>
+                                            <div class="mb-2 text-xs opacity-60">ID сделки у интеграции</div>
                                             <CopyableExternalId :id="String(log.cascade_transaction.provider_deal_id)" />
                                         </div>
                                         <div class="mb-4 rounded border border-base-300 bg-base-100 p-3 text-sm">
@@ -305,7 +305,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </span>
                                         <span class="font-medium">{{ log.operation }}</span>
                                     </div>
-                                    <div class="mt-1 text-xs opacity-70">{{ log.provider?.name ?? 'Провайдер не найден' }}</div>
+                                    <div class="mt-1 text-xs opacity-70">{{ log.provider?.name ?? 'Интеграция не найдена' }}</div>
                                 </div>
                                 <span :class="['badge badge-sm', log.is_successful ? 'badge-success' : 'badge-error']">
                                     {{ log.is_successful ? 'Успешно' : 'Ошибка' }}
@@ -325,7 +325,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </div>
                             </div>
                             <div v-if="log.cascade_transaction?.provider_deal_id" class="text-sm">
-                                <div class="text-base-content/60">ID у провайдера</div>
+                                <div class="text-base-content/60">ID у интеграции</div>
                                 <CopyableExternalId :id="String(log.cascade_transaction.provider_deal_id)" />
                             </div>
 

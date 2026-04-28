@@ -60,7 +60,7 @@ defineOptions({ layout: AuthenticatedLayout })
                         class="btn btn-sm btn-outline join-item"
                         preserve-scroll
                     >
-                        Провайдеры
+                        Интеграции
                     </Link>
                     <Link
                         :href="route('admin.cascade-provider-logs.index')"
@@ -82,7 +82,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                 <th scope="col">Мерчант</th>
                                 <th scope="col">Сумма</th>
                                 <th scope="col">Метод</th>
-                                <th scope="col">Провайдер</th>
+                                <th scope="col">Интеграция</th>
                                 <th scope="col">Статус</th>
                                 <th scope="col">Создана</th>
                                 <th scope="col">
@@ -190,7 +190,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div class="font-medium">{{ deal.payment_method_name ?? deal.payment_method ?? 'Пусто' }}</div>
                                 </div>
                                 <div>
-                                    <div class="text-base-content/60">Провайдер</div>
+                                    <div class="text-base-content/60">Интеграция</div>
                                     <div class="font-medium">{{ getProviderName(deal) }}</div>
                                 </div>
                             </div>
@@ -271,7 +271,7 @@ defineOptions({ layout: AuthenticatedLayout })
 
                         <div class="card bg-base-200">
                             <div class="card-body p-4">
-                                <h4 class="font-semibold">Провайдер</h4>
+                                <h4 class="font-semibold">Интеграция</h4>
                                 <div class="text-sm space-y-1">
                                     <div>Выбран: {{ getProviderName(selectedDeal) }}</div>
                                     <div>Provider deal ID: {{ selectedDeal.selected_transaction?.provider_deal_id ?? 'Пусто' }}</div>
