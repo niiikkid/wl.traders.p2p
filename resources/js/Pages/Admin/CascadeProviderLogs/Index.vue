@@ -1,5 +1,5 @@
 <script setup>
-import {Head, router} from '@inertiajs/vue3';
+import {Head, Link, router} from '@inertiajs/vue3';
 import {computed, reactive, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DateTime from '@/Components/DateTime.vue';
@@ -96,6 +96,16 @@ defineOptions({ layout: AuthenticatedLayout });
             title="Логи каскада"
             :data="logs"
         >
+            <template #button>
+                <Link
+                    :href="route('admin.cascade-deals.index')"
+                    class="btn btn-sm btn-outline shrink-0"
+                    preserve-scroll
+                >
+                    Сделки
+                </Link>
+            </template>
+
             <template #table-filters>
                 <div class="card bg-base-100 shadow-sm">
                     <div class="card-body p-4 gap-4">

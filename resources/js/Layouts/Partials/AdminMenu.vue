@@ -159,43 +159,17 @@ router.on('success', (event) => {
                 Аналитика трейдеров
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.cascade-deals.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.cascade-deals.*') || route().current('admin.cascade-providers.*') || route().current('admin.cascade-provider-logs.*') }]">
             <span
                 @click="router.visit(route('admin.cascade-deals.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('admin.cascade-deals.index'), { preserveScroll: true })"
                 role="link"
                 tabindex="0"
             >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h16M7 4v16m10-16v16"/>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5 opacity-30" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-2.25-1.313M21 7.5v2.25m0-2.25-2.25 1.313M3 7.5l2.25-1.313M3 7.5l2.25 1.313M3 7.5v2.25m9 3 2.25-1.313M12 12.75l-2.25-1.313M12 12.75V15m0 6.75 2.25-1.313M12 21.75V19.5m0 2.25-2.25-1.313m0-16.875L12 2.25l2.25 1.313M21 14.25v2.25l-2.25 1.313m-13.5 0L3 16.5v-2.25" />
                 </svg>
-                Каскадные сделки
-            </span>
-        </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.cascade-providers.*') }]">
-            <span
-                @click="router.visit(route('admin.cascade-providers.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('admin.cascade-providers.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h6m-6 4h10M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/>
-                </svg>
-                Провайдеры каскада
-            </span>
-        </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.cascade-provider-logs.*') }]">
-            <span
-                @click="router.visit(route('admin.cascade-provider-logs.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('admin.cascade-provider-logs.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6h8m-8 4h8m-8 4h5M6 6h.01M6 10h.01M6 14h.01M4 4h16v16H4z"/>
-                </svg>
-                Логи каскада
+                Каскад
             </span>
         </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.orders.*') }]">
@@ -313,19 +287,6 @@ router.on('success', (event) => {
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 6h8m-8 4h12M6 14h8m-8 4h12"/>
                 </svg>
                 API логи
-            </span>
-        </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.integration-api.*') }]">
-            <span
-                @click="router.visit(route('admin.integration-api.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('admin.integration-api.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9h8m-8 4h5m-6 8h10a2 2 0 0 0 2-2V7.828a2 2 0 0 0-.586-1.414l-3.828-3.828A2 2 0 0 0 13.172 2H7a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2Z"/>
-                </svg>
-                Интеграционный API
             </span>
         </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.callback-logs.*') }]">

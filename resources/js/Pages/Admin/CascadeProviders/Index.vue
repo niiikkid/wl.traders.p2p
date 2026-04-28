@@ -1,5 +1,5 @@
 <script setup>
-import {Head, router, useForm} from '@inertiajs/vue3';
+import {Head, Link, router, useForm} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
@@ -203,15 +203,24 @@ defineOptions({ layout: AuthenticatedLayout });
             title="Провайдеры каскада"
             :data="cascadeProviders"
         >
-            <template v-slot:button>
-                <button
-                    type="button"
-                    class="btn btn-sm btn-primary"
-                    :disabled="! canCreateProvider"
-                    @click="openCreateModal"
-                >
-                    Добавить провайдера
-                </button>
+            <template #button>
+                <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                    <Link
+                        :href="route('admin.cascade-deals.index')"
+                        class="btn btn-sm btn-outline"
+                        preserve-scroll
+                    >
+                        Сделки
+                    </Link>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-primary"
+                        :disabled="! canCreateProvider"
+                        @click="openCreateModal"
+                    >
+                        Добавить провайдера
+                    </button>
+                </div>
             </template>
 
             <template v-slot:body>
