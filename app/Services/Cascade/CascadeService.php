@@ -7,6 +7,7 @@ namespace App\Services\Cascade;
 use App\Contracts\CascadeProviderServiceContract;
 use App\Contracts\CascadeServiceContract;
 use App\DTO\Cascade\CreateCascadeDealDTO;
+use App\Enums\CascadeDealEventType;
 use App\Enums\CascadeDealStatus;
 use App\Enums\CascadeDealSubStatus;
 use App\Enums\CascadeDisputeStatus;
@@ -27,6 +28,7 @@ use App\Models\MerchantClient;
 use App\Models\Order;
 use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
+use App\Services\Cascade\Providers\SelfTestCascadeProvider;
 use App\Services\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -505,18 +507,6 @@ class CascadeService implements CascadeServiceContract
             throw CascadeException::make('Провайдер каскада не найден.');
         }
 
-        if (! $provider_model->access_token) {
-            $this->recordCallbackFailure($provider_model, $payload, 'provider_token_missing', 'Токен провайдера каскада не настроен.');
-
-            throw CascadeException::make('Токен провайдера каскада не настроен.');
-        }
-
-        if (! hash_equals($provider_model->access_token, (string) $accessToken)) {
-            $this->recordCallbackFailure($provider_model, $payload, 'invalid_provider_token', 'Неверный токен провайдера.');
-
-            throw CascadeException::make('Неверный токен провайдера.');
-        }
-
         $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
         if (! $provider) {
             $this->recordCallbackFailure($provider_model, $payload, 'provider_unavailable', 'Интеграция провайдера каскада недоступна.');
@@ -526,6 +516,25 @@ class CascadeService implements CascadeServiceContract
 
         $callback_data = $provider->handleCallback($payload);
         $cascade_deal = $this->resolveCallbackCascadeDeal($provider_model, $callback_data);
+
+        if ($provider_model->code === SelfTestCascadeProvider::CODE) {
+            $expectedToken = (string) $cascade_deal->merchant->user->api_access_token;
+        } else {
+            $expectedToken = (string) $provider_model->access_token;
+        }
+
+        if ($expectedToken === '') {
+            $this->recordCallbackFailure($provider_model, $payload, 'provider_token_missing', 'Токен провайдера каскада не настроен.');
+
+            throw CascadeException::make('Токен провайдера каскада не настроен.');
+        }
+
+        if (! hash_equals($expectedToken, (string) $accessToken)) {
+            $this->recordCallbackFailure($provider_model, $payload, 'invalid_provider_token', 'Неверный токен провайдера.');
+
+            throw CascadeException::make('Неверный токен провайдера.');
+        }
+
         $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $provider_model, $callback_data);
 
         DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $provider_model): void {
