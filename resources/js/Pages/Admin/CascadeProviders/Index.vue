@@ -13,6 +13,7 @@ const props = defineProps({
     implementedProviders: Array,
     providerCallbackBaseUrl: String,
     liquidityUsers: Array,
+    currencies: Array,
 });
 
 /** Список провайдеров: resolve() коллекции даёт массив, без обёртки { data }. */
@@ -181,6 +182,7 @@ const form = useForm({
     base_url: '',
     access_token: '',
     currency_code: '',
+    supported_currency_codes: [],
     timeout: 10,
     verify_ssl: true,
 });
@@ -211,6 +213,16 @@ const isInternalCascade = computed(() => {
     return code === 'internal';
 });
 
+const currencyOptions = computed(() => {
+    return Array.isArray(props.currencies) ? props.currencies : [];
+});
+
+const defaultCurrencyCodes = computed(() => currencyOptions.value.map((currency) => currency.code));
+
+const currencyName = (code) => {
+    return currencyOptions.value.find((currency) => currency.code === code)?.name ?? code;
+};
+
 const implementationClassBasename = (fully_qualified_class) => {
     if (! fully_qualified_class) {
         return '';
@@ -238,6 +250,7 @@ const openCreateModal = () => {
         base_url: '',
         access_token: '',
         currency_code: '',
+        supported_currency_codes: [...defaultCurrencyCodes.value],
         timeout: 10,
         verify_ssl: true,
     });
@@ -259,6 +272,9 @@ const openEditModal = (provider) => {
         base_url: provider.base_url ?? '',
         access_token: provider.access_token ?? '',
         currency_code: provider.currency_code ?? '',
+        supported_currency_codes: provider.supported_currency_codes?.length
+            ? [...provider.supported_currency_codes]
+            : (provider.currency_code ? [provider.currency_code] : []),
         timeout: provider.timeout,
         verify_ssl: provider.verify_ssl,
     });
@@ -298,6 +314,7 @@ const fillFromImplementation = () => {
         form.base_url = '';
         form.access_token = '';
         form.currency_code = '';
+        form.supported_currency_codes = [...defaultCurrencyCodes.value];
         form.verify_ssl = true;
     } else {
         form.provider_type = 'external';
@@ -445,6 +462,16 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </td>
                                 <td>
                                     <div class="text-nowrap font-medium">Мин. прибыль: {{ provider.min_profit_percent ?? 0 }}%</div>
+                                    <div class="mt-1 flex flex-wrap gap-1">
+                                        <span
+                                            v-for="currency in provider.supported_currency_codes"
+                                            :key="`${provider.id}-${currency}`"
+                                            class="badge badge-xs badge-outline"
+                                            :title="currencyName(currency)"
+                                        >
+                                            {{ currency }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="max-w-64 truncate" :title="provider.base_url ?? ''">
@@ -494,6 +521,16 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <div>
                                     <div class="text-base-content/60">Мин. прибыль</div>
                                     <div class="font-medium">{{ provider.min_profit_percent ?? 0 }}%</div>
+                                    <div class="mt-1 flex flex-wrap gap-1">
+                                        <span
+                                            v-for="currency in provider.supported_currency_codes"
+                                            :key="`${provider.id}-mobile-${currency}`"
+                                            class="badge badge-xs badge-outline"
+                                            :title="currencyName(currency)"
+                                        >
+                                            {{ currency }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -596,10 +633,28 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors.access_token" class="label text-error text-xs">{{ form.errors.access_token }}</p>
                         </fieldset>
 
-                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Валюта</legend>
-                            <input v-model="form.currency_code" type="text" maxlength="10" class="input input-bordered input-sm w-full" placeholder="RUB" />
-                            <p v-if="form.errors.currency_code" class="label text-error text-xs">{{ form.errors.currency_code }}</p>
+                        <fieldset class="fieldset gap-1 sm:col-span-2">
+                            <legend class="fieldset-legend text-xs">Поддерживаемые валюты</legend>
+                            <div class="rounded-box border border-base-300 p-3">
+                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                    <label
+                                        v-for="currency in currencyOptions"
+                                        :key="currency.code"
+                                        class="label cursor-pointer justify-start gap-2 rounded-box border border-base-200 px-2 py-1.5"
+                                        :title="currency.name"
+                                    >
+                                        <input
+                                            v-model="form.supported_currency_codes"
+                                            type="checkbox"
+                                            class="checkbox checkbox-primary checkbox-xs"
+                                            :value="currency.code"
+                                        >
+                                        <span class="text-sm">{{ currency.code }}</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <p v-if="form.errors.supported_currency_codes" class="label text-error text-xs">{{ form.errors.supported_currency_codes }}</p>
+                            <p v-if="form.errors['supported_currency_codes.0']" class="label text-error text-xs">{{ form.errors['supported_currency_codes.0'] }}</p>
                         </fieldset>
 
                         <fieldset class="fieldset gap-1">

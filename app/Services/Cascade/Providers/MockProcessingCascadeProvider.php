@@ -252,7 +252,7 @@ class MockProcessingCascadeProvider extends AbstractCascadeProvider
 
     private function ensureConfigured(): void
     {
-        foreach (['base_url', 'access_token', 'currency_code'] as $key) {
+        foreach (['base_url', 'access_token'] as $key) {
             if (! $this->configValue($key)) {
                 throw new RuntimeException('MockProcessing provider config is incomplete: '.$key);
             }
@@ -275,8 +275,6 @@ class MockProcessingCascadeProvider extends AbstractCascadeProvider
 
     private function resolveCurrency(CascadeDeal $cascadeDeal): string
     {
-        $currency = strtoupper((string) $this->configValue('currency_code'));
-
-        return $currency !== '' ? $currency : strtoupper($cascadeDeal->currency->getCode());
+        return strtoupper($cascadeDeal->currency->getCode());
     }
 }

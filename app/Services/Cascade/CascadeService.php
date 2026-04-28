@@ -991,6 +991,7 @@ class CascadeService implements CascadeServiceContract
             ->orderBy('priority')
             ->orderBy('id')
             ->get()
+            ->filter(fn (CascadeProvider $provider) => $provider->supportsCurrency($cascadeDeal->currency->getCode()))
             ->filter(fn (CascadeProvider $provider) => app(CascadeProviderServiceContract::class)->getProviderByModel($provider) !== null)
             ->values();
     }
@@ -1006,6 +1007,10 @@ class CascadeService implements CascadeServiceContract
                 'priority' => 0,
                 'timeout' => 10,
                 'min_profit_percent' => 0,
+                'currency_code' => strtoupper(Currency::getAllCodes()[0] ?? 'RUB'),
+                'supported_currency_codes' => collect(Currency::getAllCodes())
+                    ->map(fn (string $currency): string => strtoupper($currency))
+                    ->all(),
             ],
         );
     }

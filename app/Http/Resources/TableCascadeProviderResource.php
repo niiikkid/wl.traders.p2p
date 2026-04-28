@@ -32,6 +32,7 @@ class TableCascadeProviderResource extends JsonResource
             'callback_endpoint_url' => url('/api/v2/providers/'.$this->code.'/callback'),
             'supports_callback_endpoint' => $this->supportsCallbackEndpoint(),
             'currency_code' => $this->currency_code,
+            'supported_currency_codes' => $this->supportedCurrencyCodes(),
             'timeout' => $this->timeout,
             'verify_ssl' => $this->verify_ssl,
             'created_at' => $this->created_at?->toISOString(),

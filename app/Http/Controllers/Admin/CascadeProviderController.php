@@ -10,6 +10,7 @@ use App\Http\Resources\TableCascadeProviderResource;
 use App\Models\CascadeProvider;
 use App\Models\User;
 use App\Services\Cascade\CascadeProviderDiscoveryService;
+use App\Services\Money\Currency;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -29,12 +30,19 @@ class CascadeProviderController extends Controller
         $liquidityUsers = User::role('Provider Liquidity')
             ->orderBy('email')
             ->get(['id', 'email']);
+        $currencies = Currency::getAll()
+            ->map(fn (Currency $currency): array => [
+                'code' => strtoupper($currency->getCode()),
+                'name' => $currency->getName(),
+            ])
+            ->values();
 
         return Inertia::render('Admin/CascadeProviders/Index', compact(
             'cascadeProviders',
             'implementedProviders',
             'providerCallbackBaseUrl',
-            'liquidityUsers'
+            'liquidityUsers',
+            'currencies'
         ));
     }
 

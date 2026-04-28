@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $access_token Токен доступа к API
  * @property string|null $callback_url Callback URL для провайдера
  * @property string|null $currency_code Валюта для запросов к провайдеру
+ * @property array<int, string>|null $supported_currency_codes Поддерживаемые валюты провайдера
  * @property int|null $timeout Таймаут запросов (сек)
  * @property bool $verify_ssl Проверка SSL-сертификата
  * @property Carbon $created_at
@@ -51,6 +52,7 @@ class CascadeProvider extends Model
         'access_token',
         'callback_url',
         'currency_code',
+        'supported_currency_codes',
         'timeout',
         'verify_ssl',
     ];
@@ -60,9 +62,33 @@ class CascadeProvider extends Model
         'is_active' => 'boolean',
         'priority' => 'integer',
         'min_profit_percent' => 'float',
+        'supported_currency_codes' => 'array',
         'timeout' => 'integer',
         'verify_ssl' => 'boolean',
     ];
+
+    /**
+     * @return array<int, string>
+     */
+    public function supportedCurrencyCodes(): array
+    {
+        $currencyCodes = collect($this->supported_currency_codes ?? [])
+            ->map(fn (mixed $currency): string => strtoupper((string) $currency))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($currencyCodes->isNotEmpty()) {
+            return $currencyCodes->all();
+        }
+
+        return $this->currency_code ? [strtoupper($this->currency_code)] : [];
+    }
+
+    public function supportsCurrency(string $currency): bool
+    {
+        return in_array(strtoupper($currency), $this->supportedCurrencyCodes(), true);
+    }
 
     public function user(): BelongsTo
     {

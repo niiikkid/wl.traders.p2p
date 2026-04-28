@@ -151,6 +151,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
                 'access_token' => $provider->access_token,
                 'callback_url' => $this->resolveProviderCallbackUrl($provider),
                 'currency_code' => $provider->currency_code,
+                'supported_currency_codes' => $provider->supportedCurrencyCodes(),
                 'timeout' => min(10, max(1, (int) ($provider->timeout ?? 10))),
                 'verify_ssl' => $provider->verify_ssl,
             ];
