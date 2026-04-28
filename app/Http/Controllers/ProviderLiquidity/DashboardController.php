@@ -11,6 +11,7 @@ use App\Models\CascadeProviderLog;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Services\ProviderLiquidity\ProviderLiquidityDashboardService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -73,18 +74,52 @@ class DashboardController extends Controller
     public function logs(Request $request)
     {
         $provider = $this->providerLiquidityDashboardService->resolveProvider($request);
+        $filters = [
+            'type' => $request->string('type')->toString(),
+            'operation' => $request->string('operation')->toString(),
+            'is_successful' => $request->string('is_successful')->toString(),
+            'search' => $request->string('search')->toString(),
+        ];
 
         $logs = $provider
             ? TableCascadeProviderLogResource::collection(
                 CascadeProviderLog::query()
                     ->where('provider_id', $provider->id)
                     ->with(['cascadeDeal', 'cascadeTransaction', 'provider'])
+                    ->when($filters['type'] === 'api', fn (Builder $query) => $query->where('operation', '!=', 'callback'))
+                    ->when($filters['type'] === 'callback', fn (Builder $query) => $query->where('operation', 'callback'))
+                    ->when($filters['operation'], fn (Builder $query, string $operation) => $query->where('operation', $operation))
+                    ->when($filters['is_successful'] !== '', fn (Builder $query) => $query->where('is_successful', $filters['is_successful'] === '1'))
+                    ->when($filters['search'], function (Builder $query, string $search): void {
+                        $query->where(function (Builder $query) use ($search): void {
+                            $query
+                                ->where('url', 'like', "%{$search}%")
+                                ->orWhere('error_message', 'like', "%{$search}%")
+                                ->orWhereRelation('cascadeDeal', 'uuid', 'like', "%{$search}%")
+                                ->orWhereRelation('cascadeDeal', 'external_id', 'like', "%{$search}%")
+                                ->orWhereRelation('cascadeTransaction', 'provider_deal_id', 'like', "%{$search}%");
+                        });
+                    })
                     ->latest('id')
                     ->paginate($request->integer('per_page', 20))
                     ->withQueryString()
             )
             : null;
 
-        return Inertia::render('ProviderLiquidity/Logs', compact('logs'));
+        return Inertia::render('ProviderLiquidity/Logs', [
+            'logs' => $logs,
+            'filters' => $filters,
+            'filterOptions' => [
+                'operations' => $provider
+                    ? CascadeProviderLog::query()
+                        ->where('provider_id', $provider->id)
+                        ->select('operation')
+                        ->distinct()
+                        ->orderBy('operation')
+                        ->pluck('operation')
+                        ->values()
+                    : [],
+            ],
+        ]);
     }
 }
