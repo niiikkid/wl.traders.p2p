@@ -111,10 +111,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                 </td>
                                 <td>
                                     <div class="text-nowrap text-base-content">
-                                        {{ formatCurrency(deal.amount, deal.currency) }}
+                                        {{ deal.amount }} {{ (deal.currency ?? '').toUpperCase() }}
                                     </div>
                                     <div class="text-nowrap text-xs opacity-70">
-                                        Profit: {{ formatCurrency(deal.service_profit ?? 0, deal.base_currency) }}
+                                        {{ deal.service_profit ?? 0 }} {{ (deal.base_currency ?? '').toUpperCase() }}
                                     </div>
                                 </td>
                                 <td>
@@ -180,13 +180,10 @@ defineOptions({ layout: AuthenticatedLayout })
                             </div>
 
                             <div class="grid grid-cols-2 gap-3 text-sm">
-                                <div>
+                                <div class="col-span-2">
                                     <div class="text-base-content/60">Сумма</div>
-                                    <div class="font-medium">{{ formatCurrency(deal.amount, deal.currency) }}</div>
-                                </div>
-                                <div>
-                                    <div class="text-base-content/60">Profit</div>
-                                    <div class="font-medium">{{ formatCurrency(deal.service_profit ?? 0, deal.base_currency) }}</div>
+                                    <div class="text-nowrap text-base-content">{{ deal.amount }} {{ (deal.currency ?? '').toUpperCase() }}</div>
+                                    <div class="text-nowrap text-xs opacity-70">{{ deal.service_profit ?? 0 }} {{ (deal.base_currency ?? '').toUpperCase() }}</div>
                                 </div>
                                 <div>
                                     <div class="text-base-content/60">Метод</div>

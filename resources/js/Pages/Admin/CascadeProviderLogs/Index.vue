@@ -4,6 +4,7 @@ import {computed, reactive, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DateTime from '@/Components/DateTime.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
+import CopyableExternalId from '@/Components/CopyableExternalId.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 
 const props = defineProps({
@@ -191,8 +192,8 @@ defineOptions({ layout: AuthenticatedLayout });
                             <tr>
                                 <th>Тип</th>
                                 <th>Провайдер</th>
-                                <th>Сделка</th>
-                                <th>Метод</th>
+                                <th>UUID</th>
+                                <th>Внешний ID</th>
                                 <th>Результат</th>
                                 <th>Время</th>
                                 <th>Создан</th>
@@ -201,7 +202,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         </thead>
                         <tbody>
                             <template v-for="log in logs.data" :key="log.id">
-                                <tr class="hover cursor-pointer border-b border-base-200 last:border-none" @click="toggleRow(log.id)">
+                                <tr class="hover border-b border-base-200 last:border-none">
                                     <td>
                                         <span :class="['badge badge-sm', log.type === 'callback' ? 'badge-info' : 'badge-primary']">
                                             {{ log.type === 'callback' ? 'Callback' : 'API' }}
@@ -215,12 +216,10 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <td>
                                         <CopyableOrderUid v-if="log.cascade_deal?.uuid" :uuid="log.cascade_deal.uuid" />
                                         <div v-else class="text-base-content/60">Пусто</div>
-                                        <div v-if="log.cascade_transaction?.provider_deal_id" class="mt-1 text-xs opacity-70">
-                                            Provider: {{ log.cascade_transaction.provider_deal_id }}
-                                        </div>
                                     </td>
                                     <td>
-                                        <span class="badge badge-ghost badge-sm">{{ log.method }}</span>
+                                        <CopyableExternalId v-if="log.cascade_deal?.external_id" :id="String(log.cascade_deal.external_id)" />
+                                        <div v-else class="text-base-content/60">Пусто</div>
                                     </td>
                                     <td>
                                         <span :class="['badge badge-sm', log.is_successful ? 'badge-success' : 'badge-error']">
@@ -230,13 +229,24 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <td class="text-nowrap">{{ formatExecutionTime(log.execution_time) }}</td>
                                     <td><DateTime class="justify-start" :data="log.created_at" show-time /></td>
                                     <td class="text-right">
-                                        <button type="button" class="btn btn-ghost btn-xs">
+                                        <button
+                                            type="button"
+                                            class="btn btn-ghost btn-xs"
+                                            @click.stop="toggleRow(log.id)"
+                                        >
                                             {{ expandedRows[log.id] ? 'Скрыть' : 'Детали' }}
                                         </button>
                                     </td>
                                 </tr>
                                 <tr v-if="expandedRows[log.id]" class="bg-base-200">
                                     <td colspan="8" class="p-4">
+                                        <div
+                                            v-if="log.cascade_transaction?.provider_deal_id"
+                                            class="mb-4 rounded border border-base-300 bg-base-100 p-3 text-sm"
+                                        >
+                                            <div class="mb-2 text-xs opacity-60">ID сделки у провайдера</div>
+                                            <CopyableExternalId :id="String(log.cascade_transaction.provider_deal_id)" />
+                                        </div>
                                         <div class="mb-4 rounded border border-base-300 bg-base-100 p-3 text-sm">
                                             <div class="mb-2 font-semibold">HTTP</div>
                                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
@@ -302,9 +312,21 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </span>
                             </div>
 
-                            <div v-if="log.cascade_deal?.uuid" class="text-sm">
-                                <div class="text-base-content/60">Сделка</div>
-                                <CopyableOrderUid :uuid="log.cascade_deal.uuid" />
+                            <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                                <div>
+                                    <div class="text-base-content/60">UUID</div>
+                                    <CopyableOrderUid v-if="log.cascade_deal?.uuid" :uuid="log.cascade_deal.uuid" />
+                                    <div v-else class="text-base-content/60">Пусто</div>
+                                </div>
+                                <div>
+                                    <div class="text-base-content/60">Внешний ID</div>
+                                    <CopyableExternalId v-if="log.cascade_deal?.external_id" :id="String(log.cascade_deal.external_id)" />
+                                    <div v-else class="text-base-content/60">Пусто</div>
+                                </div>
+                            </div>
+                            <div v-if="log.cascade_transaction?.provider_deal_id" class="text-sm">
+                                <div class="text-base-content/60">ID у провайдера</div>
+                                <CopyableExternalId :id="String(log.cascade_transaction.provider_deal_id)" />
                             </div>
 
                             <div v-if="expandedCards[log.id]" class="grid grid-cols-1 gap-3">

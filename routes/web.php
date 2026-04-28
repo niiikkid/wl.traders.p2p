@@ -442,6 +442,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
         Route::get('/cascade-providers', [CascadeProviderController::class, 'index'])->name('cascade-providers.index');
         Route::post('/cascade-providers', [CascadeProviderController::class, 'store'])->name('cascade-providers.store');
+        Route::patch('/cascade-providers/reorder', [CascadeProviderController::class, 'reorder'])->name('cascade-providers.reorder');
         Route::patch('/cascade-providers/{cascadeProvider}', [CascadeProviderController::class, 'update'])->name('cascade-providers.update');
         Route::post('/cascade-providers/{cascadeProvider}/wallet/deposit', [CascadeProviderWalletController::class, 'deposit'])->name('cascade-providers.wallet.deposit');
         Route::post('/cascade-providers/{cascadeProvider}/wallet/withdraw', [CascadeProviderWalletController::class, 'withdraw'])->name('cascade-providers.wallet.withdraw');

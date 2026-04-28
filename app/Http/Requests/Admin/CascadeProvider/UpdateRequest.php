@@ -62,6 +62,13 @@ class UpdateRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'code.unique' => __('Эта реализация уже добавлена: у каждого кода провайдера может быть только одна запись (колбэки и API завязаны на код).'),
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge([

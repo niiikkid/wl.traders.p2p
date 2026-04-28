@@ -1,6 +1,6 @@
 <script setup>
 import {Head, Link, router, useForm} from '@inertiajs/vue3';
-import {computed, ref} from 'vue';
+import {computed, ref, watch} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import IsActiveStatus from '@/Components/IsActiveStatus.vue';
@@ -15,8 +15,161 @@ const props = defineProps({
     liquidityUsers: Array,
 });
 
+/** Список провайдеров: resolve() коллекции даёт массив, без обёртки { data }. */
+const cascadeProviderList = computed(() => {
+    const cp = props.cascadeProviders;
+
+    if (! cp) {
+        return [];
+    }
+
+    if (Array.isArray(cp)) {
+        return cp;
+    }
+
+    if (Array.isArray(cp.data)) {
+        return cp.data;
+    }
+
+    return [];
+});
+
 const isModalOpen = ref(false);
 const editingProvider = ref(null);
+
+const draggingRowId = ref(null);
+
+const providerRows = ref([]);
+
+watch(
+    cascadeProviderList,
+    (d) => {
+        if (Array.isArray(d)) {
+            providerRows.value = d.map((row) => ({...row}));
+        }
+    },
+    {immediate: true, deep: true},
+);
+
+/**
+ * Превью перетаскивания — вся строка (без этого браузер рисует только ручку).
+ */
+const setTableRowDragImage = (event) => {
+    const row = event.currentTarget?.closest?.('tr');
+
+    if (! row) {
+        return;
+    }
+
+    const ghostRow = row.cloneNode(true);
+
+    ghostRow.querySelectorAll('[draggable]').forEach((el) => {
+        el.removeAttribute('draggable');
+    });
+
+    const rect = row.getBoundingClientRect();
+    const offsetX = Math.round(event.clientX - rect.left);
+    const offsetY = Math.round(event.clientY - rect.top);
+
+    const host = document.createElement('div');
+    const rowBg = typeof window.getComputedStyle === 'function'
+        ? window.getComputedStyle(row).backgroundColor
+        : '';
+
+    host.style.cssText = [
+        'position:fixed',
+        'top:0',
+        'left:0',
+        `width:${rect.width}px`,
+        'pointer-events:none',
+        'z-index:99999',
+        'opacity:0.97',
+        'overflow:hidden',
+        'border-radius:0.5rem',
+        'box-shadow:0 10px 30px rgba(0,0,0,0.18)',
+        rowBg && rowBg !== 'rgba(0, 0, 0, 0)' ? `background-color:${rowBg}` : '',
+    ].filter(Boolean).join(';');
+
+    const tbl = document.createElement('table');
+    tbl.className = row.closest('table')?.className ?? 'table table-sm';
+    tbl.style.width = '100%';
+    tbl.style.tableLayout = 'fixed';
+    const tb = document.createElement('tbody');
+    tb.appendChild(ghostRow);
+    tbl.appendChild(tb);
+    host.appendChild(tbl);
+
+    document.body.appendChild(host);
+    event.dataTransfer.setDragImage(host, offsetX, offsetY);
+
+    window.setTimeout(() => {
+        host.remove();
+    }, 0);
+};
+
+const onDragStart = (event, provider) => {
+    setTableRowDragImage(event);
+
+    draggingRowId.value = provider.id;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', String(provider.id));
+};
+
+const onDragOver = (event) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+};
+
+const onDrop = (event, targetProvider) => {
+    event.preventDefault();
+    const fromId = Number(event.dataTransfer.getData('text/plain'));
+
+    if (! fromId || fromId === targetProvider.id) {
+        return;
+    }
+
+    const arr = [...providerRows.value];
+    const fromIdx = arr.findIndex((r) => r.id === fromId);
+    const toIdx = arr.findIndex((r) => r.id === targetProvider.id);
+
+    if (fromIdx === -1 || toIdx === -1) {
+        return;
+    }
+
+    const [moved] = arr.splice(fromIdx, 1);
+
+    arr.splice(toIdx, 0, moved);
+
+    const next = arr.map((r, i) => ({...r, priority: i}));
+
+    providerRows.value = next;
+
+    router.patch(route('admin.cascade-providers.reorder'), {
+        ids: next.map((r) => r.id),
+    }, {
+        preserveScroll: true,
+    });
+};
+
+const onTbodyDrop = (event) => {
+    const tr = event.target.closest('tr');
+
+    if (! tr?.dataset?.providerId) {
+        return;
+    }
+
+    const targetProvider = providerRows.value.find((p) => p.id === Number(tr.dataset.providerId));
+
+    if (! targetProvider) {
+        return;
+    }
+
+    onDrop(event, targetProvider);
+};
+
+const onDragEnd = () => {
+    draggingRowId.value = null;
+};
 
 const form = useForm({
     code: '',
@@ -32,20 +185,29 @@ const form = useForm({
     verify_ssl: true,
 });
 
+/** Все реализации для селекта: при создании — без internal; занятые коды помечаются disabled в шаблоне. */
 const providerOptions = computed(() => {
+    const impl = Array.isArray(props.implementedProviders)
+        ? props.implementedProviders
+        : [];
+
     if (editingProvider.value) {
-        return props.implementedProviders.filter((provider) => (
-            provider.code === editingProvider.value.code || ! props.existingProviderCodes.includes(provider.code)
+        return impl.filter((provider) => (
+            provider.code === editingProvider.value.code || ! props.existingProviderCodes?.includes(provider.code)
         ));
     }
 
-    return props.implementedProviders.filter((provider) => ! props.existingProviderCodes.includes(provider.code));
+    return impl.filter((provider) => provider.code !== 'internal');
 });
 
-const canCreateProvider = computed(() => providerOptions.value.length > 0);
+const isImplementationCodeTaken = (code) => {
+    return Array.isArray(props.existingProviderCodes) && props.existingProviderCodes.includes(code);
+};
 
 const selectedImplementation = computed(() => {
-    return props.implementedProviders.find((provider) => provider.code === form.code);
+    const impl = Array.isArray(props.implementedProviders) ? props.implementedProviders : [];
+
+    return impl.find((provider) => provider.code === form.code);
 });
 
 /** Реализация `internal` — без внешнего API, ликвидности-пользователя и полей интеграции. */
@@ -68,9 +230,13 @@ const openCreateModal = () => {
     editingProvider.value = null;
     form.reset();
     form.clearErrors();
+
+    const impl = Array.isArray(props.implementedProviders) ? props.implementedProviders : [];
+    const firstFree = impl.find((p) => p.code !== 'internal' && ! isImplementationCodeTaken(p.code));
+
     form.defaults({
-        code: providerOptions.value[0]?.code ?? '',
-        name: providerOptions.value[0]?.name ?? '',
+        code: firstFree?.code ?? '',
+        name: firstFree?.name ?? '',
         provider_type: 'external',
         user_id: null,
         is_active: true,
@@ -189,7 +355,9 @@ defineOptions({ layout: AuthenticatedLayout });
 
         <MainTableSection
             title="Провайдеры каскада"
-            :data="cascadeProviders"
+            :data="cascadeProviderList"
+            :paginate="false"
+            :display-pagination="false"
         >
             <template #button>
                 <div class="flex flex-wrap items-center justify-end gap-2 shrink-0">
@@ -203,7 +371,6 @@ defineOptions({ layout: AuthenticatedLayout });
                     <button
                         type="button"
                         class="btn btn-sm btn-primary"
-                        :disabled="! canCreateProvider"
                         @click="openCreateModal"
                     >
                         Добавить провайдера
@@ -212,14 +379,11 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
 
             <template v-slot:body>
-                <div v-if="! canCreateProvider" class="alert alert-info mb-4">
-                    <span>Все найденные реализации провайдеров уже добавлены.</span>
-                </div>
-
                 <div class="hidden xl:block overflow-x-auto card bg-base-100 shadow">
                     <table class="table table-sm">
                         <thead class="text-xs uppercase bg-base-300">
                             <tr>
+                                <th class="w-10 pe-0"><span class="sr-only">Порядок</span></th>
                                 <th>ID</th>
                                 <th>Провайдер</th>
                                 <th class="text-end" aria-label="Приоритет" title="Приоритет">P.</th>
@@ -229,12 +393,46 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <th><span class="sr-only">Действия</span></th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody
+                            @dragover="onDragOver"
+                            @drop="onTbodyDrop"
+                        >
                             <tr
-                                v-for="provider in cascadeProviders.data"
+                                v-for="provider in providerRows"
                                 :key="provider.id"
                                 class="bg-base-100 border-b last:border-none border-base-200"
+                                :class="{ 'opacity-50': draggingRowId === provider.id }"
+                                :data-provider-id="provider.id"
                             >
+                                <td class="w-10 pe-0 align-middle">
+                                    <span
+                                        role="button"
+                                        tabindex="0"
+                                        draggable="true"
+                                        class="inline-flex cursor-grab active:cursor-grabbing select-none rounded px-1 py-1 text-base-content/50 hover:text-base-content hover:bg-base-200/80"
+                                        data-drag-handle
+                                        aria-label="Перетащить для изменения приоритета"
+                                        @dragstart="onDragStart($event, provider)"
+                                        @dragend="onDragEnd"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            class="w-5 h-5 shrink-0"
+                                            aria-hidden="true"
+                                        >
+                                            <circle cx="9.5" cy="6" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                            <circle cx="9.5" cy="10" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                            <circle cx="9.5" cy="14" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                            <circle cx="9.5" cy="18" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                            <circle cx="14.5" cy="6" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                            <circle cx="14.5" cy="10" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                            <circle cx="14.5" cy="14" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                            <circle cx="14.5" cy="18" r="0.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />
+                                        </svg>
+                                    </span>
+                                </td>
                                 <th class="font-medium">{{ provider.id }}</th>
                                 <td>
                                     <div class="font-medium text-nowrap">{{ provider.name }}</div>
@@ -269,7 +467,7 @@ defineOptions({ layout: AuthenticatedLayout });
 
                 <div class="xl:hidden space-y-3">
                     <div
-                        v-for="provider in cascadeProviders.data"
+                        v-for="provider in providerRows"
                         :key="provider.id"
                         class="card bg-base-100 shadow-sm"
                     >
@@ -343,8 +541,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                     v-for="provider in providerOptions"
                                     :key="provider.code"
                                     :value="provider.code"
+                                    :disabled="editingProvider === null && isImplementationCodeTaken(provider.code)"
                                 >
-                                    {{ implementationClassBasename(provider.class) }}
+                                    {{ implementationClassBasename(provider.class) + (editingProvider === null && isImplementationCodeTaken(provider.code) ? ' — уже добавлен' : '') }}
                                 </option>
                             </select>
                             <p v-if="form.errors.code" class="label text-error text-xs">{{ form.errors.code }}</p>
