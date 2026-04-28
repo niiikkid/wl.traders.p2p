@@ -22,11 +22,11 @@ const submit = () => {
 <template>
     <section>
         <header>
-            <h2 class="text-lg font-medium">Слоган платформы</h2>
+            <h3 class="text-sm font-semibold leading-snug text-base-content">Слоган платформы</h3>
         </header>
 
-        <form @submit.prevent="submit" class="mt-6 space-y-6">
-            <div class="max-w-[24rem]">
+        <form @submit.prevent="submit" class="mt-3 w-full min-w-0 space-y-3">
+            <div class="w-full min-w-0">
                 <InputLabel
                     for="app_slogan"
                     value="Текст слогана"
@@ -36,21 +36,22 @@ const submit = () => {
                 <TextInput
                     id="app_slogan"
                     v-model="form.app_slogan"
-                    class="mt-1 block w-full"
+                    class="input-sm mt-1 block w-full"
                     placeholder="Например: с 8 марта"
                     :error="!!form.errors.app_slogan"
                     @input="form.clearErrors('app_slogan')"
                 />
 
-                <InputError class="mt-2" :message="form.errors.app_slogan" />
+                <InputError class="mt-1 text-xs" :message="form.errors.app_slogan" />
                 <InputHelper
                     v-if="!form.errors.app_slogan"
+                    class="!mt-1 !text-xs"
                     model-value="Показывается в шапке и на гостевых страницах."
                 />
             </div>
 
-            <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Сохранить</PrimaryButton>
+            <div class="flex flex-wrap items-center gap-2">
+                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -58,7 +59,7 @@ const submit = () => {
                     leave-active-class="transition ease-in-out"
                     leave-to-class="opacity-0"
                 >
-                    <p v-if="form.recentlySuccessful" class="text-sm opacity-70">Сохранено.</p>
+                    <p v-if="form.recentlySuccessful" class="text-xs opacity-70">Сохранено.</p>
                 </Transition>
             </div>
         </form>

@@ -64,6 +64,15 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Заявки на вывод средств"
             :data="invoices"
         >
+            <template #button>
+                <button
+                    type="button"
+                    class="btn btn-outline btn-sm shrink-0"
+                    @click="router.visit(route('admin.deposits.index'), { preserveScroll: true })"
+                >
+                    Депозиты средств
+                </button>
+            </template>
             <template v-slot:header>
                 <FiltersPanel name="withdrawals">
                     <DropdownFilter

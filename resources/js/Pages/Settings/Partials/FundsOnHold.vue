@@ -18,41 +18,41 @@ const submit = () => {
         onError: (result) => form.reset(),
     });
 };
-
-//
 </script>
 
 <template>
     <section>
         <header>
-            <h2 class="text-lg font-medium">Настройка времени холда средств</h2>
+            <h3 class="text-sm font-semibold leading-snug text-base-content">Время холда средств</h3>
         </header>
 
-        <form @submit.prevent="submit" class="mt-6 space-y-6">
-            <div class="max-w-[24rem]">
-                <div>
-                    <InputLabel
-                        for="hold_time"
-                        value="Время холда"
-                        :error="!!form.errors.hold_time"
-                    />
+        <form @submit.prevent="submit" class="mt-3 w-full min-w-0 space-y-3">
+            <div class="w-full min-w-0">
+                <InputLabel
+                    for="hold_time"
+                    value="Время холда"
+                    :error="!!form.errors.hold_time"
+                />
 
-                    <NumberInput
-                        id="hold_time"
-                        v-model="form.hold_time"
-                        class="mt-1 block w-full"
-                        step="1"
-                        :error="!!form.errors.hold_time"
-                        @input="form.clearErrors('hold_time')"
-                    />
+                <NumberInput
+                    id="hold_time"
+                    v-model="form.hold_time"
+                    class="input-sm mt-1 block w-full"
+                    step="1"
+                    :error="!!form.errors.hold_time"
+                    @input="form.clearErrors('hold_time')"
+                />
 
-                    <InputError class="mt-2" :message="form.errors.hold_time" />
-                    <InputHelper v-if="! form.errors.hold_time" model-value="Время которое доход трейдера будет удерживаться после завершения выплаты."></InputHelper>
-                </div>
+                <InputError class="mt-1 text-xs" :message="form.errors.hold_time" />
+                <InputHelper
+                    v-if="! form.errors.hold_time"
+                    class="!mt-1 !text-xs"
+                    model-value="Удержание дохода трейдера после завершения выплаты."
+                />
             </div>
 
-            <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Сохранить</PrimaryButton>
+            <div class="flex flex-wrap items-center gap-2">
+                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -60,7 +60,7 @@ const submit = () => {
                     leave-active-class="transition ease-in-out"
                     leave-to-class="opacity-0"
                 >
-                    <p v-if="form.recentlySuccessful" class="text-sm opacity-70">Сохранено.</p>
+                    <p v-if="form.recentlySuccessful" class="text-xs opacity-70">Сохранено.</p>
                 </Transition>
             </div>
         </form>

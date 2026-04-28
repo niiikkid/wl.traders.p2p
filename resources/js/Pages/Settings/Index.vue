@@ -1,15 +1,16 @@
 <script setup>
 import {Head} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import PrimeTimeBonus from "@/Pages/Settings/Partials/PrimeTimeBonus.vue";
-import AppSlogan from "@/Pages/Settings/Partials/AppSlogan.vue";
-import SupportLink from "@/Pages/Settings/Partials/SupportLink.vue";
-import LandingTelegramLink from "@/Pages/Settings/Partials/LandingTelegramLink.vue";
-import FundsOnHold from "@/Pages/Settings/Partials/FundsOnHold.vue";
-import MaxPendingDisputes from "@/Pages/Settings/Partials/MaxPendingDisputes.vue";
-import MaxRejectedDisputes from "@/Pages/Settings/Partials/MaxRejectedDisputes.vue";
-import TempVip from "@/Pages/Settings/Partials/TempVip.vue";
-import DefaultReserveBalanceLimit from "@/Pages/Settings/Partials/DefaultReserveBalanceLimit.vue";
+import SettingsPanel from '@/Pages/Settings/SettingsPanel.vue';
+import PrimeTimeBonus from '@/Pages/Settings/Partials/PrimeTimeBonus.vue';
+import AppSlogan from '@/Pages/Settings/Partials/AppSlogan.vue';
+import SupportLink from '@/Pages/Settings/Partials/SupportLink.vue';
+import LandingTelegramLink from '@/Pages/Settings/Partials/LandingTelegramLink.vue';
+import FundsOnHold from '@/Pages/Settings/Partials/FundsOnHold.vue';
+import MaxPendingDisputes from '@/Pages/Settings/Partials/MaxPendingDisputes.vue';
+import MaxRejectedDisputes from '@/Pages/Settings/Partials/MaxRejectedDisputes.vue';
+import TempVip from '@/Pages/Settings/Partials/TempVip.vue';
+import DefaultReserveBalanceLimit from '@/Pages/Settings/Partials/DefaultReserveBalanceLimit.vue';
 
 defineOptions({ layout: AuthenticatedLayout })
 </script>
@@ -17,59 +18,42 @@ defineOptions({ layout: AuthenticatedLayout })
 <template>
     <Head title="Настройки системы" />
 
-    <div>
-        <div>
-            <div class="mx-auto space-y-6">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Настройки системы</h2>
-                </div>
+    <!-- Без доп. px: отступы задаёт container в AuthenticatedLayout (как у остальных админ-страниц) -->
+    <div class="w-full min-w-0">
+        <h2 class="mb-4 text-lg font-semibold tracking-tight text-base-content">
+            Настройки системы
+        </h2>
 
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <AppSlogan class="max-w-xl"></AppSlogan>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <PrimeTimeBonus class="max-w-xl"></PrimeTimeBonus>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <TempVip class="max-w-xl"></TempVip>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <DefaultReserveBalanceLimit class="max-w-xl"></DefaultReserveBalanceLimit>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <SupportLink class="max-w-xl"></SupportLink>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <LandingTelegramLink class="max-w-xl"></LandingTelegramLink>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <FundsOnHold class="max-w-xl"></FundsOnHold>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <MaxPendingDisputes class="max-w-xl"></MaxPendingDisputes>
-                    </div>
-                </div>
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body">
-                        <MaxRejectedDisputes class="max-w-xl"></MaxRejectedDisputes>
-                    </div>
-                </div>
-            </div>
+        <div
+            class="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-x-4 lg:gap-y-3"
+        >
+            <SettingsPanel>
+                <AppSlogan />
+            </SettingsPanel>
+            <SettingsPanel>
+                <PrimeTimeBonus />
+            </SettingsPanel>
+            <SettingsPanel>
+                <TempVip />
+            </SettingsPanel>
+            <SettingsPanel>
+                <DefaultReserveBalanceLimit />
+            </SettingsPanel>
+            <SettingsPanel>
+                <SupportLink />
+            </SettingsPanel>
+            <SettingsPanel>
+                <LandingTelegramLink />
+            </SettingsPanel>
+            <SettingsPanel>
+                <FundsOnHold />
+            </SettingsPanel>
+            <SettingsPanel>
+                <MaxPendingDisputes />
+            </SettingsPanel>
+            <SettingsPanel>
+                <MaxRejectedDisputes />
+            </SettingsPanel>
         </div>
     </div>
 </template>

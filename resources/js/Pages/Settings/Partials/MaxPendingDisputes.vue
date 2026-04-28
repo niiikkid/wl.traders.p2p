@@ -18,41 +18,41 @@ const submit = () => {
         onError: (result) => form.reset(),
     });
 };
-
-//
 </script>
 
 <template>
     <section>
         <header>
-            <h2 class="text-lg font-medium">Настройка максимума активных споров</h2>
+            <h3 class="text-sm font-semibold leading-snug text-base-content">Максимум активных споров</h3>
         </header>
 
-        <form @submit.prevent="submit" class="mt-6 space-y-6">
-            <div class="max-w-[24rem]">
-                <div>
-                    <InputLabel
-                        for="max_pending_disputes"
-                        value="Максимум активных споров"
-                        :error="!!form.errors.max_pending_disputes"
-                    />
+        <form @submit.prevent="submit" class="mt-3 w-full min-w-0 space-y-3">
+            <div class="w-full min-w-0">
+                <InputLabel
+                    for="max_pending_disputes"
+                    value="Лимит"
+                    :error="!!form.errors.max_pending_disputes"
+                />
 
-                    <NumberInput
-                        id="max_pending_disputes"
-                        v-model="form.max_pending_disputes"
-                        class="mt-1 block w-full"
-                        step="1"
-                        :error="!!form.errors.max_pending_disputes"
-                        @input="form.clearErrors('max_pending_disputes')"
-                    />
+                <NumberInput
+                    id="max_pending_disputes"
+                    v-model="form.max_pending_disputes"
+                    class="input-sm mt-1 block w-full"
+                    step="1"
+                    :error="!!form.errors.max_pending_disputes"
+                    @input="form.clearErrors('max_pending_disputes')"
+                />
 
-                    <InputError class="mt-2" :message="form.errors.max_pending_disputes" />
-                    <InputHelper v-if="! form.errors.max_pending_disputes" model-value="Если у пользователя количество споров достигло лимита, то сделки выдаваться не будут. 0 = бесконечно"></InputHelper>
-                </div>
+                <InputError class="mt-1 text-xs" :message="form.errors.max_pending_disputes" />
+                <InputHelper
+                    v-if="! form.errors.max_pending_disputes"
+                    class="!mt-1 !text-xs"
+                    model-value="При достижении лимита сделки не выдаются. 0 — без ограничения."
+                />
             </div>
 
-            <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Сохранить</PrimaryButton>
+            <div class="flex flex-wrap items-center gap-2">
+                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -60,7 +60,7 @@ const submit = () => {
                     leave-active-class="transition ease-in-out"
                     leave-to-class="opacity-0"
                 >
-                    <p v-if="form.recentlySuccessful" class="text-sm opacity-70">Сохранено.</p>
+                    <p v-if="form.recentlySuccessful" class="text-xs opacity-70">Сохранено.</p>
                 </Transition>
             </div>
         </form>

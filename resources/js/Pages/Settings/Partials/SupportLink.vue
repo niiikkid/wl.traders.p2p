@@ -2,7 +2,7 @@
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import {router, useForm, usePage} from '@inertiajs/vue3';
+import {useForm, usePage} from '@inertiajs/vue3';
 import InputHelper from "@/Components/InputHelper.vue";
 import TextInput from "@/Components/TextInput.vue";
 
@@ -18,42 +18,42 @@ const submit = () => {
         onError: (result) => form.reset(),
     });
 };
-
-//
 </script>
 
 <template>
     <section>
         <header>
-            <h2 class="text-lg font-medium">Настройка ссылки на техническую поддержку</h2>
+            <h3 class="text-sm font-semibold leading-snug text-base-content">Ссылка на техподдержку</h3>
         </header>
 
-        <form @submit.prevent="submit" class="mt-6 space-y-6">
-            <div class="max-w-[24rem]">
-                <div>
-                    <InputLabel
-                        for="support_link"
-                        value="Ссылка"
-                        :error="!!form.errors.support_link"
-                    />
+        <form @submit.prevent="submit" class="mt-3 w-full min-w-0 space-y-3">
+            <div class="w-full min-w-0">
+                <InputLabel
+                    for="support_link"
+                    value="Ссылка"
+                    :error="!!form.errors.support_link"
+                />
 
-                    <TextInput
-                        id="support_link"
-                        v-model="form.support_link"
-                        class="mt-1 block w-full"
-                        step="0.01"
-                        placeholder="https://example.com"
-                        :error="!!form.errors.support_link"
-                        @input="form.clearErrors('support_link')"
-                    />
+                <TextInput
+                    id="support_link"
+                    v-model="form.support_link"
+                    class="input-sm mt-1 block w-full"
+                    step="0.01"
+                    placeholder="https://example.com"
+                    :error="!!form.errors.support_link"
+                    @input="form.clearErrors('support_link')"
+                />
 
-                    <InputError class="mt-2" :message="form.errors.support_link" />
-                    <InputHelper v-if="! form.errors.support_link" model-value="Эта ссылка будет доступна клиенту на странице оплаты."></InputHelper>
-                </div>
+                <InputError class="mt-1 text-xs" :message="form.errors.support_link" />
+                <InputHelper
+                    v-if="! form.errors.support_link"
+                    class="!mt-1 !text-xs"
+                    model-value="Доступна клиенту на странице оплаты."
+                />
             </div>
 
-            <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Сохранить</PrimaryButton>
+            <div class="flex flex-wrap items-center gap-2">
+                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -61,7 +61,7 @@ const submit = () => {
                     leave-active-class="transition ease-in-out"
                     leave-to-class="opacity-0"
                 >
-                    <p v-if="form.recentlySuccessful" class="text-sm opacity-70">Сохранено.</p>
+                    <p v-if="form.recentlySuccessful" class="text-xs opacity-70">Сохранено.</p>
                 </Transition>
             </div>
         </form>

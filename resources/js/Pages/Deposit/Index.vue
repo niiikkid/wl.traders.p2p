@@ -1,7 +1,7 @@
 <script setup>
-import {Head} from '@inertiajs/vue3';
+import {Head, router, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { usePage } from '@inertiajs/vue3';
+
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import InvoiceStatus from "@/Components/InvoiceStatus.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -30,6 +30,15 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Депозиты средств"
             :data="invoices"
         >
+            <template #button>
+                <button
+                    type="button"
+                    class="btn btn-outline btn-sm shrink-0"
+                    @click="router.visit(route('admin.withdrawals.index'), { preserveScroll: true })"
+                >
+                    Заявки на вывод средств
+                </button>
+            </template>
             <template v-slot:header>
                 <FiltersPanel name="deposits">
                     <DropdownFilter
