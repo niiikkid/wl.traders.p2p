@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Services\ProviderLiquidity;
 
 use App\Enums\CascadeDealStatus;
+use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class ProviderLiquidityDashboardService
 {
@@ -32,16 +34,16 @@ class ProviderLiquidityDashboardService
      */
     public function buildMainPageProps(Request $request): array
     {
-        $provider = $this->resolveProvider($request);
-        $provider?->load('user.wallet');
+        $providers = $this->resolveProviders($request);
+        $request->user()?->load('wallet');
 
         $period = $this->resolvePeriod(
             $request,
-            $provider ? $provider->deals()->min('created_at') : null,
+            $this->minDealCreatedAtForProviders($providers),
         );
 
-        $statistics = $this->buildStatistics($provider, $period['startDate'], $period['endDate']);
-        $charts = $this->buildCharts($provider, $period['startDate'], $period['endDate']);
+        $statistics = $this->buildStatistics($providers, $period['startDate'], $period['endDate']);
+        $charts = $this->buildCharts($providers, $period['startDate'], $period['endDate']);
 
         return [
             'statistics' => $statistics,
@@ -57,25 +59,52 @@ class ProviderLiquidityDashboardService
     }
 
     /**
-     * Интеграция каскада для зоны Provider Liquidity: по пользователю, привязанному к записи
-     * cascade_providers.user_id. Идентификатор провайдера из запроса не используется.
-     * Для роли Super Admin при обходе этой зоны возвращается первая интеграция с непустым user_id (поведение только для админов).
+     * Все интеграции каскада для зоны Provider Liquidity: записи cascade_providers с тем же user_id.
+     * Идентификатор провайдера из запроса не подставляется.
+     * Для Super Admin при обходе зоны — одна «демо»-интеграция с непустым user_id (как раньше).
+     *
+     * @return Collection<int, CascadeProvider>
      */
-    public function resolveProvider(Request $request): ?CascadeProvider
+    public function resolveProviders(Request $request): Collection
     {
         $user = $request->user();
 
         if (! $user) {
-            return null;
+            return collect();
         }
 
         if ($user->hasRole('Super Admin')) {
-            return CascadeProvider::query()->whereNotNull('user_id')->first();
+            $first = CascadeProvider::query()->whereNotNull('user_id')->orderBy('id')->first();
+
+            return $first ? collect([$first]) : collect();
         }
 
         return CascadeProvider::query()
             ->where('user_id', $user->id)
-            ->first();
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Первая интеграция из {@see resolveProviders} (обратная совместимость).
+     */
+    public function resolveProvider(Request $request): ?CascadeProvider
+    {
+        return $this->resolveProviders($request)->first();
+    }
+
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function minDealCreatedAtForProviders(Collection $providers): mixed
+    {
+        if ($providers->isEmpty()) {
+            return null;
+        }
+
+        return CascadeDeal::query()
+            ->whereIn('selected_provider_id', $providers->pluck('id')->all())
+            ->min('created_at');
     }
 
     /**
@@ -151,9 +180,12 @@ class ProviderLiquidityDashboardService
     /**
      * @return array{totalTurnover:string,totalProfit:string,conversionRate:string,successOrderCount:int}
      */
-    private function buildStatistics(?CascadeProvider $provider, Carbon $startDate, Carbon $endDate): array
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function buildStatistics(Collection $providers, Carbon $startDate, Carbon $endDate): array
     {
-        if (! $provider) {
+        if ($providers->isEmpty()) {
             return [
                 'totalTurnover' => '0.00',
                 'totalProfit' => '0.00',
@@ -162,7 +194,7 @@ class ProviderLiquidityDashboardService
             ];
         }
 
-        $baseQuery = $this->dealsForPeriod($provider, $startDate, $endDate);
+        $baseQuery = $this->dealsForPeriod($providers, $startDate, $endDate);
         $successDeals = (clone $baseQuery)->where('status', CascadeDealStatus::SUCCESS);
         $failedDeals = (clone $baseQuery)->where('status', CascadeDealStatus::FAIL);
 
@@ -193,7 +225,10 @@ class ProviderLiquidityDashboardService
      *     averageCheckChart: array{labels: array<int, string>, data: array<int, float>}
      * }
      */
-    private function buildCharts(?CascadeProvider $provider, Carbon $startDate, Carbon $endDate): array
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function buildCharts(Collection $providers, Carbon $startDate, Carbon $endDate): array
     {
         $empty = [
             'incomeChart' => ['labels' => [], 'data' => []],
@@ -203,7 +238,7 @@ class ProviderLiquidityDashboardService
             'averageCheckChart' => ['labels' => [], 'data' => []],
         ];
 
-        if (! $provider) {
+        if ($providers->isEmpty()) {
             return $empty;
         }
 
@@ -212,7 +247,7 @@ class ProviderLiquidityDashboardService
             ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
             : 'DATE(created_at)';
 
-        $baseQuery = $this->dealsForPeriod($provider, $startDate, $endDate);
+        $baseQuery = $this->dealsForPeriod($providers, $startDate, $endDate);
         $successByBucket = (clone $baseQuery)
             ->where('status', CascadeDealStatus::SUCCESS)
             ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
@@ -287,9 +322,18 @@ class ProviderLiquidityDashboardService
         ];
     }
 
-    private function dealsForPeriod(CascadeProvider $provider, Carbon $startDate, Carbon $endDate): HasMany
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function dealsForPeriod(Collection $providers, Carbon $startDate, Carbon $endDate): Builder
     {
-        return $provider->deals()->whereBetween('created_at', [$startDate, $endDate]);
+        $query = CascadeDeal::query()->whereBetween('created_at', [$startDate, $endDate]);
+
+        if ($providers->isEmpty()) {
+            return $query->whereRaw('0 = 1');
+        }
+
+        return $query->whereIn('selected_provider_id', $providers->pluck('id')->all());
     }
 
     private function parseDate(string $date): ?Carbon

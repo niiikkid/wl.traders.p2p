@@ -92,7 +92,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                         {{ deal.amount }} <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
                                     </div>
                                     <div class="text-nowrap text-xs">
-                                        <span class="text-base-content/50">{{ deal.service_profit ?? 0 }}</span> <span class="text-primary/50">{{ (deal.base_currency ?? '').toUpperCase() }}</span>
+                                        <span class="text-base-content/50">{{ deal.usdt_amount ?? '—' }}</span>
+                                        <span class="text-primary/50"> USDT</span>
                                     </div>
                                 </td>
                                 <td class="align-middle">

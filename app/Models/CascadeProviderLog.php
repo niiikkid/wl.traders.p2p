@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 
 /**
  * Лог запросов к провайдерам каскада
@@ -33,7 +34,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $error_message Сообщение об ошибке (если запрос неуспешен)
  * @property Carbon $created_at
  * @property Carbon $updated_at
- *
  * @property CascadeDeal|null $cascadeDeal
  * @property CascadeTransaction|null $cascadeTransaction
  * @property CascadeProvider $provider
@@ -87,5 +87,13 @@ class CascadeProviderLog extends Model
     public function scopeForCascadeProvider(Builder $query, CascadeProvider $provider): Builder
     {
         return $query->where('provider_id', $provider->getKey());
+    }
+
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    public function scopeForCascadeProviders(Builder $query, Collection $providers): Builder
+    {
+        return $query->whereIn('provider_id', $providers->pluck('id')->all());
     }
 }

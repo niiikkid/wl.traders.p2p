@@ -7,6 +7,7 @@ namespace App\Http\Controllers\ProviderLiquidity;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TableCascadeDealResource;
 use App\Http\Resources\TableCascadeProviderLogResource;
+use App\Models\CascadeDeal;
 use App\Models\CascadeProviderLog;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -23,10 +24,12 @@ class DashboardController extends Controller
 
     public function services(Request $request)
     {
-        $provider = $this->providerLiquidityDashboardService->resolveProvider($request);
+        $providers = $this->providerLiquidityDashboardService->resolveProviders($request)
+            ->sortByDesc('id')
+            ->values();
 
         return Inertia::render('ProviderLiquidity/Services', [
-            'services' => $provider ? [[
+            'services' => $providers->map(fn ($provider) => [
                 'id' => $provider->id,
                 'code' => $provider->code,
                 'name' => $provider->name,
@@ -38,19 +41,20 @@ class DashboardController extends Controller
                 'timeout' => $provider->timeout,
                 'verify_ssl' => $provider->verify_ssl,
                 'created_at' => $provider->created_at?->toISOString(),
-            ]] : [],
+            ])->values()->all(),
         ]);
     }
 
     public function deals(Request $request)
     {
-        $provider = $this->providerLiquidityDashboardService->resolveProvider($request);
+        $providers = $this->providerLiquidityDashboardService->resolveProviders($request);
         $filters = $this->getTableFilters();
         $filtersVariants = $this->getFiltersData();
 
-        $deals = $provider
+        $deals = $providers->isNotEmpty()
             ? TableCascadeDealResource::collection(
-                $provider->deals()
+                CascadeDeal::query()
+                    ->whereIn('selected_provider_id', $providers->pluck('id')->all())
                     ->with(['merchant', 'merchantClient', 'selectedTransaction'])
                     ->when($filters->uuid, fn ($query) => $query->where('uuid', 'like', "%{$filters->uuid}%"))
                     ->when($filters->externalID, fn ($query) => $query->where('external_id', 'like', "%{$filters->externalID}%"))
@@ -69,13 +73,12 @@ class DashboardController extends Controller
     }
 
     /**
-     * Логи API/callback: только записи с {@see CascadeProviderLog::$provider_id},
-     * совпадающим с интеграцией текущего пользователя ({@see ProviderLiquidityDashboardService::resolveProvider}).
+     * Логи API/callback: записи по всем интеграциям пользователя ({@see ProviderLiquidityDashboardService::resolveProviders}).
      * Параметры запроса не подменяют провайдера — чужие логи недоступны.
      */
     public function logs(Request $request)
     {
-        $provider = $this->providerLiquidityDashboardService->resolveProvider($request);
+        $providers = $this->providerLiquidityDashboardService->resolveProviders($request);
         $filters = [
             'type' => $request->string('type')->toString(),
             'operation' => $request->string('operation')->toString(),
@@ -83,10 +86,10 @@ class DashboardController extends Controller
             'search' => $request->string('search')->toString(),
         ];
 
-        $logs = $provider
+        $logs = $providers->isNotEmpty()
             ? TableCascadeProviderLogResource::collection(
                 CascadeProviderLog::query()
-                    ->forCascadeProvider($provider)
+                    ->forCascadeProviders($providers)
                     ->with(['cascadeDeal', 'cascadeTransaction', 'provider'])
                     ->when($filters['type'] === 'api', fn (Builder $query) => $query->where('operation', '!=', 'callback'))
                     ->when($filters['type'] === 'callback', fn (Builder $query) => $query->where('operation', 'callback'))
@@ -112,9 +115,9 @@ class DashboardController extends Controller
             'logs' => $logs,
             'filters' => $filters,
             'filterOptions' => [
-                'operations' => $provider
+                'operations' => $providers->isNotEmpty()
                     ? CascadeProviderLog::query()
-                        ->forCascadeProvider($provider)
+                        ->forCascadeProviders($providers)
                         ->select('operation')
                         ->distinct()
                         ->orderBy('operation')

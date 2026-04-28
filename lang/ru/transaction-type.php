@@ -22,4 +22,5 @@ return [
     'rollback_income_from_successful_payout' => 'Отмена дохода от выплаты',
     'income_from_referrals_successful_payout' => 'Доход от выплаты реферала',
     'rollback_income_from_referrals_successful_payout' => 'Отмена дохода от выплаты реферала',
+    'cascade_provider_collateral_hold' => 'Удержание залога (каскад)',
 ];
