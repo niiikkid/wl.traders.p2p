@@ -14,8 +14,8 @@ const props = defineProps({
         type: String,
     },
     data: {
-        type: Object,
-        default: {}
+        type: [Object, Array],
+        default: null,
     },
     paginate: {
         type: Boolean,
@@ -51,10 +51,14 @@ tableFiltersStore.setFiltersVariants(usePage().props.filtersVariants);
 
 const items = computed(() => {
     if (props.paginate) {
-        return props.data.data;
-    } else {
-        return props.data;
+        return props.data?.data ?? [];
     }
+
+    if (props.data == null) {
+        return [];
+    }
+
+    return props.data;
 });
 
 const perPageOptions = [
