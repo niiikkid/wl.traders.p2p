@@ -24,11 +24,13 @@ use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
+use App\Models\Merchant;
 use App\Models\MerchantClient;
 use App\Models\Order;
 use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
 use App\Services\Cascade\Providers\SelfTestCascadeProvider;
+use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -159,40 +161,6 @@ class CascadeService implements CascadeServiceContract
         }
 
         throw CascadeException::make('Не удалось обработать запрос вовремя. Повторите попытку позже.');
-    }
-
-    private function ensureRateForExternalProviders(CreateCascadeDealDTO $dto): void
-    {
-        if ($dto->rate !== null) {
-            return;
-        }
-
-        $merchant = Merchant::query()->with('cascadeSetting')->find($dto->merchantId);
-        if (! $merchant instanceof Merchant) {
-            return;
-        }
-
-        $setting = $merchant->cascadeSetting;
-        if ($setting && ! $setting->cascade_enabled) {
-            return;
-        }
-
-        $allowedProviderIds = collect($setting?->allowed_provider_ids ?? [])
-            ->map(fn (mixed $id): int => (int) $id)
-            ->filter()
-            ->values();
-
-        $hasExternalProvider = CascadeProvider::query()
-            ->where('is_active', true)
-            ->where('provider_type', ProviderType::EXTERNAL->value)
-            ->when($setting && ! $setting->allow_external_providers, fn ($query) => $query->whereRaw('1 = 0'))
-            ->when($allowedProviderIds->isNotEmpty(), fn ($query) => $query->whereIn('id', $allowedProviderIds))
-            ->get()
-            ->contains(fn (CascadeProvider $provider): bool => app(CascadeProviderServiceContract::class)->getProviderByModel($provider) !== null);
-
-        if ($hasExternalProvider) {
-            throw CascadeException::make('Для расчёта экономики каскада не зафиксирован курс.');
-        }
     }
 
     public function findDealByExternalId(string $merchantUuid, string $externalId): CascadeDeal
@@ -801,6 +769,17 @@ class CascadeService implements CascadeServiceContract
 
     private function createCascadeDeal(CreateCascadeDealDTO $dto): CascadeDeal
     {
+        $merchant = Merchant::query()->find($dto->merchantId);
+        if (! $merchant instanceof Merchant) {
+            throw CascadeException::make('Мерчант не найден.');
+        }
+
+        $currency = Currency::make($dto->currency);
+        $market = $merchant->getGeoMarket($currency);
+        if (! $market instanceof MarketEnum) {
+            throw CascadeException::make("Для валюты {$currency->getCode()} не настроен GEO market мерчанта.");
+        }
+
         $merchant_client_id = null;
 
         if ($dto->clientId) {
@@ -830,13 +809,25 @@ class CascadeService implements CascadeServiceContract
                 cardholderName: $dto->cardholderName,
             ),
             'callback_url' => $dto->callbackUrl,
+            'market' => $market,
         ];
 
-        if ($dto->rate !== null) {
-            $attributes['market'] = MarketEnum::MERCHANT_API;
+        if ($market->equals(MarketEnum::MERCHANT_API)) {
+            if ($dto->rate === null) {
+                throw CascadeException::make('Для расчёта экономики каскада не зафиксирован курс.');
+            }
+
             $attributes['conversion_price'] = Money::fromPrecision($dto->rate, $dto->currency);
             $attributes['rate_fixed_at'] = now();
+
+            return CascadeDeal::create($attributes);
         }
+
+        $attributes['conversion_price'] = services()->market()->getSellPrice($currency, $market);
+        if (! $attributes['conversion_price']->greaterThanZero()) {
+            throw CascadeException::make('Не удалось получить рыночный курс для расчёта экономики каскада.');
+        }
+        $attributes['rate_fixed_at'] = now();
 
         return CascadeDeal::create($attributes);
     }
