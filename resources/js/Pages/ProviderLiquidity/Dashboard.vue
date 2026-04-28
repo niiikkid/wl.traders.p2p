@@ -10,7 +10,7 @@ defineProps({
 
 <template>
     <AuthenticatedLayout>
-        <Head title="Провайдер ликвидности" />
+        <Head title="Провайдер" />
         <div class="space-y-4">
             <h1 class="text-xl font-semibold">Главная провайдера ликвидности</h1>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

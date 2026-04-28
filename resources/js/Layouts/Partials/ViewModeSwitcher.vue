@@ -116,7 +116,7 @@ const getCurrentViewModeLabel = () => {
                 </li>
                 <li>
                     <a @click="selectViewMode('provider-liquidity')">
-                        Провайдер ликвидности
+                        Провайдер
                     </a>
                 </li>
             </ul>
