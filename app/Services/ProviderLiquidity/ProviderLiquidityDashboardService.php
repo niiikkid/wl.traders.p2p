@@ -7,6 +7,7 @@ namespace App\Services\ProviderLiquidity;
 use App\Enums\CascadeDealStatus;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
+use App\Services\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -178,10 +179,8 @@ class ProviderLiquidityDashboardService
     }
 
     /**
-     * @return array{totalTurnover:string,totalProfit:string,conversionRate:string,successOrderCount:int}
-     */
-    /**
      * @param  Collection<int, CascadeProvider>  $providers
+     * @return array{totalTurnover:string,totalProfit:string,conversionRate:string,successOrderCount:int}
      */
     private function buildStatistics(Collection $providers, Carbon $startDate, Carbon $endDate): array
     {
@@ -205,18 +204,19 @@ class ProviderLiquidityDashboardService
             ? round(($successDealCount / $totalDealsCount) * 100, 2)
             : 0;
 
-        $totalTurnoverUnits = (int) ((clone $successDeals)->sum('usdt_amount') ?? 0);
-        $totalProfitUnits = (int) ((clone $successDeals)->sum('debit') ?? 0);
+        $totalTurnoverSum = (clone $successDeals)->sum('usdt_amount');
+        $totalProfitSum = (clone $successDeals)->sum('debit');
 
         return [
-            'totalTurnover' => number_format($totalTurnoverUnits / 100, 2, '.', ''),
-            'totalProfit' => number_format($totalProfitUnits / 100, 2, '.', ''),
+            'totalTurnover' => $this->moneyFromUsdtSumUnits($totalTurnoverSum)->toBeauty(),
+            'totalProfit' => $this->moneyFromUsdtSumUnits($totalProfitSum)->toBeauty(),
             'conversionRate' => "{$conversionRate}%",
             'successOrderCount' => $successDealCount,
         ];
     }
 
     /**
+     * @param  Collection<int, CascadeProvider>  $providers
      * @return array{
      *     incomeChart: array{labels: array<int, string>, data: array<int, float>},
      *     turnoverChart: array{labels: array<int, string>, data: array<int, float>},
@@ -224,9 +224,6 @@ class ProviderLiquidityDashboardService
      *     ordersChart: array{labels: array<int, string>, data: array<int, int>},
      *     averageCheckChart: array{labels: array<int, string>, data: array<int, float>}
      * }
-     */
-    /**
-     * @param  Collection<int, CascadeProvider>  $providers
      */
     private function buildCharts(Collection $providers, Carbon $startDate, Carbon $endDate): array
     {
@@ -289,21 +286,24 @@ class ProviderLiquidityDashboardService
             $successCount = (int) ($successByBucket[$bucketKey] ?? 0);
             $failedCount = (int) ($failedByBucket[$bucketKey] ?? 0);
             $totalCount = $successCount + $failedCount;
-            $turnoverUnits = (int) ($turnoverByBucket[$bucketKey] ?? 0);
-            $incomeUnits = (int) ($incomeByBucket[$bucketKey] ?? 0);
-            $totalAmountUnits = (int) ($totalAmountByBucket[$bucketKey] ?? 0);
+            $turnoverSum = $turnoverByBucket[$bucketKey] ?? null;
+            $incomeSum = $incomeByBucket[$bucketKey] ?? null;
+            $totalAmountSum = $totalAmountByBucket[$bucketKey] ?? null;
 
             $labels[] = $isHourly
                 ? $currentBucketDate->format('H:i')
                 : $currentBucketDate->format('d.m');
-            $turnoverData[] = round($turnoverUnits / 100, 2);
-            $incomeData[] = round($incomeUnits / 100, 2);
+            $turnoverData[] = $this->usdtSumUnitsToChartFloat($turnoverSum);
+            $incomeData[] = $this->usdtSumUnitsToChartFloat($incomeSum);
             $conversionData[] = $totalCount > 0
                 ? round(($successCount / $totalCount) * 100, 2)
                 : 0;
             $ordersData[] = $successCount;
             $averageCheckData[] = $totalCount > 0
-                ? round(($totalAmountUnits / 100) / $totalCount, 2)
+                ? round(
+                    (float) $this->moneyFromUsdtSumUnits($totalAmountSum)->toPrecision() / $totalCount,
+                    2,
+                )
                 : 0;
 
             if ($isHourly) {
@@ -320,6 +320,23 @@ class ProviderLiquidityDashboardService
             'ordersChart' => ['labels' => $labels, 'data' => $ordersData],
             'averageCheckChart' => ['labels' => $labels, 'data' => $averageCheckData],
         ];
+    }
+
+    /**
+     * Значения {@see CascadeDeal::$usdt_amount}, {@see CascadeDeal::$debit} хранятся в минимальных единицах USDT (8 знаков), как в {@see Money}.
+     */
+    private function moneyFromUsdtSumUnits(mixed $sumUnits): Money
+    {
+        if ($sumUnits === null || $sumUnits === '') {
+            return Money::fromUnits('0', 'usdt');
+        }
+
+        return Money::fromUnits((string) $sumUnits, 'usdt');
+    }
+
+    private function usdtSumUnitsToChartFloat(mixed $sumUnits): float
+    {
+        return round((float) $this->moneyFromUsdtSumUnits($sumUnits)->toPrecision(), 2);
     }
 
     /**
