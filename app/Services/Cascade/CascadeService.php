@@ -161,6 +161,40 @@ class CascadeService implements CascadeServiceContract
         throw CascadeException::make('Не удалось обработать запрос вовремя. Повторите попытку позже.');
     }
 
+    private function ensureRateForExternalProviders(CreateCascadeDealDTO $dto): void
+    {
+        if ($dto->rate !== null) {
+            return;
+        }
+
+        $merchant = Merchant::query()->with('cascadeSetting')->find($dto->merchantId);
+        if (! $merchant instanceof Merchant) {
+            return;
+        }
+
+        $setting = $merchant->cascadeSetting;
+        if ($setting && ! $setting->cascade_enabled) {
+            return;
+        }
+
+        $allowedProviderIds = collect($setting?->allowed_provider_ids ?? [])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->filter()
+            ->values();
+
+        $hasExternalProvider = CascadeProvider::query()
+            ->where('is_active', true)
+            ->where('provider_type', ProviderType::EXTERNAL->value)
+            ->when($setting && ! $setting->allow_external_providers, fn ($query) => $query->whereRaw('1 = 0'))
+            ->when($allowedProviderIds->isNotEmpty(), fn ($query) => $query->whereIn('id', $allowedProviderIds))
+            ->get()
+            ->contains(fn (CascadeProvider $provider): bool => app(CascadeProviderServiceContract::class)->getProviderByModel($provider) !== null);
+
+        if ($hasExternalProvider) {
+            throw CascadeException::make('Для расчёта экономики каскада не зафиксирован курс.');
+        }
+    }
+
     public function findDealByExternalId(string $merchantUuid, string $externalId): CascadeDeal
     {
         return CascadeDeal::query()
