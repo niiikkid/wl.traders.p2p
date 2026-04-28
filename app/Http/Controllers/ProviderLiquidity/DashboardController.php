@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\ProviderLiquidity;
 
+use App\Enums\BalanceType;
+use App\Enums\InvoiceType;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TableCascadeDealResource;
 use App\Http\Resources\TableCascadeProviderLogResource;
+use App\Http\Resources\TransactionResource;
 use App\Models\CascadeProviderLog;
-use App\Models\Transaction;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Services\ProviderLiquidity\ProviderLiquidityDashboardService;
@@ -74,28 +77,87 @@ class DashboardController extends Controller
     public function wallet(Request $request)
     {
         $provider = $this->providerLiquidityDashboardService->resolveProvider($request);
-        $walletModel = $provider?->user?->wallet;
-        $wallet = $walletModel ? [
-            'id' => $walletModel->id,
-            'provider_balance' => $walletModel->provider_balance?->toBeauty(),
-            'reserve_balance' => $walletModel->reserve_balance?->toBeauty(),
-        ] : null;
-        $transactions = $wallet
-            ? Transaction::query()
-                ->where('wallet_id', $walletModel->id)
-                ->latest('id')
-                ->paginate($request->integer('per_page', 20))
-                ->through(fn (Transaction $transaction) => [
-                    'id' => $transaction->id,
-                    'amount' => $transaction->amount?->toBeauty(),
-                    'direction' => $transaction->direction?->value,
-                    'type' => $transaction->type?->value,
-                    'created_at' => $transaction->created_at?->toISOString(),
-                ])
-                ->withQueryString()
-            : null;
+        $wallet = $provider?->user?->wallet;
+        $walletStats = services()->wallet()->getWalletStats($wallet)->toArray();
 
-        return Inertia::render('ProviderLiquidity/Wallet', compact('wallet', 'transactions'));
+        $tabs = [
+            'invoices' => [
+                'key' => 'invoices',
+                'name' => 'Инвойсы',
+            ],
+            'transactions' => [
+                'key' => 'transactions',
+                'name' => 'Транзакции',
+            ],
+        ];
+
+        $filters = [
+            'invoices' => [
+                'invoiceTypes' => [
+                    'all' => [
+                        'key' => 'all',
+                        'name' => 'Тип инвойса',
+                    ],
+                    InvoiceType::DEPOSIT->value => [
+                        'key' => InvoiceType::DEPOSIT->value,
+                        'name' => 'Пополнение',
+                    ],
+                    InvoiceType::WITHDRAWAL->value => [
+                        'key' => InvoiceType::WITHDRAWAL->value,
+                        'name' => 'Вывод',
+                    ],
+                ],
+            ],
+        ];
+
+        $currentTab = request()->input('tab', 'invoices');
+        if (empty($tabs[$currentTab])) {
+            $currentTab = 'invoices';
+        }
+
+        $currentFilters = [
+            'invoices' => [
+                'invoiceTypes' => request()->input('currentFilters.invoices.invoiceTypes', 'all'),
+            ],
+        ];
+
+        $invoices = null;
+        $transactions = null;
+
+        if ($currentTab === 'invoices') {
+            $invoices = queries()->invoice()->paginate(
+                wallet: $wallet,
+                invoiceType: InvoiceType::tryFrom($currentFilters['invoices']['invoiceTypes']),
+                balanceType: BalanceType::PROVIDER,
+            );
+            $invoices = InvoiceResource::collection($invoices);
+        } elseif ($currentTab === 'transactions') {
+            $transactions = queries()->transaction()->paginate(
+                wallet: $wallet,
+                balanceType: BalanceType::PROVIDER,
+            );
+            $transactions = TransactionResource::collection($transactions);
+        }
+
+        $walletSurfaces = [
+            'trust' => false,
+            'merchant' => false,
+            'teamleader' => false,
+            'provider' => true,
+            'escrow' => false,
+            'dispute' => false,
+        ];
+
+        return Inertia::render('Wallet/Index', compact(
+            'walletStats',
+            'invoices',
+            'transactions',
+            'tabs',
+            'filters',
+            'currentTab',
+            'currentFilters',
+            'walletSurfaces',
+        ));
     }
 
     public function logs(Request $request)
