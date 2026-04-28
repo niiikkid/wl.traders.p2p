@@ -809,7 +809,6 @@ class CascadeService implements CascadeServiceContract
                 'priority' => 0,
                 'timeout' => 10,
                 'min_profit_percent' => 0,
-                'description' => 'Internal liquidity provider.',
             ],
         );
 
@@ -894,7 +893,6 @@ class CascadeService implements CascadeServiceContract
                 'priority' => 0,
                 'timeout' => 10,
                 'min_profit_percent' => 0,
-                'description' => 'Internal liquidity provider.',
             ],
         );
     }

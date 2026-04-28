@@ -38,11 +38,9 @@ class UpdateRequest extends FormRequest
             'min_profit_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'base_url' => ['nullable', 'url', 'max:255'],
             'access_token' => ['nullable', 'string', 'max:255'],
-            'merchant_id' => ['nullable', 'string', 'max:255'],
             'currency_code' => ['nullable', 'string', 'max:10'],
             'timeout' => ['required', 'integer', 'min:1', 'max:10'],
             'verify_ssl' => ['required', 'boolean'],
-            'description' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -58,11 +56,9 @@ class UpdateRequest extends FormRequest
             'min_profit_percent' => __('минимальная прибыль'),
             'base_url' => __('base URL'),
             'access_token' => __('access token'),
-            'merchant_id' => __('merchant ID'),
             'currency_code' => __('валюта'),
             'timeout' => __('таймаут'),
             'verify_ssl' => __('проверка SSL'),
-            'description' => __('описание'),
         ];
     }
 
@@ -84,9 +80,12 @@ class UpdateRequest extends FormRequest
                 'min_profit_percent' => 0,
                 'base_url' => null,
                 'access_token' => null,
-                'merchant_id' => null,
                 'currency_code' => null,
                 'verify_ssl' => true,
+            ]);
+        } else {
+            $this->merge([
+                'provider_type' => ProviderType::EXTERNAL->value,
             ]);
         }
     }

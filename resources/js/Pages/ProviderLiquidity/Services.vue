@@ -72,7 +72,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 Timeout: {{ service.timeout ?? '—' }} сек. / SSL: {{ service.verify_ssl ? 'On' : 'Off' }}
                                             </div>
                                             <div class="text-xs text-base-content/70">
-                                                Merchant ID: {{ service.merchant_id || '—' }} / Валюта: {{ service.currency_code || '—' }}
+                                                Валюта: {{ service.currency_code || '—' }}
                                             </div>
                                         </td>
                                         <td>
@@ -120,7 +120,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <div class="truncate">Base URL: {{ service.base_url || '—' }}</div>
                                         <div>Timeout: {{ service.timeout ?? '—' }} сек.</div>
                                         <div>SSL: {{ service.verify_ssl ? 'On' : 'Off' }}</div>
-                                        <div class="truncate">Merchant ID: {{ service.merchant_id || '—' }}</div>
                                         <div>Валюта: {{ service.currency_code || '—' }}</div>
                                     </div>
 

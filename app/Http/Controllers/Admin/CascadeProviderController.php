@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\ProviderType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CascadeProvider\StoreRequest;
 use App\Http\Requests\Admin\CascadeProvider\UpdateRequest;
@@ -26,12 +25,6 @@ class CascadeProviderController extends Controller
         $implementedProviders = $discoveryService->implementedProviders()->values();
         $existingProviderCodes = CascadeProvider::query()->pluck('code')->all();
         $providerCallbackBaseUrl = rtrim(url('/api/v2/providers'), '/');
-        $providerTypes = collect(ProviderType::cases())
-            ->map(fn (ProviderType $type) => [
-                'code' => $type->value,
-                'name' => $type === ProviderType::INTERNAL ? 'Внутренний' : 'Внешний',
-            ])
-            ->values();
         $liquidityUsers = User::role('Provider Liquidity')
             ->orderBy('email')
             ->get(['id', 'email']);
@@ -41,7 +34,6 @@ class CascadeProviderController extends Controller
             'implementedProviders',
             'existingProviderCodes',
             'providerCallbackBaseUrl',
-            'providerTypes',
             'liquidityUsers'
         ));
     }

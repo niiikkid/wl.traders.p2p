@@ -12,7 +12,6 @@ const props = defineProps({
     implementedProviders: Array,
     existingProviderCodes: Array,
     providerCallbackBaseUrl: String,
-    providerTypes: Array,
     liquidityUsers: Array,
 });
 
@@ -29,11 +28,9 @@ const form = useForm({
     min_profit_percent: 0,
     base_url: '',
     access_token: '',
-    merchant_id: '',
     currency_code: '',
     timeout: 10,
     verify_ssl: true,
-    description: '',
 });
 
 const providerOptions = computed(() => {
@@ -75,18 +72,16 @@ const openCreateModal = () => {
     form.defaults({
         code: providerOptions.value[0]?.code ?? '',
         name: providerOptions.value[0]?.name ?? '',
-        provider_type: providerOptions.value[0]?.code === 'internal' ? 'internal' : 'external',
+        provider_type: 'external',
         user_id: null,
         is_active: true,
         priority: null,
         min_profit_percent: 0,
         base_url: '',
         access_token: '',
-        merchant_id: '',
         currency_code: '',
         timeout: 10,
         verify_ssl: true,
-        description: '',
     });
     form.reset();
     fillFromImplementation();
@@ -106,11 +101,9 @@ const openEditModal = (provider) => {
         min_profit_percent: provider.min_profit_percent ?? 0,
         base_url: provider.base_url ?? '',
         access_token: provider.access_token ?? '',
-        merchant_id: provider.merchant_id ?? '',
         currency_code: provider.currency_code ?? '',
         timeout: provider.timeout,
         verify_ssl: provider.verify_ssl,
-        description: provider.description ?? '',
     });
     form.reset();
     isModalOpen.value = true;
@@ -148,7 +141,6 @@ const fillFromImplementation = () => {
         form.min_profit_percent = 0;
         form.base_url = '';
         form.access_token = '';
-        form.merchant_id = '';
         form.currency_code = '';
         form.verify_ssl = true;
     } else {
@@ -365,26 +357,6 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors.name" class="label text-error text-xs">{{ form.errors.name }}</p>
                         </fieldset>
 
-                        <fieldset v-if="isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Тип</legend>
-                            <p class="text-sm opacity-80">Внутренний (задан реализацией, не меняется)</p>
-                            <p v-if="form.errors.provider_type" class="label text-error text-xs">{{ form.errors.provider_type }}</p>
-                        </fieldset>
-
-                        <fieldset v-else class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Тип</legend>
-                            <select v-model="form.provider_type" class="select select-bordered select-sm w-full">
-                                <option
-                                    v-for="type in providerTypes"
-                                    :key="type.code"
-                                    :value="type.code"
-                                >
-                                    {{ type.name }}
-                                </option>
-                            </select>
-                            <p v-if="form.errors.provider_type" class="label text-error text-xs">{{ form.errors.provider_type }}</p>
-                        </fieldset>
-
                         <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Пользователь Provider Liquidity</legend>
                             <select v-model="form.user_id" class="select select-bordered select-sm w-full">
@@ -420,12 +392,6 @@ defineOptions({ layout: AuthenticatedLayout });
                             <legend class="fieldset-legend text-xs">Token</legend>
                             <input v-model="form.access_token" type="text" class="input input-bordered input-sm w-full" />
                             <p v-if="form.errors.access_token" class="label text-error text-xs">{{ form.errors.access_token }}</p>
-                        </fieldset>
-
-                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Merchant ID</legend>
-                            <input v-model="form.merchant_id" type="text" class="input input-bordered input-sm w-full" />
-                            <p v-if="form.errors.merchant_id" class="label text-error text-xs">{{ form.errors.merchant_id }}</p>
                         </fieldset>
 
                         <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
@@ -484,12 +450,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                 Эту ссылку передайте внешнему сервису для webhook callback.
                             </p>
                         </div>
-                    </fieldset>
-
-                    <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                        <legend class="fieldset-legend text-xs">Описание</legend>
-                        <textarea v-model="form.description" class="textarea textarea-bordered textarea-sm w-full min-h-16"></textarea>
-                        <p v-if="form.errors.description" class="label text-error text-xs">{{ form.errors.description }}</p>
                     </fieldset>
 
                     <div class="modal-action mt-1">

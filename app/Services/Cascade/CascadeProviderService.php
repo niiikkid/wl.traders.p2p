@@ -149,7 +149,6 @@ class CascadeProviderService implements CascadeProviderServiceContract
             $config = [
                 'base_url' => $provider->base_url,
                 'access_token' => $provider->access_token,
-                'merchant_id' => $provider->merchant_id,
                 'callback_url' => $this->resolveProviderCallbackUrl($provider),
                 'currency_code' => $provider->currency_code,
                 'timeout' => min(10, max(1, (int) ($provider->timeout ?? 10))),

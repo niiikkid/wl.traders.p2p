@@ -28,12 +28,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property float $min_profit_percent Минимальный процент прибыли для внешнего провайдера
  * @property string|null $base_url Базовый URL провайдера
  * @property string|null $access_token Токен доступа к API
- * @property string|null $merchant_id ID мерчанта у провайдера
  * @property string|null $callback_url Callback URL для провайдера
  * @property string|null $currency_code Валюта для запросов к провайдеру
  * @property int|null $timeout Таймаут запросов (сек)
  * @property bool $verify_ssl Проверка SSL-сертификата
- * @property string|null $description Описание провайдера
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
@@ -51,12 +49,10 @@ class CascadeProvider extends Model
         'min_profit_percent',
         'base_url',
         'access_token',
-        'merchant_id',
         'callback_url',
         'currency_code',
         'timeout',
         'verify_ssl',
-        'description',
     ];
 
     protected $casts = [

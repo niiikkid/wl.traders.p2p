@@ -18,8 +18,7 @@ return new class extends Migration
             $table->string('code')->unique(); // Уникальный код провайдера (например, 'internal', 'external_provider_1')
             $table->string('name'); // Название провайдера для отображения
             $table->string('provider_type'); // Тип провайдера (internal/external)
-            $table->text('description')->nullable(); // Описание провайдера
-            
+
             // Управление
             $table->boolean('is_active')->default(true); // Включен ли провайдер (попадает ли в обработчик)
             

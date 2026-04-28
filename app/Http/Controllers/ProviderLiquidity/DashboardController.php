@@ -34,11 +34,9 @@ class DashboardController extends Controller
                 'is_active' => $provider->is_active,
                 'base_url' => $provider->base_url,
                 'access_token' => $provider->access_token,
-                'merchant_id' => $provider->merchant_id,
                 'currency_code' => $provider->currency_code,
                 'timeout' => $provider->timeout,
                 'verify_ssl' => $provider->verify_ssl,
-                'description' => $provider->description,
                 'created_at' => $provider->created_at?->toISOString(),
             ]] : [],
         ]);
