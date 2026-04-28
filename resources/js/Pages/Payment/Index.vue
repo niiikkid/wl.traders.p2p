@@ -7,7 +7,7 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import OrderModal from "@/Modals/OrderModal.vue";
 import DateTime from "@/Components/DateTime.vue";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
@@ -89,7 +89,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                 <thead class="text-xs uppercase bg-base-300">
                                 <tr>
                                     <th scope="col">
-                                        UUID
+                                        <span class="ml-2">UUID</span>
                                     </th>
                                     <th scope="col">
                                         Сумма
@@ -112,26 +112,37 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col">
                                         Создан
                                     </th>
-                                    <th scope="col" class="px-0 py-3"></th>
-                                    <th scope="col" class="flex justify-center">
-                                        <span class="sr-only">Действия</span>
+                                    <th scope="col">
+                                        
                                     </th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 <tr v-for="order in orders.data" class="bg-base-100 border-b last:border-none">
-                                    <th scope="row" class="font-medium whitespace-nowrap text-gray-900 dark:text-gray-200">
-                                        <DisplayUUID :uuid="order.uuid"/>
+                                    <th scope="row" class="font-medium whitespace-nowrap text-base-content">
+                                        <div class="flex max-w-full flex-nowrap items-center gap-3 ml-2">
+                                            <div class="w-[4rem] min-w-[4rem] shrink-0 overflow-hidden">
+                                                <CopyableOrderUid :uuid="order.uuid ?? ''" class="block max-w-full truncate text-left text-base-content" />
+                                            </div>
+                                            <span
+                                                v-if="order.is_h2h"
+                                                class="badge badge-xs badge-outline badge-secondary mt-0.5 shrink-0"
+                                            >H2H</span>
+                                            <span
+                                                v-else
+                                                class="badge badge-xs badge-outline badge-accent mt-0.5 shrink-0"
+                                            >Merchant</span>
+                                        </div>
                                     </th>
                                     <td>
-                                        <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
-                                        <div class="text-nowrap text-xs">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                        <div class="text-nowrap text-base-content">{{ order.amount }} <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span></div>
+                                        <div class="text-nowrap text-xs"><span class="text-base-content/50">{{ order.total_profit }}</span> <span class="text-primary/50">{{ order.base_currency.toUpperCase() }}</span></div>
                                     </td>
                                     <td>
-                                        <div class="text-nowrap">{{ order.merchant_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                        <div class="text-nowrap">{{ order.merchant_profit }} <span class="text-primary/70">{{ order.base_currency.toUpperCase() }}</span></div>
                                     </td>
                                     <td class="text-nowrap">
-                                        {{ order.service_commission_amount_total }} {{ order.base_currency.toUpperCase() }}
+                                        {{ order.service_commission_amount_total }} <span class="text-primary/70">{{ order.base_currency.toUpperCase() }}</span>
                                     </td>
                                     <td>
                                         {{ order.conversion_price }}
@@ -144,26 +155,6 @@ defineOptions({ layout: AuthenticatedLayout })
                             </td>-->
                                     <td>
                                         <DateTime class="justify-center" :data="order.created_at"/>
-                                    </td>
-                                    <td class="px-0 py-3">
-                                        <div>
-                                            <button
-                                                v-if="order.is_h2h"
-                                                @click.prevent="false"
-                                                type="button"
-                                                class="btn btn-xs btn-outline"
-                                            >
-                                                H2H
-                                            </button>
-                                            <button
-                                                v-else
-                                                @click.prevent="false"
-                                                type="button"
-                                                class="btn btn-xs btn-outline"
-                                            >
-                                                Merchant
-                                            </button>
-                                        </div>
                                     </td>
                                     <td class="text-right">
                                         <TableActionsDropdown>
@@ -191,11 +182,22 @@ defineOptions({ layout: AuthenticatedLayout })
                             >
                                 <div class="card-body p-4 pt-2 pb-3">
                                     <!-- Шапка: UUID и дата создания -->
-                                    <div class="flex justify-between items-center border-b border-base-content/10 mb-2">
-                                        <div class="inline-flex items-center">
-                                            <span class="text-base-content/70">UUID:</span> <DisplayUUID :uuid="order.uuid"/>
+                                    <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-base-content/10 mb-2">
+                                        <div class="flex min-w-0 max-w-full flex-nowrap items-start gap-3">
+                                            <span class="text-base-content/70 shrink-0 pt-0.5">UUID:</span>
+                                            <div class="w-[10rem] min-w-[10rem] shrink-0 overflow-hidden">
+                                                <CopyableOrderUid :uuid="order.uuid ?? ''" class="block max-w-full truncate text-left text-base-content" />
+                                            </div>
+                                            <span
+                                                v-if="order.is_h2h"
+                                                class="badge badge-xs badge-outline badge-secondary mt-0.5 shrink-0"
+                                            >H2H</span>
+                                            <span
+                                                v-else
+                                                class="badge badge-xs badge-outline badge-accent mt-0.5 shrink-0"
+                                            >Merchant</span>
                                         </div>
-                                        <div class="inline-flex items-center">
+                                        <div class="inline-flex shrink-0 items-center">
                                             <DateTime class="justify-start" :data="order.created_at"/>
                                         </div>
                                     </div>
@@ -205,35 +207,19 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex items-start justify-between">
                                             <div class="text-base-content/70 text-sm">Сумма </div>
                                             <div>
-                                                <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
-                                                <div class="text-nowrap text-xs opacity-70">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                                <div class="text-nowrap text-base-content">{{ order.amount }} <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span></div>
+                                                <div class="text-nowrap text-xs"><span class="text-base-content/50">{{ order.total_profit }}</span> <span class="text-primary/50">{{ order.base_currency.toUpperCase() }}</span></div>
                                             </div>
                                         </div>
                                         <div class="flex items-center justify-between">
                                             <div class="text-base-content/70 text-sm">Прибыль</div>
                                             <div>
-                                                <div class="text-nowrap text-base-content">{{ order.merchant_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                                <div class="text-nowrap text-base-content">{{ order.merchant_profit }} <span class="text-primary/70">{{ order.base_currency.toUpperCase() }}</span></div>
                                             </div>
                                         </div>
                                         <div class="flex items-center justify-between border-t border-base-content/10 pt-2 mt-2">
                                             <OrderStatus :status="order.status" :status_name="order.status_name"></OrderStatus>
                                             <div class="flex items-center gap-2">
-                                                <span
-                                                    v-if="order.is_h2h"
-                                                    @click.prevent="false"
-                                                    type="button"
-                                                    class="badge badge-sm badge-outline"
-                                                >
-                                                    H2H
-                                                </span>
-                                                <span
-                                                    v-else
-                                                    @click.prevent="false"
-                                                    type="button"
-                                                    class="badge badge-sm badge-outline"
-                                                >
-                                                    Merchant
-                                                </span>
                                                 <button
                                                     class="btn btn-primary btn-xs"
                                                     @click.stop="toggleExpand(order.id)"
@@ -256,11 +242,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex flex-col gap-2">
                                             <div class="flex items-center justify-between">
                                                 <div class="text-base-content/70 text-sm">Прибыль</div>
-                                                <div class="text-nowrap">{{ order.merchant_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                                <div class="text-nowrap">{{ order.merchant_profit }} <span class="text-primary/70">{{ order.base_currency.toUpperCase() }}</span></div>
                                             </div>
                                             <div class="flex items-center justify-between">
                                                 <div class="text-base-content/70 text-sm">Комиссия</div>
-                                                <div class="text-nowrap">{{ order.service_commission_amount_total }} {{ order.base_currency.toUpperCase() }}</div>
+                                                <div class="text-nowrap">{{ order.service_commission_amount_total }} <span class="text-primary/70">{{ order.base_currency.toUpperCase() }}</span></div>
                                             </div>
                                             <div class="flex items-center justify-between">
                                                 <div class="text-base-content/70 text-sm">Курс</div>
