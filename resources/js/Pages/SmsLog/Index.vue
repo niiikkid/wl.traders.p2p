@@ -201,6 +201,15 @@ defineOptions({ layout: AuthenticatedLayout })
             :data="smsLogs"
             :display-pagination="currentTab === 'logs'"
         >
+            <template v-if="viewStore.isAdminViewMode" #button>
+                <button
+                    type="button"
+                    class="btn btn-outline btn-sm shrink-0"
+                    @click="router.visit(route('admin.app.index'), { preserveScroll: true })"
+                >
+                    Приложение
+                </button>
+            </template>
             <template v-slot:header>
                 <ul v-if="viewStore.isAdminViewMode" class="flex flex-wrap text-sm font-medium text-center">
                     <li class="me-2">

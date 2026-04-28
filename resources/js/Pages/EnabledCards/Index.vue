@@ -15,6 +15,9 @@ const page = usePage();
 const routePrefix = computed(() => route().current('support.*') ? 'support' : 'admin');
 const filtersBasePath = computed(() => routePrefix.value === 'support' ? '/support/filters' : '/admin/filters');
 
+/** Список реквизитов есть только в админке; support/analyst к этой странице приходят отдельными пунктами меню. */
+const showPaymentDetailsLink = computed(() => route().current('admin.enabled-cards.*'));
+
 // Имя для куки
 const CURRENCY_COOKIE_NAME = 'selected_currency';
 
@@ -149,7 +152,17 @@ const removeLimitLevel = (amount) => {
 
         <div class="mx-auto space-y-6">
             <div class="grid gap-3 md:flex md:justify-between md:items-center">
-                <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Включенные реквизиты</h2>
+                <div class="flex flex-wrap items-center gap-3">
+                    <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Включенные реквизиты</h2>
+                    <button
+                        v-if="showPaymentDetailsLink"
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0"
+                        @click="router.visit(route('admin.payment-details.index'), { preserveScroll: true })"
+                    >
+                        Реквизиты
+                    </button>
+                </div>
 
                 <!-- Селект валют -->
                 <div class="flex items-center justify-end gap-3">

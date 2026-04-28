@@ -337,6 +337,14 @@ defineOptions({ layout: AuthenticatedLayout })
         >
             <template v-slot:button>
                 <button
+                    v-if="viewStore.isAdminViewMode"
+                    type="button"
+                    class="btn btn-outline btn-sm shrink-0"
+                    @click="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
+                >
+                    Включенные реквизиты
+                </button>
+                <button
                     @click="openCreateModal"
                     type="button"
                     class="hidden md:block btn btn-sm btn-primary"

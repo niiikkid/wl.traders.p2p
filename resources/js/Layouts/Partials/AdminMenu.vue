@@ -116,7 +116,7 @@ router.on('success', (event) => {
                 Платежные методы
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.payment-details.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.payment-details.*') || route().current('admin.enabled-cards.*') }]">
             <span
                 @click="router.visit(route('admin.payment-details.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('admin.payment-details.index'), { preserveScroll: true })"
@@ -130,19 +130,6 @@ router.on('success', (event) => {
                 <span v-if="menu.activeDetails" class="badge badge-success badge-sm justify-self-end">
                     {{ menu.activeDetails }}
                 </span>
-            </span>
-        </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.enabled-cards.*') }]">
-            <span
-                @click="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h10M9 12h10M9 16h10M5 8h0m0 4h0m0 4h0"/>
-                </svg>
-                Вкл. реквизиты
             </span>
         </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.traders-analytics.*') }]">
@@ -250,7 +237,7 @@ router.on('success', (event) => {
                 </span>
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.sms-logs.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.sms-logs.*') || route().current('admin.app.*') }]">
             <span
                 @click="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"
@@ -258,9 +245,9 @@ router.on('success', (event) => {
                 tabindex="0"
             >
                 <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.556 8.5h8m-8 3.5H12m7.111-7H4.89a.896.896 0 0 0-.629.256.868.868 0 0 0-.26.619v9.25c0 .232.094.455.26.619A.896.896 0 0 0 4.89 16H9l3 4 3-4h4.111a.896.896 0 0 0 .629-.256.868.868 0 0 0 .26-.619v-9.25a.868.868 0 0 0-.26-.619.896.896 0 0 0-.63-.256Z"/>
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
                 </svg>
-                Сообщения
+                Автоматика
             </span>
         </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.merchant-api-logs.*') }]">
@@ -287,20 +274,6 @@ router.on('success', (event) => {
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6h-8m8 4H6m12 4h-8m8 4H6"/>
                 </svg>
                 Логи колбеков
-            </span>
-        </li>
-
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.app.*') }]">
-            <span
-                @click="router.visit(route('admin.app.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('admin.app.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
-                </svg>
-                Приложение
             </span>
         </li>
 
