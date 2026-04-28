@@ -36,6 +36,9 @@ class LandingPageController extends Controller
         if ($user->hasRole('Team Leader')) {
             return redirect()->route('leader.main.index');
         }
+        if ($user->hasRole('Provider Liquidity')) {
+            return redirect()->route('provider-liquidity.main.index');
+        }
 
         return redirect()->route('admin.main.index');
     }
