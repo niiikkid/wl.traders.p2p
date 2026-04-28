@@ -1,12 +1,24 @@
 <script setup>
-import {Head} from '@inertiajs/vue3';
+import {Head, router} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import Pagination from '@/Components/Pagination.vue';
+import Pagination from '@/Components/Pagination/Pagination.vue';
 
 defineProps({
     wallet: Object,
     transactions: Object,
 });
+
+const changePage = (pageNumber) => {
+    router.get(
+        route(route().current()),
+        {page: pageNumber},
+        {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        },
+    );
+};
 </script>
 
 <template>
@@ -47,7 +59,14 @@ defineProps({
                     </tbody>
                 </table>
             </div>
-            <Pagination v-if="transactions" :links="transactions.links" />
+            <Pagination
+                v-if="transactions?.meta"
+                :model-value="transactions.meta.current_page"
+                :total-pages="transactions.meta.last_page"
+                :per-page="transactions.meta.per_page"
+                :total-items="transactions.meta.total"
+                @page-changed="changePage"
+            />
         </div>
     </AuthenticatedLayout>
 </template>
