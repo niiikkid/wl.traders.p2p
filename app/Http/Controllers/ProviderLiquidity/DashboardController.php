@@ -68,6 +68,11 @@ class DashboardController extends Controller
         return Inertia::render('ProviderLiquidity/Deals', compact('deals', 'filters', 'filtersVariants'));
     }
 
+    /**
+     * Логи API/callback: только записи с {@see CascadeProviderLog::$provider_id},
+     * совпадающим с интеграцией текущего пользователя ({@see ProviderLiquidityDashboardService::resolveProvider}).
+     * Параметры запроса не подменяют провайдера — чужие логи недоступны.
+     */
     public function logs(Request $request)
     {
         $provider = $this->providerLiquidityDashboardService->resolveProvider($request);
@@ -81,7 +86,7 @@ class DashboardController extends Controller
         $logs = $provider
             ? TableCascadeProviderLogResource::collection(
                 CascadeProviderLog::query()
-                    ->where('provider_id', $provider->id)
+                    ->forCascadeProvider($provider)
                     ->with(['cascadeDeal', 'cascadeTransaction', 'provider'])
                     ->when($filters['type'] === 'api', fn (Builder $query) => $query->where('operation', '!=', 'callback'))
                     ->when($filters['type'] === 'callback', fn (Builder $query) => $query->where('operation', 'callback'))
@@ -109,7 +114,7 @@ class DashboardController extends Controller
             'filterOptions' => [
                 'operations' => $provider
                     ? CascadeProviderLog::query()
-                        ->where('provider_id', $provider->id)
+                        ->forCascadeProvider($provider)
                         ->select('operation')
                         ->distinct()
                         ->orderBy('operation')

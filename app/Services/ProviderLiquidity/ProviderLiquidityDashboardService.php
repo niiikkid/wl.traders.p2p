@@ -56,6 +56,11 @@ class ProviderLiquidityDashboardService
         ];
     }
 
+    /**
+     * Интеграция каскада для зоны Provider Liquidity: по пользователю, привязанному к записи
+     * cascade_providers.user_id. Идентификатор провайдера из запроса не используется.
+     * Для роли Super Admin при обходе этой зоны возвращается первая интеграция с непустым user_id (поведение только для админов).
+     */
     public function resolveProvider(Request $request): ?CascadeProvider
     {
         $user = $request->user();

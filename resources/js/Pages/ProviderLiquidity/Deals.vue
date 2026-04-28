@@ -20,7 +20,7 @@ defineOptions({ layout: AuthenticatedLayout });
 </script>
 
 <template>
-    <div>
+    <div class="pl-3 sm:pl-4">
         <Head title="Сделки" />
 
         <MainTableSection
@@ -57,11 +57,11 @@ defineOptions({ layout: AuthenticatedLayout });
                     <table class="table table-sm">
                         <thead class="text-xs uppercase bg-base-300">
                             <tr>
-                                <th scope="col">UUID</th>
+                                <th scope="col" class="pl-4">UUID</th>
                                 <th scope="col">Внешний ID</th>
                                 <th scope="col">Сумма</th>
                                 <th scope="col">Статус</th>
-                                <th scope="col">Создана</th>
+                                <th scope="col" class="text-right pr-3 sm:pr-4">Создана</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -70,7 +70,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                 :key="deal.id"
                                 class="bg-base-100 border-b last:border-none border-base-200"
                             >
-                                <th scope="row" class="font-medium whitespace-nowrap">
+                                <th scope="row" class="font-medium whitespace-nowrap pl-4">
                                     <CopyableOrderUid :uuid="deal.uuid ?? ''" />
                                 </th>
                                 <td class="text-nowrap text-base-content">
@@ -78,10 +78,10 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </td>
                                 <td>
                                     <div class="text-nowrap text-base-content">
-                                        {{ deal.amount }} {{ (deal.currency ?? '').toUpperCase() }}
+                                        {{ deal.amount }} <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
                                     </div>
-                                    <div class="text-nowrap text-xs opacity-70">
-                                        {{ deal.service_profit ?? 0 }} {{ (deal.base_currency ?? '').toUpperCase() }}
+                                    <div class="text-nowrap text-xs">
+                                        <span class="text-base-content/50">{{ deal.service_profit ?? 0 }}</span> <span class="text-primary/50">{{ (deal.base_currency ?? '').toUpperCase() }}</span>
                                     </div>
                                 </td>
                                 <td class="align-middle">
@@ -92,11 +92,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                         :sub_status_name="deal.sub_status_name"
                                     />
                                 </td>
-                                <td>
-                                    <DateTime
-                                        class="justify-start"
-                                        :data="deal.created_at"
-                                    />
+                                <td class="text-right align-middle pr-3 sm:pr-4">
+                                    <div class="flex justify-end">
+                                        <DateTime
+                                            :data="deal.created_at"
+                                        />
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

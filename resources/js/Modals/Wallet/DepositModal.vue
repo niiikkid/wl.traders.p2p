@@ -9,6 +9,8 @@ import { useModalStore } from "@/store/modal.js";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import {router, useForm} from "@inertiajs/vue3";
+import {computed} from "vue";
+import {useViewStore} from "@/store/view.js";
 import InputHelper from "@/Components/InputHelper.vue";
 import NumberInput from "@/Components/NumberInput.vue";
 import TextInput from "@/Components/TextInput.vue";
@@ -21,6 +23,11 @@ const props = defineProps({
 
 const modalStore = useModalStore();
 const { depositModal } = storeToRefs(modalStore);
+const viewStore = useViewStore();
+
+const providerDepositModalTitle = computed(() =>
+    viewStore.isAdminViewMode ? 'Пополнение баланса провайдера' : 'Пополнение баланса',
+);
 
 const close = () => {
     modalStore.closeModal('deposit')
@@ -71,7 +78,7 @@ const deposit = () => {
         </template>
         <template v-if="balanceType === 'provider'">
             <ModalHeader
-                title="Пополнение баланса провайдера"
+                :title="providerDepositModalTitle"
                 @close="close"
             />
         </template>

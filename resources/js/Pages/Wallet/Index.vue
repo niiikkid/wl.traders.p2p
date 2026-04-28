@@ -58,6 +58,11 @@ const showProviderBalanceCard = computed(() => {
     return false;
 });
 
+/** У админа на кошельке пользователя — «баланс провайдера»; у самого провайдера в финансах — «баланс». */
+const providerBalanceCardTitle = computed(() =>
+    viewStore.isAdminViewMode ? 'Баланс провайдера' : 'Баланс',
+);
+
 const showEscrowBalanceCard = computed(() => {
     const ws = walletSurfaces.value;
     if (ws) {
@@ -171,7 +176,11 @@ defineOptions({ layout: AuthenticatedLayout })
             <TrustBalance v-show="showTrustBalanceCard" @setBalanceType="setBalanceType"/>
             <MerchantBalance v-show="showMerchantBalanceCard" @setBalanceType="setBalanceType"/>
             <TeamleaderBalance v-show="showTeamleaderBalanceCard" @setBalanceType="setBalanceType"/>
-            <ProviderBalance v-show="showProviderBalanceCard" @setBalanceType="setBalanceType"/>
+            <ProviderBalance
+                v-show="showProviderBalanceCard"
+                :title="providerBalanceCardTitle"
+                @setBalanceType="setBalanceType"
+            />
             <EscrowBalance v-show="showEscrowBalanceCard" @setBalanceType="setBalanceType"/>
             <DisputeBalance v-show="showDisputeBalanceCard" @setBalanceType="setBalanceType"/>
         </div>

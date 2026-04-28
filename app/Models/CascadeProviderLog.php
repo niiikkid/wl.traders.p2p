@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -78,5 +79,13 @@ class CascadeProviderLog extends Model
     public function provider(): BelongsTo
     {
         return $this->belongsTo(CascadeProvider::class);
+    }
+
+    /**
+     * Ограничить выборку логами конкретной интеграции (tenant-провайдер).
+     */
+    public function scopeForCascadeProvider(Builder $query, CascadeProvider $provider): Builder
+    {
+        return $query->where('provider_id', $provider->getKey());
     }
 }

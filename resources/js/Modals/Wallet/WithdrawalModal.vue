@@ -11,6 +11,7 @@ import NumberInput from "@/Components/NumberInput.vue";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import {router, useForm, usePage} from "@inertiajs/vue3";
+import {computed} from "vue";
 import {useViewStore} from "@/store/view.js";
 import TextInput from "@/Components/TextInput.vue";
 
@@ -25,6 +26,10 @@ const total_merchant_withdrawable_amount = usePage().props.total_merchant_withdr
 const modalStore = useModalStore();
 const { withdrawalModal } = storeToRefs(modalStore);
 const viewStore = useViewStore();
+
+const providerWithdrawalModalTitle = computed(() =>
+    viewStore.isAdminViewMode ? 'Вывод с баланса провайдера' : 'Вывод с баланса',
+);
 
 const close = () => {
     modalStore.closeModal('withdrawal')
@@ -92,7 +97,7 @@ const withdraw = () => {
         </template>
         <template v-if="balanceType === 'provider'">
             <ModalHeader
-                title="Вывод с баланса провайдера"
+                :title="providerWithdrawalModalTitle"
                 @close="close"
             />
         </template>
