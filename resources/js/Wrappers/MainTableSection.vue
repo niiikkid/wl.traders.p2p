@@ -2,6 +2,7 @@
 import {router, usePage} from "@inertiajs/vue3";
 import {computed, ref, getCurrentInstance, watch} from "vue";
 import Pagination from "@/Components/Pagination/Pagination.vue";
+import TableEmptyState from "@/Components/TableEmptyState.vue";
 import AlertError from "@/Components/Alerts/AlertError.vue";
 import AlertInfo from "@/Components/Alerts/AlertInfo.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
@@ -14,8 +15,8 @@ const props = defineProps({
         type: String,
     },
     data: {
-        type: [Object, Array],
         default: null,
+        validator: (value) => value == null || typeof value === 'object',
     },
     paginate: {
         type: Boolean,
@@ -132,11 +133,13 @@ router.on('success', (event) => {
                 </div>
                 <div>
                     <slot v-if="items.length" name="body"/>
-                    <h2 v-else class="text-center text-lg font-medium mb-4 text-base-content">
-                        Пока что тут пусто
-                    </h2>
+                    <TableEmptyState
+                        v-else
+                        title="Пока ничего нет"
+                        description="Записей пока нет — когда появятся данные, они отобразятся здесь."
+                    />
                 </div>
-                <div v-if="paginate && displayPagination" class="flex justify-between items-center">
+                <div v-if="paginate && displayPagination && items.length" class="flex justify-between items-center">
                     <Pagination
                         v-model="tableFiltersStore.page"
                         :total-items="tableFiltersStore.getTotal"

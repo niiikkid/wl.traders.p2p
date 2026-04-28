@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DateTime from '@/Components/DateTime.vue';
@@ -8,19 +9,29 @@ import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
 import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
 import DateFilter from '@/Components/Filters/Pertials/DateFilter.vue';
+import { useHasActiveTableFilters } from '@/composables/useHasActiveTableFilters.js';
 
-defineProps({
+const props = defineProps({
     deals: {
         type: [Object, null],
         default: () => ({ data: [] }),
     },
 });
 
+const hasActiveFilters = useHasActiveTableFilters();
+
+/** Кнопка и панель фильтров — только когда есть сделки или уже заданы фильтры (чтобы можно было сбросить). */
+const showDealFilters = computed(() => {
+    const total = Number(props.deals?.meta?.total ?? 0);
+
+    return total > 0 || hasActiveFilters.value;
+});
+
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
 <template>
-    <div class="pl-3 sm:pl-4">
+    <div>
         <Head title="Сделки" />
 
         <MainTableSection
@@ -28,7 +39,7 @@ defineOptions({ layout: AuthenticatedLayout });
             :data="deals ?? { data: [] }"
         >
             <template #table-filters>
-                <FiltersPanel name="provider-liquidity-deals">
+                <FiltersPanel v-if="showDealFilters" name="provider-liquidity-deals">
                     <InputFilter
                         name="uuid"
                         placeholder="UUID сделки"

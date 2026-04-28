@@ -84,6 +84,30 @@ const prettyJson = (value) => {
     return JSON.stringify(value, null, 2);
 };
 
+const hasActiveLogFilters = computed(() => {
+    if (form.type) {
+        return true;
+    }
+    if (form.operation) {
+        return true;
+    }
+    if (form.is_successful !== '' && form.is_successful != null) {
+        return true;
+    }
+    if (String(form.search ?? '').trim() !== '') {
+        return true;
+    }
+
+    return false;
+});
+
+/** Панель фильтров — только при наличии логов или при активных фильтрах (чтобы можно было сбросить). */
+const showLogFilters = computed(() => {
+    const total = Number(props.logs?.meta?.total ?? 0);
+
+    return total > 0 || hasActiveLogFilters.value;
+});
+
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -96,7 +120,7 @@ defineOptions({ layout: AuthenticatedLayout });
             :data="logs"
         >
             <template #table-filters>
-                <div class="card bg-base-100 shadow-sm">
+                <div v-if="showLogFilters" class="card bg-base-100 shadow-sm">
                     <div class="card-body p-4 gap-4">
                         <div class="flex flex-wrap items-center gap-2">
                             <button type="button" :class="['btn btn-sm', form.type === '' ? 'btn-primary' : 'btn-outline']" @click="setType('')">

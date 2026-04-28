@@ -1,10 +1,9 @@
 <script setup>
-import EmptyTable from "@/Components/EmptyTable.vue";
 import {router, usePage} from "@inertiajs/vue3";
 import {computed, onMounted, ref} from "vue";
 import {useViewStore} from "@/store/view.js";
 import Pagination from "@/Components/Pagination/Pagination.vue";
-import Select from "@/Components/Select.vue";
+import TableEmptyState from "@/Components/TableEmptyState.vue";
 import DateTime from "@/Components/DateTime.vue";
 import CopyAddress from "@/Components/CopyAddress.vue";
 
@@ -140,12 +139,12 @@ const openTransactionsExport = () => {
 
         <div v-if="currentTab === 'invoices'" class="mt-3">
             <div class="mx-auto space-y-2">
-                <h2
+                <TableEmptyState
                     v-if="!invoices?.data?.length"
-                    class="mt-7 text-center text-lg font-medium text-base-content sm:text-xl mb-4"
-                >
-                    Инвойсы не найдены
-                </h2>
+                    class="mt-3"
+                    title="Инвойсов пока нет"
+                    description="По выбранным фильтрам записей о пополнениях и выводах пока нет — при появлении операций они появятся здесь."
+                />
                 <template v-else>
                     <div class="overflow-x-auto card bg-base-100 shadow hidden md:block">
                         <table class="table table-sm">
@@ -273,12 +272,12 @@ const openTransactionsExport = () => {
 
         <div v-if="currentTab === 'transactions'" class="mt-3">
             <div class="mx-auto space-y-2">
-                <h2
+                <TableEmptyState
                     v-if="!transactions?.data?.length"
-                    class="mt-7 text-center text-lg font-medium text-base-content sm:text-xl mb-4"
-                >
-                    Инвойсы не найдены
-                </h2>
+                    class="mt-3"
+                    title="Операций пока нет"
+                    description="По выбранным фильтрам движений по балансу пока нет — при появлении транзакций они отобразятся здесь."
+                />
                 <template v-else>
                     <div class="overflow-x-auto card bg-base-100 shadow hidden md:block">
                         <table class="table table-sm">

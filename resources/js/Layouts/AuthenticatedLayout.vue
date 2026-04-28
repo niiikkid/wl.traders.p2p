@@ -457,7 +457,7 @@ const openDocs = () => {
                         </div>
                     </div>
 
-                    <div class="card bg-base-100">
+                    <div v-show="!viewStore.isProviderLiquidityViewMode" class="card bg-base-100">
                         <div class="card-body">
                             <div class="flex items-center mb-2">
                                 <span class="text-xs text-base-content/70">Курс Tether TRC-20</span>
@@ -521,7 +521,7 @@ const openDocs = () => {
                             </div>
                         </div>
 
-                        <div class="card bg-base-100 shadow">
+                        <div v-show="!viewStore.isProviderLiquidityViewMode" class="card bg-base-100 shadow">
                             <div class="w-full p-6 pb-3">
                                 <div class="flex items-center mb-2">
                                     <span class="text-xs text-base-content font-semibold">Курс Tether TRC-20</span>
