@@ -32,6 +32,7 @@ use App\Services\Cascade\Providers\InternalCascadeProvider;
 use App\Services\Cascade\Providers\SelfTestCascadeProvider;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Support\TraderCommissionTierResolver;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -68,6 +69,10 @@ class CascadeService implements CascadeServiceContract
 
             if ($providers->isEmpty()) {
                 throw CascadeException::make('Нет активных провайдеров каскада.');
+            }
+
+            if ($providers->contains(fn (CascadeProvider $provider): bool => $provider->provider_type->equals(ProviderType::EXTERNAL))) {
+                $this->cascadeProfits($cascade_deal);
             }
 
             cache()->put("cascade:deal:create:$job_id", json_encode([
@@ -885,6 +890,67 @@ class CascadeService implements CascadeServiceContract
                 order: $order,
             ));
         });
+    }
+
+    private function cascadeProfits(CascadeDeal $cascadeDeal): object
+    {
+        if (! $cascadeDeal->conversion_price instanceof Money) {
+            throw CascadeException::make('Для расчёта экономики каскада не зафиксирован курс.');
+        }
+
+        $rates = $this->merchantCommissionRates($cascadeDeal);
+
+        return services()->profit()->calculateInBody(
+            sourceAmount: $cascadeDeal->amount,
+            exchangeRate: $cascadeDeal->conversion_price,
+            totalFeeRate: $rates['total'],
+            traderFeeRate: $rates['trader'],
+        );
+    }
+
+    /**
+     * @return array{total: float, trader: float}
+     */
+    private function merchantCommissionRates(CascadeDeal $cascadeDeal): array
+    {
+        $commissionSettings = $cascadeDeal->merchant->getCommissionSettingForPair(
+            currency: $cascadeDeal->currency,
+            detailType: $cascadeDeal->payment_method->detailType(),
+        );
+
+        if (! $commissionSettings) {
+            throw CascadeException::make('Для мерчанта не настроена комиссия по валюте и типу реквизита.');
+        }
+
+        $traderRate = $commissionSettings['trader_commission_rate_for_orders'];
+        $totalRate = $commissionSettings['total_service_commission_rate_for_orders'];
+
+        if ($traderRate === null || $totalRate === null) {
+            throw CascadeException::make('Для мерчанта не указана комиссия по каскадной сделке.');
+        }
+
+        if (
+            (bool) ($commissionSettings['use_flexible_trader_commission_for_orders'] ?? false)
+            && ! empty($commissionSettings['trader_commission_tiers_for_orders'])
+            && ! empty($commissionSettings['total_service_commission_tiers_for_orders'])
+        ) {
+            $amount = (float) intval($cascadeDeal->amount->toBeauty());
+            $traderRate = TraderCommissionTierResolver::resolveRate(
+                tiers: $commissionSettings['trader_commission_tiers_for_orders'],
+                amount: $amount,
+                defaultRate: (float) $traderRate,
+            );
+            $totalRate = TraderCommissionTierResolver::resolveRate(
+                tiers: $commissionSettings['total_service_commission_tiers_for_orders'],
+                amount: $amount,
+                defaultRate: (float) $totalRate,
+            );
+        }
+
+        return [
+            'total' => (float) $totalRate,
+            'trader' => (float) $traderRate,
+        ];
     }
 
     /**

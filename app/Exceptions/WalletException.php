@@ -6,16 +6,16 @@ class WalletException extends BaseException
 {
     public static function invalidTransactionTypeForTake()
     {
-        return make('Неверный тип транзакции для вывода средств из кошелька.');
+        return static::make('Неверный тип транзакции для вывода средств из кошелька.');
     }
 
     public static function invalidTransactionTypeForGive()
     {
-        return make('Неверный тип транзакции для зачисления на кошелек.');
+        return static::make('Неверный тип транзакции для зачисления на кошелек.');
     }
 
     public static function insufficientFunds()
     {
-        return make('Недостаточно средств на балансе.');
+        return static::make('Недостаточно средств на балансе.');
     }
 }

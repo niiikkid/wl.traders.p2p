@@ -74,6 +74,25 @@ class CascadeProviderAttemptJob implements ShouldQueue
             return;
         }
 
+        $externalProfits = null;
+        if (! $providerModel->provider_type->equals(ProviderType::INTERNAL)) {
+            try {
+                $externalProfits = $this->persistExternalMerchantEconomics($cascadeDeal);
+                $this->ensureExternalProviderHasSufficientBalance($providerModel, $externalProfits->convertedAmount);
+            } catch (Throwable $e) {
+                $this->recordFailure(
+                    cascadeDeal: $cascadeDeal,
+                    providerModel: $providerModel,
+                    transaction: null,
+                    errorCode: get_class($e),
+                    errorMessage: $e->getMessage(),
+                );
+                $this->markAttemptFinished();
+
+                return;
+            }
+        }
+
         $transaction = CascadeTransaction::create([
             'cascade_deal_id' => $cascadeDeal->id,
             'provider_id' => $providerModel->id,
@@ -100,11 +119,6 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 startedAt: $startedAt,
                 isSuccessful: true,
             );
-
-            $externalProfits = null;
-            if (! $providerModel->provider_type->equals(ProviderType::INTERNAL)) {
-                $externalProfits = $this->persistExternalMerchantEconomics($cascadeDeal);
-            }
 
             if (
                 ! $providerModel->provider_type->equals(ProviderType::INTERNAL)
@@ -469,6 +483,22 @@ class CascadeProviderAttemptJob implements ShouldQueue
             ]);
 
         return $profits;
+    }
+
+    private function ensureExternalProviderHasSufficientBalance(CascadeProvider $providerModel, Money $requiredAmount): void
+    {
+        $providerModel->loadMissing('user.wallet');
+        $wallet = $providerModel->user?->wallet;
+
+        if (! $wallet) {
+            throw CascadeException::make('У внешнего провайдера не привязан пользователь Provider Liquidity с кошельком.');
+        }
+
+        $currentBalance = $wallet->provider_balance ?? Money::zero('USDT');
+
+        if ($currentBalance->lessThan($requiredAmount)) {
+            throw CascadeException::make('Недостаточно средств на балансе провайдера.');
+        }
     }
 
     private function cascadeProfits(CascadeDeal $cascadeDeal): object
