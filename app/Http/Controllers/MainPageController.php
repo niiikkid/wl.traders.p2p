@@ -14,6 +14,7 @@ use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\ProviderLiquidity\ProviderLiquidityDashboardService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -177,6 +178,17 @@ class MainPageController extends Controller
         unset($stats['statistics']['totalProfit'], $stats['chart']);
 
         return Inertia::render('MainPage/Analyst/Index', $stats);
+    }
+
+    /**
+     * Главная страница кабинета провайдера ликвидности (каскад).
+     */
+    public function providerLiquidity(Request $request, ProviderLiquidityDashboardService $providerLiquidityDashboardService)
+    {
+        return Inertia::render(
+            'MainPage/ProviderLiquidity/Index',
+            $providerLiquidityDashboardService->buildMainPageProps($request),
+        );
     }
 
     public function adminFilterOptions(Request $request, string $type): JsonResponse

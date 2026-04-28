@@ -200,10 +200,13 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 
 ## 10) Provider Liquidity web-зона
 
-Новые контроллеры/страницы:
+Главная (`/provider-liquidity/main`), как у остальных ролей:
+- `App\Http\Controllers\MainPageController::providerLiquidity()` → `resources/js/Pages/MainPage/ProviderLiquidity/Index.vue`
+- данные главной: `App\Services\ProviderLiquidity\ProviderLiquidityDashboardService`
+
+Остальные экраны зоны:
 - `app/Http/Controllers/ProviderLiquidity/DashboardController.php`
 - `resources/js/Pages/ProviderLiquidity/`
-  - `Dashboard.vue`
   - `Services.vue`
   - `Deals.vue`
   - `Wallet.vue`

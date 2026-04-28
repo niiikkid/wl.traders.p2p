@@ -182,7 +182,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     });
 
     Route::group(['prefix' => 'provider-liquidity', 'as' => 'provider-liquidity.', 'middleware' => ['auth', 'banned', 'role:Provider Liquidity|Super Admin']], function () {
-        Route::get('/main', [ProviderLiquidityDashboardController::class, 'index'])->name('main.index');
+        Route::get('/main', [MainPageController::class, 'providerLiquidity'])->name('main.index');
         Route::get('/services', [ProviderLiquidityDashboardController::class, 'services'])->name('services.index');
         Route::get('/deals', [ProviderLiquidityDashboardController::class, 'deals'])->name('deals.index');
         Route::get('/wallet', [ProviderLiquidityDashboardController::class, 'wallet'])->name('wallet.index');
