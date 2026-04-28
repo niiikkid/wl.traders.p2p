@@ -54,6 +54,13 @@ const selectedImplementation = computed(() => {
     return props.implementedProviders.find((provider) => provider.code === form.code);
 });
 
+/** Реализация `internal` — без внешнего API, ликвидности-пользователя и полей интеграции. */
+const isInternalCascade = computed(() => {
+    const code = editingProvider.value?.code ?? form.code;
+
+    return code === 'internal';
+});
+
 const implementationClassBasename = (fully_qualified_class) => {
     if (! fully_qualified_class) {
         return '';
@@ -84,6 +91,7 @@ const openCreateModal = () => {
         description: '',
     });
     form.reset();
+    fillFromImplementation();
     isModalOpen.value = true;
 };
 
@@ -149,7 +157,19 @@ const fillFromImplementation = () => {
     }
 
     form.name = selectedImplementation.value.name;
-    form.provider_type = selectedImplementation.value.code === 'internal' ? 'internal' : 'external';
+    if (selectedImplementation.value.code === 'internal') {
+        form.provider_type = 'internal';
+        form.user_id = null;
+        form.priority = null;
+        form.min_profit_percent = 0;
+        form.base_url = '';
+        form.access_token = '';
+        form.merchant_id = '';
+        form.currency_code = '';
+        form.verify_ssl = true;
+    } else {
+        form.provider_type = 'external';
+    }
 };
 
 const selectedProviderCode = computed(() => {
@@ -375,7 +395,13 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors.name" class="label text-error text-xs">{{ form.errors.name }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset v-if="isInternalCascade" class="fieldset gap-1">
+                            <legend class="fieldset-legend text-xs">Тип</legend>
+                            <p class="text-sm opacity-80">Внутренний (задан реализацией, не меняется)</p>
+                            <p v-if="form.errors.provider_type" class="label text-error text-xs">{{ form.errors.provider_type }}</p>
+                        </fieldset>
+
+                        <fieldset v-else class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Тип</legend>
                             <select v-model="form.provider_type" class="select select-bordered select-sm w-full">
                                 <option
@@ -389,7 +415,7 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors.provider_type" class="label text-error text-xs">{{ form.errors.provider_type }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Пользователь Provider Liquidity</legend>
                             <select v-model="form.user_id" class="select select-bordered select-sm w-full">
                                 <option :value="null">Не привязан</option>
@@ -404,7 +430,7 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors.user_id" class="label text-error text-xs">{{ form.errors.user_id }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Приоритет</legend>
                             <div class="grid grid-cols-2 gap-2">
                                 <input v-model="form.priority" type="number" min="0" class="input input-bordered input-sm w-full" placeholder="Приоритет" />
@@ -414,25 +440,25 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors.min_profit_percent" class="label text-error text-xs">{{ form.errors.min_profit_percent }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Base URL</legend>
                             <input v-model="form.base_url" type="url" class="input input-bordered input-sm w-full" placeholder="https://example.com" />
                             <p v-if="form.errors.base_url" class="label text-error text-xs">{{ form.errors.base_url }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Token</legend>
                             <input v-model="form.access_token" type="text" class="input input-bordered input-sm w-full" />
                             <p v-if="form.errors.access_token" class="label text-error text-xs">{{ form.errors.access_token }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Merchant ID</legend>
                             <input v-model="form.merchant_id" type="text" class="input input-bordered input-sm w-full" />
                             <p v-if="form.errors.merchant_id" class="label text-error text-xs">{{ form.errors.merchant_id }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Валюта</legend>
                             <input v-model="form.currency_code" type="text" maxlength="10" class="input input-bordered input-sm w-full" placeholder="RUB" />
                             <p v-if="form.errors.currency_code" class="label text-error text-xs">{{ form.errors.currency_code }}</p>
@@ -451,13 +477,13 @@ defineOptions({ layout: AuthenticatedLayout });
                             <span class="text-sm">Активен</span>
                         </label>
 
-                        <label class="label cursor-pointer justify-start gap-2 py-0">
+                        <label v-if="! isInternalCascade" class="label cursor-pointer justify-start gap-2 py-0">
                             <input v-model="form.verify_ssl" type="checkbox" class="toggle toggle-primary" />
                             <span class="text-sm">SSL</span>
                         </label>
                     </div>
 
-                    <fieldset class="fieldset gap-1">
+                    <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                         <legend class="fieldset-legend text-xs">Callback endpoint</legend>
                         <div class="rounded-box border border-base-300 p-3 bg-base-200/40 space-y-2">
                             <div class="flex items-center gap-2 flex-wrap">
@@ -490,7 +516,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         </div>
                     </fieldset>
 
-                    <fieldset class="fieldset gap-1">
+                    <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
                         <legend class="fieldset-legend text-xs">Описание</legend>
                         <textarea v-model="form.description" class="textarea textarea-bordered textarea-sm w-full min-h-16"></textarea>
                         <p v-if="form.errors.description" class="label text-error text-xs">{{ form.errors.description }}</p>

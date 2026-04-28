@@ -68,6 +68,20 @@ class StoreRequest extends FormRequest
             'timeout' => $this->timeout ?: 10,
             'min_profit_percent' => $this->min_profit_percent ?? 0,
         ]);
+
+        if ($this->input('code') === 'internal') {
+            $this->merge([
+                'provider_type' => ProviderType::INTERNAL->value,
+                'user_id' => null,
+                'priority' => null,
+                'min_profit_percent' => 0,
+                'base_url' => null,
+                'access_token' => null,
+                'merchant_id' => null,
+                'currency_code' => null,
+                'verify_ssl' => true,
+            ]);
+        }
     }
 
     /**
