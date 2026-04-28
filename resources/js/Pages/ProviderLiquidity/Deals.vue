@@ -16,23 +16,15 @@ defineProps({
     },
 });
 
-const formatCurrency = (amount, currency) => {
-    if (amount === null || amount === undefined || amount === '') {
-        return 'Пусто';
-    }
-
-    return `${amount} ${currency ?? ''}`.trim();
-};
-
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
 <template>
     <div>
-        <Head title="Сделки провайдера" />
+        <Head title="Сделки" />
 
         <MainTableSection
-            title="Сделки провайдера ликвидности"
+            title="Сделки"
             :data="deals ?? { data: [] }"
         >
             <template #table-filters>
@@ -44,10 +36,6 @@ defineOptions({ layout: AuthenticatedLayout });
                     <InputFilter
                         name="externalID"
                         placeholder="External ID"
-                    />
-                    <InputFilter
-                        name="clientId"
-                        placeholder="ID клиента мерчанта"
                     />
                     <InputFilter
                         name="amount"
@@ -70,11 +58,9 @@ defineOptions({ layout: AuthenticatedLayout });
                         <thead class="text-xs uppercase bg-base-300">
                             <tr>
                                 <th scope="col">UUID</th>
-                                <th scope="col">External ID</th>
-                                <th scope="col">Клиент</th>
+                                <th scope="col">Внешний ID</th>
                                 <th scope="col">Сумма</th>
                                 <th scope="col">Статус</th>
-                                <th scope="col">Залог</th>
                                 <th scope="col">Создана</th>
                             </tr>
                         </thead>
@@ -82,45 +68,29 @@ defineOptions({ layout: AuthenticatedLayout });
                             <tr
                                 v-for="deal in (deals?.data ?? [])"
                                 :key="deal.id"
-                                class="hover"
+                                class="bg-base-100 border-b last:border-none border-base-200"
                             >
                                 <th scope="row" class="font-medium whitespace-nowrap">
                                     <CopyableOrderUid :uuid="deal.uuid ?? ''" />
                                 </th>
-                                <td class="text-nowrap">
+                                <td class="text-nowrap text-base-content">
                                     <CopyableOrderUid :uuid="deal.external_id ?? ''" />
                                 </td>
                                 <td>
                                     <div class="text-nowrap text-base-content">
-                                        {{ deal.merchant?.name ?? 'Пусто' }}
+                                        {{ deal.amount }} {{ (deal.currency ?? '').toUpperCase() }}
                                     </div>
-                                    <div class="text-nowrap text-xs text-base-content/60">
-                                        <span class="mr-1">Client:</span>
-                                        <CopyableOrderUid :uuid="deal.merchant_client?.external_id ?? ''" />
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="text-nowrap">
-                                        {{ formatCurrency(deal.amount, deal.currency) }}
-                                    </div>
-                                    <div class="text-nowrap text-xs text-base-content/60">
-                                        Profit: {{ formatCurrency(deal.service_profit, deal.base_currency) }}
+                                    <div class="text-nowrap text-xs opacity-70">
+                                        {{ deal.service_profit ?? 0 }} {{ (deal.base_currency ?? '').toUpperCase() }}
                                     </div>
                                 </td>
-                                <td>
+                                <td class="align-middle">
                                     <OrderStatus
+                                        inline
                                         :status="deal.status"
                                         :status_name="deal.status_name"
+                                        :sub_status_name="deal.sub_status_name"
                                     />
-                                    <div
-                                        v-if="deal.sub_status"
-                                        class="text-nowrap text-xs text-base-content/60"
-                                    >
-                                        {{ deal.sub_status_name ?? deal.sub_status }}
-                                    </div>
-                                </td>
-                                <td>
-                                    {{ formatCurrency(deal.collateral_holds?.[0]?.amount, deal.collateral_holds?.[0]?.currency ?? deal.base_currency) }}
                                 </td>
                                 <td>
                                     <DateTime

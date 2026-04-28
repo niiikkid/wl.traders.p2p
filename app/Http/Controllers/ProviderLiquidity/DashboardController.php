@@ -51,10 +51,9 @@ class DashboardController extends Controller
         $deals = $provider
             ? TableCascadeDealResource::collection(
                 $provider->deals()
-                    ->with(['merchant', 'merchantClient', 'selectedTransaction', 'collateralHolds'])
+                    ->with(['merchant', 'merchantClient', 'selectedTransaction'])
                     ->when($filters->uuid, fn ($query) => $query->where('uuid', 'like', "%{$filters->uuid}%"))
                     ->when($filters->externalID, fn ($query) => $query->where('external_id', 'like', "%{$filters->externalID}%"))
-                    ->when($filters->clientId, fn ($query) => $query->whereRelation('merchantClient', 'external_id', 'like', "%{$filters->clientId}%"))
                     ->when($filters->amount, function ($query) use ($filters) {
                         $query->where('amount', Money::fromPrecision($filters->amount, Currency::USDT()->getCode())->toUnits());
                     })

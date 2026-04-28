@@ -1,11 +1,12 @@
 <script setup>
-import {Head, Link, router, usePage} from '@inertiajs/vue3';
+import {Head, router, usePage} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DateTime from '@/Components/DateTime.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import OrderStatus from '@/Components/OrderStatus.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
+import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
 
 const cascadeDeals = ref(usePage().props.cascadeDeals);
 const selectedDeal = ref(null);
@@ -54,22 +55,7 @@ defineOptions({ layout: AuthenticatedLayout })
             :data="cascadeDeals"
         >
             <template #button>
-                <div class="join join-horizontal shrink-0">
-                    <Link
-                        :href="route('admin.cascade-providers.index')"
-                        class="btn btn-sm btn-outline join-item"
-                        preserve-scroll
-                    >
-                        Интеграции
-                    </Link>
-                    <Link
-                        :href="route('admin.cascade-provider-logs.index')"
-                        class="btn btn-sm btn-outline join-item"
-                        preserve-scroll
-                    >
-                        Логи
-                    </Link>
-                </div>
+                <CascadeSectionNav active="deals" />
             </template>
 
             <template v-slot:body>

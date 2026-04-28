@@ -1,11 +1,12 @@
 <script setup>
-import {Head, Link, router} from '@inertiajs/vue3';
+import {Head, router} from '@inertiajs/vue3';
 import {computed, reactive, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DateTime from '@/Components/DateTime.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import CopyableExternalId from '@/Components/CopyableExternalId.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
+import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
 
 const props = defineProps({
     logs: Object,
@@ -98,13 +99,7 @@ defineOptions({ layout: AuthenticatedLayout });
             :data="logs"
         >
             <template #button>
-                <Link
-                    :href="route('admin.cascade-deals.index')"
-                    class="btn btn-sm btn-outline shrink-0"
-                    preserve-scroll
-                >
-                    Сделки
-                </Link>
+                <CascadeSectionNav active="logs" />
             </template>
 
             <template #table-filters>
