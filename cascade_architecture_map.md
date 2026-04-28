@@ -127,7 +127,7 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 
 Поведение:
 1. Только для **external** победителя.
-2. После победы удерживает залог с `trust_balance` provider wallet:
+2. После победы удерживает залог с `provider_balance` provider wallet:
    - сумма = `CascadeDeal.usdt_amount` (обязательство перед мерчантом).
 3. Удержание хранится как `FundsOnHold` (holdable = `CascadeDeal`).
 4. Есть 2 admin-операции:
@@ -235,9 +235,9 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 - `resources/js/Pages/Admin/CascadeProviders/Index.vue`
 
 Что добавлено:
-- привязка `Provider Liquidity` пользователя к провайдеру;
-- отображение trust balance;
-- admin deposit/withdraw;
+- привязка `Provider Liquidity` пользователя к провайдеру (в форме создания/редактирования);
+- список провайдеров на `Index.vue` без колонок «тип»/«залог» и без операций с балансом (экономика провайдера — в зоне Provider Liquidity и отдельных админ-экранах при необходимости);
+- `CascadeProviderWalletController`: операции с кошельком/залогом вне таблицы списка;
 - release/reconcile collateral holds;
 - min profit %, timeout <= 10, priority-only.
 

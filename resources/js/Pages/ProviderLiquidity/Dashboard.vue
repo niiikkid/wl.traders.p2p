@@ -24,8 +24,8 @@ defineProps({
                     <div class="stat-value">{{ stats.deals_count }}</div>
                 </div>
                 <div class="stat bg-base-100 rounded-box shadow">
-                    <div class="stat-title">Trust balance</div>
-                    <div class="stat-value text-lg">{{ stats.trust_balance ?? '0' }} USDT</div>
+                    <div class="stat-title">Provider balance</div>
+                    <div class="stat-value text-lg">{{ stats.provider_balance ?? '0' }} USDT</div>
                 </div>
             </div>
         </div>

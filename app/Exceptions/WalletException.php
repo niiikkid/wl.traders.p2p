@@ -13,4 +13,9 @@ class WalletException extends BaseException
     {
         return make('Неверный тип транзакции для зачисления на кошелек.');
     }
+
+    public static function insufficientFunds()
+    {
+        return make('Недостаточно средств на балансе.');
+    }
 }

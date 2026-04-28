@@ -47,14 +47,14 @@ class CascadeProviderCollateralService
                 walletID: $wallet->id,
                 amount: $amount,
                 transactionType: TransactionType::CASCADE_PROVIDER_COLLATERAL_HOLD,
-                balanceType: BalanceType::TRUST,
+                balanceType: BalanceType::PROVIDER,
             );
 
             $hold = FundsOnHold::query()->create([
                 'amount' => $amount,
                 'currency' => $amount->getCurrency(),
                 'source_wallet_id' => $wallet->id,
-                'source_wallet_balance_type' => BalanceType::TRUST,
+                'source_wallet_balance_type' => BalanceType::PROVIDER,
                 'destination_wallet_id' => null,
                 'destination_wallet_balance_type' => null,
                 'holdable_id' => $deal->id,

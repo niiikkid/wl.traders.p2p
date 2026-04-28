@@ -23,7 +23,7 @@ class DashboardController extends Controller
         $stats = [
             'deals_count' => $provider?->deals()->count() ?? 0,
             'logs_count' => $provider?->logs()->count() ?? 0,
-            'trust_balance' => $provider?->user?->wallet?->trust_balance?->toBeauty(),
+            'provider_balance' => $provider?->user?->wallet?->provider_balance?->toBeauty(),
         ];
 
         $provider = $this->safeProvider($provider);
@@ -69,7 +69,7 @@ class DashboardController extends Controller
         $walletModel = $provider?->user?->wallet;
         $wallet = $walletModel ? [
             'id' => $walletModel->id,
-            'trust_balance' => $walletModel->trust_balance?->toBeauty(),
+            'provider_balance' => $walletModel->provider_balance?->toBeauty(),
             'reserve_balance' => $walletModel->reserve_balance?->toBeauty(),
         ] : null;
         $transactions = $wallet

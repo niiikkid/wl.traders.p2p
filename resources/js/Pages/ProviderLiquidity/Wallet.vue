@@ -28,8 +28,8 @@ const changePage = (pageNumber) => {
             <h1 class="text-xl font-semibold">Кошелёк</h1>
             <div class="stats bg-base-100 shadow">
                 <div class="stat">
-                    <div class="stat-title">Trust balance</div>
-                    <div class="stat-value text-lg">{{ wallet?.trust_balance ?? '0' }} USDT</div>
+                    <div class="stat-title">Provider balance</div>
+                    <div class="stat-value text-lg">{{ wallet?.provider_balance ?? '0' }} USDT</div>
                 </div>
                 <div class="stat">
                     <div class="stat-title">Reserve</div>

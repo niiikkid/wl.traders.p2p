@@ -34,10 +34,6 @@ const form = useForm({
     description: '',
 });
 
-const walletForm = useForm({
-    amount: '',
-});
-
 const providerOptions = computed(() => {
     if (editingProvider.value) {
         return props.implementedProviders.filter((provider) => (
@@ -137,20 +133,6 @@ const submit = () => {
     form.post(route('admin.cascade-providers.store'), options);
 };
 
-const adjustWallet = (provider, action) => {
-    const amount = window.prompt(action === 'deposit' ? 'Сумма пополнения USDT' : 'Сумма списания USDT');
-
-    if (! amount) {
-        return;
-    }
-
-    walletForm.amount = amount;
-    walletForm.post(route(`admin.cascade-providers.wallet.${action}`, provider.id), {
-        preserveScroll: true,
-        onFinish: () => walletForm.reset(),
-    });
-};
-
 const fillFromImplementation = () => {
     if (! selectedImplementation.value || editingProvider.value) {
         return;
@@ -241,9 +223,7 @@ defineOptions({ layout: AuthenticatedLayout });
                             <tr>
                                 <th>ID</th>
                                 <th>Провайдер</th>
-                                <th>Тип</th>
                                 <th>Настройки</th>
-                                <th>Залог</th>
                                 <th>API</th>
                                 <th>Статус</th>
                                 <th><span class="sr-only">Действия</span></th>
@@ -260,18 +240,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="font-medium text-nowrap">{{ provider.name }}</div>
                                     <div class="text-xs opacity-70 text-nowrap">{{ provider.code }}</div>
                                 </td>
-                                <td class="text-nowrap">{{ provider.provider_type_name }}</td>
                                 <td>
                                     <div class="text-nowrap">Приоритет: {{ provider.priority ?? 'Пусто' }}</div>
                                     <div class="text-xs opacity-70 text-nowrap">Мин. прибыль: {{ provider.min_profit_percent ?? 0 }}%</div>
-                                </td>
-                                <td>
-                                    <div class="text-nowrap">{{ provider.wallet?.trust_balance ?? 'Кошелёк не создан' }} USDT</div>
-                                    <div class="text-xs opacity-70 text-nowrap">{{ provider.user_email ?? 'Пользователь не привязан' }}</div>
-                                    <div v-if="provider.user_id" class="mt-1 flex gap-1">
-                                        <button type="button" class="btn btn-xs btn-outline" @click="adjustWallet(provider, 'deposit')">+</button>
-                                        <button type="button" class="btn btn-xs btn-outline" @click="adjustWallet(provider, 'withdraw')">-</button>
-                                    </div>
                                 </td>
                                 <td>
                                     <div class="max-w-64 truncate" :title="provider.base_url ?? ''">
@@ -313,10 +284,6 @@ defineOptions({ layout: AuthenticatedLayout });
 
                             <div class="grid grid-cols-2 gap-3 text-sm">
                                 <div>
-                                    <div class="text-base-content/60">Тип</div>
-                                    <div class="font-medium">{{ provider.provider_type_name }}</div>
-                                </div>
-                                <div>
                                     <div class="text-base-content/60">Приоритет</div>
                                     <div class="font-medium">{{ provider.priority ?? 'Пусто' }}</div>
                                 </div>
@@ -327,10 +294,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <div>
                                     <div class="text-base-content/60">Мин. прибыль</div>
                                     <div class="font-medium">{{ provider.min_profit_percent ?? 0 }}%</div>
-                                </div>
-                                <div>
-                                    <div class="text-base-content/60">Залог</div>
-                                    <div class="font-medium">{{ provider.wallet?.trust_balance ?? 'Пусто' }}</div>
                                 </div>
                             </div>
 

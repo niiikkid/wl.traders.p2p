@@ -16,17 +16,19 @@ use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToCommission;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToMerchant;
+use App\Services\Wallet\GiveToBalanceHandler\GiveToProvider;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToTeamleader;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToTrust;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromCommission;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromMerchant;
+use App\Services\Wallet\TakeFromBalanceHandler\TakeFromProvider;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromTeamleader;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromTrust;
 use App\Services\Wallet\ValueObjects\BalanceValue;
 use App\Services\Wallet\ValueObjects\BaseValue;
 use App\Services\Wallet\ValueObjects\CurrencyValue;
-use App\Services\Wallet\ValueObjects\EscrowValue;
 use App\Services\Wallet\ValueObjects\EscrowsValue;
+use App\Services\Wallet\ValueObjects\EscrowValue;
 use App\Services\Wallet\ValueObjects\WalletStatsValue;
 use App\Utils\Transaction;
 
@@ -46,6 +48,7 @@ class WalletService implements WalletServiceContract
         return Wallet::create([
             'merchant_balance' => 0,
             'trust_balance' => 0,
+            'provider_balance' => 0,
             'reserve_balance' => 0,
             'commission_balance' => 0,
             'teamleader_balance' => 0,
@@ -61,13 +64,15 @@ class WalletService implements WalletServiceContract
             $handler = null;
 
             if ($balanceType->equals(BalanceType::TRUST)) {
-                $handler = new TakeFromTrust();
-            } else if ($balanceType->equals(BalanceType::MERCHANT)) {
-                $handler = new TakeFromMerchant();
-            } else if ($balanceType->equals(BalanceType::COMMISSION)) {
-                $handler = new TakeFromCommission();
-            } else if ($balanceType->equals(BalanceType::TEAMLEADER)) {
-                $handler = new TakeFromTeamleader();
+                $handler = new TakeFromTrust;
+            } elseif ($balanceType->equals(BalanceType::PROVIDER)) {
+                $handler = new TakeFromProvider;
+            } elseif ($balanceType->equals(BalanceType::MERCHANT)) {
+                $handler = new TakeFromMerchant;
+            } elseif ($balanceType->equals(BalanceType::COMMISSION)) {
+                $handler = new TakeFromCommission;
+            } elseif ($balanceType->equals(BalanceType::TEAMLEADER)) {
+                $handler = new TakeFromTeamleader;
             }
 
             $handler->handle($wallet, $amount, $transactionType);
@@ -82,13 +87,15 @@ class WalletService implements WalletServiceContract
             $handler = null;
 
             if ($balanceType->equals(BalanceType::TRUST)) {
-                $handler = new GiveToTrust();
-            } else if ($balanceType->equals(BalanceType::MERCHANT)) {
-                $handler = new GiveToMerchant();
-            } else if ($balanceType->equals(BalanceType::COMMISSION)) {
-                $handler = new GiveToCommission();
-            } else if ($balanceType->equals(BalanceType::TEAMLEADER)) {
-                $handler = new GiveToTeamleader();
+                $handler = new GiveToTrust;
+            } elseif ($balanceType->equals(BalanceType::PROVIDER)) {
+                $handler = new GiveToProvider;
+            } elseif ($balanceType->equals(BalanceType::MERCHANT)) {
+                $handler = new GiveToMerchant;
+            } elseif ($balanceType->equals(BalanceType::COMMISSION)) {
+                $handler = new GiveToCommission;
+            } elseif ($balanceType->equals(BalanceType::TEAMLEADER)) {
+                $handler = new GiveToTeamleader;
             }
 
             $handler->handle($wallet, $amount, $transactionType);
@@ -99,6 +106,9 @@ class WalletService implements WalletServiceContract
     {
         if ($balanceType->equals(BalanceType::TRUST)) {
             $balanceAmount = $wallet->trust_balance->add($wallet->reserve_balance);
+        }
+        if ($balanceType->equals(BalanceType::PROVIDER)) {
+            $balanceAmount = $wallet->provider_balance ?? Money::zero('USDT');
         }
         if ($balanceType->equals(BalanceType::MERCHANT)) {
             $balanceAmount = $wallet->merchant_balance;
@@ -136,7 +146,7 @@ class WalletService implements WalletServiceContract
             );
         }
 
-        //===
+        // ===
 
         $lockedForWithdrawalBalances = collect();
 
@@ -155,7 +165,7 @@ class WalletService implements WalletServiceContract
             );
         }
 
-        //===
+        // ===
 
         $escrowOrdersQuery = Order::query()
             ->where('status', OrderStatus::PENDING)
@@ -165,7 +175,7 @@ class WalletService implements WalletServiceContract
         $escrowOrdersBalance = Money::fromUnits($escrowOrdersQuery->sum('total_profit'), $primaryCurrency);
         $escrowOrdersCount = $escrowOrdersQuery->count();
 
-        //===
+        // ===
 
         $disputeOrdersQuery = Order::query()
             ->where('status', OrderStatus::PENDING)
@@ -194,7 +204,7 @@ class WalletService implements WalletServiceContract
                     count: $escrowDisputeCount
                 )
             ),
-            currency:  new CurrencyValue($primaryCurrency, $secondaryCurrency),
+            currency: new CurrencyValue($primaryCurrency, $secondaryCurrency),
             maxReserveBalance: $this->getMaxReserveBalance($wallet->user)
         );
     }

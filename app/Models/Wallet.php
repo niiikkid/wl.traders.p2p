@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Casts\BaseCurrencyMoneyCast;
-use App\Enums\BalanceType;
-use App\Enums\TransactionType;
 use App\Services\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property Money $merchant_balance
  * @property Money $trust_balance
+ * @property Money $provider_balance
  * @property Money $reserve_balance
  * @property Money $commission_balance
  * @property Money $teamleader_balance
@@ -36,6 +35,7 @@ class Wallet extends Model
     protected $fillable = [
         'merchant_balance',
         'trust_balance',
+        'provider_balance',
         'reserve_balance',
         'commission_balance',
         'teamleader_balance',
@@ -45,6 +45,7 @@ class Wallet extends Model
     protected $casts = [
         'merchant_balance' => BaseCurrencyMoneyCast::class,
         'trust_balance' => BaseCurrencyMoneyCast::class,
+        'provider_balance' => BaseCurrencyMoneyCast::class,
         'reserve_balance' => BaseCurrencyMoneyCast::class,
         'commission_balance' => BaseCurrencyMoneyCast::class,
         'teamleader_balance' => BaseCurrencyMoneyCast::class,

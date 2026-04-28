@@ -28,7 +28,7 @@ class CascadeProviderWalletController extends Controller
             walletID: $wallet->id,
             amount: Money::fromPrecision((string) $data['amount'], 'USDT'),
             transactionType: TransactionType::CASCADE_PROVIDER_ADMIN_DEPOSIT,
-            balanceType: BalanceType::TRUST,
+            balanceType: BalanceType::PROVIDER,
         );
 
         return back();
@@ -46,7 +46,7 @@ class CascadeProviderWalletController extends Controller
             walletID: $wallet->id,
             amount: Money::fromPrecision((string) $data['amount'], 'USDT'),
             transactionType: TransactionType::CASCADE_PROVIDER_ADMIN_WITHDRAWAL,
-            balanceType: BalanceType::TRUST,
+            balanceType: BalanceType::PROVIDER,
         );
 
         return back();
