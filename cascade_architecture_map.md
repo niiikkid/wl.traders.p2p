@@ -236,7 +236,7 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 
 Что добавлено:
 - привязка `Provider Liquidity` пользователя к провайдеру (в форме создания/редактирования);
-- список провайдеров на `Index.vue` без колонок «тип»/«залог», но с отображением `provider_balance` и переходом в общий админ-кошелек пользователя (`admin.users.wallet.index`) из Actions;
+- список провайдеров на `Index.vue` без колонок «тип»/«залог» и без элементов кошелька (таблица только про настройки каскад-провайдера);
 - `CascadeProviderWalletController`: операции пополнения/вывода `provider_balance`, release/reconcile collateral holds; отображение инвойсов/транзакций — через общий `Wallet/Index` (как у других ролей);
 - release/reconcile collateral holds;
 - min profit %, timeout <= 10, priority-only.

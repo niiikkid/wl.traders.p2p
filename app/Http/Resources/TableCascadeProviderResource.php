@@ -26,7 +26,6 @@ class TableCascadeProviderResource extends JsonResource
             'is_active' => $this->is_active,
             'priority' => $this->priority,
             'min_profit_percent' => $this->min_profit_percent,
-            'provider_balance' => $this->user?->wallet?->provider_balance?->toBeauty(),
             'base_url' => $this->base_url,
             'access_token' => $this->access_token,
             'merchant_id' => $this->merchant_id,

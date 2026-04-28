@@ -226,7 +226,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <th>ID</th>
                                 <th>Провайдер</th>
                                 <th>Настройки</th>
-                                <th>Баланс</th>
                                 <th>API</th>
                                 <th>Статус</th>
                                 <th><span class="sr-only">Действия</span></th>
@@ -248,11 +247,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="text-xs opacity-70 text-nowrap">Мин. прибыль: {{ provider.min_profit_percent ?? 0 }}%</div>
                                 </td>
                                 <td>
-                                    <div class="font-medium text-nowrap">
-                                        {{ provider.provider_balance ?? '0' }} USDT
-                                    </div>
-                                </td>
-                                <td>
                                     <div class="max-w-64 truncate" :title="provider.base_url ?? ''">
                                         {{ provider.base_url || 'Пусто' }}
                                     </div>
@@ -265,12 +259,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <TableActionsDropdown>
                                         <TableAction @click="openEditModal(provider)">
                                             Редактировать
-                                        </TableAction>
-                                        <TableAction
-                                            v-if="provider.user_id"
-                                            @click="router.visit(route('admin.users.wallet.index', provider.user_id))"
-                                        >
-                                            Кошелек
                                         </TableAction>
                                     </TableActionsDropdown>
                                 </td>
@@ -307,10 +295,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="text-base-content/60">Мин. прибыль</div>
                                     <div class="font-medium">{{ provider.min_profit_percent ?? 0 }}%</div>
                                 </div>
-                                <div>
-                                    <div class="text-base-content/60">Баланс</div>
-                                    <div class="font-medium">{{ provider.provider_balance ?? '0' }} USDT</div>
-                                </div>
                             </div>
 
                             <div class="flex items-center justify-between gap-3">
@@ -318,12 +302,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <TableActionsDropdown>
                                     <TableAction @click="openEditModal(provider)">
                                         Редактировать
-                                    </TableAction>
-                                    <TableAction
-                                        v-if="provider.user_id"
-                                        @click="router.visit(route('admin.users.wallet.index', provider.user_id))"
-                                    >
-                                        Кошелек
                                     </TableAction>
                                 </TableActionsDropdown>
                             </div>
