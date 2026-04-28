@@ -47,10 +47,10 @@ defineOptions({ layout: AuthenticatedLayout })
 
 <template>
     <div>
-        <Head title="Каскадные сделки" />
+        <Head title="Каскад" />
 
         <MainTableSection
-            title="Каскадные сделки"
+            title="Каскад"
             :data="cascadeDeals"
         >
             <template #button>
