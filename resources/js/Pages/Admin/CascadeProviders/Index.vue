@@ -11,6 +11,7 @@ const props = defineProps({
     existingProviderCodes: Array,
     providerCallbackBaseUrl: String,
     providerTypes: Array,
+    liquidityUsers: Array,
 });
 
 const isModalOpen = ref(false);
@@ -20,9 +21,10 @@ const form = useForm({
     code: '',
     name: '',
     provider_type: 'external',
+    user_id: null,
     is_active: true,
-    weight: null,
     priority: null,
+    min_profit_percent: 0,
     base_url: '',
     access_token: '',
     merchant_id: '',
@@ -30,6 +32,10 @@ const form = useForm({
     timeout: 10,
     verify_ssl: true,
     description: '',
+});
+
+const walletForm = useForm({
+    amount: '',
 });
 
 const providerOptions = computed(() => {
@@ -65,9 +71,10 @@ const openCreateModal = () => {
         code: providerOptions.value[0]?.code ?? '',
         name: providerOptions.value[0]?.name ?? '',
         provider_type: providerOptions.value[0]?.code === 'internal' ? 'internal' : 'external',
+        user_id: null,
         is_active: true,
-        weight: null,
         priority: null,
+        min_profit_percent: 0,
         base_url: '',
         access_token: '',
         merchant_id: '',
@@ -87,9 +94,10 @@ const openEditModal = (provider) => {
         code: provider.code,
         name: provider.name,
         provider_type: provider.provider_type,
+        user_id: provider.user_id,
         is_active: provider.is_active,
-        weight: provider.weight,
         priority: provider.priority,
+        min_profit_percent: provider.min_profit_percent ?? 0,
         base_url: provider.base_url ?? '',
         access_token: provider.access_token ?? '',
         merchant_id: provider.merchant_id ?? '',
@@ -119,6 +127,20 @@ const submit = () => {
     }
 
     form.post(route('admin.cascade-providers.store'), options);
+};
+
+const adjustWallet = (provider, action) => {
+    const amount = window.prompt(action === 'deposit' ? 'Сумма пополнения USDT' : 'Сумма списания USDT');
+
+    if (! amount) {
+        return;
+    }
+
+    walletForm.amount = amount;
+    walletForm.post(route(`admin.cascade-providers.wallet.${action}`, provider.id), {
+        preserveScroll: true,
+        onFinish: () => walletForm.reset(),
+    });
 };
 
 const fillFromImplementation = () => {
@@ -200,7 +222,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <th>ID</th>
                                 <th>Провайдер</th>
                                 <th>Тип</th>
-                                <th>Распределение</th>
+                                <th>Настройки</th>
+                                <th>Залог</th>
                                 <th>API</th>
                                 <th>Статус</th>
                                 <th><span class="sr-only">Действия</span></th>
@@ -219,8 +242,16 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </td>
                                 <td class="text-nowrap">{{ provider.provider_type_name }}</td>
                                 <td>
-                                    <div class="text-nowrap">Вес: {{ provider.weight ?? 'Пусто' }}</div>
-                                    <div class="text-xs opacity-70 text-nowrap">Приоритет: {{ provider.priority ?? 'Пусто' }}</div>
+                                    <div class="text-nowrap">Приоритет: {{ provider.priority ?? 'Пусто' }}</div>
+                                    <div class="text-xs opacity-70 text-nowrap">Мин. прибыль: {{ provider.min_profit_percent ?? 0 }}%</div>
+                                </td>
+                                <td>
+                                    <div class="text-nowrap">{{ provider.wallet?.trust_balance ?? 'Кошелёк не создан' }} USDT</div>
+                                    <div class="text-xs opacity-70 text-nowrap">{{ provider.user_email ?? 'Пользователь не привязан' }}</div>
+                                    <div v-if="provider.user_id" class="mt-1 flex gap-1">
+                                        <button type="button" class="btn btn-xs btn-outline" @click="adjustWallet(provider, 'deposit')">+</button>
+                                        <button type="button" class="btn btn-xs btn-outline" @click="adjustWallet(provider, 'withdraw')">-</button>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="max-w-64 truncate" :title="provider.base_url ?? ''">
@@ -270,12 +301,16 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="font-medium">{{ provider.priority ?? 'Пусто' }}</div>
                                 </div>
                                 <div>
-                                    <div class="text-base-content/60">Вес</div>
-                                    <div class="font-medium">{{ provider.weight ?? 'Пусто' }}</div>
-                                </div>
-                                <div>
                                     <div class="text-base-content/60">Timeout</div>
                                     <div class="font-medium">{{ provider.timeout ?? 'Пусто' }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-base-content/60">Мин. прибыль</div>
+                                    <div class="font-medium">{{ provider.min_profit_percent ?? 0 }}%</div>
+                                </div>
+                                <div>
+                                    <div class="text-base-content/60">Залог</div>
+                                    <div class="font-medium">{{ provider.wallet?.trust_balance ?? 'Пусто' }}</div>
                                 </div>
                             </div>
 
@@ -355,13 +390,28 @@ defineOptions({ layout: AuthenticatedLayout });
                         </fieldset>
 
                         <fieldset class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Распределение</legend>
+                            <legend class="fieldset-legend text-xs">Пользователь Provider Liquidity</legend>
+                            <select v-model="form.user_id" class="select select-bordered select-sm w-full">
+                                <option :value="null">Не привязан</option>
+                                <option
+                                    v-for="user in liquidityUsers"
+                                    :key="user.id"
+                                    :value="user.id"
+                                >
+                                    {{ user.email }}
+                                </option>
+                            </select>
+                            <p v-if="form.errors.user_id" class="label text-error text-xs">{{ form.errors.user_id }}</p>
+                        </fieldset>
+
+                        <fieldset class="fieldset gap-1">
+                            <legend class="fieldset-legend text-xs">Приоритет</legend>
                             <div class="grid grid-cols-2 gap-2">
-                                <input v-model="form.weight" type="number" step="0.01" min="0" max="100" class="input input-bordered input-sm w-full" placeholder="Вес" />
                                 <input v-model="form.priority" type="number" min="0" class="input input-bordered input-sm w-full" placeholder="Приоритет" />
+                                <input v-model="form.min_profit_percent" type="number" step="0.0001" min="0" max="100" class="input input-bordered input-sm w-full" placeholder="Мин. прибыль %" />
                             </div>
-                            <p v-if="form.errors.weight" class="label text-error text-xs">{{ form.errors.weight }}</p>
                             <p v-if="form.errors.priority" class="label text-error text-xs">{{ form.errors.priority }}</p>
+                            <p v-if="form.errors.min_profit_percent" class="label text-error text-xs">{{ form.errors.min_profit_percent }}</p>
                         </fieldset>
 
                         <fieldset class="fieldset gap-1">
@@ -390,7 +440,7 @@ defineOptions({ layout: AuthenticatedLayout });
 
                         <fieldset class="fieldset gap-1">
                             <legend class="fieldset-legend text-xs">Timeout</legend>
-                            <input v-model="form.timeout" type="number" min="1" max="300" class="input input-bordered input-sm w-full" />
+                            <input v-model="form.timeout" type="number" min="1" max="10" class="input input-bordered input-sm w-full" />
                             <p v-if="form.errors.timeout" class="label text-error text-xs">{{ form.errors.timeout }}</p>
                         </fieldset>
                     </div>

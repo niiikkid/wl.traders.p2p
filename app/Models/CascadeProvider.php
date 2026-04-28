@@ -8,6 +8,8 @@ use App\Enums\ProviderType;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Настройки провайдера каскада
@@ -20,9 +22,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $code Уникальный код провайдера (например, 'internal', 'external_provider_1')
  * @property string $name Название провайдера для отображения
  * @property ProviderType $provider_type Тип провайдера (internal/external)
+ * @property int|null $user_id ID пользователя Provider Liquidity
  * @property bool $is_active Включен ли провайдер (попадает ли в обработчик)
- * @property float|null $weight Вес для распределения трафика (процент от 0 до 100)
  * @property int|null $priority Порядок приоритета (чем меньше число, тем выше приоритет)
+ * @property float $min_profit_percent Минимальный процент прибыли для внешнего провайдера
  * @property string|null $base_url Базовый URL провайдера
  * @property string|null $access_token Токен доступа к API
  * @property string|null $merchant_id ID мерчанта у провайдера
@@ -42,9 +45,10 @@ class CascadeProvider extends Model
         'code',
         'name',
         'provider_type',
+        'user_id',
         'is_active',
-        'weight',
         'priority',
+        'min_profit_percent',
         'base_url',
         'access_token',
         'merchant_id',
@@ -58,9 +62,29 @@ class CascadeProvider extends Model
     protected $casts = [
         'provider_type' => ProviderType::class,
         'is_active' => 'boolean',
-        'weight' => 'float',
         'priority' => 'integer',
+        'min_profit_percent' => 'float',
         'timeout' => 'integer',
         'verify_ssl' => 'boolean',
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function deals(): HasMany
+    {
+        return $this->hasMany(CascadeDeal::class, 'selected_provider_id');
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(CascadeTransaction::class, 'provider_id');
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(CascadeProviderLog::class, 'provider_id');
+    }
 }

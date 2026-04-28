@@ -8,10 +8,11 @@ use App\Casts\BaseCurrencyMoneyCast;
 use App\Casts\CascadeManualControlCast;
 use App\Casts\CurrencyCast;
 use App\Casts\MoneyCast;
+use App\Enums\CascadeDealStatus;
+use App\Enums\CascadeDealSubStatus;
+use App\Enums\CascadeDisputeStatus;
 use App\Enums\CascadePaymentMethod;
 use App\Enums\MarketEnum;
-use App\Enums\OrderStatus;
-use App\Enums\OrderSubStatus;
 use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 /**
  * Каскадная сделка
@@ -42,8 +44,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property MarketEnum $market Рынок (bybit, binance, rapira)
  * @property Money $conversion_price Курс обмена
  * @property Carbon|null $rate_fixed_at Дата фиксации курса
- * @property OrderStatus $status Статус сделки (pending, success, fail)
- * @property OrderSubStatus $sub_status Подстатус сделки
+ * @property CascadeDealStatus $status Статус сделки (pending, success, fail)
+ * @property CascadeDealSubStatus $sub_status Подстатус сделки
  * @property int|null $selected_provider_id ID провайдера-победителя
  * @property int|null $selected_transaction_id ID победившей транзакции из CascadeTransaction
  * @property CascadePaymentMethod $payment_method Метод оплаты
@@ -104,6 +106,11 @@ class CascadeDeal extends Model
         'gateway',
         'details',
         'manual_control',
+        'dispute_status',
+        'dispute_reason',
+        'dispute_receipts',
+        'dispute_history',
+        'dispute_canceled_at',
 
         // Callback
         'callback_url',
@@ -113,8 +120,8 @@ class CascadeDeal extends Model
     ];
 
     protected $casts = [
-        'status' => OrderStatus::class,
-        'sub_status' => OrderSubStatus::class,
+        'status' => CascadeDealStatus::class,
+        'sub_status' => CascadeDealSubStatus::class,
         'currency' => CurrencyCast::class,
         'market' => MarketEnum::class,
         'amount' => MoneyCast::class,
@@ -130,6 +137,10 @@ class CascadeDeal extends Model
         'gateway' => 'array',
         'details' => 'array',
         'manual_control' => CascadeManualControlCast::class,
+        'dispute_status' => CascadeDisputeStatus::class,
+        'dispute_receipts' => 'array',
+        'dispute_history' => 'array',
+        'dispute_canceled_at' => 'datetime',
         'rate_fixed_at' => 'datetime',
         'finished_at' => 'datetime',
     ];
@@ -170,5 +181,20 @@ class CascadeDeal extends Model
     public function providerLogs(): HasMany
     {
         return $this->hasMany(CascadeProviderLog::class);
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(CascadeDealEvent::class);
+    }
+
+    public function collateralHolds(): MorphMany
+    {
+        return $this->morphMany(FundsOnHold::class, 'holdable');
+    }
+
+    public function callbackLogs(): MorphMany
+    {
+        return $this->morphMany(CallbackLog::class, 'callbackable');
     }
 }

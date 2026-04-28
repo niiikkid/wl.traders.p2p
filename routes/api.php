@@ -77,7 +77,6 @@ Route::group(['middleware' => ['api-access-token']], function () {
         Route::post('payin/{cascadeDeal:uuid}/confirmation-code', [App\Http\Controllers\API\V2\OrderController::class, 'storeConfirmationCode']);
         Route::post('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'store']);
         Route::get('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'show']);
-        Route::patch('payin/{cascadeDeal:uuid}/dispute/cancel', [App\Http\Controllers\API\V2\DisputeController::class, 'cancel']);
         Route::get('payin/{merchant_id}/{external_id}', [App\Http\Controllers\API\V2\OrderController::class, 'showByExternal']);
     });
 });

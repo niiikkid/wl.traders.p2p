@@ -8,7 +8,7 @@ enum TransactionType: string
 {
     use Enumable;
 
-    //out
+    // out
     case PAYMENT_FOR_OPENED_ORDER = 'payment_for_opened_order';
     case PAYMENT_FOR_OPENED_DISPUTE = 'payment_for_opened_dispute';
     case WITHDRAWAL_BY_ADMIN = 'withdrawal_by_admin';
@@ -19,8 +19,10 @@ enum TransactionType: string
     case PAYMENT_FOR_OPENED_PAYOUT = 'payment_for_opened_payout';
     case ROLLBACK_INCOME_FROM_SUCCESSFUL_PAYOUT = 'rollback_income_from_successful_payout';
     case ROLLBACK_INCOME_FROM_REFERRALS_SUCCESSFUL_PAYOUT = 'rollback_income_from_referrals_successful_payout';
+    case CASCADE_PROVIDER_COLLATERAL_HOLD = 'cascade_provider_collateral_hold';
+    case CASCADE_PROVIDER_ADMIN_WITHDRAWAL = 'cascade_provider_admin_withdrawal';
 
-    //in
+    // in
     case REFUND_FOR_CANCELED_ORDER = 'refund_for_canceled_order';
     case REFUND_FOR_CANCELED_DISPUTE = 'refund_for_canceled_dispute';
     case DEPOSIT_BY_ADMIN = 'deposit_by_admin';
@@ -32,32 +34,37 @@ enum TransactionType: string
     case REFUND_FOR_CANCELED_PAYOUT = 'refund_for_canceled_payout';
     case INCOME_FROM_SUCCESSFUL_PAYOUT = 'income_from_successful_payout';
     case INCOME_FROM_REFERRALS_SUCCESSFUL_PAYOUT = 'income_from_referrals_successful_payout';
+    case CASCADE_PROVIDER_COLLATERAL_RELEASE = 'cascade_provider_collateral_release';
+    case CASCADE_PROVIDER_ADMIN_DEPOSIT = 'cascade_provider_admin_deposit';
 
     public function direction(): TransactionDirection
     {
-        return match ($this)
-        {
-            static::PAYMENT_FOR_OPENED_ORDER,
-            static::PAYMENT_FOR_OPENED_DISPUTE,
-            static::WITHDRAWAL_BY_ADMIN,
-            static::WITHDRAWAL_BY_USER,
-            static::PAYMENT_FOR_CHANGE_ORDER_AMOUNT,
-            static::ROLLBACK_INCOME_FROM_REFERRALS_SUCCESSFUL_ORDER,
-            static::ROLLBACK_INCOME_FROM_A_SUCCESSFUL_ORDER,
-            static::ROLLBACK_INCOME_FROM_SUCCESSFUL_PAYOUT,
-            static::ROLLBACK_INCOME_FROM_REFERRALS_SUCCESSFUL_PAYOUT,
-            static::PAYMENT_FOR_OPENED_PAYOUT => TransactionDirection::OUT,
-            static::REFUND_FOR_CANCELED_ORDER,
-            static::REFUND_FOR_CANCELED_DISPUTE,
-            static::DEPOSIT_BY_ADMIN,
-            static::DEPOSIT_BY_USER,
-            static::ROLLBACK_FOR_USER_WITHDRAWAL,
-            static::INCOME_FROM_A_SUCCESSFUL_ORDER,
-            static::REFUND_FOR_CHANGE_ORDER_AMOUNT,
-            static::INCOME_FROM_REFERRALS_SUCCESSFUL_ORDER,
-            static::REFUND_FOR_CANCELED_PAYOUT,
-            static::INCOME_FROM_SUCCESSFUL_PAYOUT,
-            static::INCOME_FROM_REFERRALS_SUCCESSFUL_PAYOUT => TransactionDirection::IN,
+        return match ($this) {
+            self::PAYMENT_FOR_OPENED_ORDER,
+            self::PAYMENT_FOR_OPENED_DISPUTE,
+            self::WITHDRAWAL_BY_ADMIN,
+            self::WITHDRAWAL_BY_USER,
+            self::PAYMENT_FOR_CHANGE_ORDER_AMOUNT,
+            self::ROLLBACK_INCOME_FROM_REFERRALS_SUCCESSFUL_ORDER,
+            self::ROLLBACK_INCOME_FROM_A_SUCCESSFUL_ORDER,
+            self::ROLLBACK_INCOME_FROM_SUCCESSFUL_PAYOUT,
+            self::ROLLBACK_INCOME_FROM_REFERRALS_SUCCESSFUL_PAYOUT,
+            self::PAYMENT_FOR_OPENED_PAYOUT,
+            self::CASCADE_PROVIDER_COLLATERAL_HOLD,
+            self::CASCADE_PROVIDER_ADMIN_WITHDRAWAL => TransactionDirection::OUT,
+            self::REFUND_FOR_CANCELED_ORDER,
+            self::REFUND_FOR_CANCELED_DISPUTE,
+            self::DEPOSIT_BY_ADMIN,
+            self::DEPOSIT_BY_USER,
+            self::ROLLBACK_FOR_USER_WITHDRAWAL,
+            self::INCOME_FROM_A_SUCCESSFUL_ORDER,
+            self::REFUND_FOR_CHANGE_ORDER_AMOUNT,
+            self::INCOME_FROM_REFERRALS_SUCCESSFUL_ORDER,
+            self::REFUND_FOR_CANCELED_PAYOUT,
+            self::INCOME_FROM_SUCCESSFUL_PAYOUT,
+            self::INCOME_FROM_REFERRALS_SUCCESSFUL_PAYOUT,
+            self::CASCADE_PROVIDER_COLLATERAL_RELEASE,
+            self::CASCADE_PROVIDER_ADMIN_DEPOSIT => TransactionDirection::IN,
         };
     }
 }

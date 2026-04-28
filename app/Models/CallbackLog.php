@@ -11,7 +11,10 @@ class CallbackLog extends Model
      * Типы колбеков
      */
     public const TYPE_ORDER = 'order';
+
     public const TYPE_PAYOUT = 'payout';
+
+    public const TYPE_CASCADE_PAYIN = 'cascade_payin';
 
     /**
      * Атрибуты, которые можно массово присваивать.
@@ -42,8 +45,6 @@ class CallbackLog extends Model
 
     /**
      * Получить модель, для которой был отправлен колбек.
-     *
-     * @return MorphTo
      */
     public function callbackable(): MorphTo
     {

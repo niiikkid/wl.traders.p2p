@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\CascadeProvider\StoreRequest;
 use App\Http\Requests\Admin\CascadeProvider\UpdateRequest;
 use App\Http\Resources\TableCascadeProviderResource;
 use App\Models\CascadeProvider;
+use App\Models\User;
 use App\Services\Cascade\CascadeProviderDiscoveryService;
 use Inertia\Inertia;
 
@@ -16,6 +17,7 @@ class CascadeProviderController extends Controller
     public function index(CascadeProviderDiscoveryService $discoveryService)
     {
         $providers = CascadeProvider::query()
+            ->with('user.wallet')
             ->orderBy('priority')
             ->orderBy('id')
             ->paginate(request()->integer('per_page', 10))
@@ -31,19 +33,25 @@ class CascadeProviderController extends Controller
                 'name' => $type === ProviderType::INTERNAL ? 'Внутренний' : 'Внешний',
             ])
             ->values();
+        $liquidityUsers = User::role('Provider Liquidity')
+            ->with('wallet')
+            ->orderBy('email')
+            ->get(['id', 'email']);
 
         return Inertia::render('Admin/CascadeProviders/Index', compact(
             'cascadeProviders',
             'implementedProviders',
             'existingProviderCodes',
             'providerCallbackBaseUrl',
-            'providerTypes'
+            'providerTypes',
+            'liquidityUsers'
         ));
     }
 
     public function store(StoreRequest $request)
     {
-        CascadeProvider::query()->create($request->validated());
+        $provider = CascadeProvider::query()->create($request->validated());
+        $this->ensureLiquidityProviderWallet($provider);
 
         return redirect()->route('admin.cascade-providers.index');
     }
@@ -51,7 +59,19 @@ class CascadeProviderController extends Controller
     public function update(UpdateRequest $request, CascadeProvider $cascadeProvider)
     {
         $cascadeProvider->update($request->validated());
+        $this->ensureLiquidityProviderWallet($cascadeProvider);
 
         return redirect()->route('admin.cascade-providers.index');
+    }
+
+    private function ensureLiquidityProviderWallet(CascadeProvider $provider): void
+    {
+        $provider->loadMissing('user.wallet');
+
+        if (! $provider->user || $provider->user->wallet) {
+            return;
+        }
+
+        services()->wallet()->create($provider->user);
     }
 }

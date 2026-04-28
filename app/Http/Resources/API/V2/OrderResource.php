@@ -5,6 +5,7 @@ namespace App\Http\Resources\API\V2;
 use App\Models\CascadeDeal;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Arr;
 
 class OrderResource extends JsonResource
 {
@@ -13,7 +14,9 @@ class OrderResource extends JsonResource
         /**
          * @var CascadeDeal $this
          */
-        $merchant = queries()->merchant()->findByID($this->merchant_id);
+        $merchant = $this->merchant ?? queries()->merchant()->findByID($this->merchant_id);
+        $gateway = $this->gateway ?? [];
+        $details = $this->details ?? [];
 
         return [
             'payin_id' => $this->uuid,
@@ -42,21 +45,21 @@ class OrderResource extends JsonResource
             ],
             'payment_method' => $this->payment_method?->value,
             'gateway' => [
-                'name' => $this->gateway['name'],
+                'name' => Arr::get($gateway, 'name'),
             ],
-            'details' => $this->manual_control === null ? null : [
-                'initials' => $this->details?->initials ?? null,
-                'value' => $this->details?->value,
+            'details' => empty($details) ? null : [
+                'initials' => Arr::get($details, 'initials'),
+                'value' => Arr::get($details, 'value'),
             ],
-            //'manual_control_acquiring' => $this->manual_control === null ? null : [
-            //    'confirmation_type' => ?,
-            //    'reject_reason' => ?,
-            //],
-            //'dispute' => [
-            //    'status' => ?,
-            //    'reason' => ?,
-            //    'canceled_at' => ?,
-            //],
+            'manual_control_acquiring' => $this->manual_control === null ? null : [
+                'confirmation_type' => $this->manual_control->confirmationType,
+                'reject_reason' => $this->manual_control->rejectReason,
+            ],
+            'dispute' => [
+                'status' => $this->dispute_status?->value,
+                'reason' => $this->dispute_reason,
+                'canceled_at' => $this->dispute_canceled_at?->getTimestamp(),
+            ],
             'callback_url' => $this->callback_url,
             'finished_at' => $this->finished_at?->getTimestamp(),
             'created_at' => $this->created_at->getTimestamp(),

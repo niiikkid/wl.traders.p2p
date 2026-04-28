@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $domain
  * @property string $callback_url
  * @property string|null $payout_callback_url
- * @property boolean $active
+ * @property bool $active
  * @property int $user_id
  * @property User $user
  * @property Collection<int, Order> $orders
@@ -78,11 +78,16 @@ class Merchant extends Model
         return $this->hasOne(AntiFraudSetting::class);
     }
 
+    public function cascadeSetting(): HasOne
+    {
+        return $this->hasOne(MerchantCascadeSetting::class);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
-    
+
     /**
      * Получить категории, к которым принадлежит мерчант.
      */
@@ -90,7 +95,7 @@ class Merchant extends Model
     {
         return $this->belongsToMany(Category::class);
     }
-    
+
     /**
      * Получить саппортов, которые имеют доступ к этому мерчанту
      */
@@ -256,7 +261,7 @@ class Merchant extends Model
                 ];
             })
             ->filter()
-            ->keyBy(fn (array $item) => $item['currency'] . '|' . $item['detail_type'])
+            ->keyBy(fn (array $item) => $item['currency'].'|'.$item['detail_type'])
             ->toArray();
 
         $settings = $this->settings ?? [];
@@ -266,10 +271,10 @@ class Merchant extends Model
 
     public function getCommissionSettingForPair(Currency $currency, DetailType $detailType): ?array
     {
-        $key = strtolower($currency->getCode()) . '|' . $detailType->value;
+        $key = strtolower($currency->getCode()).'|'.$detailType->value;
 
         foreach ($this->getCommissionSettings() as $setting) {
-            if (($setting['currency'] . '|' . $setting['detail_type']) === $key) {
+            if (($setting['currency'].'|'.$setting['detail_type']) === $key) {
                 return $setting;
             }
         }

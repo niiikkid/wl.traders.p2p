@@ -17,6 +17,8 @@ readonly class CascadeManualControl implements Arrayable
         public ?int $expiryYear = null,
         public ?string $cvc = null,
         public ?string $cardholderName = null,
+        public ?string $confirmationType = null,
+        public ?string $rejectReason = null,
     ) {}
 
     public static function make(
@@ -26,12 +28,16 @@ readonly class CascadeManualControl implements Arrayable
         ?int $expiryYear = null,
         ?string $cvc = null,
         ?string $cardholderName = null,
+        ?string $confirmationType = null,
+        ?string $rejectReason = null,
     ): ?self {
         $has_manual_control_data = $cardNumber !== null
             || $expiryMonth !== null
             || $expiryYear !== null
             || $cvc !== null
-            || $cardholderName !== null;
+            || $cardholderName !== null
+            || $confirmationType !== null
+            || $rejectReason !== null;
 
         if (! $manualControlAcquiring && ! $has_manual_control_data) {
             return null;
@@ -43,6 +49,8 @@ readonly class CascadeManualControl implements Arrayable
             expiryYear: $expiryYear,
             cvc: $cvc,
             cardholderName: $cardholderName,
+            confirmationType: $confirmationType,
+            rejectReason: $rejectReason,
         );
     }
 
@@ -62,6 +70,8 @@ readonly class CascadeManualControl implements Arrayable
             expiryYear: isset($data['expiry_year']) ? (int) $data['expiry_year'] : null,
             cvc: isset($data['cvc']) ? (string) $data['cvc'] : null,
             cardholderName: isset($data['cardholder_name']) ? (string) $data['cardholder_name'] : null,
+            confirmationType: isset($data['confirmation_type']) ? (string) $data['confirmation_type'] : null,
+            rejectReason: isset($data['reject_reason']) ? (string) $data['reject_reason'] : null,
         );
     }
 
@@ -76,6 +86,8 @@ readonly class CascadeManualControl implements Arrayable
             'expiry_year' => $this->expiryYear,
             'cvc' => $this->cvc,
             'cardholder_name' => $this->cardholderName,
+            'confirmation_type' => $this->confirmationType,
+            'reject_reason' => $this->rejectReason,
         ];
     }
 }

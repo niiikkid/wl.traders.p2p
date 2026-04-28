@@ -47,11 +47,18 @@ class TableCascadeDealResource extends JsonResource
             'conversion_price' => $this->conversion_price?->toBeauty(),
             'rate_fixed_at' => $this->rate_fixed_at?->toISOString(),
             'status' => $this->status?->value,
-            'status_name' => $this->status ? trans("order.status.{$this->status->value}") : null,
+            'status_name' => $this->status ? trans("cascade.status.{$this->status->value}") : null,
             'sub_status' => $this->sub_status?->value,
             'sub_status_name' => $this->sub_status
-                ? trans("order.sub_status.{$this->sub_status->value}")
+                ? trans("cascade.sub_status.{$this->sub_status->value}")
                 : null,
+            'dispute' => [
+                'status' => $this->dispute_status?->value,
+                'reason' => $this->dispute_reason,
+                'receipts' => $this->dispute_receipts,
+                'history' => $this->dispute_history,
+                'canceled_at' => $this->dispute_canceled_at?->toISOString(),
+            ],
             'payment_method' => $this->payment_method?->value,
             'payment_method_name' => $this->payment_method
                 ? trans("cascade.payment_method.{$this->payment_method->value}")
@@ -74,6 +81,23 @@ class TableCascadeDealResource extends JsonResource
             ] : null,
             'transactions_count' => $this->transactions_count,
             'provider_logs_count' => $this->provider_logs_count,
+            'events' => $this->whenLoaded('events', fn () => $this->events->map(fn ($event) => [
+                'id' => $event->id,
+                'type' => $event->type?->value,
+                'from_status' => $event->from_status,
+                'from_sub_status' => $event->from_sub_status,
+                'to_status' => $event->to_status,
+                'to_sub_status' => $event->to_sub_status,
+                'payload' => $event->payload,
+                'created_at' => $event->created_at?->toISOString(),
+            ])),
+            'collateral_holds' => $this->whenLoaded('collateralHolds', fn () => $this->collateralHolds->map(fn ($hold) => [
+                'id' => $hold->id,
+                'amount' => $hold->amount?->toBeauty(),
+                'currency' => $hold->currency?->getCode(),
+                'status' => $hold->status?->value,
+                'created_at' => $hold->created_at?->toISOString(),
+            ])),
             'finished_at' => $this->finished_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),

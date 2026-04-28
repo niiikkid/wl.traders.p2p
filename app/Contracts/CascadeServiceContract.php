@@ -29,11 +29,6 @@ interface CascadeServiceContract
     /**
      * @return array<string, mixed>
      */
-    public function cancelDispute(CascadeDeal $cascadeDeal, ?string $reason = null): array;
-
-    /**
-     * @return array<string, mixed>
-     */
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array;
 
     /**

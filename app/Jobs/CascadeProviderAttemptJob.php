@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Contracts\CascadeProviderServiceContract;
+use App\Enums\CascadeDealStatus;
+use App\Enums\CascadeDealSubStatus;
 use App\Enums\CascadeTransactionStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
@@ -15,6 +17,7 @@ use App\Models\CascadeProvider;
 use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Models\Order;
+use App\Services\Cascade\CascadeProviderCollateralService;
 use App\Services\Money\Money;
 use App\Support\TraderCommissionTierResolver;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,7 +31,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 30;
+    public int $timeout = 10;
 
     public int $tries = 1;
 
@@ -107,6 +110,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 ! $providerModel->provider_type->equals(ProviderType::INTERNAL)
                 && ! $this->externalProviderCoversMerchantCredit(
                     $cascadeDeal,
+                    $providerModel,
                     $responsePayload,
                     $externalProfits,
                 )
@@ -122,6 +126,14 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 $this->cancelLoser($cascadeDeal, $providerModel, $transaction, $responsePayload);
             }
         } catch (Throwable $e) {
+            if (
+                $responsePayload !== null
+                && $transaction->status->notEquals(CascadeTransactionStatus::ACCEPTED)
+                && $transaction->status->notEquals(CascadeTransactionStatus::CANCELLED)
+            ) {
+                $this->cancelLoser($cascadeDeal, $providerModel, $transaction, $responsePayload);
+            }
+
             $this->recordFailure(
                 cascadeDeal: $cascadeDeal,
                 providerModel: $providerModel,
@@ -183,6 +195,10 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 responsePayload: $responsePayload,
                 order: $order,
             ));
+
+            if (! $providerModel->provider_type->equals(ProviderType::INTERNAL)) {
+                app(CascadeProviderCollateralService::class)->holdForWinner($lockedDeal->refresh(), $providerModel);
+            }
 
             $this->cancelQueuedLosers($lockedDeal, $transaction);
 
@@ -382,8 +398,8 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'market' => $cascadeDeal->market,
                 'conversion_price' => $cascadeDeal->conversion_price,
                 'rate_fixed_at' => $cascadeDeal->rate_fixed_at,
-                'status' => OrderStatus::PENDING,
-                'sub_status' => OrderSubStatus::WAITING_FOR_DETAILS_TO_BE_SELECTED,
+                'status' => CascadeDealStatus::PENDING,
+                'sub_status' => CascadeDealSubStatus::WAITING_FOR_PAYMENT,
                 'selected_provider_id' => $providerModel->id,
                 'selected_transaction_id' => $transaction->id,
                 'gateway' => Arr::get($responsePayload, 'gateway'),
@@ -406,8 +422,8 @@ class CascadeProviderAttemptJob implements ShouldQueue
             'market' => $order?->market ?? $cascadeDeal->market,
             'conversion_price' => $order?->conversion_price ?? $cascadeDeal->conversion_price,
             'rate_fixed_at' => $cascadeDeal->rate_fixed_at ?? $order?->created_at,
-            'status' => $order?->status ?? OrderStatus::PENDING,
-            'sub_status' => $order?->sub_status ?? OrderSubStatus::WAITING_FOR_DETAILS_TO_BE_SELECTED,
+            'status' => $this->mapOrderStatus($order?->status),
+            'sub_status' => $this->mapOrderSubStatus($order?->sub_status),
             'selected_provider_id' => $providerModel->id,
             'selected_transaction_id' => $transaction->id,
             'gateway' => Arr::get($responsePayload, 'gateway'),
@@ -418,13 +434,23 @@ class CascadeProviderAttemptJob implements ShouldQueue
 
     private function externalProviderCoversMerchantCredit(
         CascadeDeal $cascadeDeal,
+        CascadeProvider $providerModel,
         array $responsePayload,
         ?object $profits = null,
     ): bool {
         $profits = $profits ?? $this->cascadeProfits($cascadeDeal);
         $externalProviderAmount = $this->externalProviderAmount($cascadeDeal, $responsePayload);
 
-        return $externalProviderAmount->greaterOrEquals($profits->merchantCredit);
+        $minProfitPercent = (string) max(0, (float) $providerModel->min_profit_percent);
+        $requiredAmount = $profits->merchantCredit;
+
+        if ((float) $minProfitPercent > 0) {
+            $requiredAmount = $requiredAmount->add(
+                $requiredAmount->mul(bcdiv($minProfitPercent, '100', Money::DEFAULT_PRECISION))
+            );
+        }
+
+        return $externalProviderAmount->greaterOrEquals($requiredAmount);
     }
 
     private function persistExternalMerchantEconomics(CascadeDeal $cascadeDeal): object
@@ -538,6 +564,30 @@ class CascadeProviderAttemptJob implements ShouldQueue
         }
 
         throw CascadeException::make('Внешний провайдер не вернул сумму зачисления в USDT.');
+    }
+
+    private function mapOrderStatus(?OrderStatus $status): CascadeDealStatus
+    {
+        return match ($status?->value) {
+            OrderStatus::SUCCESS->value => CascadeDealStatus::SUCCESS,
+            OrderStatus::FAIL->value => CascadeDealStatus::FAIL,
+            OrderStatus::PENDING->value => CascadeDealStatus::PENDING,
+            default => CascadeDealStatus::PENDING,
+        };
+    }
+
+    private function mapOrderSubStatus(?OrderSubStatus $subStatus): CascadeDealSubStatus
+    {
+        return match ($subStatus?->value) {
+            OrderSubStatus::SUCCESSFULLY_PAID->value,
+            OrderSubStatus::ACCEPTED->value => CascadeDealSubStatus::SUCCESSFULLY_PAID,
+            OrderSubStatus::SUCCESSFULLY_PAID_BY_RESOLVED_DISPUTE->value => CascadeDealSubStatus::SUCCESSFULLY_PAID_BY_RESOLVED_DISPUTE,
+            OrderSubStatus::WAITING_FOR_DISPUTE_TO_BE_RESOLVED->value => CascadeDealSubStatus::WAITING_FOR_DISPUTE_TO_BE_RESOLVED,
+            OrderSubStatus::CANCELED_BY_DISPUTE->value => CascadeDealSubStatus::CANCELED_BY_DISPUTE,
+            OrderSubStatus::CANCELED->value,
+            OrderSubStatus::EXPIRED->value => CascadeDealSubStatus::CANCELED,
+            default => CascadeDealSubStatus::WAITING_FOR_PAYMENT,
+        };
     }
 
     /**

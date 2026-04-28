@@ -3,6 +3,24 @@
 declare(strict_types=1);
 
 return [
+    'status' => [
+        'pending' => 'В обработке',
+        'success' => 'Успешно',
+        'fail' => 'Неуспешно',
+    ],
+    'sub_status' => [
+        'successfully_paid' => 'Оплачена',
+        'waiting_for_payment' => 'Ожидает оплаты',
+        'cancelled' => 'Отменена',
+        'successfully_paid_by_resolved_dispute' => 'Оплачена по спору',
+        'waiting_for_dispute_to_be_resolved' => 'Ожидает решения спора',
+        'canceled_by_dispute' => 'Отменена по спору',
+    ],
+    'dispute_status' => [
+        'opened' => 'Открыт',
+        'accepted' => 'Принят',
+        'rejected' => 'Отклонён',
+    ],
     'transaction_status' => [
         'opened' => 'Открыта у провайдера',
         'failed_to_open' => 'Не удалось открыть',

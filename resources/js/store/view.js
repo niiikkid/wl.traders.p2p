@@ -14,6 +14,7 @@ export const useViewStore = defineStore('view', {
         isSupportViewMode: (state) => state.viewMode === 'support',
         isAnalystViewMode: (state) => state.viewMode === 'analyst',
         isMerchantSupportViewMode: (state) => state.viewMode === 'merchant-support',
+        isProviderLiquidityViewMode: (state) => state.viewMode === 'provider-liquidity',
         adminPrefix: (state) => state.viewMode === 'admin' ? 'admin.' : '',
     },
     actions: {
@@ -37,6 +38,9 @@ export const useViewStore = defineStore('view', {
         },
         setMerchantSupportViewMode() {
             this.viewMode = 'merchant-support';
+        },
+        setProviderLiquidityViewMode() {
+            this.viewMode = 'provider-liquidity';
         },
     },
 })

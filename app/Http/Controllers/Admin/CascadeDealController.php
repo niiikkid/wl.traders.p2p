@@ -15,7 +15,15 @@ class CascadeDealController extends Controller
         $filtersVariants = [];
 
         $cascadeDeals = CascadeDeal::query()
-            ->with(['merchant', 'merchantClient', 'order', 'selectedProvider', 'selectedTransaction'])
+            ->with([
+                'merchant',
+                'merchantClient',
+                'order',
+                'selectedProvider',
+                'selectedTransaction',
+                'events' => fn ($query) => $query->latest('id')->limit(20),
+                'collateralHolds',
+            ])
             ->withCount(['transactions', 'providerLogs'])
             ->latest()
             ->paginate(request()->integer('per_page', 10))

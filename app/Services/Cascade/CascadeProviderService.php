@@ -152,7 +152,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
                 'merchant_id' => $provider->merchant_id,
                 'callback_url' => $this->resolveProviderCallbackUrl($provider),
                 'currency_code' => $provider->currency_code,
-                'timeout' => $provider->timeout,
+                'timeout' => min(10, max(1, (int) ($provider->timeout ?? 10))),
                 'verify_ssl' => $provider->verify_ssl,
             ];
 

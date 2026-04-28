@@ -5,7 +5,9 @@ namespace App\Observers;
 use App\Enums\OrderStatus;
 use App\Events\OrderSucceeded;
 use App\Jobs\SendOrderCallbackJob;
+use App\Models\CascadeDeal;
 use App\Models\Order;
+use App\Services\Cascade\CascadeDealSyncService;
 
 class OrderObserver
 {
@@ -14,10 +16,7 @@ class OrderObserver
     /**
      * Handle the Order "created" event.
      */
-    public function created(Order $order): void
-    {
-
-    }
+    public function created(Order $order): void {}
 
     /**
      * Handle the Order "updated" event.
@@ -26,6 +25,16 @@ class OrderObserver
     {
         if ($order->wasChanged('status') && $order->status->equals(OrderStatus::SUCCESS)) {
             event(new OrderSucceeded($order));
+        }
+
+        $cascadeDealExists = CascadeDeal::query()
+            ->where('order_id', $order->id)
+            ->exists();
+
+        if ($cascadeDealExists) {
+            app(CascadeDealSyncService::class)->syncFromInternalOrder($order);
+
+            return;
         }
 
         if ($order->wasChanged('status') || $order->isDirty('status')) {

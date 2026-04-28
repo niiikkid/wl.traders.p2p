@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CallbackLogController;
 use App\Http\Controllers\Admin\CascadeDealController;
 use App\Http\Controllers\Admin\CascadeProviderController;
 use App\Http\Controllers\Admin\CascadeProviderLogController;
+use App\Http\Controllers\Admin\CascadeProviderWalletController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
@@ -58,6 +59,7 @@ use App\Http\Controllers\PaymentDetailTagController;
 use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PayoutReceiptController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProviderLiquidity\DashboardController as ProviderLiquidityDashboardController;
 use App\Http\Controllers\SmsLogController;
 use App\Http\Controllers\Support\DepositController;
 use App\Http\Controllers\Support\EnabledCardsController;
@@ -177,6 +179,14 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/traders/{trader}/orders', [TraderOrderController::class, 'index'])->name('traders.orders.index');
         Route::get('/traders/{trader}/disputes', [TraderDisputeController::class, 'index'])->name('traders.disputes.index');
         Route::get('/traders/{trader}/finances', [TraderFinanceController::class, 'index'])->name('traders.finances.index');
+    });
+
+    Route::group(['prefix' => 'provider-liquidity', 'as' => 'provider-liquidity.', 'middleware' => ['auth', 'banned', 'role:Provider Liquidity|Super Admin']], function () {
+        Route::get('/main', [ProviderLiquidityDashboardController::class, 'index'])->name('main.index');
+        Route::get('/services', [ProviderLiquidityDashboardController::class, 'services'])->name('services.index');
+        Route::get('/deals', [ProviderLiquidityDashboardController::class, 'deals'])->name('deals.index');
+        Route::get('/wallet', [ProviderLiquidityDashboardController::class, 'wallet'])->name('wallet.index');
+        Route::get('/logs', [ProviderLiquidityDashboardController::class, 'logs'])->name('logs.index');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Super Admin']], function () {
@@ -449,6 +459,10 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/cascade-providers', [CascadeProviderController::class, 'index'])->name('cascade-providers.index');
         Route::post('/cascade-providers', [CascadeProviderController::class, 'store'])->name('cascade-providers.store');
         Route::patch('/cascade-providers/{cascadeProvider}', [CascadeProviderController::class, 'update'])->name('cascade-providers.update');
+        Route::post('/cascade-providers/{cascadeProvider}/wallet/deposit', [CascadeProviderWalletController::class, 'deposit'])->name('cascade-providers.wallet.deposit');
+        Route::post('/cascade-providers/{cascadeProvider}/wallet/withdraw', [CascadeProviderWalletController::class, 'withdraw'])->name('cascade-providers.wallet.withdraw');
+        Route::post('/cascade-provider-holds/{fundsOnHold}/release', [CascadeProviderWalletController::class, 'releaseHold'])->name('cascade-provider-holds.release');
+        Route::post('/cascade-provider-holds/{fundsOnHold}/reconcile', [CascadeProviderWalletController::class, 'reconcileHold'])->name('cascade-provider-holds.reconcile');
         Route::get('/cascade-deals', [CascadeDealController::class, 'index'])->name('cascade-deals.index');
         Route::get('/cascade-provider-logs', [CascadeProviderLogController::class, 'index'])->name('cascade-provider-logs.index');
         Route::get('/orders', [App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
