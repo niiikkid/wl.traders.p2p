@@ -519,13 +519,13 @@ const demoPopoverText = ref('Это всплывающее описание с �
                             <div class="font-semibold text-base mb-2 break-all">Table components</div>
                             <div class="space-y-6">
                                 <div class="flex items-center gap-4">
-                                    <div class="text-sm opacity-70">Автообновление таблицы</div>
+                                    <div class="text-sm opacity-70">Кнопка «Обновить» (таблица)</div>
                                     <RefreshTableData
                                         @refreshStarted="isRefreshing = true"
                                         @refreshFinished="isRefreshing = false"
                                     />
                                     <div class="text-sm" :class="isRefreshing ? 'text-primary' : 'opacity-70'">
-                                        {{ isRefreshing ? 'Обновление…' : 'Ожидание обновления' }}
+                                        {{ isRefreshing ? 'Обновление…' : 'Готово' }}
                                     </div>
                                 </div>
 

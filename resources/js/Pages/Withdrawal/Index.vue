@@ -113,8 +113,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col">txHash</th>
                                     <th scope="col">Статус</th>
                                     <th scope="col">Дата создания</th>
-                                    <th scope="col" class="flex justify-center">
-                                        <span class="sr-only">Действия</span>
+                                    <th scope="col">
+                                        
                                     </th>
                                 </tr>
                                 </thead>

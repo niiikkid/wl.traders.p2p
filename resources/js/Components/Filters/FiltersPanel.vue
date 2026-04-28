@@ -2,6 +2,7 @@
 import {computed, provide, ref, watch} from "vue";
 import {router, usePage} from "@inertiajs/vue3";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
+import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 
 const tableFiltersStore = useTableFiltersStore();
 
@@ -12,7 +13,12 @@ const props = defineProps({
     query: {
         type: Object,
         default: {}
-    }
+    },
+    /** Скрыть верхнюю кнопку «воронка» (например, вынесена в тулбар страницы). */
+    omitDefaultToggleButton: {
+        type: Boolean,
+        default: false,
+    },
 });
 const page = usePage();
 const routeKey = computed(() => route().current() || page.url?.split('?')[0] || window.location.pathname || 'default');
@@ -23,39 +29,7 @@ const filtersStorageKey = computed(() => {
 });
 const displayFilters = ref(false);
 
-const normalizeValue = (value) => {
-    if (value === null || value === undefined) {
-        return '';
-    }
-    if (Array.isArray(value)) {
-        return value
-            .map((item) => normalizeValue(item))
-            .flat()
-            .filter((item) => item !== '');
-    }
-    if (typeof value === 'object') {
-        return Object.values(value)
-            .map((item) => normalizeValue(item))
-            .flat()
-            .filter((item) => item !== '');
-    }
-    if (typeof value === 'boolean' || typeof value === 'number') {
-        return value ? ['1'] : [];
-    }
-    if (typeof value === 'string') {
-        return value.trim().length ? [value.trim()] : [];
-    }
-    return [];
-};
-
-const hasActiveFilters = computed(() => {
-    const filters = tableFiltersStore.getFilters;
-    if (!filters || typeof filters !== 'object') {
-        return false;
-    }
-
-    return Object.values(filters).some((value) => normalizeValue(value).length > 0);
-});
+const hasActiveFilters = useHasActiveTableFilters();
 
 const syncDisplayFromStorage = (key) => {
     const saved = localStorage.getItem(key);
@@ -126,11 +100,17 @@ const onKeydownEnter = (event) => {
 
 // Делаем доступным в дочерних инпутах, чтобы по Enter применять всегда
 provide('applyFilters', applyFilters);
+
+defineExpose({
+    toggleFiltersDisplay,
+    displayFilters,
+    hasActiveFilters,
+});
 </script>
 
 <template>
     <section>
-        <div class="w-full flex justify-end mb-1 mr-1">
+        <div v-if="!omitDefaultToggleButton" class="w-full flex justify-end mb-1 mr-1">
             <div v-if="!displayFilters" class="relative inline-flex">
                 <button
                     @click.prevent="toggleFiltersDisplay"

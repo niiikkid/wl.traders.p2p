@@ -9,7 +9,7 @@ import OrderModal from "@/Modals/OrderModal.vue";
 import {useModalStore} from "@/store/modal.js";
 import DateTime from "@/Components/DateTime.vue";
 import {useViewStore} from "@/store/view.js";
-import {ref, watch} from "vue";
+import {computed, ref, unref, watch} from "vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
@@ -22,6 +22,7 @@ import TempVipBanner from "@/Pages/MainPage/Trader/TempVipBanner.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
+import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 //import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
 
 const viewStore = useViewStore();
@@ -57,6 +58,14 @@ router.on('success', (event) => {
 })
 
 const reloadingTableData = ref(false);
+const filtersPanelRef = ref(null);
+const hasActiveOrderFilters = useHasActiveTableFilters();
+
+const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
+
+const toggleFiltersFromToolbar = () => {
+    filtersPanelRef.value?.toggleFiltersDisplay?.();
+};
 
 const openOrderModal = (order) => {
     if (reloadingTableData.value) {
@@ -144,15 +153,83 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Сделки"
             :data="orders"
         >
-            <template v-slot:button>
-                <button
-                    v-if="viewStore.isTraderViewMode"
-                    type="button"
-                    class="btn btn-primary btn-sm"
-                    @click="openExportModal"
-                >
-                    Выгрузить
-                </button>
+            <template #button>
+                <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+                    <div
+                        v-if="reloadingTableData"
+                        class="flex w-full items-center justify-end gap-2 text-sm text-base-content/80 xl:hidden"
+                        aria-live="polite"
+                    >
+                        <span class="loading loading-spinner loading-sm text-primary" role="status" aria-label="Загрузка" />
+                        <span class="hidden sm:inline">Загрузка данных…</span>
+                        <span class="sm:hidden">Загрузка…</span>
+                    </div>
+
+                    <div
+                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300/80 bg-base-300/80 px-2.5 py-1.5 shadow-sm"
+                    >
+                        <div class="relative inline-flex shrink-0">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
+                                :class="{ 'btn-active': filtersPanelOpen }"
+                                title="Фильтры"
+                                aria-label="Показать или скрыть фильтры"
+                                @click.prevent="toggleFiltersFromToolbar"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                                </svg>
+                            </button>
+                            <span
+                                v-if="hasActiveOrderFilters"
+                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
+                                aria-hidden="true"
+                                title="Есть применённые фильтры"
+                            />
+                        </div>
+
+                        <button
+                            v-if="viewStore.isTraderViewMode"
+                            type="button"
+                            class="btn btn-sm btn-square btn-primary btn-outline shrink-0 rounded-lg"
+                            title="Выгрузить в Excel"
+                            aria-label="Выгрузить сделки в Excel"
+                            @click="openExportModal"
+                        >
+                            <svg
+                                class="h-5 w-5 shrink-0 text-primary"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M9.29289 1.29289C9.48043 1.10536 9.73478 1 10 1H18C19.6569 1 21 2.34315 21 4V9C21 9.55228 20.5523 10 20 10C19.4477 10 19 9.55228 19 9V4C19 3.44772 18.5523 3 18 3H11V8C11 8.55228 10.5523 9 10 9H5V20C5 20.5523 5.44772 21 6 21H7C7.55228 21 8 21.4477 8 22C8 22.5523 7.55228 23 7 23H6C4.34315 23 3 21.6569 3 20V8C3 7.73478 3.10536 7.48043 3.29289 7.29289L9.29289 1.29289ZM6.41421 7H9V4.41421L6.41421 7ZM19 12C19.5523 12 20 12.4477 20 13V19H23C23.5523 19 24 19.4477 24 20C24 20.5523 23.5523 21 23 21H19C18.4477 21 18 20.5523 18 20V13C18 12.4477 18.4477 12 19 12ZM11.8137 12.4188C11.4927 11.9693 10.8682 11.8653 10.4188 12.1863C9.96935 12.5073 9.86526 13.1318 10.1863 13.5812L12.2711 16.5L10.1863 19.4188C9.86526 19.8682 9.96935 20.4927 10.4188 20.8137C10.8682 21.1347 11.4927 21.0307 11.8137 20.5812L13.5 18.2205L15.1863 20.5812C15.5073 21.0307 16.1318 21.1347 16.5812 20.8137C17.0307 20.4927 17.1347 19.8682 16.8137 19.4188L14.7289 16.5L16.8137 13.5812C17.1347 13.1318 17.0307 12.5073 16.5812 12.1863C16.1318 11.8653 15.5073 11.9693 15.1863 12.4188L13.5 14.7795L11.8137 12.4188Z"
+                                    fill="currentColor"
+                                />
+                            </svg>
+                        </button>
+
+                        <button
+                            v-if="viewStore.isAdminViewMode"
+                            type="button"
+                            class="btn btn-sm shrink-0 rounded-lg btn-primary btn-outline px-3 min-h-8 h-8 font-semibold tracking-tight"
+                            title="Manual Control ACQ"
+                            @click="openManualControlAcqPage"
+                        >
+                            ACQ
+                        </button>
+
+                        <RefreshTableData
+                            icon-only
+                            @refresh-started="reloadingTableData = true"
+                            @refresh-finished="reloadingTableData = false"
+                        />
+                    </div>
+                </div>
             </template>
             <template v-slot:header>
                 <div class="space-y-4">
@@ -164,7 +241,11 @@ defineOptions({ layout: AuthenticatedLayout })
                         v-if="!viewStore.isAdminViewMode && tempVip?.enabled"
                         :temp-vip="tempVip"
                     />
-                    <FiltersPanel name="orders">
+                    <FiltersPanel
+                        ref="filtersPanelRef"
+                        name="orders"
+                        omit-default-toggle-button
+                    >
                         <DateFilter name="startDate" title="Начальная дата"/>
                         <DateFilter name="endDate" title="Конечная дата"/>
                         <InputFilter
@@ -203,31 +284,6 @@ defineOptions({ layout: AuthenticatedLayout })
                             title="Статусы"
                         />
                     </FiltersPanel>
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <button
-                                v-if="viewStore.isAdminViewMode"
-                                type="button"
-                                class="btn btn-primary btn-sm"
-                                @click="openManualControlAcqPage"
-                            >
-                                Manual Control ACQ
-                            </button>
-                            <div v-if="reloadingTableData" class="xl:hidden px-2 text-sm text-base-content/80 flex items-center gap-2" aria-live="polite">
-                                <div class="animate-spin inline-block w-5 h-5 border-[3px] border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading">
-                                    <span class="sr-only">Загрузка...</span>
-                                </div>
-                                <span class="hidden sm:block">Загрузка данных...</span>
-                                <span class="sm:hidden">Загрузка...</span>
-                            </div>
-                        </div>
-
-                        <RefreshTableData
-                            @refresh-started="reloadingTableData = true"
-                            @refresh-finished="reloadingTableData = false"
-                        />
-                    </div>
                 </div>
             </template>
             <template v-slot:body>
@@ -281,8 +337,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col">
                                             Создан
                                         </th>
-                                        <th scope="col" class="flex justify-center">
-                                            <span class="sr-only">Действия</span>
+                                        <th scope="col">
+                                           
                                         </th>
                                     </tr>
                                 </thead>
