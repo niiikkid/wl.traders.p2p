@@ -145,20 +145,7 @@ router.on('success', (event) => {
                 Финансы
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('sms-logs.*') }]">
-            <span
-                @click="router.visit(route('sms-logs.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('sms-logs.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.556 8.5h8m-8 3.5H12m7.111-7H4.89a.896.896 0 0 0-.629.256.868.868 0 0 0-.26.619v9.25c0 .232.094.455.26.619A.896.896 0 0 0 4.89 16H9l3 4 3-4h4.111a.896.896 0 0 0 .629-.256.868.868 0 0 0 .26-.619v-9.25a.868.868 0 0 0-.26-.619.896.896 0 0 0-.63-.256Z"/>
-                </svg>
-                Сообщения
-            </span>
-        </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.devices.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('sms-logs.*') || route().current('trader.devices.*') }]">
             <span
                 @click="router.visit(route('trader.devices.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('trader.devices.index'), { preserveScroll: true })"
@@ -168,7 +155,7 @@ router.on('success', (event) => {
                 <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
                 </svg>
-                Устройства
+                Автоматика
             </span>
         </li>
        <!-- <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.economy.*') }]">

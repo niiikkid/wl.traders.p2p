@@ -201,13 +201,22 @@ defineOptions({ layout: AuthenticatedLayout })
             :data="smsLogs"
             :display-pagination="currentTab === 'logs'"
         >
-            <template v-if="viewStore.isAdminViewMode" #button>
+            <template #button>
                 <button
+                    v-if="viewStore.isAdminViewMode"
                     type="button"
                     class="btn btn-outline btn-sm shrink-0"
                     @click="router.visit(route('admin.app.index'), { preserveScroll: true })"
                 >
                     Приложение
+                </button>
+                <button
+                    v-else
+                    type="button"
+                    class="btn btn-outline btn-sm shrink-0"
+                    @click="router.visit(route('trader.devices.index'), { preserveScroll: true })"
+                >
+                    Устройства
                 </button>
             </template>
             <template v-slot:header>

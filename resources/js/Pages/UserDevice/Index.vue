@@ -107,6 +107,15 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
         <Head title="Устройства" />
 
         <MainTableSection title="Устройства" :data="devices" :paginate="false">
+            <template #button>
+                <button
+                    type="button"
+                    class="btn btn-outline btn-sm shrink-0"
+                    @click="router.visit(route('sms-logs.index'), { preserveScroll: true })"
+                >
+                    Сообщения
+                </button>
+            </template>
             <template v-slot:header>
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
                     <div class="space-y-6">
