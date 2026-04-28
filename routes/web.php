@@ -185,7 +185,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/main', [MainPageController::class, 'providerLiquidity'])->name('main.index');
         Route::get('/services', [ProviderLiquidityDashboardController::class, 'services'])->name('services.index');
         Route::get('/deals', [ProviderLiquidityDashboardController::class, 'deals'])->name('deals.index');
-        Route::get('/wallet', [ProviderLiquidityDashboardController::class, 'wallet'])->name('wallet.index');
+        Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
         Route::get('/logs', [ProviderLiquidityDashboardController::class, 'logs'])->name('logs.index');
     });
 

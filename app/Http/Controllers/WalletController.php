@@ -21,6 +21,8 @@ class WalletController extends Controller
             $balanceType = BalanceType::MERCHANT;
         } else if ($request->route()->action['as'] === 'leader.finances.index') {
             $balanceType = BalanceType::TEAMLEADER;
+        } else if ($request->route()->action['as'] === 'provider-liquidity.wallet.index') {
+            $balanceType = BalanceType::PROVIDER;
         }
 
         /**
@@ -89,7 +91,19 @@ class WalletController extends Controller
             $transactions = TransactionResource::collection($transactions);
         }
 
-        return Inertia::render('Wallet/Index', compact('walletStats', 'invoices', 'transactions', 'tabs', 'filters', 'currentTab', 'currentFilters'));
+        $walletSurfaces = null;
+        if ($request->route()->action['as'] === 'provider-liquidity.wallet.index') {
+            $walletSurfaces = [
+                'trust' => false,
+                'merchant' => false,
+                'teamleader' => false,
+                'provider' => true,
+                'escrow' => false,
+                'dispute' => false,
+            ];
+        }
+
+        return Inertia::render('Wallet/Index', compact('walletStats', 'invoices', 'transactions', 'tabs', 'filters', 'currentTab', 'currentFilters', 'walletSurfaces'));
     }
 
     public function updateFiatCurrency(UpdateFiatCurrencyRequest $request)

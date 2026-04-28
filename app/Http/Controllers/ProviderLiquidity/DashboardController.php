@@ -4,13 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\ProviderLiquidity;
 
-use App\Enums\BalanceType;
-use App\Enums\InvoiceType;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TableCascadeDealResource;
 use App\Http\Resources\TableCascadeProviderLogResource;
-use App\Http\Resources\TransactionResource;
 use App\Models\CascadeProviderLog;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -72,92 +68,6 @@ class DashboardController extends Controller
             : null;
 
         return Inertia::render('ProviderLiquidity/Deals', compact('deals', 'filters', 'filtersVariants'));
-    }
-
-    public function wallet(Request $request)
-    {
-        $provider = $this->providerLiquidityDashboardService->resolveProvider($request);
-        $wallet = $provider?->user?->wallet;
-        $walletStats = services()->wallet()->getWalletStats($wallet)->toArray();
-
-        $tabs = [
-            'invoices' => [
-                'key' => 'invoices',
-                'name' => 'Инвойсы',
-            ],
-            'transactions' => [
-                'key' => 'transactions',
-                'name' => 'Транзакции',
-            ],
-        ];
-
-        $filters = [
-            'invoices' => [
-                'invoiceTypes' => [
-                    'all' => [
-                        'key' => 'all',
-                        'name' => 'Тип инвойса',
-                    ],
-                    InvoiceType::DEPOSIT->value => [
-                        'key' => InvoiceType::DEPOSIT->value,
-                        'name' => 'Пополнение',
-                    ],
-                    InvoiceType::WITHDRAWAL->value => [
-                        'key' => InvoiceType::WITHDRAWAL->value,
-                        'name' => 'Вывод',
-                    ],
-                ],
-            ],
-        ];
-
-        $currentTab = request()->input('tab', 'invoices');
-        if (empty($tabs[$currentTab])) {
-            $currentTab = 'invoices';
-        }
-
-        $currentFilters = [
-            'invoices' => [
-                'invoiceTypes' => request()->input('currentFilters.invoices.invoiceTypes', 'all'),
-            ],
-        ];
-
-        $invoices = null;
-        $transactions = null;
-
-        if ($currentTab === 'invoices') {
-            $invoices = queries()->invoice()->paginate(
-                wallet: $wallet,
-                invoiceType: InvoiceType::tryFrom($currentFilters['invoices']['invoiceTypes']),
-                balanceType: BalanceType::PROVIDER,
-            );
-            $invoices = InvoiceResource::collection($invoices);
-        } elseif ($currentTab === 'transactions') {
-            $transactions = queries()->transaction()->paginate(
-                wallet: $wallet,
-                balanceType: BalanceType::PROVIDER,
-            );
-            $transactions = TransactionResource::collection($transactions);
-        }
-
-        $walletSurfaces = [
-            'trust' => false,
-            'merchant' => false,
-            'teamleader' => false,
-            'provider' => true,
-            'escrow' => false,
-            'dispute' => false,
-        ];
-
-        return Inertia::render('Wallet/Index', compact(
-            'walletStats',
-            'invoices',
-            'transactions',
-            'tabs',
-            'filters',
-            'currentTab',
-            'currentFilters',
-            'walletSurfaces',
-        ));
     }
 
     public function logs(Request $request)
