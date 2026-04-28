@@ -7,7 +7,7 @@ import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue"
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, onMounted, ref, unref, watch} from "vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
@@ -26,6 +26,7 @@ import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulk
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
 import DateTime from "@/Components/DateTime.vue";
+import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 
 const modalStore = useModalStore();
 const openCreateModal = () => {
@@ -45,6 +46,14 @@ const currentTab = ref('active');
 const tableFiltersStore = useTableFiltersStore();
 const toggleBlocked = ref(false);
 const isTraderView = computed(() => viewStore.isTraderViewMode);
+
+const filtersPanelRef = ref(null);
+const hasActivePaymentFilters = useHasActiveTableFilters();
+const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
+
+const toggleFiltersFromToolbar = () => {
+    filtersPanelRef.value?.toggleFiltersDisplay?.();
+};
 
 const displayShortDetail = ref(getCookieValue('displayShortDetail', true));
 const displayDetailTags = ref(getCookieValue('displayDetailTags', false));
@@ -335,30 +344,8 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Реквизиты"
             :data="paymentDetails"
         >
-            <template v-slot:button>
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <button
-                        v-if="viewStore.isAdminViewMode"
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
-                    >
-                        Включенные реквизиты
-                    </button>
-                    <button
-                        @click="openCreateModal"
-                        type="button"
-                        class="hidden md:block btn btn-sm btn-primary"
-                    >
-                        Создать реквизиты
-                    </button>
-                    <AddMobileIcon
-                        @click="openCreateModal"
-                    />
-                </div>
-            </template>
             <template v-slot:header>
-                <div class="flex items-center justify-between gap-3">
+                <div class="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
                     <ul class="flex flex-wrap text-sm font-medium text-center">
                         <li class="me-2">
                             <a @click.prevent="openPage('active')" href="#" :class="currentTab === 'active' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
@@ -377,10 +364,79 @@ defineOptions({ layout: AuthenticatedLayout })
                             </a>
                         </li>
                     </ul>
+
+                    <div class="flex w-full max-w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:ms-auto sm:w-auto">
+                        <div
+                            class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300/80 bg-base-300/80 px-2.5 py-1.5 shadow-sm"
+                        >
+                            <div class="relative inline-flex shrink-0">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
+                                    :class="{ 'btn-active': filtersPanelOpen }"
+                                    title="Фильтры"
+                                    aria-label="Показать или скрыть фильтры"
+                                    @click.prevent="toggleFiltersFromToolbar"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                                    </svg>
+                                </button>
+                                <span
+                                    v-if="hasActivePaymentFilters"
+                                    class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
+                                    aria-hidden="true"
+                                    title="Есть применённые фильтры"
+                                />
+                            </div>
+
+                            <button
+                                v-if="viewStore.isAdminViewMode"
+                                type="button"
+                                class="btn btn-sm btn-square btn-primary btn-outline shrink-0 rounded-lg"
+                                title="Включенные реквизиты"
+                                aria-label="Включенные реквизиты"
+                                @click="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
+                            >
+                                <svg
+                                    class="h-4 w-4 shrink-0"
+                                    viewBox="123 679 21 21"
+                                    fill="currentColor"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M141.9,697 C141.9,697.552 141.4296,698 140.85,698 C140.2704,698 139.8,697.552 139.8,697 L139.8,683 C139.8,682.448 140.2704,682 140.85,682 C141.4296,682 141.9,682.448 141.9,683 L141.9,697 Z M141.9,680 L139.8,680 C138.63975,680 137.7,680.895 137.7,682 L137.7,698 C137.7,699.105 138.63975,700 139.8,700 L141.9,700 C143.06025,700 144,699.105 144,698 L144,682 C144,680.895 143.06025,680 141.9,680 L141.9,680 Z M134.55,697 C134.55,697.552 134.0796,698 133.5,698 C132.9204,698 132.45,697.552 132.45,697 L132.45,687 C132.45,686.448 132.9204,686 133.5,686 C134.0796,686 134.55,686.448 134.55,687 L134.55,697 Z M134.55,684 L132.45,684 C131.28975,684 130.35,684.895 130.35,686 L130.35,698 C130.35,699.105 131.28975,700 132.45,700 L134.55,700 C135.71025,700 136.65,699.105 136.65,698 L136.65,686 C136.65,684.895 135.71025,684 134.55,684 L134.55,684 Z M127.2,697 C127.2,697.552 126.7296,698 126.15,698 C125.5704,698 125.1,697.552 125.1,697 L125.1,693 C125.1,692.448 125.5704,692 126.15,692 C126.7296,692 127.2,692.448 127.2,693 L127.2,697 Z M127.2,690 L125.1,690 C123.93975,690 123,690.895 123,692 L123,698 C123,699.105 123.93975,700 125.1,700 L127.2,700 C128.36025,700 129.3,699.105 129.3,698 L129.3,692 C129.3,690.895 128.36025,690 127.2,690 L127.2,690 Z"
+                                    />
+                                </svg>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="hidden md:inline-flex btn btn-sm btn-square btn-primary btn-outline shrink-0 rounded-lg"
+                                title="Создать реквизиты"
+                                aria-label="Создать реквизиты"
+                                @click="openCreateModal"
+                            >
+                                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <path d="M21 12.5V8C21 6.89543 20.1046 6 19 6H5C3.89543 6 3 6.89543 3 8V17C3 18.1046 3.89543 19 5 19H13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M18.5 15V17.5M18.5 20V17.5M18.5 17.5H16M18.5 17.5H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M3 10H20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    <path d="M7 15H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                </svg>
+                            </button>
+                        </div>
+                        <AddMobileIcon @click="openCreateModal" />
+                    </div>
                 </div>
             </template>
             <template v-slot:table-filters>
-                <FiltersPanel name="payment-details">
+                <FiltersPanel
+                    ref="filtersPanelRef"
+                    name="payment-details"
+                    omit-default-toggle-button
+                >
                     <InputFilter
                         name="id"
                         placeholder="ID реквизита"
