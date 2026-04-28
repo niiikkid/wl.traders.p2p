@@ -101,6 +101,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
         ]);
         $responsePayload = null;
         $startedAt = microtime(true);
+        $createDealLogUrl = $provider->providerApiLogUrl('createDeal', $cascadeDeal);
 
         try {
             $responsePayload = $provider->createDeal($cascadeDeal);
@@ -114,6 +115,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 providerModel: $providerModel,
                 transaction: $transaction,
                 operation: 'createDeal',
+                requestUrl: $createDealLogUrl,
                 requestPayload: $transaction->request_payload ?? [],
                 responsePayload: $responsePayload,
                 startedAt: $startedAt,
@@ -161,6 +163,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 providerModel: $providerModel,
                 transaction: $transaction,
                 operation: 'createDeal',
+                requestUrl: $createDealLogUrl,
                 requestPayload: $transaction->request_payload ?? [],
                 responsePayload: $responsePayload,
                 startedAt: $startedAt,
@@ -251,13 +254,16 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 ]),
             ]);
 
+            $cancelLogUrl = $provider?->providerApiLogUrl('cancelDeal', $cascadeDeal, ['provider_deal_id' => $providerDealId])
+                ?? ($providerModel->base_url ?? $providerModel->code);
+
             CascadeProviderLog::create([
                 'cascade_deal_id' => $cascadeDeal->id,
                 'cascade_transaction_id' => $transaction->id,
                 'provider_id' => $providerModel->id,
                 'operation' => 'cancelDeal',
                 'method' => 'POST',
-                'url' => $providerModel->base_url ?? $providerModel->code,
+                'url' => $cancelLogUrl,
                 'request_payload' => ['provider_deal_id' => $providerDealId],
                 'response_payload' => $cancelPayload,
                 'is_successful' => true,
@@ -306,6 +312,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
         CascadeProvider $providerModel,
         ?CascadeTransaction $transaction,
         string $operation,
+        string $requestUrl,
         array $requestPayload,
         ?array $responsePayload,
         float $startedAt,
@@ -319,7 +326,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
             'provider_id' => $providerModel->id,
             'operation' => $operation,
             'method' => 'POST',
-            'url' => $providerModel->base_url ?? $providerModel->code,
+            'url' => $requestUrl,
             'request_payload' => $requestPayload,
             'response_payload' => $responsePayload,
             'execution_time' => round(microtime(true) - $startedAt, 4),

@@ -83,4 +83,11 @@ interface CascadeProviderInterface
      * @return string Код провайдера
      */
     public function getCode(): string;
+
+    /**
+     * Полный URL эндпоинта исходящего запроса к провайдеру (для логов).
+     *
+     * @param  array<string, mixed>  $context  Например provider_deal_id, dispute_id
+     */
+    public function providerApiLogUrl(string $operation, ?CascadeDeal $cascadeDeal = null, array $context = []): string;
 }

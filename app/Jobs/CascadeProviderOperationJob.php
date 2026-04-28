@@ -86,7 +86,7 @@ class CascadeProviderOperationJob implements ShouldQueue
                 'provider_id' => $providerModel->id,
                 'operation' => $this->operation,
                 'method' => 'POST',
-                'url' => $providerModel->base_url ?? $providerModel->code,
+                'url' => $provider->providerApiLogUrl($this->operation, $deal, $this->payload),
                 'request_payload' => $this->payload,
                 'response_payload' => $responsePayload,
                 'execution_time' => round(microtime(true) - $startedAt, 4),

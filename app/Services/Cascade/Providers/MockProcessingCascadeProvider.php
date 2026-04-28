@@ -173,6 +173,21 @@ class MockProcessingCascadeProvider extends AbstractCascadeProvider
         return $this->code;
     }
 
+    public function providerApiLogUrl(string $operation, ?CascadeDeal $cascadeDeal = null, array $context = []): string
+    {
+        $providerDealId = (string) ($context['provider_deal_id'] ?? $cascadeDeal?->selectedTransaction?->provider_deal_id ?? '');
+
+        return match ($operation) {
+            'createDeal' => $this->buildUrl('/provider-api/v1/payins'),
+            'cancelDeal' => $this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/void'),
+            'getDeal' => $this->buildUrl('/provider-api/v1/payins/'.$providerDealId),
+            'storeConfirmationCode' => $this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/verification-code'),
+            'openDispute' => $this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/claims'),
+            'getDispute' => $this->buildUrl('/provider-api/v1/payins/'.$providerDealId.'/claims/current'),
+            default => $this->buildUrl(''),
+        };
+    }
+
     private function normalizePaymentResponse(array $data, ?string $fallbackProviderDealId = null): array
     {
         return [
@@ -219,7 +234,7 @@ class MockProcessingCascadeProvider extends AbstractCascadeProvider
         return $request;
     }
 
-    private function buildUrl(string $path): string
+    protected function buildUrl(string $path): string
     {
         return rtrim((string) $this->configValue('base_url'), '/').$path;
     }

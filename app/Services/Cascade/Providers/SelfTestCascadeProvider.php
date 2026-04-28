@@ -142,6 +142,21 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         return $this->code;
     }
 
+    public function providerApiLogUrl(string $operation, ?CascadeDeal $cascadeDeal = null, array $context = []): string
+    {
+        $providerDealId = (string) ($context['provider_deal_id'] ?? $cascadeDeal?->selectedTransaction?->provider_deal_id ?? '');
+
+        return match ($operation) {
+            'createDeal' => $this->buildUrl('/api/h2h/order'),
+            'cancelDeal' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/cancel'),
+            'getDeal' => $this->buildUrl('/api/h2h/order/'.$providerDealId),
+            'storeConfirmationCode' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/confirmation-code'),
+            'openDispute' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
+            'getDispute' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
+            default => $this->buildUrl('/api/h2h/order'),
+        };
+    }
+
     private function normalizeOrderResponse(array $response, ?string $fallbackProviderDealId = null): array
     {
         $data = $response['data'] ?? $response;
@@ -204,7 +219,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         return $request;
     }
 
-    private function buildUrl(string $path): string
+    protected function buildUrl(string $path): string
     {
         return rtrim((string) ($this->configValue('base_url') ?: config('app.url')), '/').$path;
     }

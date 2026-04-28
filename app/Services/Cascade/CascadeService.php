@@ -212,7 +212,7 @@ class CascadeService implements CascadeServiceContract
                 providerModel: $provider_model,
                 operation: 'cancelDeal',
                 method: 'PATCH',
-                url: $provider_model->base_url ?? $provider_model->code,
+                url: $provider->providerApiLogUrl('cancelDeal', $cascadeDeal, ['provider_deal_id' => $provider_deal_id]),
                 requestPayload: ['provider_deal_id' => $provider_deal_id],
                 responsePayload: $response_payload,
                 startedAt: $started_at,
@@ -274,7 +274,7 @@ class CascadeService implements CascadeServiceContract
                 providerModel: $provider_model,
                 operation: 'openDispute',
                 method: 'POST',
-                url: $provider_model->base_url ?? $provider_model->code,
+                url: $provider->providerApiLogUrl('openDispute', $cascadeDeal, ['provider_deal_id' => $provider_deal_id]),
                 requestPayload: ['provider_deal_id' => $provider_deal_id, ...$data],
                 responsePayload: $response_payload,
                 startedAt: $started_at,
@@ -288,7 +288,7 @@ class CascadeService implements CascadeServiceContract
                 providerModel: $provider_model,
                 operation: 'openDispute',
                 method: 'POST',
-                url: $provider_model->base_url ?? $provider_model->code,
+                url: $provider->providerApiLogUrl('openDispute', $cascadeDeal, ['provider_deal_id' => $provider_deal_id]),
                 requestPayload: ['provider_deal_id' => $provider_deal_id, ...$data],
                 responsePayload: null,
                 startedAt: $started_at,
@@ -341,7 +341,10 @@ class CascadeService implements CascadeServiceContract
                 providerModel: $provider_model,
                 operation: 'getDispute',
                 method: 'GET',
-                url: $provider_model->base_url ?? $provider_model->code,
+                url: $provider->providerApiLogUrl('getDispute', $cascadeDeal, [
+                    'provider_deal_id' => $provider_deal_id,
+                    'dispute_id' => $dispute_id,
+                ]),
                 requestPayload: [
                     'provider_deal_id' => $provider_deal_id,
                     'dispute_id' => $dispute_id,
@@ -358,7 +361,10 @@ class CascadeService implements CascadeServiceContract
                 providerModel: $provider_model,
                 operation: 'getDispute',
                 method: 'GET',
-                url: $provider_model->base_url ?? $provider_model->code,
+                url: $provider->providerApiLogUrl('getDispute', $cascadeDeal, [
+                    'provider_deal_id' => $provider_deal_id,
+                    'dispute_id' => $dispute_id,
+                ]),
                 requestPayload: [
                     'provider_deal_id' => $provider_deal_id,
                     'dispute_id' => $dispute_id,
@@ -394,6 +400,11 @@ class CascadeService implements CascadeServiceContract
             throw CascadeException::make('По сделке пока что небыло споров.');
         }
 
+        $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
+        if (! $provider) {
+            throw CascadeException::make('Интеграция провайдера каскада недоступна.');
+        }
+
         $started_at = microtime(true);
 
         try {
@@ -404,7 +415,7 @@ class CascadeService implements CascadeServiceContract
                 providerModel: $provider_model,
                 operation: 'cancelDispute',
                 method: 'PATCH',
-                url: $provider_model->code,
+                url: $provider->providerApiLogUrl('cancelDispute', $cascadeDeal, ['dispute_id' => (string) $dispute->id]),
                 requestPayload: [
                     'dispute_id' => $dispute->id,
                     'reason' => $reason,
@@ -433,7 +444,7 @@ class CascadeService implements CascadeServiceContract
             providerModel: $provider_model,
             operation: 'cancelDispute',
             method: 'PATCH',
-            url: $provider_model->code,
+            url: $provider->providerApiLogUrl('cancelDispute', $cascadeDeal, ['dispute_id' => (string) $dispute->id]),
             requestPayload: [
                 'dispute_id' => $dispute->id,
                 'reason' => $reason,
@@ -489,7 +500,9 @@ class CascadeService implements CascadeServiceContract
                 providerModel: $provider_model,
                 operation: 'storeConfirmationCode',
                 method: 'POST',
-                url: $provider_model->base_url ?? $provider_model->code,
+                url: $provider->providerApiLogUrl('storeConfirmationCode', $cascadeDeal, [
+                    'confirmation_code' => $confirmationCode,
+                ]),
                 requestPayload: ['confirmation_code' => $confirmationCode],
                 responsePayload: $response_payload,
                 startedAt: $started_at,
