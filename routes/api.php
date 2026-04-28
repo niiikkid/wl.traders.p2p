@@ -87,6 +87,14 @@ Route::group(['middleware' => ['api-access-token']], function () {
 
         Route::get('payout', [App\Http\Controllers\API\V2\PayoutController::class, 'index'])
             ->name('api.v2.payout.index');
+        Route::post('payout', [App\Http\Controllers\API\V2\PayoutController::class, 'store'])
+            ->name('api.v2.payout.store');
+        Route::get('payout/{payout:uuid}', [App\Http\Controllers\API\V2\PayoutController::class, 'show'])
+            ->name('api.v2.payout.show');
+        Route::patch('payout/{payout:uuid}/cancel', [App\Http\Controllers\API\V2\PayoutController::class, 'cancel'])
+            ->name('api.v2.payout.cancel');
+        Route::get('payout/{payout:uuid}/receipts', [App\Http\Controllers\API\V2\PayoutReceiptController::class, 'index'])
+            ->name('api.v2.payout.receipts.index');
     });
 });
 

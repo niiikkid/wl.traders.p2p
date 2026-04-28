@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API\V2;
 
+use App\DTO\Payout\PayoutCreateDTO;
+use App\Enums\PayoutMethodType;
+use App\Exceptions\PayoutException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\V2\Payout\IndexRequest;
+use App\Http\Requests\API\V2\Payout\StoreRequest;
+use App\Http\Resources\API\V2\PayoutResource;
 use App\Http\Resources\API\V2\PayoutStatementResource;
 use App\Models\Merchant;
+use App\Models\PaymentGateway;
 use App\Models\Payout\Payout;
+use App\Services\Money\Money;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -31,6 +38,78 @@ class PayoutController extends Controller
 
         return response()->success(
             PayoutStatementResource::collection($payouts)
+        );
+    }
+
+    public function store(StoreRequest $request): JsonResponse
+    {
+        $merchant = queries()->merchant()->findByUUID($request->merchant_id);
+
+        Gate::authorize('api-access-to-merchant', $merchant);
+
+        $paymentGateway = null;
+        $gatewayCode = $request->validated('payment_gateway');
+        if ($gatewayCode) {
+            $paymentGateway = PaymentGateway::query()
+                ->where('code', $gatewayCode)
+                ->where('is_payouts_enabled', true)
+                ->active()
+                ->firstOrFail();
+        }
+
+        $currencyCode = $paymentGateway
+            ? strtoupper($paymentGateway->currency->getCode())
+            : strtoupper($request->validated('currency'));
+
+        $dto = PayoutCreateDTO::make(
+            merchant: $merchant,
+            paymentGateway: $paymentGateway,
+            externalId: $request->external_id,
+            amountFiat: Money::fromPrecision($request->amount, $currencyCode),
+            methodType: PayoutMethodType::from($request->payout_method_type),
+            requisites: $request->requisites,
+            initials: $request->initials,
+            currencyCode: $currencyCode,
+            callbackUrl: $request->callback_url,
+            bankName: $request->validated('bank_name'),
+            merchantRate: $request->filled('rate')
+                ? Money::fromPrecision((string) $request->rate, $currencyCode)
+                : null,
+        );
+
+        try {
+            $payout = services()->payout()->create($dto);
+        } catch (PayoutException $exception) {
+            return response()->failWithMessage($exception->getMessage());
+        }
+
+        return response()->success(
+            PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))
+        );
+    }
+
+    public function show(Payout $payout): JsonResponse
+    {
+        Gate::authorize('api-access-to-merchant', $payout->merchant);
+
+        return response()->success(
+            PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))
+        );
+    }
+
+    public function cancel(Payout $payout): JsonResponse
+    {
+        Gate::authorize('api-access-to-merchant', $payout->merchant);
+
+        try {
+            $payout = services()->payout()->cancel($payout);
+        } catch (PayoutException $exception) {
+            return response()->failWithMessage($exception->getMessage());
+        }
+
+        return response()->successWithMessage(
+            'Выплата отменена.',
+            PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))
         );
     }
 
