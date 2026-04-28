@@ -24,7 +24,6 @@ const form = useForm({
     provider_type: 'external',
     user_id: null,
     is_active: true,
-    priority: null,
     min_profit_percent: 0,
     base_url: '',
     access_token: '',
@@ -75,7 +74,6 @@ const openCreateModal = () => {
         provider_type: 'external',
         user_id: null,
         is_active: true,
-        priority: null,
         min_profit_percent: 0,
         base_url: '',
         access_token: '',
@@ -97,7 +95,6 @@ const openEditModal = (provider) => {
         provider_type: provider.provider_type,
         user_id: provider.user_id,
         is_active: provider.is_active,
-        priority: provider.priority,
         min_profit_percent: provider.min_profit_percent ?? 0,
         base_url: provider.base_url ?? '',
         access_token: provider.access_token ?? '',
@@ -137,7 +134,6 @@ const fillFromImplementation = () => {
     if (selectedImplementation.value.code === 'internal') {
         form.provider_type = 'internal';
         form.user_id = null;
-        form.priority = null;
         form.min_profit_percent = 0;
         form.base_url = '';
         form.access_token = '';
@@ -373,12 +369,15 @@ defineOptions({ layout: AuthenticatedLayout });
                         </fieldset>
 
                         <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Приоритет</legend>
-                            <div class="grid grid-cols-2 gap-2">
-                                <input v-model="form.priority" type="number" min="0" class="input input-bordered input-sm w-full" placeholder="Приоритет" />
-                                <input v-model="form.min_profit_percent" type="number" step="0.0001" min="0" max="100" class="input input-bordered input-sm w-full" placeholder="Мин. прибыль %" />
-                            </div>
-                            <p v-if="form.errors.priority" class="label text-error text-xs">{{ form.errors.priority }}</p>
+                            <legend class="fieldset-legend text-xs">Минимальная прибыль, %</legend>
+                            <input
+                                v-model="form.min_profit_percent"
+                                type="number"
+                                step="0.0001"
+                                min="0"
+                                max="100"
+                                class="input input-bordered input-sm w-full"
+                            />
                             <p v-if="form.errors.min_profit_percent" class="label text-error text-xs">{{ form.errors.min_profit_percent }}</p>
                         </fieldset>
 
