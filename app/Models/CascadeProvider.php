@@ -24,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property ProviderType $provider_type Тип провайдера (internal/external)
  * @property int|null $user_id ID пользователя Provider Liquidity
  * @property bool $is_active Включен ли провайдер (попадает ли в обработчик)
- * @property int|null $priority Порядок приоритета (чем меньше число, тем выше приоритет)
+ * @property int $priority Порядок приоритета (чем меньше число, тем выше приоритет)
  * @property float $min_profit_percent Минимальный процент прибыли для внешнего провайдера
  * @property string|null $base_url Базовый URL провайдера
  * @property string|null $access_token Токен доступа к API

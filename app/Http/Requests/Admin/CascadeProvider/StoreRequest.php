@@ -69,7 +69,7 @@ class StoreRequest extends FormRequest
             $this->merge([
                 'provider_type' => ProviderType::INTERNAL->value,
                 'user_id' => null,
-                'priority' => null,
+                'priority' => 0,
                 'min_profit_percent' => 0,
                 'base_url' => null,
                 'access_token' => null,
@@ -79,6 +79,7 @@ class StoreRequest extends FormRequest
         } else {
             $this->merge([
                 'provider_type' => ProviderType::EXTERNAL->value,
+                'priority' => $this->priority ?? 0,
             ]);
         }
     }

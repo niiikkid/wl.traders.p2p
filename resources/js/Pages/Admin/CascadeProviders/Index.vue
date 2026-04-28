@@ -222,6 +222,7 @@ defineOptions({ layout: AuthenticatedLayout });
                             <tr>
                                 <th>ID</th>
                                 <th>Провайдер</th>
+                                <th class="text-end" aria-label="Приоритет" title="Приоритет">P.</th>
                                 <th>Настройки</th>
                                 <th>API</th>
                                 <th>Статус</th>
@@ -239,9 +240,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="font-medium text-nowrap">{{ provider.name }}</div>
                                     <div class="text-xs opacity-70 text-nowrap">{{ provider.code }}</div>
                                 </td>
+                                <td class="text-end tabular-nums whitespace-nowrap">
+                                    {{ provider.priority ?? '—' }}
+                                </td>
                                 <td>
-                                    <div class="text-nowrap">Приоритет: {{ provider.priority ?? 'Пусто' }}</div>
-                                    <div class="text-xs opacity-70 text-nowrap">Мин. прибыль: {{ provider.min_profit_percent ?? 0 }}%</div>
+                                    <div class="text-nowrap font-medium">Мин. прибыль: {{ provider.min_profit_percent ?? 0 }}%</div>
                                 </td>
                                 <td>
                                     <div class="max-w-64 truncate" :title="provider.base_url ?? ''">
@@ -281,8 +284,8 @@ defineOptions({ layout: AuthenticatedLayout });
 
                             <div class="grid grid-cols-2 gap-3 text-sm">
                                 <div>
-                                    <div class="text-base-content/60">Приоритет</div>
-                                    <div class="font-medium">{{ provider.priority ?? 'Пусто' }}</div>
+                                    <div class="text-base-content/60" title="Приоритет">P.</div>
+                                    <div class="font-medium">{{ provider.priority ?? '—' }}</div>
                                 </div>
                                 <div>
                                     <div class="text-base-content/60">Timeout</div>
