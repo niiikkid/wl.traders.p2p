@@ -7,6 +7,11 @@ defineProps({
         type: Boolean,
         default: false,
     },
+    /** '', 'sm' — compact select */
+    size: {
+        type: String,
+        default: '',
+    },
     items: {
         type: Object,
     },
@@ -32,9 +37,12 @@ defineProps({
 
 <template>
     <select
-        :class="!error
-        ? 'select select-bordered appearance-none w-full'
-        : 'select select-bordered appearance-none select-error w-full'"
+        :class="[
+            !error
+                ? 'select select-bordered appearance-none w-full'
+                : 'select select-bordered appearance-none select-error w-full',
+            size === 'sm' ? 'select-sm text-xs' : '',
+        ]"
         :required="required"
         v-model="model"
     >

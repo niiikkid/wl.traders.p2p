@@ -15,6 +15,11 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    /** '' | 'sm' — compact date field */
+    size: {
+        type: String,
+        default: '',
+    },
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
@@ -105,8 +110,18 @@ watch(() => props.modelValue, (newVal) => {
 
 <template>
     <div class="relative w-full">
-        <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none z-10">
-            <svg class="w-4 h-4 text-base-content opacity-60" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <div
+            class="pointer-events-none absolute inset-y-0 start-0 z-10 flex items-center ps-3"
+            :class="size === 'sm' ? 'ps-2.5' : 'ps-3.5'"
+        >
+            <svg
+                :class="size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'"
+                class="text-base-content opacity-60"
+                aria-hidden="true"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+            >
                 <path d="M20 4a2 2 0 0 0-2-2h-2V1a1 1 0 0 0-2 0v1h-3V1a1 1 0 0 0-2 0v1H6V1a1 1 0 0 0-2 0v1H2a2 2 0 0 0-2 2v2h20V4ZM0 18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8H0v10Zm5-8h10a1 1 0 0 1 0 2H5a1 1 0 0 1 0-2Z"/>
             </svg>
         </div>
@@ -114,8 +129,11 @@ watch(() => props.modelValue, (newVal) => {
             ref="inputRef"
             :id="`date-datepicker-${uid}`"
             type="text"
-            class="input input-bordered w-full ps-10 pika-single"
-            :class="error ? 'input-error' : ''"
+            class="input input-bordered w-full pika-single"
+            :class="[
+                error ? 'input-error' : '',
+                size === 'sm' ? 'input-sm ps-8 text-xs' : 'ps-10',
+            ]"
             :placeholder="placeholder"
             readonly
         >

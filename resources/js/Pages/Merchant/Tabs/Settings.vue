@@ -620,36 +620,36 @@ const merchantStatus = computed(() => {
 </script>
 
 <template>
-    <div class="space-y-4">
-        <div class="rounded-2xl border border-base-300 bg-base-200/50 p-3 sm:p-4">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="space-y-3 text-xs">
+        <div class="rounded-xl border border-base-300 bg-base-200/50 p-2.5 sm:p-3">
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
-                        <h2 class="truncate text-base font-semibold text-base-content sm:text-lg">
+                        <h2 class="truncate text-sm font-semibold text-base-content">
                             {{ merchant?.name || 'Мерчант' }}
                         </h2>
                         <span v-if="merchantStatus" class="badge badge-sm" :class="merchantStatus.class">
                             {{ merchantStatus.label }}
                         </span>
                     </div>
-                    <p class="mt-1 text-xs text-base-content/60 sm:text-sm">
+                    <p class="mt-0.5 text-[11px] text-base-content/60">
                         {{ activeTabMeta?.description }}
                     </p>
                 </div>
 
-                <div v-if="merchant?.uuid" class="shrink-0 rounded-xl bg-base-100 px-3 py-2 text-xs shadow-sm">
-                    <div class="mb-1 text-base-content/50">Merchant ID</div>
+                <div v-if="merchant?.uuid" class="shrink-0 rounded-lg bg-base-100 px-2.5 py-1.5 text-[11px] shadow-sm">
+                    <div class="mb-0.5 text-base-content/50">Merchant ID</div>
                     <DUUID :uuid="merchant.uuid"/>
                 </div>
             </div>
 
-            <div class="mt-4 overflow-x-auto">
-                <div class="tabs tabs-boxed w-max min-w-full flex-nowrap bg-base-100 p-1">
+            <div class="mt-3 overflow-x-auto">
+                <div class="tabs tabs-boxed w-max min-w-full flex-nowrap bg-base-100 p-0.5">
                     <button
                         v-for="tab in tabs"
                         :key="tab.id"
                         type="button"
-                        class="tab h-auto min-h-9 whitespace-nowrap px-3 py-2 text-xs sm:text-sm"
+                        class="tab h-auto min-h-7 whitespace-nowrap px-2.5 py-1 text-xs"
                         :class="{ 'tab-active font-semibold': activeTab === tab.id }"
                         @click="activeTab = tab.id"
                     >
@@ -659,56 +659,56 @@ const merchantStatus = computed(() => {
             </div>
         </div>
 
-        <div class="rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm sm:p-5">
-            <div class="mb-4 flex items-start justify-between gap-3">
+        <div class="rounded-xl border border-base-300 bg-base-100 p-2.5 shadow-sm sm:p-3">
+            <div class="mb-3 flex items-start justify-between gap-2">
                 <div>
-                    <h3 class="text-sm font-semibold text-base-content sm:text-base">
+                    <h3 class="text-xs font-semibold text-base-content">
                         {{ activeTabMeta?.title }}
                     </h3>
-                    <p class="mt-1 text-xs text-base-content/60">
+                    <p class="mt-0.5 text-[11px] text-base-content/60">
                         {{ activeTabMeta?.description }}
                     </p>
                 </div>
             </div>
             <!-- Таб: Информация -->
-            <div v-if="activeTab === 'info'" class="space-y-4">
+            <div v-if="activeTab === 'info'" class="space-y-3">
                 <div v-if="merchant">
-                    <dl class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                        <div class="rounded-xl bg-base-200/70 p-3">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Название</dt>
-                            <dd class="mt-1 break-all font-medium text-base-content">
+                    <dl class="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
+                        <div class="rounded-lg bg-base-200/70 p-2.5">
+                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Название</dt>
+                            <dd class="mt-0.5 break-all font-medium text-base-content">
                                 {{ merchant.name }}
                             </dd>
                         </div>
-                        <div class="rounded-xl bg-base-200/70 p-3">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Домен</dt>
-                            <dd class="mt-1 break-all font-medium text-base-content">
+                        <div class="rounded-lg bg-base-200/70 p-2.5">
+                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Домен</dt>
+                            <dd class="mt-0.5 break-all font-medium text-base-content">
                                 {{ merchant.domain }}
                             </dd>
                         </div>
-                        <div class="rounded-xl bg-base-200/70 p-3 md:col-span-2">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Описание</dt>
-                            <dd class="mt-1 break-words text-base-content/80">
+                        <div class="rounded-lg bg-base-200/70 p-2.5 md:col-span-2">
+                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Описание</dt>
+                            <dd class="mt-0.5 break-words text-base-content/80">
                                 {{ merchant.description || 'Не указано' }}
                             </dd>
                         </div>
-                        <div class="rounded-xl bg-base-200/70 p-3">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Статус</dt>
-                            <dd class="mt-2">
+                        <div class="rounded-lg bg-base-200/70 p-2.5">
+                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Статус</dt>
+                            <dd class="mt-1">
                                 <span v-if="merchantStatus" class="badge badge-sm" :class="merchantStatus.class">
                                     {{ merchantStatus.label }}
                                 </span>
                             </dd>
                         </div>
-                        <div v-if="viewStore.isAdminViewMode && merchant.owner" class="rounded-xl bg-base-200/70 p-3">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Владелец</dt>
-                            <dd class="mt-1 break-all font-medium text-base-content">
+                        <div v-if="viewStore.isAdminViewMode && merchant.owner" class="rounded-lg bg-base-200/70 p-2.5">
+                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Владелец</dt>
+                            <dd class="mt-0.5 break-all font-medium text-base-content">
                                 {{ merchant.owner.email }}
                             </dd>
                         </div>
-                        <div class="rounded-xl bg-base-200/70 p-3 md:col-span-2">
-                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Merchant ID</dt>
-                            <dd class="mt-1 text-base-content/80">
+                        <div class="rounded-lg bg-base-200/70 p-2.5 md:col-span-2">
+                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Merchant ID</dt>
+                            <dd class="mt-0.5 text-base-content/80">
                                 <DUUID :uuid="merchant.uuid"/>
                             </dd>
                         </div>
@@ -717,13 +717,13 @@ const merchantStatus = computed(() => {
             </div>
 
             <!-- Таб: Callback URL -->
-            <div v-if="activeTab === 'callback'" class="space-y-4">
+            <div v-if="activeTab === 'callback'" class="space-y-3">
                 <div v-if="merchant">
-                    <div class="rounded-xl bg-base-200/60 p-3 sm:p-4">
-                        <p class="mb-4 text-sm text-base-content/70">
+                    <div class="rounded-lg bg-base-200/60 p-2.5 sm:p-3">
+                        <p class="mb-3 text-xs text-base-content/70">
                             Укажите, куда слать уведомления о сделках и выплатах. Если поле пустое, колбеки по соответствующей сущности отправляться не будут.
                         </p>
-                        <form class="grid grid-cols-1 gap-4 lg:grid-cols-2" @submit.prevent="submitCallback">
+                        <form class="grid grid-cols-1 gap-3 lg:grid-cols-2" @submit.prevent="submitCallback">
                             <div>
                                 <InputLabel
                                     for="callback_url"
@@ -735,13 +735,13 @@ const merchantStatus = computed(() => {
                                     id="callback_url"
                                     v-model="formCallback.callback_url"
                                     type="text"
-                                    class="mt-1 block w-full"
+                                    class="mt-1 block w-full text-xs"
                                     placeholder="https://example.com/callback"
                                     :error="!!formCallback.errors.callback_url"
                                     @input="clearFormError(formCallback, 'callback_url')"
                                 />
 
-                                <InputError :message="formCallback.errors.callback_url" class="mt-2" />
+                                <InputError :message="formCallback.errors.callback_url" class="mt-1" />
                             </div>
 
                             <div>
@@ -755,20 +755,21 @@ const merchantStatus = computed(() => {
                                     id="payout_callback_url"
                                     v-model="formCallback.payout_callback_url"
                                     type="text"
-                                    class="mt-1 block w-full"
+                                    class="mt-1 block w-full text-xs"
                                     placeholder="https://example.com/payout-callback"
                                     :error="!!formCallback.errors.payout_callback_url"
                                     @input="clearFormError(formCallback, 'payout_callback_url')"
                                 />
 
-                                <InputError :message="formCallback.errors.payout_callback_url" class="mt-2" />
+                                <InputError :message="formCallback.errors.payout_callback_url" class="mt-1" />
                             </div>
 
                             <div class="lg:col-span-2">
                                 <SaveButton
                                     :disabled="formCallback.processing"
                                     :saved="formCallback.recentlySuccessful"
-                                ></SaveButton>
+                                    size="xs"
+                                />
                             </div>
                         </form>
                     </div>
@@ -776,23 +777,23 @@ const merchantStatus = computed(() => {
             </div>
 
             <!-- Таб: Модерация (только для админа) -->
-            <div v-if="activeTab === 'moderation' && viewStore.isAdminViewMode" class="space-y-4">
+            <div v-if="activeTab === 'moderation' && viewStore.isAdminViewMode" class="space-y-3">
                 <div v-if="merchant">
-                    <div class="rounded-xl bg-base-200/60 p-4">
-                        <p class="mb-4 text-sm text-base-content/70">
+                    <div class="rounded-lg bg-base-200/60 p-3">
+                        <p class="mb-3 text-xs text-base-content/70">
                             Разрешите работу мерчанта или заблокируйте его.
                         </p>
                         <form @submit.prevent="submitCallback">
-                            <div class="flex flex-col gap-3 rounded-xl bg-base-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex flex-col gap-2 rounded-lg bg-base-100 p-2.5 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
-                                    <div class="text-xs uppercase tracking-wide text-base-content/50">Текущий статус</div>
+                                    <div class="text-[10px] uppercase tracking-wide text-base-content/50">Текущий статус</div>
                                     <div class="mt-1">
                                         <span v-if="merchantStatus" class="badge" :class="merchantStatus.class">
                                             {{ merchantStatus.label }}
                                         </span>
                                     </div>
                                 </div>
-                                <div class="flex flex-wrap gap-2">
+                                <div class="flex flex-wrap gap-1.5">
                                     <button
                                         @click="submitValidated"
                                         v-if="! merchant.validated_at"
@@ -828,21 +829,21 @@ const merchantStatus = computed(() => {
             </div>
 
             <!-- Таб: Гео (только для админа) -->
-            <div v-if="activeTab === 'geo' && viewStore.isAdminViewMode" class="space-y-4">
+            <div v-if="activeTab === 'geo' && viewStore.isAdminViewMode" class="space-y-3">
                 <div v-if="merchant">
-                    <div class="space-y-4 rounded-xl bg-base-200/60 p-3 sm:p-4">
-                        <p class="text-sm text-base-content/70">
+                    <div class="space-y-3 rounded-lg bg-base-200/60 p-2.5 sm:p-3">
+                        <p class="text-xs text-base-content/70">
                             Укажите источник курсов для каждой валюты. Если GEO не настроено, создание сделок и выплат будет недоступно.
                         </p>
 
-                        <form class="space-y-4" @submit.prevent="submitGeo">
-                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                        <form class="space-y-3" @submit.prevent="submitGeo">
+                            <div class="grid grid-cols-1 gap-2.5 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
                                     <InputLabel
                                         for="geo_currency"
                                         value="Валюта GEO"
                                         :error="!!geoForm.errors.currency || !!geoForm.errors.geos"
-                                        class="mb-1"
+                                        class="mb-0.5"
                                     />
                                     <Select
                                         id="geo_currency"
@@ -852,6 +853,7 @@ const merchantStatus = computed(() => {
                                         name="name"
                                         default_title="Выберите валюту"
                                         :required="false"
+                                        size="sm"
                                         :error="!!geoForm.errors.currency || !!geoForm.errors.geos"
                                         @change="() => { clearFormError(geoForm, 'currency'); clearFormError(geoForm, 'geos'); }"
                                     ></Select>
@@ -862,7 +864,7 @@ const merchantStatus = computed(() => {
                                         for="geo_market"
                                         value="Маркет"
                                         :error="!!geoForm.errors.market || !!geoForm.errors.geos"
-                                        class="mb-1"
+                                        class="mb-0.5"
                                     />
                                     <Select
                                         id="geo_market"
@@ -872,6 +874,7 @@ const merchantStatus = computed(() => {
                                         name="name"
                                         default_title="Выберите маркет"
                                         :required="false"
+                                        size="sm"
                                         :error="!!geoForm.errors.market || !!geoForm.errors.geos"
                                         @change="() => { clearFormError(geoForm, 'market'); clearFormError(geoForm, 'geos'); }"
                                     ></Select>
@@ -882,18 +885,18 @@ const merchantStatus = computed(() => {
                                         for="geo_order_reference_rate"
                                         value="Опорный курс для сделок"
                                         :error="!!geoForm.errors.order_reference_rate || !!geoForm.errors.geos"
-                                        class="mb-1"
+                                        class="mb-0.5"
                                     />
                                     <TextInput
                                         id="geo_order_reference_rate"
                                         v-model="geoForm.order_reference_rate"
                                         type="text"
-                                        class="mt-1 block w-full"
+                                        class="mt-1 block w-full text-xs"
                                         placeholder="Например, 95.12345678"
                                         :error="!!geoForm.errors.order_reference_rate || !!geoForm.errors.geos"
                                         @input="() => { clearFormError(geoForm, 'order_reference_rate'); clearFormError(geoForm, 'geos'); }"
                                     />
-                                    <InputError :message="geoForm.errors.order_reference_rate" class="mt-2" />
+                                    <InputError :message="geoForm.errors.order_reference_rate" class="mt-1" />
                                 </div>
 
                                 <div v-if="geoForm.market === MERCHANT_API_MARKET">
@@ -901,18 +904,18 @@ const merchantStatus = computed(() => {
                                         for="geo_payout_reference_rate"
                                         value="Опорный курс для выплат"
                                         :error="!!geoForm.errors.payout_reference_rate || !!geoForm.errors.geos"
-                                        class="mb-1"
+                                        class="mb-0.5"
                                     />
                                     <TextInput
                                         id="geo_payout_reference_rate"
                                         v-model="geoForm.payout_reference_rate"
                                         type="text"
-                                        class="mt-1 block w-full"
+                                        class="mt-1 block w-full text-xs"
                                         placeholder="Например, 95.12345678"
                                         :error="!!geoForm.errors.payout_reference_rate || !!geoForm.errors.geos"
                                         @input="() => { clearFormError(geoForm, 'payout_reference_rate'); clearFormError(geoForm, 'geos'); }"
                                     />
-                                    <InputError :message="geoForm.errors.payout_reference_rate" class="mt-2" />
+                                    <InputError :message="geoForm.errors.payout_reference_rate" class="mt-1" />
                                 </div>
 
                                 <div v-if="geoForm.market === MERCHANT_API_MARKET">
@@ -920,24 +923,24 @@ const merchantStatus = computed(() => {
                                         for="geo_max_deviation_percent"
                                         value="Допустимое отклонение, %"
                                         :error="!!geoForm.errors.max_deviation_percent || !!geoForm.errors.geos"
-                                        class="mb-1"
+                                        class="mb-0.5"
                                     />
                                     <TextInput
                                         id="geo_max_deviation_percent"
                                         v-model="geoForm.max_deviation_percent"
                                         type="text"
-                                        class="mt-1 block w-full"
+                                        class="mt-1 block w-full text-xs"
                                         placeholder="Например, 3.00"
                                         :error="!!geoForm.errors.max_deviation_percent || !!geoForm.errors.geos"
                                         @input="() => { clearFormError(geoForm, 'max_deviation_percent'); clearFormError(geoForm, 'geos'); }"
                                     />
-                                    <InputError :message="geoForm.errors.max_deviation_percent" class="mt-2" />
+                                    <InputError :message="geoForm.errors.max_deviation_percent" class="mt-1" />
                                 </div>
 
                                 <div class="flex items-end">
                                     <button
                                         type="button"
-                                        class="btn btn-primary w-full md:btn-sm"
+                                        class="btn btn-xs btn-primary w-full"
                                         @click="addGeo"
                                         :disabled="
                                             !geoForm.currency
@@ -962,29 +965,29 @@ const merchantStatus = computed(() => {
                                 class="mt-1"
                             />
 
-                            <div v-if="geoItems?.length" class="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                            <div v-if="geoItems?.length" class="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
                                 <div
                                     v-for="geo in geoItems"
                                     :key="geo.currency"
-                                    class="flex items-start justify-between gap-3 rounded-xl bg-base-100 p-3"
+                                    class="flex items-start justify-between gap-2 rounded-lg bg-base-100 p-2.5"
                                 >
                                     <div>
-                                        <div class="text-sm font-medium text-base-content">
+                                        <div class="text-xs font-medium text-base-content">
                                             {{ currencies.find(c => c.value.toLowerCase() === geo.currency?.toLowerCase())?.name || geo.currency?.toUpperCase() }}
                                         </div>
-                                        <div class="text-xs text-base-content/70">
+                                        <div class="text-[11px] text-base-content/70">
                                             {{ markets.find(m => m.value === geo.market)?.name || geo.market }}
                                         </div>
                                         <div
                                             v-if="geo.market === MERCHANT_API_MARKET"
-                                            class="text-xs text-base-content/70 mt-1"
+                                            class="mt-0.5 text-[11px] text-base-content/70"
                                         >
                                             Сделки: {{ geo.order_reference_rate }} | Выплаты: {{ geo.payout_reference_rate }} | Отклонение: ±{{ geo.max_deviation_percent }}%
                                         </div>
                                     </div>
                                     <button
                                         type="button"
-                                        class="btn btn-sm btn-ghost text-error"
+                                        class="btn btn-xs btn-ghost text-error"
                                         @click.prevent="removeGeo(geo.currency)"
                                         :disabled="geoItems.length <= 1"
                                     >
@@ -992,30 +995,31 @@ const merchantStatus = computed(() => {
                                     </button>
                                 </div>
                             </div>
-                            <p v-else class="text-sm text-base-content/70">
+                            <p v-else class="text-xs text-base-content/70">
                                 Добавьте хотя бы один GEO: выберите валюту и маркет, затем нажмите «Добавить».
                             </p>
 
                             <SaveButton
                                 :disabled="geoForm.processing"
                                 :saved="geoForm.recentlySuccessful"
-                            ></SaveButton>
+                                size="xs"
+                            />
                         </form>
                     </div>
                 </div>
             </div>
 
             <!-- Таб: Настройки (только для админа) -->
-            <div v-if="activeTab === 'settings' && viewStore.isAdminViewMode" class="space-y-4">
+            <div v-if="activeTab === 'settings' && viewStore.isAdminViewMode" class="space-y-3">
                 <div v-if="merchant">
-                    <div class="rounded-xl bg-base-200/60 p-3 sm:p-4">
-                        <form class="space-y-4" @submit.prevent="submitSettings">
+                    <div class="rounded-lg bg-base-200/60 p-2.5 sm:p-3">
+                        <form class="space-y-3" @submit.prevent="submitSettings">
                             <div>
                                 <InputLabel
                                     for="max_order_wait_time"
                                     value="Время на выдачу реквизита (max)"
                                     :error="!!formSettings.errors.max_order_wait_time"
-                                    class="mb-1"
+                                    class="mb-0.5"
                                 />
                                 <TextInput
                                     id="max_order_wait_time"
@@ -1023,24 +1027,24 @@ const merchantStatus = computed(() => {
                                     type="number"
                                     min="1"
                                     placeholder="Введите время в миллисекундах (1 сек = 1000 мс)"
-                                    class="mt-1 block w-full"
+                                    class="input-sm mt-1 block w-full text-xs"
                                     :error="!!formSettings.errors.max_order_wait_time"
                                     @input="clearFormError(formSettings, 'max_order_wait_time')"
                                 />
-                                <p class="mt-1 text-sm text-base-content/70">
+                                <p class="mt-1 text-xs text-base-content/70">
                                     Примеры: 3000 мс = 3 секунды, 60000 мс = 1 минута
                                 </p>
-                                <InputError :message="formSettings.errors.max_order_wait_time" class="mt-2" />
+                                <InputError :message="formSettings.errors.max_order_wait_time" class="mt-1" />
                             </div>
 
                             <div>
                                 <InputLabel
                                     value="Максимальная сумма сделки"
-                                    class="mb-1"
+                                    class="mb-0.5"
                                 />
 
                                 <!-- Выбор валюты -->
-                                <div class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
+                                <div class="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_auto]">
                                     <div class="w-full">
                                         <Select
                                             v-model="selectedCurrency"
@@ -1049,11 +1053,12 @@ const merchantStatus = computed(() => {
                                             name="name"
                                             default_title="Выберите валюту"
                                             :required="false"
-                                        ></Select>
+                                            size="sm"
+                                        />
                                     </div>
                                     <button
                                         type="button"
-                                        class="btn btn-primary"
+                                        class="btn btn-xs btn-primary"
                                         @click="addMinOrderAmount"
                                         :disabled="!selectedCurrency"
                                     >
@@ -1062,32 +1067,32 @@ const merchantStatus = computed(() => {
                                 </div>
 
                                 <!-- Список минимальных сумм по валютам -->
-                                <div v-if="Object.keys(minOrderAmounts).length > 0" class="mt-3 space-y-2">
+                                <div v-if="Object.keys(minOrderAmounts).length > 0" class="mt-2 space-y-1.5">
                                     <div
                                         v-for="(amount, currency) in minOrderAmounts"
                                         :key="currency"
-                                        class="flex items-center gap-2 p-2 rounded-lg bg-base-200"
+                                        class="flex items-center gap-2 rounded-lg bg-base-200 p-2"
                                     >
                                         <div class="flex-1">
-                                            <div class="text-sm font-medium text-base-content mb-1">
+                                            <div class="mb-1 text-xs font-medium text-base-content">
                                                 {{ currencies.find(c => c.value === currency)?.name || currency.toUpperCase() }}
                                             </div>
-                                            <div class="flex items-center gap-2">
+                                            <div class="flex items-center gap-1.5">
                                                 <TextInput
                                                     v-model="minOrderAmounts[currency]"
                                                     type="number"
                                                     min="0"
                                                     step="0.01"
                                                     placeholder="Мин. сумма"
-                                                    class="block w-full"
+                                                    class="input-sm block w-full text-xs"
                                                 />
 
                                                 <button
                                                     type="button"
-                                                    class="btn btn-sm btn-ghost btn-square text-error"
+                                                    class="btn btn-xs btn-ghost btn-square text-error"
                                                     @click.prevent="removeMinOrderAmount(currency)"
                                                 >
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                     </svg>
                                                 </button>
@@ -1095,7 +1100,7 @@ const merchantStatus = computed(() => {
                                         </div>
                                     </div>
                                 </div>
-                                <p v-else class="mt-1 text-sm text-base-content/70">
+                                <p v-else class="mt-1 text-xs text-base-content/70">
                                     Нет настроенных минимальных сумм. Добавьте валюту для настройки.
                                 </p>
                             </div>
@@ -1103,21 +1108,22 @@ const merchantStatus = computed(() => {
                             <SaveButton
                                 :disabled="formSettings.processing"
                                 :saved="formSettings.recentlySuccessful"
-                            ></SaveButton>
+                                size="xs"
+                            />
                         </form>
                     </div>
                 </div>
             </div>
 
             <!-- Таб: Повторная отправка callback (только для админа) -->
-            <div v-if="activeTab === 'resend' && viewStore.isAdminViewMode" class="space-y-4">
+            <div v-if="activeTab === 'resend' && viewStore.isAdminViewMode" class="space-y-3">
                 <div v-if="merchant">
-                    <div class="rounded-xl bg-base-200/60 p-3 sm:p-4">
-                        <p class="mb-4 text-sm text-base-content/70">
+                    <div class="rounded-lg bg-base-200/60 p-2.5 sm:p-3">
+                        <p class="mb-3 text-xs text-base-content/70">
                             Выберите период дат для повторной отправки callback по всем сделкам мерчанта за указанный период.
                         </p>
-                        <form class="space-y-4" @submit.prevent="submitResendCallback">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <form class="space-y-3" @submit.prevent="submitResendCallback">
+                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <div>
                                     <InputLabel
                                         for="start_date"
@@ -1129,9 +1135,10 @@ const merchantStatus = computed(() => {
                                         v-model="formResendCallback.start_date"
                                         placeholder="дд/мм/гггг"
                                         :error="!!formResendCallback.errors.start_date"
+                                        size="sm"
                                         @change="clearFormError(formResendCallback, 'start_date')"
                                     />
-                                    <InputError :message="formResendCallback.errors.start_date" class="mt-2" />
+                                    <InputError :message="formResendCallback.errors.start_date" class="mt-1" />
                                 </div>
                                 <div>
                                     <InputLabel
@@ -1144,25 +1151,25 @@ const merchantStatus = computed(() => {
                                         v-model="formResendCallback.end_date"
                                         placeholder="дд/мм/гггг"
                                         :error="!!formResendCallback.errors.end_date"
+                                        size="sm"
                                         @change="clearFormError(formResendCallback, 'end_date')"
                                     />
-                                    <InputError :message="formResendCallback.errors.end_date" class="mt-2" />
+                                    <InputError :message="formResendCallback.errors.end_date" class="mt-1" />
                                 </div>
                             </div>
-                            <InputError :message="formResendCallback.errors.date_range" class="mt-2" />
+                            <InputError :message="formResendCallback.errors.date_range" class="mt-1" />
                             <SaveButton
                                 :disabled="formResendCallback.processing"
                                 :saved="formResendCallback.recentlySuccessful"
-                            >
-                                Отправить callback
-                            </SaveButton>
+                                size="xs"
+                            />
                         </form>
                     </div>
                 </div>
             </div>
 
             <!-- Таб: Платежные системы -->
-            <div v-if="activeTab === 'gateways'" class="space-y-6">
+            <div v-if="activeTab === 'gateways'" class="space-y-3 text-xs">
                 <Gateways
                     v-if="paymentGateways"
                     :merchant-id="merchant?.id"

@@ -100,10 +100,10 @@ watch(
 </script>
 
 <template>
-    <Modal :show="merchantSettingsModal.showed" maxWidth="6xl" @close="close">
+    <Modal :show="merchantSettingsModal.showed" maxWidth="4xl" @close="close">
         <ModalHeader :title="title" @close="close" />
         <ModalBody>
-            <div v-if="loading" class="rounded-2xl bg-base-200/60 py-10 text-center text-sm text-base-content/60">
+            <div v-if="loading" class="rounded-xl bg-base-200/60 py-8 text-center text-xs text-base-content/60">
                 <span class="loading loading-spinner loading-sm mr-2 align-middle"></span>
                 <span class="align-middle">Загрузка настроек...</span>
             </div>
@@ -121,12 +121,12 @@ watch(
                 :payment-gateways="paymentGateways"
                 @updated="notifyUpdated"
             />
-            <div v-else class="py-8 text-center text-sm text-base-content/60">
+            <div v-else class="py-8 text-center text-xs text-base-content/60">
                 Данные отсутствуют.
             </div>
         </ModalBody>
         <ModalFooter>
-            <button type="button" class="btn btn-sm" @click="close">
+            <button type="button" class="btn btn-xs" @click="close">
                 Закрыть
             </button>
         </ModalFooter>
