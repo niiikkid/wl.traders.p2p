@@ -60,7 +60,7 @@ const tocSections = [
                                 </p>
                                 <ul class="list-disc list-inside space-y-2 mt-3 text-base-content/80 ml-2">
                                     <li><strong>Accept: application/json</strong> — формат ответа.</li>
-                                    <li><strong>Access-Token: token</strong> — ключ авторизации из раздела «Интеграция».</li>
+                                    <li><strong>Access-Token: token</strong> — ключ авторизации из раздела «API Интеграция».</li>
                                 </ul>
                             </div>
 

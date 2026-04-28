@@ -372,6 +372,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Super Admin']], function () {
+        Route::get('/integration/v2', [ApiIntegrationController::class, 'v2'])->name('integration.v2');
         Route::get('/integration', [ApiIntegrationController::class, 'index'])->name('integration.index');
         Route::get('/integration/receipt-template', [ApiIntegrationController::class, 'receiptTemplate'])->name('integration.receipt-template');
         Route::post('/integration/regenerate-token', [ApiIntegrationController::class, 'regenerateToken'])

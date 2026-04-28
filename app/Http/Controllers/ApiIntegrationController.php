@@ -5,12 +5,26 @@ namespace App\Http\Controllers;
 use App\Models\Merchant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ApiIntegrationController extends Controller
 {
     public function index()
+    {
+        return Inertia::render('Integration/Index', $this->integrationPageProps());
+    }
+
+    public function v2()
+    {
+        return Inertia::render('Integration/V2');
+    }
+
+    /**
+     * @return array{token: mixed, merchantId: mixed, merchants: Collection<int, array{uuid: string, name: string}>}
+     */
+    private function integrationPageProps(): array
     {
         $user = auth()->user();
         $token = $user->api_access_token;
@@ -30,11 +44,11 @@ class ApiIntegrationController extends Controller
         $firstMerchant = $merchantList->first() ?? [];
         $merchantId = $firstMerchant['uuid'] ?? null;
 
-        return Inertia::render('Integration/Index', [
+        return [
             'token' => $token,
             'merchantId' => $merchantId,
             'merchants' => $merchantList,
-        ]);
+        ];
     }
 
     public function receiptTemplate(): JsonResponse

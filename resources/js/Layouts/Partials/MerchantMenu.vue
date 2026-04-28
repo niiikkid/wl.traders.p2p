@@ -89,15 +89,15 @@ router.on('success', (event) => {
         </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('integration.*') }]">
             <span
-                @click="router.visit(route('integration.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('integration.index'), { preserveScroll: true })"
+                @click="router.visit(route('integration.v2'), { preserveScroll: true })"
+                @keydown.enter.space="router.visit(route('integration.v2'), { preserveScroll: true })"
                 role="link"
                 tabindex="0"
             >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 13V4M7 14H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1h-2m-1-5-4 5-4-5m9 8h.01"/>
+                <svg class="size-5 opacity-30 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <path d="M7 8L3 11.6923L7 16M17 8L21 11.6923L17 16M14 4L10 20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
-                Интеграция
+                API Интеграция
             </span>
         </li>
     </ul>
