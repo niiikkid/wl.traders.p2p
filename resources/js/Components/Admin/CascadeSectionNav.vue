@@ -27,7 +27,7 @@ const tabs = computed(() => [
         <template v-for="tab in tabs" :key="tab.id">
             <span
                 v-if="active === tab.id"
-                class="btn btn-sm btn-primary join-item cursor-default"
+                class="btn btn-xs btn-primary join-item cursor-default min-h-0 h-7 px-2"
                 aria-current="page"
             >
                 {{ tab.label }}
@@ -35,7 +35,7 @@ const tabs = computed(() => [
             <Link
                 v-else
                 :href="route(tab.routeName)"
-                class="btn btn-sm btn-outline join-item"
+                class="btn btn-xs btn-outline join-item min-h-0 h-7 px-2"
                 preserve-scroll
             >
                 {{ tab.label }}

@@ -141,92 +141,97 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
 
             <template #body>
-                <div class="hidden xl:block overflow-x-auto card bg-base-100 shadow">
-                    <table class="table table-sm">
-                        <thead class="text-xs uppercase bg-base-300">
+                <div class="hidden xl:block overflow-x-auto card card-border bg-base-100 shadow-sm">
+                    <table class="table table-xs">
+                        <thead class="text-[10px] uppercase tracking-wide bg-base-300 [&_th]:py-1.5 [&_th:not(:first-child)]:px-2">
                             <tr>
-                                <th>ID</th>
+                                <th class="w-12 py-1.5 ps-4 pe-2">ID</th>
                                 <th>Мерчант</th>
                                 <th>Владелец</th>
-                                <th>Статус</th>
-                                <th>Каскад</th>
+                                <th class="w-24">Статус</th>
+                                <th class="w-36">Каскад</th>
                                 <th>Провайдеры</th>
-                                <th><span class="sr-only">Действия</span></th>
+                                <th class="w-px pe-2"><span class="sr-only">Действия</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr
                                 v-for="merchant in merchantRows"
                                 :key="merchant.id"
-                                class="bg-base-100 border-b last:border-none border-base-200"
+                                class="border-b border-base-200 last:border-0 hover:bg-base-200/40"
                             >
-                                <td class="font-medium">#{{ merchant.id }}</td>
-                                <td>
-                                    <div class="font-medium text-base-content">{{ merchant.name }}</div>
-                                    <div class="text-xs opacity-70">{{ merchant.domain || merchant.uuid }}</div>
+                                <td class="ps-4 pe-2 py-1 font-mono text-[11px] text-base-content/80">{{ merchant.id }}</td>
+                                <td class="max-w-[14rem] px-2 py-1">
+                                    <div class="truncate text-xs font-medium text-base-content">{{ merchant.name }}</div>
+                                    <div class="truncate text-[10px] leading-tight opacity-60">{{ merchant.domain || merchant.uuid }}</div>
                                 </td>
-                                <td class="text-nowrap">{{ merchant.owner?.email ?? 'Пусто' }}</td>
-                                <td><IsActiveStatus :is_active="merchant.active" /></td>
-                                <td>
-                                    <div class="flex flex-wrap gap-1">
+                                <td class="max-w-[12rem] truncate px-2 py-1 text-xs">{{ merchant.owner?.email ?? 'Пусто' }}</td>
+                                <td class="px-2 py-1"><IsActiveStatus compact :is_active="merchant.active" /></td>
+                                <td class="px-2 py-1">
+                                    <div class="flex flex-wrap gap-0.5">
                                         <span
                                             :class="[
-                                                'badge badge-sm',
+                                                'badge badge-xs whitespace-nowrap',
                                                 merchant.cascade_setting.cascade_enabled ? 'badge-success' : 'badge-error',
                                             ]"
                                         >
-                                            {{ merchant.cascade_setting.cascade_enabled ? 'Включен' : 'Выключен' }}
+                                            {{ merchant.cascade_setting.cascade_enabled ? 'Вкл.' : 'Выкл.' }}
                                         </span>
-                                        <span v-if="merchant.cascade_setting.is_default" class="badge badge-sm badge-ghost">
-                                            По умолчанию
+                                        <span v-if="merchant.cascade_setting.is_default" class="badge badge-xs badge-ghost whitespace-nowrap">
+                                            умолч.
                                         </span>
                                     </div>
                                 </td>
-                                <td>
-                                    <div class="text-sm">{{ providersSummary(merchant) }}</div>
+                                <td class="px-2 py-1">
+                                    <div class="line-clamp-2 text-[11px] leading-snug text-base-content/90">{{ providersSummary(merchant) }}</div>
                                 </td>
-                                <td class="text-end">
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-outline"
-                                        @click="openSettingsModal(merchant)"
-                                    >
-                                        Настройки
-                                    </button>
+                                <td class="ps-1 pe-2 py-1 text-end">
+                                    <div class="tooltip tooltip-left" data-tip="Настройки каскада">
+                                        <button
+                                            type="button"
+                                            class="btn btn-xs btn-square btn-ghost text-base-content/70"
+                                            aria-label="Настройки каскада"
+                                            @click="openSettingsModal(merchant)"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-3.5" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M8.34 1.804A1 1 0 0 1 9.32 1h1.36a1 1 0 0 1 .98.804l.295 1.473c.497.144.971.342 1.416.587l1.25-.834a1 1 0 0 1 1.262.125l.962.962a1 1 0 0 1 .125 1.262l-.834 1.25c.245.445.443.919.587 1.416l1.473.294a1 1 0 0 1 .804.98v1.361a1 1 0 0 1-.804.98l-1.473.295a6.95 6.95 0 0 1-.587 1.416l.834 1.25a1 1 0 0 1-.125 1.262l-.962.962a1 1 0 0 1-1.262.125l-1.25-.834a6.953 6.953 0 0 1-1.416.587l-.294 1.473a1 1 0 0 1-.98.804H9.32a1 1 0 0 1-.98-.804l-.295-1.473a6.95 6.95 0 0 1-1.416-.587l-1.25.834a1 1 0 0 1-1.262-.125l-.962-.962a1 1 0 0 1-.125-1.262l.834-1.25a6.952 6.952 0 0 1-.587-1.416l-1.473-.294A1 1 0 0 1 1 10.68V9.32a1 1 0 0 1 .804-.98l1.473-.295c.144-.497.342-.971.587-1.416l-.834-1.25a1 1 0 0 1 .125-1.262l.962-.962A1 1 0 0 1 5.38 3.03l1.25.834a6.953 6.953 0 0 1 1.416-.587l.294-1.473ZM13 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 xl:hidden">
+                <div class="grid grid-cols-1 gap-2 xl:hidden">
                     <div
                         v-for="merchant in merchantRows"
                         :key="merchant.id"
-                        class="card bg-base-100 shadow"
+                        class="card card-border bg-base-100 shadow-sm"
                     >
-                        <div class="card-body gap-3">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="text-lg font-semibold">{{ merchant.name }}</div>
-                                    <div class="text-xs opacity-70">#{{ merchant.id }} · {{ merchant.owner?.email ?? 'Пусто' }}</div>
+                        <div class="card-body gap-2 p-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-semibold">{{ merchant.name }}</div>
+                                    <div class="truncate text-[10px] opacity-70">{{ merchant.id }} · {{ merchant.owner?.email ?? 'Пусто' }}</div>
                                 </div>
                                 <span
                                     :class="[
-                                        'badge',
+                                        'badge badge-xs shrink-0',
                                         merchant.cascade_setting.cascade_enabled ? 'badge-success' : 'badge-error',
                                     ]"
                                 >
-                                    {{ merchant.cascade_setting.cascade_enabled ? 'Включен' : 'Выключен' }}
+                                    {{ merchant.cascade_setting.cascade_enabled ? 'Вкл.' : 'Выкл.' }}
                                 </span>
                             </div>
 
-                            <div class="text-sm opacity-80">{{ providersSummary(merchant) }}</div>
+                            <div class="line-clamp-2 text-[11px] opacity-80">{{ providersSummary(merchant) }}</div>
 
-                            <div class="card-actions justify-end">
+                            <div class="card-actions justify-end pt-0">
                                 <button
                                     type="button"
-                                    class="btn btn-sm btn-outline"
+                                    class="btn btn-xs btn-outline min-h-0 h-7 px-2"
                                     @click="openSettingsModal(merchant)"
                                 >
                                     Настройки

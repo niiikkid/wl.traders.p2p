@@ -362,10 +362,10 @@ defineOptions({ layout: AuthenticatedLayout });
 
 <template>
     <div>
-        <Head title="Провайдеры каскада" />
+        <Head title="Интеграции каскада" />
 
         <MainTableSection
-            title="Провайдеры каскада"
+            title="Интеграции каскада"
             :data="cascadeProviderList"
             :paginate="false"
             :display-pagination="false"
