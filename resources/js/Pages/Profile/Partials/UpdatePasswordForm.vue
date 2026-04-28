@@ -35,16 +35,16 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <div>
-        <header>
-            <h2 class="text-lg font-medium">Обновить пароль</h2>
+    <div class="text-left">
+        <header class="space-y-1">
+            <h2 class="text-base font-semibold text-base-content">Обновить пароль</h2>
 
-            <p class="mt-1 text-sm text-base-content/70">
-                Убедитесь, что ваша учетная запись использует длинный и случайный пароль, чтобы оставаться в безопасности.
+            <p class="text-xs leading-relaxed text-base-content/60">
+                Длинный случайный пароль снижает риск взлома аккаунта.
             </p>
         </header>
 
-        <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
+        <form @submit.prevent="updatePassword" class="mt-5 space-y-4">
 <!--            <div>
                 <InputLabel
                     for="current_password"
@@ -102,7 +102,7 @@ const updatePassword = () => {
             </div>
 
             <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Сохранить</PrimaryButton>
+                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"

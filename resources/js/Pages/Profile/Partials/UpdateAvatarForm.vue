@@ -48,17 +48,17 @@ const avatarsStyles = [
 </script>
 
 <template>
-    <div>
-        <header>
-            <h2 class="text-lg font-medium">Редактирование аватара</h2>
+    <div class="text-left">
+        <header class="space-y-1">
+            <h2 class="text-base font-semibold text-base-content">Редактирование аватара</h2>
 
-            <p class="mt-1 text-sm text-base-content/70">
-                Вы можете выбрать стиль аватара и/или сгенерировать новый.
+            <p class="text-xs leading-relaxed text-base-content/60">
+                Выберите стиль превью или сгенерируйте новый вариант кнопкой ниже.
             </p>
         </header>
 
-        <form @submit.prevent="form.patch(route('profile.update.avatar'))" class="mt-6 space-y-6">
-            <div class="flex flex-wrap justify-center items-center gap-4 py-2">
+        <form @submit.prevent="form.patch(route('profile.update.avatar'))" class="mt-5 space-y-6">
+            <div class="flex flex-wrap justify-start items-center gap-4 py-2">
                 <img
                     v-for="avatar in avatarsStyles"
                     @click="form.avatar_style = avatar"
@@ -69,20 +69,19 @@ const avatarsStyles = [
                 >
             </div>
 
-            <div class="flex justify-center">
-                <a
-                    href="#"
-                    @click.prevent="generateAvatarUUID"
-                    class="px-0 py-0 text-primary hover:text-primary/80 inline-flex items-center hover:underline"
+            <div class="flex flex-wrap items-center gap-4">
+                <button
+                    type="button"
+                    class="btn btn-secondary btn-sm inline-flex items-center gap-2"
+                    @click="generateAvatarUUID"
                 >
-                    <svg class="w-8 h-8" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg class="h-5 w-5 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.651 7.65a7.131 7.131 0 0 0-12.68 3.15M18.001 4v4h-4m-7.652 8.35a7.13 7.13 0 0 0 12.68-3.15M6 20v-4h4"/>
                     </svg>
-                </a>
-            </div>
+                    Перегенерировать
+                </button>
 
-            <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Сохранить</PrimaryButton>
+                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"

@@ -1,5 +1,4 @@
 <script setup>
-import SectionTitle from '@/Components/SectionTitle.vue';
 import { formatDateTime } from '@/utils';
 import DateTime from "@/Components/DateTime.vue";
 
@@ -24,13 +23,14 @@ const getStatusText = (isSuccessful) => {
 </script>
 
 <template>
-    <section>
-        <SectionTitle>
-            <template #title>История авторизаций</template>
-            <template #description>
-                Здесь вы можете просмотреть историю входов в ваш аккаунт.
-            </template>
-        </SectionTitle>
+    <section class="text-left">
+        <header class="space-y-1">
+            <h2 class="text-base font-semibold text-base-content">Сессии входа</h2>
+
+            <p class="text-xs leading-relaxed text-base-content/60">
+                Последние попытки входа: устройство, сеть и результат.
+            </p>
+        </header>
 
         <div class="mt-5">
             <!-- Desktop/tablet view (table) -->
@@ -62,7 +62,7 @@ const getStatusText = (isSuccessful) => {
                             </tr>
                             <tr v-if="loginHistory.length === 0">
                                 <td colspan="7" class="text-center text-base-content/60">
-                                    История авторизаций пуста
+                                    Сессий пока нет
                                 </td>
                             </tr>
                         </tbody>
@@ -71,21 +71,21 @@ const getStatusText = (isSuccessful) => {
             </div>
 
             <!-- Mobile view (cards list) -->
-            <div class="xl:hidden space-y-3">
+            <div class="xl:hidden space-y-2">
                 <div
                     v-for="(item, index) in loginHistory"
                     :key="index"
-                    class="card bg-base-100 border border-base-300"
+                    class="card bg-base-100 border border-base-300 shadow-sm"
                 >
-                    <div class="card-body p-4 pt-3 pb-3">
-                        <div class="flex items-center justify-between border-b border-base-content/10 pb-2 mb-2">
-                            <div class="text-sm">
-                                <div class="text-base-content/70">Устройство</div>
-                                <div class="font-medium text-base-content">{{ item.device_type }}</div>
+                    <div class="card-body px-3 py-2.5">
+                        <div class="mb-1.5 flex items-start justify-between gap-2 border-b border-base-content/10 pb-1.5">
+                            <div class="min-w-0 text-xs leading-snug">
+                                <div class="text-[11px] uppercase tracking-wide text-base-content/60">Устройство</div>
+                                <div class="mt-0.5 font-medium text-base-content">{{ item.device_type }}</div>
                             </div>
-                            <div class="text-right">
+                            <div class="shrink-0">
                                 <div
-                                    class="badge badge-sm"
+                                    class="badge badge-xs font-medium"
                                     :class="item.is_successful ? 'badge-success text-success-content' : 'badge-error text-error-content'"
                                 >
                                     {{ getStatusText(item.is_successful) }}
@@ -93,26 +93,22 @@ const getStatusText = (isSuccessful) => {
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-2 text-sm">
-                            <div class="flex items-center justify-between">
-                                <span class="text-base-content/70">IP адрес</span>
-                                <span class="text-base-content font-medium">{{ item.ip_address }}</span>
+                        <div class="grid grid-cols-1 gap-1.5 text-xs leading-snug">
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="shrink-0 text-base-content/60">IP</span>
+                                <span class="min-w-0 text-right font-medium text-base-content">{{ item.ip_address }}</span>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-base-content/70">Браузер</span>
-                                <span class="text-base-content font-medium truncate max-w-[60%]">{{ item.browser }}</span>
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="shrink-0 text-base-content/60">Браузер</span>
+                                <span class="min-w-0 text-right font-medium text-base-content truncate">{{ item.browser }}</span>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-base-content/70">ОС</span>
-                                <span class="text-base-content font-medium truncate max-w-[60%]">{{ item.operating_system }}</span>
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="shrink-0 text-base-content/60">ОС</span>
+                                <span class="min-w-0 text-right font-medium text-base-content truncate">{{ item.operating_system }}</span>
                             </div>
-<!--                            <div class="flex items-center justify-between">-->
-<!--                                <span class="text-base-content/70">Местоположение</span>-->
-<!--                                <span class="text-base-content font-medium truncate max-w-[60%]">{{ item.location }}</span>-->
-<!--                            </div>-->
-                            <div class="flex items-center justify-between">
-                                <span class="text-base-content/70">Время</span>
-                                <span class="text-base-content font-medium">
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="shrink-0 text-base-content/60">Время</span>
+                                <span class="min-w-0 text-right font-medium text-base-content">
                                     <DateTime :data="item.created_at" :simple="true"/>
                                 </span>
                             </div>
@@ -120,10 +116,10 @@ const getStatusText = (isSuccessful) => {
                     </div>
                 </div>
 
-                <div v-if="loginHistory.length === 0" class="card bg-base-100 border border-base-300">
-                    <div class="card-body p-4">
-                        <div class="text-center text-base-content/60">
-                            История авторизаций пуста
+                <div v-if="loginHistory.length === 0" class="card bg-base-100 border border-base-300 shadow-sm">
+                    <div class="card-body px-3 py-3">
+                        <div class="text-center text-xs text-base-content/60">
+                            Сессий пока нет
                         </div>
                     </div>
                 </div>

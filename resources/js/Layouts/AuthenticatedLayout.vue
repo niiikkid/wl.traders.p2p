@@ -504,10 +504,10 @@ const openDocs = () => {
             </div>
 
             <!-- Page content -->
-            <div class="container mx-auto px-4 pb-6 pt-2 flex-1">
+            <div class="container mx-auto px-4 pb-6 pt-1 flex-1">
                 <div class="flex gap-6">
                     <!-- Desktop sidebar -->
-                    <aside class="hidden lg:block space-y-4 pt-4 w-60" aria-label="Sidebar">
+                    <aside class="hidden lg:block space-y-4 pt-2 w-60" aria-label="Sidebar">
                         <button
                             v-if="isImpersonated"
                             @click="leaveImpersonate"
@@ -562,7 +562,7 @@ const openDocs = () => {
                     </aside>
 
                     <!-- Main content area -->
-                    <main class="w-full lg:w-[calc(100%_-_17.5rem)] pt-4">
+                    <main class="w-full lg:w-[calc(100%_-_17.5rem)] pt-2">
                         <slot />
                     </main>
                 </div>
