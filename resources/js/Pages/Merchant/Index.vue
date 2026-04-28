@@ -77,7 +77,7 @@ defineOptions({ layout: AuthenticatedLayout })
                     <button
                         @click="openCreateModal"
                         type="button"
-                        class="btn btn-primary btn-sm sm:btn-md"
+                        class="btn btn-primary btn-sm"
                     >
                         Создать мерчант
                     </button>

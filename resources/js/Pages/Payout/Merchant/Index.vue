@@ -9,7 +9,7 @@ import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
 import DropdownFilter from '@/Components/Filters/Pertials/DropdownFilter.vue';
 import GatewayLogo from '@/Components/GatewayLogo.vue';
 import BankManualIcon from '@/Components/BankManualIcon.vue';
-import DisplayUUID from '@/Components/DisplayUUID.vue';
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
@@ -41,14 +41,6 @@ const statusBadge = (status) => statusClasses[status] ?? 'badge-ghost';
 
 const hasCustomBank = (payout) => !!payout?.bank_name;
 const resolveBankName = (payout) => payout?.bank_name ?? payout?.payment_gateway?.name ?? '—';
-
-const formatMoney = (money, empty = '—') => {
-    if (!money) {
-        return empty;
-    }
-
-    return `${money.value} ${money.currency ?? ''}`.trim();
-};
 
 const formatMeta = (meta) => {
     if (!meta) {
@@ -105,7 +97,7 @@ defineOptions({ layout: AuthenticatedLayout });
                 <button
                     @click="modalStore.openPayoutCreateModal()"
                     type="button"
-                    class="hidden md:block btn btn-primary"
+                    class="hidden md:block btn btn-primary btn-sm"
                 >
                     Создать выплату
                 </button>
@@ -139,7 +131,9 @@ defineOptions({ layout: AuthenticatedLayout });
                             <table class="table table-sm">
                                 <thead class="text-xs uppercase bg-base-300">
                                 <tr>
-                                    <th>UUID</th>
+                                    <th scope="col">
+                                        <span class="ml-2">UUID</span>
+                                    </th>
                                     <th>Реквизиты</th>
                                     <th>Сумма</th>
                                     <th>Курс</th>
@@ -153,9 +147,16 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <tbody>
                                 <template v-for="payout in payoutItems" :key="payout.id">
                                     <tr class="bg-base-100 border-base-200 border-b last:border-none">
-                                        <td>
-                                            <DisplayUUID :uuid="payout.uuid" class="text-xs" />
-                                        </td>
+                                        <th scope="row" class="font-medium whitespace-nowrap text-base-content">
+                                            <div class="flex max-w-full flex-nowrap items-center gap-3 ml-2">
+                                                <div class="w-[4rem] min-w-[4rem] shrink-0 overflow-hidden">
+                                                    <CopyableOrderUid
+                                                        :uuid="payout.uuid ?? ''"
+                                                        class="block max-w-full truncate text-left text-base-content"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </th>
                                         <td>
                                             <div class="flex items-center gap-3">
                                                 <div v-if="hasCustomBank(payout)" class="text-base-content/70">
@@ -188,25 +189,37 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <td>
                                             <div>
                                                 <div class="text-nowrap text-base-content">
-                                                    {{ formatMoney(payout.amount) }}
+                                                    <template v-if="payout.amount">
+                                                        {{ payout.amount.value }}
+                                                        <span class="text-primary/70">{{ payout.amount.currency }}</span>
+                                                    </template>
+                                                    <template v-else>—</template>
                                                 </div>
                                                 <div class="text-nowrap text-xs text-base-content/60">
-                                                    {{ formatMoney(payout.usdt_body) }}
+                                                    <template v-if="payout.usdt_body">
+                                                        {{ payout.usdt_body.value }}
+                                                        <span class="text-primary/50">{{ payout.usdt_body.currency }}</span>
+                                                    </template>
+                                                    <template v-else>—</template>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="text-nowrap">
-                                                {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                            <div class="text-nowrap text-base-content">
+                                                {{ payout.rate?.price ?? '—' }}
+                                                <span v-if="payout.rate?.currency" class="text-primary/70">{{ payout.rate.currency }}</span>
                                             </div>
                                         </td>
                                         <td>
-                                            <div>
-                                                {{ payout.fees?.total ?? '—' }} {{ payout.fees?.currency ?? '' }}
+                                            <div class="text-nowrap text-base-content">
+                                                {{ payout.fees?.total ?? '—' }}
+                                                <span v-if="payout.fees?.currency" class="text-primary/70">{{ payout.fees.currency }}</span>
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="badge badge-primary badge-outline badge-sm font-normal">
+                                            <div
+                                                :class="['badge badge-outline badge-sm font-normal', statusBadge(payout.status)]"
+                                            >
                                                 {{ payout.status_label }}
                                             </div>
                                         </td>
@@ -246,16 +259,37 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 <div class="grid grid-cols-2 xl:grid-cols-4 gap-2">
                                                     <div class="bg-base-100 rounded-lg px-2.5 py-2">
                                                         <div class="text-[10px] uppercase text-base-content/50">Клиент</div>
-                                                        <div class="font-medium">{{ formatMoney(payout.amount) }}</div>
+                                                        <div class="font-medium">
+                                                            <template v-if="payout.amount">
+                                                                {{ payout.amount.value }}
+                                                                <span class="text-primary/70">{{ payout.amount.currency }}</span>
+                                                            </template>
+                                                            <template v-else>—</template>
+                                                        </div>
                                                     </div>
                                                     <div class="bg-base-100 rounded-lg px-2.5 py-2">
                                                         <div class="text-[10px] uppercase text-base-content/50">Тело / Списано</div>
-                                                        <div class="font-medium">{{ formatMoney(payout.usdt_body) }}</div>
-                                                        <div class="font-medium">{{ formatMoney(payout.merchant_debit) }}</div>
+                                                        <div class="font-medium">
+                                                            <template v-if="payout.usdt_body">
+                                                                {{ payout.usdt_body.value }}
+                                                                <span class="text-primary/70">{{ payout.usdt_body.currency }}</span>
+                                                            </template>
+                                                            <template v-else>—</template>
+                                                        </div>
+                                                        <div class="font-medium">
+                                                            <template v-if="payout.merchant_debit">
+                                                                {{ payout.merchant_debit.value }}
+                                                                <span class="text-primary/70">{{ payout.merchant_debit.currency }}</span>
+                                                            </template>
+                                                            <template v-else>—</template>
+                                                        </div>
                                                     </div>
                                                     <div class="bg-base-100 rounded-lg px-2.5 py-2">
                                                         <div class="text-[10px] uppercase text-base-content/50">Курс / Ставка</div>
-                                                        <div class="font-medium">{{ payout.rate.price ?? '—' }} {{ payout.rate.currency }}</div>
+                                                        <div class="font-medium">
+                                                            {{ payout.rate?.price ?? '—' }}
+                                                            <span v-if="payout.rate?.currency" class="text-primary/70">{{ payout.rate.currency }}</span>
+                                                        </div>
                                                         <div class="font-medium">{{ payout.commissions?.total ?? '—' }}%</div>
                                                     </div>
                                                     <div class="bg-base-100 rounded-lg px-2.5 py-2">
@@ -323,9 +357,14 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <div class="card-body p-4 pt-2 pb-3">
                                     <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                         <div class="min-w-0 flex-1 text-[11px]">
-                                            <div class="inline-flex items-center text-base-content/70 min-w-0">
-                                                <span>UUID:</span>
-                                                <DisplayUUID :uuid="payout.uuid" />
+                                            <div class="flex min-w-0 max-w-full flex-nowrap items-start gap-3">
+                                                <span class="text-base-content/70 shrink-0 pt-0.5">UUID:</span>
+                                                <div class="w-[10rem] min-w-[10rem] shrink-0 overflow-hidden">
+                                                    <CopyableOrderUid
+                                                        :uuid="payout.uuid ?? ''"
+                                                        class="block max-w-full truncate text-left text-base-content"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="shrink-0 text-right leading-tight">
@@ -367,7 +406,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                             </div>
                                         </div>
                                         <div class="shrink-0 self-center">
-                                            <div class="badge badge-primary badge-outline badge-sm font-normal">
+                                            <div
+                                                :class="['badge badge-outline badge-sm font-normal', statusBadge(payout.status)]"
+                                            >
                                                 {{ payout.status_label }}
                                             </div>
                                         </div>
@@ -382,25 +423,35 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Клиент</div>
                                                 <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ formatMoney(payout.amount) }}
+                                                    <template v-if="payout.amount">
+                                                        {{ payout.amount.value }}
+                                                        <span class="text-primary/70">{{ payout.amount.currency }}</span>
+                                                    </template>
+                                                    <template v-else>—</template>
                                                 </div>
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Списано</div>
                                                 <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ formatMoney(payout.merchant_debit) }}
+                                                    <template v-if="payout.merchant_debit">
+                                                        {{ payout.merchant_debit.value }}
+                                                        <span class="text-primary/70">{{ payout.merchant_debit.currency }}</span>
+                                                    </template>
+                                                    <template v-else>—</template>
                                                 </div>
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
                                                 <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                    {{ payout.rate?.price ?? '—' }}
+                                                    <span v-if="payout.rate?.currency" class="text-primary/70">{{ payout.rate.currency }}</span>
                                                 </div>
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Комиссия</div>
-                                                <div class="font-medium text-xs text-base-content">
-                                                    {{ payout.fees?.total ?? '—' }} {{ payout.fees?.currency ?? '' }}
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ payout.fees?.total ?? '—' }}
+                                                    <span v-if="payout.fees?.currency" class="text-primary/70">{{ payout.fees.currency }}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -411,25 +462,35 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div>
                                                 <div class="text-[10px] text-base-content/50 uppercase">Клиент</div>
                                                 <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ formatMoney(payout.amount) }}
+                                                    <template v-if="payout.amount">
+                                                        {{ payout.amount.value }}
+                                                        <span class="text-primary/70">{{ payout.amount.currency }}</span>
+                                                    </template>
+                                                    <template v-else>—</template>
                                                 </div>
                                             </div>
                                             <div>
                                                 <div class="text-[10px] text-base-content/50 uppercase">Списано</div>
                                                 <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ formatMoney(payout.merchant_debit) }}
+                                                    <template v-if="payout.merchant_debit">
+                                                        {{ payout.merchant_debit.value }}
+                                                        <span class="text-primary/70">{{ payout.merchant_debit.currency }}</span>
+                                                    </template>
+                                                    <template v-else>—</template>
                                                 </div>
                                             </div>
                                             <div>
                                                 <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
                                                 <div class="font-medium text-xs text-base-content text-nowrap">
-                                                    {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                    {{ payout.rate?.price ?? '—' }}
+                                                    <span v-if="payout.rate?.currency" class="text-primary/70">{{ payout.rate.currency }}</span>
                                                 </div>
                                             </div>
                                             <div>
                                                 <div class="text-[10px] text-base-content/50 uppercase">Комиссия</div>
-                                                <div class="font-medium text-xs text-base-content">
-                                                    {{ payout.fees?.total ?? '—' }} {{ payout.fees?.currency ?? '' }}
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ payout.fees?.total ?? '—' }}
+                                                    <span v-if="payout.fees?.currency" class="text-primary/70">{{ payout.fees.currency }}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -465,7 +526,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
                                             <div>
                                                 <div class="text-[10px] text-base-content/50 uppercase">Тело</div>
-                                                <div class="font-medium text-xs text-base-content">{{ formatMoney(payout.usdt_body) }}</div>
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    <template v-if="payout.usdt_body">
+                                                        {{ payout.usdt_body.value }}
+                                                        <span class="text-primary/70">{{ payout.usdt_body.currency }}</span>
+                                                    </template>
+                                                    <template v-else>—</template>
+                                                </div>
                                             </div>
                                             <div>
                                                 <div class="text-[10px] text-base-content/50 uppercase">Ставка</div>

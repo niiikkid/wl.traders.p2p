@@ -94,8 +94,10 @@ const openTransactionsExport = () => {
                     <a
                         @click.prevent="currentTab = tab.key; openPage(1)"
                         href="#"
-                        :class="currentTab === tab.key ? 'btn btn-primary' : 'btn btn-outline'"
-                        class="inline-flex items-center px-4 py-2 rounded-xl"
+                        :class="[
+                            'btn btn-sm inline-flex items-center rounded-xl',
+                            currentTab === tab.key ? 'btn-primary' : 'btn-outline',
+                        ]"
                         aria-current="page"
                     >
                         <span>{{ tab.name }}</span>

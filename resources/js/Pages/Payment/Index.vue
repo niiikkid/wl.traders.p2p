@@ -48,7 +48,7 @@ defineOptions({ layout: AuthenticatedLayout })
                 <button
                     @click="modalStore.openPaymentCreateModal()"
                     type="button"
-                    class="hidden md:block btn btn-primary"
+                    class="hidden md:block btn btn-primary btn-sm"
                 >
                     Создать платеж
                 </button>
@@ -144,8 +144,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <td class="text-nowrap">
                                         {{ order.service_commission_amount_total }} <span class="text-primary/70">{{ order.base_currency.toUpperCase() }}</span>
                                     </td>
-                                    <td>
+                                    <td class="text-nowrap text-base-content">
                                         {{ order.conversion_price }}
+                                        <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span>
                                     </td>
                                     <td>
                                         <OrderStatus :status="order.status" :status_name="order.status_name"></OrderStatus>
@@ -250,7 +251,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                             <div class="flex items-center justify-between">
                                                 <div class="text-base-content/70 text-sm">Курс</div>
-                                                <div>{{ order.conversion_price }}</div>
+                                                <div class="text-nowrap text-base-content">
+                                                    {{ order.conversion_price }}
+                                                    <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span>
+                                                </div>
                                             </div>
                                             <button
                                                 v-if="!order.is_h2h"
