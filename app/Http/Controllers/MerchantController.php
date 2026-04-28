@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DTO\Merchant\MerchantCreateDTO;
 use App\Enums\DetailType;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
@@ -15,27 +16,25 @@ use App\Models\Merchant;
 use App\Models\Order;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
-use App\DTO\Merchant\MerchantCreateDTO;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class MerchantController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $merchants = MerchantResource::collection($this->paginateMerchants($request));
+        $merchants = MerchantResource::collection($this->merchantsForOwner());
 
         return Inertia::render('Merchant/Index', compact('merchants'));
     }
 
-    public function indexData(Request $request): JsonResponse
+    public function indexData(): JsonResponse
     {
         return response()->json(
-            MerchantResource::collection($this->paginateMerchants($request))->response()->getData(true)
+            MerchantResource::collection($this->merchantsForOwner())->response()->getData(true)
         );
     }
 
@@ -154,10 +153,8 @@ class MerchantController extends Controller
         ]);
     }
 
-    protected function paginateMerchants(Request $request): LengthAwarePaginator
+    protected function merchantsForOwner(): Collection
     {
-        $perPage = (int) ($request->get('per_page', 10));
-
         $merchants = Merchant::query()
             ->with('user')
             ->withSum(['orders' => function ($query) {
@@ -166,14 +163,13 @@ class MerchantController extends Controller
             }], 'merchant_profit')
             ->where('user_id', auth()->user()->id)
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->get();
 
-        $merchants->transform(function (Merchant $merchant) {
+        return $merchants->transform(function (Merchant $merchant) {
             $merchant->orders_sum_merchant_profit = $merchant->orders_sum_merchant_profit ?? 0;
+
             return $merchant;
         });
-
-        return $merchants;
     }
 
     protected function buildStatistics(Merchant $merchant): array
@@ -230,7 +226,7 @@ class MerchantController extends Controller
             ->transform(function (Currency $currency) {
                 return [
                     'value' => $currency->getCode(),
-                    'name' => $currency->getName() . ' (' . $currency->getSymbol() . ')',
+                    'name' => $currency->getName().' ('.$currency->getSymbol().')',
                     'symbol' => $currency->getSymbol(),
                     'code' => $currency->getCode(),
                 ];
@@ -245,7 +241,7 @@ class MerchantController extends Controller
 
         foreach (DetailType::values() as $detailType) {
             $detailTypes[] = [
-                'name' => trans('detail-type.' . $detailType),
+                'name' => trans('detail-type.'.$detailType),
                 'code' => $detailType,
             ];
         }

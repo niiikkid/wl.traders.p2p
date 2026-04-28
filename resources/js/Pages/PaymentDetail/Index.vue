@@ -408,7 +408,7 @@ defineOptions({ layout: AuthenticatedLayout })
 
                             <button
                                 type="button"
-                                class="hidden md:inline-flex btn btn-sm btn-square btn-primary btn-outline shrink-0 rounded-lg"
+                                class="hidden md:inline-flex btn btn-sm btn-square btn-accent btn-outline shrink-0 rounded-lg"
                                 title="Создать реквизиты"
                                 aria-label="Создать реквизиты"
                                 @click="openCreateModal"
@@ -421,7 +421,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                 </svg>
                             </button>
                         </div>
-                        <AddMobileIcon @click="openCreateModal" />
+                        <AddMobileIcon variant="accent" @click="openCreateModal" />
                     </div>
                 </div>
             </template>

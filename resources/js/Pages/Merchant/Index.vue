@@ -25,10 +25,13 @@ const fetchMerchants = async (pageNumber = null) => {
     try {
         const prefix = isAdminView.value ? 'admin.' : '';
         const params = {};
-        const currentPage = pageNumber ?? merchants.value?.meta?.current_page;
 
-        if (currentPage) {
-            params.page = currentPage;
+        if (isAdminView.value) {
+            const currentPage = pageNumber ?? merchants.value?.meta?.current_page;
+
+            if (currentPage) {
+                params.page = currentPage;
+            }
         }
 
         const {data} = await axios.get(route(`${prefix}merchants.data`), {
@@ -70,7 +73,8 @@ defineOptions({ layout: AuthenticatedLayout })
 
         <MainTableSection
             title="Мерчанты"
-            :data="merchants"
+            :data="viewStore.isAdminViewMode ? merchants : merchants.data"
+            :paginate="viewStore.isAdminViewMode"
         >
             <template v-slot:button>
                 <div v-if="viewStore.isMerchantViewMode">
