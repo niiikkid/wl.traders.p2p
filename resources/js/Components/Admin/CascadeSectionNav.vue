@@ -6,13 +6,14 @@ const props = defineProps({
     active: {
         type: String,
         required: true,
-        validator: (value) => ['integrations', 'deals', 'logs'].includes(value),
+        validator: (value) => ['integrations', 'deals', 'logs', 'merchants'].includes(value),
     },
 });
 
 const tabs = computed(() => [
     {id: 'deals', label: 'Сделки', routeName: 'admin.cascade-deals.index'},
     {id: 'integrations', label: 'Интеграции', routeName: 'admin.cascade-providers.index'},
+    {id: 'merchants', label: 'Мерчанты', routeName: 'admin.cascade-merchant-settings.index'},
     {id: 'logs', label: 'Логи', routeName: 'admin.cascade-provider-logs.index'},
 ]);
 </script>

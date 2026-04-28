@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
 use App\Http\Controllers\Admin\CallbackLogController;
 use App\Http\Controllers\Admin\CascadeDealController;
+use App\Http\Controllers\Admin\MerchantCascadeSettingController;
 use App\Http\Controllers\Admin\CascadeProviderController;
 use App\Http\Controllers\Admin\CascadeProviderLogController;
 use App\Http\Controllers\Admin\CascadeProviderWalletController;
@@ -449,6 +450,8 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/cascade-provider-holds/{fundsOnHold}/release', [CascadeProviderWalletController::class, 'releaseHold'])->name('cascade-provider-holds.release');
         Route::post('/cascade-provider-holds/{fundsOnHold}/reconcile', [CascadeProviderWalletController::class, 'reconcileHold'])->name('cascade-provider-holds.reconcile');
         Route::get('/cascade-deals', [CascadeDealController::class, 'index'])->name('cascade-deals.index');
+        Route::get('/cascade-merchant-settings', [MerchantCascadeSettingController::class, 'index'])->name('cascade-merchant-settings.index');
+        Route::patch('/cascade-merchant-settings/{merchant}', [MerchantCascadeSettingController::class, 'update'])->name('cascade-merchant-settings.update');
         Route::get('/cascade-provider-logs', [CascadeProviderLogController::class, 'index'])->name('cascade-provider-logs.index');
         Route::get('/orders', [App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
         Route::get('/payouts', [App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('payouts.index');
