@@ -69,6 +69,12 @@ const deposit = () => {
                 @close="close"
             />
         </template>
+        <template v-if="balanceType === 'provider'">
+            <ModalHeader
+                title="Пополнение баланса провайдера"
+                @close="close"
+            />
+        </template>
         <ModalBody>
             <h1 class="text-base-content/70 text-sm">Введите сумму пополнения в USDT и нажмите «Продолжить»</h1>
             <form action="#" class="mx-auto max-w-screen-xl 2xl:px-0 mt-8 mb-5">

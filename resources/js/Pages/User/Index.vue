@@ -111,11 +111,15 @@ const openPage = (tab) => {
 const isTraderRole = (user) => user.role?.name === 'Trader';
 
 /** Баланс и переход в кошелёк — только для ролей с финансовым кошельком в админке. */
-const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Super Admin'];
+const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Provider Liquidity', 'Super Admin'];
 
 const userShowsWalletBalanceAndLink = (user) => {
     const role_name = user?.role?.name;
     return Boolean(role_name && ADMIN_WALLET_ROLES.includes(role_name));
+};
+
+const visitUserWallet = (user) => {
+    router.visit(route('admin.users.wallet.index', user.id));
 };
 
 const confirmArchiveUser = (user) => {
@@ -350,7 +354,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </TableAction>
                                                 <TableAction
                                                     v-if="userShowsWalletBalanceAndLink(user)"
-                                                    @click="router.visit(route('admin.users.wallet.index', user.id))"
+                                                    @click="visitUserWallet(user)"
                                                 >
                                                     Кошелек
                                                 </TableAction>
@@ -500,7 +504,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </TableAction>
                                                         <TableAction
                                                             v-if="userShowsWalletBalanceAndLink(user)"
-                                                            @click="router.visit(route('admin.users.wallet.index', user.id))"
+                                                            @click="visitUserWallet(user)"
                                                         >
                                                             Кошелек
                                                         </TableAction>
@@ -622,7 +626,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </TableAction>
                                                     <TableAction
                                                         v-if="userShowsWalletBalanceAndLink(user)"
-                                                        @click="router.visit(route('admin.users.wallet.index', user.id))"
+                                                        @click="visitUserWallet(user)"
                                                     >
                                                         Кошелек
                                                     </TableAction>

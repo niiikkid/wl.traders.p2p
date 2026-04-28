@@ -81,6 +81,10 @@ class UserWalletController extends Controller
                             'key' => BalanceType::TEAMLEADER->value,
                             'name' => 'Тимлид',
                         ],
+                        BalanceType::PROVIDER->value => [
+                            'key' => BalanceType::PROVIDER->value,
+                            'name' => 'Провайдер',
+                        ],
                     ],
                 ],
                 'transactions' => [
@@ -100,6 +104,10 @@ class UserWalletController extends Controller
                         BalanceType::TEAMLEADER->value => [
                             'key' => BalanceType::TEAMLEADER->value,
                             'name' => 'Тимлид',
+                        ],
+                        BalanceType::PROVIDER->value => [
+                            'key' => BalanceType::PROVIDER->value,
+                            'name' => 'Провайдер',
                         ],
                     ],
                 ],
@@ -234,7 +242,7 @@ class UserWalletController extends Controller
     /**
      * Карточки балансов на странице «как у пользователя с этой ролью», кроме Super Admin (ему — все сразу).
      *
-     * @return array{trust: bool, merchant: bool, teamleader: bool, escrow: bool, dispute: bool}
+     * @return array{trust: bool, merchant: bool, teamleader: bool, provider: bool, escrow: bool, dispute: bool}
      */
     private function walletSurfacesForUser(User $user): array
     {
@@ -243,6 +251,7 @@ class UserWalletController extends Controller
                 'trust' => true,
                 'merchant' => true,
                 'teamleader' => true,
+                'provider' => true,
                 'escrow' => true,
                 'dispute' => true,
             ];
@@ -253,6 +262,7 @@ class UserWalletController extends Controller
                 'trust' => false,
                 'merchant' => true,
                 'teamleader' => false,
+                'provider' => false,
                 'escrow' => false,
                 'dispute' => false,
             ];
@@ -263,6 +273,7 @@ class UserWalletController extends Controller
                 'trust' => true,
                 'merchant' => false,
                 'teamleader' => false,
+                'provider' => false,
                 'escrow' => true,
                 'dispute' => true,
             ];
@@ -273,6 +284,18 @@ class UserWalletController extends Controller
                 'trust' => false,
                 'merchant' => false,
                 'teamleader' => true,
+                'provider' => false,
+                'escrow' => false,
+                'dispute' => false,
+            ];
+        }
+
+        if ($user->hasRole('Provider Liquidity')) {
+            return [
+                'trust' => false,
+                'merchant' => false,
+                'teamleader' => false,
+                'provider' => true,
                 'escrow' => false,
                 'dispute' => false,
             ];
@@ -283,6 +306,7 @@ class UserWalletController extends Controller
                 'trust' => true,
                 'merchant' => false,
                 'teamleader' => false,
+                'provider' => false,
                 'escrow' => true,
                 'dispute' => true,
             ];
@@ -293,6 +317,7 @@ class UserWalletController extends Controller
                 'trust' => false,
                 'merchant' => true,
                 'teamleader' => false,
+                'provider' => false,
                 'escrow' => false,
                 'dispute' => false,
             ];
@@ -302,6 +327,7 @@ class UserWalletController extends Controller
             'trust' => true,
             'merchant' => false,
             'teamleader' => false,
+            'provider' => false,
             'escrow' => true,
             'dispute' => true,
         ];
@@ -320,6 +346,9 @@ class UserWalletController extends Controller
         }
         if ($user->hasRole('Team Leader')) {
             return BalanceType::TEAMLEADER;
+        }
+        if ($user->hasRole('Provider Liquidity')) {
+            return BalanceType::PROVIDER;
         }
         if ($user->hasRole('Support')) {
             return BalanceType::TRUST;

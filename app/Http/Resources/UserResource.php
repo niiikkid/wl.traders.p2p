@@ -86,6 +86,8 @@ class UserResource extends JsonResource
                     $amount = $wallet->trust_balance;
                 } elseif ($this->hasRole('Team Leader')) {
                     $amount = $wallet->teamleader_balance;
+                } elseif ($this->hasRole('Provider Liquidity')) {
+                    $amount = $wallet->provider_balance;
                 }
 
                 return [
@@ -119,7 +121,7 @@ class UserResource extends JsonResource
             'payout_hold_enabled' => (bool) $this->payout_hold_enabled,
             'payout_hold_minutes' => (int) ($this->payout_hold_minutes ?? 0),
             'payout_active_payouts_limit' => (int) ($this->payout_active_payouts_limit ?? 1),
-            'can_be_impersonated' => $this->id !== auth()->user()?->id && $this->banned_at === null,
+            'can_be_impersonated' => $this->id !== $request->user()?->id && $this->banned_at === null,
             'has_2fa' => (bool) $this->google2fa_secret,
         ];
     }

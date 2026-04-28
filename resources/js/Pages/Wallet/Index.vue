@@ -13,6 +13,7 @@ import EscrowBalance from "@/Pages/Wallet/Partials/EscrowBalance.vue";
 import DisputeBalance from "@/Pages/Wallet/Partials/DisputeBalance.vue";
 import TrustBalance from "@/Pages/Wallet/Partials/TrustBalance.vue";
 import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
+import ProviderBalance from "@/Pages/Wallet/Partials/ProviderBalance.vue";
 import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
 import {useModalStore} from "@/store/modal.js";
 
@@ -47,6 +48,14 @@ const showTeamleaderBalanceCard = computed(() => {
         return ws.teamleader;
     }
     return viewStore.isTeamLeaderViewMode || viewStore.isAdminViewMode;
+});
+
+const showProviderBalanceCard = computed(() => {
+    const ws = walletSurfaces.value;
+    if (ws) {
+        return ws.provider;
+    }
+    return false;
 });
 
 const showEscrowBalanceCard = computed(() => {
@@ -162,6 +171,7 @@ defineOptions({ layout: AuthenticatedLayout })
             <TrustBalance v-show="showTrustBalanceCard" @setBalanceType="setBalanceType"/>
             <MerchantBalance v-show="showMerchantBalanceCard" @setBalanceType="setBalanceType"/>
             <TeamleaderBalance v-show="showTeamleaderBalanceCard" @setBalanceType="setBalanceType"/>
+            <ProviderBalance v-show="showProviderBalanceCard" @setBalanceType="setBalanceType"/>
             <EscrowBalance v-show="showEscrowBalanceCard" @setBalanceType="setBalanceType"/>
             <DisputeBalance v-show="showDisputeBalanceCard" @setBalanceType="setBalanceType"/>
         </div>

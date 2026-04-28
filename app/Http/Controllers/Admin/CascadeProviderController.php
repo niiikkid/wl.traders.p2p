@@ -17,6 +17,7 @@ class CascadeProviderController extends Controller
     public function index(CascadeProviderDiscoveryService $discoveryService)
     {
         $providers = CascadeProvider::query()
+            ->with(['user.wallet'])
             ->orderBy('priority')
             ->orderBy('id')
             ->paginate(request()->integer('per_page', 10))
