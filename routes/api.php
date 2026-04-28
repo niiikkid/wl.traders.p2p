@@ -69,6 +69,12 @@ Route::group(['middleware' => ['api-access-token']], function () {
     });
 
     Route::group(['prefix' => 'v2'], function () {
+        Route::get('currencies', [App\Http\Controllers\API\V2\CurrencyController::class, 'index'])
+            ->name('api.v2.currencies.index');
+
+        Route::get('wallet/balance', [App\Http\Controllers\API\V2\WalletController::class, 'balance'])
+            ->name('api.v2.wallet.balance');
+
         Route::get('payin', [App\Http\Controllers\API\V2\OrderController::class, 'index'])
             ->name('api.v2.payin.index');
         Route::post('payin', [App\Http\Controllers\API\V2\OrderController::class, 'store']);
@@ -78,6 +84,9 @@ Route::group(['middleware' => ['api-access-token']], function () {
         Route::post('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'store']);
         Route::get('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'show']);
         Route::get('payin/{merchant_id}/{external_id}', [App\Http\Controllers\API\V2\OrderController::class, 'showByExternal']);
+
+        Route::get('payout', [App\Http\Controllers\API\V2\PayoutController::class, 'index'])
+            ->name('api.v2.payout.index');
     });
 });
 
