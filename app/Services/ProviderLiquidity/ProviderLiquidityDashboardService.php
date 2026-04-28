@@ -60,9 +60,9 @@ class ProviderLiquidityDashboardService
     }
 
     /**
-     * Все интеграции каскада для зоны Provider Liquidity: записи cascade_providers с тем же user_id.
+     * Все интеграции каскада для зоны Provider Liquidity: записи cascade_providers с тем же user_id,
+     * что у текущего пользователя (в т.ч. при переключении вида «Провайдер» у Super Admin без привязки — пусто).
      * Идентификатор провайдера из запроса не подставляется.
-     * Для Super Admin при обходе зоны — одна «демо»-интеграция с непустым user_id (как раньше).
      *
      * @return Collection<int, CascadeProvider>
      */
@@ -72,12 +72,6 @@ class ProviderLiquidityDashboardService
 
         if (! $user) {
             return collect();
-        }
-
-        if ($user->hasRole('Super Admin')) {
-            $first = CascadeProvider::query()->whereNotNull('user_id')->orderBy('id')->first();
-
-            return $first ? collect([$first]) : collect();
         }
 
         return CascadeProvider::query()

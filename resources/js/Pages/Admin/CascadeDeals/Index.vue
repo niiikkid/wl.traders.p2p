@@ -97,10 +97,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                 </td>
                                 <td>
                                     <div class="text-nowrap text-base-content">
-                                        {{ deal.amount }} {{ (deal.currency ?? '').toUpperCase() }}
+                                        {{ deal.amount }}
+                                        <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
                                     </div>
-                                    <div class="text-nowrap text-xs opacity-70">
-                                        {{ deal.service_profit ?? 0 }} {{ (deal.base_currency ?? '').toUpperCase() }}
+                                    <div class="text-nowrap text-xs">
+                                        <span class="text-base-content/50">{{ deal.usdt_amount ?? '—' }}</span>
+                                        <span class="text-primary/50"> USDT</span>
                                     </div>
                                 </td>
                                 <td>
@@ -112,11 +114,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                         Попыток: {{ deal.transactions_count ?? 0 }}
                                     </div>
                                 </td>
-                                <td>
-                                    <OrderStatus :status="deal.status" :status_name="deal.status_name"/>
-                                    <div v-if="deal.sub_status" class="text-nowrap text-xs opacity-70">
-                                        {{ deal.sub_status_name ?? deal.sub_status }}
-                                    </div>
+                                <td class="align-middle">
+                                    <OrderStatus
+                                        inline
+                                        :status="deal.status"
+                                        :status_name="deal.status_name"
+                                        :sub_status_name="deal.sub_status_name"
+                                    />
                                 </td>
                                 <td>
                                     <DateTime class="justify-start" :data="deal.created_at"/>
@@ -157,19 +161,27 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <CopyableOrderUid :uuid="deal.external_id ?? ''"/>
                                     </div>
                                 </div>
-                                <div class="flex flex-col items-end gap-0.5">
-                                    <OrderStatus :status="deal.status" :status_name="deal.status_name"/>
-                                    <span v-if="deal.sub_status" class="text-right text-xs text-base-content/70 text-nowrap max-w-[12rem] truncate" :title="deal.sub_status_name ?? deal.sub_status">
-                                        {{ deal.sub_status_name ?? deal.sub_status }}
-                                    </span>
+                                <div class="flex flex-col items-end gap-0.5 min-w-0 max-w-[min(100%,14rem)]">
+                                    <OrderStatus
+                                        inline
+                                        :status="deal.status"
+                                        :status_name="deal.status_name"
+                                        :sub_status_name="deal.sub_status_name"
+                                    />
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3 text-sm">
                                 <div class="col-span-2">
                                     <div class="text-base-content/60">Сумма</div>
-                                    <div class="text-nowrap text-base-content">{{ deal.amount }} {{ (deal.currency ?? '').toUpperCase() }}</div>
-                                    <div class="text-nowrap text-xs opacity-70">{{ deal.service_profit ?? 0 }} {{ (deal.base_currency ?? '').toUpperCase() }}</div>
+                                    <div class="text-nowrap text-base-content">
+                                        {{ deal.amount }}
+                                        <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
+                                    </div>
+                                    <div class="text-nowrap text-xs">
+                                        <span class="text-base-content/50">{{ deal.usdt_amount ?? '—' }}</span>
+                                        <span class="text-primary/50"> USDT</span>
+                                    </div>
                                 </div>
                                 <div>
                                     <div class="text-base-content/60">Метод</div>

@@ -32,10 +32,10 @@ defineOptions({ layout: AuthenticatedLayout });
 
 <template>
     <div>
-        <Head title="Сервисы" />
+        <Head title="Интеграции" />
 
         <MainTableSection
-            title="Сервисы"
+            title="Интеграции"
             :data="{ data: services }"
         >
             <template #body>
