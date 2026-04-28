@@ -2,28 +2,29 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use App\DTO\User\UserCreateDTO;
-use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
-use App\Models\User;
-use App\Models\UserDevice;
-use App\Enums\DetailType;
-use App\DTO\PaymentDetail\PaymentDetailCreateDTO;
-use App\Services\Money\Currency;
-use App\Services\Money\Money;
-use App\Enums\BalanceType;
 use App\DTO\Merchant\MerchantCreateDTO;
-use App\Models\Merchant as MerchantModel;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use Illuminate\Http\UploadedFile;
-use App\Exceptions\DisputeException;
-use App\Models\Order;
+use App\DTO\PaymentDetail\PaymentDetailCreateDTO;
+use App\DTO\User\UserCreateDTO;
+use App\Enums\BalanceType;
+use App\Enums\DetailType;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
+use App\Exceptions\DisputeException;
+use App\Models\Merchant as MerchantModel;
+use App\Models\Order;
+use App\Models\PaymentDetail;
+use App\Models\User;
+use App\Models\UserDevice;
+use App\Services\Money\Currency;
+use App\Services\Money\Money;
+use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class GenerateTestDataCommand extends Command
 {
@@ -54,7 +55,7 @@ class GenerateTestDataCommand extends Command
             'max', 'dan', 'sam', 'leo', 'ben', 'jake', 'ryan', 'luke', 'noah', 'jack',
             'sophia', 'olivia', 'ava', 'isabella', 'mia', 'charlotte', 'amelia', 'harper', 'evelyn', 'abigail',
             'gamer', 'player', 'pro', 'master', 'boss', 'king', 'queen', 'ninja', 'warrior', 'hunter',
-            'cool', 'swift', 'sharp', 'bright', 'dark', 'light', 'fast', 'slow', 'big', 'small'
+            'cool', 'swift', 'sharp', 'bright', 'dark', 'light', 'fast', 'slow', 'big', 'small',
         ];
 
         $rolesMap = [
@@ -68,6 +69,7 @@ class GenerateTestDataCommand extends Command
             $role = Role::where('name', $roleName)->first();
             if (! $role) {
                 $this->warn("Роль '{$roleName}' не найдена. Пропускаю создание пользователей этой роли.");
+
                 continue;
             }
             $roleIds[$key] = (int) $role->id;
@@ -78,7 +80,7 @@ class GenerateTestDataCommand extends Command
             for ($i = 1; $i <= 3; $i++) {
                 // Генерируем уникальный логин
                 do {
-                    $login = $words[array_rand($words)] . random_int(1, 999999);
+                    $login = $words[array_rand($words)].random_int(1, 999999);
                 } while (User::where('email', strtolower($login))->exists());
                 services()->user()->create(new UserCreateDTO(
                     login: $login,
@@ -93,7 +95,7 @@ class GenerateTestDataCommand extends Command
             for ($i = 1; $i <= 30; $i++) {
                 // Генерируем уникальный логин
                 do {
-                    $login = $words[array_rand($words)] . random_int(1, 999999);
+                    $login = $words[array_rand($words)].random_int(1, 999999);
                 } while (User::where('email', strtolower($login))->exists());
                 services()->user()->create(new UserCreateDTO(
                     login: $login,
@@ -107,7 +109,7 @@ class GenerateTestDataCommand extends Command
         if (isset($roleIds['support'])) {
             // Генерируем уникальный логин
             do {
-                $login = $words[array_rand($words)] . random_int(1, 999999);
+                $login = $words[array_rand($words)].random_int(1, 999999);
             } while (User::where('email', strtolower($login))->exists());
             services()->user()->create(new UserCreateDTO(
                 login: $login,
@@ -161,9 +163,9 @@ class GenerateTestDataCommand extends Command
 
         // Выбор активных шлюзов, поддерживающих нужные типы реквизитов
         $activeGateways = queries()->paymentGateway()->getAllActive();
-        $rubGateways = $activeGateways->filter(fn($pg) => strtolower($pg->currency->getCode()) === 'rub');
-        $cardGateways = $rubGateways->filter(fn($pg) => in_array(DetailType::CARD, $pg->detail_types ?? []))->pluck('id')->values()->all();
-        $phoneGateways = $rubGateways->filter(fn($pg) => in_array(DetailType::PHONE, $pg->detail_types ?? []))->pluck('id')->values()->all();
+        $rubGateways = $activeGateways->filter(fn ($pg) => strtolower($pg->currency->getCode()) === 'rub');
+        $cardGateways = $rubGateways->filter(fn ($pg) => in_array(DetailType::CARD, $pg->detail_types ?? []))->pluck('id')->values()->all();
+        $phoneGateways = $rubGateways->filter(fn ($pg) => in_array(DetailType::PHONE, $pg->detail_types ?? []))->pluck('id')->values()->all();
 
         foreach ($eligibleUsers as $user) {
             $userDeviceId = UserDevice::where('user_id', $user->id)->value('id');
@@ -174,12 +176,14 @@ class GenerateTestDataCommand extends Command
 
             // 3 карты: 2 активные, 1 выключена
             for ($i = 0; $i < 3; $i++) {
-                if (empty($cardGateways)) break;
+                if (empty($cardGateways)) {
+                    break;
+                }
                 $isActive = $i < 2; // первые две активные
                 // генерируем уникальную карту
                 do {
                     $cardNumber = self::generateMirCard();
-                } while (\App\Models\PaymentDetail::where('detail', $cardNumber)->exists());
+                } while (PaymentDetail::where('detail', $cardNumber)->exists());
                 $dailyLimit = self::randomDailyLimitRub();
 
                 $dto = new PaymentDetailCreateDTO(
@@ -193,8 +197,8 @@ class GenerateTestDataCommand extends Command
                     monthly_limit_reset_day: null,
                     daily_successful_orders_limit: null,
                     currency: 'rub',
-                    payment_gateway_ids: [ $cardGateways[array_rand($cardGateways)] ],
-                    max_pending_orders_quantity: rand(1,3),
+                    payment_gateway_ids: [$cardGateways[array_rand($cardGateways)]],
+                    max_pending_orders_quantity: rand(1, 3),
                     order_interval_minutes: random_int(0, 1) === 0 ? null : random_int(1, 6) * 5,
                     user_device_id: $userDeviceId,
                     user_id: $user->id,
@@ -206,12 +210,14 @@ class GenerateTestDataCommand extends Command
 
             // 2 телефона: 1 активен, 1 отключен
             for ($i = 0; $i < 2; $i++) {
-                if (empty($phoneGateways)) break;
+                if (empty($phoneGateways)) {
+                    break;
+                }
                 $isActive = $i === 0; // первый включен, второй выключен
                 // генерируем уникальный номер телефона
                 do {
                     $phone = self::generateRuMobile();
-                } while (\App\Models\PaymentDetail::where('detail', $phone)->exists());
+                } while (PaymentDetail::where('detail', $phone)->exists());
                 $dailyLimit = self::randomDailyLimitRub();
 
                 $dto = new PaymentDetailCreateDTO(
@@ -225,8 +231,8 @@ class GenerateTestDataCommand extends Command
                     monthly_limit_reset_day: null,
                     daily_successful_orders_limit: null,
                     currency: 'rub',
-                    payment_gateway_ids: [ $phoneGateways[array_rand($phoneGateways)] ],
-                    max_pending_orders_quantity: rand(1,3),
+                    payment_gateway_ids: [$phoneGateways[array_rand($phoneGateways)]],
+                    max_pending_orders_quantity: rand(1, 3),
                     order_interval_minutes: random_int(0, 1) === 0 ? null : random_int(1, 6) * 5,
                     user_device_id: $userDeviceId,
                     user_id: $user->id,
@@ -316,13 +322,13 @@ class GenerateTestDataCommand extends Command
             // Создаем по 3 мерчанта для каждого пользователя
             for ($i = 1; $i <= 3; $i++) {
                 $randomIndex = array_rand($merchantNames);
-                $name = $merchantNames[$randomIndex] . ' ' . $i;
-                $projectLink = 'https://' . $projectDomains[$randomIndex] . '-' . $i . '-example.com';
+                $name = $merchantNames[$randomIndex].' '.$i;
+                $projectLink = 'https://'.$projectDomains[$randomIndex].'-'.$i.'-example.com';
 
                 $merchant = services()->merchant()->create(new MerchantCreateDTO(
                     user_id: $merchantUser->id,
                     name: $name,
-                    description: 'Тестовый мерчант #' . $i,
+                    description: 'Тестовый мерчант #'.$i,
                     project_link: $projectLink,
                 ));
 
@@ -343,69 +349,6 @@ class GenerateTestDataCommand extends Command
             }
         }
 
-        // Этап 6. Создание мерчант-саппортов и привязка к активному магазину
-        $this->info('Создаю мерчант-саппортов...');
-
-        $merchantSupportRole = Role::where('name', 'Merchant Support')->first();
-        if (! $merchantSupportRole) {
-            $this->warn("Роль 'Merchant Support' не найдена. Пропускаю создание саппортов.");
-        } else {
-            $merchantOwners = User::query()
-                ->role(['Merchant', 'Super Admin'])
-                ->get();
-
-            foreach ($merchantOwners as $merchantOwner) {
-                // Ищем один активный, валидированный и не заблокированный магазин текущего мерчанта
-                $activeMerchant = MerchantModel::query()
-                    ->where('user_id', $merchantOwner->id)
-                    ->whereNotNull('validated_at')
-                    ->whereNull('banned_at')
-                    ->where('active', true)
-                    ->orderByDesc('id')
-                    ->first();
-
-                // Если у администратора нет собственных магазинов – берем любой активный валидированный магазин
-                if (! $activeMerchant) {
-                    $activeMerchant = MerchantModel::query()
-                        ->whereNotNull('validated_at')
-                        ->whereNull('banned_at')
-                        ->where('active', true)
-                        ->orderByDesc('id')
-                        ->first();
-                }
-
-                if (! $activeMerchant) {
-                    continue;
-                }
-
-                // Генерируем уникальный логин для саппорта (сохраняется в поле email)
-                do {
-                    $login = $words[array_rand($words)] . random_int(1, 999999);
-                } while (User::where('email', strtolower($login))->exists());
-
-                $supportUser = User::create([
-                    'name' => '',
-                    'email' => strtolower($login),
-                    'password' => Hash::make('password'),
-                    'apk_access_token' => strtolower(Str::random(32)),
-                    'api_access_token' => strtolower(Str::random(32)),
-                    'avatar_uuid' => strtolower($login),
-                    'avatar_style' => 'adventurer',
-                    // Привязываем саппорта к владельцу-мерчанту
-                    'merchant_id' => $merchantOwner->id,
-                    'traffic_enabled_at' => now(),
-                ]);
-
-                $supportUser->assignRole($merchantSupportRole);
-
-                // Даем доступ к одному активному магазину
-                $supportUser->merchants()->sync([$activeMerchant->id]);
-
-                // Создаем кошелек саппорту
-                services()->wallet()->create($supportUser);
-            }
-        }
-
         // Этап 7. Создание Team Leader пользователей (2 шт.) с процентом комиссии от рефералов 0.20
         $this->info('Создаю Team Leader пользователей...');
 
@@ -416,7 +359,7 @@ class GenerateTestDataCommand extends Command
             for ($i = 1; $i <= 2; $i++) {
                 // Генерируем уникальный логин
                 do {
-                    $login = $words[array_rand($words)] . random_int(1, 999999);
+                    $login = $words[array_rand($words)].random_int(1, 999999);
                 } while (User::where('email', strtolower($login))->exists());
 
                 $leader = User::create([
@@ -466,7 +409,7 @@ class GenerateTestDataCommand extends Command
                 try {
                     self::simulateSingleH2HOrder($i, $totalJobs);
                 } catch (\Throwable $e) {
-                    \Log::error('simulateSingleH2HOrder failed: ' . $e->getMessage(), [
+                    \Log::error('simulateSingleH2HOrder failed: '.$e->getMessage(), [
                         'exception' => $e,
                     ]);
                 }
@@ -480,7 +423,7 @@ class GenerateTestDataCommand extends Command
             try {
                 self::simulateWithdrawalsJob();
             } catch (\Throwable $e) {
-                \Log::error('simulateWithdrawalsJob failed: ' . $e->getMessage(), [
+                \Log::error('simulateWithdrawalsJob failed: '.$e->getMessage(), [
                     'exception' => $e,
                 ]);
             }
@@ -491,7 +434,7 @@ class GenerateTestDataCommand extends Command
             try {
                 self::simulateAppDeviceAndSmsJob();
             } catch (\Throwable $e) {
-                \Log::error('simulateAppDeviceAndSmsJob failed: ' . $e->getMessage(), [
+                \Log::error('simulateAppDeviceAndSmsJob failed: '.$e->getMessage(), [
                     'exception' => $e,
                 ]);
             }
@@ -551,11 +494,17 @@ class GenerateTestDataCommand extends Command
 
                 if (empty($cands)) {
                     $slotsLeft = ($desiredRequests - $i);
-                    if ($slotsLeft <= 0) { break; }
+                    if ($slotsLeft <= 0) {
+                        break;
+                    }
                     $alloc = intdiv($remaining, $slotsLeft);
                     $alloc = max($minUnit, intdiv($alloc, $minUnit) * $minUnit);
-                    if ($alloc > $remaining) { $alloc = $remaining; }
-                    if ($alloc <= 0) { break; }
+                    if ($alloc > $remaining) {
+                        $alloc = $remaining;
+                    }
+                    if ($alloc <= 0) {
+                        break;
+                    }
                 } else {
                     $alloc = $cands[array_rand($cands)];
                 }
@@ -582,7 +531,7 @@ class GenerateTestDataCommand extends Command
                     $invoice = services()->invoice()->createWithdrawal(
                         walletID: $user->wallet->id,
                         amount: Money::fromPrecision($amt, Currency::USDT()),
-                        address: 'TRC20-TEST-' . uniqid('', true),
+                        address: 'TRC20-TEST-'.uniqid('', true),
                         balanceType: BalanceType::MERCHANT,
                     );
                     $createdInvoices[] = $invoice;
@@ -628,6 +577,7 @@ class GenerateTestDataCommand extends Command
 
         if ($merchants->isEmpty()) {
             \Log::warning('Нет доступных мерчантов для симуляции H2H заказов.');
+
             return;
         }
 
@@ -674,12 +624,12 @@ class GenerateTestDataCommand extends Command
                         }
 
                         if ($message !== null) {
-                            \Log::warning('H2H create failed: ' . $message);
+                            \Log::warning('H2H create failed: '.$message);
                         } else {
-                            \Log::warning('H2H create failed: HTTP ' . $response->status() . ' ' . $response->body());
+                            \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
                         }
                     } else {
-                        \Log::warning('H2H create failed: HTTP ' . $response->status() . ' ' . $response->body());
+                        \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
                     }
                 } else {
                     // Успешно создано — попытаемся досрочно завершить половину сделок, половину — отменить
@@ -703,7 +653,7 @@ class GenerateTestDataCommand extends Command
                                 ->patch($endpoint);
 
                             if (! $finishResponse->ok()) {
-                                \Log::warning('H2H post-create action failed: HTTP ' . $finishResponse->status() . ' ' . $finishResponse->body());
+                                \Log::warning('H2H post-create action failed: HTTP '.$finishResponse->status().' '.$finishResponse->body());
                             }
                         } catch (\Throwable $e) {
                             \Log::warning('H2H post-create action exception: '.$e->getMessage());
@@ -730,6 +680,7 @@ class GenerateTestDataCommand extends Command
 
         if ($merchants->isEmpty()) {
             \Log::warning('Нет доступных мерчантов для симуляции H2H заказа.');
+
             return;
         }
 
@@ -774,13 +725,14 @@ class GenerateTestDataCommand extends Command
                     }
 
                     if ($message !== null) {
-                        \Log::warning('H2H create failed: ' . $message);
+                        \Log::warning('H2H create failed: '.$message);
                     } else {
-                        \Log::warning('H2H create failed: HTTP ' . $response->status() . ' ' . $response->body());
+                        \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
                     }
                 } else {
-                    \Log::warning('H2H create failed: HTTP ' . $response->status() . ' ' . $response->body());
+                    \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
                 }
+
                 return;
             }
 
@@ -805,7 +757,7 @@ class GenerateTestDataCommand extends Command
                         ->patch($endpoint);
 
                     if (! $finishResponse->ok()) {
-                        \Log::warning('H2H post-create action failed: HTTP ' . $finishResponse->status() . ' ' . $finishResponse->body());
+                        \Log::warning('H2H post-create action failed: HTTP '.$finishResponse->status().' '.$finishResponse->body());
                     }
                 } catch (\Throwable $e) {
                     \Log::warning('H2H post-create action exception: '.$e->getMessage());
@@ -816,8 +768,12 @@ class GenerateTestDataCommand extends Command
                     // Равномерное распределение по последним 30 дням
                     $windowDays = 30;
                     $bucket = $total > 0 ? (int) floor(($index % $total) * $windowDays / $total) : 0; // 0..29
-                    if ($bucket < 0) { $bucket = 0; }
-                    if ($bucket >= $windowDays) { $bucket = $windowDays - 1; }
+                    if ($bucket < 0) {
+                        $bucket = 0;
+                    }
+                    if ($bucket >= $windowDays) {
+                        $bucket = $windowDays - 1;
+                    }
 
                     $daysAgo = $bucket; // 0..29
                     $createdAt = Carbon::now()
@@ -904,7 +860,7 @@ class GenerateTestDataCommand extends Command
     private static function generateRuMobile(): string
     {
         // Российский мобильный номер: начинается с 79 и ещё 9 цифр (итого 11)
-        return '79' . str_pad((string) random_int(0, 999999999), 9, '0', STR_PAD_LEFT);
+        return '79'.str_pad((string) random_int(0, 999999999), 9, '0', STR_PAD_LEFT);
     }
 
     private static function generateMirCard(): string
@@ -918,13 +874,15 @@ class GenerateTestDataCommand extends Command
         }
 
         $checksum = self::luhnChecksumDigit($base);
-        return $base . $checksum;
+
+        return $base.$checksum;
     }
 
     private static function randomDailyLimitRub(): int
     {
         // от 10_000 до 100_000 с шагом 10_000
         $steps = range(1, 10);
+
         return $steps[array_rand($steps)] * 10000;
     }
 
@@ -936,12 +894,15 @@ class GenerateTestDataCommand extends Command
             $n = (int) $number[$i];
             if ($alt) {
                 $n *= 2;
-                if ($n > 9) $n -= 9;
+                if ($n > 9) {
+                    $n -= 9;
+                }
             }
             $sum += $n;
             $alt = ! $alt;
         }
         $digit = (10 - ($sum % 10)) % 10;
+
         return (string) $digit;
     }
 
@@ -949,6 +910,7 @@ class GenerateTestDataCommand extends Command
     {
         // от 2000 до 5000 с шагом 500 (в долларах США)
         $options = range(2000, 5000, 500);
+
         return $options[array_rand($options)];
     }
 
@@ -987,7 +949,7 @@ class GenerateTestDataCommand extends Command
                 try {
                     self::simulateAppDeviceAndSmsForDevice($deviceId);
                 } catch (\Throwable $e) {
-                    \Log::error('simulateAppDeviceAndSmsForDevice failed: ' . $e->getMessage(), [
+                    \Log::error('simulateAppDeviceAndSmsForDevice failed: '.$e->getMessage(), [
                         'device_id' => $deviceId,
                         'exception' => $e,
                     ]);
@@ -1008,14 +970,14 @@ class GenerateTestDataCommand extends Command
         }
 
         $apiBase = rtrim(config('app.url'), '/');
-        $connectUrl = $apiBase . '/api/app/device/connect';
-        $smsUrl = $apiBase . '/api/app/sms';
+        $connectUrl = $apiBase.'/api/app/device/connect';
+        $smsUrl = $apiBase.'/api/app/sms';
 
         // Подключаем при необходимости
         if (! $device->connected_at) {
             $payload = [
-                'android_id' => 'android-' . Str::random(16),
-                'device_model' => 'Model ' . random_int(10, 99),
+                'android_id' => 'android-'.Str::random(16),
+                'device_model' => 'Model '.random_int(10, 99),
                 'android_version' => (string) random_int(10, 14),
                 'manufacturer' => 'TestVendor',
                 'brand' => 'TestBrand',

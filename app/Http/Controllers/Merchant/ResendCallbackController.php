@@ -11,7 +11,7 @@ class ResendCallbackController extends Controller
 {
     public function resend(Order $order)
     {
-        Gate::authorize('access-to-order-for-merchant-support', $order);
+        Gate::authorize('access-to-order', $order);
 
         SendOrderCallbackJob::dispatch($order);
 

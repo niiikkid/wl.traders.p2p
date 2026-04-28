@@ -278,7 +278,7 @@ abstract class Controller
         if ($user) {
             if ($user->hasRole('Super Admin')) {
                 $merchantQuery = Merchant::query();
-            } elseif ($user->hasRole('Support') || $user->hasRole('Analyst') || $user->hasRole('Merchant Support')) {
+            } elseif ($user->hasRole('Support') || $user->hasRole('Analyst')) {
                 $merchantQuery = $user->merchants();
             } else {
                 $merchantQuery = Merchant::query()->where('user_id', $user->id);

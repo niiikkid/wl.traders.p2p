@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Contracts\AntiFraudServiceContract;
 use App\Contracts\AntiFraudSettingServiceContract;
 use App\Contracts\CallbackServiceContract;
+use App\Contracts\CascadeProviderServiceContract;
+use App\Contracts\CascadeServiceContract;
 use App\Contracts\DeviceServiceContract;
 use App\Contracts\DisputeServiceContract;
 use App\Contracts\FundsHolderServiceContract;
@@ -29,10 +31,6 @@ use App\Contracts\SmsServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
-use App\Contracts\CascadeProviderServiceContract;
-use App\Contracts\CascadeServiceContract;
-use App\Services\Cascade\CascadeProviderService;
-use App\Services\Cascade\CascadeService;
 use App\Events\OrderSucceeded;
 use App\Listeners\UpdateTempVipProgressListener;
 use App\Mixins\ResponseMixins;
@@ -67,6 +65,8 @@ use App\Queries\QueriesBuilder;
 use App\Services\AntiFraud\AntiFraudService;
 use App\Services\AntiFraud\AntiFraudSettingService;
 use App\Services\Auth\LoginHistoryService;
+use App\Services\Cascade\CascadeProviderService;
+use App\Services\Cascade\CascadeService;
 use App\Services\Device\DeviceService;
 use App\Services\Dispute\DisputeService;
 use App\Services\Invoice\InvoiceService;
@@ -211,10 +211,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(CascadeProviderServiceContract::class, function () {
-            return new CascadeProviderService();
+            return new CascadeProviderService;
         });
         $this->app->singleton(CascadeServiceContract::class, function () {
-            return new CascadeService();
+            return new CascadeService;
         });
 
         // Регистрация LoginLogger
@@ -290,9 +290,6 @@ class AppServiceProvider extends ServiceProvider
                 || $user->hasRole('Super Admin')
                 || $user->hasRole('Support')
                 || $user->hasRole('Analyst');
-        });
-        Gate::define('access-to-order-for-merchant-support', function (User $user, Order $order) {
-            return $user->merchant?->id === $order->merchant->user_id || $user->id === $order->merchant->user_id || $user->hasRole('Super Admin');
         });
         Gate::define('access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id || $user->hasRole('Super Admin');

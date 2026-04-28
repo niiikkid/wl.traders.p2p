@@ -42,7 +42,6 @@ use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MainPageController;
 use App\Http\Controllers\Merchant\PayoutCallbackController;
 use App\Http\Controllers\Merchant\ResendCallbackController;
-use App\Http\Controllers\Merchant\Support\SupportController;
 use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\ModalController;
 use App\Http\Controllers\NewsController;
@@ -349,13 +348,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Super Admin']], function () {
-        // Новые маршруты для управления саппортами
-        Route::get('/merchant/support', [SupportController::class, 'index'])->name('merchant.support.index');
-        Route::get('/merchant/support/create-data', [SupportController::class, 'createData'])->name('merchant.support.create-data');
-        Route::post('/merchant/support', [SupportController::class, 'store'])->name('merchant.support.store');
-        Route::get('/merchant/support/{support}/edit-data', [SupportController::class, 'editData'])->name('merchant.support.edit-data');
-        Route::patch('/merchant/support/{support}', [SupportController::class, 'update'])->name('merchant.support.update');
-
         Route::get('/merchant/main', [MainPageController::class, 'merchant'])->name('merchant.main.index');
         Route::get('/merchant/main/filter-options/{type}', [MainPageController::class, 'merchantFilterOptions'])->name('merchant.main.filter-options');
 
@@ -378,7 +370,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/payment/{order}/callback/resend', [ResendCallbackController::class, 'resend'])->name('payment.callback.resend');
     });
 
-    Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Merchant Support|Super Admin']], function () {
+    Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Super Admin']], function () {
         Route::get('/integration', [ApiIntegrationController::class, 'index'])->name('integration.index');
         Route::get('/integration/receipt-template', [ApiIntegrationController::class, 'receiptTemplate'])->name('integration.receipt-template');
         Route::post('/integration/regenerate-token', [ApiIntegrationController::class, 'regenerateToken'])
@@ -547,12 +539,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         }
     });
 
-    // Группа маршрутов для Merchant Support
-    Route::group(['prefix' => 'merchant-support', 'as' => 'merchant-support.', 'middleware' => ['auth', 'banned', 'role:Merchant Support|Super Admin']], function () {
-        Route::get('/payments', [App\Http\Controllers\MerchantSupport\PaymentController::class, 'index'])->name('payments.index');
-        Route::get('/integration', [ApiIntegrationController::class, 'index'])->name('integration.index');
-        Route::post('/payment/{order}/callback/resend', [ResendCallbackController::class, 'resend'])->name('payment.callback.resend');
-    });
 });
 
 require __DIR__.'/auth.php';

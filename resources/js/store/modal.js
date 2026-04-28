@@ -96,14 +96,6 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
-                supportCreate: {
-                    showed: false,
-                    params: {},
-                },
-                supportEdit: {
-                    showed: false,
-                    params: {},
-                },
                 paymentGatewayCreate: {
                     showed: false,
                     params: {},
@@ -165,8 +157,6 @@ export const useModalStore = defineStore('modal', {
         paymentCreateModal: (state) => state.modals.paymentCreate,
         payoutCreateModal: (state) => state.modals.payoutCreate,
         payoutSettingsModal: (state) => state.modals.payoutSettings,
-        supportCreateModal: (state) => state.modals.supportCreate,
-        supportEditModal: (state) => state.modals.supportEdit,
         paymentGatewayCreateModal: (state) => state.modals.paymentGatewayCreate,
         paymentGatewayEditModal: (state) => state.modals.paymentGatewayEdit,
         paymentGatewayBulkSettingsModal: (state) => state.modals.paymentGatewayBulkSettings,
@@ -271,12 +261,6 @@ export const useModalStore = defineStore('modal', {
         },
         openPayoutSettingsModal(props) {
             this.openModal('payoutSettings', props);
-        },
-        openSupportCreateModal(props) {
-            this.openModal('supportCreate', props);
-        },
-        openSupportEditModal(props) {
-            this.openModal('supportEdit', props);
         },
         openPaymentGatewayCreateModal(props) {
             this.openModal('paymentGatewayCreate', props);

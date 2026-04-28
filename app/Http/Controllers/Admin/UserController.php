@@ -2,22 +2,20 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\DTO\User\UserCreateDTO;
+use App\DTO\User\UserUpdateDTO;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\StoreRequest;
-use App\Http\Requests\Admin\User\UpdateTeamRequest;
 use App\Http\Requests\Admin\User\UpdateRequest;
-use App\DTO\User\UserCreateDTO;
-use App\DTO\User\UserUpdateDTO;
+use App\Http\Requests\Admin\User\UpdateTeamRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Order;
 use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Utils\Transaction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 
@@ -37,17 +35,17 @@ class UserController extends Controller
             })
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
-                    $query->where('email', 'like', '%' . $filters->user . '%');
-                    $query->orWhere('name', 'like', '%' . $filters->user . '%');
+                    $query->where('email', 'like', '%'.$filters->user.'%');
+                    $query->orWhere('name', 'like', '%'.$filters->user.'%');
                 });
             })
-            ->when($filters->online, function ($query) use ($filters) {
+            ->when($filters->online, function ($query) {
                 $query->where('is_online', true);
             })
-            ->when($filters->traffic_disabled, function ($query) use ($filters) {
+            ->when($filters->traffic_disabled, function ($query) {
                 $query->where('stop_traffic', true);
             })
-            ->when(!empty($filters->roles), function ($query) use ($filters) {
+            ->when(! empty($filters->roles), function ($query) use ($filters) {
                 $query->whereHas('roles', function ($q) use ($filters) {
                     $q->whereIn('name', $filters->roles);
                 });
@@ -67,7 +65,8 @@ class UserController extends Controller
 
     public function roles()
     {
-        $roles = Role::where('name', '!=', 'Merchant Support')->get(['id', 'name']);
+        $roles = Role::query()->get(['id', 'name']);
+
         return response()->json([
             'success' => true,
             'data' => $roles,
@@ -146,12 +145,12 @@ class UserController extends Controller
             return;
         }
 
-        if ((int)$user->is_online !== (int)$request->is_online) {
-            if ($user->stop_traffic && (int)$request->is_online) {
+        if ((int) $user->is_online !== (int) $request->is_online) {
+            if ($user->stop_traffic && (int) $request->is_online) {
                 return;
             }
 
-            $user->update(['is_online' => !$user->is_online]);
+            $user->update(['is_online' => ! $user->is_online]);
         }
     }
 

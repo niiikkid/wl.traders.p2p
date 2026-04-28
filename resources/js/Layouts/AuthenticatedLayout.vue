@@ -6,7 +6,6 @@ import TraderMenu from "@/Layouts/Partials/TraderMenu.vue";
 import AdminMenu from "@/Layouts/Partials/AdminMenu.vue";
 import NavBar from "@/Layouts/Partials/NavBar.vue";
 import MerchantMenu from "@/Layouts/Partials/MerchantMenu.vue";
-import MerchantSupportMenu from "@/Layouts/Partials/MerchantSupportMenu.vue";
 import {useViewStore} from "@/store/view.js";
 import TeamLeaderMenu from "@/Layouts/Partials/TeamLeaderMenu.vue";
 import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
@@ -269,9 +268,6 @@ const roleToMode = (roleName) => {
     if (roleName === 'Analyst') {
         return 'analyst';
     }
-    if (roleName === 'Merchant Support') {
-        return 'merchant-support';
-    }
     if (roleName === 'Provider Liquidity') {
         return 'provider-liquidity';
     }
@@ -302,10 +298,6 @@ const setViewMode = (mode) => {
     }
     if (mode === 'analyst') {
         viewStore.setAnalystViewMode();
-        return;
-    }
-    if (mode === 'merchant-support') {
-        viewStore.setMerchantSupportViewMode();
         return;
     }
     if (mode === 'provider-liquidity') {
@@ -343,10 +335,6 @@ const resolveViewMode = () => {
 
     if (route().current('analyst.*')) {
         return 'analyst';
-    }
-
-    if (route().current('merchant-support.*')) {
-        return 'merchant-support';
     }
 
     if (route().current('provider-liquidity.*')) {
@@ -459,7 +447,6 @@ const openDocs = () => {
                             <AdminMenu v-show="viewStore.isAdminViewMode" />
                             <SupportMenu v-show="viewStore.isSupportViewMode" />
                             <AnalystMenu v-show="viewStore.isAnalystViewMode" />
-                            <MerchantSupportMenu v-show="viewStore.isMerchantSupportViewMode" />
                             <ProviderLiquidityMenu v-show="viewStore.isProviderLiquidityViewMode" />
                         </div>
                     </div>
@@ -525,7 +512,6 @@ const openDocs = () => {
                             <AdminMenu v-show="viewStore.isAdminViewMode" />
                             <SupportMenu v-show="viewStore.isSupportViewMode" />
                             <AnalystMenu v-show="viewStore.isAnalystViewMode" />
-                            <MerchantSupportMenu v-show="viewStore.isMerchantSupportViewMode" />
                             <ProviderLiquidityMenu v-show="viewStore.isProviderLiquidityViewMode" />
                         </div>
 

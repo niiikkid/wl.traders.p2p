@@ -13,29 +13,12 @@ class ApiIntegrationController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $tokenUser = $user;
+        $token = $user->api_access_token;
 
-        if ($user->hasRole('Merchant Support') && $user->merchant) {
-            $tokenUser = $user->merchant;
-        }
-
-        $token = $tokenUser->api_access_token;
-
-        if ($user->hasRole('Merchant Support')) {
-            $merchants = $user->merchants()
-                ->orderByDesc('merchants.id')
-                ->get();
-        } else {
-            $merchants = Merchant::query()
-                ->where(function ($query) use ($user) {
-                    $query->where('user_id', $user->id)
-                        ->orWhereHas('supports', function ($supportsQuery) use ($user) {
-                            $supportsQuery->where('users.id', $user->id);
-                        });
-                })
-                ->orderByDesc('id')
-                ->get();
-        }
+        $merchants = Merchant::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('id')
+            ->get();
 
         $merchantList = $merchants->map(static function (Merchant $merchant) {
             return [
@@ -58,7 +41,7 @@ class ApiIntegrationController extends Controller
     {
         $path = base_path('example_check.png');
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return response()->json([
                 'message' => 'Пример чека недоступен',
             ], 404);
@@ -82,21 +65,9 @@ class ApiIntegrationController extends Controller
     public function regenerateToken(): JsonResponse
     {
         $user = auth()->user();
-        $tokenUser = $user;
-
-        if ($user->hasRole('Merchant Support')) {
-            if (! $user->merchant) {
-                return response()->json([
-                    'message' => 'Мерчант не найден',
-                ], 404);
-            }
-
-            $tokenUser = $user->merchant;
-        }
-
         $token = $this->generateApiAccessToken();
 
-        $tokenUser->update([
+        $user->update([
             'api_access_token' => $token,
         ]);
 
