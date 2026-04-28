@@ -483,13 +483,16 @@ const openDocs = () => {
         </div>
 
         <!-- Main content -->
-        <div class="drawer-content flex flex-col min-h-screen">
-            <div class="container mx-auto flex min-h-0 flex-1 flex-col gap-2 px-4 pb-6 pt-3">
-                <div class="bg-base-100 border border-base-300/50 shadow-sm z-50 shrink-0 overflow-hidden rounded-box">
-                    <NavBar @toggle-sidebar="toggleSidebar"/>
-                </div>
+        <div class="drawer-content flex flex-col min-h-screen space-y-1">
+            <div class="z-50">
+<!--                <ThemeMarquee/>-->
+                <!-- Navbar -->
+                <NavBar @toggle-sidebar="toggleSidebar"/>
+            </div>
 
-                <div class="flex min-h-0 flex-1 gap-6">
+            <!-- Page content -->
+            <div class="container mx-auto px-4 pb-6 pt-1 flex-1">
+                <div class="flex gap-6">
                     <!-- Desktop sidebar -->
                     <aside class="hidden lg:block space-y-4 pt-2 w-60" aria-label="Sidebar">
                         <button
