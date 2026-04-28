@@ -22,14 +22,14 @@ class UpdateRequest extends FormRequest
     public function rules(): array
     {
         $cascadeProvider = $this->route('cascadeProvider');
+        $codeRules = ['required', 'string', Rule::in($this->implementedCodes())];
+
+        if ($this->input('code') === 'internal') {
+            $codeRules[] = Rule::unique(CascadeProvider::class, 'code')->ignore($cascadeProvider?->id);
+        }
 
         return [
-            'code' => [
-                'required',
-                'string',
-                Rule::in($this->implementedCodes()),
-                Rule::unique(CascadeProvider::class)->ignore($cascadeProvider?->id),
-            ],
+            'code' => $codeRules,
             'name' => ['required', 'string', 'max:255'],
             'provider_type' => ['required', Rule::in(ProviderType::values())],
             'user_id' => ['nullable', 'integer', Rule::exists(User::class, 'id')],
@@ -65,7 +65,7 @@ class UpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'code.unique' => __('Эта реализация уже добавлена: у каждого кода провайдера может быть только одна запись (колбэки и API завязаны на код).'),
+            'code.unique' => __('Внутренний провайдер (internal) может быть только один.'),
         ];
     }
 

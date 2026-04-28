@@ -25,7 +25,6 @@ class CascadeProviderController extends Controller
 
         $cascadeProviders = TableCascadeProviderResource::collection($providers)->resolve();
         $implementedProviders = $discoveryService->implementedProviders()->values();
-        $existingProviderCodes = CascadeProvider::query()->pluck('code')->all();
         $providerCallbackBaseUrl = rtrim(url('/api/v2/providers'), '/');
         $liquidityUsers = User::role('Provider Liquidity')
             ->orderBy('email')
@@ -34,7 +33,6 @@ class CascadeProviderController extends Controller
         return Inertia::render('Admin/CascadeProviders/Index', compact(
             'cascadeProviders',
             'implementedProviders',
-            'existingProviderCodes',
             'providerCallbackBaseUrl',
             'liquidityUsers'
         ));

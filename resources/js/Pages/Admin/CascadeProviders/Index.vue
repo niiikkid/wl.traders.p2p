@@ -11,7 +11,6 @@ import TableAction from '@/Components/Table/TableAction.vue';
 const props = defineProps({
     cascadeProviders: Object,
     implementedProviders: Array,
-    existingProviderCodes: Array,
     providerCallbackBaseUrl: String,
     liquidityUsers: Array,
 });
@@ -186,24 +185,18 @@ const form = useForm({
     verify_ssl: true,
 });
 
-/** Все реализации для селекта: при создании — без internal; занятые коды помечаются disabled в шаблоне. */
+/** Все реализации для селекта: при создании — без internal. */
 const providerOptions = computed(() => {
     const impl = Array.isArray(props.implementedProviders)
         ? props.implementedProviders
         : [];
 
     if (editingProvider.value) {
-        return impl.filter((provider) => (
-            provider.code === editingProvider.value.code || ! props.existingProviderCodes?.includes(provider.code)
-        ));
+        return impl;
     }
 
     return impl.filter((provider) => provider.code !== 'internal');
 });
-
-const isImplementationCodeTaken = (code) => {
-    return Array.isArray(props.existingProviderCodes) && props.existingProviderCodes.includes(code);
-};
 
 const selectedImplementation = computed(() => {
     const impl = Array.isArray(props.implementedProviders) ? props.implementedProviders : [];
@@ -233,11 +226,11 @@ const openCreateModal = () => {
     form.clearErrors();
 
     const impl = Array.isArray(props.implementedProviders) ? props.implementedProviders : [];
-    const firstFree = impl.find((p) => p.code !== 'internal' && ! isImplementationCodeTaken(p.code));
+    const firstAvailable = impl.find((p) => p.code !== 'internal');
 
     form.defaults({
-        code: firstFree?.code ?? '',
-        name: firstFree?.name ?? '',
+        code: firstAvailable?.code ?? '',
+        name: firstAvailable?.name ?? '',
         provider_type: 'external',
         user_id: null,
         is_active: true,
@@ -550,9 +543,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                     v-for="provider in providerOptions"
                                     :key="provider.code"
                                     :value="provider.code"
-                                    :disabled="editingProvider === null && isImplementationCodeTaken(provider.code)"
                                 >
-                                    {{ implementationClassBasename(provider.class) + (editingProvider === null && isImplementationCodeTaken(provider.code) ? ' — уже добавлен' : '') }}
+                                    {{ implementationClassBasename(provider.class) }}
                                 </option>
                             </select>
                             <p v-if="form.errors.code" class="label text-error text-xs">{{ form.errors.code }}</p>
