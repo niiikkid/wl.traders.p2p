@@ -77,19 +77,6 @@ router.on('success', (event) => {
                 </span>
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.user-balances.*') }]">
-            <span
-                @click="router.visit(route('admin.user-balances.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('admin.user-balances.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v13m-3-6 3 3 3-3M5 3h14a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/>
-                </svg>
-                Учет средств
-            </span>
-        </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.currencies.*') }]">
             <span
                 @click="router.visit(route('admin.currencies.index'), { preserveScroll: true })"

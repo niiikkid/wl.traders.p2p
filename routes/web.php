@@ -21,7 +21,6 @@ use App\Http\Controllers\Admin\ProfitCalculatorController;
 use App\Http\Controllers\Admin\SenderStopListController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SmsStopWordController;
-use App\Http\Controllers\Admin\UserBalanceController;
 use App\Http\Controllers\Admin\UserNoteController;
 use App\Http\Controllers\Admin\UserTeamController;
 use App\Http\Controllers\Admin\UserWalletController;
@@ -464,8 +463,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/payouts/{payout}/status', [App\Http\Controllers\Admin\PayoutController::class, 'updateStatus'])->name('payouts.status.update');
         Route::get('/payouts/settings-data', [App\Http\Controllers\Admin\PayoutController::class, 'settingsData'])->name('payouts.settings-data');
         Route::patch('/payouts/settings', [App\Http\Controllers\Admin\PayoutController::class, 'updateSettings'])->name('payouts.settings.update');
-
-        Route::get('/user-balances', [UserBalanceController::class, 'index'])->name('user-balances.index');
 
         Route::get('/deposits', [App\Http\Controllers\Admin\DepositController::class, 'index'])->name('deposits.index');
         Route::get('/withdrawals', [WithdrawalController::class, 'index'])->name('withdrawals.index');
