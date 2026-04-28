@@ -151,28 +151,15 @@ const removeLimitLevel = (amount) => {
         <Head title="Включенные реквизиты" />
 
         <div class="mx-auto space-y-6">
-            <div class="grid gap-3 md:flex md:justify-between md:items-center">
-                <div class="flex flex-wrap items-center gap-3">
-                    <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Включенные реквизиты</h2>
-                    <button
-                        v-if="showPaymentDetailsLink"
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.payment-details.index'), { preserveScroll: true })"
-                    >
-                        Реквизиты
-                    </button>
-                </div>
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <h2 class="text-2xl sm:text-3xl font-bold text-base-content shrink-0">Включенные реквизиты</h2>
 
-                <!-- Селект валют -->
-                <div class="flex items-center justify-end gap-3">
-                    <label for="currency-select" class="label p-0 cursor-pointer">
-                        <span class="label-text">Валюта:</span>
-                    </label>
+                <div class="flex w-full flex-wrap items-center justify-end gap-3 md:w-auto md:min-w-0 md:shrink">
                     <select
                         id="currency-select"
                         v-model="selectedCurrency"
-                        class="select select-bordered select-sm w-48"
+                        aria-label="Валюта"
+                        class="select select-bordered select-sm w-full min-w-[12rem] sm:w-48 max-w-full"
                     >
                         <option
                             v-for="currency in statistics.availableCurrencies"
@@ -182,6 +169,14 @@ const removeLimitLevel = (amount) => {
                             {{ currency.name }} ({{ currency.symbol }})
                         </option>
                     </select>
+                    <button
+                        v-if="showPaymentDetailsLink"
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0"
+                        @click="router.visit(route('admin.payment-details.index'), { preserveScroll: true })"
+                    >
+                        Реквизиты
+                    </button>
                 </div>
             </div>
 

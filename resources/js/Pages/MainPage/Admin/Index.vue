@@ -952,8 +952,8 @@ defineOptions({ layout: AuthenticatedLayout });
                 <slot name="button"></slot>
             </div>
 
-            <div class="mt-2">
-                <ul class="flex w-full gap-2 text-sm font-medium text-center sm:w-auto sm:flex-wrap sm:gap-0">
+            <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <ul class="flex min-w-0 flex-1 gap-2 text-sm font-medium text-center sm:flex-none sm:w-auto sm:flex-wrap sm:gap-0">
                     <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
                         <a
                             href="#"
@@ -971,6 +971,14 @@ defineOptions({ layout: AuthenticatedLayout });
                         >Выплаты</a>
                     </li>
                 </ul>
+                <button
+                    type="button"
+                    class="btn btn-sm shrink-0 w-full sm:w-auto"
+                    :class="route().current('admin.traders-analytics.*') ? 'btn-primary' : 'btn-outline'"
+                    @click="router.visit(route('admin.traders-analytics.index'), { preserveScroll: true })"
+                >
+                    Аналитика трейдеров
+                </button>
             </div>
 
             <section>

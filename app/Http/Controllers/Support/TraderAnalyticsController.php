@@ -27,4 +27,9 @@ class TraderAnalyticsController extends AdminTraderAnalyticsController
     {
         return 'support.traders-analytics.traders.search';
     }
+
+    protected function getDashboardRouteName(): ?string
+    {
+        return null;
+    }
 }

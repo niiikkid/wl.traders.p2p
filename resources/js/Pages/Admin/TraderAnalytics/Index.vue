@@ -16,6 +16,7 @@ const props = defineProps({
             index: 'admin.traders-analytics.index',
             update_threshold: 'admin.traders-analytics.operations-threshold.update',
             search_traders: 'admin.traders-analytics.traders.search',
+            dashboard: null,
         }),
     },
     amountRanges: {type: Array, default: () => []},
@@ -152,11 +153,21 @@ watch(selectedCurrency, (currency) => {
 
         <div class="mx-auto space-y-6">
             <div class="space-y-3">
-                <div>
-                    <h1 class="text-2xl sm:text-3xl font-bold text-base-content">Аналитика по трейдерам</h1>
-                    <p class="text-sm text-base-content/70">
-                        Период: {{ summary.date_from }} - {{ summary.date_to }} | Валюта: {{ (summary.currency || '').toUpperCase() }}
-                    </p>
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-bold text-base-content">Аналитика по трейдерам</h1>
+                        <p class="text-sm text-base-content/70">
+                            Период: {{ summary.date_from }} - {{ summary.date_to }} | Валюта: {{ (summary.currency || '').toUpperCase() }}
+                        </p>
+                    </div>
+                    <button
+                        v-if="routes.dashboard"
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0 w-full sm:w-auto"
+                        @click="router.visit(route(routes.dashboard), { preserveScroll: true })"
+                    >
+                        Панель управления
+                    </button>
                 </div>
                 <div class="flex flex-wrap items-end justify-between gap-3">
                     <ul class="flex flex-wrap text-sm font-medium text-center">

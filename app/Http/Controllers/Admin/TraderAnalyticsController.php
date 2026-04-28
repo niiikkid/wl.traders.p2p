@@ -342,6 +342,7 @@ class TraderAnalyticsController extends Controller
                 'index' => $this->getIndexRouteName(),
                 'update_threshold' => $this->getUpdateThresholdRouteName(),
                 'search_traders' => $this->getSearchTradersRouteName(),
+                'dashboard' => $this->getDashboardRouteName(),
             ],
             'amountRanges' => collect($amount_ranges)
                 ->map(fn (array $range) => [
@@ -575,5 +576,11 @@ class TraderAnalyticsController extends Controller
     protected function getSearchTradersRouteName(): string
     {
         return 'admin.traders-analytics.traders.search';
+    }
+
+    /** Имя маршрута «панель управления» для ссылки с страницы аналитики; null — кнопку не показывать. */
+    protected function getDashboardRouteName(): ?string
+    {
+        return 'admin.main.index';
     }
 }
