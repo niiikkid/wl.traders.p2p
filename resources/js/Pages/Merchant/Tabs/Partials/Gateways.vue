@@ -581,7 +581,7 @@ const submit = () => {
         >
             <div class="flex-1">
                 <InputLabel value="Добавить набор комиссии" />
-                <select v-model="selectedPairKey" class="select select-bordered w-full mt-1">
+                <select v-model="selectedPairKey" class="select select-bordered select-sm mt-1 w-full text-xs">
                     <option value="">Выберите валюту и тип реквизита</option>
                     <option
                         v-for="pair in availablePairs"
@@ -594,7 +594,7 @@ const submit = () => {
             </div>
             <button
                 type="button"
-                class="btn btn-primary"
+                class="btn btn-sm btn-primary shrink-0"
                 :disabled="!selectedPairKey"
                 @click="addCommissionSet"
             >
@@ -650,6 +650,7 @@ const submit = () => {
                     <div>
                         <InputLabel :value="'Фикс. комиссия трейдера %'" />
                         <NumberInput
+                            class="input-sm text-xs"
                             :model-value="setting.trader_commission_rate_for_orders"
                             step="0.1"
                             placeholder="Например 7"
@@ -660,6 +661,7 @@ const submit = () => {
                     <div>
                         <InputLabel :value="'Фикс. тотал комиссия сервиса %'" />
                         <NumberInput
+                            class="input-sm text-xs"
                             :model-value="setting.total_service_commission_rate_for_orders"
                             step="0.1"
                             placeholder="Например 10"
@@ -703,6 +705,7 @@ const submit = () => {
                         <div>
                             <InputLabel value="Разделить диапазон по границе" />
                             <NumberInput
+                                class="input-sm text-xs"
                                 v-model="splitPoints[getSettingKey(setting)]"
                                 step="0.01"
                                 :min="getPairLimits(setting).min"
@@ -739,6 +742,7 @@ const submit = () => {
                         <div>
                             <InputLabel :value="'От'" />
                             <NumberInput
+                                class="input-sm text-xs"
                                 v-model="tier.from"
                                 step="0.01"
                                 :min="getPairLimits(setting)?.min ?? 0"
@@ -749,6 +753,7 @@ const submit = () => {
                         <div>
                             <InputLabel :value="'До'" />
                             <NumberInput
+                                class="input-sm text-xs"
                                 v-model="tier.to"
                                 step="0.01"
                                 :min="getPairLimits(setting)?.min ?? 0"
@@ -759,6 +764,7 @@ const submit = () => {
                         <div>
                             <InputLabel :value="'Трейдер %'" />
                             <NumberInput
+                                class="input-sm text-xs"
                                 v-model="tier.rate"
                                 step="0.1"
                                 :disabled="!isAdmin || !isEditMode"
@@ -767,6 +773,7 @@ const submit = () => {
                         <div>
                             <InputLabel :value="'Тотал %'" />
                             <NumberInput
+                                class="input-sm text-xs"
                                 v-model="setting.total_service_commission_tiers_for_orders[tierIndex].rate"
                                 step="0.1"
                                 :disabled="!isAdmin || !isEditMode"

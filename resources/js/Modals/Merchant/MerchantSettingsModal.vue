@@ -100,7 +100,7 @@ watch(
 </script>
 
 <template>
-    <Modal :show="merchantSettingsModal.showed" maxWidth="4xl" @close="close">
+    <Modal :show="merchantSettingsModal.showed" maxWidth="3xl" @close="close">
         <ModalHeader :title="title" @close="close" />
         <ModalBody>
             <div v-if="loading" class="rounded-xl bg-base-200/60 py-8 text-center text-xs text-base-content/60">

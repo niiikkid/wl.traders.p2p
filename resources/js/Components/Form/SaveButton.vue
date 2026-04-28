@@ -1,7 +1,7 @@
 <script setup>
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 
-const props = defineProps({
+defineProps({
     disabled: {
         type: Boolean,
     },
@@ -13,12 +13,17 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    /** Visible button text (default: Сохранить) */
+    buttonText: {
+        type: String,
+        default: 'Сохранить',
+    },
 });
 </script>
 
 <template>
     <div :class="['flex items-center', size === 'xs' ? 'gap-2' : 'gap-4']">
-        <PrimaryButton :disabled="disabled" :size="size">Сохранить</PrimaryButton>
+        <PrimaryButton :disabled="disabled" :size="size">{{ buttonText }}</PrimaryButton>
 
         <Transition
             enter-active-class="transition ease-in-out"

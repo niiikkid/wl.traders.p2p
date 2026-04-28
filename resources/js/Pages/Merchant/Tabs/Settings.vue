@@ -735,7 +735,7 @@ const merchantStatus = computed(() => {
                                     id="callback_url"
                                     v-model="formCallback.callback_url"
                                     type="text"
-                                    class="mt-1 block w-full text-xs"
+                                    class="input-sm mt-1 block h-7 min-h-7 w-full py-1 text-[11px] leading-tight"
                                     placeholder="https://example.com/callback"
                                     :error="!!formCallback.errors.callback_url"
                                     @input="clearFormError(formCallback, 'callback_url')"
@@ -755,7 +755,7 @@ const merchantStatus = computed(() => {
                                     id="payout_callback_url"
                                     v-model="formCallback.payout_callback_url"
                                     type="text"
-                                    class="mt-1 block w-full text-xs"
+                                    class="input-sm mt-1 block h-7 min-h-7 w-full py-1 text-[11px] leading-tight"
                                     placeholder="https://example.com/payout-callback"
                                     :error="!!formCallback.errors.payout_callback_url"
                                     @input="clearFormError(formCallback, 'payout_callback_url')"
@@ -891,7 +891,7 @@ const merchantStatus = computed(() => {
                                         id="geo_order_reference_rate"
                                         v-model="geoForm.order_reference_rate"
                                         type="text"
-                                        class="mt-1 block w-full text-xs"
+                                        class="input-sm mt-1 block w-full text-xs"
                                         placeholder="Например, 95.12345678"
                                         :error="!!geoForm.errors.order_reference_rate || !!geoForm.errors.geos"
                                         @input="() => { clearFormError(geoForm, 'order_reference_rate'); clearFormError(geoForm, 'geos'); }"
@@ -910,7 +910,7 @@ const merchantStatus = computed(() => {
                                         id="geo_payout_reference_rate"
                                         v-model="geoForm.payout_reference_rate"
                                         type="text"
-                                        class="mt-1 block w-full text-xs"
+                                        class="input-sm mt-1 block w-full text-xs"
                                         placeholder="Например, 95.12345678"
                                         :error="!!geoForm.errors.payout_reference_rate || !!geoForm.errors.geos"
                                         @input="() => { clearFormError(geoForm, 'payout_reference_rate'); clearFormError(geoForm, 'geos'); }"
@@ -929,7 +929,7 @@ const merchantStatus = computed(() => {
                                         id="geo_max_deviation_percent"
                                         v-model="geoForm.max_deviation_percent"
                                         type="text"
-                                        class="mt-1 block w-full text-xs"
+                                        class="input-sm mt-1 block w-full text-xs"
                                         placeholder="Например, 3.00"
                                         :error="!!geoForm.errors.max_deviation_percent || !!geoForm.errors.geos"
                                         @input="() => { clearFormError(geoForm, 'max_deviation_percent'); clearFormError(geoForm, 'geos'); }"
@@ -940,7 +940,7 @@ const merchantStatus = computed(() => {
                                 <div class="flex items-end">
                                     <button
                                         type="button"
-                                        class="btn btn-xs btn-primary w-full"
+                                        class="btn btn-sm btn-primary w-full"
                                         @click="addGeo"
                                         :disabled="
                                             !geoForm.currency
@@ -1044,8 +1044,8 @@ const merchantStatus = computed(() => {
                                 />
 
                                 <!-- Выбор валюты -->
-                                <div class="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_auto]">
-                                    <div class="w-full">
+                                <div class="mb-2 grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_auto] sm:items-stretch">
+                                    <div class="w-full min-w-0">
                                         <Select
                                             v-model="selectedCurrency"
                                             :items="availableCurrencies"
@@ -1058,7 +1058,7 @@ const merchantStatus = computed(() => {
                                     </div>
                                     <button
                                         type="button"
-                                        class="btn btn-xs btn-primary"
+                                        class="btn btn-sm btn-primary w-full shrink-0 sm:w-auto sm:self-stretch sm:min-h-0"
                                         @click="addMinOrderAmount"
                                         :disabled="!selectedCurrency"
                                     >
@@ -1161,7 +1161,8 @@ const merchantStatus = computed(() => {
                             <SaveButton
                                 :disabled="formResendCallback.processing"
                                 :saved="formResendCallback.recentlySuccessful"
-                                size="xs"
+                                button-text="Отправить callback"
+                                size="sm"
                             />
                         </form>
                     </div>
