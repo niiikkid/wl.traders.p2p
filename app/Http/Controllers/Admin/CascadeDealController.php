@@ -21,7 +21,14 @@ class CascadeDealController extends Controller
                 'order',
                 'selectedProvider',
                 'selectedTransaction',
-                'events' => fn ($query) => $query->latest('id')->limit(20),
+                'events' => fn ($query) => $query
+                    ->with(['provider', 'cascadeTransaction'])
+                    ->latest('id')
+                    ->limit(20),
+                'providerLogs' => fn ($query) => $query
+                    ->with(['provider', 'cascadeTransaction'])
+                    ->latest('id')
+                    ->limit(20),
                 'collateralHolds',
             ])
             ->withCount(['transactions', 'providerLogs'])

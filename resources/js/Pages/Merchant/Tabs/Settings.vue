@@ -581,102 +581,149 @@ const handleGatewaySettingsUpdated = (payload) => {
 };
 
 const activeTab = ref('info');
+
+const adminTabs = [
+    {id: 'moderation', title: 'Модерация', description: 'Статус доступа'},
+    {id: 'geo', title: 'Гео', description: 'Валюты и маркеты'},
+    {id: 'settings', title: 'Лимиты', description: 'Время и суммы'},
+    {id: 'resend', title: 'Callback resend', description: 'Повторная отправка'},
+];
+
+const tabs = computed(() => [
+    {id: 'info', title: 'Магазин', description: 'Основные данные'},
+    {id: 'callback', title: 'Callback', description: 'URL уведомлений'},
+    {id: 'gateways', title: 'Комиссии', description: 'Платежные системы'},
+    ...(viewStore.isAdminViewMode ? adminTabs : []),
+]);
+
+const activeTabMeta = computed(() => tabs.value.find((tab) => tab.id === activeTab.value) ?? tabs.value[0]);
+
+const merchantStatus = computed(() => {
+    if (!merchant.value) {
+        return null;
+    }
+
+    if (!merchant.value.validated_at) {
+        return {label: 'На модерации', class: 'badge-warning'};
+    }
+
+    if (merchant.value.banned_at) {
+        return {label: 'Заблокирован', class: 'badge-error'};
+    }
+
+    if (merchant.value.active) {
+        return {label: 'Включен', class: 'badge-success'};
+    }
+
+    return {label: 'Выключен', class: 'badge-neutral'};
+});
 </script>
 
 <template>
-    <div class="space-y-6">
-        <!-- Табы -->
-        <ul class="flex flex-wrap text-sm font-medium text-center space-y-2 mb-2">
-            <li class="me-2">
-                <a @click.prevent="activeTab = 'info'" href="#" :class="activeTab === 'info' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Магазин
-                </a>
-            </li>
-            <li class="me-2">
-                <a @click.prevent="activeTab = 'callback'" href="#" :class="activeTab === 'callback' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Callback
-                </a>
-            </li>
-            <li class="me-2">
-                <a @click.prevent="activeTab = 'gateways'" href="#" :class="activeTab === 'gateways' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Комиссии
-                </a>
-            </li>
-            <li v-if="viewStore.isAdminViewMode" class="me-2">
-                <a @click.prevent="activeTab = 'moderation'" href="#" :class="activeTab === 'moderation' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Модерация
-                </a>
-            </li>
-            <li v-if="viewStore.isAdminViewMode" class="me-2">
-                <a @click.prevent="activeTab = 'geo'" href="#" :class="activeTab === 'geo' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Гео
-                </a>
-            </li>
-            <li v-if="viewStore.isAdminViewMode" class="me-2">
-                <a @click.prevent="activeTab = 'settings'" href="#" :class="activeTab === 'settings' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Другое
-                </a>
-            </li>
-            <li v-if="viewStore.isAdminViewMode" class="me-2">
-                <a @click.prevent="activeTab = 'resend'" href="#" :class="activeTab === 'resend' ? 'btn btn-xs sm:btn-sm btn-primary' : 'btn btn-xs sm:btn-sm btn-outline'" aria-current="page">
-                    Повторная отправка
-                </a>
-            </li>
-        </ul>
+    <div class="space-y-4">
+        <div class="rounded-2xl border border-base-300 bg-base-200/50 p-3 sm:p-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h2 class="truncate text-base font-semibold text-base-content sm:text-lg">
+                            {{ merchant?.name || 'Мерчант' }}
+                        </h2>
+                        <span v-if="merchantStatus" class="badge badge-sm" :class="merchantStatus.class">
+                            {{ merchantStatus.label }}
+                        </span>
+                    </div>
+                    <p class="mt-1 text-xs text-base-content/60 sm:text-sm">
+                        {{ activeTabMeta?.description }}
+                    </p>
+                </div>
 
-        <!-- Контент табов -->
-        <div>
+                <div v-if="merchant?.uuid" class="shrink-0 rounded-xl bg-base-100 px-3 py-2 text-xs shadow-sm">
+                    <div class="mb-1 text-base-content/50">Merchant ID</div>
+                    <DUUID :uuid="merchant.uuid"/>
+                </div>
+            </div>
+
+            <div class="mt-4 overflow-x-auto">
+                <div class="tabs tabs-boxed w-max min-w-full flex-nowrap bg-base-100 p-1">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.id"
+                        type="button"
+                        class="tab h-auto min-h-9 whitespace-nowrap px-3 py-2 text-xs sm:text-sm"
+                        :class="{ 'tab-active font-semibold': activeTab === tab.id }"
+                        @click="activeTab = tab.id"
+                    >
+                        {{ tab.title }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm sm:p-5">
+            <div class="mb-4 flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-sm font-semibold text-base-content sm:text-base">
+                        {{ activeTabMeta?.title }}
+                    </h3>
+                    <p class="mt-1 text-xs text-base-content/60">
+                        {{ activeTabMeta?.description }}
+                    </p>
+                </div>
+            </div>
             <!-- Таб: Информация -->
-            <div v-if="activeTab === 'info'" class="space-y-6">
+            <div v-if="activeTab === 'info'" class="space-y-4">
                 <div v-if="merchant">
-                    <ul class="text-sm font-medium">
-                        <li class="w-full px-1 py-3 border-b border-base-300 gap-5 rounded-t-xl flex justify-between">
-                            <span class="text-base-content">Название</span>
-                            <span class="text-base-content/70 truncate break-all">
+                    <dl class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+                        <div class="rounded-xl bg-base-200/70 p-3">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Название</dt>
+                            <dd class="mt-1 break-all font-medium text-base-content">
                                 {{ merchant.name }}
-                            </span>
-                        </li>
-                        <li class="w-full px-1 py-3 border-b border-base-300 gap-5 rounded-t-xl flex justify-between">
-                            <span class="text-base-content col-span-2">Описание</span>
-                            <span class="text-base-content/70 col-span-3 text-right break-all">
-                                {{ merchant.description }}
-                            </span>
-                        </li>
-                        <li class="w-full px-1 py-3 border-b border-base-300 gap-5 rounded-t-xl flex justify-between">
-                            <span class="text-base-content">Домен</span>
-                            <span class="text-base-content/70 break-all">
+                            </dd>
+                        </div>
+                        <div class="rounded-xl bg-base-200/70 p-3">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Домен</dt>
+                            <dd class="mt-1 break-all font-medium text-base-content">
                                 {{ merchant.domain }}
-                            </span>
-                        </li>
-                        <li class="w-full px-1 py-3 border-b border-base-300 rounded-t-xl flex justify-between">
-                            <span class="text-base-content">Статус</span>
-                            <span>
-                                <span v-if="merchant.active" class="badge badge-sm badge-success">Активен</span>
-                                <span v-else class="badge badge-sm badge-error">Остановлен</span>
-                            </span>
-                        </li>
-                        <li v-if="viewStore.isAdminViewMode && merchant.owner" class="w-full px-1 py-3 border-b border-base-300 rounded-t-xl flex justify-between">
-                            <span class="text-base-content">Владелец</span>
-                            <span class="text-base-content/70">{{ merchant.owner.email }}</span>
-                        </li>
-                        <li class="w-full px-1 py-3 rounded-b-xl flex justify-between">
-                            <span class="text-base-content">Merchant ID</span>
-                            <span class="text-base-content/70">
+                            </dd>
+                        </div>
+                        <div class="rounded-xl bg-base-200/70 p-3 md:col-span-2">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Описание</dt>
+                            <dd class="mt-1 break-words text-base-content/80">
+                                {{ merchant.description || 'Не указано' }}
+                            </dd>
+                        </div>
+                        <div class="rounded-xl bg-base-200/70 p-3">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Статус</dt>
+                            <dd class="mt-2">
+                                <span v-if="merchantStatus" class="badge badge-sm" :class="merchantStatus.class">
+                                    {{ merchantStatus.label }}
+                                </span>
+                            </dd>
+                        </div>
+                        <div v-if="viewStore.isAdminViewMode && merchant.owner" class="rounded-xl bg-base-200/70 p-3">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Владелец</dt>
+                            <dd class="mt-1 break-all font-medium text-base-content">
+                                {{ merchant.owner.email }}
+                            </dd>
+                        </div>
+                        <div class="rounded-xl bg-base-200/70 p-3 md:col-span-2">
+                            <dt class="text-xs font-medium uppercase tracking-wide text-base-content/50">Merchant ID</dt>
+                            <dd class="mt-1 text-base-content/80">
                                 <DUUID :uuid="merchant.uuid"/>
-                            </span>
-                        </li>
-                    </ul>
+                            </dd>
+                        </div>
+                    </dl>
                 </div>
             </div>
 
             <!-- Таб: Callback URL -->
-            <div v-if="activeTab === 'callback'" class="space-y-6">
+            <div v-if="activeTab === 'callback'" class="space-y-4">
                 <div v-if="merchant">
-                    <div>
-                        <p class="mb-2 text-sm font-medium text-base-content/70">
+                    <div class="rounded-xl bg-base-200/60 p-3 sm:p-4">
+                        <p class="mb-4 text-sm text-base-content/70">
                             Укажите, куда слать уведомления о сделках и выплатах. Если поле пустое, колбеки по соответствующей сущности отправляться не будут.
                         </p>
-                        <form class="space-y-4" @submit.prevent="submitCallback">
+                        <form class="grid grid-cols-1 gap-4 lg:grid-cols-2" @submit.prevent="submitCallback">
                             <div>
                                 <InputLabel
                                     for="callback_url"
@@ -717,69 +764,63 @@ const activeTab = ref('info');
                                 <InputError :message="formCallback.errors.payout_callback_url" class="mt-2" />
                             </div>
 
-                            <SaveButton
-                                :disabled="formCallback.processing"
-                                :saved="formCallback.recentlySuccessful"
-                            ></SaveButton>
+                            <div class="lg:col-span-2">
+                                <SaveButton
+                                    :disabled="formCallback.processing"
+                                    :saved="formCallback.recentlySuccessful"
+                                ></SaveButton>
+                            </div>
                         </form>
                     </div>
                 </div>
             </div>
 
             <!-- Таб: Модерация (только для админа) -->
-            <div v-if="activeTab === 'moderation' && viewStore.isAdminViewMode" class="space-y-6">
+            <div v-if="activeTab === 'moderation' && viewStore.isAdminViewMode" class="space-y-4">
                 <div v-if="merchant">
-                    <h3 class="text-xl font-medium text-base-content mb-4">Модерация</h3>
-                    <div>
-                        <p class="mb-3 text-sm font-medium text-base-content/70 text-center">
+                    <div class="rounded-xl bg-base-200/60 p-4">
+                        <p class="mb-4 text-sm text-base-content/70">
                             Разрешите работу мерчанта или заблокируйте его.
                         </p>
                         <form @submit.prevent="submitCallback">
-                            <div class="flex items-center justify-center">
-                                <h1 class="text-base-content/70 text-sm mr-3">Текущий статус:</h1>
-                                <div class="flex items-center text-nowrap text-base-content">
-                                    <template v-if="! merchant.validated_at">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-warning me-2"></div> На модерации
-                                    </template>
-                                    <template v-else-if="merchant.banned_at">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-error me-2"></div> Заблокирован
-                                    </template>
-                                    <template v-else-if="merchant.active">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-success me-2"></div> Включен
-                                    </template>
-                                    <template v-else>
-                                        <div class="h-2.5 w-2.5 rounded-full bg-danger me-2"></div> Выключен
-                                    </template>
+                            <div class="flex flex-col gap-3 rounded-xl bg-base-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <div class="text-xs uppercase tracking-wide text-base-content/50">Текущий статус</div>
+                                    <div class="mt-1">
+                                        <span v-if="merchantStatus" class="badge" :class="merchantStatus.class">
+                                            {{ merchantStatus.label }}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex justify-center mt-3 gap-2">
-                                <button
-                                    @click="submitValidated"
-                                    v-if="! merchant.validated_at"
-                                    type="button"
-                                    class="btn btn-sm btn-success"
-                                    :disabled="formStatus.processing"
-                                >
-                                    Разрешить
-                                </button>
-                                <button
-                                    @click="submitUnban"
-                                    v-if="merchant.banned_at"
-                                    type="button"
-                                    class="btn btn-sm btn-primary"
-                                    :disabled="formStatus.processing"
-                                >
-                                    Разблокировать
-                                </button>
-                                <button
-                                    @click="submitBan"
-                                    v-else
-                                    type="button"
-                                    class="btn btn-sm btn-error"
-                                    :disabled="formStatus.processing"
-                                >
-                                    Заблокировать
-                                </button>
+                                <div class="flex flex-wrap gap-2">
+                                    <button
+                                        @click="submitValidated"
+                                        v-if="! merchant.validated_at"
+                                        type="button"
+                                        class="btn btn-sm btn-success"
+                                        :disabled="formStatus.processing"
+                                    >
+                                        Разрешить
+                                    </button>
+                                    <button
+                                        @click="submitUnban"
+                                        v-if="merchant.banned_at"
+                                        type="button"
+                                        class="btn btn-sm btn-primary"
+                                        :disabled="formStatus.processing"
+                                    >
+                                        Разблокировать
+                                    </button>
+                                    <button
+                                        @click="submitBan"
+                                        v-else
+                                        type="button"
+                                        class="btn btn-sm btn-error"
+                                        :disabled="formStatus.processing"
+                                    >
+                                        Заблокировать
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -787,15 +828,15 @@ const activeTab = ref('info');
             </div>
 
             <!-- Таб: Гео (только для админа) -->
-            <div v-if="activeTab === 'geo' && viewStore.isAdminViewMode" class="space-y-6">
+            <div v-if="activeTab === 'geo' && viewStore.isAdminViewMode" class="space-y-4">
                 <div v-if="merchant">
-                    <div class="space-y-4">
+                    <div class="space-y-4 rounded-xl bg-base-200/60 p-3 sm:p-4">
                         <p class="text-sm text-base-content/70">
                             Укажите источник курсов для каждой валюты. Если GEO не настроено, создание сделок и выплат будет недоступно.
                         </p>
 
                         <form class="space-y-4" @submit.prevent="submitGeo">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
                                     <InputLabel
                                         for="geo_currency"
@@ -896,7 +937,7 @@ const activeTab = ref('info');
                                 <div class="flex items-end">
                                     <button
                                         type="button"
-                                        class="btn btn-primary w-full"
+                                        class="btn btn-primary w-full md:btn-sm"
                                         @click="addGeo"
                                         :disabled="
                                             !geoForm.currency
@@ -921,11 +962,11 @@ const activeTab = ref('info');
                                 class="mt-1"
                             />
 
-                            <div v-if="geoItems?.length" class="space-y-2">
+                            <div v-if="geoItems?.length" class="grid grid-cols-1 gap-2 lg:grid-cols-2">
                                 <div
                                     v-for="geo in geoItems"
                                     :key="geo.currency"
-                                    class="flex items-center justify-between p-3 rounded-lg bg-base-200"
+                                    class="flex items-start justify-between gap-3 rounded-xl bg-base-100 p-3"
                                 >
                                     <div>
                                         <div class="text-sm font-medium text-base-content">
@@ -965,9 +1006,9 @@ const activeTab = ref('info');
             </div>
 
             <!-- Таб: Настройки (только для админа) -->
-            <div v-if="activeTab === 'settings' && viewStore.isAdminViewMode" class="space-y-6">
+            <div v-if="activeTab === 'settings' && viewStore.isAdminViewMode" class="space-y-4">
                 <div v-if="merchant">
-                    <div>
+                    <div class="rounded-xl bg-base-200/60 p-3 sm:p-4">
                         <form class="space-y-4" @submit.prevent="submitSettings">
                             <div>
                                 <InputLabel
@@ -999,7 +1040,7 @@ const activeTab = ref('info');
                                 />
 
                                 <!-- Выбор валюты -->
-                                <div class="flex gap-2 mb-2">
+                                <div class="mb-2 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                                     <div class="w-full">
                                         <Select
                                             v-model="selectedCurrency"
@@ -1069,10 +1110,10 @@ const activeTab = ref('info');
             </div>
 
             <!-- Таб: Повторная отправка callback (только для админа) -->
-            <div v-if="activeTab === 'resend' && viewStore.isAdminViewMode" class="space-y-6">
+            <div v-if="activeTab === 'resend' && viewStore.isAdminViewMode" class="space-y-4">
                 <div v-if="merchant">
-                    <div>
-                        <p class="mb-3 text-sm font-medium text-base-content/70">
+                    <div class="rounded-xl bg-base-200/60 p-3 sm:p-4">
+                        <p class="mb-4 text-sm text-base-content/70">
                             Выберите период дат для повторной отправки callback по всем сделкам мерчанта за указанный период.
                         </p>
                         <form class="space-y-4" @submit.prevent="submitResendCallback">

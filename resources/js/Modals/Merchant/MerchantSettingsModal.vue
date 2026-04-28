@@ -100,11 +100,12 @@ watch(
 </script>
 
 <template>
-    <Modal :show="merchantSettingsModal.showed" maxWidth="7xl" @close="close">
+    <Modal :show="merchantSettingsModal.showed" maxWidth="6xl" @close="close">
         <ModalHeader :title="title" @close="close" />
         <ModalBody>
-            <div v-if="loading" class="py-8 text-center text-sm text-base-content/60">
-                Загрузка настроек...
+            <div v-if="loading" class="rounded-2xl bg-base-200/60 py-10 text-center text-sm text-base-content/60">
+                <span class="loading loading-spinner loading-sm mr-2 align-middle"></span>
+                <span class="align-middle">Загрузка настроек...</span>
             </div>
             <div v-else-if="error" class="alert alert-error shadow">
                 {{ error }}

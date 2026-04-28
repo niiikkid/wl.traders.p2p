@@ -10,6 +10,7 @@ import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
 
 const cascadeDeals = ref(usePage().props.cascadeDeals);
 const selectedDeal = ref(null);
+const activeModalTab = ref('overview');
 
 router.on('success', () => {
     cascadeDeals.value = usePage().props.cascadeDeals;
@@ -25,11 +26,24 @@ const selectedDealJson = computed(() => {
 
 const openDealModal = (deal) => {
     selectedDeal.value = deal;
+    activeModalTab.value = 'overview';
 };
 
 const closeDealModal = () => {
     selectedDeal.value = null;
 };
+
+const logSummary = computed(() => {
+    const providerLogs = selectedDeal.value?.provider_logs ?? [];
+    const events = selectedDeal.value?.events ?? [];
+
+    return {
+        total: providerLogs.length + events.length,
+        providerLogs: providerLogs.length,
+        events: events.length,
+        failed: providerLogs.filter((log) => ! log.is_successful).length,
+    };
+});
 
 const formatCurrency = (amount, currency) => {
     if (amount === null || amount === undefined || amount === '') {
@@ -41,6 +55,38 @@ const formatCurrency = (amount, currency) => {
 
 const getProviderName = (deal) => {
     return deal.selected_provider?.name ?? deal.selected_provider?.code ?? 'Не выбран';
+};
+
+const eventTypeLabel = (type) => ({
+    status_changed: 'Статус',
+    dispute_changed: 'Спор',
+    amount_changed: 'Сумма',
+    manual_control_changed: 'Ручное управление',
+    callback_sent: 'Callback',
+    provider_callback_received: 'Callback провайдера',
+    provider_operation: 'Операция провайдера',
+    collateral_changed: 'Залог',
+    timeout: 'Таймаут',
+    error: 'Ошибка',
+}[type] ?? type ?? 'Событие');
+
+const formatExecutionTime = (value) => {
+    if (value === null || value === undefined) {
+        return '—';
+    }
+
+    return `${Number(value).toLocaleString('ru-RU', {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+    })} сек`;
+};
+
+const prettyJson = (value) => {
+    if (value === null || value === undefined) {
+        return 'Пусто';
+    }
+
+    return JSON.stringify(value, null, 2);
 };
 
 defineOptions({ layout: AuthenticatedLayout })
@@ -210,7 +256,7 @@ defineOptions({ layout: AuthenticatedLayout })
         </MainTableSection>
 
         <dialog :open="Boolean(selectedDeal)" class="modal">
-            <div class="modal-box max-w-4xl">
+            <div class="modal-box max-w-6xl">
                 <form method="dialog">
                     <button
                         type="button"
@@ -222,9 +268,31 @@ defineOptions({ layout: AuthenticatedLayout })
                 </form>
 
                 <template v-if="selectedDeal">
-                    <h3 class="font-bold text-lg mb-4">Каскадная сделка</h3>
+                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h3 class="font-bold text-lg">Каскадная сделка</h3>
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/70">
+                                <span>Логов: {{ logSummary.total }}</span>
+                                <span class="badge badge-primary badge-outline badge-sm">HTTP {{ logSummary.providerLogs }}</span>
+                                <span class="badge badge-info badge-outline badge-sm">События {{ logSummary.events }}</span>
+                                <span v-if="logSummary.failed" class="badge badge-error badge-outline badge-sm">Ошибки {{ logSummary.failed }}</span>
+                            </div>
+                        </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="join self-start">
+                            <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'overview' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'overview'">
+                                Обзор
+                            </button>
+                            <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'logs' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'logs'">
+                                Логи
+                            </button>
+                            <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'raw' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'raw'">
+                                Raw
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-if="activeModalTab === 'overview'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="card bg-base-200">
                             <div class="card-body p-4">
                                 <h4 class="font-semibold">Основное</h4>
@@ -280,12 +348,110 @@ defineOptions({ layout: AuthenticatedLayout })
                         </div>
                     </div>
 
-                    <div class="collapse collapse-arrow bg-base-200 mt-4">
-                        <input type="checkbox" />
-                        <div class="collapse-title font-semibold">Raw данные</div>
-                        <div class="collapse-content">
-                            <pre class="text-xs whitespace-pre-wrap break-all">{{ selectedDealJson }}</pre>
+                    <div v-else-if="activeModalTab === 'logs'" class="grid grid-cols-1 gap-4">
+                        <div class="card bg-base-200">
+                            <div class="card-body p-4">
+                                <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="font-semibold">HTTP-логи интеграций</h4>
+                                    <span class="badge badge-primary badge-outline badge-sm">{{ selectedDeal.provider_logs_count ?? 0 }} всего</span>
+                                </div>
+
+                                <div v-if="! selectedDeal.provider_logs?.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                    Для этой сделки пока нет HTTP-логов провайдера.
+                                </div>
+
+                                <div v-else class="space-y-3">
+                                    <div v-for="log in selectedDeal.provider_logs" :key="log.id" class="rounded-box border border-base-300 bg-base-100 p-3">
+                                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div class="min-w-0">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span :class="['badge badge-sm', log.is_successful ? 'badge-success' : 'badge-error']">
+                                                        {{ log.is_successful ? 'Успешно' : 'Ошибка' }}
+                                                    </span>
+                                                    <span class="font-medium">{{ log.operation }}</span>
+                                                    <span class="font-mono text-xs text-base-content/60">{{ log.method }}</span>
+                                                    <span v-if="log.status_code" class="badge badge-ghost badge-sm">{{ log.status_code }}</span>
+                                                </div>
+                                                <div class="mt-1 text-xs text-base-content/70">
+                                                    {{ log.provider?.name ?? log.provider?.code ?? 'Интеграция не найдена' }}
+                                                    <span class="px-1">·</span>
+                                                    {{ formatExecutionTime(log.execution_time) }}
+                                                </div>
+                                            </div>
+                                            <DateTime class="justify-start text-xs sm:justify-end" :data="log.created_at" show-time/>
+                                        </div>
+
+                                        <div class="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                            <div class="lg:col-span-2">
+                                                <div class="mb-1 text-xs text-base-content/60">Эндпоинт</div>
+                                                <div class="wrap-anywhere rounded bg-base-200 p-2 font-mono text-xs">{{ log.url ?? 'Пусто' }}</div>
+                                            </div>
+
+                                            <div v-if="log.cascade_transaction?.provider_deal_id" class="lg:col-span-2">
+                                                <div class="mb-1 text-xs text-base-content/60">ID сделки у интеграции</div>
+                                                <CopyableOrderUid :uuid="String(log.cascade_transaction.provider_deal_id)"/>
+                                            </div>
+
+                                            <div v-if="log.error_message || log.error_code" class="lg:col-span-2 rounded border border-error/20 bg-error/5 p-3">
+                                                <div class="mb-1 text-sm font-semibold text-error">Ошибка</div>
+                                                <div v-if="log.error_code" class="mb-2 wrap-anywhere font-mono text-xs text-error/80">{{ log.error_code }}</div>
+                                                <pre v-if="log.error_message" class="max-h-36 overflow-auto whitespace-pre-wrap wrap-anywhere text-xs text-error">{{ log.error_message }}</pre>
+                                            </div>
+
+                                            <div>
+                                                <div class="mb-1 text-xs font-semibold">Запрос</div>
+                                                <pre class="max-h-56 overflow-auto rounded bg-base-200 p-3 text-xs whitespace-pre-wrap wrap-anywhere">{{ prettyJson(log.request_payload) }}</pre>
+                                            </div>
+                                            <div>
+                                                <div class="mb-1 text-xs font-semibold">Ответ</div>
+                                                <pre class="max-h-56 overflow-auto rounded bg-base-200 p-3 text-xs whitespace-pre-wrap wrap-anywhere">{{ prettyJson(log.response_payload) }}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        <div class="card bg-base-200">
+                            <div class="card-body p-4">
+                                <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="font-semibold">События сделки</h4>
+                                    <span class="badge badge-info badge-outline badge-sm">{{ selectedDeal.events?.length ?? 0 }} показано</span>
+                                </div>
+
+                                <div v-if="! selectedDeal.events?.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                    Для этой сделки пока нет событий.
+                                </div>
+
+                                <div v-else class="space-y-3">
+                                    <div v-for="event in selectedDeal.events" :key="event.id" class="rounded-box border border-base-300 bg-base-100 p-3">
+                                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span :class="['badge badge-sm', event.type === 'error' ? 'badge-error' : event.type === 'timeout' ? 'badge-warning' : 'badge-info']">
+                                                        {{ eventTypeLabel(event.type) }}
+                                                    </span>
+                                                    <span v-if="event.provider?.name" class="text-sm font-medium">{{ event.provider.name }}</span>
+                                                </div>
+                                                <div v-if="event.from_status || event.to_status" class="mt-1 text-xs text-base-content/70">
+                                                    {{ event.from_status ?? '—' }} → {{ event.to_status ?? '—' }}
+                                                    <span v-if="event.from_sub_status || event.to_sub_status">
+                                                        / {{ event.from_sub_status ?? '—' }} → {{ event.to_sub_status ?? '—' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <DateTime class="justify-start text-xs sm:justify-end" :data="event.created_at" show-time/>
+                                        </div>
+
+                                        <pre class="mt-3 max-h-56 overflow-auto rounded bg-base-200 p-3 text-xs whitespace-pre-wrap wrap-anywhere">{{ prettyJson(event.payload) }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="rounded-box bg-base-200 p-4">
+                        <pre class="max-h-[70vh] overflow-auto text-xs whitespace-pre-wrap wrap-anywhere">{{ selectedDealJson }}</pre>
                     </div>
                 </template>
             </div>
