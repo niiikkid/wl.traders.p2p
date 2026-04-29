@@ -30,7 +30,7 @@ class PayoutStatementResource extends JsonResource
                 'currency' => $this->merchant_debit?->getCurrency()->getCode(),
             ],
             'status' => $this->status->value,
-            'created_at' => $this->created_at?->getTimestamp(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

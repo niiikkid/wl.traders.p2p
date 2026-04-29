@@ -31,7 +31,7 @@ class OrderStatementResource extends JsonResource
                 'currency' => $this->credit?->getCurrency()->getCode() ?? 'USDT',
             ],
             'status' => $this->status->value,
-            'created_at' => $this->created_at?->getTimestamp(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

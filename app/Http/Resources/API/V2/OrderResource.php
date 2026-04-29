@@ -41,7 +41,7 @@ class OrderResource extends JsonResource
                 'amount' => $this->conversion_price?->toBeauty(),
                 'currency' => $this->conversion_price?->getCurrency()->getCode(),
                 'market' => $this->market?->value,
-                'rate_fixed_at' => $this->rate_fixed_at?->getTimestamp(),
+                'rate_fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
             'payment_method' => $this->payment_method?->value,
             'gateway' => [
@@ -58,12 +58,12 @@ class OrderResource extends JsonResource
             'dispute' => [
                 'status' => $this->dispute_status?->value,
                 'reason' => $this->dispute_reason,
-                'canceled_at' => $this->dispute_canceled_at?->getTimestamp(),
+                'canceled_at' => $this->dispute_canceled_at?->toIso8601String(),
             ],
             'callback_url' => $this->callback_url,
-            'finished_at' => $this->finished_at?->getTimestamp(),
-            'created_at' => $this->created_at->getTimestamp(),
-            'current_server_time' => now()->getTimestamp(),
+            'finished_at' => $this->finished_at?->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'current_server_time' => now()->toIso8601String(),
         ];
     }
 }
