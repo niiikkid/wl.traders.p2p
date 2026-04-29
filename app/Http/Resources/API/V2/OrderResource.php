@@ -20,7 +20,6 @@ class OrderResource extends JsonResource
         /**
          * @var CascadeDeal $this
          */
-        $merchant = $this->merchant ?? queries()->merchant()->findByID($this->merchant_id);
         $gateway = $this->gateway ?? [];
         $details = $this->details ?? [];
         $fiatCurrencyCode = $this->currency?->getCode();
@@ -28,7 +27,7 @@ class OrderResource extends JsonResource
         return [
             'payin_id' => $this->uuid,
             'external_id' => $this->external_id,
-            'merchant_id' => $merchant->uuid,
+            'merchant_id' => $this->merchant->uuid,
             'status' => $this->status->value,
             'sub_status' => $this->sub_status->value,
             'amount' => $this->formatMoney($this->amount, $fiatCurrencyCode),
