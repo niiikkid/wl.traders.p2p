@@ -11,7 +11,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\API\V2\Payout\IndexRequest;
 use App\Http\Requests\API\V2\Payout\StoreRequest;
 use App\Http\Resources\API\V2\PayoutResource;
-use App\Http\Resources\API\V2\PayoutStatementResource;
 use App\Models\Merchant;
 use App\Models\PaymentGateway;
 use App\Models\Payout\Payout;
@@ -29,6 +28,7 @@ class PayoutController extends Controller
         }
 
         $payouts = Payout::query()
+            ->with(['merchant', 'receipts'])
             ->whereRelation('merchant', 'user_id', $request->user()->id)
             ->when($merchant, function ($query) use ($merchant) {
                 $query->where('merchant_id', $merchant->id);
@@ -37,7 +37,7 @@ class PayoutController extends Controller
             ->paginate($this->resolveIndexPerPage($request));
 
         return response()->success(
-            PayoutStatementResource::collection($payouts)
+            PayoutResource::collection($payouts)
         );
     }
 

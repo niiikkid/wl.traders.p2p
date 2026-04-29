@@ -10,7 +10,6 @@ use App\Http\Requests\API\H2H\Order\StoreConfirmationCodeRequest;
 use App\Http\Requests\API\V2\Order\IndexRequest;
 use App\Http\Requests\API\V2\Order\StoreRequest;
 use App\Http\Resources\API\V2\OrderResource;
-use App\Http\Resources\API\V2\OrderStatementResource;
 use App\Models\CascadeDeal;
 use App\Models\Merchant;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +25,7 @@ class OrderController extends Controller
         }
 
         $orders = CascadeDeal::query()
+            ->with('merchant')
             ->whereRelation('merchant', 'user_id', $request->user()->id)
             ->when($merchant, function ($query) use ($merchant) {
                 $query->where('merchant_id', $merchant->id);
@@ -34,7 +34,7 @@ class OrderController extends Controller
             ->paginate($this->resolveIndexPerPage($request));
 
         return response()->success(
-            OrderStatementResource::collection($orders)
+            OrderResource::collection($orders)
         );
     }
 
