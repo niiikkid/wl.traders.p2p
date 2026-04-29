@@ -98,7 +98,7 @@ Route::group(['middleware' => ['api-access-token']], function () {
     });
 });
 
-Route::post('v2/providers/{provider_code}/callback', [ProviderCallbackController::class, 'store']);
+Route::post('v2/providers/{cascadeProvider}/callback', [ProviderCallbackController::class, 'store']);
 
 Route::group(['prefix' => 'deposit', 'middleware' => ['api-deposits-access-token']], function () {
     Route::post('webhook', [DepositController::class, 'webhook']);

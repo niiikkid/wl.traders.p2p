@@ -34,6 +34,7 @@ use App\Contracts\WalletServiceContract;
 use App\Events\OrderSucceeded;
 use App\Listeners\UpdateTempVipProgressListener;
 use App\Mixins\ResponseMixins;
+use App\Models\CascadeProvider;
 use App\Models\Dispute;
 use App\Models\Merchant;
 use App\Models\Order;
@@ -325,6 +326,10 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return PayoutModel::query()->findOrFail($id);
+        });
+
+        Route::bind('cascadeProvider', function (string $value): CascadeProvider {
+            return CascadeProvider::query()->where('code', $value)->firstOrFail();
         });
     }
 }

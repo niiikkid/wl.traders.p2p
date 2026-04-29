@@ -34,6 +34,7 @@ use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Support\TraderCommissionTierResolver;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -517,47 +518,42 @@ class CascadeService implements CascadeServiceContract
         }
     }
 
-    public function handleProviderCallback(string $providerCode, array $payload, ?string $accessToken = null): array
+    public function handleProviderCallback(Request $request, CascadeProvider $cascadeProvider): array
     {
-        $provider_model = CascadeProvider::query()
-            ->where('code', $providerCode)
-            ->first();
+        $payload = $request->all();
+        $accessToken = $request->header('Access-Token');
 
-        if (! $provider_model instanceof CascadeProvider) {
-            throw CascadeException::make('Провайдер каскада не найден.');
-        }
-
-        $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
+        $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($cascadeProvider);
         if (! $provider) {
-            $this->recordCallbackFailure($provider_model, $payload, 'provider_unavailable', 'Интеграция провайдера каскада недоступна.');
+            $this->recordCallbackFailure($cascadeProvider, $payload, 'provider_unavailable', 'Интеграция провайдера каскада недоступна.');
 
             throw CascadeException::make('Интеграция провайдера каскада недоступна.');
         }
 
         $callback_data = $provider->handleCallback($payload);
-        $cascade_deal = $this->resolveCallbackCascadeDeal($provider_model, $callback_data);
+        $cascade_deal = $this->resolveCallbackCascadeDeal($cascadeProvider, $callback_data);
 
-        if ($provider_model->code === SelfTestCascadeProvider::CODE) {
+        if ($cascadeProvider->code === SelfTestCascadeProvider::CODE) {
             $expectedToken = (string) $cascade_deal->merchant->user->api_access_token;
         } else {
-            $expectedToken = (string) $provider_model->access_token;
+            $expectedToken = (string) $cascadeProvider->access_token;
         }
 
         if ($expectedToken === '') {
-            $this->recordCallbackFailure($provider_model, $payload, 'provider_token_missing', 'Токен провайдера каскада не настроен.');
+            $this->recordCallbackFailure($cascadeProvider, $payload, 'provider_token_missing', 'Токен провайдера каскада не настроен.');
 
             throw CascadeException::make('Токен провайдера каскада не настроен.');
         }
 
         if (! hash_equals($expectedToken, (string) $accessToken)) {
-            $this->recordCallbackFailure($provider_model, $payload, 'invalid_provider_token', 'Неверный токен провайдера.');
+            $this->recordCallbackFailure($cascadeProvider, $payload, 'invalid_provider_token', 'Неверный токен провайдера.');
 
             throw CascadeException::make('Неверный токен провайдера.');
         }
 
-        $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $provider_model, $callback_data);
+        $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $cascadeProvider, $callback_data);
 
-        DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $provider_model): void {
+        DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): void {
             $from_status = $cascade_deal->status?->value;
             $from_sub_status = $cascade_deal->sub_status?->value;
 
@@ -572,7 +568,7 @@ class CascadeService implements CascadeServiceContract
                     type: CascadeDealEventType::PROVIDER_CALLBACK_RECEIVED,
                     payload: $callback_data,
                     transaction: $cascade_transaction,
-                    provider: $provider_model,
+                    provider: $cascadeProvider,
                     fromStatus: $from_status,
                     fromSubStatus: $from_sub_status,
                     toStatus: $cascade_deal->status?->value,
@@ -592,7 +588,7 @@ class CascadeService implements CascadeServiceContract
         });
 
         $response = [
-            'provider_code' => $providerCode,
+            'provider_code' => $cascadeProvider->code,
             'cascade_deal_id' => $cascade_deal->uuid,
             'provider_deal_id' => Arr::get($callback_data, 'provider_deal_id'),
             'status' => $cascade_deal->refresh()->status->value,
@@ -601,7 +597,7 @@ class CascadeService implements CascadeServiceContract
         CascadeProviderLog::create([
             'cascade_deal_id' => $cascade_deal->id,
             'cascade_transaction_id' => $cascade_transaction?->id,
-            'provider_id' => $provider_model->id,
+            'provider_id' => $cascadeProvider->id,
             'operation' => 'callback',
             'method' => 'POST',
             'url' => request()->fullUrl(),

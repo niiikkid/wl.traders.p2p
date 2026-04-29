@@ -6,6 +6,8 @@ namespace App\Contracts;
 
 use App\DTO\Cascade\CreateCascadeDealDTO;
 use App\Models\CascadeDeal;
+use App\Models\CascadeProvider;
+use Illuminate\Http\Request;
 
 interface CascadeServiceContract
 {
@@ -32,8 +34,7 @@ interface CascadeServiceContract
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array;
 
     /**
-     * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function handleProviderCallback(string $providerCode, array $payload, ?string $accessToken = null): array;
+    public function handleProviderCallback(Request $request, CascadeProvider $cascadeProvider): array;
 }
