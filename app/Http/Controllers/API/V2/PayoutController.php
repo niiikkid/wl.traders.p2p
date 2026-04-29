@@ -66,14 +66,14 @@ class PayoutController extends Controller
             paymentGateway: $paymentGateway,
             externalId: $request->external_id,
             amountFiat: Money::fromPrecision($request->amount, $currencyCode),
-            methodType: PayoutMethodType::from($request->payout_method_type),
-            requisites: $request->requisites,
-            initials: $request->initials,
+            methodType: PayoutMethodType::from($request->validated('payout_method')),
+            requisites: $request->validated('payout_details'),
+            initials: $request->validated('recipient_name'),
             currencyCode: $currencyCode,
             callbackUrl: $request->callback_url,
             bankName: $request->validated('bank_name'),
-            merchantRate: $request->filled('rate')
-                ? Money::fromPrecision((string) $request->rate, $currencyCode)
+            merchantRate: $request->filled('fiat_to_usdt_rate')
+                ? Money::fromPrecision((string) $request->validated('fiat_to_usdt_rate'), $currencyCode)
                 : null,
         );
 

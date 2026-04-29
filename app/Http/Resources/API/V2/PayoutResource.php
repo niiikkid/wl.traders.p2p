@@ -17,24 +17,22 @@ class PayoutResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'payout_id' => $this->uuid,
+            'id' => $this->uuid,
             'external_id' => $this->external_id,
             'status' => $this->status->value,
-            'payout_method_type' => $this->payout_method_type->value,
+            'payout_method' => $this->payout_method_type->value,
             'bank_name' => $this->bank_name,
-            'requisites' => $this->requisites,
-            'initials' => $this->initials,
+            'payout_details' => $this->requisites,
+            'recipient_name' => $this->initials,
             'merchant_id' => $this->merchant?->uuid,
             'amounts' => [
                 'fiat' => $this->formatMoney($this->amount_fiat, $this->amount_fiat_currency),
-                'usdt_body' => $this->formatMoney($this->usdt_body, $this->usdt_body_currency),
+                'usdt' => $this->formatMoney($this->usdt_body, $this->usdt_body_currency),
                 'merchant_debit' => $this->formatMoney($this->merchant_debit, $this->merchant_debit_currency),
+                'commission' => $this->formatMoney($this->total_fee, $this->total_fee_currency),
             ],
-            'commission' => [
-                'amount' => $this->formatMoney($this->total_fee, $this->total_fee_currency),
-                'rate' => $this->total_commission_rate,
-            ],
-            'rate' => [
+            'commission_rate' => $this->total_commission_rate,
+            'fiat_to_usdt_rate' => [
                 'market' => $this->rate_market->value,
                 'price' => $this->formatMoney($this->conversion_price, $this->conversion_price_currency),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),

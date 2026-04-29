@@ -57,24 +57,24 @@ class StoreRequest extends FormRequest
                 },
             ],
             'amount' => ['required', 'integer', 'gt:0'],
-            'payout_method_type' => ['required', 'string', Rule::in(PayoutMethodType::values())],
             'currency' => [
                 'required',
                 'string',
                 Rule::in(Currency::getAllCodes()),
             ],
-            'requisites' => ['required', 'string', 'max:255'],
-            'initials' => ['required', 'string', 'max:255'],
+            'payout_method' => ['required', 'string', Rule::in(PayoutMethodType::values())],
+            'payout_details' => ['required', 'string', 'max:255'],
+            'recipient_name' => ['required', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:30'],
             'callback_url' => ['nullable', 'string', 'url:https', 'max:256'],
-            'rate' => ['nullable'],
+            'fiat_to_usdt_rate' => ['nullable'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        if ($this->has('payout_method_type') && is_string($this->payout_method_type)) {
-            $this->merge(['payout_method_type' => strtolower($this->payout_method_type)]);
+        if ($this->has('payout_method') && is_string($this->payout_method)) {
+            $this->merge(['payout_method' => strtolower($this->payout_method)]);
         }
 
         if ($this->has('currency') && is_string($this->currency)) {
@@ -104,36 +104,36 @@ class StoreRequest extends FormRequest
                 }
 
                 $geoMarket = $merchant->getGeoMarket($currency);
-                $rate = $this->input('rate');
+                $fiatToUsdtRate = $this->input('fiat_to_usdt_rate');
 
                 if ($geoMarket?->equals(MarketEnum::MERCHANT_API)) {
-                    if ($rate === null || $rate === '') {
-                        $validator->errors()->add('rate', 'Поле rate обязательно для выбранного источника курсов.');
+                    if ($fiatToUsdtRate === null || $fiatToUsdtRate === '') {
+                        $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate обязательно для выбранного источника курсов.');
                         return;
                     }
 
-                    if (! is_numeric($rate)) {
-                        $validator->errors()->add('rate', 'Поле rate должно быть числом.');
+                    if (! is_numeric($fiatToUsdtRate)) {
+                        $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate должно быть числом.');
                         return;
                     }
 
-                    if ((float) $rate <= 0) {
-                        $validator->errors()->add('rate', 'Поле rate должно быть больше 0.');
+                    if ((float) $fiatToUsdtRate <= 0) {
+                        $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate должно быть больше 0.');
                         return;
                     }
 
-                    if (! $this->isDecimalWithinPrecision((string) $rate, $currency->getPrecision())) {
+                    if (! $this->isDecimalWithinPrecision((string) $fiatToUsdtRate, $currency->getPrecision())) {
                         $validator->errors()->add(
-                            'rate',
-                            "Поле rate может содержать не более {$currency->getPrecision()} знаков после запятой для валюты {$currency->getCode()}."
+                            'fiat_to_usdt_rate',
+                            "Поле fiat_to_usdt_rate может содержать не более {$currency->getPrecision()} знаков после запятой для валюты {$currency->getCode()}."
                         );
                     }
 
                     return;
                 }
 
-                if ($rate !== null && $rate !== '') {
-                    $validator->errors()->add('rate', 'Поле rate недоступно для выбранного источника курсов.');
+                if ($fiatToUsdtRate !== null && $fiatToUsdtRate !== '') {
+                    $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate недоступно для выбранного источника курсов.');
                 }
             },
         ];
