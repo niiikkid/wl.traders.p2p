@@ -41,6 +41,8 @@ return [
         'base_url' => env('DEPOSIT_PROVIDER_BASE_URL'),
         // Публичный API-ключ для заголовка X-Api-Key
         'api_key' => env('DEPOSIT_PROVIDER_API_KEY'),
+        // Секретный токен для проверки входящих коллбеков X-Callback-Token
+        'webhook_key' => env('DEPOSIT_PROVIDER_WEBHOOK_KEY'),
         // ID мерчанта, обязателен для создания инвойса
         'merchant_id' => env('DEPOSIT_PROVIDER_MERCHANT_ID'),
     ],

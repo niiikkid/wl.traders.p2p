@@ -41,6 +41,19 @@ class DepositController extends Controller
 
     public function externalWebhook(Request $request)
     {
+        $webhookKey = config('services.deposit_provider.webhook_key');
+        $callbackToken = $request->header('X-Callback-Token');
+
+        if (! is_string($webhookKey) || $webhookKey === '') {
+            Log::error('Deposit provider webhook key is not configured');
+
+            return response()->json(['message' => 'Webhook is not configured'], 500);
+        }
+
+        if (! is_string($callbackToken) || ! hash_equals($webhookKey, $callbackToken)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
         $event = $request->header('X-Callback-Event');
         $payload = $request->all();
 
@@ -76,6 +89,7 @@ class DepositController extends Controller
                 'error' => $e->getMessage(),
                 'payload' => $payload,
             ]);
+
             return response()->json(['message' => 'Callback processing error'], 500);
         }
     }
