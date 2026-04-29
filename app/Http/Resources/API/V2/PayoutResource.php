@@ -36,8 +36,7 @@ class PayoutResource extends JsonResource
             ],
             'rate' => [
                 'market' => $this->rate_market->value,
-                'price' => $this->conversion_price?->toBeauty(),
-                'currency' => strtoupper($this->conversion_price_currency),
+                'price' => $this->formatMoney($this->conversion_price, $this->conversion_price_currency),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
             'receipts_url' => $this->hasReceipts()
