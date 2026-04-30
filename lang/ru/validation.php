@@ -317,6 +317,7 @@ return [
         'max_limit'  => 'max. лимит',
         'rate' => 'курс',
         'exchange_rate' => 'курс обмена',
+        'payin_method' => 'способ payin',
         'manual_acquiring' => 'ручной эквайринг',
         'card_expiry_month' => 'месяц срока карты',
         'card_expiry_year' => 'год срока карты',

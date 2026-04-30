@@ -25,6 +25,13 @@ class StoreRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('payin_method') && is_string($this->payin_method)) {
+            $this->merge(['payin_method' => strtolower(trim($this->payin_method))]);
+        }
+    }
+
     public function rules(): array
     {
         $merchant = queries()->merchant()->findByUUID($this->merchant_id);
@@ -96,7 +103,7 @@ class StoreRequest extends FormRequest
             ],
             'amount' => ['required', 'integer', "min:$min_amount"],
             'currency' => ['required', Rule::in(Currency::getAllCodes())],
-            'payment_method' => ['required', Rule::in(CascadePaymentMethod::values())],
+            'payin_method' => ['required', Rule::in(CascadePaymentMethod::values())],
             'callback_url' => $callback_validation_rules,
             'client_id' => ['nullable', 'string', 'max:255'],
             'exchange_rate' => ['nullable'],
@@ -153,7 +160,7 @@ class StoreRequest extends FormRequest
             'external_id' => $v['external_id'],
             'amount' => $v['amount'],
             'currency' => $v['currency'],
-            'payment_method' => $v['payment_method'],
+            'payment_method' => $v['payin_method'],
             'callback_url' => $v['callback_url'] ?? null,
             'client_id' => $v['client_id'] ?? null,
             'rate' => $v['exchange_rate'] ?? null,
@@ -221,13 +228,13 @@ class StoreRequest extends FormRequest
             }
 
             if ($this->boolean('manual_acquiring')) {
-                $payment_method = CascadePaymentMethod::tryFrom(
-                    strtolower(trim((string) $this->input('payment_method')))
+                $payin_method = CascadePaymentMethod::tryFrom(
+                    strtolower(trim((string) $this->input('payin_method')))
                 );
-                if ($payment_method !== CascadePaymentMethod::CARD) {
+                if ($payin_method !== CascadePaymentMethod::CARD) {
                     $validator->errors()->add(
-                        'payment_method',
-                        'Для manual_acquiring допустим только payment_method card.'
+                        'payin_method',
+                        'Для manual_acquiring допустим только payin_method card.'
                     );
                 }
 

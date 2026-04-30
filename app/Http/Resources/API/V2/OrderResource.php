@@ -33,7 +33,7 @@ class OrderResource extends JsonResource
             'amounts' => [
                 'amount' => $this->formatMoney($this->amount, $fiatCurrencyCode),
                 'initial_amount' => $this->formatMoney($this->initial_amount, $fiatCurrencyCode),
-                'usdt' => $this->formatMoney($this->usdt_amount, 'USDT'),
+                'exchanged_amount' => $this->formatMoney($this->usdt_amount, 'USDT'),
                 'merchant_credit' => $this->formatMoney($this->credit, null),
             ],
             'exchange_rate' => [
@@ -41,11 +41,11 @@ class OrderResource extends JsonResource
                 'price' => $this->formatMoney($this->conversion_price, null),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
-            'payment_method' => $this->payment_method?->value,
-            'details' => empty($details) ? null : [
-                'gateway' => Arr::get($gateway, 'name'),
-                'initials' => Arr::get($details, 'initials'),
+            'payin_method' => $this->payment_method?->value,
+            'payin_details' => empty($details) ? null : [
+                'bank_name' => Arr::get($gateway, 'name'),
                 'value' => Arr::get($details, 'value'),
+                'recipient_name' => Arr::get($details, 'initials'),
             ],
             'manual_acquiring' => $this->manual_control === null ? null : [
                 'confirmation_type' => $this->manual_control->confirmationType,
@@ -56,7 +56,6 @@ class OrderResource extends JsonResource
                 'reason' => $this->dispute_reason,
                 'canceled_at' => $this->dispute_canceled_at?->toIso8601String(),
             ],
-            'callback_url' => $this->callback_url,
             'finished_at' => $this->finished_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'current_server_time' => now()->toIso8601String(),

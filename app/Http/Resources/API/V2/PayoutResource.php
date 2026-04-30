@@ -18,37 +18,32 @@ class PayoutResource extends JsonResource
     {
         return [
             'id' => $this->uuid,
-            'external_id' => $this->external_id,            
+            'external_id' => $this->external_id,
             'merchant_id' => $this->merchant?->uuid,
             'status' => $this->status->value,
+            'amounts' => [
+                'amount' => $this->formatMoney($this->amount_fiat, $this->amount_fiat_currency),
+                'exchanged_amount' => $this->formatMoney($this->usdt_body, $this->usdt_body_currency),
+                'merchant_debit' => $this->formatMoney($this->merchant_debit, $this->merchant_debit_currency),
+                'commission' => $this->formatMoney($this->total_fee, $this->total_fee_currency),
+            ],
+            'exchange_rate' => [
+                'market' => $this->rate_market->value,
+                'price' => $this->formatMoney($this->conversion_price, $this->conversion_price_currency),
+                'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
+            ],
             'payout_method' => $this->payout_method_type->value,
             'payout_details' => [
                 'bank_name' => $this->bank_name,
                 'value' => $this->requisites,
                 'recipient_name' => $this->initials,
             ],
-            'amounts' => [
-                'fiat' => $this->formatMoney($this->amount_fiat, $this->amount_fiat_currency),
-                'usdt' => $this->formatMoney($this->usdt_body, $this->usdt_body_currency),
-                'merchant_debit' => $this->formatMoney($this->merchant_debit, $this->merchant_debit_currency),
-                'commission' => $this->formatMoney($this->total_fee, $this->total_fee_currency),
-            ],
-            'commission_rate' => $this->total_commission_rate,
-            'exchange_rate' => [
-                'market' => $this->rate_market->value,
-                'price' => $this->formatMoney($this->conversion_price, $this->conversion_price_currency),
-                'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
-            ],
             'receipts_url' => $this->hasReceipts()
                 ? route('api.v2.payout.receipts.index', ['payout' => $this->uuid])
                 : null,
-            'timestamps' => [
-                'created_at' => $this->created_at?->toIso8601String(),
-                'taken_at' => $this->taken_at?->toIso8601String(),
-                'sent_at' => $this->sent_at?->toIso8601String(),
-                'completed_at' => $this->completed_at?->toIso8601String(),
-                'canceled_at' => $this->canceled_at?->toIso8601String(),
-            ],
+            'finished_at' => ($this->completed_at ?? $this->canceled_at)?->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'current_server_time' => now()->toIso8601String(),
         ];
     }
 
