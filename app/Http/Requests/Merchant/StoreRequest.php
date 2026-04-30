@@ -6,6 +6,14 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'description' => $this->input('description') === '' ? null : $this->input('description'),
+            'project_link' => $this->input('project_link') === '' ? null : $this->input('project_link'),
+        ]);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -23,8 +31,8 @@ class StoreRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'min:5', 'max:30'],
-            'description' => ['required', 'string', 'min:5', 'max:300'],
-            'project_link' => ['required', 'url:https', 'min:3', 'max:120']
+            'description' => ['nullable', 'string', 'max:300'],
+            'project_link' => ['nullable', 'string', 'url:https', 'max:120'],
         ];
     }
 

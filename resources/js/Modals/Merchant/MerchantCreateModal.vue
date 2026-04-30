@@ -14,21 +14,16 @@ import { router } from '@inertiajs/vue3';
 const modalStore = useModalStore();
 const { merchantCreateModal } = storeToRefs(modalStore);
 
-const loading = ref(false);
 const processing = ref(false);
 const errors = ref({});
 
 const form = ref({
     name: '',
-    description: '',
-    project_link: '',
 });
 
 const resetForm = () => {
     form.value = {
         name: '',
-        description: '',
-        project_link: '',
     };
     errors.value = {};
 };
@@ -102,47 +97,6 @@ watch(
                     />
                     <InputError class="mt-1" :message="errors.name?.[0]" />
                 </div>
-
-                <div>
-                    <InputLabel
-                        for="description"
-                        value="Опишите деятельность проекта"
-                        :error="!!errors.description?.[0]"
-                    />
-                    <TextInput
-                        id="description"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.description"
-                        autocomplete="off"
-                        :error="!!errors.description?.[0]"
-                        @input="errors.description = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.description?.[0]" />
-                </div>
-
-                <div>
-                    <InputLabel
-                        for="project_link"
-                        value="Укажите ссылку на проект"
-                        :error="!!errors.project_link?.[0]"
-                    />
-                    <TextInput
-                        id="project_link"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.project_link"
-                        autocomplete="off"
-                        :error="!!errors.project_link?.[0]"
-                        @input="errors.project_link = null"
-                        :disabled="processing"
-                    />
-                    <div class="mt-1 text-sm text-base-content/60">
-                        Указывайте ссылку в формате https://example.com/
-                    </div>
-                    <InputError class="mt-1" :message="errors.project_link?.[0]" />
-                </div>
             </form>
         </ModalBody>
 
@@ -155,6 +109,5 @@ watch(
             </button>
         </ModalFooter>
     </Modal>
-    </template>
-
+</template>
 
