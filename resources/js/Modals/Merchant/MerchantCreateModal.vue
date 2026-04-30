@@ -73,7 +73,7 @@ watch(
 </script>
 
 <template>
-    <Modal :show="merchantCreateModal.showed" @close="close" maxWidth="xl">
+    <Modal :show="merchantCreateModal.showed" @close="close" maxWidth="md">
         <ModalHeader @close="close" title="Создание мерчанта" />
 
         <ModalBody>
@@ -81,7 +81,7 @@ watch(
                 <div>
                     <InputLabel
                         for="name"
-                        value="Название проекта"
+                        value="Название"
                         :error="!!errors.name?.[0]"
                     />
                     <TextInput

@@ -8,6 +8,7 @@ import MerchantCreateModal from "@/Modals/Merchant/MerchantCreateModal.vue";
 import MerchantSettingsModal from "@/Modals/Merchant/MerchantSettingsModal.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
+import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 import {computed, ref} from 'vue';
 
 const viewStore = useViewStore();
@@ -58,6 +59,19 @@ const openSettings = (merchant) => {
         merchantId: merchant.id,
         onUpdated: fetchMerchants,
     });
+};
+
+const merchantStatusIconWrapClass = (merchant) => {
+    if (!merchant.validated_at) {
+        return 'bg-warning/15 text-warning ring-warning/30';
+    }
+    if (merchant.banned_at) {
+        return 'bg-error/15 text-error ring-error/30';
+    }
+    if (merchant.active) {
+        return 'bg-success/15 text-success ring-success/30';
+    }
+    return 'bg-base-content/10 text-base-content/50 ring-base-content/20';
 };
 
 router.on('success', () => {
@@ -215,46 +229,121 @@ defineOptions({ layout: AuthenticatedLayout })
 
                 <section v-if="viewStore.isMerchantViewMode" class="antialiased">
                     <div class="mx-auto">
-                        <div class="mb-4 grid gap-4 md:mb-8 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3">
+                        <div class="mb-4 grid grid-cols-1 gap-4 md:mb-8 md:grid-cols-2 xl:grid-cols-3">
                             <div
-                                v-for="(merchant, index) in merchants.data"
-                                class="card bg-base-100 shadow"
+                                v-for="merchant in merchants.data"
+                                :key="merchant.id"
+                                class="card bg-base-100 shadow-sm ring-1 ring-base-content/5 transition-shadow hover:shadow-md"
                             >
-                                <div class="card-body p-5 sm:p-6">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <h3 class="card-title truncate">{{ merchant.name }}</h3>
-                                        <TableActionsDropdown>
-                                            <TableAction @click="openSettings(merchant)">
-                                                Настройки
-                                            </TableAction>
-                                        </TableActionsDropdown>
-                                    </div>
-
-                                    <div class="mt-1 flex items-center gap-2">
-                                        <p class="text-sm text-base-content/70">доход за сегодня</p>
-                                        <p class="text-sm font-medium">{{ merchant.today_profit }} {{ merchant.profit_currency?.toUpperCase() }}</p>
-                                    </div>
-
-                                    <p class="mt-2 text-lg font-semibold leading-tight text-primary truncate">
-                                        {{ merchant.domain }}
-                                    </p>
-
-                                    <div class="mt-4 text-sm flex items-end justify-start">
-                                        <div class="flex items-center text-nowrap">
-                                            <template v-if="! merchant.validated_at">
-                                                <div class="h-2.5 w-2.5 rounded-full bg-warning me-2"></div> На модерации
-                                            </template>
-                                            <template v-else-if="merchant.banned_at">
-                                                <div class="h-2.5 w-2.5 rounded-full bg-error me-2"></div> Заблокирован
-                                            </template>
-                                            <template v-else-if="merchant.active">
-                                                <div class="h-2.5 w-2.5 rounded-full bg-success me-2"></div> Включен
-                                            </template>
-                                            <template v-else>
-                                                <div class="h-2.5 w-2.5 rounded-full bg-error me-2"></div> Выключен
-                                            </template>
+                                <div class="card-body gap-5 p-5 sm:p-6">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div class="min-w-0">
+                                            <div class="mb-2 flex items-center gap-2">
+                                                <span class="badge badge-ghost badge-sm h-auto min-h-0 gap-0 px-2 py-1 font-normal normal-case">
+                                                    <span class="block min-w-0 shrink-0 overflow-hidden">
+                                                        ID: 
+                                                        <CopyableOrderUid
+                                                            :uuid="merchant.uuid ?? ''"
+                                                            class="block max-w-full truncate text-left text-xs text-base-content"
+                                                        />
+                                                    </span>
+                                                </span>
+                                                <span
+                                                    v-if="! merchant.validated_at"
+                                                    class="badge badge-warning badge-sm"
+                                                >
+                                                    Модерация
+                                                </span>
+                                                <span
+                                                    v-else-if="merchant.banned_at"
+                                                    class="badge badge-error badge-sm"
+                                                >
+                                                    Заблокирован
+                                                </span>
+                                                <span
+                                                    v-else-if="merchant.active"
+                                                    class="badge badge-success badge-sm"
+                                                >
+                                                    Включен
+                                                </span>
+                                                <span
+                                                    v-else
+                                                    class="badge badge-error badge-sm"
+                                                >
+                                                    Выключен
+                                                </span>
+                                            </div>
+                                            <h3 class="text-xl font-semibold leading-tight text-base-content truncate">
+                                                {{ merchant.name }}
+                                            </h3>
                                         </div>
 
+                                        <div
+                                            class="grid size-12 shrink-0 place-items-center rounded-2xl ring-1"
+                                            :class="merchantStatusIconWrapClass(merchant)"
+                                        >
+                                            <!-- store-timings: moderation (SVG Repo) -->
+                                            <svg
+                                                v-if="! merchant.validated_at"
+                                                class="size-7"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 64 64"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="3"
+                                            >
+                                                <path d="M43.21,54.62H12a2.93,2.93,0,0,1-3-2.84V26.19" />
+                                                <line x1="49.01" y1="26.36" x2="49.01" y2="37.37" />
+                                                <polyline points="23.26 54.55 23.26 37.48 34.84 37.48 34.84 54.55" />
+                                                <path d="M5.45,18.2s-1.1,7.76,6.45,9a7.15,7.15,0,0,0,6.1-2A7.43,7.43,0,0,0,29,25a7.37,7.37,0,0,0,5,2.49,11.77,11.77,0,0,0,5.89-2.15,6.67,6.67,0,0,0,4.68,2.15,8,8,0,0,0,7.92-9.3L47.79,8.08a1,1,0,0,0-.94-.66H11a1,1,0,0,0-.94.66Z" />
+                                                <line x1="5.45" y1="18.2" x2="52.54" y2="18.2" />
+                                                <line x1="18.05" y1="18.2" x2="18.05" y2="7.42" />
+                                                <line x1="29.05" y1="18.2" x2="29.05" y2="7.42" />
+                                                <line x1="40.02" y1="18.2" x2="40.02" y2="7.42" />
+                                                <circle cx="49.01" cy="46.97" r="9.6" />
+                                                <polyline points="49.01 40.86 49.01 47.27 52.58 50.01" />
+                                            </svg>
+                                            <!-- store: blocked / active / disabled (SVG Repo) -->
+                                            <svg
+                                                v-else
+                                                class="size-7"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                viewBox="0 0 64 64"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="3"
+                                            >
+                                                <path d="M52,27.18V52.76a2.92,2.92,0,0,1-3,2.84H15a2.92,2.92,0,0,1-3-2.84V27.17" />
+                                                <polyline points="26.26 55.52 26.26 38.45 37.84 38.45 37.84 55.52" />
+                                                <path d="M8.44,19.18s-1.1,7.76,6.45,8.94a7.17,7.17,0,0,0,6.1-2A7.43,7.43,0,0,0,32,26a7.4,7.4,0,0,0,5,2.49,11.82,11.82,0,0,0,5.9-2.15,6.66,6.66,0,0,0,4.67,2.15,8,8,0,0,0,7.93-9.3L50.78,9.05a1,1,0,0,0-.94-.65H14a1,1,0,0,0-.94.66Z" />
+                                                <line x1="8.44" y1="19.18" x2="55.54" y2="19.18" />
+                                                <line x1="21.04" y1="19.18" x2="21.04" y2="8.4" />
+                                                <line x1="32.05" y1="19.18" x2="32.05" y2="8.4" />
+                                                <line x1="43.01" y1="19.18" x2="43.01" y2="8.4" />
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <div class="rounded-2xl bg-base-200/70 p-4">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-base-content/50">
+                                                Доход сегодня
+                                            </p>
+                                            <p class="mt-2 text-2xl font-bold leading-none text-base-content">
+                                                {{ merchant.today_profit }} <span class="mt-1 text-sm text-primary/70">{{ merchant.profit_currency?.toUpperCase() }}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="card-actions items-center justify-between border-t border-base-content/10 pt-4">
+                                        <span class="text-sm text-base-content/60">Управление мерчантом</span>
+                                        <button
+                                            @click="openSettings(merchant)"
+                                            type="button"
+                                            class="btn btn-primary btn-sm"
+                                        >
+                                            Настройки
+                                        </button>
                                     </div>
                                 </div>
                             </div>
