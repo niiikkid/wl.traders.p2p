@@ -14,14 +14,10 @@ import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
 import TableAction from '@/Components/Table/TableAction.vue';
-import AddMobileIcon from "@/Components/AddMobileIcon.vue";
-import PayoutCreateModal from "@/Modals/Payout/PayoutCreateModal.vue";
-import { useModalStore } from "@/store/modal.js";
 
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const expandedRows = ref({});
-const modalStore = useModalStore();
 
 const toggleRow = (id) => {
     expandedRows.value[id] = !expandedRows.value[id];
@@ -93,18 +89,6 @@ defineOptions({ layout: AuthenticatedLayout });
             title="Выплаты"
             :data="payouts"
         >
-            <template #button>
-                <button
-                    @click="modalStore.openPayoutCreateModal()"
-                    type="button"
-                    class="hidden md:block btn btn-primary btn-sm"
-                >
-                    Создать выплату
-                </button>
-                <AddMobileIcon
-                    @click="modalStore.openPayoutCreateModal()"
-                />
-            </template>
             <template #header>
                 <div class="space-y-4">
                     <FiltersPanel name="merchant-payouts">
@@ -607,7 +591,5 @@ defineOptions({ layout: AuthenticatedLayout });
                 </div>
             </template>
         </MainTableSection>
-
-        <PayoutCreateModal />
     </div>
 </template>
