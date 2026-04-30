@@ -100,6 +100,21 @@ router.on('success', (event) => {
                 API Интеграция
             </span>
         </li>
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('merchant.cascade-merchant-logs.*') }]">
+            <span
+                @click="router.visit(route('merchant.cascade-merchant-logs.index'), { preserveScroll: true })"
+                @keydown.enter.space="router.visit(route('merchant.cascade-merchant-logs.index'), { preserveScroll: true })"
+                role="link"
+                tabindex="0"
+            >
+                <svg class="size-5 shrink-0 opacity-30 fill-current" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M8,9H4a2,2,0,0,0-2,2V23H4V18H8v5h2V11A2,2,0,0,0,8,9ZM4,16V11H8v5Z" />
+                    <polygon points="22 11 25 11 25 21 22 21 22 23 30 23 30 21 27 21 27 11 30 11 30 9 22 9 22 11" />
+                    <path d="M14,23H12V9h6a2,2,0,0,1,2,2v5a2,2,0,0,1-2,2H14Zm0-7h4V11H14Z" />
+                </svg>
+                Логи API
+            </span>
+        </li>
     </ul>
 </template>
 

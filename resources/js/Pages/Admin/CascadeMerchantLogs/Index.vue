@@ -12,6 +12,14 @@ const props = defineProps({
     logs: Object,
     filters: Object,
     filterOptions: Object,
+    routeName: {
+        type: String,
+        default: 'admin.cascade-merchant-logs.index',
+    },
+    showAdminNav: {
+        type: Boolean,
+        default: true,
+    },
 });
 
 const expandedRows = ref({});
@@ -25,10 +33,10 @@ const form = reactive({
 });
 
 const summary = computed(() => {
-    const rows = props.logs.data ?? [];
+    const rows = props.logs?.data ?? [];
 
     return {
-        total: props.logs.meta?.total ?? rows.length,
+        total: props.logs?.meta?.total ?? rows.length,
         incoming: rows.filter((log) => log.direction === 'incoming').length,
         outgoing: rows.filter((log) => log.direction === 'outgoing').length,
         failed: rows.filter((log) => ! log.is_successful).length,
@@ -36,7 +44,7 @@ const summary = computed(() => {
 });
 
 const applyFilters = () => {
-    router.get(route('admin.cascade-merchant-logs.index'), form, {
+    router.get(route(props.routeName), form, {
         preserveScroll: true,
         preserveState: true,
         replace: true,
@@ -98,7 +106,7 @@ defineOptions({ layout: AuthenticatedLayout });
             title="Логи мерчанта"
             :data="logs"
         >
-            <template #button>
+            <template v-if="showAdminNav" #button>
                 <CascadeSectionNav active="merchant-logs" />
             </template>
 
@@ -122,14 +130,14 @@ defineOptions({ layout: AuthenticatedLayout });
 
                             <select v-model="form.merchant_id" class="select select-bordered select-sm w-full">
                                 <option value="">Все мерчанты</option>
-                                <option v-for="merchant in filterOptions.merchants" :key="merchant.id" :value="merchant.id">
+                                <option v-for="merchant in filterOptions?.merchants ?? []" :key="merchant.id" :value="merchant.id">
                                     {{ merchant.label }}
                                 </option>
                             </select>
 
                             <select v-model="form.operation" class="select select-bordered select-sm w-full">
                                 <option value="">Все операции</option>
-                                <option v-for="op in filterOptions.operations" :key="op.value" :value="op.value">
+                                <option v-for="op in filterOptions?.operations ?? []" :key="op.value" :value="op.value">
                                     {{ op.label }}
                                 </option>
                             </select>
@@ -196,7 +204,7 @@ defineOptions({ layout: AuthenticatedLayout });
                             </tr>
                         </thead>
                         <tbody>
-                            <template v-for="log in logs.data" :key="log.id">
+                            <template v-for="log in logs?.data ?? []" :key="log.id">
                                 <tr class="hover border-b border-base-200 last:border-none">
                                     <td>
                                         <span :class="['badge badge-sm', log.direction === 'outgoing' ? 'badge-info' : 'badge-primary']">
@@ -278,7 +286,7 @@ defineOptions({ layout: AuthenticatedLayout });
                 </div>
 
                 <div class="xl:hidden space-y-3">
-                    <div v-for="log in logs.data" :key="log.id" class="card bg-base-100 shadow-sm">
+                    <div v-for="log in logs?.data ?? []" :key="log.id" class="card bg-base-100 shadow-sm">
                         <div class="card-body p-4 gap-3">
                             <div class="flex items-start justify-between gap-3 border-b border-base-content/10 pb-2">
                                 <div>

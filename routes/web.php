@@ -42,6 +42,7 @@ use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MainPageController;
+use App\Http\Controllers\Merchant\CascadeMerchantLogController as MerchantCascadeMerchantLogController;
 use App\Http\Controllers\Merchant\PayoutCallbackController;
 use App\Http\Controllers\Merchant\ResendCallbackController;
 use App\Http\Controllers\MerchantController;
@@ -360,6 +361,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
 
         Route::get('/merchant/finances', [WalletController::class, 'index'])->name('merchant.finances.index');
+        Route::get('/merchant/cascade-merchant-logs', [MerchantCascadeMerchantLogController::class, 'index'])->name('merchant.cascade-merchant-logs.index');
 
         Route::get('/merchant/payouts', [App\Http\Controllers\Merchant\PayoutController::class, 'index'])->name('merchant.payouts.index');
         Route::get('/merchant/payouts/create-data', [App\Http\Controllers\Merchant\PayoutController::class, 'createData'])->name('merchant.payouts.create-data');
