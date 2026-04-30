@@ -22,7 +22,7 @@ use Illuminate\Support\Collection;
  * @property int|null $cascade_deal_id ID каскадной сделки (если запрос связан со сделкой)
  * @property int|null $cascade_transaction_id ID транзакции каскада (если запрос связан с транзакцией)
  * @property int $provider_id ID провайдера
- * @property string $operation Тип операции (createDeal, cancelDeal, getDeal, openDispute, getDispute)
+ * @property string $operation Код операции (createDeal, cancelDeal, callback и т.д., см. {@see self::operationLabel})
  * @property string $method HTTP метод (GET, POST, PUT, DELETE)
  * @property string $url URL/endpoint запроса к провайдеру
  * @property array|null $request_payload Тело запроса (JSON)
@@ -95,5 +95,23 @@ class CascadeProviderLog extends Model
     public function scopeForCascadeProviders(Builder $query, Collection $providers): Builder
     {
         return $query->whereIn('provider_id', $providers->pluck('id')->all());
+    }
+
+    /**
+     * Человекочитаемая подпись кода операции для UI (логи, фильтры).
+     */
+    public static function operationLabel(string $operation): string
+    {
+        return match ($operation) {
+            'createDeal' => 'Создание сделки',
+            'cancelDeal' => 'Отмена сделки',
+            'getDeal' => 'Получение сделки',
+            'openDispute' => 'Открытие спора',
+            'getDispute' => 'Данные спора',
+            'cancelDispute' => 'Отмена спора',
+            'storeConfirmationCode' => 'Код подтверждения',
+            'callback' => 'Входящий callback',
+            default => $operation,
+        };
     }
 }

@@ -139,8 +139,8 @@ defineOptions({ layout: AuthenticatedLayout });
 
                             <select v-model="form.operation" class="select select-bordered select-sm w-full">
                                 <option value="">Все операции</option>
-                                <option v-for="operation in filterOptions?.operations ?? []" :key="operation" :value="operation">
-                                    {{ operation }}
+                                <option v-for="op in filterOptions?.operations ?? []" :key="op.value" :value="op.value">
+                                    {{ op.label }}
                                 </option>
                             </select>
 
@@ -211,7 +211,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <span :class="['badge badge-sm', log.type === 'callback' ? 'badge-info' : 'badge-primary']">
                                             {{ log.type === 'callback' ? 'Callback' : 'API' }}
                                         </span>
-                                        <div class="mt-1 text-xs opacity-70">{{ log.operation }}</div>
+                                        <div class="mt-1 text-xs text-base-content/70">{{ log.operation_label }}</div>
                                     </td>
                                     <td>
                                         <CopyableOrderUid v-if="log.cascade_deal?.uuid" :uuid="log.cascade_deal.uuid" />
@@ -299,7 +299,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <span :class="['badge badge-sm', log.type === 'callback' ? 'badge-info' : 'badge-primary']">
                                             {{ log.type === 'callback' ? 'Callback' : 'API' }}
                                         </span>
-                                        <span class="font-medium">{{ log.operation }}</span>
+                                        <span class="text-xs text-base-content/70">{{ log.operation_label }}</span>
                                     </div>
                                 </div>
                                 <span :class="['badge badge-sm', log.is_successful ? 'badge-success' : 'badge-error']">

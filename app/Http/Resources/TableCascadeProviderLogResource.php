@@ -22,6 +22,7 @@ class TableCascadeProviderLogResource extends JsonResource
             'id' => $this->id,
             'type' => $this->operation === 'callback' ? 'callback' : 'api',
             'operation' => $this->operation,
+            'operation_label' => CascadeProviderLog::operationLabel($this->operation),
             'method' => $this->method,
             'url' => $this->url,
             'status_code' => $this->status_code,

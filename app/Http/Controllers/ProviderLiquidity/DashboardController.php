@@ -122,7 +122,12 @@ class DashboardController extends Controller
                         ->distinct()
                         ->orderBy('operation')
                         ->pluck('operation')
+                        ->map(fn (string $operation) => [
+                            'value' => $operation,
+                            'label' => CascadeProviderLog::operationLabel($operation),
+                        ])
                         ->values()
+                        ->all()
                     : [],
             ],
         ]);

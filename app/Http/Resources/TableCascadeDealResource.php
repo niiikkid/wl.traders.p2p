@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\CascadeDeal;
+use App\Models\CascadeProviderLog;
 use App\Services\Money\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -105,6 +106,7 @@ class TableCascadeDealResource extends JsonResource
                 'id' => $log->id,
                 'type' => $log->operation === 'callback' ? 'callback' : 'api',
                 'operation' => $log->operation,
+                'operation_label' => CascadeProviderLog::operationLabel($log->operation),
                 'method' => $log->method,
                 'url' => $log->url,
                 'status_code' => $log->status_code,

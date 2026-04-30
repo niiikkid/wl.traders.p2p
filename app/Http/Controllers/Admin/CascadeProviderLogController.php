@@ -61,7 +61,12 @@ class CascadeProviderLogController extends Controller
                     ->distinct()
                     ->orderBy('operation')
                     ->pluck('operation')
-                    ->values(),
+                    ->map(fn (string $operation) => [
+                        'value' => $operation,
+                        'label' => CascadeProviderLog::operationLabel($operation),
+                    ])
+                    ->values()
+                    ->all(),
             ],
         ]);
     }

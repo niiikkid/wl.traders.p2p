@@ -368,7 +368,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <span :class="['badge badge-sm', log.is_successful ? 'badge-success' : 'badge-error']">
                                                         {{ log.is_successful ? 'Успешно' : 'Ошибка' }}
                                                     </span>
-                                                    <span class="font-medium">{{ log.operation }}</span>
+                                                    <span class="text-xs text-base-content/70">{{ log.operation_label ?? log.operation }}</span>
                                                     <span class="font-mono text-xs text-base-content/60">{{ log.method }}</span>
                                                     <span v-if="log.status_code" class="badge badge-ghost badge-sm">{{ log.status_code }}</span>
                                                 </div>
