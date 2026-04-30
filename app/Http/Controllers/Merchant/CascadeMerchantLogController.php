@@ -34,7 +34,7 @@ class CascadeMerchantLogController extends Controller
             'search' => $request->string('search')->toString(),
         ];
 
-        $logs = $merchantIds->isNotEmpty()
+        $logsQuery = $merchantIds->isNotEmpty()
             ? CascadeMerchantLog::query()
                 ->with(['cascadeDeal', 'merchant'])
                 ->whereIn('merchant_id', $merchantIdList)
@@ -54,12 +54,31 @@ class CascadeMerchantLogController extends Controller
                     });
                 })
                 ->latest('id')
+            : null;
+
+        $summary = $logsQuery
+            ? [
+                'total' => (clone $logsQuery)->count(),
+                'incoming' => (clone $logsQuery)->where('direction', 'incoming')->count(),
+                'outgoing' => (clone $logsQuery)->where('direction', 'outgoing')->count(),
+                'failed' => (clone $logsQuery)->where('is_successful', false)->count(),
+            ]
+            : [
+                'total' => 0,
+                'incoming' => 0,
+                'outgoing' => 0,
+                'failed' => 0,
+            ];
+
+        $logs = $logsQuery
+            ? $logsQuery
                 ->paginate($request->integer('per_page', 20))
                 ->withQueryString()
             : null;
 
         return Inertia::render('Admin/CascadeMerchantLogs/Index', [
             'logs' => $logs ? TableCascadeMerchantLogResource::collection($logs) : null,
+            'summary' => $summary,
             'filters' => $filters,
             'filterOptions' => [
                 'merchants' => Merchant::query()

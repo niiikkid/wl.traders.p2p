@@ -10,6 +10,7 @@ import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
 
 const props = defineProps({
     logs: Object,
+    summary: Object,
     filters: Object,
     filterOptions: Object,
     routeName: {
@@ -36,10 +37,10 @@ const summary = computed(() => {
     const rows = props.logs?.data ?? [];
 
     return {
-        total: props.logs?.meta?.total ?? rows.length,
-        incoming: rows.filter((log) => log.direction === 'incoming').length,
-        outgoing: rows.filter((log) => log.direction === 'outgoing').length,
-        failed: rows.filter((log) => ! log.is_successful).length,
+        total: props.summary?.total ?? props.logs?.meta?.total ?? rows.length,
+        incoming: props.summary?.incoming ?? rows.filter((log) => log.direction === 'incoming').length,
+        outgoing: props.summary?.outgoing ?? rows.filter((log) => log.direction === 'outgoing').length,
+        failed: props.summary?.failed ?? rows.filter((log) => ! log.is_successful).length,
     };
 });
 
@@ -171,19 +172,19 @@ defineOptions({ layout: AuthenticatedLayout });
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
-                            <div class="stat-title">API на странице</div>
+                            <div class="stat-title">API</div>
                             <div class="stat-value text-2xl">{{ summary.incoming }}</div>
                         </div>
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
-                            <div class="stat-title">Callback на странице</div>
+                            <div class="stat-title">callback</div>
                             <div class="stat-value text-2xl">{{ summary.outgoing }}</div>
                         </div>
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
-                            <div class="stat-title">Ошибок на странице</div>
+                            <div class="stat-title">ошибок</div>
                             <div class="stat-value text-2xl text-error">{{ summary.failed }}</div>
                         </div>
                     </div>

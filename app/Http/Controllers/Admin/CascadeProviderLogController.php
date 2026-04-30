@@ -24,7 +24,7 @@ class CascadeProviderLogController extends Controller
             'search' => $request->string('search')->toString(),
         ];
 
-        $logs = CascadeProviderLog::query()
+        $logsQuery = CascadeProviderLog::query()
             ->with(['cascadeDeal.merchant', 'cascadeTransaction', 'provider'])
             ->when($filters['type'] === 'api', fn (Builder $query) => $query->where('operation', '!=', 'callback'))
             ->when($filters['type'] === 'callback', fn (Builder $query) => $query->where('operation', 'callback'))
@@ -41,12 +41,22 @@ class CascadeProviderLogController extends Controller
                         ->orWhereRelation('cascadeTransaction', 'provider_deal_id', 'like', "%{$search}%");
                 });
             })
-            ->latest()
+            ->latest();
+
+        $summary = [
+            'total' => (clone $logsQuery)->count(),
+            'api' => (clone $logsQuery)->where('operation', '!=', 'callback')->count(),
+            'callback' => (clone $logsQuery)->where('operation', 'callback')->count(),
+            'failed' => (clone $logsQuery)->where('is_successful', false)->count(),
+        ];
+
+        $logs = $logsQuery
             ->paginate($request->integer('per_page', 20))
             ->withQueryString();
 
         return Inertia::render('Admin/CascadeProviderLogs/Index', [
             'logs' => TableCascadeProviderLogResource::collection($logs),
+            'summary' => $summary,
             'filters' => $filters,
             'filterOptions' => [
                 'providers' => CascadeProvider::query()

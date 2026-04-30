@@ -86,26 +86,44 @@ class DashboardController extends Controller
             'search' => $request->string('search')->toString(),
         ];
 
-        $logs = $providers->isNotEmpty()
+        $logsQuery = $providers->isNotEmpty()
+            ? CascadeProviderLog::query()
+                ->forCascadeProviders($providers)
+                ->with(['cascadeDeal', 'cascadeTransaction', 'provider'])
+                ->when($filters['type'] === 'api', fn (Builder $query) => $query->where('operation', '!=', 'callback'))
+                ->when($filters['type'] === 'callback', fn (Builder $query) => $query->where('operation', 'callback'))
+                ->when($filters['operation'], fn (Builder $query, string $operation) => $query->where('operation', $operation))
+                ->when($filters['is_successful'] !== '', fn (Builder $query) => $query->where('is_successful', $filters['is_successful'] === '1'))
+                ->when($filters['search'], function (Builder $query, string $search): void {
+                    $query->where(function (Builder $query) use ($search): void {
+                        $query
+                            ->where('url', 'like', "%{$search}%")
+                            ->orWhere('error_message', 'like', "%{$search}%")
+                            ->orWhereRelation('cascadeDeal', 'uuid', 'like', "%{$search}%")
+                            ->orWhereRelation('cascadeDeal', 'external_id', 'like', "%{$search}%")
+                            ->orWhereRelation('cascadeTransaction', 'provider_deal_id', 'like', "%{$search}%");
+                    });
+                })
+                ->latest('id')
+            : null;
+
+        $summary = $logsQuery
+            ? [
+                'total' => (clone $logsQuery)->count(),
+                'api' => (clone $logsQuery)->where('operation', '!=', 'callback')->count(),
+                'callback' => (clone $logsQuery)->where('operation', 'callback')->count(),
+                'failed' => (clone $logsQuery)->where('is_successful', false)->count(),
+            ]
+            : [
+                'total' => 0,
+                'api' => 0,
+                'callback' => 0,
+                'failed' => 0,
+            ];
+
+        $logs = $logsQuery
             ? TableCascadeProviderLogResource::collection(
-                CascadeProviderLog::query()
-                    ->forCascadeProviders($providers)
-                    ->with(['cascadeDeal', 'cascadeTransaction', 'provider'])
-                    ->when($filters['type'] === 'api', fn (Builder $query) => $query->where('operation', '!=', 'callback'))
-                    ->when($filters['type'] === 'callback', fn (Builder $query) => $query->where('operation', 'callback'))
-                    ->when($filters['operation'], fn (Builder $query, string $operation) => $query->where('operation', $operation))
-                    ->when($filters['is_successful'] !== '', fn (Builder $query) => $query->where('is_successful', $filters['is_successful'] === '1'))
-                    ->when($filters['search'], function (Builder $query, string $search): void {
-                        $query->where(function (Builder $query) use ($search): void {
-                            $query
-                                ->where('url', 'like', "%{$search}%")
-                                ->orWhere('error_message', 'like', "%{$search}%")
-                                ->orWhereRelation('cascadeDeal', 'uuid', 'like', "%{$search}%")
-                                ->orWhereRelation('cascadeDeal', 'external_id', 'like', "%{$search}%")
-                                ->orWhereRelation('cascadeTransaction', 'provider_deal_id', 'like', "%{$search}%");
-                        });
-                    })
-                    ->latest('id')
+                $logsQuery
                     ->paginate($request->integer('per_page', 20))
                     ->withQueryString()
             )
@@ -113,6 +131,7 @@ class DashboardController extends Controller
 
         return Inertia::render('ProviderLiquidity/Logs', [
             'logs' => $logs,
+            'summary' => $summary,
             'filters' => $filters,
             'filterOptions' => [
                 'operations' => $providers->isNotEmpty()

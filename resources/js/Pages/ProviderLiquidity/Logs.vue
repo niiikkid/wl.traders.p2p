@@ -9,6 +9,7 @@ import MainTableSection from '@/Wrappers/MainTableSection.vue';
 
 const props = defineProps({
     logs: Object,
+    summary: Object,
     filters: Object,
     filterOptions: Object,
 });
@@ -26,10 +27,10 @@ const summary = computed(() => {
     const rows = props.logs?.data ?? [];
 
     return {
-        total: props.logs?.meta?.total ?? rows.length,
-        api: rows.filter((log) => log.type === 'api').length,
-        callback: rows.filter((log) => log.type === 'callback').length,
-        failed: rows.filter((log) => ! log.is_successful).length,
+        total: props.summary?.total ?? props.logs?.meta?.total ?? rows.length,
+        api: props.summary?.api ?? rows.filter((log) => log.type === 'api').length,
+        callback: props.summary?.callback ?? rows.filter((log) => log.type === 'callback').length,
+        failed: props.summary?.failed ?? rows.filter((log) => ! log.is_successful).length,
     };
 });
 
@@ -173,19 +174,19 @@ defineOptions({ layout: AuthenticatedLayout });
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
-                            <div class="stat-title">API на странице</div>
+                            <div class="stat-title">API</div>
                             <div class="stat-value text-2xl">{{ summary.api }}</div>
                         </div>
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
-                            <div class="stat-title">Callback на странице</div>
+                            <div class="stat-title">callback</div>
                             <div class="stat-value text-2xl">{{ summary.callback }}</div>
                         </div>
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
-                            <div class="stat-title">Ошибок на странице</div>
+                            <div class="stat-title">ошибок</div>
                             <div class="stat-value text-2xl text-error">{{ summary.failed }}</div>
                         </div>
                     </div>
