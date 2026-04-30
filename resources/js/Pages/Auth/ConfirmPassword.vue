@@ -49,7 +49,7 @@ const submit = () => {
             </div>
 
             <div class="mt-2">
-                <PrimaryButton class="btn btn-primary btn-block" :class="{ 'btn-disabled opacity-50': form.processing }" :disabled="form.processing">
+                <PrimaryButton type="submit" class="btn btn-primary btn-block" :class="{ 'btn-disabled opacity-50': form.processing }" :disabled="form.processing">
                     Подтвердить
                 </PrimaryButton>
             </div>

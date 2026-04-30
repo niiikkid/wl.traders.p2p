@@ -35,7 +35,7 @@ const submit = () => {
             </p>
 
             <div class="flex items-center justify-center">
-                <PrimaryButton class="btn btn-primary btn-wide" :class="{ 'btn-disabled opacity-50': form.processing }" :disabled="form.processing">
+                <PrimaryButton type="submit" class="btn btn-primary btn-wide" :class="{ 'btn-disabled opacity-50': form.processing }" :disabled="form.processing">
                     Войти
                 </PrimaryButton>
             </div>
