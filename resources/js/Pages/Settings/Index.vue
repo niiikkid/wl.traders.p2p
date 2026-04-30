@@ -5,7 +5,6 @@ import SettingsPanel from '@/Pages/Settings/SettingsPanel.vue';
 import PrimeTimeBonus from '@/Pages/Settings/Partials/PrimeTimeBonus.vue';
 import AppSlogan from '@/Pages/Settings/Partials/AppSlogan.vue';
 import SupportLink from '@/Pages/Settings/Partials/SupportLink.vue';
-import LandingTelegramLink from '@/Pages/Settings/Partials/LandingTelegramLink.vue';
 import FundsOnHold from '@/Pages/Settings/Partials/FundsOnHold.vue';
 import MaxPendingDisputes from '@/Pages/Settings/Partials/MaxPendingDisputes.vue';
 import MaxRejectedDisputes from '@/Pages/Settings/Partials/MaxRejectedDisputes.vue';
@@ -41,9 +40,6 @@ defineOptions({ layout: AuthenticatedLayout })
             </SettingsPanel>
             <SettingsPanel>
                 <SupportLink />
-            </SettingsPanel>
-            <SettingsPanel>
-                <LandingTelegramLink />
             </SettingsPanel>
             <SettingsPanel>
                 <FundsOnHold />

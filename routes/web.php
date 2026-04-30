@@ -40,7 +40,6 @@ use App\Http\Controllers\ApkController;
 use App\Http\Controllers\AppHomeController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\MainPageController;
 use App\Http\Controllers\Merchant\CascadeMerchantLogController as MerchantCascadeMerchantLogController;
 use App\Http\Controllers\Merchant\PayoutCallbackController;
@@ -109,15 +108,6 @@ Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [PaymentLin
     ->middleware('payment.domain')
     ->name('payment.payment-detail.store');
 
-if (config('domains.split_marketing')) {
-    $marketing_host = config('domains.marketing_host');
-    if (is_string($marketing_host) && $marketing_host !== '') {
-        Route::domain($marketing_host)->middleware(['2fa'])->group(function () {
-            Route::get('/', [LandingPageController::class, 'show'])->name('landing.home');
-        });
-    }
-}
-
 Route::post('/telegram/webhook', TelegramWebhookController::class)
     ->middleware(['telegram.secret', 'backoffice.domain'])
     ->name('telegram.webhook');
@@ -136,10 +126,7 @@ Route::post('/impersonate/leave', function () {
 })->middleware('auth', 'banned', 'backoffice.domain')->name('impersonate.leave');
 
 Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
-    Route::get('/', config('domains.split_marketing')
-        ? AppHomeController::class
-        : [LandingPageController::class, 'show']
-    )->name('dashboard');
+    Route::get('/', AppHomeController::class)->name('dashboard');
 
     Route::group(['middleware' => ['auth', 'banned']], function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -500,7 +487,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/settings/update/app-slogan', [SettingsController::class, 'updateAppSlogan'])->name('settings.update.app-slogan');
         Route::patch('/settings/update/prime-time-bonus', [SettingsController::class, 'updatePrimeTimeBonus'])->name('settings.update.prime-time-bonus');
         Route::patch('/settings/update/support-link', [SettingsController::class, 'updateSupportLink'])->name('settings.update.support-link');
-        Route::patch('/settings/update/landing-telegram-link', [SettingsController::class, 'updateLandingTelegramLink'])->name('settings.update.landing-telegram-link');
         Route::patch('/settings/update/funds-on-hold', [SettingsController::class, 'updateFundsOnHold'])->name('settings.update.funds-on-hold');
         Route::patch('/settings/update/max-pending-disputes', [SettingsController::class, 'updateMaxPendingDisputes'])->name('settings.update.max-pending-disputes');
         Route::patch('/settings/update/max-rejected-disputes', [SettingsController::class, 'updateMaxRejectedDisputes'])->name('settings.update.max-rejected-disputes');

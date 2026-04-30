@@ -5,7 +5,9 @@ namespace App\Services\Settings;
 use App\Contracts\SettingsServiceContract;
 use App\Enums\MarketEnum;
 use App\Exceptions\SettingsException;
+use App\Models\PaymentDetail;
 use App\Models\Setting;
+use App\Models\User;
 use App\Models\ValueObjects\Settings\BinancePriceParserSettings;
 use App\Models\ValueObjects\Settings\CurrencyPriceParserSettings;
 use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
@@ -15,20 +17,33 @@ use App\Services\Money\Currency;
 class SettingsService implements SettingsServiceContract
 {
     const APP_SLOGAN = 'app_slogan';
+
     const PRIME_TIME_BONUS_STARTS = 'prime_time_bonus_starts';
+
     const PRIME_TIME_BONUS_ENDS = 'prime_time_bonus_ends';
+
     const PRIME_TIME_BONUS_RATE = 'prime_time_bonus_rate';
+
     const CURRENCY_PRICE_PARSER_SETTINGS = 'currency_price_parser_settings';
+
     const SUPPORT_LINK = 'support_link';
-    const LANDING_TELEGRAM_LINK = 'landing_telegram_link';
+
     const FUNDS_ON_HOLD_TIME = 'funds_on_hold_time';
+
     const MAX_PENDING_DISPUTES = 'max_pending_disputes';
+
     const MAX_REJECTED_DISPUTES = 'max_rejected_disputes';
+
     const TEMP_VIP_REQUIRED_DEALS = 'temp_vip_required_deals';
+
     const TEMP_VIP_DURATION_MINUTES = 'temp_vip_duration_minutes';
+
     const TEMP_VIP_ENABLED = 'temp_vip_enabled';
+
     const DEFAULT_RESERVE_BALANCE_LIMIT = 'default_reserve_balance_limit';
+
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
+
     const TRADER_ANALYTICS_OPERATION_THRESHOLDS = 'trader_analytics_operation_thresholds';
 
     protected $settings = null;
@@ -127,26 +142,6 @@ class SettingsService implements SettingsServiceContract
         $this->updateParam(self::SUPPORT_LINK, $link);
     }
 
-    public function getLandingTelegramLink(): ?string
-    {
-        $value = $this->getParam(self::LANDING_TELEGRAM_LINK);
-
-        return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    public function updateLandingTelegramLink(?string $link): void
-    {
-        $normalized = ($link !== null && trim($link) !== '') ? trim($link) : null;
-
-        Setting::updateOrCreate(
-            ['key' => self::LANDING_TELEGRAM_LINK],
-            ['value' => $normalized]
-        );
-
-        cache()->put('app-settings', Setting::all());
-        $this->settings = null;
-    }
-
     public function getFundsOnHoldTime(): int
     {
         return $this->getParam(self::FUNDS_ON_HOLD_TIME);
@@ -170,9 +165,10 @@ class SettingsService implements SettingsServiceContract
     public function getMaxRejectedDisputes(): array
     {
         $value = $this->getParam(self::MAX_REJECTED_DISPUTES);
-        if (!$value) {
+        if (! $value) {
             return ['count' => 0, 'period' => 0];
         }
+
         return json_decode($value, true);
     }
 
@@ -215,7 +211,7 @@ class SettingsService implements SettingsServiceContract
             // и отключаем VIP-лимиты на реквизитах (перманентный VIP при этом не затрагиваем).
             $now = now();
 
-            \App\Models\User::query()
+            User::query()
                 ->where('is_vip', false)
                 ->update([
                     'temp_vip_active_until' => null,
@@ -223,8 +219,8 @@ class SettingsService implements SettingsServiceContract
                     'temp_vip_progress_start_at' => $now,
                 ]);
 
-            \App\Models\PaymentDetail::query()
-                ->whereIn('user_id', \App\Models\User::query()->where('is_vip', false)->select('id'))
+            PaymentDetail::query()
+                ->whereIn('user_id', User::query()->where('is_vip', false)->select('id'))
                 ->update([
                     'min_order_amount' => null,
                     'max_order_amount' => null,
@@ -325,10 +321,6 @@ class SettingsService implements SettingsServiceContract
             'value' => null,
         ]);
         Setting::firstOrCreate([
-            'key' => self::LANDING_TELEGRAM_LINK,
-            'value' => null,
-        ]);
-        Setting::firstOrCreate([
             'key' => self::FUNDS_ON_HOLD_TIME,
             'value' => 1440,
         ]);
@@ -423,7 +415,7 @@ class SettingsService implements SettingsServiceContract
         cache()->put('app-settings', Setting::all());
         $this->settings = null;
 
-        return (bool)$res;
+        return (bool) $res;
     }
 
     protected function normalizeMarketPriceParserSettings(array $settings): array
@@ -490,5 +482,4 @@ class SettingsService implements SettingsServiceContract
 
         return $normalized;
     }
-
 }

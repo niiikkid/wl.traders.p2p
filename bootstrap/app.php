@@ -7,7 +7,6 @@ use App\Http\Middleware\ApiWithdrawalsAccessToken;
 use App\Http\Middleware\Banned;
 use App\Http\Middleware\DeviceAccessToken;
 use App\Http\Middleware\EnsureBackofficeDomain;
-use App\Http\Middleware\EnsureMarketingSurfaceOnly;
 use App\Http\Middleware\EnsurePaymentDomain;
 use App\Http\Middleware\Google2FAMiddleware;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -30,9 +29,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        $middleware->web(prepend: [
-            EnsureMarketingSurfaceOnly::class,
-        ]);
         $middleware->web(append: [
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
@@ -44,7 +40,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'banned' => Banned::class,
             'payment.domain' => EnsurePaymentDomain::class,
-            'marketing.surface' => EnsureMarketingSurfaceOnly::class,
             'backoffice.domain' => EnsureBackofficeDomain::class,
             'api-access-token' => ApiAccessToken::class,
             'integration-infrastructure-api-access-token' => IntegrationInfrastructureApiAccessToken::class,

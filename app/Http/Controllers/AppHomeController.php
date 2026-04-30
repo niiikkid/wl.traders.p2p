@@ -8,14 +8,36 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Точка входа кабинета при разнесении лендинга (платёжный домен) и приложения (APP_URL).
+ * Entry point for the back office root page.
  */
 class AppHomeController extends Controller
 {
     public function __invoke(Request $request): RedirectResponse
     {
-        $authenticatedHome = LandingPageController::resolveAuthenticatedHome($request);
+        $user = $request->user();
+        if ($user === null) {
+            return redirect()->route('login');
+        }
 
-        return $authenticatedHome ?? redirect()->route('login');
+        if ($user->hasRole('Merchant')) {
+            return redirect()->route('merchant.main.index');
+        }
+        if ($user->hasRole('Trader')) {
+            return redirect()->route('trader.main.index');
+        }
+        if ($user->hasRole('Support')) {
+            return redirect()->route('support.users.index');
+        }
+        if ($user->hasRole('Analyst')) {
+            return redirect()->route('analyst.main.index');
+        }
+        if ($user->hasRole('Team Leader')) {
+            return redirect()->route('leader.main.index');
+        }
+        if ($user->hasRole('Provider Liquidity')) {
+            return redirect()->route('provider-liquidity.main.index');
+        }
+
+        return redirect()->route('admin.main.index');
     }
 }

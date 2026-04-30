@@ -11,19 +11,11 @@ class EnsureBackofficeDomain
     public function handle(Request $request, Closure $next): Response
     {
         $appHost = config('domains.app_host');
-        if (!is_string($appHost) || $appHost === '') {
+        if (! is_string($appHost) || $appHost === '') {
             return $next($request);
         }
 
         $currentHost = $request->getHost();
-
-        if (config('domains.split_marketing')) {
-            if (strtolower($currentHost) !== strtolower($appHost)) {
-                abort(404);
-            }
-
-            return $next($request);
-        }
 
         $paymentHost = config('domains.payment_host');
         $paymentHostStr = is_string($paymentHost) ? $paymentHost : '';
