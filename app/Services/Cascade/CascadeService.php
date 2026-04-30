@@ -815,7 +815,9 @@ class CascadeService implements CascadeServiceContract
                 cvc: $dto->cvc,
                 cardholderName: $dto->cardholderName,
             ),
-            'callback_url' => $dto->callbackUrl,
+            'callback_url' => filled($dto->callbackUrl)
+                ? $dto->callbackUrl
+                : ($merchant->callback_url ?: null),
             'market' => $market,
         ];
 
