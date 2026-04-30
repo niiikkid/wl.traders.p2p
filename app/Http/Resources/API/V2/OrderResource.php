@@ -25,16 +25,18 @@ class OrderResource extends JsonResource
         $fiatCurrencyCode = $this->currency?->getCode();
 
         return [
-            'payin_id' => $this->uuid,
+            'id' => $this->uuid,
             'external_id' => $this->external_id,
             'merchant_id' => $this->merchant->uuid,
             'status' => $this->status->value,
             'sub_status' => $this->sub_status->value,
-            'amount' => $this->formatMoney($this->amount, $fiatCurrencyCode),
-            'initial_amount' => $this->formatMoney($this->initial_amount, $fiatCurrencyCode),
-            'converted_amount' => $this->formatMoney($this->usdt_amount, 'USDT'),
-            'profit' => $this->formatMoney($this->credit, null),
-            'rate' => [
+            'amounts' => [
+                'amount' => $this->formatMoney($this->amount, $fiatCurrencyCode),
+                'initial_amount' => $this->formatMoney($this->initial_amount, $fiatCurrencyCode),
+                'usdt' => $this->formatMoney($this->usdt_amount, 'USDT'),
+                'merchant_credit' => $this->formatMoney($this->credit, null),
+            ],
+            'exchange_rate' => [
                 'market' => $this->market?->value,
                 'price' => $this->formatMoney($this->conversion_price, null),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
@@ -45,7 +47,7 @@ class OrderResource extends JsonResource
                 'initials' => Arr::get($details, 'initials'),
                 'value' => Arr::get($details, 'value'),
             ],
-            'manual_control_acquiring' => $this->manual_control === null ? null : [
+            'manual_acquiring' => $this->manual_control === null ? null : [
                 'confirmation_type' => $this->manual_control->confirmationType,
                 'reject_reason' => $this->manual_control->rejectReason,
             ],

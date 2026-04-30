@@ -67,7 +67,7 @@ class StoreRequest extends FormRequest
             'recipient_name' => ['required', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:30'],
             'callback_url' => ['nullable', 'string', 'url:https', 'max:256'],
-            'fiat_to_usdt_rate' => ['nullable'],
+            'exchange_rate' => ['nullable'],
         ];
     }
 
@@ -104,36 +104,36 @@ class StoreRequest extends FormRequest
                 }
 
                 $geoMarket = $merchant->getGeoMarket($currency);
-                $fiatToUsdtRate = $this->input('fiat_to_usdt_rate');
+                $exchangeRate = $this->input('exchange_rate');
 
                 if ($geoMarket?->equals(MarketEnum::MERCHANT_API)) {
-                    if ($fiatToUsdtRate === null || $fiatToUsdtRate === '') {
-                        $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate обязательно для выбранного источника курсов.');
+                    if ($exchangeRate === null || $exchangeRate === '') {
+                        $validator->errors()->add('exchange_rate', 'Поле exchange_rate обязательно для выбранного источника курсов.');
                         return;
                     }
 
-                    if (! is_numeric($fiatToUsdtRate)) {
-                        $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate должно быть числом.');
+                    if (! is_numeric($exchangeRate)) {
+                        $validator->errors()->add('exchange_rate', 'Поле exchange_rate должно быть числом.');
                         return;
                     }
 
-                    if ((float) $fiatToUsdtRate <= 0) {
-                        $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate должно быть больше 0.');
+                    if ((float) $exchangeRate <= 0) {
+                        $validator->errors()->add('exchange_rate', 'Поле exchange_rate должно быть больше 0.');
                         return;
                     }
 
-                    if (! $this->isDecimalWithinPrecision((string) $fiatToUsdtRate, $currency->getPrecision())) {
+                    if (! $this->isDecimalWithinPrecision((string) $exchangeRate, $currency->getPrecision())) {
                         $validator->errors()->add(
-                            'fiat_to_usdt_rate',
-                            "Поле fiat_to_usdt_rate может содержать не более {$currency->getPrecision()} знаков после запятой для валюты {$currency->getCode()}."
+                            'exchange_rate',
+                            "Поле exchange_rate может содержать не более {$currency->getPrecision()} знаков после запятой для валюты {$currency->getCode()}."
                         );
                     }
 
                     return;
                 }
 
-                if ($fiatToUsdtRate !== null && $fiatToUsdtRate !== '') {
-                    $validator->errors()->add('fiat_to_usdt_rate', 'Поле fiat_to_usdt_rate недоступно для выбранного источника курсов.');
+                if ($exchangeRate !== null && $exchangeRate !== '') {
+                    $validator->errors()->add('exchange_rate', 'Поле exchange_rate недоступно для выбранного источника курсов.');
                 }
             },
         ];

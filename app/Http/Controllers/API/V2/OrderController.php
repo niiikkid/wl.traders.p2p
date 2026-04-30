@@ -64,10 +64,9 @@ class OrderController extends Controller
 
         Gate::authorize('api-access-to-merchant', $merchant);
 
-        $dto = CreateCascadeDealDTO::makeFromRequest([
-            ...$request->validated(),
-            'merchant_id' => $merchant->id,
-        ]);
+        $dto = CreateCascadeDealDTO::makeFromRequest(
+            $request->toCreateCascadeDealData($merchant->id)
+        );
 
         try {
             $cascade_deal = services()->cascade()->createDeal($dto);

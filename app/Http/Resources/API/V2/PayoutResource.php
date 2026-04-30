@@ -18,13 +18,15 @@ class PayoutResource extends JsonResource
     {
         return [
             'id' => $this->uuid,
-            'external_id' => $this->external_id,
+            'external_id' => $this->external_id,            
+            'merchant_id' => $this->merchant?->uuid,
             'status' => $this->status->value,
             'payout_method' => $this->payout_method_type->value,
-            'bank_name' => $this->bank_name,
-            'payout_details' => $this->requisites,
-            'recipient_name' => $this->initials,
-            'merchant_id' => $this->merchant?->uuid,
+            'payout_details' => [
+                'bank_name' => $this->bank_name,
+                'value' => $this->requisites,
+                'recipient_name' => $this->initials,
+            ],
             'amounts' => [
                 'fiat' => $this->formatMoney($this->amount_fiat, $this->amount_fiat_currency),
                 'usdt' => $this->formatMoney($this->usdt_body, $this->usdt_body_currency),
@@ -32,7 +34,7 @@ class PayoutResource extends JsonResource
                 'commission' => $this->formatMoney($this->total_fee, $this->total_fee_currency),
             ],
             'commission_rate' => $this->total_commission_rate,
-            'fiat_to_usdt_rate' => [
+            'exchange_rate' => [
                 'market' => $this->rate_market->value,
                 'price' => $this->formatMoney($this->conversion_price, $this->conversion_price_currency),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),

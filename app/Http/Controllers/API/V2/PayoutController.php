@@ -72,8 +72,8 @@ class PayoutController extends Controller
             currencyCode: $currencyCode,
             callbackUrl: $request->callback_url,
             bankName: $request->validated('bank_name'),
-            merchantRate: $request->filled('fiat_to_usdt_rate')
-                ? Money::fromPrecision((string) $request->validated('fiat_to_usdt_rate'), $currencyCode)
+            merchantRate: $request->filled('exchange_rate')
+                ? Money::fromPrecision((string) $request->validated('exchange_rate'), $currencyCode)
                 : null,
         );
 

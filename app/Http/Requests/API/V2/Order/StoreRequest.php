@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\API\V2\Order;
 
+use App\DTO\Cascade\CreateCascadeDealDTO;
 use App\Enums\CascadePaymentMethod;
-use App\Enums\DetailType;
 use App\Enums\MarketEnum;
 use App\Models\Merchant;
 use App\Services\Money\Currency;
@@ -11,12 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Validator;
 
-/**
- * payment_detail_type Остается только на уровне данного класса. Она обеспечивает синхронизацию интерфейсов. Дальше используется только payment_method.
- */
 class StoreRequest extends FormRequest
 {
     public static function pendingCascadeDealCacheKey(int $merchant_id, string $external_id): string
@@ -27,39 +23,6 @@ class StoreRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
-    }
-
-    protected function prepareForValidation(): void
-    {
-        if (! $this->filled('payment_detail_type')) {
-            return;
-        }
-
-        $detail_type = DetailType::tryFrom(strtolower(trim((string) $this->input('payment_detail_type'))));
-        $payment_method = $detail_type ? CascadePaymentMethod::fromDetailType($detail_type) : null;
-
-        if (! $payment_method) {
-            throw ValidationException::withMessages([
-                'payment_detail_type' => ['Указанный payment_detail_type не поддерживается каскадом.'],
-            ]);
-        }
-
-        $this->merge([
-            'payment_detail_type' => $detail_type->value,
-        ]);
-
-        if (! $this->filled('payment_method')) {
-            $this->merge(['payment_method' => $payment_method->value]);
-
-            return;
-        }
-
-        $provided_payment_method = CascadePaymentMethod::tryFrom(strtolower(trim((string) $this->input('payment_method'))));
-        if ($provided_payment_method !== $payment_method) {
-            throw ValidationException::withMessages([
-                'payment_method' => ["При payment_detail_type {$detail_type->value} ожидается payment_method {$payment_method->value}."],
-            ]);
-        }
     }
 
     public function rules(): array
@@ -136,50 +99,70 @@ class StoreRequest extends FormRequest
             'payment_method' => ['required', Rule::in(CascadePaymentMethod::values())],
             'callback_url' => $callback_validation_rules,
             'client_id' => ['nullable', 'string', 'max:255'],
-            'rate' => ['nullable'],
-            'payment_detail_type' => [
-                'nullable',
-                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
-                Rule::in(DetailType::values()),
-            ],
-            'manual_control_acquiring' => ['nullable', 'boolean'],
+            'exchange_rate' => ['nullable'],
+            'manual_acquiring' => ['nullable', 'boolean'],
             'card_number' => [
                 'nullable',
-                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
-                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
+                Rule::requiredIf(fn () => $this->boolean('manual_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_acquiring')),
                 'string',
                 'max:32',
             ],
-            'expiry_month' => [
+            'card_expiry_month' => [
                 'nullable',
-                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
-                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
+                Rule::requiredIf(fn () => $this->boolean('manual_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_acquiring')),
                 'integer',
                 'min:1',
                 'max:12',
             ],
-            'expiry_year' => [
+            'card_expiry_year' => [
                 'nullable',
-                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
-                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
+                Rule::requiredIf(fn () => $this->boolean('manual_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_acquiring')),
                 'integer',
                 'min:2000',
                 'max:2999',
             ],
             'cvc' => [
                 'nullable',
-                Rule::requiredIf(fn () => $this->boolean('manual_control_acquiring')),
-                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
+                Rule::requiredIf(fn () => $this->boolean('manual_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_acquiring')),
                 'string',
                 'min:1',
                 'max:20',
             ],
-            'cardholder_name' => [
+            'card_holder_name' => [
                 'nullable',
-                Rule::prohibitedIf(fn () => ! $this->boolean('manual_control_acquiring')),
+                Rule::prohibitedIf(fn () => ! $this->boolean('manual_acquiring')),
                 'string',
                 'max:255',
             ],
+        ];
+    }
+
+    /**
+     * Данные в формате, ожидаемом {@see CreateCascadeDealDTO::makeFromRequest} (сервисный слой).
+     */
+    public function toCreateCascadeDealData(int $merchantId): array
+    {
+        $v = $this->validated();
+
+        return [
+            'merchant_id' => $merchantId,
+            'external_id' => $v['external_id'],
+            'amount' => $v['amount'],
+            'currency' => $v['currency'],
+            'payment_method' => $v['payment_method'],
+            'callback_url' => $v['callback_url'] ?? null,
+            'client_id' => $v['client_id'] ?? null,
+            'rate' => $v['exchange_rate'] ?? null,
+            'manual_control_acquiring' => (bool) ($v['manual_acquiring'] ?? false),
+            'card_number' => $v['card_number'] ?? null,
+            'expiry_month' => isset($v['card_expiry_month']) ? (int) $v['card_expiry_month'] : null,
+            'expiry_year' => isset($v['card_expiry_year']) ? (int) $v['card_expiry_year'] : null,
+            'cvc' => $v['cvc'] ?? null,
+            'cardholder_name' => $v['card_holder_name'] ?? null,
         ];
     }
 
@@ -202,31 +185,31 @@ class StoreRequest extends FormRequest
             }
 
             $geo_market = $merchant->getGeoMarket($currency);
-            $rate = $this->input('rate');
+            $rate = $this->input('exchange_rate');
 
             if ($geo_market?->equals(MarketEnum::MERCHANT_API)) {
                 if ($rate === null || $rate === '') {
-                    $validator->errors()->add('rate', 'Поле rate обязательно для выбранного источника курсов.');
+                    $validator->errors()->add('exchange_rate', 'Поле exchange_rate обязательно для выбранного источника курсов.');
 
                     return;
                 }
 
                 if (! is_numeric($rate)) {
-                    $validator->errors()->add('rate', 'Поле rate должно быть числом.');
+                    $validator->errors()->add('exchange_rate', 'Поле exchange_rate должно быть числом.');
 
                     return;
                 }
 
                 if ((float) $rate <= 0) {
-                    $validator->errors()->add('rate', 'Поле rate должно быть больше 0.');
+                    $validator->errors()->add('exchange_rate', 'Поле exchange_rate должно быть больше 0.');
 
                     return;
                 }
 
                 if (! $this->isDecimalWithinPrecision((string) $rate, $currency->getPrecision())) {
                     $validator->errors()->add(
-                        'rate',
-                        "Поле rate может содержать не более {$currency->getPrecision()} знаков после запятой для валюты {$currency->getCode()}."
+                        'exchange_rate',
+                        "Поле exchange_rate может содержать не более {$currency->getPrecision()} знаков после запятой для валюты {$currency->getCode()}."
                     );
                 }
 
@@ -234,16 +217,17 @@ class StoreRequest extends FormRequest
             }
 
             if ($rate !== null && $rate !== '') {
-                $validator->errors()->add('rate', 'Поле rate недоступно для выбранного источника курсов.');
+                $validator->errors()->add('exchange_rate', 'Поле exchange_rate недоступно для выбранного источника курсов.');
             }
 
-            if ($this->boolean('manual_control_acquiring')) {
-                $payment_detail_type = (string) $this->input('payment_detail_type');
-
-                if ($payment_detail_type !== DetailType::CARD->value) {
+            if ($this->boolean('manual_acquiring')) {
+                $payment_method = CascadePaymentMethod::tryFrom(
+                    strtolower(trim((string) $this->input('payment_method')))
+                );
+                if ($payment_method !== CascadePaymentMethod::CARD) {
                     $validator->errors()->add(
-                        'payment_detail_type',
-                        'Для manual_control_acquiring доступен только тип реквизита card.'
+                        'payment_method',
+                        'Для manual_acquiring допустим только payment_method card.'
                     );
                 }
 
