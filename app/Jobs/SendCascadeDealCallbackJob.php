@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+use Throwable;
 
 class SendCascadeDealCallbackJob implements ShouldQueue
 {
@@ -49,6 +50,7 @@ class SendCascadeDealCallbackJob implements ShouldQueue
         }
 
         try {
+            $started_at = microtime(true);
             $payload = OrderResource::make($deal)->resolve();
             $http = Http::withoutVerifying()->acceptJson()->timeout(10);
             $token = $deal->merchant->user->api_access_token;
@@ -58,17 +60,31 @@ class SendCascadeDealCallbackJob implements ShouldQueue
             }
 
             $response = $http->post($deal->callback_url, $payload);
+            $response_payload = $response->json() ?: $response->body();
 
             $callbackLog = new CallbackLog([
                 'type' => CallbackLog::TYPE_CASCADE_PAYIN,
                 'url' => $deal->callback_url,
                 'request_data' => $payload,
-                'response_data' => $response->json() ?: $response->body(),
+                'response_data' => $response_payload,
                 'status_code' => $response->status(),
                 'is_success' => $response->successful(),
             ]);
 
             $deal->callbackLogs()->save($callbackLog);
+            RecordCascadeMerchantLogJob::dispatch([
+                'cascade_deal_id' => $deal->id,
+                'merchant_id' => $deal->merchant_id,
+                'operation' => 'callback',
+                'direction' => 'outgoing',
+                'method' => 'POST',
+                'url' => $deal->callback_url,
+                'request_payload' => $payload,
+                'response_payload' => is_array($response_payload) ? $response_payload : ['body' => $response_payload],
+                'status_code' => $response->status(),
+                'execution_time' => round(microtime(true) - $started_at, 4),
+                'is_successful' => $response->successful(),
+            ]);
 
             $events->record(
                 deal: $deal,
@@ -79,6 +95,26 @@ class SendCascadeDealCallbackJob implements ShouldQueue
                     'is_success' => $response->successful(),
                 ],
             );
+        } catch (Throwable $e) {
+            if (isset($deal, $payload, $started_at)) {
+                RecordCascadeMerchantLogJob::dispatch([
+                    'cascade_deal_id' => $deal->id,
+                    'merchant_id' => $deal->merchant_id,
+                    'operation' => 'callback',
+                    'direction' => 'outgoing',
+                    'method' => 'POST',
+                    'url' => $deal->callback_url,
+                    'request_payload' => $payload,
+                    'response_payload' => ['message' => $e->getMessage()],
+                    'status_code' => null,
+                    'execution_time' => round(microtime(true) - $started_at, 4),
+                    'is_successful' => false,
+                    'error_code' => get_class($e),
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+
+            throw $e;
         } finally {
             Redis::del($lockKey);
         }

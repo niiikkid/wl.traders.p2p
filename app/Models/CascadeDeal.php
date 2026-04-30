@@ -183,6 +183,11 @@ class CascadeDeal extends Model
         return $this->hasMany(CascadeProviderLog::class);
     }
 
+    public function merchantLogs(): HasMany
+    {
+        return $this->hasMany(CascadeMerchantLog::class);
+    }
+
     public function events(): HasMany
     {
         return $this->hasMany(CascadeDealEvent::class);

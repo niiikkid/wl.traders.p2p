@@ -119,7 +119,7 @@ router.on('success', (event) => {
                 </span>
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.cascade-deals.*') || route().current('admin.cascade-providers.*') || route().current('admin.cascade-merchant-settings.*') || route().current('admin.cascade-provider-logs.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.cascade-deals.*') || route().current('admin.cascade-providers.*') || route().current('admin.cascade-merchant-settings.*') || route().current('admin.cascade-provider-logs.*') || route().current('admin.cascade-merchant-logs.*') }]">
             <span
                 @click="router.visit(route('admin.cascade-deals.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('admin.cascade-deals.index'), { preserveScroll: true })"

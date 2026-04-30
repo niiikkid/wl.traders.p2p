@@ -17,8 +17,8 @@ const props = defineProps({
 const expandedRows = ref({});
 const expandedCards = ref({});
 const form = reactive({
-    type: props.filters.type ?? '',
-    provider_id: props.filters.provider_id ?? '',
+    direction: props.filters.direction ?? '',
+    merchant_id: props.filters.merchant_id ?? '',
     operation: props.filters.operation ?? '',
     is_successful: props.filters.is_successful ?? '',
     search: props.filters.search ?? '',
@@ -29,14 +29,14 @@ const summary = computed(() => {
 
     return {
         total: props.logs.meta?.total ?? rows.length,
-        api: rows.filter((log) => log.type === 'api').length,
-        callback: rows.filter((log) => log.type === 'callback').length,
+        incoming: rows.filter((log) => log.direction === 'incoming').length,
+        outgoing: rows.filter((log) => log.direction === 'outgoing').length,
         failed: rows.filter((log) => ! log.is_successful).length,
     };
 });
 
 const applyFilters = () => {
-    router.get(route('admin.cascade-provider-logs.index'), form, {
+    router.get(route('admin.cascade-merchant-logs.index'), form, {
         preserveScroll: true,
         preserveState: true,
         replace: true,
@@ -45,8 +45,8 @@ const applyFilters = () => {
 
 const resetFilters = () => {
     Object.assign(form, {
-        type: '',
-        provider_id: '',
+        direction: '',
+        merchant_id: '',
         operation: '',
         is_successful: '',
         search: '',
@@ -55,8 +55,8 @@ const resetFilters = () => {
     applyFilters();
 };
 
-const setType = (type) => {
-    form.type = type;
+const setDirection = (direction) => {
+    form.direction = direction;
     applyFilters();
 };
 
@@ -92,38 +92,38 @@ defineOptions({ layout: AuthenticatedLayout });
 
 <template>
     <div>
-        <Head title="Логи провайдера" />
+        <Head title="Логи мерчанта" />
 
         <MainTableSection
-            title="Логи провайдера"
+            title="Логи мерчанта"
             :data="logs"
         >
             <template #button>
-                <CascadeSectionNav active="provider-logs" />
+                <CascadeSectionNav active="merchant-logs" />
             </template>
 
             <template #table-filters>
                 <div class="card bg-base-100 shadow-sm">
                     <div class="card-body p-4 gap-4">
                         <div class="flex flex-wrap items-center gap-2">
-                            <button type="button" :class="['btn btn-sm', form.type === '' ? 'btn-primary' : 'btn-outline']" @click="setType('')">
+                            <button type="button" :class="['btn btn-sm', form.direction === '' ? 'btn-primary' : 'btn-outline']" @click="setDirection('')">
                                 Все
                             </button>
-                            <button type="button" :class="['btn btn-sm', form.type === 'api' ? 'btn-primary' : 'btn-outline']" @click="setType('api')">
+                            <button type="button" :class="['btn btn-sm', form.direction === 'incoming' ? 'btn-primary' : 'btn-outline']" @click="setDirection('incoming')">
                                 API-запросы
                             </button>
-                            <button type="button" :class="['btn btn-sm', form.type === 'callback' ? 'btn-primary' : 'btn-outline']" @click="setType('callback')">
+                            <button type="button" :class="['btn btn-sm', form.direction === 'outgoing' ? 'btn-primary' : 'btn-outline']" @click="setDirection('outgoing')">
                                 Callback
                             </button>
                         </div>
 
                         <form class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5" @submit.prevent="applyFilters">
-                            <input v-model="form.search" type="search" class="input input-bordered input-sm w-full" placeholder="UUID, external ID, provider deal ID, URL, ошибка" />
+                            <input v-model="form.search" type="search" class="input input-bordered input-sm w-full" placeholder="UUID, external ID, merchant, URL, ошибка" />
 
-                            <select v-model="form.provider_id" class="select select-bordered select-sm w-full">
-                                <option value="">Все интеграции</option>
-                                <option v-for="provider in filterOptions.providers" :key="provider.id" :value="provider.id">
-                                    {{ provider.label }}
+                            <select v-model="form.merchant_id" class="select select-bordered select-sm w-full">
+                                <option value="">Все мерчанты</option>
+                                <option v-for="merchant in filterOptions.merchants" :key="merchant.id" :value="merchant.id">
+                                    {{ merchant.label }}
                                 </option>
                             </select>
 
@@ -164,13 +164,13 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
                             <div class="stat-title">API на странице</div>
-                            <div class="stat-value text-2xl">{{ summary.api }}</div>
+                            <div class="stat-value text-2xl">{{ summary.incoming }}</div>
                         </div>
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
                             <div class="stat-title">Callback на странице</div>
-                            <div class="stat-value text-2xl">{{ summary.callback }}</div>
+                            <div class="stat-value text-2xl">{{ summary.outgoing }}</div>
                         </div>
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
@@ -186,7 +186,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         <thead class="bg-base-300 text-xs uppercase">
                             <tr>
                                 <th>Тип</th>
-                                <th>Интеграция</th>
+                                <th>Мерчант</th>
                                 <th>UUID</th>
                                 <th>Внешний ID</th>
                                 <th>Результат</th>
@@ -199,14 +199,13 @@ defineOptions({ layout: AuthenticatedLayout });
                             <template v-for="log in logs.data" :key="log.id">
                                 <tr class="hover border-b border-base-200 last:border-none">
                                     <td>
-                                        <span :class="['badge badge-sm', log.type === 'callback' ? 'badge-info' : 'badge-primary']">
-                                            {{ log.type === 'callback' ? 'Callback' : 'API' }}
+                                        <span :class="['badge badge-sm', log.direction === 'outgoing' ? 'badge-info' : 'badge-primary']">
+                                            {{ log.direction_label }}
                                         </span>
                                         <div class="mt-1 text-xs text-base-content/70">{{ log.operation_label }}</div>
                                     </td>
                                     <td>
-                                        <div class="font-medium text-nowrap">{{ log.provider?.name ?? 'Пусто' }}</div>
-                                        <div class="text-xs opacity-70">{{ log.provider?.code ?? '-' }}</div>
+                                        <div class="font-medium text-nowrap">{{ log.merchant?.name ?? 'Пусто' }}</div>
                                     </td>
                                     <td>
                                         <CopyableOrderUid v-if="log.cascade_deal?.uuid" :uuid="log.cascade_deal.uuid" />
@@ -224,24 +223,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <td class="text-nowrap">{{ formatExecutionTime(log.execution_time) }}</td>
                                     <td><DateTime class="justify-start" :data="log.created_at" show-time /></td>
                                     <td class="text-right">
-                                        <button
-                                            type="button"
-                                            class="btn btn-ghost btn-xs"
-                                            @click.stop="toggleRow(log.id)"
-                                        >
+                                        <button type="button" class="btn btn-ghost btn-xs" @click.stop="toggleRow(log.id)">
                                             {{ expandedRows[log.id] ? 'Скрыть' : 'Детали' }}
                                         </button>
                                     </td>
                                 </tr>
                                 <tr v-if="expandedRows[log.id]" class="bg-base-200">
                                     <td colspan="8" class="p-4">
-                                        <div
-                                            v-if="log.cascade_transaction?.provider_deal_id"
-                                            class="mb-4 rounded border border-base-300 bg-base-100 p-3 text-sm"
-                                        >
-                                            <div class="mb-2 text-xs opacity-60">ID сделки у интеграции</div>
-                                            <CopyableExternalId :id="String(log.cascade_transaction.provider_deal_id)" />
-                                        </div>
                                         <div class="mb-4 rounded border border-base-300 bg-base-100 p-3 text-sm">
                                             <div class="mb-2 font-semibold">HTTP</div>
                                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
@@ -295,12 +283,12 @@ defineOptions({ layout: AuthenticatedLayout });
                             <div class="flex items-start justify-between gap-3 border-b border-base-content/10 pb-2">
                                 <div>
                                     <div class="flex flex-wrap items-center gap-2">
-                                        <span :class="['badge badge-sm', log.type === 'callback' ? 'badge-info' : 'badge-primary']">
-                                            {{ log.type === 'callback' ? 'Callback' : 'API' }}
+                                        <span :class="['badge badge-sm', log.direction === 'outgoing' ? 'badge-info' : 'badge-primary']">
+                                            {{ log.direction_label }}
                                         </span>
                                         <span class="text-xs text-base-content/70">{{ log.operation_label }}</span>
                                     </div>
-                                    <div class="mt-1 text-xs opacity-70">{{ log.provider?.name ?? 'Интеграция не найдена' }}</div>
+                                    <div class="mt-1 text-xs opacity-70">{{ log.merchant?.name ?? 'Мерчант не найден' }}</div>
                                 </div>
                                 <span :class="['badge badge-sm', log.is_successful ? 'badge-success' : 'badge-error']">
                                     {{ log.is_successful ? 'Успешно' : 'Ошибка' }}
@@ -318,10 +306,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <CopyableExternalId v-if="log.cascade_deal?.external_id" :id="String(log.cascade_deal.external_id)" />
                                     <div v-else class="text-base-content/60">Пусто</div>
                                 </div>
-                            </div>
-                            <div v-if="log.cascade_transaction?.provider_deal_id" class="text-sm">
-                                <div class="text-base-content/60">ID у интеграции</div>
-                                <CopyableExternalId :id="String(log.cascade_transaction.provider_deal_id)" />
                             </div>
 
                             <div v-if="expandedCards[log.id]" class="grid grid-cols-1 gap-3">

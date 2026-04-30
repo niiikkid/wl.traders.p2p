@@ -6,7 +6,7 @@ const props = defineProps({
     active: {
         type: String,
         required: true,
-        validator: (value) => ['integrations', 'deals', 'logs', 'merchants'].includes(value),
+        validator: (value) => ['integrations', 'deals', 'provider-logs', 'merchant-logs', 'merchants'].includes(value),
     },
 });
 
@@ -14,7 +14,8 @@ const tabs = computed(() => [
     {id: 'deals', label: 'Сделки', routeName: 'admin.cascade-deals.index'},
     {id: 'integrations', label: 'Интеграции', routeName: 'admin.cascade-providers.index'},
     {id: 'merchants', label: 'Мерчанты', routeName: 'admin.cascade-merchant-settings.index'},
-    {id: 'logs', label: 'Логи', routeName: 'admin.cascade-provider-logs.index'},
+    {id: 'provider-logs', label: 'Логи провайдера', routeName: 'admin.cascade-provider-logs.index'},
+    {id: 'merchant-logs', label: 'Логи мерчанта', routeName: 'admin.cascade-merchant-logs.index'},
 ]);
 </script>
 

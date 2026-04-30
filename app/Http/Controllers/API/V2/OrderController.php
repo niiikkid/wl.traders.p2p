@@ -10,6 +10,7 @@ use App\Http\Requests\API\H2H\Order\StoreConfirmationCodeRequest;
 use App\Http\Requests\API\V2\Order\IndexRequest;
 use App\Http\Requests\API\V2\Order\StoreRequest;
 use App\Http\Resources\API\V2\OrderResource;
+use App\Jobs\RecordCascadeMerchantLogJob;
 use App\Models\CascadeDeal;
 use App\Models\Merchant;
 use Illuminate\Http\JsonResponse;
@@ -60,6 +61,7 @@ class OrderController extends Controller
 
     public function store(StoreRequest $request): JsonResponse
     {
+        $started_at = microtime(true);
         $merchant = queries()->merchant()->findByUUID($request->merchant_id);
 
         Gate::authorize('api-access-to-merchant', $merchant);
@@ -71,31 +73,97 @@ class OrderController extends Controller
         try {
             $cascade_deal = services()->cascade()->createDeal($dto);
         } catch (CascadeException $e) {
-            return response()->failWithMessage($e->getMessage());
+            $response_payload = [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+
+            $this->recordMerchantLog(
+                merchant: $merchant,
+                cascadeDeal: null,
+                operation: 'createDeal',
+                requestPayload: $request->all(),
+                responsePayload: $response_payload,
+                statusCode: 400,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($e),
+                errorMessage: $e->getMessage(),
+            );
+
+            return response()->json($response_payload, 400);
         }
 
-        return response()->success(
-            OrderResource::make($cascade_deal)
+        $response_payload = [
+            'success' => true,
+            'data' => OrderResource::make($cascade_deal)->resolve(),
+        ];
+
+        $this->recordMerchantLog(
+            merchant: $merchant,
+            cascadeDeal: $cascade_deal,
+            operation: 'createDeal',
+            requestPayload: $request->all(),
+            responsePayload: $response_payload,
+            statusCode: 200,
+            startedAt: $started_at,
+            isSuccessful: true,
         );
+
+        return response()->json($response_payload);
     }
 
     public function cancel(CascadeDeal $cascadeDeal): JsonResponse
     {
+        $started_at = microtime(true);
         Gate::authorize('api-access-to-merchant', $cascadeDeal->merchant);
 
         try {
             $cascade_deal = services()->cascade()->cancelDeal($cascadeDeal);
         } catch (CascadeException|OrderException $e) {
-            return response()->failWithMessage($e->getMessage());
+            $response_payload = [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+
+            $this->recordMerchantLog(
+                merchant: $cascadeDeal->merchant,
+                cascadeDeal: $cascadeDeal,
+                operation: 'cancelDeal',
+                requestPayload: request()->all(),
+                responsePayload: $response_payload,
+                statusCode: 400,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($e),
+                errorMessage: $e->getMessage(),
+            );
+
+            return response()->json($response_payload, 400);
         }
 
-        return response()->success(
-            OrderResource::make($cascade_deal)
+        $response_payload = [
+            'success' => true,
+            'data' => OrderResource::make($cascade_deal)->resolve(),
+        ];
+
+        $this->recordMerchantLog(
+            merchant: $cascade_deal->merchant,
+            cascadeDeal: $cascade_deal,
+            operation: 'cancelDeal',
+            requestPayload: request()->all(),
+            responsePayload: $response_payload,
+            statusCode: 200,
+            startedAt: $started_at,
+            isSuccessful: true,
         );
+
+        return response()->json($response_payload);
     }
 
     public function storeConfirmationCode(StoreConfirmationCodeRequest $request, CascadeDeal $cascadeDeal): JsonResponse
     {
+        $started_at = microtime(true);
         Gate::authorize('api-access-to-merchant', $cascadeDeal->merchant);
 
         try {
@@ -104,10 +172,77 @@ class OrderController extends Controller
                 (string) $request->input('confirmation_code'),
             );
         } catch (CascadeException|OrderException $e) {
-            return response()->failWithMessage($e->getMessage());
+            $response_payload = [
+                'success' => false,
+                'message' => $e->getMessage(),
+            ];
+
+            $this->recordMerchantLog(
+                merchant: $cascadeDeal->merchant,
+                cascadeDeal: $cascadeDeal,
+                operation: 'storeConfirmationCode',
+                requestPayload: $request->all(),
+                responsePayload: $response_payload,
+                statusCode: 400,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($e),
+                errorMessage: $e->getMessage(),
+            );
+
+            return response()->json($response_payload, 400);
         }
 
-        return response()->success($confirmation_code);
+        $response_payload = [
+            'success' => true,
+            'data' => $confirmation_code,
+        ];
+
+        $this->recordMerchantLog(
+            merchant: $cascadeDeal->merchant,
+            cascadeDeal: $cascadeDeal,
+            operation: 'storeConfirmationCode',
+            requestPayload: $request->all(),
+            responsePayload: $response_payload,
+            statusCode: 200,
+            startedAt: $started_at,
+            isSuccessful: true,
+        );
+
+        return response()->json($response_payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $requestPayload
+     * @param  array<string, mixed>  $responsePayload
+     */
+    private function recordMerchantLog(
+        Merchant $merchant,
+        ?CascadeDeal $cascadeDeal,
+        string $operation,
+        array $requestPayload,
+        array $responsePayload,
+        int $statusCode,
+        float $startedAt,
+        bool $isSuccessful,
+        ?string $errorCode = null,
+        ?string $errorMessage = null,
+    ): void {
+        RecordCascadeMerchantLogJob::dispatch([
+            'cascade_deal_id' => $cascadeDeal?->id,
+            'merchant_id' => $merchant->id,
+            'operation' => $operation,
+            'direction' => 'incoming',
+            'method' => request()->method(),
+            'url' => request()->fullUrl(),
+            'request_payload' => $requestPayload,
+            'response_payload' => $responsePayload,
+            'status_code' => $statusCode,
+            'execution_time' => round(microtime(true) - $startedAt, 4),
+            'is_successful' => $isSuccessful,
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+        ]);
     }
 
     private function resolveIndexMerchant(IndexRequest $request): Merchant|JsonResponse|null
