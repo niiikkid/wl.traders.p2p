@@ -12,7 +12,8 @@ import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
-import { ref } from "vue";
+import { computed, ref, unref } from "vue";
+import { useHasActiveTableFilters } from "@/composables/useHasActiveTableFilters.js";
 
 const orders = ref(usePage().props.orders);
 const expandedCards = ref({});
@@ -45,6 +46,14 @@ router.on('success', (event) => {
     orders.value = usePage().props.orders;
 })
 
+const filtersPanelRef = ref(null);
+const hasActivePaymentFilters = useHasActiveTableFilters();
+const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
+
+const toggleFiltersFromToolbar = () => {
+    filtersPanelRef.value?.toggleFiltersDisplay?.();
+};
+
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -56,29 +65,63 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Платежи"
             :data="orders"
         >
-            <template v-slot:table-filters>
-                <FiltersPanel name="payments">
-                    <DropdownFilter
-                        name="orderStatuses"
-                        title="Статусы"
-                    />
-                    <DropdownFilter
-                        name="merchantIds"
-                        title="Мерчанты"
-                    />
-                    <InputFilter
-                        name="externalID"
-                        placeholder="Внешний ID"
-                    />
-                    <InputFilter
-                        name="uuid"
-                        placeholder="UUID"
-                    />
-                    <InputFilter
-                        name="amount"
-                        placeholder="Сумма"
-                    />
-                </FiltersPanel>
+            <template #button>
+                <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+                    <div
+                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
+                    >
+                        <div class="relative inline-flex shrink-0">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
+                                :class="{ 'btn-active': filtersPanelOpen }"
+                                title="Фильтры"
+                                aria-label="Показать или скрыть фильтры"
+                                @click.prevent="toggleFiltersFromToolbar"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                                </svg>
+                            </button>
+                            <span
+                                v-if="hasActivePaymentFilters"
+                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
+                                aria-hidden="true"
+                                title="Есть применённые фильтры"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <template #header>
+                <div class="space-y-4">
+                    <FiltersPanel
+                        ref="filtersPanelRef"
+                        name="payments"
+                        omit-default-toggle-button
+                    >
+                        <DropdownFilter
+                            name="orderStatuses"
+                            title="Статусы"
+                        />
+                        <DropdownFilter
+                            name="merchantIds"
+                            title="Мерчанты"
+                        />
+                        <InputFilter
+                            name="externalID"
+                            placeholder="Внешний ID"
+                        />
+                        <InputFilter
+                            name="uuid"
+                            placeholder="UUID"
+                        />
+                        <InputFilter
+                            name="amount"
+                            placeholder="Сумма"
+                        />
+                    </FiltersPanel>
+                </div>
             </template>
             <template v-slot:body>
                 <div class="relative">

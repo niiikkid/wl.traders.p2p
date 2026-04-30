@@ -367,7 +367,7 @@ defineOptions({ layout: AuthenticatedLayout })
 
                     <div class="flex w-full max-w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:ms-auto sm:w-auto">
                         <div
-                            class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300/80 bg-base-300/80 px-2.5 py-1.5 shadow-sm"
+                            class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
                         >
                             <div class="relative inline-flex shrink-0">
                                 <button
