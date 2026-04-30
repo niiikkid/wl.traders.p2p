@@ -34,6 +34,7 @@ use App\Contracts\WalletServiceContract;
 use App\Events\OrderSucceeded;
 use App\Listeners\UpdateTempVipProgressListener;
 use App\Mixins\ResponseMixins;
+use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\Dispute;
 use App\Models\Merchant;
@@ -291,6 +292,10 @@ class AppServiceProvider extends ServiceProvider
                 || $user->hasRole('Super Admin')
                 || $user->hasRole('Support')
                 || $user->hasRole('Analyst');
+        });
+        Gate::define('access-to-cascade-deal', function (User $user, CascadeDeal $cascadeDeal) {
+            return $user->id === $cascadeDeal->merchant->user_id
+                || $user->hasRole('Super Admin');
         });
         Gate::define('access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id || $user->hasRole('Super Admin');

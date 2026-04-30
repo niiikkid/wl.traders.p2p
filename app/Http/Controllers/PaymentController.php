@@ -6,10 +6,13 @@ use App\Contracts\OrderServiceContract;
 use App\DTO\Order\CreateOrderDTO;
 use App\Exceptions\OrderException;
 use App\Http\Requests\Payment\StoreRequest;
-use App\Http\Resources\OrderResource;
+use App\Http\Resources\MerchantCascadePaymentResource;
 use App\Http\Resources\PaymentGatewayResource;
+use App\Models\CascadeDeal;
 use App\Models\Merchant;
 use App\Services\Money\Currency;
+use App\Services\Money\Money;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
@@ -20,8 +23,34 @@ class PaymentController extends Controller
         $filters = $this->getTableFilters();
         $filtersVariants = $this->getFiltersData();
 
-        $orders = queries()->order()->paginateForMerchant(auth()->user(), $filters);
-        $orders = OrderResource::collection($orders);
+        $orders = CascadeDeal::query()
+            ->whereRelation('merchant', 'user_id', Auth::id())
+            ->with('merchant:id,name,user_id')
+            ->when(! empty($filters->merchantIds), function ($query) use ($filters) {
+                $query->whereIn('merchant_id', $filters->merchantIds);
+            })
+            ->when(! empty($filters->orderStatuses), function ($query) use ($filters) {
+                $query->whereIn('status', $filters->orderStatuses);
+            })
+            ->when($filters->externalID, function ($query) use ($filters) {
+                $query->where('external_id', 'LIKE', '%'.$filters->externalID.'%');
+            })
+            ->when($filters->uuid, function ($query) use ($filters) {
+                $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
+            })
+            ->when($filters->amount, function ($query) use ($filters) {
+                $amount = Money::fromPrecision($filters->amount, Currency::USDT())->toUnits();
+
+                $query->where(function ($query) use ($amount) {
+                    $query->where('amount', 'LIKE', $amount)
+                        ->orWhere('usdt_amount', 'LIKE', $amount)
+                        ->orWhere('credit', 'LIKE', $amount)
+                        ->orWhere('fee', 'LIKE', $amount);
+                });
+            })
+            ->orderByDesc('id')
+            ->paginate(request()->per_page ?? 10);
+        $orders = MerchantCascadePaymentResource::collection($orders);
 
         return Inertia::render('Payment/Index', compact('orders', 'filters', 'filtersVariants'));
     }
@@ -33,12 +62,12 @@ class PaymentController extends Controller
         $currencies = Currency::getAll()->transform(function ($currency) {
             return [
                 'code' => strtoupper($currency->getCode()),
-                'name' => strtoupper($currency->getCode()) . ' - ' . $currency->getName(),
+                'name' => strtoupper($currency->getCode()).' - '.$currency->getName(),
             ];
         })->toArray();
 
         $merchants = Merchant::query()
-            ->where('user_id', auth()->user()->id)
+            ->where('user_id', Auth::id())
             ->whereNotNull('validated_at')
             ->whereNull('banned_at')
             ->where('active', true)
@@ -80,6 +109,7 @@ class PaymentController extends Controller
                     'message' => $e->getMessage(),
                 ], 422);
             }
+
             return redirect()->back()->with('message', $e->getMessage());
         }
 

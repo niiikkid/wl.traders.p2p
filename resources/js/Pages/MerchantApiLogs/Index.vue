@@ -125,6 +125,10 @@ defineOptions({ layout: AuthenticatedLayout })
                             placeholder="Внешний ID"
                         />
                         <InputFilter
+                            name="uuid"
+                            placeholder="UUID сделки"
+                        />
+                        <InputFilter
                             name="minAmount"
                             placeholder="Мин. сумма"
                         />

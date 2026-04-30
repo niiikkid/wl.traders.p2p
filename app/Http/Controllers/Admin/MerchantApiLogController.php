@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MerchantApiLogResource;
 use App\Models\MerchantApiRequestLog;
+use App\Models\User;
 use App\Services\Statistics\MerchantApiStatisticsService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class MerchantApiLogController extends Controller
@@ -17,8 +19,14 @@ class MerchantApiLogController extends Controller
     {
         $filters = $this->getTableFilters();
         $filtersVariants = $this->getFiltersData();
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
 
-        $logs = queries()->merchantApiLog()->paginateForAdmin($filters);
+        $logs = $user->hasRole('Merchant') && ! $user->hasRole('Super Admin')
+            ? queries()->merchantApiLog()->paginateForMerchant($user, $filters)
+            : queries()->merchantApiLog()->paginateForAdmin($filters);
 
         // Получаем статистику из сервиса
         $statistics = $statisticsService->getStatistics();
@@ -26,7 +34,7 @@ class MerchantApiLogController extends Controller
         // Распаковываем переменные
         extract($statistics);
 
-        $can_manage_merchant_api_log_deletion = auth()->user()->hasRole('Super Admin')
+        $can_manage_merchant_api_log_deletion = $user->hasRole('Super Admin')
             && ! $request->routeIs('analyst.*');
 
         return Inertia::render('MerchantApiLogs/Index', [
@@ -53,7 +61,8 @@ class MerchantApiLogController extends Controller
     public function deleteByDateRange(Request $request)
     {
         // Проверка прав доступа - только администратор
-        if (! auth()->user()->hasRole('Super Admin')) {
+        $user = Auth::user();
+        if (! $user instanceof User || ! $user->hasRole('Super Admin')) {
             abort(403);
         }
 
