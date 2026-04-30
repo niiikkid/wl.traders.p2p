@@ -73,10 +73,7 @@ class OrderController extends Controller
         try {
             $cascade_deal = services()->cascade()->createDeal($dto);
         } catch (CascadeException $e) {
-            $response_payload = [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            $response_payload = ['message' => $e->getMessage()];
 
             $this->recordMerchantLog(
                 merchant: $merchant,
@@ -91,13 +88,10 @@ class OrderController extends Controller
                 errorMessage: $e->getMessage(),
             );
 
-            return response()->json($response_payload, 400);
+            return response()->failWithMessage($e->getMessage());
         }
 
-        $response_payload = [
-            'success' => true,
-            'data' => OrderResource::make($cascade_deal)->resolve(),
-        ];
+        $response_payload = OrderResource::make($cascade_deal)->resolve();
 
         $this->recordMerchantLog(
             merchant: $merchant,
@@ -110,7 +104,9 @@ class OrderController extends Controller
             isSuccessful: true,
         );
 
-        return response()->json($response_payload);
+        return response()->success(
+            OrderResource::make($cascade_deal)
+        );
     }
 
     public function cancel(CascadeDeal $cascadeDeal): JsonResponse
@@ -121,10 +117,7 @@ class OrderController extends Controller
         try {
             $cascade_deal = services()->cascade()->cancelDeal($cascadeDeal);
         } catch (CascadeException|OrderException $e) {
-            $response_payload = [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            $response_payload = ['message' => $e->getMessage()];
 
             $this->recordMerchantLog(
                 merchant: $cascadeDeal->merchant,
@@ -139,13 +132,10 @@ class OrderController extends Controller
                 errorMessage: $e->getMessage(),
             );
 
-            return response()->json($response_payload, 400);
+            return response()->failWithMessage($e->getMessage());
         }
 
-        $response_payload = [
-            'success' => true,
-            'data' => OrderResource::make($cascade_deal)->resolve(),
-        ];
+        $response_payload = OrderResource::make($cascade_deal)->resolve();
 
         $this->recordMerchantLog(
             merchant: $cascade_deal->merchant,
@@ -158,7 +148,9 @@ class OrderController extends Controller
             isSuccessful: true,
         );
 
-        return response()->json($response_payload);
+        return response()->success(
+            OrderResource::make($cascade_deal)
+        );
     }
 
     public function storeConfirmationCode(StoreConfirmationCodeRequest $request, CascadeDeal $cascadeDeal): JsonResponse
@@ -172,10 +164,7 @@ class OrderController extends Controller
                 (string) $request->input('confirmation_code'),
             );
         } catch (CascadeException|OrderException $e) {
-            $response_payload = [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            $response_payload = ['message' => $e->getMessage()];
 
             $this->recordMerchantLog(
                 merchant: $cascadeDeal->merchant,
@@ -190,13 +179,10 @@ class OrderController extends Controller
                 errorMessage: $e->getMessage(),
             );
 
-            return response()->json($response_payload, 400);
+            return response()->failWithMessage($e->getMessage());
         }
 
-        $response_payload = [
-            'success' => true,
-            'data' => $confirmation_code,
-        ];
+        $response_payload = $confirmation_code;
 
         $this->recordMerchantLog(
             merchant: $cascadeDeal->merchant,
@@ -209,7 +195,7 @@ class OrderController extends Controller
             isSuccessful: true,
         );
 
-        return response()->json($response_payload);
+        return response()->success($confirmation_code);
     }
 
     /**

@@ -33,24 +33,18 @@ class DisputeController extends Controller
         try {
             $dispute = services()->cascade()->openDispute($cascadeDeal, $request->validated());
         } catch (CascadeException $e) {
-            $response_payload = [
-                'success' => false,
-                'message' => $e->getMessage(),
-            ];
+            $response_payload = ['message' => $e->getMessage()];
 
             $this->recordMerchantLog($cascadeDeal, 'openDispute', $request->all(), $response_payload, 400, $started_at, false, get_class($e), $e->getMessage());
 
-            return response()->json($response_payload, 400);
+            return response()->failWithMessage($e->getMessage());
         }
 
-        $response_payload = [
-            'success' => true,
-            'data' => $dispute,
-        ];
+        $response_payload = $dispute;
 
         $this->recordMerchantLog($cascadeDeal, 'openDispute', $request->all(), $response_payload, 200, $started_at, true);
 
-        return response()->json($response_payload);
+        return response()->success($dispute);
     }
 
     /**
