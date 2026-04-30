@@ -52,4 +52,12 @@ interface MainPageStatsServiceContract
         ?string $dateTo = null,
         array $filters = [],
     ): array;
+
+    public function buildMerchantPayoutMainPageStats(
+        User $user,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        array $filters = [],
+    ): array;
 }

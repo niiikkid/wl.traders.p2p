@@ -1382,6 +1382,47 @@ class MainPageStatsService implements MainPageStatsServiceContract
         ];
     }
 
+    public function buildMerchantPayoutMainPageStats(
+        User $user,
+        string $periodPreset = 'all',
+        ?string $dateFrom = null,
+        ?string $dateTo = null,
+        array $filters = [],
+    ): array {
+        $allowedMerchantIds = $this->resolveUserMerchantIds($user);
+        $selectedMerchantIds = $this->normalizeIdArray($filters['merchantIds'] ?? []);
+
+        if (! empty($selectedMerchantIds)) {
+            $selectedMerchantIds = array_values(array_intersect($selectedMerchantIds, $allowedMerchantIds));
+        }
+
+        $merchantIds = ! empty($selectedMerchantIds) ? array_slice($selectedMerchantIds, 0, 1) : $allowedMerchantIds;
+        if (empty($merchantIds)) {
+            $merchantIds = [0];
+        }
+
+        $stats = $this->buildAdminPayoutMainPageStats(
+            $user,
+            null,
+            $periodPreset,
+            $dateFrom,
+            $dateTo,
+            [
+                'merchantIds' => $merchantIds,
+                'traderIds' => [],
+            ],
+        );
+
+        $stats['selectedFilters'] = $this->normalizeFilters([
+            'merchantIds' => ! empty($selectedMerchantIds) ? $merchantIds : [],
+            'paymentMethodIds' => [],
+            'paymentDetailIds' => [],
+            'traderIds' => [],
+        ]);
+
+        return $stats;
+    }
+
     private function scopeTraderOrders(Builder $query, User $user): void
     {
         $query->whereRelation('paymentDetail', 'user_id', $user->id);

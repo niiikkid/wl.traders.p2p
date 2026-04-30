@@ -36,20 +36,40 @@ class MainPageController extends Controller
         $periodPreset = (string) request()->get('period', 'month');
         $dateFrom = request()->get('date_from');
         $dateTo = request()->get('date_to');
-        $filters = [
-            'paymentMethodIds' => request()->input('payment_method_ids', []),
-            'merchantIds' => request()->input('merchant_ids', []),
-        ];
+        $mode = (string) request()->input('mode', 'deals');
+        $activeStatsMode = $mode === 'payouts' ? 'payouts' : 'deals';
 
-        $stats = $this->mainPageStatsService->buildMerchantMainPageStats(
-            $user,
-            $periodPreset,
-            $dateFrom !== null ? (string) $dateFrom : null,
-            $dateTo !== null ? (string) $dateTo : null,
-            $filters,
-        );
+        if ($activeStatsMode === 'payouts') {
+            $filters = [
+                'merchantIds' => request()->input('merchant_ids', []),
+            ];
 
-        return Inertia::render('MainPage/Merchant/Index', $stats);
+            $stats = $this->mainPageStatsService->buildMerchantPayoutMainPageStats(
+                $user,
+                $periodPreset,
+                $dateFrom !== null ? (string) $dateFrom : null,
+                $dateTo !== null ? (string) $dateTo : null,
+                $filters,
+            );
+        } else {
+            $filters = [
+                'paymentMethodIds' => request()->input('payment_method_ids', []),
+                'merchantIds' => request()->input('merchant_ids', []),
+            ];
+
+            $stats = $this->mainPageStatsService->buildMerchantMainPageStats(
+                $user,
+                $periodPreset,
+                $dateFrom !== null ? (string) $dateFrom : null,
+                $dateTo !== null ? (string) $dateTo : null,
+                $filters,
+            );
+        }
+
+        return Inertia::render('MainPage/Merchant/Index', [
+            ...$stats,
+            'activeStatsMode' => $activeStatsMode,
+        ]);
     }
 
     public function trader()
