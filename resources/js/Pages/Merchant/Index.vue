@@ -235,7 +235,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                 :key="merchant.id"
                                 class="card bg-base-100 shadow-sm ring-1 ring-base-content/5 transition-shadow hover:shadow-md"
                             >
-                                <div class="card-body gap-5 p-5 sm:p-6">
+                                <div class="card-body gap-3 p-5 sm:p-6">
                                     <div class="flex items-start justify-between gap-4">
                                         <div class="min-w-0">
                                             <div class="mb-2 flex items-center gap-2">
