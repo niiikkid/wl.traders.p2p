@@ -5,13 +5,11 @@ import InputLabel from "@/Components/InputLabel.vue";
 import SaveButton from "@/Components/Form/SaveButton.vue";
 import {usePage} from "@inertiajs/vue3";
 import {computed, reactive, ref, watch} from "vue";
-import CopyUUID from "@/Components/CopyUUID.vue";
 import {useViewStore} from "@/store/view.js";
 import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
 import Multiselect from "@/Components/Form/Multiselect.vue";
 import DatepickerInput from "@/Pages/Merchant/Tabs/Partials/DatepickerInput.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
 import DUUID from "@/Components/DUUID.vue";
 
 const viewStore = useViewStore();
@@ -158,6 +156,23 @@ const availableGeoCurrencies = computed(() => {
     return currencies.value.filter(
         (currency) => !selected.includes(currency.value.toLowerCase())
     );
+});
+
+const merchantGeosReadonly = computed(() => {
+    const raw = merchant.value?.geos;
+    if (!Array.isArray(raw) || raw.length === 0) {
+        return [];
+    }
+
+    return raw
+        .filter((geo) => geo?.currency && geo?.market)
+        .map((geo) => ({
+            currency: String(geo.currency).toLowerCase(),
+            market: geo.market,
+            order_reference_rate: geo.order_reference_rate ?? geo.reference_rate ?? null,
+            payout_reference_rate: geo.payout_reference_rate ?? geo.reference_rate ?? null,
+            max_deviation_percent: geo.max_deviation_percent ?? null,
+        }));
 });
 
 const resetFormsFromMerchant = (value) => {
@@ -580,7 +595,7 @@ const handleGatewaySettingsUpdated = (payload) => {
     }
 };
 
-const activeTab = ref('info');
+const activeTab = ref('callback');
 
 const adminTabs = [
     {id: 'moderation', title: 'Модерация', description: 'Статус доступа'},
@@ -589,12 +604,23 @@ const adminTabs = [
     {id: 'resend', title: 'Callback resend', description: 'Повторная отправка'},
 ];
 
-const tabs = computed(() => [
-    {id: 'info', title: 'Магазин', description: 'Основные данные'},
-    {id: 'callback', title: 'Callback', description: 'URL уведомлений'},
-    {id: 'gateways', title: 'Комиссии', description: ''},
-    ...(viewStore.isAdminViewMode ? adminTabs : []),
-]);
+const tabs = computed(() => {
+    const rows = [
+        {id: 'callback', title: 'Callback', description: 'URL уведомлений'},
+    ];
+
+    if (!viewStore.isAdminViewMode) {
+        rows.push({id: 'geo', title: 'Гео', description: 'Текущие направления'});
+    }
+
+    rows.push({id: 'gateways', title: 'Комиссии', description: ''});
+
+    if (viewStore.isAdminViewMode) {
+        rows.push(...adminTabs);
+    }
+
+    return rows;
+});
 
 const activeTabMeta = computed(() => tabs.value.find((tab) => tab.id === activeTab.value) ?? tabs.value[0]);
 
@@ -670,52 +696,6 @@ const merchantStatus = computed(() => {
                     </p>
                 </div>
             </div>
-            <!-- Таб: Информация -->
-            <div v-if="activeTab === 'info'" class="space-y-3">
-                <div v-if="merchant">
-                    <dl class="grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
-                        <div class="rounded-lg bg-base-200/70 p-2.5">
-                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Название</dt>
-                            <dd class="mt-0.5 break-all font-medium text-base-content">
-                                {{ merchant.name }}
-                            </dd>
-                        </div>
-                        <div class="rounded-lg bg-base-200/70 p-2.5">
-                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Домен</dt>
-                            <dd class="mt-0.5 break-all font-medium text-base-content">
-                                {{ merchant.domain }}
-                            </dd>
-                        </div>
-                        <div class="rounded-lg bg-base-200/70 p-2.5 md:col-span-2">
-                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Описание</dt>
-                            <dd class="mt-0.5 break-words text-base-content/80">
-                                {{ merchant.description || 'Не указано' }}
-                            </dd>
-                        </div>
-                        <div class="rounded-lg bg-base-200/70 p-2.5">
-                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Статус</dt>
-                            <dd class="mt-1">
-                                <span v-if="merchantStatus" class="badge badge-sm" :class="merchantStatus.class">
-                                    {{ merchantStatus.label }}
-                                </span>
-                            </dd>
-                        </div>
-                        <div v-if="viewStore.isAdminViewMode && merchant.owner" class="rounded-lg bg-base-200/70 p-2.5">
-                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Владелец</dt>
-                            <dd class="mt-0.5 break-all font-medium text-base-content">
-                                {{ merchant.owner.email }}
-                            </dd>
-                        </div>
-                        <div class="rounded-lg bg-base-200/70 p-2.5 md:col-span-2">
-                            <dt class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">Merchant ID</dt>
-                            <dd class="mt-0.5 text-base-content/80">
-                                <DUUID :uuid="merchant.uuid"/>
-                            </dd>
-                        </div>
-                    </dl>
-                </div>
-            </div>
-
             <!-- Таб: Callback URL -->
             <div v-if="activeTab === 'callback'" class="space-y-3">
                 <div v-if="merchant">
@@ -773,6 +753,36 @@ const merchantStatus = computed(() => {
                             </div>
                         </form>
                     </div>
+                </div>
+            </div>
+
+            <!-- Таб: Гео (мерчант, только просмотр) -->
+            <div v-if="activeTab === 'geo' && !viewStore.isAdminViewMode" class="space-y-3">
+                <div v-if="merchant" class="space-y-3 rounded-lg bg-base-200/60 p-2.5 sm:p-3">
+                
+                    <div v-if="merchantGeosReadonly.length" class="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
+                        <div
+                            v-for="geo in merchantGeosReadonly"
+                            :key="`${geo.currency}-${geo.market}`"
+                            class="rounded-lg bg-base-100 p-2.5 ring-1 ring-base-content/5"
+                        >
+                            <div class="text-xs font-medium text-base-content">
+                                {{ currencies.find((c) => c.value.toLowerCase() === geo.currency)?.name || geo.currency.toUpperCase() }}
+                            </div>
+                            <div class="text-[11px] text-base-content/70">
+                                {{ markets.find((m) => m.value === geo.market)?.name || geo.market }}
+                            </div>
+                            <div
+                                v-if="geo.market === MERCHANT_API_MARKET"
+                                class="mt-0.5 text-[11px] text-base-content/70"
+                            >
+                                Сделки: {{ geo.order_reference_rate ?? '—' }} · Выплаты: {{ geo.payout_reference_rate ?? '—' }} · Отклонение: ±{{ geo.max_deviation_percent ?? '—' }}%
+                            </div>
+                        </div>
+                    </div>
+                    <p v-else class="text-xs text-base-content/70">
+                        GEO ещё не настроено — приём сделок и выплат может быть недоступен.
+                    </p>
                 </div>
             </div>
 

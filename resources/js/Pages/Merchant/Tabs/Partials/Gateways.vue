@@ -609,7 +609,7 @@ const submit = () => {
 
         <div
             v-if="isAdmin && isEditMode && availablePairs.length"
-            class="rounded-box border border-base-300 p-3 flex flex-col md:flex-row md:items-end gap-3"
+            class="flex flex-col gap-3 rounded-lg bg-base-200/60 p-3 ring-1 ring-base-content/5 md:flex-row md:items-end"
         >
             <div class="flex-1">
                 <InputLabel value="Добавить набор комиссии" />
@@ -634,23 +634,26 @@ const submit = () => {
             </button>
         </div>
 
-        <div v-if="pairCombinations.length === 0" class="rounded-box border border-base-300 bg-base-200 px-3 py-2 text-sm text-base-content/70">
+        <div v-if="pairCombinations.length === 0" class="rounded-lg bg-base-200/60 px-3 py-2.5 text-sm text-base-content/70 ring-1 ring-base-content/5">
             Нет доступных сочетаний валюты и типа реквизита.
         </div>
-        <div v-else-if="localCommissionSettings.length === 0" class="rounded-box border border-base-300 bg-base-200 px-3 py-2 text-sm text-base-content/70">
+        <div v-else-if="localCommissionSettings.length === 0" class="rounded-lg bg-base-200/60 px-3 py-2.5 text-sm text-base-content/70 ring-1 ring-base-content/5">
             Наборы комиссий не настроены. Будут применяться комиссии из платежных методов.
         </div>
 
-        <div v-if="!isAdmin && localCommissionSettings.length" class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div
+            v-if="!isAdmin && localCommissionSettings.length"
+            class="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2"
+        >
             <div
                 v-for="setting in localCommissionSettings"
                 :key="`merchant-${setting.currency}|${setting.detail_type}`"
-                class="card border border-base-300 bg-base-100 shadow-sm"
+                class="rounded-lg bg-base-200/60 p-3 sm:p-4"
             >
-                <div class="card-body gap-3 p-4">
+                <div class="flex flex-col gap-3">
                     <div class="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                            <h4 class="card-title text-sm">{{ getLabel(setting) }}</h4>
+                            <h4 class="text-sm font-semibold leading-tight text-base-content">{{ getLabel(setting) }}</h4>
                         </div>
                         <div class="flex flex-wrap gap-1">
                             <span v-if="hasFixedCommission(setting)" class="badge badge-sm badge-primary badge-outline">
@@ -665,7 +668,7 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <div v-if="hasFixedCommission(setting)" class="rounded-box bg-base-200/70 p-3">
+                    <div v-if="hasFixedCommission(setting)" class="rounded-lg bg-base-100/70 p-3 ring-1 ring-base-content/5">
                         <div class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">
                             Комиссия
                         </div>
@@ -680,7 +683,7 @@ const submit = () => {
                             <span class="badge badge-sm">{{ setting.trader_commission_tiers_for_orders.length }}</span>
                         </div>
 
-                        <div class="overflow-x-auto rounded-box border border-base-300">
+                        <div class="overflow-x-auto rounded-lg bg-base-100/80 ring-1 ring-base-content/10">
                             <table class="table table-xs">
                                 <thead>
                                     <tr>
@@ -705,7 +708,7 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <div v-if="!hasFixedCommission(setting) && !hasFlexibleCommission(setting)" class="rounded-box bg-base-200/70 px-3 py-2 text-xs text-base-content/70">
+                    <div v-if="!hasFixedCommission(setting) && !hasFlexibleCommission(setting)" class="rounded-lg bg-base-100/70 px-3 py-2 text-xs text-base-content/70 ring-1 ring-base-content/5">
                         Для этой пары применяются комиссии платежного метода.
                     </div>
                 </div>
@@ -713,10 +716,11 @@ const submit = () => {
         </div>
 
         <template v-else>
+            <div class="space-y-3">
             <div
                 v-for="(setting, settingIndex) in localCommissionSettings"
                 :key="`${setting.currency}|${setting.detail_type}`"
-                class="rounded-box border border-base-300 p-4 space-y-3"
+                class="space-y-3 rounded-lg bg-base-200/60 p-4"
             >
                 <button
                     type="button"
@@ -789,7 +793,7 @@ const submit = () => {
                     <div v-if="!getPairLimits(setting)" class="rounded-box border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-base-content/80">
                         Для этой пары не удалось определить границы min/max по платежным методам.
                     </div>
-                    <div v-else-if="getPairLimitDetails(setting)" class="rounded-box border border-base-300 bg-base-200 px-3 py-2 text-xs text-base-content/80">
+                    <div v-else-if="getPairLimitDetails(setting)" class="rounded-lg bg-base-200/70 px-3 py-2 text-xs text-base-content/80 ring-1 ring-base-content/5">
                         <div>
                             Диапазон для гибкой комиссии: {{ getPairLimits(setting).min }} - {{ getPairLimits(setting).max }}.
                         </div>
@@ -891,6 +895,7 @@ const submit = () => {
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
             </div>
         </template>
