@@ -1,6 +1,5 @@
 <script setup>
 import InputError from "@/Components/InputError.vue";
-import InputHelper from "@/Components/InputHelper.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import NumberInput from "@/Components/NumberInput.vue";
 import {computed, ref, watch} from "vue";
@@ -326,6 +325,42 @@ const getSetShortInfo = (setting) => {
     return `Фикс + гибкая: уровней ${setting.trader_commission_tiers_for_orders.length}`;
 };
 
+const hasFixedCommission = (setting) => {
+    return setting?.trader_commission_rate_for_orders !== null
+        && setting?.trader_commission_rate_for_orders !== ""
+        && setting?.total_service_commission_rate_for_orders !== null
+        && setting?.total_service_commission_rate_for_orders !== "";
+};
+
+const hasFlexibleCommission = (setting) => {
+    return !!setting?.use_flexible_trader_commission_for_orders
+        && (setting?.trader_commission_tiers_for_orders?.length ?? 0) > 0;
+};
+
+const formatPercent = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return 'Не указано';
+    }
+
+    return `${value}%`;
+};
+
+const formatAmount = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return '—';
+    }
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+        return '—';
+    }
+
+    return new Intl.NumberFormat('ru-RU', {
+        maximumFractionDigits: 2,
+    }).format(number);
+};
+
 const initCommissionSettings = () => {
     const settings = [];
 
@@ -551,28 +586,25 @@ const submit = () => {
 
 <template>
     <div class="space-y-4">
-        <div class="flex items-center justify-between">
-            <InputHelper model-value="Комиссия задается по уникальной паре: валюта + тип реквизита. Если пара не настроена, применяются комиссии платежного метода." />
-            <div v-if="isAdmin">
-                <button
-                    v-if="!isEditMode"
-                    type="button"
-                    class="btn btn-xs btn-outline btn-primary"
-                    @click="isEditMode = true"
-                >
-                    Изменить
-                </button>
-                <button
-                    v-else
-                    type="button"
-                    class="btn btn-xs btn-success"
-                    :class="{ 'btn-disabled': processing }"
-                    :disabled="processing"
-                    @click="submit"
-                >
-                    Сохранить
-                </button>
-            </div>
+        <div v-if="isAdmin" class="flex items-center justify-end">
+            <button
+                v-if="!isEditMode"
+                type="button"
+                class="btn btn-xs btn-outline btn-primary"
+                @click="isEditMode = true"
+            >
+                Изменить
+            </button>
+            <button
+                v-else
+                type="button"
+                class="btn btn-xs btn-success"
+                :class="{ 'btn-disabled': processing }"
+                :disabled="processing"
+                @click="submit"
+            >
+                Сохранить
+            </button>
         </div>
 
         <div
@@ -609,34 +641,102 @@ const submit = () => {
             Наборы комиссий не настроены. Будут применяться комиссии из платежных методов.
         </div>
 
-        <div
-            v-for="(setting, settingIndex) in localCommissionSettings"
-            :key="`${setting.currency}|${setting.detail_type}`"
-            class="rounded-box border border-base-300 p-4 space-y-3"
-        >
-            <button
-                type="button"
-                class="w-full text-left"
-                @click="toggleSetExpanded(setting)"
+        <div v-if="!isAdmin && localCommissionSettings.length" class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div
+                v-for="setting in localCommissionSettings"
+                :key="`merchant-${setting.currency}|${setting.detail_type}`"
+                class="card border border-base-300 bg-base-100 shadow-sm"
             >
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <div class="text-sm font-semibold">{{ getLabel(setting) }}</div>
-                        <div class="text-xs text-base-content/70">
-                            {{ getSetShortInfo(setting) }}
+                <div class="card-body gap-3 p-4">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                            <h4 class="card-title text-sm">{{ getLabel(setting) }}</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1">
+                            <span v-if="hasFixedCommission(setting)" class="badge badge-sm badge-primary badge-outline">
+                                Фикс
+                            </span>
+                            <span v-if="hasFlexibleCommission(setting)" class="badge badge-sm badge-secondary badge-outline">
+                                Гибкая
+                            </span>
+                            <span v-if="!hasFixedCommission(setting) && !hasFlexibleCommission(setting)" class="badge badge-sm badge-ghost">
+                                Не настроено
+                            </span>
                         </div>
                     </div>
-                    <div class="text-xs text-base-content/60">
-                        {{ isSetExpanded(setting) ? 'Свернуть' : 'Развернуть' }}
+
+                    <div v-if="hasFixedCommission(setting)" class="rounded-box bg-base-200/70 p-3">
+                        <div class="text-[10px] font-medium uppercase tracking-wide text-base-content/50">
+                            Комиссия
+                        </div>
+                        <div class="mt-1 text-lg font-semibold text-base-content">
+                            {{ formatPercent(setting.total_service_commission_rate_for_orders) }}
+                        </div>
+                    </div>
+
+                    <div v-if="hasFlexibleCommission(setting)" class="space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="text-xs font-semibold text-base-content">Уровни гибкой комиссии</div>
+                            <span class="badge badge-sm">{{ setting.trader_commission_tiers_for_orders.length }}</span>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-box border border-base-300">
+                            <table class="table table-xs">
+                                <thead>
+                                    <tr>
+                                        <th>Сумма</th>
+                                        <th class="text-right">Комиссия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr
+                                        v-for="(tier, tierIndex) in setting.trader_commission_tiers_for_orders"
+                                        :key="`merchant-${setting.currency}|${setting.detail_type}-tier-${tierIndex}`"
+                                    >
+                                        <td class="whitespace-nowrap">
+                                            {{ formatAmount(tier.from) }} - {{ formatAmount(tier.to) }}
+                                        </td>
+                                        <td class="text-right font-medium">
+                                            {{ formatPercent(setting.total_service_commission_tiers_for_orders[tierIndex]?.rate) }}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div v-if="!hasFixedCommission(setting) && !hasFlexibleCommission(setting)" class="rounded-box bg-base-200/70 px-3 py-2 text-xs text-base-content/70">
+                        Для этой пары применяются комиссии платежного метода.
                     </div>
                 </div>
-            </button>
+            </div>
+        </div>
 
-            <div v-if="isSetExpanded(setting)" class="space-y-3">
-                <div class="text-xs text-base-content/70">
-                    Приоритетная комиссия для сделок по этой паре.
-                </div>
+        <template v-else>
+            <div
+                v-for="(setting, settingIndex) in localCommissionSettings"
+                :key="`${setting.currency}|${setting.detail_type}`"
+                class="rounded-box border border-base-300 p-4 space-y-3"
+            >
+                <button
+                    type="button"
+                    class="w-full text-left"
+                    @click="toggleSetExpanded(setting)"
+                >
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-semibold">{{ getLabel(setting) }}</div>
+                            <div class="text-xs text-base-content/70">
+                                {{ getSetShortInfo(setting) }}
+                            </div>
+                        </div>
+                        <div class="text-xs text-base-content/60">
+                            {{ isSetExpanded(setting) ? 'Свернуть' : 'Развернуть' }}
+                        </div>
+                    </div>
+                </button>
 
+                <div v-if="isSetExpanded(setting)" class="space-y-3">
                 <button
                     v-if="isAdmin && isEditMode"
                     type="button"
@@ -792,7 +892,8 @@ const submit = () => {
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </template>
 
         <InputError :message="errors.commission_settings?.[0]" />
     </div>

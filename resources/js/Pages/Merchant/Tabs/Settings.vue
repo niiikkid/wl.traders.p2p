@@ -592,7 +592,7 @@ const adminTabs = [
 const tabs = computed(() => [
     {id: 'info', title: 'Магазин', description: 'Основные данные'},
     {id: 'callback', title: 'Callback', description: 'URL уведомлений'},
-    {id: 'gateways', title: 'Комиссии', description: 'Платежные системы'},
+    {id: 'gateways', title: 'Комиссии', description: ''},
     ...(viewStore.isAdminViewMode ? adminTabs : []),
 ]);
 
@@ -632,8 +632,8 @@ const merchantStatus = computed(() => {
                             {{ merchantStatus.label }}
                         </span>
                     </div>
-                    <p class="mt-0.5 text-[11px] text-base-content/60">
-                        {{ activeTabMeta?.description }}
+                    <p v-if="activeTabMeta?.description" class="mt-0.5 text-[11px] text-base-content/60">
+                        {{ activeTabMeta.description }}
                     </p>
                 </div>
 
@@ -644,7 +644,7 @@ const merchantStatus = computed(() => {
             </div>
 
             <div class="mt-3 overflow-x-auto">
-                <div class="tabs tabs-boxed w-max min-w-full flex-nowrap bg-base-100 p-0.5">
+                <div class="tabs tabs-boxed w-max min-w-full flex-nowrap bg-base-100 p-0.5 rounded-lg">
                     <button
                         v-for="tab in tabs"
                         :key="tab.id"
@@ -665,8 +665,8 @@ const merchantStatus = computed(() => {
                     <h3 class="text-xs font-semibold text-base-content">
                         {{ activeTabMeta?.title }}
                     </h3>
-                    <p class="mt-0.5 text-[11px] text-base-content/60">
-                        {{ activeTabMeta?.description }}
+                    <p v-if="activeTabMeta?.description" class="mt-0.5 text-[11px] text-base-content/60">
+                        {{ activeTabMeta.description }}
                     </p>
                 </div>
             </div>
@@ -1169,7 +1169,7 @@ const merchantStatus = computed(() => {
                 </div>
             </div>
 
-            <!-- Таб: Платежные системы -->
+            <!-- Таб: Комиссии -->
             <div v-if="activeTab === 'gateways'" class="space-y-3 text-xs">
                 <Gateways
                     v-if="paymentGateways"
