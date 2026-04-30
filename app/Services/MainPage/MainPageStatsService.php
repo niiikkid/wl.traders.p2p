@@ -4,10 +4,13 @@ namespace App\Services\MainPage;
 
 use App\Contracts\MainPageStatsServiceContract;
 use App\Enums\BalanceType;
+use App\Enums\CascadeDealStatus;
+use App\Enums\CascadePaymentMethod;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
+use App\Models\CascadeDeal;
 use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\Order;
@@ -1159,9 +1162,9 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $endDate = $resolvedPeriod['endDate'];
 
         if ($resolvedPeriod['preset'] === 'all') {
-            $allBoundsQuery = Order::query();
-            $this->scopeMerchantOrders($allBoundsQuery, $user, $normalizedFilters['merchantIds']);
-            $this->applyMerchantDashboardOrderFilters($allBoundsQuery, $normalizedFilters);
+            $allBoundsQuery = CascadeDeal::query();
+            $this->scopeMerchantCascadeDeals($allBoundsQuery, $user, $normalizedFilters['merchantIds']);
+            $this->applyMerchantDashboardCascadeDealFilters($allBoundsQuery, $normalizedFilters);
 
             $minCreatedAt = $allBoundsQuery->min('created_at');
             if ($minCreatedAt) {
@@ -1180,27 +1183,27 @@ class MainPageStatsService implements MainPageStatsServiceContract
             ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
             : 'DATE(created_at)';
 
-        $query = Order::query()
-            ->where('status', OrderStatus::SUCCESS)
+        $query = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::SUCCESS)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($query, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($query, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($query, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($query, $normalizedFilters);
 
-        $totalTurnover = Money::fromUnits($query->clone()->sum('total_profit'), Currency::USDT());
-        $totalProfit = Money::fromUnits($query->clone()->sum('merchant_profit'), Currency::USDT());
+        $totalTurnover = Money::fromUnits($query->clone()->sum('usdt_amount'), Currency::USDT());
+        $totalProfit = Money::fromUnits($query->clone()->sum('credit'), Currency::USDT());
 
-        $successOrderQuery = Order::query()
-            ->where('status', OrderStatus::SUCCESS)
+        $successOrderQuery = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::SUCCESS)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($successOrderQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($successOrderQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($successOrderQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($successOrderQuery, $normalizedFilters);
         $successOrderCount = $successOrderQuery->count();
 
-        $failedOrderQuery = Order::query()
-            ->where('status', OrderStatus::FAIL)
+        $failedOrderQuery = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::FAIL)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($failedOrderQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($failedOrderQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($failedOrderQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($failedOrderQuery, $normalizedFilters);
         $failedOrderCount = $failedOrderQuery->count();
 
         $totalOrderCount = $successOrderCount + $failedOrderCount;
@@ -1208,49 +1211,53 @@ class MainPageStatsService implements MainPageStatsServiceContract
             ? round(($successOrderCount / $totalOrderCount) * 100, 2)
             : 0;
 
-        $earningsByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+        $earningsByDayQuery = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::SUCCESS)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($earningsByDayQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($earningsByDayQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($earningsByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($earningsByDayQuery, $normalizedFilters);
         $earningsByDay = $earningsByDayQuery
-            ->selectRaw("{$bucketSql} as bucket_key, SUM(merchant_profit) as total_earnings")
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(credit) as total_earnings")
             ->groupBy('bucket_key')
             ->pluck('total_earnings', 'bucket_key');
 
-        $turnoverByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+        $turnoverByDayQuery = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::SUCCESS)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($turnoverByDayQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($turnoverByDayQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($turnoverByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($turnoverByDayQuery, $normalizedFilters);
         $turnoverByDay = $turnoverByDayQuery
-            ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_turnover")
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(usdt_amount) as total_turnover")
             ->groupBy('bucket_key')
             ->pluck('total_turnover', 'bucket_key');
 
-        $successOrdersByDayQuery = Order::where('status', OrderStatus::SUCCESS)
+        $successOrdersByDayQuery = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::SUCCESS)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($successOrdersByDayQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($successOrdersByDayQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($successOrdersByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($successOrdersByDayQuery, $normalizedFilters);
         $successOrdersByDay = $successOrdersByDayQuery
             ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
             ->groupBy('bucket_key')
             ->pluck('count', 'bucket_key');
 
-        $failedOrdersByDayQuery = Order::where('status', OrderStatus::FAIL)
+        $failedOrdersByDayQuery = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::FAIL)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($failedOrdersByDayQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($failedOrdersByDayQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($failedOrdersByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($failedOrdersByDayQuery, $normalizedFilters);
         $failedOrdersByDay = $failedOrdersByDayQuery
             ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
             ->groupBy('bucket_key')
             ->pluck('count', 'bucket_key');
 
-        $totalAmountByDayQuery = Order::query()
-            ->whereIn('status', [OrderStatus::SUCCESS, OrderStatus::FAIL])
+        $totalAmountByDayQuery = CascadeDeal::query()
+            ->whereIn('status', [CascadeDealStatus::SUCCESS, CascadeDealStatus::FAIL])
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($totalAmountByDayQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($totalAmountByDayQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($totalAmountByDayQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($totalAmountByDayQuery, $normalizedFilters);
         $totalAmountByDay = $totalAmountByDayQuery
-            ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_amount")
+            ->selectRaw("{$bucketSql} as bucket_key, SUM(usdt_amount) as total_amount")
             ->groupBy('bucket_key')
             ->pluck('total_amount', 'bucket_key');
 
@@ -1338,11 +1345,11 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 : 0;
         }
 
-        $pendingOrdersQuery = Order::query()
-            ->where('status', OrderStatus::PENDING)
+        $pendingOrdersQuery = CascadeDeal::query()
+            ->where('status', CascadeDealStatus::PENDING)
             ->whereBetween('created_at', [$startDate, $endDate]);
-        $this->scopeMerchantOrders($pendingOrdersQuery, $user, $normalizedFilters['merchantIds']);
-        $this->applyMerchantDashboardOrderFilters($pendingOrdersQuery, $normalizedFilters);
+        $this->scopeMerchantCascadeDeals($pendingOrdersQuery, $user, $normalizedFilters['merchantIds']);
+        $this->applyMerchantDashboardCascadeDealFilters($pendingOrdersQuery, $normalizedFilters);
         $pendingOrderCount = $pendingOrdersQuery->count();
 
         return [
@@ -1446,6 +1453,24 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $query->whereIn('merchant_id', $allowedMerchantIds);
     }
 
+    private function scopeMerchantCascadeDeals(Builder $query, User $user, array $merchantIds = []): void
+    {
+        $allowedMerchantIds = $this->resolveUserMerchantIds($user);
+
+        if (! empty($merchantIds)) {
+            $allowedSet = array_flip($allowedMerchantIds);
+            $scopedMerchantIds = array_values(array_filter(
+                $merchantIds,
+                fn (int $id) => isset($allowedSet[$id])
+            ));
+            $query->whereIn('merchant_id', $scopedMerchantIds);
+
+            return;
+        }
+
+        $query->whereIn('merchant_id', $allowedMerchantIds);
+    }
+
     private function normalizeTraderDashboardFilters(User $user, array $filters): array
     {
         $allowedDetailIds = PaymentDetail::query()
@@ -1502,19 +1527,24 @@ class MainPageStatsService implements MainPageStatsServiceContract
             fn (int $id) => isset($allowedMerchantSet[$id])
         ));
 
-        $allowedGatewayIds = empty($allowedMerchantIds)
+        $allowedPaymentMethods = empty($allowedMerchantIds)
             ? []
-            : Order::query()
+            : CascadeDeal::query()
                 ->whereIn('merchant_id', $allowedMerchantIds)
                 ->distinct()
-                ->pluck('payment_gateway_id')
-                ->map(fn ($id) => (int) $id)
+                ->pluck('payment_method')
+                ->map(fn ($method) => $this->normalizeCascadePaymentMethodValue($method))
+                ->filter()
+                ->values()
                 ->all();
-        $gatewaySet = array_flip($allowedGatewayIds);
+        $paymentMethodIdSet = array_flip(array_values(array_filter(
+            array_map(fn (string $method) => $this->cascadePaymentMethodId($method), $allowedPaymentMethods),
+            fn (?int $id) => $id !== null
+        )));
 
         $methodIds = array_values(array_filter(
             $this->normalizeIdArray($filters['paymentMethodIds'] ?? []),
-            fn (int $id) => isset($gatewaySet[$id])
+            fn (int $id) => isset($paymentMethodIdSet[$id])
         ));
 
         return [
@@ -1528,6 +1558,49 @@ class MainPageStatsService implements MainPageStatsServiceContract
         if (! empty($filters['paymentMethodIds'])) {
             $query->whereIn('payment_gateway_id', $filters['paymentMethodIds']);
         }
+    }
+
+    private function applyMerchantDashboardCascadeDealFilters(Builder $query, array $filters): void
+    {
+        if (! empty($filters['paymentMethodIds'])) {
+            $paymentMethods = array_values(array_filter(
+                array_map(fn (int $id) => $this->cascadePaymentMethodValue($id), $filters['paymentMethodIds']),
+                fn (?string $method) => $method !== null
+            ));
+
+            $query->whereIn('payment_method', $paymentMethods);
+        }
+    }
+
+    private function cascadePaymentMethodId(string $value): ?int
+    {
+        foreach (CascadePaymentMethod::cases() as $index => $method) {
+            if ($method->value === $value) {
+                return $index + 1;
+            }
+        }
+
+        return null;
+    }
+
+    private function cascadePaymentMethodValue(int $id): ?string
+    {
+        $methods = CascadePaymentMethod::cases();
+
+        return $methods[$id - 1]->value ?? null;
+    }
+
+    private function normalizeCascadePaymentMethodValue(mixed $method): ?string
+    {
+        if ($method instanceof CascadePaymentMethod) {
+            return $method->value;
+        }
+
+        if (is_string($method) && $method !== '') {
+            return $method;
+        }
+
+        return null;
     }
 
     private function resolveUserMerchantIds(User $user): array
