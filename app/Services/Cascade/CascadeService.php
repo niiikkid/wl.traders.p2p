@@ -587,13 +587,6 @@ class CascadeService implements CascadeServiceContract
             }
         });
 
-        $response = [
-            'provider_code' => $cascadeProvider->code,
-            'cascade_deal_id' => $cascade_deal->uuid,
-            'provider_deal_id' => Arr::get($callback_data, 'provider_deal_id'),
-            'status' => $cascade_deal->refresh()->status->value,
-        ];
-
         CascadeProviderLog::create([
             'cascade_deal_id' => $cascade_deal->id,
             'cascade_transaction_id' => $cascade_transaction?->id,
@@ -602,14 +595,14 @@ class CascadeService implements CascadeServiceContract
             'method' => 'POST',
             'url' => request()->fullUrl(),
             'request_payload' => $payload,
-            'response_payload' => $response,
+            'response_payload' => [],
             'status_code' => 200,
             'is_successful' => true,
         ]);
 
         SendCascadeDealCallbackJob::dispatch($cascade_deal->refresh());
 
-        return $response;
+        return [];
     }
 
     /**
