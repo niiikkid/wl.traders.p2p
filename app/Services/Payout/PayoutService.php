@@ -10,15 +10,15 @@ use App\Enums\PayoutOperationType;
 use App\Enums\PayoutStatus;
 use App\Enums\TransactionType;
 use App\Exceptions\PayoutException;
-use App\Models\Merchant;
-use App\Models\Payout\Payout;
-use App\Models\PaymentGateway;
-use App\Models\User;
-use App\Models\Wallet;
-use App\Models\Payout\PayoutReceipt;
 use App\Jobs\CreditPayoutToTraderJob;
 use App\Jobs\ExpiresPayoutJob;
 use App\Jobs\SendPayoutCallbackJob;
+use App\Models\Merchant;
+use App\Models\PaymentGateway;
+use App\Models\Payout\Payout;
+use App\Models\Payout\PayoutReceipt;
+use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Utils\Transaction;
@@ -30,6 +30,7 @@ use Illuminate\Support\Str;
 class PayoutService implements PayoutServiceContract
 {
     private const RECEIPT_DISK = 'local';
+
     private const RECEIPT_DIRECTORY = 'receipts/payouts';
 
     /**
@@ -98,6 +99,7 @@ class PayoutService implements PayoutServiceContract
             $payout = Payout::query()->create([
                 'uuid' => (string) Str::uuid(),
                 'external_id' => $data->externalId,
+                'api_version' => $data->apiVersion,
                 'merchant_id' => $data->merchant->id,
                 'payment_gateway_id' => $data->paymentGateway?->id,
                 'bank_name' => $data->bankName,
@@ -863,7 +865,7 @@ class PayoutService implements PayoutServiceContract
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
         $filename = (string) Str::uuid();
         if ($extension !== '') {
-            $filename .= '.' . $extension;
+            $filename .= '.'.$extension;
         }
 
         return $file->storeAs(
@@ -919,8 +921,7 @@ class PayoutService implements PayoutServiceContract
         Currency $currency,
         MarketEnum $geoMarket,
         ?Money $merchantRate = null
-    ): Money
-    {
+    ): Money {
         if ($geoMarket->equals(MarketEnum::MERCHANT_API)) {
             $merchantApiRateSetting = $merchant->getMerchantApiRateSetting($currency);
             $referenceRate = (float) ($merchantApiRateSetting['payout_reference_rate'] ?? 0);
@@ -985,7 +986,7 @@ class PayoutService implements PayoutServiceContract
     }
 
     /**
-     * @param array<int, UploadedFile> $receipts
+     * @param  array<int, UploadedFile>  $receipts
      */
     private function replaceReceipts(Payout $payout, array $receipts): string
     {
@@ -1010,7 +1011,7 @@ class PayoutService implements PayoutServiceContract
     }
 
     /**
-     * @param array<int, UploadedFile> $receipts
+     * @param  array<int, UploadedFile>  $receipts
      * @return array<int, UploadedFile>
      */
     private function normalizeReceiptFiles(?UploadedFile $receipt, array $receipts): array
@@ -1063,4 +1064,3 @@ class PayoutService implements PayoutServiceContract
         }
     }
 }
-

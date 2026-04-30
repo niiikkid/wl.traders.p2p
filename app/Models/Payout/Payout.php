@@ -14,6 +14,7 @@ use App\Observers\PayoutObserver;
 use App\Services\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property int $id
  * @property string $uuid
  * @property string|null $external_id
+ * @property int $api_version
  * @property int $merchant_id
  * @property int|null $trader_id
  * @property int|null $payment_gateway_id
@@ -31,7 +33,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property PayoutMethodType $payout_method_type
  * @property string $requisites
  * @property string|null $initials
- *
  * @property Money $amount_fiat
  * @property Money $usdt_body
  * @property Money $total_fee
@@ -42,29 +43,25 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property float|null $teamlead_split_from_trader_percent
  * @property Money $merchant_debit
  * @property Money $trader_credit
- *
  * @property MarketEnum $rate_market
  * @property Money $conversion_price
  * @property Carbon|null $rate_fixed_at
- *
  * @property PayoutStatus $status
  * @property Carbon|null $taken_at
  * @property Carbon|null $sent_at
  * @property Carbon|null $hold_until
  * @property Carbon|null $completed_at
  * @property Carbon|null $canceled_at
- *
  * @property float|null $total_commission_rate
  * @property float|null $trader_commission_rate
  * @property float|null $teamlead_commission_rate
- *
  * @property string|null $callback_url
  * @property string|null $receipt_path
  * @property Merchant $merchant
  * @property User|null $trader
  * @property PaymentGateway $paymentGateway
- * @property \Illuminate\Database\Eloquent\Collection<int, PayoutOperation> $operations
- * @property \Illuminate\Database\Eloquent\Collection<int, PayoutReceipt> $receipts
+ * @property Collection<int, PayoutOperation> $operations
+ * @property Collection<int, PayoutReceipt> $receipts
  */
 #[ObservedBy([PayoutObserver::class])]
 class Payout extends Model
@@ -76,6 +73,7 @@ class Payout extends Model
     protected $fillable = [
         'uuid',
         'external_id',
+        'api_version',
         'merchant_id',
         'trader_id',
         'payment_gateway_id',
@@ -147,6 +145,7 @@ class Payout extends Model
         'receipt_path' => 'string',
         'callback_url' => 'string',
         'external_id' => 'string',
+        'api_version' => 'integer',
     ];
 
     public function merchant(): BelongsTo
@@ -181,5 +180,3 @@ class Payout extends Model
         return $this->morphMany(CallbackLog::class, 'callbackable');
     }
 }
-
-

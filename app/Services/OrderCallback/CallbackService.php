@@ -3,7 +3,9 @@
 namespace App\Services\OrderCallback;
 
 use App\Contracts\CallbackServiceContract;
+use App\Http\Resources\API\H2H\OrderResource;
 use App\Http\Resources\API\Payout\PayoutCallbackResource;
+use App\Http\Resources\API\V2\PayoutResource as PayoutV2Resource;
 use App\Models\CallbackLog;
 use App\Models\Order;
 use App\Models\Payout\Payout;
@@ -23,7 +25,7 @@ class CallbackService implements CallbackServiceContract
         }
 
         if ($order->is_h2h) {
-            $data = \App\Http\Resources\API\H2H\OrderResource::make($order)->resolve();
+            $data = OrderResource::make($order)->resolve();
         } else {
             $data = \App\Http\Resources\API\Merchant\OrderResource::make($order)->resolve();
         }
@@ -44,7 +46,9 @@ class CallbackService implements CallbackServiceContract
             return;
         }
 
-        $data = PayoutCallbackResource::make($payout)->resolve();
+        $data = $payout->api_version === 2
+            ? PayoutV2Resource::make($payout)->resolve()
+            : PayoutCallbackResource::make($payout)->resolve();
         $token = $payout->merchant->user->api_access_token;
 
         $this->sendCallback($callbackUrl, $data, $token, $payout, CallbackLog::TYPE_PAYOUT);

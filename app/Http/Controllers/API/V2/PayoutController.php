@@ -75,6 +75,7 @@ class PayoutController extends Controller
             merchantRate: $request->filled('exchange_rate')
                 ? Money::fromPrecision((string) $request->validated('exchange_rate'), $currencyCode)
                 : null,
+            apiVersion: 2,
         );
 
         try {

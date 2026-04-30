@@ -14,6 +14,7 @@ readonly class PayoutCreateDTO extends BaseDTO
         public Merchant $merchant,
         public ?PaymentGateway $paymentGateway,
         public ?string $externalId,
+        public int $apiVersion,
         public Money $amountFiat,
         public PayoutMethodType $methodType,
         public string $requisites,
@@ -22,8 +23,7 @@ readonly class PayoutCreateDTO extends BaseDTO
         public ?string $callbackUrl,
         public ?string $bankName,
         public ?Money $merchantRate = null,
-    ) {
-    }
+    ) {}
 
     public static function make(
         Merchant $merchant,
@@ -37,11 +37,13 @@ readonly class PayoutCreateDTO extends BaseDTO
         ?string $callbackUrl,
         ?string $bankName,
         ?Money $merchantRate = null,
+        int $apiVersion = 1,
     ): self {
         return new self(
             merchant: $merchant,
             paymentGateway: $paymentGateway,
             externalId: $externalId,
+            apiVersion: $apiVersion,
             amountFiat: $amountFiat,
             methodType: $methodType,
             requisites: $requisites,
@@ -53,4 +55,3 @@ readonly class PayoutCreateDTO extends BaseDTO
         );
     }
 }
-
