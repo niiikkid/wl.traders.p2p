@@ -5,8 +5,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
-import ThemeToggle from "@/Components/ThemeToggle.vue";
+import { Head, useForm } from '@inertiajs/vue3';
 
 defineProps({
     canResetPassword: {
@@ -94,8 +93,5 @@ const submit = () => {
                 </PrimaryButton>
             </div>
         </form>
-        <div class="flex justify-center mt-5">
-            <ThemeToggle />
-        </div>
     </GuestLayout>
 </template>

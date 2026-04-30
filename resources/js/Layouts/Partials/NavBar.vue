@@ -2,7 +2,6 @@
 import {Link, router, usePage} from "@inertiajs/vue3";
 import {computed, nextTick, onMounted, ref} from "vue";
 import {useViewStore} from "@/store/view.js";
-import ThemeToggle from "@/Components/ThemeToggle.vue";
 
 const viewStore = useViewStore();
 
@@ -769,12 +768,6 @@ onMounted(async () => {
                                     Выход
                                 </Link>
                             </li>
-                            <li class="px-4"></li>
-                            <div class="px-4">
-                                <div class="block">
-                                    <ThemeToggle />
-                                </div>
-                            </div>
                         </ul>
                     </div>
                 </div>

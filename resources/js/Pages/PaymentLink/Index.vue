@@ -4,7 +4,6 @@ import PaymentLayout from "@/Layouts/PaymentLayout.vue";
 import {nextTick, onMounted, ref} from "vue";
 import SupportButton from "@/Pages/PaymentLink/Components/SupportButton.vue";
 import Clock from "@/Components/Clock.vue";
-import ThemeToggle from "@/Components/ThemeToggle.vue";
 import MerchantName from "@/Pages/PaymentLink/Components/MerchantName.vue";
 import PaymentHeader from "@/Pages/PaymentLink/Components/PaymentHeader.vue";
 import HelperModal from "@/Pages/PaymentLink/Components/HelperModal.vue";
@@ -176,9 +175,6 @@ defineOptions({ layout: PaymentLayout });
                     <HelperModal :data="data"/>
                     </div>
                 </div>
-            </div>
-            <div class="flex justify-center mt-5">
-                <ThemeToggle/>
             </div>
 <!--            <StageSwitcher :stage="stage" @setStage="stage = $event"/>-->
         </div>

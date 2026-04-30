@@ -426,7 +426,6 @@ const openDocs = () => {
                     <div class="text-xs font-medium text-base-content/70">Надежный процессинг</div>
                 </div>-->
                 <div class="h-20"></div>
-<!--         ThemeMarquee       <div class="h-32"></div>-->
 
                 <div class="p-4 space-y-4">
                     <button
@@ -485,7 +484,6 @@ const openDocs = () => {
         <!-- Main content -->
         <div class="drawer-content flex flex-col min-h-screen space-y-1">
             <div class="z-50">
-<!--                <ThemeMarquee/>-->
                 <!-- Navbar -->
                 <NavBar @toggle-sidebar="toggleSidebar"/>
             </div>
