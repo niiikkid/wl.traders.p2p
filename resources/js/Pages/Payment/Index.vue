@@ -6,19 +6,15 @@ import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import OrderModal from "@/Modals/OrderModal.vue";
 import DateTime from "@/Components/DateTime.vue";
-import AddMobileIcon from "@/Components/AddMobileIcon.vue";
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
-import PaymentCreateModal from "@/Modals/Payment/PaymentCreateModal.vue";
-import {useModalStore} from "@/store/modal.js";
 import { ref } from "vue";
 
 const orders = ref(usePage().props.orders);
-const modalStore = useModalStore();
 const expandedCards = ref({});
 
 const toggleExpand = (id) => {
@@ -60,18 +56,6 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Платежи"
             :data="orders"
         >
-            <template v-slot:button>
-                <button
-                    @click="modalStore.openPaymentCreateModal()"
-                    type="button"
-                    class="hidden md:block btn btn-primary btn-sm"
-                >
-                    Создать платеж
-                </button>
-                <AddMobileIcon
-                    @click="modalStore.openPaymentCreateModal()"
-                />
-            </template>
             <template v-slot:table-filters>
                 <FiltersPanel name="payments">
                     <DropdownFilter
@@ -291,6 +275,5 @@ defineOptions({ layout: AuthenticatedLayout })
 
         <OrderModal/>
         <ConfirmModal/>
-        <PaymentCreateModal/>
     </div>
 </template>

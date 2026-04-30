@@ -355,8 +355,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/merchant/payouts', [App\Http\Controllers\Merchant\PayoutController::class, 'store'])->name('merchant.payouts.store');
         Route::post('/merchant/payouts/{payout:uuid}/callback/resend', [PayoutCallbackController::class, 'resend'])->name('merchant.payouts.callback.resend');
 
-        Route::resource('/payments', PaymentController::class)->only(['index', 'store']);
-        Route::get('/payments/create-data', [PaymentController::class, 'createData'])->name('payments.create-data');
+        Route::resource('/payments', PaymentController::class)->only(['index']);
         Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant.merchant-api-logs.index');
 
         Route::post('/payment/{cascadeDeal}/callback/resend', [ResendCallbackController::class, 'resendCascade'])->name('payment.callback.resend');
