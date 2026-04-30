@@ -14,6 +14,7 @@ class SendOrderCallbackJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable;
 
     public int $tries = 8;
+
     public int $timeout = 10;
 
     // Время жизни блокировки (в секундах)
@@ -21,14 +22,17 @@ class SendOrderCallbackJob implements ShouldQueue
 
     public function __construct(
         private Order $order,
-    )
-    {
+    ) {
         $this->onQueue('callback');
         $this->afterCommit();
     }
 
     public function handle(): void
     {
+        if ($this->order->shouldSkipMerchantOrderCallbackForCascade()) {
+            return;
+        }
+
         $lockKey = $this->getLockKey();
 
         // Пытаемся получить блокировку
@@ -52,7 +56,7 @@ class SendOrderCallbackJob implements ShouldQueue
      */
     private function getLockKey(): string
     {
-        return 'order_callback_lock:' . $this->order->id;
+        return 'order_callback_lock:'.$this->order->id;
     }
 
     /**
@@ -73,7 +77,7 @@ class SendOrderCallbackJob implements ShouldQueue
         Redis::del($key);
     }
 
-    public function backoff(): array //8 попыток
+    public function backoff(): array // 8 попыток
     {
         return [10, 60, 120, 240, 480, 1800, 3600, 7200]; // Интервалы в секундах перед повторными попытками
     }

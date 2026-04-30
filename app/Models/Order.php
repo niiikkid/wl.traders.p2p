@@ -4,9 +4,9 @@ namespace App\Models;
 
 use App\Casts\BaseCurrencyMoneyCast;
 use App\Casts\CurrencyCast;
+use App\Casts\MoneyCast;
 use App\Enums\ManualControlConfirmationType;
 use App\Enums\ManualControlProcessingStatus;
-use App\Casts\MoneyCast;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
@@ -54,8 +54,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property string $success_url
  * @property string $fail_url
  * @property array $amount_updates_history
- * @property boolean $is_h2h
- * @property boolean $manual_control_acquiring
+ * @property bool $is_h2h
+ * @property bool $manual_control_acquiring
  * @property string|null $manual_control_card_number
  * @property int|null $manual_control_expiry_month
  * @property int|null $manual_control_expiry_year
@@ -98,7 +98,7 @@ class Order extends Model
     protected $fillable = [
         'uuid',
         'external_id',
-        'base_amount',//Сумма при создании сделки
+        'base_amount', // Сумма при создании сделки
         'amount', // Сумма (мог измениться через updateAmount)
         'total_profit', // Тело (totalProfit)
         'trader_profit', // Комиссия трейдера (traderProfit)
@@ -244,11 +244,39 @@ class Order extends Model
 
     /**
      * Получить логи колбеков для заказа.
-     *
-     * @return MorphMany
      */
     public function callbackLogs(): MorphMany
     {
         return $this->morphMany(CallbackLog::class, 'callbackable');
+    }
+
+    /**
+     * Колбеки мерчанту по внутреннему ордеру (SendOrderCallbackJob / CallbackService) не должны
+     * уходить, если сделка ведётся через каскад: уведомления идут через SendCascadeDealCallbackJob.
+     *
+     * Учитывается окно до привязки {@see CascadeDeal::$order_id} (например, до завершения транзакции
+     * после создания ордера внутренним провайдером каскада).
+     */
+    public function shouldSkipMerchantOrderCallbackForCascade(): bool
+    {
+        if (! $this->exists) {
+            return false;
+        }
+
+        if (CascadeDeal::query()->where('order_id', $this->id)->exists()) {
+            return true;
+        }
+
+        if ($this->external_id === null || $this->external_id === '') {
+            return false;
+        }
+
+        return CascadeDeal::query()
+            ->where('merchant_id', $this->merchant_id)
+            ->where('external_id', (string) $this->external_id)
+            ->where(function ($query): void {
+                $query->where('order_id', $this->id)->orWhereNull('order_id');
+            })
+            ->exists();
     }
 }
