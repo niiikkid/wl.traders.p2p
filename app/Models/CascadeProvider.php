@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ProviderType;
+use App\Services\Cascade\Providers\InternalCascadeProvider;
+use App\Services\Money\Currency;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -72,6 +74,12 @@ class CascadeProvider extends Model
      */
     public function supportedCurrencyCodes(): array
     {
+        if ($this->code === InternalCascadeProvider::CODE && $this->provider_type->equals(ProviderType::INTERNAL)) {
+            return collect(Currency::getAllCodes())
+                ->map(fn (string $currency): string => strtoupper($currency))
+                ->all();
+        }
+
         $currencyCodes = collect($this->supported_currency_codes ?? [])
             ->map(fn (mixed $currency): string => strtoupper((string) $currency))
             ->filter()
