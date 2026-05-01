@@ -42,7 +42,7 @@ class OrderResource extends JsonResource
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
             'payin_method' => $this->payment_method?->value,
-            'payin_details' => empty($details) ? null : [
+            'payin_details' => ($this->manual_control !== null || empty($details)) ? null : [
                 'bank_name' => Arr::get($gateway, 'name'),
                 'value' => Arr::get($details, 'value'),
                 'recipient_name' => Arr::get($details, 'initials'),

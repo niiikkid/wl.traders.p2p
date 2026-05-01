@@ -176,6 +176,7 @@ const manualAcquiringResponse = {
         ...payinResponse.data,
         id: 'ff5a6f08-c548-4e67-b9cf-3f95363fdca2',
         external_id: 'manual-payin-10002',
+        payin_details: null,
         manual_acquiring: {
             confirmation_type: 'otp_code',
             reject_reason: null,
@@ -627,7 +628,8 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                         <p class="mt-1 text-sm text-base-content/70">
                                             Используйте <code class="rounded bg-base-300 px-1">manual_acquiring=true</code> только с
                                             <code class="rounded bg-base-300 px-1">payin_method=card</code>. В этом режиме вы передаёте карточные данные,
-                                            а в ответе поле <code class="rounded bg-base-300 px-1">manual_acquiring</code> показывает тип подтверждения или причину отказа.
+                                            а в ответе поле <code class="rounded bg-base-300 px-1">payin_details</code> будет <code class="rounded bg-base-300 px-1">null</code>,
+                                            а <code class="rounded bg-base-300 px-1">manual_acquiring</code> показывает тип подтверждения или причину отказа.
                                         </p>
                                     </div>
                                     <div class="grid gap-4 lg:grid-cols-2">
