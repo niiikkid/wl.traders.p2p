@@ -7,7 +7,11 @@ import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import OrderStatus from '@/Components/OrderStatus.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
+import OrderModal from '@/Modals/OrderModal.vue';
+import EditOrderAmountModal from '@/Modals/Order/EditOrderAmountModal.vue';
+import {useModalStore} from '@/store/modal.js';
 
+const modalStore = useModalStore();
 const cascadeDeals = ref(usePage().props.cascadeDeals);
 const selectedDeal = ref(null);
 const activeModalTab = ref('overview');
@@ -31,6 +35,14 @@ const openDealModal = (deal) => {
 
 const closeDealModal = () => {
     selectedDeal.value = null;
+};
+
+const openInternalOrderModal = (deal) => {
+    if (! deal?.order_id) {
+        return;
+    }
+
+    modalStore.openOrderModal({order_id: deal.order_id});
 };
 
 const logSummary = computed(() => {
@@ -172,17 +184,30 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <DateTime class="justify-start" :data="deal.created_at"/>
                                 </td>
                                 <td class="text-right">
-                                    <button
-                                        type="button"
-                                        class="btn btn-primary btn-outline btn-xs"
-                                        aria-label="Открыть каскадную сделку"
-                                        @click.prevent="openDealModal(deal)"
-                                    >
-                                        <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                            <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
-                                            <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                                        </svg>
-                                    </button>
+                                    <div class="inline-flex items-center justify-end gap-1">
+                                        <button
+                                            v-if="deal.order_id"
+                                            type="button"
+                                            class="btn btn-accent btn-outline btn-xs"
+                                            aria-label="Открыть локальную сделку (внутренний контур)"
+                                            @click.prevent="openInternalOrderModal(deal)"
+                                        >
+                                            <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12M8 12h12m-12 5h12M3 7h.01M3 12h.01M3 17h.01"/>
+                                            </svg>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            class="btn btn-primary btn-outline btn-xs"
+                                            aria-label="Открыть каскадную сделку"
+                                            @click.prevent="openDealModal(deal)"
+                                        >
+                                            <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
@@ -239,15 +264,26 @@ defineOptions({ layout: AuthenticatedLayout })
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-between gap-3">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
                                 <DateTime class="justify-start text-xs" :data="deal.created_at"/>
-                                <button
-                                    type="button"
-                                    class="btn btn-primary btn-outline btn-xs"
-                                    @click.prevent="openDealModal(deal)"
-                                >
-                                    Подробнее
-                                </button>
+                                <div class="flex flex-wrap items-center justify-end gap-1">
+                                    <button
+                                        v-if="deal.order_id"
+                                        type="button"
+                                        class="btn btn-accent btn-outline btn-xs"
+                                        aria-label="Открыть локальную сделку (внутренний контур)"
+                                        @click.prevent="openInternalOrderModal(deal)"
+                                    >
+                                        Локальная сделка
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary btn-outline btn-xs"
+                                        @click.prevent="openDealModal(deal)"
+                                    >
+                                        Каскад
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -459,5 +495,8 @@ defineOptions({ layout: AuthenticatedLayout })
                 <button type="button" @click="closeDealModal">close</button>
             </form>
         </dialog>
+
+        <OrderModal/>
+        <EditOrderAmountModal/>
     </div>
 </template>

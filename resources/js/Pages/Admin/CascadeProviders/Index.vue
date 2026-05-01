@@ -145,7 +145,7 @@ const onDrop = (event, targetProvider) => {
 
     providerRows.value = next;
 
-    router.patch(route('admin.cascade-providers.reorder'), {
+    router.patch(route('admin.cascade-providers.reorder', undefined, false), {
         ids: next.map((r) => r.id),
     }, {
         preserveScroll: true,
@@ -294,11 +294,18 @@ const submit = () => {
     };
 
     if (editingProvider.value) {
-        form.patch(route('admin.cascade-providers.update', editingProvider.value.id), options);
+        const id = editingProvider.value.id;
+        if (id == null || id === '') {
+            return;
+        }
+        form.patch(
+            route('admin.cascade-providers.update', { cascadeProvider: id }, false),
+            options,
+        );
         return;
     }
 
-    form.post(route('admin.cascade-providers.store'), options);
+    form.post(route('admin.cascade-providers.store', undefined, false), options);
 };
 
 const fillFromImplementation = () => {

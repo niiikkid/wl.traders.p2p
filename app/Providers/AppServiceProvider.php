@@ -334,7 +334,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Route::bind('cascadeProvider', function (string $value): CascadeProvider {
-            return CascadeProvider::query()->where('code', $value)->firstOrFail();
+            $query = CascadeProvider::query();
+
+            // Админка и кошелёк: /admin/cascade-providers/{id}. API callback: /api/v2/providers/{code}/callback.
+            if (ctype_digit($value)) {
+                return $query->findOrFail((int) $value);
+            }
+
+            return $query->where('code', $value)->firstOrFail();
         });
     }
 }

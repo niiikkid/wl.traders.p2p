@@ -33,6 +33,7 @@ class TableCascadeDealResource extends JsonResource
                 'id' => $this->merchantClient?->id,
                 'external_id' => $this->merchantClient?->external_id,
             ],
+            'order_id' => $this->order_id,
             'order_uuid' => $this->order?->uuid,
             'amount' => $this->amount?->toBeauty(),
             'initial_amount' => $this->initial_amount?->toBeauty(),
