@@ -6,11 +6,14 @@ use App\Contracts\CallbackServiceContract;
 use App\Http\Resources\API\H2H\OrderResource;
 use App\Http\Resources\API\Payout\PayoutCallbackResource;
 use App\Http\Resources\API\V2\PayoutResource as PayoutV2Resource;
+use App\Jobs\RecordCascadeMerchantLogJob;
 use App\Models\CallbackLog;
+use App\Models\CascadeMerchantLog;
 use App\Models\Order;
 use App\Models\Payout\Payout;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 class CallbackService implements CallbackServiceContract
 {
@@ -58,27 +61,93 @@ class CallbackService implements CallbackServiceContract
 
     private function sendCallback(string $url, array $payload, ?string $token, Model $model, string $type): void
     {
+        $startedAt = microtime(true);
         $http = Http::withoutVerifying()->acceptJson();
 
         if ($token) {
             $http = $http->withHeader('Access-Token', $token);
         }
 
-        $response = $http->post($url, $payload);
+        try {
+            $response = $http->post($url, $payload);
+        } catch (Throwable $exception) {
+            $this->recordCascadeMerchantPayoutCallbackLog(
+                model: $model,
+                url: $url,
+                payload: $payload,
+                responsePayload: ['message' => $exception->getMessage()],
+                statusCode: null,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                errorCode: get_class($exception),
+                errorMessage: $exception->getMessage(),
+            );
+
+            throw $exception;
+        }
+
+        $responsePayload = $response->json() ?: $response->body();
 
         try {
             $callbackLog = new CallbackLog([
                 'type' => $type,
                 'url' => $url,
                 'request_data' => $payload,
-                'response_data' => $response->json() ?: $response->body(),
+                'response_data' => $responsePayload,
                 'status_code' => $response->status(),
                 'is_success' => $response->successful(),
             ]);
 
             $model->callbackLogs()->save($callbackLog);
-        } catch (\Throwable $exception) {
+        } catch (Throwable $exception) {
             report($exception);
         }
+
+        $this->recordCascadeMerchantPayoutCallbackLog(
+            model: $model,
+            url: $url,
+            payload: $payload,
+            responsePayload: is_array($responsePayload) ? $responsePayload : ['body' => $responsePayload],
+            statusCode: $response->status(),
+            startedAt: $startedAt,
+            isSuccessful: $response->successful(),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $responsePayload
+     */
+    private function recordCascadeMerchantPayoutCallbackLog(
+        Model $model,
+        string $url,
+        array $payload,
+        array $responsePayload,
+        ?int $statusCode,
+        float $startedAt,
+        bool $isSuccessful,
+        ?string $errorCode = null,
+        ?string $errorMessage = null,
+    ): void {
+        if (! $model instanceof Payout || $model->api_version !== 2) {
+            return;
+        }
+
+        RecordCascadeMerchantLogJob::dispatch([
+            'payout_id' => $model->id,
+            'merchant_id' => $model->merchant_id,
+            'payment_type' => CascadeMerchantLog::PAYMENT_TYPE_PAYOUT,
+            'operation' => 'callback',
+            'direction' => 'outgoing',
+            'method' => 'POST',
+            'url' => $url,
+            'request_payload' => $payload,
+            'response_payload' => $responsePayload,
+            'status_code' => $statusCode,
+            'execution_time' => round(microtime(true) - $startedAt, 4),
+            'is_successful' => $isSuccessful,
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+        ]);
     }
 }

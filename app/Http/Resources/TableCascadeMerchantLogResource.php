@@ -21,6 +21,8 @@ class TableCascadeMerchantLogResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->direction,
+            'payment_type' => $this->payment_type,
+            'payment_type_label' => CascadeMerchantLog::paymentTypeLabel($this->payment_type),
             'operation' => $this->operation,
             'operation_label' => CascadeMerchantLog::operationLabel($this->operation),
             'direction' => $this->direction,
@@ -43,6 +45,11 @@ class TableCascadeMerchantLogResource extends JsonResource
                 'id' => $this->cascadeDeal->id,
                 'uuid' => $this->cascadeDeal->uuid,
                 'external_id' => $this->cascadeDeal->external_id,
+            ] : null,
+            'payout' => $this->payout ? [
+                'id' => $this->payout->id,
+                'uuid' => $this->payout->uuid,
+                'external_id' => $this->payout->external_id,
             ] : null,
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),

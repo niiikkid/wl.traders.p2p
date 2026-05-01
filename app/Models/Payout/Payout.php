@@ -7,6 +7,7 @@ use App\Enums\MarketEnum;
 use App\Enums\PayoutMethodType;
 use App\Enums\PayoutStatus;
 use App\Models\CallbackLog;
+use App\Models\CascadeMerchantLog;
 use App\Models\Merchant;
 use App\Models\PaymentGateway;
 use App\Models\User;
@@ -178,5 +179,10 @@ class Payout extends Model
     public function callbackLogs(): MorphMany
     {
         return $this->morphMany(CallbackLog::class, 'callbackable');
+    }
+
+    public function merchantLogs(): HasMany
+    {
+        return $this->hasMany(CascadeMerchantLog::class);
     }
 }

@@ -11,6 +11,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\API\V2\Payout\IndexRequest;
 use App\Http\Requests\API\V2\Payout\StoreRequest;
 use App\Http\Resources\API\V2\PayoutResource;
+use App\Jobs\RecordCascadeMerchantLogJob;
+use App\Models\CascadeMerchantLog;
 use App\Models\Merchant;
 use App\Models\PaymentGateway;
 use App\Models\Payout\Payout;
@@ -43,6 +45,7 @@ class PayoutController extends Controller
 
     public function store(StoreRequest $request): JsonResponse
     {
+        $started_at = microtime(true);
         $merchant = queries()->merchant()->findByUUID($request->merchant_id);
 
         Gate::authorize('api-v2-access-to-merchant', $merchant);
@@ -81,11 +84,39 @@ class PayoutController extends Controller
         try {
             $payout = services()->payout()->create($dto);
         } catch (PayoutException $exception) {
+            $responsePayload = ['message' => $exception->getMessage()];
+
+            $this->recordMerchantLog(
+                merchant: $merchant,
+                payout: null,
+                operation: 'createPayout',
+                requestPayload: $request->all(),
+                responsePayload: $responsePayload,
+                statusCode: 400,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($exception),
+                errorMessage: $exception->getMessage(),
+            );
+
             return response()->failWithMessage($exception->getMessage());
         }
 
+        $responsePayload = PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))->resolve();
+
+        $this->recordMerchantLog(
+            merchant: $merchant,
+            payout: $payout,
+            operation: 'createPayout',
+            requestPayload: $request->all(),
+            responsePayload: $responsePayload,
+            statusCode: 200,
+            startedAt: $started_at,
+            isSuccessful: true,
+        );
+
         return response()->success(
-            PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))
+            PayoutResource::make($payout)
         );
     }
 
@@ -100,18 +131,81 @@ class PayoutController extends Controller
 
     public function cancel(Payout $payout): JsonResponse
     {
+        $started_at = microtime(true);
         Gate::authorize('api-v2-access-to-merchant', $payout->merchant);
 
         try {
             $payout = services()->payout()->cancel($payout);
         } catch (PayoutException $exception) {
+            $responsePayload = ['message' => $exception->getMessage()];
+
+            $this->recordMerchantLog(
+                merchant: $payout->merchant,
+                payout: $payout,
+                operation: 'cancelPayout',
+                requestPayload: request()->all(),
+                responsePayload: $responsePayload,
+                statusCode: 400,
+                startedAt: $started_at,
+                isSuccessful: false,
+                errorCode: get_class($exception),
+                errorMessage: $exception->getMessage(),
+            );
+
             return response()->failWithMessage($exception->getMessage());
         }
 
+        $responsePayload = PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))->resolve();
+
+        $this->recordMerchantLog(
+            merchant: $payout->merchant,
+            payout: $payout,
+            operation: 'cancelPayout',
+            requestPayload: request()->all(),
+            responsePayload: $responsePayload,
+            statusCode: 200,
+            startedAt: $started_at,
+            isSuccessful: true,
+        );
+
         return response()->successWithMessage(
             'Выплата отменена.',
-            PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))
+            PayoutResource::make($payout)
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $requestPayload
+     * @param  array<string, mixed>  $responsePayload
+     */
+    private function recordMerchantLog(
+        Merchant $merchant,
+        ?Payout $payout,
+        string $operation,
+        array $requestPayload,
+        array $responsePayload,
+        int $statusCode,
+        float $startedAt,
+        bool $isSuccessful,
+        ?string $errorCode = null,
+        ?string $errorMessage = null,
+    ): void {
+        RecordCascadeMerchantLogJob::dispatch([
+            'payout_id' => $payout?->id,
+            'merchant_id' => $merchant->id,
+            'payment_type' => CascadeMerchantLog::PAYMENT_TYPE_PAYOUT,
+            'operation' => $operation,
+            'direction' => 'incoming',
+            'method' => request()->method(),
+            'url' => request()->fullUrl(),
+            'request_payload' => $requestPayload,
+            'response_payload' => $responsePayload,
+            'status_code' => $statusCode,
+            'execution_time' => round(microtime(true) - $startedAt, 4),
+            'is_successful' => $isSuccessful,
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+        ]);
     }
 
     private function resolveIndexMerchant(IndexRequest $request): Merchant|JsonResponse|null

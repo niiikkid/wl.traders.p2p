@@ -28,6 +28,7 @@ class CascadeMerchantLogController extends Controller
 
         $filters = [
             'direction' => $request->string('direction')->toString(),
+            'payment_type' => $request->string('payment_type')->toString(),
             'merchant_id' => $merchantId,
             'operation' => $request->string('operation')->toString(),
             'is_successful' => $request->string('is_successful')->toString(),
@@ -36,9 +37,10 @@ class CascadeMerchantLogController extends Controller
 
         $logsQuery = $merchantIds->isNotEmpty()
             ? CascadeMerchantLog::query()
-                ->with(['cascadeDeal', 'merchant'])
+                ->with(['cascadeDeal', 'merchant', 'payout'])
                 ->whereIn('merchant_id', $merchantIdList)
                 ->when($filters['direction'], fn (Builder $query, string $direction) => $query->where('direction', $direction))
+                ->when($filters['payment_type'], fn (Builder $query, string $paymentType) => $query->where('payment_type', $paymentType))
                 ->when($filters['merchant_id'], fn (Builder $query, int $merchantId) => $query->where('merchant_id', $merchantId))
                 ->when($filters['operation'], fn (Builder $query, string $operation) => $query->where('operation', $operation))
                 ->when($filters['is_successful'] !== '', fn (Builder $query) => $query->where('is_successful', $filters['is_successful'] === '1'))
@@ -49,6 +51,8 @@ class CascadeMerchantLogController extends Controller
                             ->orWhere('error_message', 'like', "%{$search}%")
                             ->orWhereRelation('cascadeDeal', 'uuid', 'like', "%{$search}%")
                             ->orWhereRelation('cascadeDeal', 'external_id', 'like', "%{$search}%")
+                            ->orWhereRelation('payout', 'uuid', 'like', "%{$search}%")
+                            ->orWhereRelation('payout', 'external_id', 'like', "%{$search}%")
                             ->orWhereRelation('merchant', 'uuid', 'like', "%{$search}%")
                             ->orWhereRelation('merchant', 'name', 'like', "%{$search}%");
                     });
@@ -61,12 +65,16 @@ class CascadeMerchantLogController extends Controller
                 'total' => (clone $logsQuery)->count(),
                 'incoming' => (clone $logsQuery)->where('direction', 'incoming')->count(),
                 'outgoing' => (clone $logsQuery)->where('direction', 'outgoing')->count(),
+                'payin' => (clone $logsQuery)->where('payment_type', CascadeMerchantLog::PAYMENT_TYPE_PAYIN)->count(),
+                'payout' => (clone $logsQuery)->where('payment_type', CascadeMerchantLog::PAYMENT_TYPE_PAYOUT)->count(),
                 'failed' => (clone $logsQuery)->where('is_successful', false)->count(),
             ]
             : [
                 'total' => 0,
                 'incoming' => 0,
                 'outgoing' => 0,
+                'payin' => 0,
+                'payout' => 0,
                 'failed' => 0,
             ];
 
@@ -81,6 +89,16 @@ class CascadeMerchantLogController extends Controller
             'summary' => $summary,
             'filters' => $filters,
             'filterOptions' => [
+                'paymentTypes' => [
+                    [
+                        'value' => CascadeMerchantLog::PAYMENT_TYPE_PAYIN,
+                        'label' => CascadeMerchantLog::paymentTypeLabel(CascadeMerchantLog::PAYMENT_TYPE_PAYIN),
+                    ],
+                    [
+                        'value' => CascadeMerchantLog::PAYMENT_TYPE_PAYOUT,
+                        'label' => CascadeMerchantLog::paymentTypeLabel(CascadeMerchantLog::PAYMENT_TYPE_PAYOUT),
+                    ],
+                ],
                 'merchants' => Merchant::query()
                     ->whereIn('id', $merchantIdList)
                     ->orderBy('name')

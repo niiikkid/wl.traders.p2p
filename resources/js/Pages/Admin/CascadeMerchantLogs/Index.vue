@@ -27,6 +27,7 @@ const expandedRows = ref({});
 const expandedCards = ref({});
 const form = reactive({
     direction: props.filters.direction ?? '',
+    payment_type: props.filters.payment_type ?? '',
     merchant_id: props.filters.merchant_id ?? '',
     operation: props.filters.operation ?? '',
     is_successful: props.filters.is_successful ?? '',
@@ -40,6 +41,8 @@ const summary = computed(() => {
         total: props.summary?.total ?? props.logs?.meta?.total ?? rows.length,
         incoming: props.summary?.incoming ?? rows.filter((log) => log.direction === 'incoming').length,
         outgoing: props.summary?.outgoing ?? rows.filter((log) => log.direction === 'outgoing').length,
+        payin: props.summary?.payin ?? rows.filter((log) => log.payment_type === 'payin').length,
+        payout: props.summary?.payout ?? rows.filter((log) => log.payment_type === 'payout').length,
         failed: props.summary?.failed ?? rows.filter((log) => ! log.is_successful).length,
     };
 });
@@ -55,6 +58,7 @@ const applyFilters = () => {
 const resetFilters = () => {
     Object.assign(form, {
         direction: '',
+        payment_type: '',
         merchant_id: '',
         operation: '',
         is_successful: '',
@@ -67,6 +71,15 @@ const resetFilters = () => {
 const setDirection = (direction) => {
     form.direction = direction;
     applyFilters();
+};
+
+const setPaymentType = (paymentType) => {
+    form.payment_type = paymentType;
+    applyFilters();
+};
+
+const paymentTypeBadgeClass = (paymentType) => {
+    return paymentType === 'payout' ? 'badge-secondary' : 'badge-accent';
 };
 
 const toggleRow = (logId) => {
@@ -114,6 +127,18 @@ defineOptions({ layout: AuthenticatedLayout });
             <template #table-filters>
                 <div class="card bg-base-100 shadow-sm">
                     <div class="card-body p-4 gap-4">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" :class="['btn btn-sm', form.payment_type === '' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('')">
+                                Pay-in + payout
+                            </button>
+                            <button type="button" :class="['btn btn-sm', form.payment_type === 'payin' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('payin')">
+                                Pay-in
+                            </button>
+                            <button type="button" :class="['btn btn-sm', form.payment_type === 'payout' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('payout')">
+                                Payout
+                            </button>
+                        </div>
+
                         <div class="flex flex-wrap items-center gap-2">
                             <button type="button" :class="['btn btn-sm', form.direction === '' ? 'btn-primary' : 'btn-outline']" @click="setDirection('')">
                                 Все
@@ -163,7 +188,7 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
 
             <template #body>
-                <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div class="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-6">
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
                             <div class="stat-title">Всего</div>
@@ -184,6 +209,18 @@ defineOptions({ layout: AuthenticatedLayout });
                     </div>
                     <div class="stats bg-base-100 shadow-sm">
                         <div class="stat p-4">
+                            <div class="stat-title">Pay-in</div>
+                            <div class="stat-value text-2xl">{{ summary.payin }}</div>
+                        </div>
+                    </div>
+                    <div class="stats bg-base-100 shadow-sm">
+                        <div class="stat p-4">
+                            <div class="stat-title">Payout</div>
+                            <div class="stat-value text-2xl">{{ summary.payout }}</div>
+                        </div>
+                    </div>
+                    <div class="stats bg-base-100 shadow-sm">
+                        <div class="stat p-4">
                             <div class="stat-title">ошибок</div>
                             <div class="stat-value text-2xl text-error">{{ summary.failed }}</div>
                         </div>
@@ -194,6 +231,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     <table class="table table-sm">
                         <thead class="bg-base-300 text-xs uppercase">
                             <tr>
+                                <th>Платёж</th>
                                 <th>Тип</th>
                                 <th>Мерчант</th>
                                 <th>UUID</th>
@@ -208,6 +246,11 @@ defineOptions({ layout: AuthenticatedLayout });
                             <template v-for="log in logs?.data ?? []" :key="log.id">
                                 <tr class="hover border-b border-base-200 last:border-none">
                                     <td>
+                                        <span :class="['badge badge-sm', paymentTypeBadgeClass(log.payment_type)]">
+                                            {{ log.payment_type_label }}
+                                        </span>
+                                    </td>
+                                    <td>
                                         <span :class="['badge badge-sm', log.direction === 'outgoing' ? 'badge-info' : 'badge-primary']">
                                             {{ log.direction_label }}
                                         </span>
@@ -217,11 +260,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <div class="font-medium text-nowrap">{{ log.merchant?.name ?? 'Пусто' }}</div>
                                     </td>
                                     <td>
-                                        <CopyableOrderUid v-if="log.cascade_deal?.uuid" :uuid="log.cascade_deal.uuid" />
+                                        <CopyableOrderUid v-if="log.cascade_deal?.uuid || log.payout?.uuid" :uuid="log.cascade_deal?.uuid ?? log.payout?.uuid" />
                                         <div v-else class="text-base-content/60">Пусто</div>
                                     </td>
                                     <td>
-                                        <CopyableExternalId v-if="log.cascade_deal?.external_id" :id="String(log.cascade_deal.external_id)" />
+                                        <CopyableExternalId v-if="log.cascade_deal?.external_id || log.payout?.external_id" :id="String(log.cascade_deal?.external_id ?? log.payout?.external_id)" />
                                         <div v-else class="text-base-content/60">Пусто</div>
                                     </td>
                                     <td>
@@ -238,7 +281,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </td>
                                 </tr>
                                 <tr v-if="expandedRows[log.id]" class="bg-base-200">
-                                    <td colspan="8" class="p-4">
+                                    <td colspan="9" class="p-4">
                                         <div class="mb-4 rounded border border-base-300 bg-base-100 p-3 text-sm">
                                             <div class="mb-2 font-semibold">HTTP</div>
                                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-4">
@@ -292,6 +335,9 @@ defineOptions({ layout: AuthenticatedLayout });
                             <div class="flex items-start justify-between gap-3 border-b border-base-content/10 pb-2">
                                 <div>
                                     <div class="flex flex-wrap items-center gap-2">
+                                        <span :class="['badge badge-sm', paymentTypeBadgeClass(log.payment_type)]">
+                                            {{ log.payment_type_label }}
+                                        </span>
                                         <span :class="['badge badge-sm', log.direction === 'outgoing' ? 'badge-info' : 'badge-primary']">
                                             {{ log.direction_label }}
                                         </span>
@@ -307,12 +353,12 @@ defineOptions({ layout: AuthenticatedLayout });
                             <div class="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                                 <div>
                                     <div class="text-base-content/60">UUID</div>
-                                    <CopyableOrderUid v-if="log.cascade_deal?.uuid" :uuid="log.cascade_deal.uuid" />
+                                    <CopyableOrderUid v-if="log.cascade_deal?.uuid || log.payout?.uuid" :uuid="log.cascade_deal?.uuid ?? log.payout?.uuid" />
                                     <div v-else class="text-base-content/60">Пусто</div>
                                 </div>
                                 <div>
                                     <div class="text-base-content/60">Внешний ID</div>
-                                    <CopyableExternalId v-if="log.cascade_deal?.external_id" :id="String(log.cascade_deal.external_id)" />
+                                    <CopyableExternalId v-if="log.cascade_deal?.external_id || log.payout?.external_id" :id="String(log.cascade_deal?.external_id ?? log.payout?.external_id)" />
                                     <div v-else class="text-base-content/60">Пусто</div>
                                 </div>
                             </div>
