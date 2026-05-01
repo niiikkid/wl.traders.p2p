@@ -127,28 +127,29 @@ defineOptions({ layout: AuthenticatedLayout });
             <template #table-filters>
                 <div class="card bg-base-100 shadow-sm">
                     <div class="card-body p-4 gap-4">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button type="button" :class="['btn btn-sm', form.payment_type === '' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('')">
-                                Pay-in + payout
-                            </button>
-                            <button type="button" :class="['btn btn-sm', form.payment_type === 'payin' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('payin')">
-                                Pay-in
-                            </button>
-                            <button type="button" :class="['btn btn-sm', form.payment_type === 'payout' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('payout')">
-                                Payout
-                            </button>
-                        </div>
-
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button type="button" :class="['btn btn-sm', form.direction === '' ? 'btn-primary' : 'btn-outline']" @click="setDirection('')">
-                                Все
-                            </button>
-                            <button type="button" :class="['btn btn-sm', form.direction === 'incoming' ? 'btn-primary' : 'btn-outline']" @click="setDirection('incoming')">
-                                API-запросы
-                            </button>
-                            <button type="button" :class="['btn btn-sm', form.direction === 'outgoing' ? 'btn-primary' : 'btn-outline']" @click="setDirection('outgoing')">
-                                Callback
-                            </button>
+                        <div class="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" :class="['btn btn-sm', form.direction === '' ? 'btn-primary' : 'btn-outline']" @click="setDirection('')">
+                                    Все
+                                </button>
+                                <button type="button" :class="['btn btn-sm', form.direction === 'incoming' ? 'btn-primary' : 'btn-outline']" @click="setDirection('incoming')">
+                                    API-запросы
+                                </button>
+                                <button type="button" :class="['btn btn-sm', form.direction === 'outgoing' ? 'btn-primary' : 'btn-outline']" @click="setDirection('outgoing')">
+                                    Callback
+                                </button>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
+                                <button type="button" :class="['btn btn-sm', form.payment_type === '' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('')">
+                                    все
+                                </button>
+                                <button type="button" :class="['btn btn-sm', form.payment_type === 'payin' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('payin')">
+                                    payin
+                                </button>
+                                <button type="button" :class="['btn btn-sm', form.payment_type === 'payout' ? 'btn-primary' : 'btn-outline']" @click="setPaymentType('payout')">
+                                    payout
+                                </button>
+                            </div>
                         </div>
 
                         <form class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5" @submit.prevent="applyFilters">
