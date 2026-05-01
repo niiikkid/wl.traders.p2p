@@ -73,7 +73,7 @@ class MerchantController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh('categories'))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh(['categories', 'apiCredential']))->resolve(),
             ]);
         }
 
@@ -84,7 +84,8 @@ class MerchantController extends Controller
     {
         Gate::authorize('access-to-merchant', $merchant);
 
-        $merchant->load('categories');
+        $merchant->apiCredentialOrCreate();
+        $merchant->load('categories', 'apiCredential');
 
         $paymentGateways = [
             'data' => PaymentGatewayResource::collection(
@@ -100,6 +101,27 @@ class MerchantController extends Controller
             'categories' => CategoryResource::collection(Category::orderBy('name')->get())->resolve(),
             'currencies' => $this->getCurrencies(),
             'detail_types' => $this->getDetailTypes(),
+        ]);
+    }
+
+    public function regenerateApiCredential(Merchant $merchant, string $tokenType): JsonResponse
+    {
+        Gate::authorize('access-to-merchant', $merchant);
+
+        if (! in_array($tokenType, ['api', 'callback'], true)) {
+            abort(404);
+        }
+
+        $credential = $merchant->apiCredentialOrCreate();
+
+        if ($tokenType === 'api') {
+            $credential->regenerateApiToken();
+        } else {
+            $credential->regenerateCallbackToken();
+        }
+
+        return response()->json([
+            'merchant' => MerchantResource::make($merchant->fresh(['categories', 'apiCredential']))->resolve(),
         ]);
     }
 
@@ -148,7 +170,7 @@ class MerchantController extends Controller
         $merchant->save();
 
         return response()->json([
-            'merchant' => MerchantResource::make($merchant->fresh()->load('categories'))->resolve(),
+            'merchant' => MerchantResource::make($merchant->fresh(['categories', 'apiCredential']))->resolve(),
             'commission_settings' => $merchant->fresh()->getCommissionSettings(),
         ]);
     }

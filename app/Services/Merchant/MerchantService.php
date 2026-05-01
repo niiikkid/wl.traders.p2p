@@ -19,7 +19,7 @@ class MerchantService implements MerchantServiceContract
             Currency::RUB()->getCode() => MarketEnum::RAPIRA->value,
         ];
 
-        return Merchant::create([
+        $merchant = Merchant::create([
             'uuid' => (string) Str::uuid(),
             'user_id' => $data->user_id,
             'active' => true,
@@ -29,7 +29,9 @@ class MerchantService implements MerchantServiceContract
             'settings' => ['geos' => $defaultGeo],
             'gateway_settings' => [],
         ]);
+
+        $merchant->apiCredentialOrCreate();
+
+        return $merchant;
     }
 }
-
-

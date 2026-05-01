@@ -18,7 +18,7 @@ class PayoutReceiptController extends Controller
 
     public function index(Payout $payout): JsonResponse
     {
-        Gate::authorize('api-access-to-merchant', $payout->merchant);
+        Gate::authorize('api-v2-access-to-merchant', $payout->merchant);
 
         $disk = Storage::disk(self::RECEIPT_DISK);
         $receiptItems = $this->resolveReceiptItems($payout);

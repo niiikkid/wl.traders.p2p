@@ -38,6 +38,7 @@ use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\Dispute;
 use App\Models\Merchant;
+use App\Models\MerchantApiCredential;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\Payout\Payout as PayoutModel;
@@ -315,6 +316,13 @@ class AppServiceProvider extends ServiceProvider
         // api
         Gate::define('api-access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id;
+        });
+        Gate::define('api-v2-access-to-merchant', function (User $user, Merchant $merchant) {
+            $credential = request()->attributes->get('merchant_api_credential');
+
+            return $credential instanceof MerchantApiCredential
+                && $credential->merchant_id === $merchant->id
+                && $user->id === $merchant->user_id;
         });
 
         Route::bind('order', function ($id, \Illuminate\Routing\Route $route) {

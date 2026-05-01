@@ -345,6 +345,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/merchants/data', [MerchantController::class, 'indexData'])->name('merchants.data');
         Route::get('/merchants/{merchant}/settings', [MerchantController::class, 'settings'])->name('merchants.settings');
         Route::patch('/merchants/{merchant}/callback', [MerchantController::class, 'updateCallbackURL'])->name('merchants.callback.update');
+        Route::post('/merchants/{merchant}/api-credentials/{tokenType}/regenerate', [MerchantController::class, 'regenerateApiCredential'])->name('merchants.api-credentials.regenerate');
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
 
         Route::get('/merchant/finances', [WalletController::class, 'index'])->name('merchant.finances.index');

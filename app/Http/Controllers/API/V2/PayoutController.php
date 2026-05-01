@@ -29,7 +29,7 @@ class PayoutController extends Controller
 
         $payouts = Payout::query()
             ->with(['merchant', 'receipts'])
-            ->whereRelation('merchant', 'user_id', $request->user()->id)
+            ->where('merchant_id', $request->attributes->get('merchant_api_credential')->merchant_id)
             ->when($merchant, function ($query) use ($merchant) {
                 $query->where('merchant_id', $merchant->id);
             })
@@ -45,7 +45,7 @@ class PayoutController extends Controller
     {
         $merchant = queries()->merchant()->findByUUID($request->merchant_id);
 
-        Gate::authorize('api-access-to-merchant', $merchant);
+        Gate::authorize('api-v2-access-to-merchant', $merchant);
 
         $paymentGateway = null;
         $gatewayCode = $request->validated('payment_gateway');
@@ -91,7 +91,7 @@ class PayoutController extends Controller
 
     public function show(Payout $payout): JsonResponse
     {
-        Gate::authorize('api-access-to-merchant', $payout->merchant);
+        Gate::authorize('api-v2-access-to-merchant', $payout->merchant);
 
         return response()->success(
             PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway', 'receipts'))
@@ -100,7 +100,7 @@ class PayoutController extends Controller
 
     public function cancel(Payout $payout): JsonResponse
     {
-        Gate::authorize('api-access-to-merchant', $payout->merchant);
+        Gate::authorize('api-v2-access-to-merchant', $payout->merchant);
 
         try {
             $payout = services()->payout()->cancel($payout);
@@ -126,7 +126,7 @@ class PayoutController extends Controller
             return response()->failWithMessage('Мерчант не найден.', 404);
         }
 
-        Gate::authorize('api-access-to-merchant', $merchant);
+        Gate::authorize('api-v2-access-to-merchant', $merchant);
 
         return $merchant;
     }

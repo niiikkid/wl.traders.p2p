@@ -36,6 +36,12 @@ class MerchantResource extends JsonResource
             ],
             'callback_url' => $this->callback_url,
             'payout_callback_url' => $this->payout_callback_url,
+            'api_credentials' => $this->whenLoaded('apiCredential', function () {
+                return [
+                    'api_token' => $this->apiCredential?->api_token,
+                    'callback_token' => $this->apiCredential?->callback_token,
+                ];
+            }),
             'geos' => collect($this->settings['geos'] ?? [])
                 ->map(function ($market, $currency) {
                     $currencyCode = strtolower($currency);
@@ -57,7 +63,7 @@ class MerchantResource extends JsonResource
                 ->values(),
             'commission_settings' => $this->getCommissionSettings(),
             'max_order_wait_time' => $this->max_order_wait_time,
-            'min_order_amounts' => !empty($this->min_order_amounts) ? $this->min_order_amounts : null,
+            'min_order_amounts' => ! empty($this->min_order_amounts) ? $this->min_order_amounts : null,
             'categories' => $this->whenLoaded('categories', function () {
                 return $this->categories?->pluck('id')->toArray();
             }),

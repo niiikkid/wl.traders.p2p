@@ -49,7 +49,9 @@ class CallbackService implements CallbackServiceContract
         $data = $payout->api_version === 2
             ? PayoutV2Resource::make($payout)->resolve()
             : PayoutCallbackResource::make($payout)->resolve();
-        $token = $payout->merchant->user->api_access_token;
+        $token = $payout->api_version === 2
+            ? $payout->merchant->apiCredentialOrCreate()->callback_token
+            : $payout->merchant->user->api_access_token;
 
         $this->sendCallback($callbackUrl, $data, $token, $payout, CallbackLog::TYPE_PAYOUT);
     }

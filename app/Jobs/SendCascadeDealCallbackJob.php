@@ -35,7 +35,7 @@ class SendCascadeDealCallbackJob implements ShouldQueue
 
     public function handle(CascadeDealEventRecorder $events): void
     {
-        $deal = $this->cascadeDeal->fresh(['merchant.user']);
+        $deal = $this->cascadeDeal->fresh(['merchant.apiCredential']);
 
         if (! $deal || ! $deal->callback_url) {
             return;
@@ -53,7 +53,7 @@ class SendCascadeDealCallbackJob implements ShouldQueue
             $started_at = microtime(true);
             $payload = OrderResource::make($deal)->resolve();
             $http = Http::withoutVerifying()->acceptJson()->timeout(10);
-            $token = $deal->merchant->user->api_access_token;
+            $token = $deal->merchant->apiCredentialOrCreate()->callback_token;
 
             if ($token) {
                 $http = $http->withHeader('Access-Token', $token);

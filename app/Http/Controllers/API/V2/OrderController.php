@@ -27,7 +27,7 @@ class OrderController extends Controller
 
         $orders = CascadeDeal::query()
             ->with('merchant')
-            ->whereRelation('merchant', 'user_id', $request->user()->id)
+            ->where('merchant_id', $request->attributes->get('merchant_api_credential')->merchant_id)
             ->when($merchant, function ($query) use ($merchant) {
                 $query->where('merchant_id', $merchant->id);
             })
@@ -41,7 +41,7 @@ class OrderController extends Controller
 
     public function show(CascadeDeal $cascadeDeal): JsonResponse
     {
-        Gate::authorize('api-access-to-merchant', $cascadeDeal->merchant);
+        Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
 
         return response()->success(
             OrderResource::make($cascadeDeal)
@@ -52,7 +52,7 @@ class OrderController extends Controller
     {
         $cascade_deal = services()->cascade()->findDealByExternalId($merchant_id, $external_id);
 
-        Gate::authorize('api-access-to-merchant', $cascade_deal->merchant);
+        Gate::authorize('api-v2-access-to-merchant', $cascade_deal->merchant);
 
         return response()->success(
             OrderResource::make($cascade_deal)
@@ -64,7 +64,7 @@ class OrderController extends Controller
         $started_at = microtime(true);
         $merchant = queries()->merchant()->findByUUID($request->merchant_id);
 
-        Gate::authorize('api-access-to-merchant', $merchant);
+        Gate::authorize('api-v2-access-to-merchant', $merchant);
 
         $dto = CreateCascadeDealDTO::makeFromRequest(
             $request->toCreateCascadeDealData($merchant->id)
@@ -112,7 +112,7 @@ class OrderController extends Controller
     public function cancel(CascadeDeal $cascadeDeal): JsonResponse
     {
         $started_at = microtime(true);
-        Gate::authorize('api-access-to-merchant', $cascadeDeal->merchant);
+        Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
 
         try {
             $cascade_deal = services()->cascade()->cancelDeal($cascadeDeal);
@@ -156,7 +156,7 @@ class OrderController extends Controller
     public function storeConfirmationCode(StoreConfirmationCodeRequest $request, CascadeDeal $cascadeDeal): JsonResponse
     {
         $started_at = microtime(true);
-        Gate::authorize('api-access-to-merchant', $cascadeDeal->merchant);
+        Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
 
         try {
             $confirmation_code = services()->cascade()->storeConfirmationCode(
@@ -243,7 +243,7 @@ class OrderController extends Controller
             return response()->failWithMessage('Мерчант не найден.', 404);
         }
 
-        Gate::authorize('api-access-to-merchant', $merchant);
+        Gate::authorize('api-v2-access-to-merchant', $merchant);
 
         return $merchant;
     }
