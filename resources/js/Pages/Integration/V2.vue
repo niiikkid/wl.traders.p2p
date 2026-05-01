@@ -404,7 +404,6 @@ console.log(await response.json());`,
                     <div class="space-y-3">
                         <div class="flex flex-wrap items-center gap-2">
                             <span class="badge badge-primary">API v2</span>
-                            <span class="badge badge-outline">Документация без web-консоли</span>
                         </div>
                         <div>
                             <h1 class="text-2xl font-bold text-base-content sm:text-3xl">
