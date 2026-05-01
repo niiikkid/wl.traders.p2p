@@ -88,7 +88,7 @@ class CascadeProviderOperationJob implements ShouldQueue
                 'method' => 'POST',
                 'url' => $provider->providerApiLogUrl($this->operation, $deal, $this->payload),
                 'request_payload' => $this->payload,
-                'response_payload' => $responsePayload,
+                'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
                 'execution_time' => round(microtime(true) - $startedAt, 4),
                 'is_successful' => $isSuccessful,
                 'error_code' => $errorCode,

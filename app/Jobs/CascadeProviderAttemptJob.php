@@ -265,7 +265,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'method' => 'POST',
                 'url' => $cancelLogUrl,
                 'request_payload' => ['provider_deal_id' => $providerDealId],
-                'response_payload' => $cancelPayload,
+                'response_payload' => CascadeProviderLog::literalHttpJsonForLog($cancelPayload),
                 'is_successful' => true,
             ]);
         } catch (Throwable $e) {
@@ -328,7 +328,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
             'method' => 'POST',
             'url' => $requestUrl,
             'request_payload' => $requestPayload,
-            'response_payload' => $responsePayload,
+            'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
             'execution_time' => round(microtime(true) - $startedAt, 4),
             'is_successful' => $isSuccessful,
             'error_code' => $errorCode,

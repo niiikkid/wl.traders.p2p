@@ -114,4 +114,21 @@ class CascadeProviderLog extends Model
             default => $operation,
         };
     }
+
+    /**
+     * Тело ответа провайдера для колонки лога: буквальный JSON из HTTP, если адаптер кладёт его в {@see $adapterPayload}['raw'].
+     *
+     * @param  array<string, mixed>|null  $adapterPayload  Возврат метода адаптера (нормализованные поля + опционально raw).
+     * @return array<string, mixed>|null
+     */
+    public static function literalHttpJsonForLog(?array $adapterPayload): ?array
+    {
+        if ($adapterPayload === null) {
+            return null;
+        }
+
+        $raw = $adapterPayload['raw'] ?? null;
+
+        return is_array($raw) ? $raw : $adapterPayload;
+    }
 }

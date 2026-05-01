@@ -741,7 +741,7 @@ class CascadeService implements CascadeServiceContract
             'method' => $method,
             'url' => $url,
             'request_payload' => $requestPayload,
-            'response_payload' => $responsePayload,
+            'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
             'execution_time' => round(microtime(true) - $startedAt, 4),
             'is_successful' => $isSuccessful,
             'error_code' => $errorCode,
