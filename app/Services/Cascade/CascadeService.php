@@ -570,19 +570,23 @@ class CascadeService implements CascadeServiceContract
 
         $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $cascadeProvider, $callback_data);
 
-        DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): void {
+        $should_send_callback = DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): bool {
             $from_status = $cascade_deal->status?->value;
             $from_sub_status = $cascade_deal->sub_status?->value;
+            $should_send_callback = false;
 
             if (
                 (! $cascade_transaction && $cascade_deal->selected_transaction_id === null)
                 || $cascade_deal->selected_transaction_id === $cascade_transaction?->id
             ) {
                 $attributes = $this->callbackCascadeDealAttributes($cascade_deal, $cascadeProvider, $callback_data);
-                $cascade_deal->update($attributes);
+                $cascade_deal->fill($attributes);
+                $should_send_callback = $cascade_deal->isDirty($this->cascadeDealCallbackAttributes());
+                $amount_changed = $cascade_deal->isDirty('amount');
+                $cascade_deal->save();
 
                 if (
-                    array_key_exists('amount', $attributes)
+                    $amount_changed
                     && $cascadeProvider->provider_type->equals(ProviderType::EXTERNAL)
                 ) {
                     app(CascadeProviderCollateralService::class)->replaceForAmountChange(
@@ -613,6 +617,8 @@ class CascadeService implements CascadeServiceContract
                     ),
                 ]);
             }
+
+            return $should_send_callback;
         });
 
         CascadeProviderLog::create([
@@ -628,7 +634,9 @@ class CascadeService implements CascadeServiceContract
             'is_successful' => true,
         ]);
 
-        SendCascadeDealCallbackJob::dispatch($cascade_deal->refresh());
+        if ($should_send_callback) {
+            SendCascadeDealCallbackJob::dispatch($cascade_deal->refresh());
+        }
 
         return [];
     }
@@ -1226,6 +1234,31 @@ class CascadeService implements CascadeServiceContract
         }
 
         return $attributes;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function cascadeDealCallbackAttributes(): array
+    {
+        return [
+            'amount',
+            'conversion_price',
+            'credit',
+            'details',
+            'dispute_canceled_at',
+            'dispute_reason',
+            'dispute_status',
+            'finished_at',
+            'gateway',
+            'manual_control',
+            'market',
+            'payment_method',
+            'rate_fixed_at',
+            'status',
+            'sub_status',
+            'usdt_amount',
+        ];
     }
 
     /**
