@@ -30,7 +30,6 @@ todo.md
 .psysh
 payout_system_spec.md
 storage/p2p-bridge.apk
-TZ_Cascade_External_Liquidity.md
 logos.zip
 d.pdf
 IMG_5172.MP4
@@ -38,13 +37,9 @@ tz.pdf
 blacklist_full_implementation_guide.md
 deal-integration.md
 SECURITY_AUDIT.md
-cascade_requirements.md
-cascade_progress.md
 basedb.sql
 img.png
 quazi.txt
 .nvmrc
 traderMath.txt
-cascade_full_description.md
 mock-processing.md
-cascade_audit_report.md
