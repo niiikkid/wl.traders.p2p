@@ -11,6 +11,25 @@ use App\Services\Cascade\CascadeDealSyncService;
 
 class OrderObserver
 {
+    /**
+     * @var array<int, string>
+     */
+    private const CASCADE_SYNC_RELEVANT_FIELDS = [
+        'amount',
+        'total_profit',
+        'merchant_profit',
+        'service_profit',
+        'market',
+        'conversion_price',
+        'rate_fixed_at',
+        'status',
+        'sub_status',
+        'manual_control_acquiring',
+        'manual_control_confirmation_type',
+        'manual_control_reject_reason',
+        'finished_at',
+    ];
+
     public $afterCommit = true;
 
     /**
@@ -32,7 +51,9 @@ class OrderObserver
             ->exists();
 
         if ($cascadeDealExists) {
-            app(CascadeDealSyncService::class)->syncFromInternalOrder($order);
+            if ($this->hasCascadeSyncRelevantChanges($order)) {
+                app(CascadeDealSyncService::class)->syncFromInternalOrder($order);
+            }
 
             return;
         }
@@ -64,5 +85,12 @@ class OrderObserver
     public function forceDeleted(Order $order): void
     {
         //
+    }
+
+    private function hasCascadeSyncRelevantChanges(Order $order): bool
+    {
+        $changes = array_keys($order->getChanges());
+
+        return (bool) array_intersect($changes, self::CASCADE_SYNC_RELEVANT_FIELDS);
     }
 }

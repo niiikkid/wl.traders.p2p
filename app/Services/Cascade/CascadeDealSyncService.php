@@ -11,6 +11,7 @@ use App\Enums\CascadeDisputeStatus;
 use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
+use App\Http\Resources\API\V2\OrderResource;
 use App\Jobs\SendCascadeDealCallbackJob;
 use App\Models\CascadeDeal;
 use App\Models\Order;
@@ -26,12 +27,15 @@ class CascadeDealSyncService
     public function syncFromInternalOrder(Order $order): ?CascadeDeal
     {
         $deal = CascadeDeal::query()
+            ->with('merchant')
             ->where('order_id', $order->id)
             ->first();
 
         if (! $deal) {
             return null;
         }
+
+        $beforeCallbackPayload = $this->buildCallbackPayloadSnapshot($deal);
 
         $deal = DB::transaction(function () use ($deal, $order): CascadeDeal {
             $deal->refresh();
@@ -98,7 +102,11 @@ class CascadeDealSyncService
             return $deal->refresh();
         });
 
-        SendCascadeDealCallbackJob::dispatch($deal);
+        $afterCallbackPayload = $this->buildCallbackPayloadSnapshot($deal->loadMissing('merchant'));
+
+        if ($beforeCallbackPayload !== $afterCallbackPayload) {
+            SendCascadeDealCallbackJob::dispatch($deal);
+        }
 
         return $deal;
     }
@@ -134,5 +142,17 @@ class CascadeDealSyncService
             DisputeStatus::CANCELED->value => CascadeDisputeStatus::REJECTED,
             default => null,
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildCallbackPayloadSnapshot(CascadeDeal $deal): array
+    {
+        $payload = OrderResource::make($deal)->resolve();
+
+        unset($payload['current_server_time']);
+
+        return $payload;
     }
 }
