@@ -12,7 +12,9 @@ const sections = [
     { id: 'auth', title: 'Авторизация' },
     { id: 'responses', title: 'Ответы' },
     { id: 'endpoints', title: 'Эндпоинты' },
+    { id: 'lists', title: 'Списки' },
     { id: 'payin', title: 'Payin' },
+    { id: 'disputes', title: 'Disputes' },
     { id: 'payout', title: 'Payout' },
     { id: 'callbacks', title: 'Callbacks' },
 ];
@@ -39,17 +41,26 @@ const endpoints = [
     { method: 'GET', path: '/api/v2/payout/{payout_id}/receipts', description: 'Получение чеков выплаты в base64.' },
 ];
 
+const listQueryFields = [
+    { name: 'merchant_id', type: 'string', required: false, description: 'UUID мерчанта. Обычно совпадает с мерчантом API token; удобно, если у пользователя есть доступ к нескольким магазинам.' },
+    { name: 'page', type: 'integer', required: false, description: 'Номер страницы, минимум 1.' },
+    { name: 'per_page', type: 'integer', required: false, description: 'Количество записей на странице: от 1 до 100. По умолчанию 20.' },
+    { name: 'sort', type: 'string', required: false, description: 'new или old. По умолчанию new: новые записи первыми.' },
+];
+
 const payinFields = [
-    { name: 'merchant_id', type: 'string', required: true, description: 'UUID мерчанта.' },
-    { name: 'external_id', type: 'string', required: true, description: 'Уникальный ID сделки в вашей системе.' },
+    { name: 'merchant_id', type: 'string', required: true, description: 'UUID магазина/мерчанта. Он должен быть доступен API token, с которым вы выполняете запрос.' },
+    { name: 'external_id', type: 'string', required: true, description: 'Уникальный ID сделки в вашей системе, максимум 255 символов. Повторное создание с тем же external_id для одного мерчанта вернёт ошибку.' },
     { name: 'amount', type: 'integer', required: true, description: 'Сумма сделки, целое положительное значение.' },
     { name: 'currency', type: 'string', required: true, description: 'Код валюты, например rub.' },
     { name: 'payin_method', type: 'string', required: true, description: 'card, sbp, mobile_commerce, iban_uah или e-com.' },
-    { name: 'callback_url', type: 'string', required: false, description: 'URL для callback по этой сделке. Если не указан, используется URL из настроек мерчанта.' },
-    { name: 'client_id', type: 'string', required: false, description: 'ID клиента в вашей системе.' },
-    { name: 'exchange_rate', type: 'decimal', required: false, description: 'Обязателен, если для GEO выбран источник курса merchant_api; иначе поле недоступно.' },
+    { name: 'callback_url', type: 'string', required: false, description: 'HTTPS URL для callback по этой сделке, максимум 256 символов. Если не указан, используется URL из настроек мерчанта.' },
+    { name: 'client_id', type: 'string', required: false, description: 'ID клиента в вашей системе, максимум 255 символов.' },
+    { name: 'exchange_rate', type: 'decimal', required: false, description: 'Курс фиата за 1 USDT. Обязателен, если для GEO выбран merchant_api; иначе поле нельзя передавать.' },
     { name: 'manual_acquiring', type: 'boolean', required: false, description: 'Включает ручной эквайринг. Допустим только payin_method card.' },
-    { name: 'card_number, card_expiry_month, card_expiry_year, cvc', type: 'string/integer', required: false, description: 'Обязательны только при manual_acquiring=true.' },
+    { name: 'card_number', type: 'string', required: false, description: 'Обязателен только при manual_acquiring=true. После удаления нецифровых символов должно остаться 12–19 цифр.' },
+    { name: 'card_expiry_month, card_expiry_year, cvc', type: 'integer/string', required: false, description: 'Обязательны только при manual_acquiring=true. Месяц 1–12, год 2000–2999, cvc до 20 символов.' },
+    { name: 'card_holder_name', type: 'string', required: false, description: 'Опционально только при manual_acquiring=true, максимум 255 символов.' },
 ];
 
 const payinMethods = [
@@ -75,17 +86,23 @@ const payinSubStatuses = [
     { value: 'canceled_by_dispute', description: 'Сделка отменена по результату спора.' },
 ];
 
+const disputeStatuses = [
+    { value: 'opened', description: 'Спор открыт и ожидает решения.' },
+    { value: 'accepted', description: 'Спор принят, сделка засчитана в пользу мерчанта.' },
+    { value: 'rejected', description: 'Спор отклонён.' },
+];
+
 const payoutFields = [
-    { name: 'merchant_id', type: 'string', required: true, description: 'UUID мерчанта.' },
-    { name: 'external_id', type: 'string', required: true, description: 'Уникальный ID выплаты в вашей системе.' },
+    { name: 'merchant_id', type: 'string', required: true, description: 'UUID магазина/мерчанта. Он должен быть доступен API token, с которым вы выполняете запрос.' },
+    { name: 'external_id', type: 'string', required: true, description: 'Уникальный ID выплаты в вашей системе, максимум 255 символов.' },
     { name: 'amount', type: 'integer', required: true, description: 'Сумма выплаты, целое положительное значение.' },
     { name: 'currency', type: 'string', required: true, description: 'Код валюты, например rub.' },
     { name: 'payout_method', type: 'string', required: true, description: 'sbp или card.' },
-    { name: 'payout_details', type: 'string', required: true, description: 'Реквизиты получателя: телефон, карта или другое значение метода.' },
-    { name: 'recipient_name', type: 'string', required: true, description: 'Имя получателя.' },
+    { name: 'payout_details', type: 'string', required: true, description: 'Реквизиты получателя: телефон, карта или другое значение метода, максимум 255 символов.' },
+    { name: 'recipient_name', type: 'string', required: true, description: 'Имя получателя, максимум 255 символов.' },
     { name: 'bank_name', type: 'string', required: false, description: 'Название банка, до 30 символов.' },
-    { name: 'callback_url', type: 'string', required: false, description: 'URL для callback по этой выплате. Если не указан, используется URL из настроек мерчанта.' },
-    { name: 'exchange_rate', type: 'decimal', required: false, description: 'Обязателен, если для GEO выбран источник курса merchant_api; иначе поле недоступно.' },
+    { name: 'callback_url', type: 'string', required: false, description: 'HTTPS URL для callback по этой выплате, максимум 256 символов. Если не указан, используется URL из настроек мерчанта.' },
+    { name: 'exchange_rate', type: 'decimal', required: false, description: 'Курс фиата за 1 USDT. Обязателен, если для GEO выбран merchant_api; иначе поле нельзя передавать.' },
 ];
 
 const payoutMethods = [
@@ -228,6 +245,66 @@ const payoutResponse = {
     },
 };
 
+const currencyResponse = {
+    success: true,
+    data: [
+        { currency: 'rub', precision: 2, symbol: '₽', name: 'Russian Ruble' },
+        { currency: 'usdt', precision: 8, symbol: 'USDT', name: 'Tether USD' },
+    ],
+};
+
+const balanceResponse = {
+    success: true,
+    data: {
+        balance: '1250.50',
+    },
+};
+
+const confirmationCodeRequest = {
+    confirmation_code: '123456',
+};
+
+const confirmationCodeResponse = {
+    success: true,
+    data: {
+        payin_id: '7e2b4b44-36b9-44a9-8b61-8d4100b166e1',
+        status: 'queued',
+    },
+};
+
+const disputeRequest = {
+    receipts: [
+        'JVBERi0xLjQKJc...',
+        'iVBORw0KGgoAAA...',
+    ],
+};
+
+const disputeResponse = {
+    success: true,
+    data: {
+        payin_id: '7e2b4b44-36b9-44a9-8b61-8d4100b166e1',
+        status: 'opened',
+        reason: null,
+        canceled_at: null,
+    },
+};
+
+const receiptsResponse = {
+    success: true,
+    data: {
+        payout_id: 'f0fbb6e3-e1a2-44f1-b3b5-8ea9f307ef8d',
+        receipts: [
+            {
+                receipt_id: 123,
+                filename: 'receipt.pdf',
+                mime_type: 'application/pdf',
+                size: 18542,
+                base64: 'JVBERi0xLjQKJc...',
+            },
+        ],
+    },
+};
+
 const responseExamples = [
     {
         title: 'Успешный ответ',
@@ -240,6 +317,11 @@ const responseExamples = [
         code: formatJSON({ success: false, message: 'Описание ошибки' }),
     },
     {
+        title: 'Неверный API token',
+        httpCode: 400,
+        code: formatJSON({ success: false, message: 'Invalid Access Token.' }),
+    },
+    {
         title: 'Ошибка валидации',
         httpCode: 422,
         code: formatJSON({ message: 'The given data was invalid.', errors: { external_id: ['Поле external_id обязательно.'] } }),
@@ -249,11 +331,9 @@ const responseExamples = [
         httpCode: 200,
         code: formatJSON({
             success: true,
-            data: {
-                data: [{ id: 'uuid', status: 'pending' }],
-                links: { first: 'https://example.com/api/v2/payin?page=1', last: 'https://example.com/api/v2/payin?page=1', prev: null, next: null },
-                meta: { current_page: 1, per_page: 20, total: 1 },
-            },
+            data: [{ id: 'uuid', status: 'pending' }],
+            links: { first: 'https://example.com/api/v2/payin?page=1', last: 'https://example.com/api/v2/payin?page=1', prev: null, next: null },
+            meta: { current_page: 1, per_page: 20, total: 1 },
         }),
     },
     {
@@ -306,6 +386,7 @@ response = requests.post(
     json=payload,
     headers={
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
         'Access-Token': 'YOUR_API_V2_TOKEN',
     },
     timeout=15,
@@ -369,7 +450,11 @@ payload = ${formatJSON(payoutRequest)}
 response = requests.post(
     'https://example.com/api/v2/payout',
     json=payload,
-    headers={'Accept': 'application/json', 'Access-Token': 'YOUR_API_V2_TOKEN'},
+    headers={
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Access-Token': 'YOUR_API_V2_TOKEN',
+    },
     timeout=15,
 )
 
@@ -469,6 +554,28 @@ console.log(await response.json());`,
                             </div>
 
                             <div class="rounded-xl border border-base-300 bg-base-200/60 p-4 text-sm">
+                                <h3 class="mb-2 font-semibold">Что такое payin в API v2</h3>
+                                <p class="text-base-content/70">
+                                    Payin в API v2 — это каскадная сделка. Вы отправляете один запрос в
+                                    <code class="rounded bg-base-300 px-1">/api/v2/payin</code>, а система сама выбирает внутреннего
+                                    или внешнего провайдера. Некоторые операции с внешним провайдером выполняются через очередь,
+                                    поэтому финальное изменение статуса может прийти позже в callback.
+                                </p>
+                            </div>
+
+                            <div class="rounded-xl border border-base-300 bg-base-200/60 p-4 text-sm">
+                                <h3 class="mb-2 font-semibold">Суммы, валюты и курс</h3>
+                                <p class="text-base-content/70">
+                                    В запросах поле <code class="rounded bg-base-300 px-1">amount</code> передаётся целым положительным числом.
+                                    Коды валют берите из <code class="rounded bg-base-300 px-1">GET /api/v2/currencies</code>.
+                                    В ответах суммы возвращаются строками в <code class="rounded bg-base-300 px-1">amounts.*.value</code>,
+                                    а код валюты — в верхнем регистре. Если для GEO выбран источник курса
+                                    <code class="rounded bg-base-300 px-1">merchant_api</code>, передавайте
+                                    <code class="rounded bg-base-300 px-1">exchange_rate</code> как курс фиата за 1 USDT; иначе это поле передавать нельзя.
+                                </p>
+                            </div>
+
+                            <div class="rounded-xl border border-base-300 bg-base-200/60 p-4 text-sm">
                                 <h3 class="mb-2 font-semibold">Формат времени</h3>
                                 <p class="text-base-content/70">
                                     Все поля времени в API передаются в формате ISO 8601 (RFC 3339), например
@@ -489,6 +596,10 @@ console.log(await response.json());`,
                             <pre class="overflow-x-auto rounded-xl bg-base-300 p-4 text-sm"><code>Accept: application/json
 Content-Type: application/json
 Access-Token: YOUR_API_V2_TOKEN</code></pre>
+                            <p class="text-sm leading-6 text-base-content/70">
+                                Если токен отсутствует, неверный или относится к архивному пользователю, API вернёт
+                                <code class="rounded bg-base-200 px-1">{ success: false, message: 'Invalid Access Token.' }</code>.
+                            </p>
                         </div>
                     </article>
 
@@ -533,13 +644,70 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                         </div>
                     </article>
 
+                    <article v-if="activeTab === 'lists'" id="lists" class="card bg-base-100 shadow-sm ring-1 ring-base-300">
+                        <div class="card-body gap-5">
+                            <h2 class="card-title">Списки, валюты и баланс</h2>
+                            <section class="space-y-3">
+                                <h3 class="font-semibold">Параметры списков payin и payout</h3>
+                                <p class="text-sm text-base-content/70">
+                                    Эти query-параметры поддерживаются в
+                                    <code class="rounded bg-base-200 px-1">GET /api/v2/payin</code> и
+                                    <code class="rounded bg-base-200 px-1">GET /api/v2/payout</code>.
+                                </p>
+                                <div class="overflow-x-auto">
+                                    <table class="table table-sm">
+                                        <thead>
+                                        <tr>
+                                            <th>Параметр</th>
+                                            <th>Тип</th>
+                                            <th>Обязательный</th>
+                                            <th>Описание</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr v-for="field in listQueryFields" :key="field.name">
+                                            <td><code class="rounded bg-base-200 px-2 py-1">{{ field.name }}</code></td>
+                                            <td>{{ field.type }}</td>
+                                            <td>
+                                                <span class="badge badge-sm" :class="field.required ? 'badge-error' : 'badge-ghost'">
+                                                    {{ field.required ? 'Да' : 'Нет' }}
+                                                </span>
+                                            </td>
+                                            <td class="min-w-72 text-base-content/70">{{ field.description }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <div class="grid gap-4 lg:grid-cols-2">
+                                <section>
+                                    <h3 class="mb-2 font-semibold">GET /api/v2/currencies</h3>
+                                    <p class="mb-2 text-sm text-base-content/70">
+                                        Используйте этот метод, чтобы проверить доступные коды валют и точность значений.
+                                    </p>
+                                    <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(currencyResponse) }}</code></pre>
+                                </section>
+                                <section>
+                                    <h3 class="mb-2 font-semibold">GET /api/v2/wallet/balance</h3>
+                                    <p class="mb-2 text-sm text-base-content/70">
+                                        Возвращает доступный баланс merchant-кошелька.
+                                    </p>
+                                    <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(balanceResponse) }}</code></pre>
+                                </section>
+                            </div>
+                        </div>
+                    </article>
+
                     <article v-if="activeTab === 'payin'" id="payin" class="card bg-base-100 shadow-sm ring-1 ring-base-300">
                         <div class="card-body gap-5">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <h2 class="card-title">Payin</h2>
                                     <p class="mt-2 text-sm text-base-content/70">
-                                    Payin-сделка создаётся через <code class="rounded bg-base-200 px-1">POST /api/v2/payin</code>.
+                                        Payin-сделка создаётся через <code class="rounded bg-base-200 px-1">POST /api/v2/payin</code>.
+                                        Поле <code class="rounded bg-base-200 px-1">id</code> в ответе — это UUID каскадной сделки;
+                                        используйте его в путях <code class="rounded bg-base-200 px-1">/payin/{payin_id}</code>.
                                     </p>
                                 </div>
                                 <button
@@ -608,6 +776,11 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                             </div>
                                         </div>
                                     </div>
+                                    <p class="text-sm text-base-content/70">
+                                        Значения <code class="rounded bg-base-300 px-1">cancelled</code> и
+                                        <code class="rounded bg-base-300 px-1">canceled_by_dispute</code> отличаются намеренно:
+                                        первое означает обычную отмену, второе — отмену по результату спора.
+                                    </p>
                                 </div>
 
                                 <div class="grid gap-4 lg:grid-cols-2">
@@ -629,6 +802,8 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                             <code class="rounded bg-base-300 px-1">payin_method=card</code>. В этом режиме вы передаёте карточные данные,
                                             а в ответе поле <code class="rounded bg-base-300 px-1">payin_details</code> будет <code class="rounded bg-base-300 px-1">null</code>,
                                             а <code class="rounded bg-base-300 px-1">manual_acquiring</code> показывает тип подтверждения или причину отказа.
+                                            Если требуется OTP/код подтверждения, отправьте его в
+                                            <code class="rounded bg-base-300 px-1">POST /api/v2/payin/{payin_id}/confirmation-code</code>.
                                         </p>
                                     </div>
                                     <div class="grid gap-4 lg:grid-cols-2">
@@ -639,6 +814,16 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                         <section>
                                             <h4 class="mb-2 text-sm font-semibold">Ответ</h4>
                                             <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(manualAcquiringResponse) }}</code></pre>
+                                        </section>
+                                    </div>
+                                    <div class="grid gap-4 lg:grid-cols-2">
+                                        <section>
+                                            <h4 class="mb-2 text-sm font-semibold">Передача кода подтверждения</h4>
+                                            <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(confirmationCodeRequest) }}</code></pre>
+                                        </section>
+                                        <section>
+                                            <h4 class="mb-2 text-sm font-semibold">Ответ</h4>
+                                            <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(confirmationCodeResponse) }}</code></pre>
                                         </section>
                                     </div>
                                 </section>
@@ -653,13 +838,64 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                         </div>
                     </article>
 
+                    <article v-if="activeTab === 'disputes'" id="disputes" class="card bg-base-100 shadow-sm ring-1 ring-base-300">
+                        <div class="card-body gap-5">
+                            <div>
+                                <h2 class="card-title">Disputes</h2>
+                                <p class="mt-2 text-sm text-base-content/70">
+                                    Спор открывается по payin-сделке через
+                                    <code class="rounded bg-base-200 px-1">POST /api/v2/payin/{payin_id}/dispute</code>.
+                                    Отмены спора со стороны мерчанта в API v2 нет: после открытия спор должен быть обработан трейдером
+                                    или внешним провайдером.
+                                </p>
+                            </div>
+
+                            <div class="space-y-3 rounded-xl border border-base-300 bg-base-200/60 p-4">
+                                <div class="text-sm">
+                                    <div class="mb-2 font-semibold">Статусы спора</div>
+                                    <div class="space-y-1.5">
+                                        <div v-for="status in disputeStatuses" :key="status.value" class="flex flex-wrap items-start gap-2">
+                                            <code class="rounded bg-base-300 px-2 py-0.5">{{ status.value }}</code>
+                                            <span class="text-base-content/70">{{ status.description }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-sm text-base-content/70">
+                                    В объекте payin поле <code class="rounded bg-base-300 px-1">dispute.canceled_at</code> приходит в ISO 8601,
+                                    а в ответах эндпоинта спора <code class="rounded bg-base-300 px-1">canceled_at</code> может быть Unix timestamp
+                                    или <code class="rounded bg-base-300 px-1">null</code>.
+                                </p>
+                            </div>
+
+                            <section class="space-y-3">
+                                <h3 class="font-semibold">Тело запроса</h3>
+                                <p class="text-sm text-base-content/70">
+                                    Передавайте JSON с массивом <code class="rounded bg-base-200 px-1">receipts</code>.
+                                    Каждый элемент — base64-строка файла jpeg, jpg, png или pdf; лимит на один файл — 5120 KB.
+                                </p>
+                                <div class="grid gap-4 lg:grid-cols-2">
+                                    <section>
+                                        <h4 class="mb-2 text-sm font-semibold">Запрос</h4>
+                                        <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(disputeRequest) }}</code></pre>
+                                    </section>
+                                    <section>
+                                        <h4 class="mb-2 text-sm font-semibold">Ответ</h4>
+                                        <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(disputeResponse) }}</code></pre>
+                                    </section>
+                                </div>
+                            </section>
+                        </div>
+                    </article>
+
                     <article v-if="activeTab === 'payout'" id="payout" class="card bg-base-100 shadow-sm ring-1 ring-base-300">
                         <div class="card-body gap-5">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <h2 class="card-title">Payout</h2>
                                     <p class="mt-2 text-sm text-base-content/70">
-                                    Выплата создаётся через <code class="rounded bg-base-200 px-1">POST /api/v2/payout</code>.
+                                        Выплата создаётся через <code class="rounded bg-base-200 px-1">POST /api/v2/payout</code>.
+                                        Для выплаты нет отдельного <code class="rounded bg-base-200 px-1">sub_status</code> — ориентируйтесь на поле
+                                        <code class="rounded bg-base-200 px-1">status</code>.
                                     </p>
                                 </div>
                                 <button
@@ -740,6 +976,26 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                         <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(payoutResponse) }}</code></pre>
                                     </section>
                                 </div>
+
+                                <section class="space-y-3 rounded-xl border border-base-300 bg-base-200/60 p-4">
+                                    <div>
+                                        <h3 class="font-semibold">Чеки выплаты</h3>
+                                        <p class="mt-1 text-sm text-base-content/70">
+                                            Если в объекте выплаты поле <code class="rounded bg-base-300 px-1">receipts_url</code> не равно
+                                            <code class="rounded bg-base-300 px-1">null</code>, по нему можно получить чеки в base64.
+                                            Если чеков нет или файл не найден, API вернёт ошибку 404.
+                                        </p>
+                                    </div>
+                                    <pre class="max-h-96 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(receiptsResponse) }}</code></pre>
+                                </section>
+
+                                <div role="alert" class="alert alert-info py-3 text-sm">
+                                    <span>
+                                        При отмене выплаты <code class="font-bold px-1">PATCH /api/v2/payout/{payout_id}/cancel</code>
+                                        ответ содержит поле <code class="font-bold px-1">message</code> и обновлённый объект выплаты в
+                                        <code class="font-bold px-1">data</code>.
+                                    </span>
+                                </div>
                             </template>
 
                             <section v-else class="space-y-3">
@@ -769,10 +1025,10 @@ Access-Token: YOUR_CALLBACK_TOKEN</code></pre>
                                     <h3 class="mb-2 font-semibold">Ожидаемый ответ</h3>
                                     <p class="text-sm text-base-content/70">
                                         Верните любой HTTP 2xx, если уведомление принято. Ответ сохраняется в логах callback.
+                                        Если вернуть не-2xx или запрос завершится ошибкой, callback может быть отправлен повторно.
                                     </p>
                                 </div>
                             </div>
-
                             <section class="space-y-3">
                                 <h3 class="font-semibold">Payin callback</h3>
                                 <p class="text-sm text-base-content/70">
