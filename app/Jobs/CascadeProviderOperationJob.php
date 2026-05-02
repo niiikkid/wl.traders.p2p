@@ -10,7 +10,6 @@ use App\Enums\CascadeDealStatus;
 use App\Enums\CascadeDealSubStatus;
 use App\Enums\CascadeTransactionStatus;
 use App\Exceptions\CascadeException;
-use App\Jobs\SendCascadeDealCallbackJob;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\CascadeProviderLog;
@@ -26,7 +25,12 @@ class CascadeProviderOperationJob implements ShouldQueue
 
     public int $timeout = 10;
 
-    public int $tries = 1;
+    public int $tries = 6;
+
+    /**
+     * @var list<int>
+     */
+    public array $backoff = [3, 5, 10, 30, 60];
 
     /**
      * @param  array<string, mixed>  $payload
