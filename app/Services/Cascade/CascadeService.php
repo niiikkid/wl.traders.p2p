@@ -1051,7 +1051,7 @@ class CascadeService implements CascadeServiceContract
             'debit' => $order?->total_profit ?? Money::fromPrecision('0', 'USDT'),
             'credit' => $order?->merchant_profit ?? Money::fromPrecision('0', 'USDT'),
             'service_profit' => $order?->service_profit ?? Money::fromPrecision('0', 'USDT'),
-            'usdt_amount' => $order?->merchant_profit ?? Money::fromPrecision('0', 'USDT'),
+            'usdt_amount' => $order?->total_profit,
             'fee' => null,
             'fee_rate' => null,
             'market' => $order?->market ?? $cascade_deal->market,

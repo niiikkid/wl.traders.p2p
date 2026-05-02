@@ -38,7 +38,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Money|null $debit Сумма, получаемая от провайдера ликвидности в USDT
  * @property Money|null $credit Сумма, выплачиваемая мерчанту в USDT
  * @property Money|null $service_profit Прибыль сервиса за операцию в USDT (debit - credit)
- * @property Money|null $usdt_amount Сумма amount после конвертации по курсу в USDT
+ * @property Money|null $usdt_amount Внешний провайдер: сумма после конвертации по курсу в USDT. Внутренний: {@see Order::$total_profit} в USDT.
  * @property Money|null $fee Комиссия, забираемая у мерчанта в USDT
  * @property float|null $fee_rate Комиссия в процентах, забираемая у мерчанта
  * @property MarketEnum $market Рынок (bybit, binance, rapira)
