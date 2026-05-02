@@ -28,7 +28,6 @@
 
 Основные риски сейчас:
 
-- создание PayIn не является надёжно идемпотентным по `merchant_id + external_id`;
 - `pending external_id` lock может залипать на 1 час после невалидного запроса;
 - часть внешних операций возвращает клиенту успех/queued, но не обновляет `CascadeDeal` после выполнения job;
 - у внутреннего провайдера расходится семантика `usdt_amount`;
@@ -51,7 +50,13 @@
 
 ## 4. Findings
 
-### CRITICAL-1. Создание PayIn не защищено уникальным индексом по `merchant_id + external_id`
+### CRITICAL-1. Создание PayIn не защищено уникальным индексом по `merchant_id + external_id` — **решено**
+
+**Сделано (2026-05-03):** миграция `database/migrations/2026_05_03_120000_add_unique_merchant_external_id_to_cascade_deals_table.php` — колонка `external_id` объявлена обязательной (`NOT NULL`), добавлен уникальный индекс `cascade_deals_merchant_id_external_id_unique` на `(merchant_id, external_id)`.
+
+---
+
+*Ниже — исходная формулировка аудита (2026-05-02).*
 
 Файлы:
 
@@ -74,11 +79,11 @@
 
 Дубли денежных обязательств, двойной race провайдеров, двойное занятие реквизитов/залогов, неоднозначный lookup по external ID.
 
-Рекомендация:
+Рекомендация (частично закрыта миграцией):
 
-- добавить уникальный индекс `(merchant_id, external_id)`;
-- перенести идемпотентность в сервис/транзакцию;
-- повторный create с тем же external ID должен возвращать существующую сделку или стабильный `409 Conflict`, а не создавать новую.
+- ~~добавить уникальный индекс `(merchant_id, external_id)`~~ — **сделано**;
+- перенести идемпотентность в сервис/транзакцию — опционально;
+- повторный create с тем же external ID должен возвращать существующую сделку или стабильный `409 Conflict`, а не создавать новую — опционально (при экстремальной гонке возможна ошибка БД вместо «мягкого» ответа).
 
 ### CRITICAL-2. `pending external_id` lock ставится во время validation и может залипнуть на 1 час
 
@@ -105,7 +110,7 @@ Closure для `external_id` вызывает `Cache::put($pending_key, true, 60
 - не ставить pending lock в validation closure;
 - ставить lock в `CascadeService::createDeal()` после полной валидации;
 - снимать lock в `finally`;
-- защитить БД уникальным индексом из CRITICAL-1.
+- защитить БД уникальным индексом из CRITICAL-1 *(реализовано в миграции 2026_05_03)*.
 
 ### HIGH-1. Внутренний провайдер записывает неверную семантику `usdt_amount`
 
@@ -657,7 +662,7 @@ Callback lock защищает от одновременной отправки,
 
 ## 6. Рекомендуемый Порядок Исправлений
 
-1. Исправить idempotency create: unique index `(merchant_id, external_id)`, убрать pending lock из validation, добавить service-level lock/finally.
+1. ~~Исправить idempotency create: unique index `(merchant_id, external_id)`~~ — **сделано** (миграция 2026_05_03); осталось по желанию: убрать pending lock из validation, добавить service-level lock/finally.
 2. Унифицировать `usdt_amount` для internal/external и вынести маппинг экономики в один метод.
 3. Доработать `CascadeProviderOperationJob`: update `CascadeDeal` после external cancel/dispute/confirmation, retry/backoff, event, callback.
 4. Исправить loser cancellation: retryable cancellation job и финальный статус ошибки отмены.
@@ -705,6 +710,7 @@ Callback lock защищает от одновременной отправки,
 - `app/Enums/CascadeTransactionStatus.php`
 - `app/Enums/CascadeDealEventType.php`
 - `database/migrations/2026_04_25_184020_create_cascade_deals_table.php`
+- `database/migrations/2026_05_03_120000_add_unique_merchant_external_id_to_cascade_deals_table.php`
 - `database/migrations/2026_04_25_184021_create_cascade_transactions_table.php`
 - `database/migrations/2026_04_25_184040_add_selected_transaction_foreign_key_to_cascade_deals_table.php`
 - `database/migrations/2026_04_28_000001_extend_cascade_deals_for_full_state.php`
@@ -715,6 +721,6 @@ Callback lock защищает от одновременной отправки,
 
 ## 8. Итог
 
-Текущая реализация уже содержит правильный каркас каскада, но ещё не полностью гарантирует финансовую и событийную консистентность. Главные исправления должны быть вокруг идемпотентного создания, единой экономики `CascadeDeal`, финализации external provider jobs и контроля callback idempotency.
+Текущая реализация уже содержит правильный каркас каскада, но ещё не полностью гарантирует финансовую и событийную консистентность. Главные исправления должны быть вокруг доведения идемпотентного создания (после уникального индекса в БД — см. CRITICAL-1), единой экономики `CascadeDeal`, финализации external provider jobs и контроля callback idempotency.
 
 До исправления CRITICAL/HIGH пунктов каскад лучше считать функционально рабочим прототипом, но не полностью безопасным контуром для денежного production-трафика.
