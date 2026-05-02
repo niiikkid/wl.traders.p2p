@@ -9,6 +9,17 @@ use Symfony\Component\HttpFoundation\File\File;
 
 class StoreRequest extends FormRequest
 {
+    private const int MAX_RECEIPTS_COUNT = 3;
+
+    private const int MAX_RECEIPT_SIZE_KB = 5120;
+
+    private const int MAX_BASE64_RECEIPT_LENGTH = 6990508;
+
+    /**
+     * @var list<string>
+     */
+    private array $temporaryFiles = [];
+
     public function authorize(): bool
     {
         return true;
@@ -17,9 +28,10 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'receipts' => ['required', 'array'],
+            'receipts' => ['required', 'array', 'max:3'],
             'receipts.*' => [
                 'required',
+                'file',
                 'mimes:jpeg,jpg,png,pdf',
                 'max:5120',
             ],
@@ -28,12 +40,31 @@ class StoreRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $receipts = collect((array) $this->input('receipts', []))
+        $receipts = (array) $this->input('receipts', []);
+
+        if (count($receipts) > self::MAX_RECEIPTS_COUNT) {
+            return;
+        }
+
+        $receipts = collect($receipts)
             ->map(function ($receipt) {
-                $fileData = base64_decode((string) $receipt);
+                if (! is_string($receipt) || mb_strlen($receipt) > self::MAX_BASE64_RECEIPT_LENGTH) {
+                    return $receipt;
+                }
+
+                $fileData = base64_decode($receipt, true);
+
+                if ($fileData === false) {
+                    return $receipt;
+                }
+
+                if (strlen($fileData) > self::MAX_RECEIPT_SIZE_KB * 1024) {
+                    return $receipt;
+                }
 
                 $tmpFilePath = sys_get_temp_dir().'/'.Str::uuid()->toString();
                 file_put_contents($tmpFilePath, $fileData);
+                $this->temporaryFiles[] = $tmpFilePath;
 
                 $tmpFile = new File($tmpFilePath);
 
@@ -47,6 +78,16 @@ class StoreRequest extends FormRequest
             })
             ->values()
             ->all();
+
+        if ($this->temporaryFiles !== []) {
+            register_shutdown_function(function (): void {
+                foreach ($this->temporaryFiles as $temporaryFile) {
+                    if (is_file($temporaryFile)) {
+                        @unlink($temporaryFile);
+                    }
+                }
+            });
+        }
 
         $this->merge([
             'receipts' => $receipts,
