@@ -1,0 +1,46 @@
+# dependencies
+vendor/
+node_modules/
+
+# runtime/cache
+storage/
+bootstrap/cache/
+public/build/
+public/hot
+
+# vcs/ide
+.git/
+.idea/
+.cursor/
+
+# generated / local
+graphify-out/
+.phpunit.result.cache
+.DS_Store
+.env
+.env.*
+!.env.example
+
+# heavy / irrelevant assets
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.pdf
+*.mp4
+*.mov
+*.zip
+*.apk
+*.lock
+
+# optional noisy docs
+blacklist_full_implementation_guide.md
+cascade_full_description.md
+cascade_progress.md
+cascade_requirements.md
+new_cascade_description.md
+deal-integration.md
+quazi.txt
+traderMath.txt
+SECURITY_AUDIT.md
