@@ -6,8 +6,10 @@ use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Models\MerchantApiRequestLog;
 use App\Models\MerchantApiStatistic;
 use App\Models\PaymentGateway;
+use App\Models\User;
 use App\Services\Money\Currency;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContract
@@ -147,5 +149,141 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             'sumBySuccessCurrencyTotal' => $sumBySuccessCurrencyTotal,
             'sumByFailedCurrencyTotal' => $sumByFailedCurrencyTotal,
         ];
+    }
+
+    public function getHourlyRequestsChart(Carbon $date, ?User $merchantUser = null, array $filters = []): array
+    {
+        $startDate = $date->copy()->startOfDay();
+        $endDate = $date->copy()->endOfDay();
+
+        $baseQuery = MerchantApiRequestLog::query()
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->when($merchantUser, function (Builder $query, User $user): void {
+                $query->whereRelation('merchant', 'user_id', $user->id);
+            });
+        $this->applyChartFilters($baseQuery, $filters);
+
+        $totalByHour = (clone $baseQuery)
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+            ->groupBy('hour')
+            ->pluck('aggregate', 'hour');
+
+        $successfulByHour = (clone $baseQuery)
+            ->where('is_successful', true)
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+            ->groupBy('hour')
+            ->pluck('aggregate', 'hour');
+
+        $labels = [];
+        $total = [];
+        $successful = [];
+
+        for ($hour = 0; $hour < 24; $hour++) {
+            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $total[] = (int) ($totalByHour[$hour] ?? 0);
+            $successful[] = (int) ($successfulByHour[$hour] ?? 0);
+        }
+
+        return [
+            'labels' => $labels,
+            'total' => $total,
+            'successful' => $successful,
+        ];
+    }
+
+    public function getAverageHourlyRequestsChart(array $weekdays, ?User $merchantUser = null, array $filters = []): array
+    {
+        $weekdays = collect($weekdays)
+            ->map(fn ($weekday) => (int) $weekday)
+            ->filter(fn (int $weekday): bool => $weekday >= 1 && $weekday <= 7)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($weekdays)) {
+            $weekdays = range(1, 7);
+        }
+
+        $baseQuery = MerchantApiRequestLog::query()
+            ->when($merchantUser, function (Builder $query, User $user): void {
+                $query->whereRelation('merchant', 'user_id', $user->id);
+            });
+        $this->applyChartFilters($baseQuery, $filters);
+
+        $firstLogDate = (clone $baseQuery)->min('created_at');
+        $startDate = $firstLogDate ? Carbon::parse($firstLogDate)->startOfDay() : now()->startOfDay();
+        $endDate = now()->endOfDay();
+        $daysCount = $this->countWeekdaysInRange($startDate, $endDate, $weekdays);
+
+        $weekdayList = implode(',', $weekdays);
+        $averageBaseQuery = (clone $baseQuery)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereRaw("WEEKDAY(created_at) + 1 in ({$weekdayList})");
+
+        $totalByHour = (clone $averageBaseQuery)
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+            ->groupBy('hour')
+            ->pluck('aggregate', 'hour');
+
+        $successfulByHour = (clone $averageBaseQuery)
+            ->where('is_successful', true)
+            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+            ->groupBy('hour')
+            ->pluck('aggregate', 'hour');
+
+        $labels = [];
+        $total = [];
+        $successful = [];
+
+        for ($hour = 0; $hour < 24; $hour++) {
+            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $total[] = round(((int) ($totalByHour[$hour] ?? 0)) / $daysCount, 2);
+            $successful[] = round(((int) ($successfulByHour[$hour] ?? 0)) / $daysCount, 2);
+        }
+
+        return [
+            'labels' => $labels,
+            'total' => $total,
+            'successful' => $successful,
+            'daysCount' => $daysCount,
+        ];
+    }
+
+    private function countWeekdaysInRange(Carbon $startDate, Carbon $endDate, array $weekdays): int
+    {
+        $selectedWeekdays = array_flip($weekdays);
+        $daysCount = 0;
+        $cursor = $startDate->copy()->startOfDay();
+        $end = $endDate->copy()->startOfDay();
+
+        while ($cursor->lte($end)) {
+            if (isset($selectedWeekdays[$cursor->dayOfWeekIso])) {
+                $daysCount++;
+            }
+
+            $cursor->addDay();
+        }
+
+        return max($daysCount, 1);
+    }
+
+    private function applyChartFilters(Builder $query, array $filters): void
+    {
+        if (! empty($filters['currency'])) {
+            $query->whereRaw('LOWER(currency) = ?', [strtolower((string) $filters['currency'])]);
+        }
+
+        if (($filters['amount_from'] ?? null) !== null && $filters['amount_from'] !== '') {
+            $query->whereRaw($this->normalizedAmountExpression() . ' >= ?', [(float) $filters['amount_from']]);
+        }
+
+        if (($filters['amount_to'] ?? null) !== null && $filters['amount_to'] !== '') {
+            $query->whereRaw($this->normalizedAmountExpression() . ' <= ?', [(float) $filters['amount_to']]);
+        }
+    }
+
+    private function normalizedAmountExpression(): string
+    {
+        return "CAST(REPLACE(REPLACE(amount, ' ', ''), ',', '.') AS DECIMAL(20, 8))";
     }
 }

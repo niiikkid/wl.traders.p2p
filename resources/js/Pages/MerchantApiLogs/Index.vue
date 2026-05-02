@@ -6,11 +6,12 @@ import DateTime from "@/Components/DateTime.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import {computed, ref} from "vue";
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import DisplayID from "@/Components/DisplayID.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal";
+import ApexCharts from 'apexcharts';
 
 const modalStore = useModalStore();
 const page = usePage();
@@ -18,6 +19,54 @@ const logs = usePage().props.logs;
 const canManageMerchantApiLogDeletion = computed(() => Boolean(page.props.can_manage_merchant_api_log_deletion));
 const expandedRows = ref({}); // Для отслеживания развернутых строк (desktop)
 const expandedCards = ref({}); // Для отслеживания развернутых карточек (mobile)
+const chart = ref(null);
+const apexChart = ref(null);
+const chartDate = ref(page.props.requestsChartDate || new Date().toISOString().slice(0, 10));
+const requestsChart = computed(() => page.props.requestsChart || {labels: [], total: [], successful: []});
+const chartMode = ref(page.props.requestsChartMode || 'day');
+const selectedWeekdays = ref((page.props.requestsChartWeekdays || [1, 2, 3, 4, 5, 6, 7]).map((weekday) => Number(weekday)));
+const chartFilters = computed(() => page.props.requestsChartFilters || {});
+const chartCurrencyOptions = computed(() => page.props.chartCurrencyOptions || []);
+const selectedChartCurrency = ref(chartFilters.value.currency || '');
+const chartAmountFrom = ref(chartFilters.value.amount_from ?? '');
+const chartAmountTo = ref(chartFilters.value.amount_to ?? '');
+const weekdayOptions = [
+    {value: 1, label: 'Пн'},
+    {value: 2, label: 'Вт'},
+    {value: 3, label: 'Ср'},
+    {value: 4, label: 'Чт'},
+    {value: 5, label: 'Пт'},
+    {value: 6, label: 'Сб'},
+    {value: 7, label: 'Вс'},
+];
+const averageDaysCount = computed(() => requestsChart.value.daysCount || 0);
+const selectedChartDateLabel = computed(() => {
+    const [year, month, day] = String(chartDate.value).split('-').map((item) => Number(item));
+    const date = new Date(year, month - 1, day);
+
+    if (Number.isNaN(date.getTime())) {
+        return '';
+    }
+
+    return new Intl.DateTimeFormat('ru-RU', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    }).format(date).replace('.', '');
+});
+const chartTitle = computed(() => chartMode.value === 'average' ? 'Средний день по часам' : 'Запросы по часам');
+const chartSubtitle = computed(() => {
+    if (chartMode.value === 'day') {
+        return selectedChartDateLabel.value;
+    }
+
+    return averageDaysCount.value > 0
+        ? `Среднее за ${averageDaysCount.value} дн.`
+        : 'Среднее за выбранные дни';
+});
+const formatChartValue = (value) => chartMode.value === 'average'
+    ? Number(value).toLocaleString('ru-RU', {maximumFractionDigits: 2})
+    : Math.round(value).toString();
 
 // Получение статистических данных из props
 const failedTotal = usePage().props.failedTotal;
@@ -92,6 +141,170 @@ const formatExecutionTime = (timeMs) => {
     }) + ' сек';
 }
 
+const parseIsoDate = (value) => {
+    const [year, month, day] = String(value).split('-').map((item) => Number(item));
+    const date = new Date(year, month - 1, day);
+
+    return Number.isNaN(date.getTime()) ? new Date() : date;
+};
+
+const formatDateToIso = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+};
+
+const navigateChartDate = (step) => {
+    const currentDate = parseIsoDate(chartDate.value);
+    const nextDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + step);
+    const nextChartDate = formatDateToIso(nextDate);
+
+    chartDate.value = nextChartDate;
+    reloadChart({chart_date: nextChartDate});
+};
+
+const reloadChart = (overrides = {}) => {
+    router.visit(route(route().current()), {
+        data: {
+            ...route().params,
+            chart_date: chartDate.value,
+            chart_mode: chartMode.value,
+            chart_weekdays: selectedWeekdays.value,
+            chart_currency: selectedChartCurrency.value || undefined,
+            chart_amount_from: chartAmountFrom.value || undefined,
+            chart_amount_to: chartAmountTo.value || undefined,
+            ...overrides,
+        },
+        replace: true,
+        preserveScroll: true,
+        preserveState: false,
+    });
+};
+
+const applyChartFilters = () => {
+    reloadChart();
+};
+
+const resetChartFilters = () => {
+    selectedChartCurrency.value = '';
+    chartAmountFrom.value = '';
+    chartAmountTo.value = '';
+    reloadChart({
+        chart_currency: undefined,
+        chart_amount_from: undefined,
+        chart_amount_to: undefined,
+    });
+};
+
+const switchChartMode = (mode) => {
+    if (chartMode.value === mode) {
+        return;
+    }
+
+    chartMode.value = mode;
+    reloadChart({chart_mode: mode});
+};
+
+const toggleWeekday = (weekday) => {
+    const selected = new Set(selectedWeekdays.value);
+
+    if (selected.has(weekday)) {
+        selected.delete(weekday);
+    } else {
+        selected.add(weekday);
+    }
+
+    if (selected.size === 0) {
+        selected.add(weekday);
+    }
+
+    selectedWeekdays.value = [...selected].sort((left, right) => left - right);
+    reloadChart({
+        chart_mode: 'average',
+        chart_weekdays: selectedWeekdays.value,
+    });
+};
+
+const renderChart = () => {
+    if (!chart.value) {
+        return;
+    }
+
+    if (!apexChart.value) {
+        apexChart.value = new ApexCharts(chart.value, {
+            chart: {
+                type: 'line',
+                height: 240,
+                toolbar: {show: false},
+                zoom: {enabled: false},
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3,
+            },
+            grid: {
+                borderColor: 'rgba(148, 163, 184, 0.2)',
+            },
+            dataLabels: {enabled: false},
+            markers: {
+                size: 0,
+                hover: {size: 4},
+            },
+            legend: {
+                position: 'top',
+                horizontalAlign: 'left',
+                labels: {
+                    colors: '#999',
+                },
+            },
+            tooltip: {
+                theme: 'dark',
+                y: {
+                    formatter: (value) => `${formatChartValue(value)} запросов`,
+                },
+            },
+            series: [],
+        });
+        apexChart.value.render();
+    }
+
+    apexChart.value.updateOptions({
+        series: [
+            {
+                name: chartMode.value === 'average' ? 'В среднем всего' : 'Всего запросов',
+                data: requestsChart.value.total,
+            },
+            {
+                name: chartMode.value === 'average' ? 'В среднем успешных' : 'Успешные запросы',
+                data: requestsChart.value.successful,
+            },
+        ],
+        xaxis: {
+            categories: requestsChart.value.labels,
+            labels: {
+                style: {
+                    colors: '#999',
+                },
+            },
+            axisBorder: {show: false},
+            axisTicks: {show: false},
+        },
+        yaxis: {
+            min: 0,
+            forceNiceScale: true,
+            labels: {
+                style: {
+                    colors: '#999',
+                },
+                formatter: formatChartValue,
+            },
+        },
+        colors: ['#ef4444', '#22c55e'],
+    }, false, false);
+};
+
 // Функция для переключения состояния развернутой строки (desktop)
 const toggleRow = (logId) => {
     expandedRows.value[logId] = !expandedRows.value[logId];
@@ -103,6 +316,39 @@ const toggleExpand = (logId) => {
 };
 
 defineOptions({ layout: AuthenticatedLayout })
+
+onMounted(() => {
+    nextTick(renderChart);
+});
+
+watch(requestsChart, () => {
+    nextTick(renderChart);
+}, {deep: true});
+
+watch(() => page.props.requestsChartDate, (value) => {
+    chartDate.value = value || chartDate.value;
+});
+
+watch(() => page.props.requestsChartMode, (value) => {
+    chartMode.value = value || chartMode.value;
+});
+
+watch(() => page.props.requestsChartWeekdays, (value) => {
+    selectedWeekdays.value = (value || selectedWeekdays.value).map((weekday) => Number(weekday));
+});
+
+watch(() => page.props.requestsChartFilters, (value) => {
+    selectedChartCurrency.value = value?.currency || '';
+    chartAmountFrom.value = value?.amount_from ?? '';
+    chartAmountTo.value = value?.amount_to ?? '';
+});
+
+onBeforeUnmount(() => {
+    if (apexChart.value) {
+        apexChart.value.destroy();
+        apexChart.value = null;
+    }
+});
 </script>
 
 <template>
@@ -224,6 +470,132 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </svg>
                                 </div>
                             </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card bg-base-100 shadow mt-4 pt-4 pb-7 px-6 pl-3">
+                        <div class="flex flex-col gap-3 pl-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div>
+                                <h3 class="text-base-content/70 text-lg">{{ chartTitle }}</h3>
+                                <p class="text-sm text-base-content/60">{{ chartSubtitle }}</p>
+                            </div>
+                            <div class="flex flex-col gap-2 sm:items-end">
+                                <div class="join join-horizontal">
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm join-item"
+                                        :class="chartMode === 'day' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
+                                        @click="switchChartMode('day')"
+                                    >
+                                        День
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm join-item"
+                                        :class="chartMode === 'average' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
+                                        @click="switchChartMode('average')"
+                                    >
+                                        Средний день
+                                    </button>
+                                </div>
+                                <div v-if="chartMode === 'day'" class="join join-horizontal items-center">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-ghost join-item"
+                                    @click="navigateChartDate(-1)"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <span class="join-item px-3 text-sm font-medium text-base-content min-w-36 text-center">
+                                    {{ selectedChartDateLabel }}
+                                </span>
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-ghost join-item"
+                                    @click="navigateChartDate(1)"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7-7 7" />
+                                    </svg>
+                                </button>
+                                </div>
+                                <div v-else class="flex flex-wrap gap-1 justify-start sm:justify-end">
+                                    <button
+                                        v-for="weekday in weekdayOptions"
+                                        :key="weekday.value"
+                                        type="button"
+                                        class="btn btn-xs"
+                                        :class="selectedWeekdays.includes(weekday.value) ? 'btn-primary' : 'btn-outline'"
+                                        @click="toggleWeekday(weekday.value)"
+                                    >
+                                        {{ weekday.label }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div ref="chart" class="h-60"></div>
+                        <div class="mt-4 flex justify-end pl-3">
+                            <div class="grid w-full grid-cols-1 gap-2 md:w-auto md:grid-cols-[minmax(9rem,12rem)_minmax(8rem,10rem)_minmax(8rem,10rem)_auto] md:items-end">
+                                <label class="form-control w-full">
+                                    <div class="label py-1">
+                                        <span class="label-text text-xs">Валюта</span>
+                                    </div>
+                                    <select v-model="selectedChartCurrency" class="select select-bordered select-sm w-full">
+                                        <option value="">Все валюты</option>
+                                        <option
+                                            v-for="currency in chartCurrencyOptions"
+                                            :key="currency"
+                                            :value="currency"
+                                        >
+                                            {{ currency.toUpperCase() }}
+                                        </option>
+                                    </select>
+                                </label>
+                                <label class="form-control w-full">
+                                    <div class="label py-1">
+                                        <span class="label-text text-xs">Сумма от</span>
+                                    </div>
+                                    <input
+                                        v-model="chartAmountFrom"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        class="input input-bordered input-sm w-full"
+                                        placeholder="0"
+                                    >
+                                </label>
+                                <label class="form-control w-full">
+                                    <div class="label py-1">
+                                        <span class="label-text text-xs">Сумма до</span>
+                                    </div>
+                                    <input
+                                        v-model="chartAmountTo"
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        class="input input-bordered input-sm w-full"
+                                        placeholder="∞"
+                                    >
+                                </label>
+                                <div class="flex gap-2 md:justify-end">
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary btn-sm"
+                                        @click="applyChartFilters"
+                                    >
+                                        Применить
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-ghost btn-sm"
+                                        @click="resetChartFilters"
+                                    >
+                                        Сбросить
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
