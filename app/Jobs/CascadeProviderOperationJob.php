@@ -6,13 +6,18 @@ namespace App\Jobs;
 
 use App\Contracts\CascadeProviderServiceContract;
 use App\Enums\CascadeDealEventType;
+use App\Enums\CascadeDealStatus;
+use App\Enums\CascadeDealSubStatus;
+use App\Enums\CascadeTransactionStatus;
 use App\Exceptions\CascadeException;
+use App\Jobs\SendCascadeDealCallbackJob;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\CascadeProviderLog;
 use App\Services\Cascade\CascadeDealEventRecorder;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class CascadeProviderOperationJob implements ShouldQueue
@@ -74,6 +79,10 @@ class CascadeProviderOperationJob implements ShouldQueue
                 $deal->selectedTransaction?->update(['response_payload' => $payload]);
             }
 
+            if ($this->operation === 'cancelDeal') {
+                $this->syncSuccessfulExternalCancel($deal, $providerModel, $events, $responsePayload ?? []);
+            }
+
             $isSuccessful = true;
         } catch (Throwable $e) {
             $errorCode = get_class($e);
@@ -109,5 +118,59 @@ class CascadeProviderOperationJob implements ShouldQueue
                 transaction: $deal->selectedTransaction,
             );
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $responsePayload
+     */
+    private function syncSuccessfulExternalCancel(
+        CascadeDeal $deal,
+        CascadeProvider $providerModel,
+        CascadeDealEventRecorder $events,
+        array $responsePayload,
+    ): void {
+        DB::transaction(function () use ($deal, $providerModel, $events, $responsePayload): void {
+            $deal->refresh();
+            $deal->loadMissing(['selectedTransaction']);
+
+            $fromStatus = $deal->status?->value;
+            $fromSubStatus = $deal->sub_status?->value;
+
+            $shouldMarkCancelled = $deal->status?->equals(CascadeDealStatus::PENDING) ?? false;
+
+            $deal->update([
+                'status' => $shouldMarkCancelled ? CascadeDealStatus::FAIL : $deal->status,
+                'sub_status' => $shouldMarkCancelled ? CascadeDealSubStatus::CANCELED : $deal->sub_status,
+                'finished_at' => $shouldMarkCancelled ? ($deal->finished_at ?? now()) : $deal->finished_at,
+            ]);
+
+            $deal->selectedTransaction?->update([
+                'status' => CascadeTransactionStatus::CANCELLED,
+                'response_payload' => $responsePayload,
+            ]);
+
+            $deal->refresh();
+            $deal->loadMissing(['selectedTransaction']);
+
+            if ($fromStatus !== $deal->status?->value || $fromSubStatus !== $deal->sub_status?->value) {
+                $events->record(
+                    deal: $deal,
+                    type: CascadeDealEventType::STATUS_CHANGED,
+                    payload: [
+                        'source' => 'provider_operation',
+                        'operation' => 'cancelDeal',
+                        'response' => $responsePayload,
+                    ],
+                    provider: $providerModel,
+                    transaction: $deal->selectedTransaction,
+                    fromStatus: $fromStatus,
+                    fromSubStatus: $fromSubStatus,
+                    toStatus: $deal->status?->value,
+                    toSubStatus: $deal->sub_status?->value,
+                );
+            }
+        });
+
+        SendCascadeDealCallbackJob::dispatch($deal->refresh());
     }
 }
