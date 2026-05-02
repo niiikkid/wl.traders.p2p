@@ -17,6 +17,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Enums\ProviderType;
 use App\Exceptions\CascadeException;
+use App\Http\Requests\API\V2\Order\StoreRequest;
 use App\Jobs\CascadeProviderAttemptJob;
 use App\Jobs\CascadeProviderOperationJob;
 use App\Jobs\SendCascadeDealCallbackJob;
@@ -37,6 +38,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -49,6 +51,21 @@ use Throwable;
 class CascadeService implements CascadeServiceContract
 {
     public function createDeal(CreateCascadeDealDTO $dto): CascadeDeal
+    {
+        $pending_key = StoreRequest::pendingCascadeDealCacheKey($dto->merchantId, $dto->externalId);
+
+        if (! Cache::add($pending_key, true, 3600)) {
+            throw CascadeException::make('Сделка с таким external_id уже в процессе создания для данного мерчанта.');
+        }
+
+        try {
+            return $this->createDealWithPendingLock($dto);
+        } finally {
+            Cache::forget($pending_key);
+        }
+    }
+
+    private function createDealWithPendingLock(CreateCascadeDealDTO $dto): CascadeDeal
     {
         $timeout = 10 * 1000;
 

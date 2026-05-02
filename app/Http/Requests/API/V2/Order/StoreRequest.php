@@ -80,8 +80,6 @@ class StoreRequest extends FormRequest
 
                         return;
                     }
-
-                    Cache::put($pending_key, true, 60 * 60);
                 },
                 'max:255',
             ],
