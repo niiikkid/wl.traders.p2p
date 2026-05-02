@@ -14,6 +14,7 @@ class MerchantCascadeSetting extends Model
         'cascade_enabled',
         'allow_internal_providers',
         'allow_external_providers',
+        'manual_control_external_only',
         'allowed_provider_ids',
     ];
 
@@ -21,6 +22,7 @@ class MerchantCascadeSetting extends Model
         'cascade_enabled' => 'boolean',
         'allow_internal_providers' => 'boolean',
         'allow_external_providers' => 'boolean',
+        'manual_control_external_only' => 'boolean',
         'allowed_provider_ids' => 'array',
     ];
 

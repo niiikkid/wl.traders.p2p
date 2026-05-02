@@ -18,6 +18,7 @@ const form = useForm({
     cascade_enabled: true,
     allow_internal_providers: true,
     allow_external_providers: true,
+    manual_control_external_only: false,
     allowed_provider_ids: [],
 });
 
@@ -55,10 +56,10 @@ const providersSummary = (merchant) => {
     }
 
     if (! setting.allowed_provider_ids?.length) {
-        return `${parts.join(' + ')}, все провайдеры`;
+        return `${parts.join(' + ')}, все провайдеры${setting.manual_control_external_only ? ', manual → external' : ''}`;
     }
 
-    return `${parts.join(' + ')}, ${setting.allowed_provider_ids.length} пров.`;
+    return `${parts.join(' + ')}, ${setting.allowed_provider_ids.length} пров.${setting.manual_control_external_only ? ', manual → external' : ''}`;
 };
 
 const providerTypeLabel = (type) => ({
@@ -98,6 +99,7 @@ const openSettingsModal = (merchant) => {
         cascade_enabled: setting.cascade_enabled ?? true,
         allow_internal_providers: setting.allow_internal_providers ?? true,
         allow_external_providers: setting.allow_external_providers ?? true,
+        manual_control_external_only: setting.manual_control_external_only ?? false,
         allowed_provider_ids: [...(setting.allowed_provider_ids ?? [])],
     });
     form.reset();
@@ -263,7 +265,7 @@ defineOptions({ layout: AuthenticatedLayout });
                 </p>
 
                 <form class="mt-6 space-y-6" @submit.prevent="submit">
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                         <label class="flex items-center justify-between gap-3 rounded-box border border-base-300 p-4">
                             <span>
                                 <span class="block font-medium">Каскадирование</span>
@@ -286,6 +288,14 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <span class="block text-xs opacity-70">Разрешить внешние интеграции</span>
                             </span>
                             <input v-model="form.allow_external_providers" type="checkbox" class="toggle toggle-primary" />
+                        </label>
+
+                        <label class="flex items-center justify-between gap-3 rounded-box border border-base-300 p-4">
+                            <span>
+                                <span class="block font-medium">Manual только external</span>
+                                <span class="block text-xs opacity-70">Не отправлять ручные сделки во внутренний провайдер</span>
+                            </span>
+                            <input v-model="form.manual_control_external_only" type="checkbox" class="toggle toggle-primary" />
                         </label>
                     </div>
 
