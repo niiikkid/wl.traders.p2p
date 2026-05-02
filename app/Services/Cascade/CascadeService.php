@@ -80,6 +80,8 @@ class CascadeService implements CascadeServiceContract
             'status' => 'processing',
         ]), 60);
 
+        $cascade_deal = null;
+
         try {
             $cascade_deal = $this->createCascadeDeal($dto);
 
@@ -112,6 +114,10 @@ class CascadeService implements CascadeServiceContract
                 );
             });
         } catch (Throwable $e) {
+            if ($cascade_deal instanceof CascadeDeal) {
+                $this->markProvisioningFailed($cascade_deal);
+            }
+
             $cascade_exception = $e instanceof CascadeException
                 ? $e
                 : CascadeException::make($e->getMessage());
@@ -146,7 +152,7 @@ class CascadeService implements CascadeServiceContract
                 }
 
                 if ($data['status'] === 'done') {
-                    $cascade_deal = CascadeDeal::find($data['cascade_deal_id']);
+                    $cascade_deal = CascadeDeal::query()->find($data['cascade_deal_id']);
 
                     if (! $cascade_deal) {
                         throw CascadeException::make('Не удалось получить каскадную сделку.');
@@ -183,6 +189,10 @@ class CascadeService implements CascadeServiceContract
             }
         }
 
+        if ($cascade_deal instanceof CascadeDeal) {
+            $this->markProvisioningFailed($cascade_deal);
+        }
+
         throw CascadeException::make('Не удалось обработать запрос вовремя. Повторите попытку позже.');
     }
 
@@ -191,7 +201,23 @@ class CascadeService implements CascadeServiceContract
         return CascadeDeal::query()
             ->whereRelation('merchant', 'uuid', $merchantUuid)
             ->where('external_id', $externalId)
+            ->visibleInMerchantApi()
             ->firstOrFail();
+    }
+
+    private function markProvisioningFailed(CascadeDeal $cascadeDeal): void
+    {
+        CascadeDeal::query()
+            ->whereKey($cascadeDeal->id)
+            ->whereNull('selected_transaction_id')
+            ->whereIn('status', [
+                CascadeDealStatus::PROVISIONING->value,
+                CascadeDealStatus::PENDING->value,
+            ])
+            ->update([
+                'status' => CascadeDealStatus::PROVISIONING_FAILED->value,
+                'sub_status' => CascadeDealSubStatus::FAILED_TO_CREATE->value,
+            ]);
     }
 
     public function cancelDeal(CascadeDeal $cascadeDeal): CascadeDeal
@@ -840,8 +866,8 @@ class CascadeService implements CascadeServiceContract
             'amount' => $dto->amount,
             'initial_amount' => $dto->amount,
             'currency' => $dto->currency,
-            'status' => CascadeDealStatus::PENDING,
-            'sub_status' => CascadeDealSubStatus::WAITING_FOR_PAYMENT,
+            'status' => CascadeDealStatus::PROVISIONING,
+            'sub_status' => CascadeDealSubStatus::PROVIDER_SELECTION,
             'payment_method' => $dto->paymentMethod,
             'manual_control' => CascadeManualControl::make(
                 manualControlAcquiring: $dto->manualControlAcquiring,

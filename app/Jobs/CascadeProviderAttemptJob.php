@@ -193,7 +193,14 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 ->lockForUpdate()
                 ->first();
 
-            if (! $lockedDeal instanceof CascadeDeal || $lockedDeal->selected_transaction_id !== null) {
+            if (
+                ! $lockedDeal instanceof CascadeDeal
+                || $lockedDeal->selected_transaction_id !== null
+                || ! in_array($lockedDeal->status, [
+                    CascadeDealStatus::PROVISIONING,
+                    CascadeDealStatus::PENDING,
+                ], true)
+            ) {
                 return false;
             }
 
@@ -357,6 +364,18 @@ class CascadeProviderAttemptJob implements ShouldQueue
         $currentStatus = $current ? json_decode($current, true) : null;
 
         if ($expected > 0 && $finished >= $expected && ($currentStatus['status'] ?? null) !== 'done') {
+            CascadeDeal::query()
+                ->whereKey($this->cascadeDealId)
+                ->whereNull('selected_transaction_id')
+                ->whereIn('status', [
+                    CascadeDealStatus::PROVISIONING->value,
+                    CascadeDealStatus::PENDING->value,
+                ])
+                ->update([
+                    'status' => CascadeDealStatus::PROVISIONING_FAILED->value,
+                    'sub_status' => CascadeDealSubStatus::FAILED_TO_CREATE->value,
+                ]);
+
             cache()->put($this->orchestrationKey(), json_encode([
                 'status' => 'failed',
                 'exception' => [

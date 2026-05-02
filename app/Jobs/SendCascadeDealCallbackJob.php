@@ -37,7 +37,7 @@ class SendCascadeDealCallbackJob implements ShouldQueue
     {
         $deal = $this->cascadeDeal->fresh(['merchant.apiCredential']);
 
-        if (! $deal || ! $deal->callback_url) {
+        if (! $deal || ! $deal->callback_url || ! $deal->isVisibleInMerchantApi()) {
             return;
         }
 

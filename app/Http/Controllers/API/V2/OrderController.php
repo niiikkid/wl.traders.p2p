@@ -28,6 +28,7 @@ class OrderController extends Controller
         $orders = CascadeDeal::query()
             ->with('merchant')
             ->where('merchant_id', $request->attributes->get('merchant_api_credential')->merchant_id)
+            ->visibleInMerchantApi()
             ->when($merchant, function ($query) use ($merchant) {
                 $query->where('merchant_id', $merchant->id);
             })
@@ -42,6 +43,7 @@ class OrderController extends Controller
     public function show(CascadeDeal $cascadeDeal): JsonResponse
     {
         Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
+        abort_unless($cascadeDeal->isVisibleInMerchantApi(), 404);
 
         return response()->success(
             OrderResource::make($cascadeDeal)
@@ -113,6 +115,7 @@ class OrderController extends Controller
     {
         $started_at = microtime(true);
         Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
+        abort_unless($cascadeDeal->isVisibleInMerchantApi(), 404);
 
         try {
             $cascade_deal = services()->cascade()->cancelDeal($cascadeDeal);
@@ -157,6 +160,7 @@ class OrderController extends Controller
     {
         $started_at = microtime(true);
         Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
+        abort_unless($cascadeDeal->isVisibleInMerchantApi(), 404);
 
         try {
             $confirmation_code = services()->cascade()->storeConfirmationCode(

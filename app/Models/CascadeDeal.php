@@ -17,6 +17,7 @@ use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,7 +45,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property MarketEnum $market Рынок (bybit, binance, rapira)
  * @property Money $conversion_price Курс обмена
  * @property Carbon|null $rate_fixed_at Дата фиксации курса
- * @property CascadeDealStatus $status Статус сделки (pending, success, fail)
+ * @property CascadeDealStatus $status Статус сделки
  * @property CascadeDealSubStatus $sub_status Подстатус сделки
  * @property int|null $selected_provider_id ID провайдера-победителя
  * @property int|null $selected_transaction_id ID победившей транзакции из CascadeTransaction
@@ -144,6 +145,16 @@ class CascadeDeal extends Model
         'rate_fixed_at' => 'datetime',
         'finished_at' => 'datetime',
     ];
+
+    public function scopeVisibleInMerchantApi(Builder $query): Builder
+    {
+        return $query->whereIn('status', CascadeDealStatus::merchantApiVisibleValues());
+    }
+
+    public function isVisibleInMerchantApi(): bool
+    {
+        return in_array($this->status, CascadeDealStatus::merchantApiVisibleCases(), true);
+    }
 
     public function merchant(): BelongsTo
     {

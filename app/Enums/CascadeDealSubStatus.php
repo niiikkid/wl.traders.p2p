@@ -10,6 +10,8 @@ enum CascadeDealSubStatus: string
 {
     use Enumable;
 
+    case PROVIDER_SELECTION = 'provider_selection';
+    case FAILED_TO_CREATE = 'failed_to_create';
     case SUCCESSFULLY_PAID = 'successfully_paid';
     case WAITING_FOR_PAYMENT = 'waiting_for_payment';
     case CANCELED = 'cancelled';

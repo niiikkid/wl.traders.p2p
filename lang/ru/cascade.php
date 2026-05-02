@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 return [
     'status' => [
+        'provisioning' => 'Создаётся',
+        'provisioning_failed' => 'Не удалось создать',
         'pending' => 'В обработке',
         'success' => 'Успешно',
         'fail' => 'Неуспешно',
     ],
     'sub_status' => [
+        'provider_selection' => 'Подбор провайдера',
+        'failed_to_create' => 'Не удалось создать ни у одного провайдера',
         'successfully_paid' => 'Оплачена',
         'waiting_for_payment' => 'Ожидает оплаты',
         'cancelled' => 'Отменена',

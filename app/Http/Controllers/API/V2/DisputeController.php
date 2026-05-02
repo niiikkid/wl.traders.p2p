@@ -15,6 +15,7 @@ class DisputeController extends Controller
     public function show(CascadeDeal $cascadeDeal): JsonResponse
     {
         Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
+        abort_unless($cascadeDeal->isVisibleInMerchantApi(), 404);
 
         try {
             $dispute = services()->cascade()->getDispute($cascadeDeal);
@@ -29,6 +30,7 @@ class DisputeController extends Controller
     {
         $started_at = microtime(true);
         Gate::authorize('api-v2-access-to-merchant', $cascadeDeal->merchant);
+        abort_unless($cascadeDeal->isVisibleInMerchantApi(), 404);
 
         try {
             $dispute = services()->cascade()->openDispute($cascadeDeal, $request->validated());
