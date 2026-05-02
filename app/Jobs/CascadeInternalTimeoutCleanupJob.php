@@ -46,7 +46,8 @@ class CascadeInternalTimeoutCleanupJob implements ShouldQueue
             ->where('status', CascadeTransactionStatus::FAILED_TO_OPEN)
             ->whereNull('provider_deal_id')
             ->where(function ($query) {
-                $query->where('error_message', 'like', '%timeout%')
+                $query->where('error_code', 'timeout')
+                    ->orWhere('error_message', 'like', '%timeout%')
                     ->orWhere('error_message', 'like', '%вовремя%');
             })
             ->latest('id')

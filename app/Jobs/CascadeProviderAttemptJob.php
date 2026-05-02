@@ -25,6 +25,7 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 class CascadeProviderAttemptJob implements ShouldQueue
@@ -304,13 +305,15 @@ class CascadeProviderAttemptJob implements ShouldQueue
         string $errorMessage,
         ?array $responsePayload = null,
     ): void {
+        $normalizedErrorCode = $this->normalizeErrorCode($errorCode, $errorMessage);
+
         $attributes = [
             'cascade_deal_id' => $cascadeDeal->id,
             'provider_id' => $providerModel->id,
             'status' => CascadeTransactionStatus::FAILED_TO_OPEN,
             'request_payload' => $this->requestPayload($cascadeDeal),
             'response_payload' => $responsePayload,
-            'error_code' => $errorCode,
+            'error_code' => $normalizedErrorCode,
             'error_message' => $errorMessage,
         ];
 
@@ -321,6 +324,26 @@ class CascadeProviderAttemptJob implements ShouldQueue
         }
 
         CascadeTransaction::create($attributes);
+    }
+
+    private function normalizeErrorCode(string $errorCode, string $errorMessage): string
+    {
+        $haystack = Str::lower($errorCode.' '.$errorMessage);
+
+        if (
+            Str::contains($haystack, [
+                'timeout',
+                'timed out',
+                'curl error 28',
+                'operation timed out',
+                'превышено время',
+                'не удалось обработать запрос вовремя',
+            ])
+        ) {
+            return 'timeout';
+        }
+
+        return $errorCode;
     }
 
     /**

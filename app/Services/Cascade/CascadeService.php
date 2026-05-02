@@ -922,12 +922,27 @@ class CascadeService implements CascadeServiceContract
         try {
             $response_payload = $provider->createDeal($cascade_deal->loadMissing(['merchant', 'merchantClient']));
         } catch (Throwable $e) {
+            $error_code = get_class($e);
+            $timeout_haystack = Str::lower($error_code.' '.$e->getMessage());
+            if (
+                Str::contains($timeout_haystack, [
+                    'timeout',
+                    'timed out',
+                    'curl error 28',
+                    'operation timed out',
+                    'превышено время',
+                    'не удалось обработать запрос вовремя',
+                ])
+            ) {
+                $error_code = 'timeout';
+            }
+
             CascadeTransaction::create([
                 'cascade_deal_id' => $cascade_deal->id,
                 'provider_id' => $provider_model->id,
                 'status' => CascadeTransactionStatus::FAILED_TO_OPEN,
                 'request_payload' => $payload,
-                'error_code' => get_class($e),
+                'error_code' => $error_code,
                 'error_message' => $e->getMessage(),
             ]);
 
