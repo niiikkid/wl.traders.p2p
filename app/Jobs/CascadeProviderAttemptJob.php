@@ -74,11 +74,11 @@ class CascadeProviderAttemptJob implements ShouldQueue
             return;
         }
 
-        $externalProfits = null;
+        $externalEconomics = null;
         if (! $providerModel->provider_type->equals(ProviderType::INTERNAL)) {
             try {
-                $externalProfits = $this->persistExternalMerchantEconomics($cascadeDeal);
-                $this->ensureExternalProviderHasSufficientBalance($providerModel, $externalProfits->convertedAmount);
+                $externalEconomics = $this->externalMerchantEconomics($cascadeDeal);
+                $this->ensureExternalProviderHasSufficientBalance($providerModel, $externalEconomics->profits->convertedAmount);
             } catch (Throwable $e) {
                 $this->recordFailure(
                     cascadeDeal: $cascadeDeal,
@@ -93,12 +93,12 @@ class CascadeProviderAttemptJob implements ShouldQueue
             }
         }
 
-        $transaction = CascadeTransaction::create([
+        $transaction = CascadeTransaction::create(array_merge([
             'cascade_deal_id' => $cascadeDeal->id,
             'provider_id' => $providerModel->id,
             'status' => CascadeTransactionStatus::OPENED,
             'request_payload' => $this->requestPayload($cascadeDeal),
-        ]);
+        ], $externalEconomics?->transactionAttributes ?? []));
         $responsePayload = null;
         $startedAt = microtime(true);
         $createDealLogUrl = $provider->providerApiLogUrl('createDeal', $cascadeDeal);
@@ -128,7 +128,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
                     $cascadeDeal,
                     $providerModel,
                     $responsePayload,
-                    $externalProfits,
+                    $externalEconomics?->profits,
                 )
             ) {
                 $this->cancelLoser($cascadeDeal, $providerModel, $transaction, $responsePayload);
@@ -415,7 +415,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
         ?Order $order,
     ): array {
         if (! $providerModel->provider_type->equals(ProviderType::INTERNAL)) {
-            $profits = $this->cascadeProfits($cascadeDeal);
+            $economics = $this->externalEconomicsFromTransaction($transaction);
             $externalProviderAmount = $this->externalProviderAmount($cascadeDeal, $responsePayload);
 
             return [
@@ -424,11 +424,11 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'initial_amount' => $cascadeDeal->initial_amount,
                 'currency' => $cascadeDeal->currency,
                 'debit' => $externalProviderAmount,
-                'credit' => $profits->merchantCredit,
-                'service_profit' => $externalProviderAmount->sub($profits->merchantCredit),
-                'usdt_amount' => $profits->convertedAmount,
-                'fee' => $profits->totalFee,
-                'fee_rate' => $this->merchantCommissionRates($cascadeDeal)['total'],
+                'credit' => $economics->merchantCredit,
+                'service_profit' => $externalProviderAmount->sub($economics->merchantCredit),
+                'usdt_amount' => $economics->convertedAmount,
+                'fee' => $economics->totalFee,
+                'fee_rate' => $economics->feeRate,
                 'market' => $cascadeDeal->market,
                 'conversion_price' => $cascadeDeal->conversion_price,
                 'rate_fixed_at' => $cascadeDeal->rate_fixed_at,
@@ -487,22 +487,39 @@ class CascadeProviderAttemptJob implements ShouldQueue
         return $externalProviderAmount->greaterOrEquals($requiredAmount);
     }
 
-    private function persistExternalMerchantEconomics(CascadeDeal $cascadeDeal): object
+    private function externalMerchantEconomics(CascadeDeal $cascadeDeal): object
     {
         $profits = $this->cascadeProfits($cascadeDeal);
         $rates = $this->merchantCommissionRates($cascadeDeal);
 
-        CascadeDeal::query()
-            ->whereKey($cascadeDeal->id)
-            ->whereNull('selected_transaction_id')
-            ->update([
+        return (object) [
+            'profits' => $profits,
+            'transactionAttributes' => [
                 'usdt_amount' => $profits->convertedAmount,
                 'fee' => $profits->totalFee,
                 'fee_rate' => $rates['total'],
                 'credit' => $profits->merchantCredit,
-            ]);
+            ],
+        ];
+    }
 
-        return $profits;
+    private function externalEconomicsFromTransaction(CascadeTransaction $transaction): object
+    {
+        if (
+            ! $transaction->usdt_amount instanceof Money
+            || ! $transaction->fee instanceof Money
+            || ! $transaction->credit instanceof Money
+            || $transaction->fee_rate === null
+        ) {
+            throw CascadeException::make('Для внешней транзакции каскада не сохранена экономика попытки.');
+        }
+
+        return (object) [
+            'convertedAmount' => $transaction->usdt_amount,
+            'totalFee' => $transaction->fee,
+            'feeRate' => $transaction->fee_rate,
+            'merchantCredit' => $transaction->credit,
+        ];
     }
 
     private function ensureExternalProviderHasSufficientBalance(CascadeProvider $providerModel, Money $requiredAmount): void

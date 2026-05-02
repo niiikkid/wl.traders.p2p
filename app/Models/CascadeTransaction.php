@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Casts\BaseCurrencyMoneyCast;
 use App\Enums\CascadeTransactionStatus;
+use App\Services\Money\Money;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,13 +24,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $provider_id ID провайдера
  * @property CascadeTransactionStatus $status Статус транзакции (opened/failed_to_open/cancelled/accepted)
  * @property string|null $provider_deal_id ID сделки у провайдера (если создана)
+ * @property Money|null $usdt_amount Внешний провайдер: сумма после конвертации по курсу в USDT
+ * @property Money|null $fee Комиссия, забираемая у мерчанта в USDT
+ * @property float|null $fee_rate Комиссия в процентах, забираемая у мерчанта
+ * @property Money|null $credit Сумма, выплачиваемая мерчанту в USDT
  * @property array|null $request_payload Данные запроса к провайдеру (для аудита)
  * @property array|null $response_payload Данные ответа от провайдера (для аудита)
  * @property string|null $error_code Код ошибки (если транзакция неуспешна)
  * @property string|null $error_message Сообщение об ошибке (если транзакция неуспешна)
  * @property Carbon $created_at
  * @property Carbon $updated_at
- *
  * @property CascadeDeal $cascadeDeal
  * @property CascadeProvider $provider
  */
@@ -41,6 +46,10 @@ class CascadeTransaction extends Model
         'provider_id',
         'status',
         'provider_deal_id',
+        'usdt_amount',
+        'fee',
+        'fee_rate',
+        'credit',
         'request_payload',
         'response_payload',
         'error_code',
@@ -49,6 +58,10 @@ class CascadeTransaction extends Model
 
     protected $casts = [
         'status' => CascadeTransactionStatus::class,
+        'usdt_amount' => BaseCurrencyMoneyCast::class,
+        'fee' => BaseCurrencyMoneyCast::class,
+        'fee_rate' => 'float',
+        'credit' => BaseCurrencyMoneyCast::class,
         'request_payload' => 'array',
         'response_payload' => 'array',
     ];
@@ -65,8 +78,6 @@ class CascadeTransaction extends Model
 
     /**
      * Логи запросов к провайдеру для этой транзакции
-     *
-     * @return HasMany
      */
     public function providerLogs(): HasMany
     {
