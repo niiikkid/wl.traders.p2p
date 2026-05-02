@@ -111,6 +111,34 @@ class CascadeProviderCollateralService
         });
     }
 
+    public function replaceForAmountChange(CascadeDeal $deal, CascadeProvider $provider): ?FundsOnHold
+    {
+        if ($provider->provider_type->equals(ProviderType::INTERNAL)) {
+            return null;
+        }
+
+        $amount = $deal->usdt_amount;
+
+        if (! $amount instanceof Money || $amount->getCurrency()->notEquals(Currency::USDT())) {
+            throw CascadeException::make('Для обновления залога провайдера не рассчитано обязательство в USDT.');
+        }
+
+        return Transaction::run(function () use ($deal, $provider, $amount): FundsOnHold {
+            $activeHolds = $deal->collateralHolds()
+                ->whereIn('status', [FundsOnHoldStatus::TIMER_NOT_SET->value, FundsOnHoldStatus::PENDING_FOR_EXECUTION->value])
+                ->lockForUpdate()
+                ->get();
+
+            if ($activeHolds->count() === 1 && $activeHolds->first()->amount->equals($amount)) {
+                return $activeHolds->first();
+            }
+
+            $activeHolds->each(fn (FundsOnHold $hold): FundsOnHold => $this->release($hold));
+
+            return $this->holdForWinner($deal, $provider);
+        });
+    }
+
     public function markReconciled(FundsOnHold $hold): FundsOnHold
     {
         $hold->update(['status' => FundsOnHoldStatus::COMPLETED]);

@@ -578,7 +578,18 @@ class CascadeService implements CascadeServiceContract
                 (! $cascade_transaction && $cascade_deal->selected_transaction_id === null)
                 || $cascade_deal->selected_transaction_id === $cascade_transaction?->id
             ) {
-                $cascade_deal->update($this->callbackCascadeDealAttributes($cascade_deal, $callback_data));
+                $attributes = $this->callbackCascadeDealAttributes($cascade_deal, $cascadeProvider, $callback_data);
+                $cascade_deal->update($attributes);
+
+                if (
+                    array_key_exists('amount', $attributes)
+                    && $cascadeProvider->provider_type->equals(ProviderType::EXTERNAL)
+                ) {
+                    app(CascadeProviderCollateralService::class)->replaceForAmountChange(
+                        $cascade_deal->refresh(),
+                        $cascadeProvider,
+                    );
+                }
 
                 app(CascadeDealEventRecorder::class)->record(
                     deal: $cascade_deal->refresh(),
@@ -913,16 +924,16 @@ class CascadeService implements CascadeServiceContract
         });
     }
 
-    private function cascadeProfits(CascadeDeal $cascadeDeal): object
+    private function cascadeProfits(CascadeDeal $cascadeDeal, ?Money $amount = null): object
     {
         if (! $cascadeDeal->conversion_price instanceof Money) {
             throw CascadeException::make('Для расчёта экономики каскада не зафиксирован курс.');
         }
 
-        $rates = $this->merchantCommissionRates($cascadeDeal);
+        $rates = $this->merchantCommissionRates($cascadeDeal, $amount);
 
         return services()->profit()->calculateInBody(
-            sourceAmount: $cascadeDeal->amount,
+            sourceAmount: $amount ?? $cascadeDeal->amount,
             exchangeRate: $cascadeDeal->conversion_price,
             totalFeeRate: $rates['total'],
             traderFeeRate: $rates['trader'],
@@ -932,7 +943,7 @@ class CascadeService implements CascadeServiceContract
     /**
      * @return array{total: float, trader: float}
      */
-    private function merchantCommissionRates(CascadeDeal $cascadeDeal): array
+    private function merchantCommissionRates(CascadeDeal $cascadeDeal, ?Money $amount = null): array
     {
         $commissionSettings = $cascadeDeal->merchant->getCommissionSettingForPair(
             currency: $cascadeDeal->currency,
@@ -955,15 +966,15 @@ class CascadeService implements CascadeServiceContract
             && ! empty($commissionSettings['trader_commission_tiers_for_orders'])
             && ! empty($commissionSettings['total_service_commission_tiers_for_orders'])
         ) {
-            $amount = (float) intval($cascadeDeal->amount->toBeauty());
+            $tierAmount = (float) intval(($amount ?? $cascadeDeal->amount)->toBeauty());
             $traderRate = TraderCommissionTierResolver::resolveRate(
                 tiers: $commissionSettings['trader_commission_tiers_for_orders'],
-                amount: $amount,
+                amount: $tierAmount,
                 defaultRate: (float) $traderRate,
             );
             $totalRate = TraderCommissionTierResolver::resolveRate(
                 tiers: $commissionSettings['total_service_commission_tiers_for_orders'],
-                amount: $amount,
+                amount: $tierAmount,
                 defaultRate: (float) $totalRate,
             );
         }
@@ -1144,8 +1155,11 @@ class CascadeService implements CascadeServiceContract
      * @param  array<string, mixed>  $callback_data
      * @return array<string, mixed>
      */
-    private function callbackCascadeDealAttributes(CascadeDeal $cascade_deal, array $callback_data): array
-    {
+    private function callbackCascadeDealAttributes(
+        CascadeDeal $cascade_deal,
+        CascadeProvider $cascadeProvider,
+        array $callback_data,
+    ): array {
         $status = (string) Arr::get($callback_data, 'status');
         $finished_at = $this->callbackFinishedAt($callback_data);
         $attributes = [
@@ -1158,7 +1172,29 @@ class CascadeService implements CascadeServiceContract
         $callbackCurrency = Arr::get($callback_data, 'currency');
 
         if ($callbackAmount !== null && $callbackCurrency === $cascade_deal->currency?->getCode()) {
-            $attributes['amount'] = Money::fromPrecision((string) $callbackAmount, $callbackCurrency);
+            $newAmount = Money::fromPrecision((string) $callbackAmount, $callbackCurrency);
+            $attributes['amount'] = $newAmount;
+
+            if ($cascadeProvider->provider_type->equals(ProviderType::EXTERNAL)) {
+                $profits = $this->cascadeProfits($cascade_deal, $newAmount);
+                $rates = $this->merchantCommissionRates($cascade_deal, $newAmount);
+                $providerAmount = $this->callbackExternalProviderAmount($cascade_deal, $callback_data)
+                    ?? $profits->convertedAmount;
+
+                if ($providerAmount->lessThan($profits->merchantCredit)) {
+                    throw CascadeException::make('Внешний провайдер вернул сумму меньше обязательства перед мерчантом.');
+                }
+
+                $attributes = [
+                    ...$attributes,
+                    'debit' => $providerAmount,
+                    'credit' => $profits->merchantCredit,
+                    'service_profit' => $providerAmount->sub($profits->merchantCredit),
+                    'usdt_amount' => $profits->convertedAmount,
+                    'fee' => $profits->totalFee,
+                    'fee_rate' => $rates['total'],
+                ];
+            }
 
             app(CascadeDealEventRecorder::class)->record(
                 deal: $cascade_deal,
@@ -1190,6 +1226,43 @@ class CascadeService implements CascadeServiceContract
         }
 
         return $attributes;
+    }
+
+    /**
+     * @param  array<string, mixed>  $callback_data
+     */
+    private function callbackExternalProviderAmount(CascadeDeal $cascade_deal, array $callback_data): ?Money
+    {
+        $amount = Arr::get($callback_data, 'external_provider_amount')
+            ?? Arr::get($callback_data, 'provider_amount')
+            ?? Arr::get($callback_data, 'amount_usdt')
+            ?? Arr::get($callback_data, 'merchant_profit');
+
+        if ($amount !== null) {
+            return Money::fromPrecision((string) $amount, 'USDT');
+        }
+
+        if (Arr::get($callback_data, 'currency') === 'USDT' && Arr::get($callback_data, 'amount') !== null) {
+            return Money::fromPrecision((string) Arr::get($callback_data, 'amount'), 'USDT');
+        }
+
+        $settlementAmount = Arr::get($callback_data, 'settlement.provider_receivable_amount')
+            ?? Arr::get($callback_data, 'raw.payment.settlement.provider_receivable_amount');
+        $settlementCurrency = Arr::get($callback_data, 'settlement.currency')
+            ?? Arr::get($callback_data, 'raw.payment.settlement.currency');
+
+        if ($settlementAmount !== null && $settlementCurrency === 'USDT') {
+            return Money::fromPrecision((string) $settlementAmount, 'USDT');
+        }
+
+        if ($settlementAmount !== null && $settlementCurrency === $cascade_deal->currency->getCode()) {
+            return Money::fromPrecision(
+                amount: bcdiv((string) $settlementAmount, $cascade_deal->conversion_price->toPrecision(), Money::DEFAULT_PRECISION),
+                currency: 'USDT',
+            );
+        }
+
+        return null;
     }
 
     private function callbackOrderStatus(string $provider_status, CascadeDealStatus $current_status): CascadeDealStatus
