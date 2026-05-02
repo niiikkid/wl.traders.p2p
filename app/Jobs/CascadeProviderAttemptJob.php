@@ -269,7 +269,20 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'is_successful' => true,
             ]);
         } catch (Throwable $e) {
+            $existingResponsePayload = is_array($transaction->response_payload)
+                ? $transaction->response_payload
+                : [];
+
             $transaction->update([
+                'status' => CascadeTransactionStatus::CANCELLED,
+                'response_payload' => array_merge($existingResponsePayload, [
+                    'cancel' => [
+                        'failed' => true,
+                        'provider_deal_id' => $providerDealId,
+                        'error_code' => get_class($e),
+                        'error_message' => $e->getMessage(),
+                    ],
+                ]),
                 'error_code' => get_class($e),
                 'error_message' => $e->getMessage(),
             ]);
