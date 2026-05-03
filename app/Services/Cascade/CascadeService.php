@@ -102,17 +102,7 @@ class CascadeService implements CascadeServiceContract
             cache()->put("cascade:deal:create:$job_id:expected", $providers->count(), 60);
             cache()->put("cascade:deal:create:$job_id:finished", 0, 60);
 
-            $providers->each(function (CascadeProvider $provider) use ($cascade_deal, $job_id, $max_wait_ms): void {
-                $provider_wait_ms = min($max_wait_ms, max(1, (int) $provider->timeout) * 1000);
-
-                CascadeProviderAttemptJob::dispatch(
-                    $cascade_deal->id,
-                    $provider->id,
-                    $job_id,
-                    now()->getTimestampMs(),
-                    $provider_wait_ms,
-                );
-            });
+            $this->dispatchCascadeProviderAttempts($cascade_deal, $providers, $job_id, $max_wait_ms);
         } catch (Throwable $e) {
             if ($cascade_deal instanceof CascadeDeal) {
                 $this->markProvisioningFailed($cascade_deal);
@@ -185,6 +175,115 @@ class CascadeService implements CascadeServiceContract
         }
 
         throw CascadeException::make('Не удалось обработать запрос вовремя. Повторите попытку позже.');
+    }
+
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function dispatchCascadeProviderAttempts(
+        CascadeDeal $cascadeDeal,
+        Collection $providers,
+        string $jobId,
+        int $maxWaitMs,
+    ): void {
+        if (! $this->shouldTryInternalProviderFirst($cascadeDeal, $providers)) {
+            $this->dispatchProviderAttemptsAsync($cascadeDeal, $providers, $jobId, $maxWaitMs);
+
+            return;
+        }
+
+        $internalProviders = $providers
+            ->filter(fn (CascadeProvider $provider): bool => $provider->provider_type->equals(ProviderType::INTERNAL))
+            ->values();
+        $externalProviders = $providers
+            ->reject(fn (CascadeProvider $provider): bool => $provider->provider_type->equals(ProviderType::INTERNAL))
+            ->values();
+
+        $internalProviders->each(function (CascadeProvider $provider) use ($cascadeDeal, $jobId, $maxWaitMs): ?bool {
+            if ($this->orchestrationStatus($jobId) === 'done') {
+                return false;
+            }
+
+            $this->dispatchProviderAttempt($cascadeDeal, $provider, $jobId, $maxWaitMs, true);
+
+            return null;
+        });
+
+        if ($this->orchestrationStatus($jobId) === 'done') {
+            return;
+        }
+
+        $this->dispatchProviderAttemptsAsync($cascadeDeal, $externalProviders, $jobId, $maxWaitMs);
+    }
+
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function dispatchProviderAttemptsAsync(
+        CascadeDeal $cascadeDeal,
+        Collection $providers,
+        string $jobId,
+        int $maxWaitMs,
+    ): void {
+        $providers->each(fn (CascadeProvider $provider): mixed => $this->dispatchProviderAttempt(
+            $cascadeDeal,
+            $provider,
+            $jobId,
+            $maxWaitMs,
+        ));
+    }
+
+    private function dispatchProviderAttempt(
+        CascadeDeal $cascadeDeal,
+        CascadeProvider $provider,
+        string $jobId,
+        int $maxWaitMs,
+        bool $sync = false,
+    ): mixed {
+        $providerWaitMs = min($maxWaitMs, max(1, (int) $provider->timeout) * 1000);
+        $createdAt = now()->getTimestampMs();
+
+        if ($sync) {
+            return CascadeProviderAttemptJob::dispatchSync(
+                $cascadeDeal->id,
+                $provider->id,
+                $jobId,
+                $createdAt,
+                $providerWaitMs,
+            );
+        }
+
+        return CascadeProviderAttemptJob::dispatch(
+            $cascadeDeal->id,
+            $provider->id,
+            $jobId,
+            $createdAt,
+            $providerWaitMs,
+        );
+    }
+
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function shouldTryInternalProviderFirst(CascadeDeal $cascadeDeal, Collection $providers): bool
+    {
+        $setting = $cascadeDeal->merchant->cascadeSetting;
+
+        return (bool) $setting?->internal_first_cascade_enabled
+            && $providers->contains(fn (CascadeProvider $provider): bool => $provider->provider_type->equals(ProviderType::INTERNAL));
+    }
+
+    private function orchestrationStatus(string $jobId): ?string
+    {
+        $result = cache()->get("cascade:deal:create:$jobId");
+
+        if (! $result) {
+            return null;
+        }
+
+        $data = json_decode((string) $result, true);
+
+        return is_array($data) ? ($data['status'] ?? null) : null;
     }
 
     public function findDealByExternalId(string $merchantUuid, string $externalId): CascadeDeal

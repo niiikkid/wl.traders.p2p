@@ -45,6 +45,7 @@ class TableMerchantCascadeSettingResource extends JsonResource
             'allow_internal_providers' => $setting?->allow_internal_providers ?? true,
             'allow_external_providers' => $setting?->allow_external_providers ?? true,
             'manual_control_external_only' => $setting?->manual_control_external_only ?? false,
+            'internal_first_cascade_enabled' => $setting?->internal_first_cascade_enabled ?? false,
             'allowed_provider_ids' => collect($setting?->allowed_provider_ids ?? [])
                 ->map(fn (mixed $id): int => (int) $id)
                 ->filter()

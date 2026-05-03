@@ -19,6 +19,7 @@ const form = useForm({
     allow_internal_providers: true,
     allow_external_providers: true,
     manual_control_external_only: false,
+    internal_first_cascade_enabled: false,
     allowed_provider_ids: [],
 });
 
@@ -56,10 +57,10 @@ const providersSummary = (merchant) => {
     }
 
     if (! setting.allowed_provider_ids?.length) {
-        return `${parts.join(' + ')}, все провайдеры${setting.manual_control_external_only ? ', manual → external' : ''}`;
+        return `${parts.join(' + ')}, все провайдеры${setting.manual_control_external_only ? ', manual → external' : ''}${setting.internal_first_cascade_enabled ? ', сначала internal' : ''}`;
     }
 
-    return `${parts.join(' + ')}, ${setting.allowed_provider_ids.length} пров.${setting.manual_control_external_only ? ', manual → external' : ''}`;
+    return `${parts.join(' + ')}, ${setting.allowed_provider_ids.length} пров.${setting.manual_control_external_only ? ', manual → external' : ''}${setting.internal_first_cascade_enabled ? ', сначала internal' : ''}`;
 };
 
 const providerTypeLabel = (type) => ({
@@ -100,6 +101,7 @@ const openSettingsModal = (merchant) => {
         allow_internal_providers: setting.allow_internal_providers ?? true,
         allow_external_providers: setting.allow_external_providers ?? true,
         manual_control_external_only: setting.manual_control_external_only ?? false,
+        internal_first_cascade_enabled: setting.internal_first_cascade_enabled ?? false,
         allowed_provider_ids: [...(setting.allowed_provider_ids ?? [])],
     });
     form.reset();
@@ -297,7 +299,18 @@ defineOptions({ layout: AuthenticatedLayout });
                             </span>
                             <input v-model="form.manual_control_external_only" type="checkbox" class="toggle toggle-primary" />
                         </label>
+
                     </div>
+
+                    <label class="flex items-center justify-between gap-4 rounded-box border border-primary/30 bg-primary/5 p-4">
+                        <span>
+                            <span class="block font-medium">Сначала пробовать внутреннего провайдера</span>
+                            <span class="block text-xs opacity-70">
+                                Если внутренний провайдер не создаст сделку, после него запустятся внешние провайдеры.
+                            </span>
+                        </span>
+                        <input v-model="form.internal_first_cascade_enabled" type="checkbox" class="toggle toggle-primary" />
+                    </label>
 
                     <div class="rounded-box border border-base-300">
                         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-base-300 p-4">

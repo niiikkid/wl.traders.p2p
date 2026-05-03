@@ -15,6 +15,7 @@ class MerchantCascadeSetting extends Model
         'allow_internal_providers',
         'allow_external_providers',
         'manual_control_external_only',
+        'internal_first_cascade_enabled',
         'allowed_provider_ids',
     ];
 
@@ -23,6 +24,7 @@ class MerchantCascadeSetting extends Model
         'allow_internal_providers' => 'boolean',
         'allow_external_providers' => 'boolean',
         'manual_control_external_only' => 'boolean',
+        'internal_first_cascade_enabled' => 'boolean',
         'allowed_provider_ids' => 'array',
     ];
 

@@ -25,6 +25,7 @@ class UpdateRequest extends FormRequest
             'allow_internal_providers' => ['required', 'boolean'],
             'allow_external_providers' => ['required', 'boolean'],
             'manual_control_external_only' => ['required', 'boolean'],
+            'internal_first_cascade_enabled' => ['required', 'boolean'],
             'allowed_provider_ids' => ['nullable', 'array'],
             'allowed_provider_ids.*' => [
                 'integer',
