@@ -23,7 +23,7 @@ defineProps({
 
 <template>
     <div :class="['flex items-center', size === 'xs' ? 'gap-2' : 'gap-4']">
-        <PrimaryButton :disabled="disabled" :size="size">{{ buttonText }}</PrimaryButton>
+        <PrimaryButton type="submit" :disabled="disabled" :size="size">{{ buttonText }}</PrimaryButton>
 
         <Transition
             enter-active-class="transition ease-in-out"
