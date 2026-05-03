@@ -58,9 +58,7 @@ class DashboardController extends Controller
                     ->with(['merchant', 'merchantClient', 'selectedTransaction'])
                     ->when($filters->uuid, fn ($query) => $query->where('uuid', 'like', "%{$filters->uuid}%"))
                     ->when($filters->externalID, fn ($query) => $query->where('external_id', 'like', "%{$filters->externalID}%"))
-                    ->when($filters->amount, function ($query) use ($filters) {
-                        $query->where('amount', Money::fromPrecision($filters->amount, Currency::USDT()->getCode())->toUnits());
-                    })
+                    ->when($filters->amount, fn (Builder $query) => $this->applyAmountFilterByDealCurrency($query, $filters->amount))
                     ->when($filters->startDate, fn ($query) => $query->whereDate('created_at', '>=', $filters->startDate))
                     ->when($filters->endDate, fn ($query) => $query->whereDate('created_at', '<=', $filters->endDate))
                     ->latest('id')
@@ -70,6 +68,19 @@ class DashboardController extends Controller
             : null;
 
         return Inertia::render('ProviderLiquidity/Deals', compact('deals', 'filters', 'filtersVariants'));
+    }
+
+    private function applyAmountFilterByDealCurrency(Builder $query, string $amount): void
+    {
+        $query->where(function (Builder $amountQuery) use ($amount): void {
+            foreach (Currency::getAllCodes() as $currencyCode) {
+                $amountQuery->orWhere(function (Builder $currencyAmountQuery) use ($amount, $currencyCode): void {
+                    $currencyAmountQuery
+                        ->where('currency', $currencyCode)
+                        ->where('amount', Money::fromPrecision($amount, $currencyCode)->toUnits());
+                });
+            }
+        });
     }
 
     /**
