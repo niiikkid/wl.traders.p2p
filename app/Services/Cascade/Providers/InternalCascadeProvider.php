@@ -253,10 +253,15 @@ class InternalCascadeProvider extends AbstractCascadeProvider
 
     private function resolveOrder(CascadeDeal $cascadeDeal, string $providerDealId): Order
     {
-        $order = Order::withoutGlobalScopes()
-            ->where('uuid', $providerDealId)
-            ->where('id', $cascadeDeal->order_id)
-            ->first();
+        $query = Order::withoutGlobalScopes()
+            ->where('uuid', $providerDealId);
+
+        $order = $cascadeDeal->order_id !== null
+            ? (clone $query)->whereKey($cascadeDeal->order_id)->first()
+            : $query
+                ->where('merchant_id', $cascadeDeal->merchant_id)
+                ->where('external_id', $cascadeDeal->external_id)
+                ->first();
 
         if (! $order instanceof Order) {
             throw CascadeException::make('Внутренняя сделка для каскадной сделки не найдена.');
