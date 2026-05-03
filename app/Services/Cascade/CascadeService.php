@@ -27,7 +27,6 @@ use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Models\Merchant;
 use App\Models\MerchantClient;
-use App\Models\Order;
 use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
 use App\Services\Cascade\Providers\SelfTestCascadeProvider;
@@ -938,76 +937,6 @@ class CascadeService implements CascadeServiceContract
         return CascadeDeal::create($attributes);
     }
 
-    private function createInternalProviderDeal(CascadeDeal $cascade_deal, array $payload): void
-    {
-        $provider_model = CascadeProvider::query()->firstOrCreate(
-            ['code' => InternalCascadeProvider::CODE],
-            [
-                'name' => 'Internal',
-                'provider_type' => ProviderType::INTERNAL,
-                'is_active' => true,
-                'priority' => 0,
-                'timeout' => 10,
-                'min_profit_percent' => 0,
-            ],
-        );
-
-        $provider = new InternalCascadeProvider(InternalCascadeProvider::CODE);
-
-        try {
-            $response_payload = $provider->createDeal($cascade_deal->loadMissing(['merchant', 'merchantClient']));
-        } catch (Throwable $e) {
-            $error_code = get_class($e);
-            $timeout_haystack = Str::lower($error_code.' '.$e->getMessage());
-            if (
-                Str::contains($timeout_haystack, [
-                    'timeout',
-                    'timed out',
-                    'curl error 28',
-                    'operation timed out',
-                    'превышено время',
-                    'не удалось обработать запрос вовремя',
-                ])
-            ) {
-                $error_code = 'timeout';
-            }
-
-            CascadeTransaction::create([
-                'cascade_deal_id' => $cascade_deal->id,
-                'provider_id' => $provider_model->id,
-                'status' => CascadeTransactionStatus::FAILED_TO_OPEN,
-                'request_payload' => $payload,
-                'error_code' => $error_code,
-                'error_message' => $e->getMessage(),
-            ]);
-
-            throw $e instanceof CascadeException
-                ? $e
-                : CascadeException::make($e->getMessage());
-        }
-
-        DB::transaction(function () use ($cascade_deal, $provider_model, $payload, $response_payload): void {
-            $order = $this->findInternalOrder($response_payload);
-
-            $transaction = CascadeTransaction::create([
-                'cascade_deal_id' => $cascade_deal->id,
-                'provider_id' => $provider_model->id,
-                'status' => CascadeTransactionStatus::ACCEPTED,
-                'provider_deal_id' => Arr::get($response_payload, 'provider_deal_id'),
-                'request_payload' => $payload,
-                'response_payload' => $response_payload,
-            ]);
-
-            $cascade_deal->update($this->cascadeDealWinnerAttributes(
-                cascade_deal: $cascade_deal,
-                provider_model: $provider_model,
-                transaction: $transaction,
-                response_payload: $response_payload,
-                order: $order,
-            ));
-        });
-    }
-
     private function cascadeProfits(CascadeDeal $cascadeDeal, ?Money $amount = null): object
     {
         if (! $cascadeDeal->conversion_price instanceof Money) {
@@ -1117,50 +1046,6 @@ class CascadeService implements CascadeServiceContract
                     ->all(),
             ],
         );
-    }
-
-    private function findInternalOrder(array $response_payload): ?Order
-    {
-        $provider_deal_id = Arr::get($response_payload, 'provider_deal_id');
-
-        if (! $provider_deal_id) {
-            return null;
-        }
-
-        return Order::withoutGlobalScopes()
-            ->where('uuid', $provider_deal_id)
-            ->first();
-    }
-
-    private function cascadeDealWinnerAttributes(
-        CascadeDeal $cascade_deal,
-        CascadeProvider $provider_model,
-        CascadeTransaction $transaction,
-        array $response_payload,
-        ?Order $order,
-    ): array {
-        return [
-            'order_id' => $order?->id,
-            'amount' => $order?->amount ?? $cascade_deal->amount,
-            'initial_amount' => $order?->base_amount ?? $cascade_deal->initial_amount,
-            'currency' => $order?->currency ?? $cascade_deal->currency,
-            'debit' => $order?->total_profit ?? Money::fromPrecision('0', 'USDT'),
-            'credit' => $order?->merchant_profit ?? Money::fromPrecision('0', 'USDT'),
-            'service_profit' => $order?->service_profit ?? Money::fromPrecision('0', 'USDT'),
-            'usdt_amount' => $order?->total_profit,
-            'fee' => null,
-            'fee_rate' => null,
-            'market' => $order?->market ?? $cascade_deal->market,
-            'conversion_price' => $order?->conversion_price ?? $cascade_deal->conversion_price,
-            'rate_fixed_at' => $cascade_deal->rate_fixed_at ?? $order?->created_at,
-            'status' => $this->mapOrderStatus($order?->status),
-            'sub_status' => $this->mapOrderSubStatus($order?->sub_status),
-            'selected_provider_id' => $provider_model->id,
-            'selected_transaction_id' => $transaction->id,
-            'gateway' => Arr::get($response_payload, 'gateway'),
-            'details' => Arr::get($response_payload, 'details'),
-            'finished_at' => $order?->finished_at,
-        ];
     }
 
     /**
