@@ -40,7 +40,9 @@ class CascadeProviderService implements CascadeProviderServiceContract
             return $this->providersCache[$code];
         }
 
-        $providerModel = CascadeProvider::where('code', $code)->first();
+        $providerModel = CascadeProvider::query()
+            ->where('code', $code)
+            ->first();
 
         if (! $providerModel) {
             return null;
@@ -76,7 +78,8 @@ class CascadeProviderService implements CascadeProviderServiceContract
      */
     public function getActiveProviders(): array
     {
-        return CascadeProvider::where('is_active', true)
+        return CascadeProvider::query()
+            ->where('is_active', true)
             ->get()
             ->mapWithKeys(function (CascadeProvider $provider) {
                 $instance = $this->getProviderByModel($provider);
@@ -103,23 +106,25 @@ class CascadeProviderService implements CascadeProviderServiceContract
     }
 
     /**
-     * Получить список всех доступных кодов провайдеров
+     * Получить список кодов провайдеров, зарегистрированных в базе
      *
      * @return array<string> Массив кодов провайдеров
      */
-    public function getAvailableProviderCodes(): array
+    public function getRegisteredProviderCodes(): array
     {
         // Получаем коды из базы данных (из модели CascadeProvider)
         // Это гарантирует, что мы возвращаем только те провайдеры, которые реально зарегистрированы
-        return CascadeProvider::pluck('code')->toArray();
+        return CascadeProvider::query()
+            ->pluck('code')
+            ->toArray();
     }
 
     /**
-     * Получить список кодов доступных интеграций (реализованных в коде)
+     * Получить список кодов интеграций, реализованных в коде
      *
      * @return array<string> Массив кодов интеграций
      */
-    public function getAvailableIntegrationCodes(): array
+    public function getImplementedIntegrationCodes(): array
     {
         return array_values(array_filter(
             array_keys($this->getProviderClassMap()),

@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 class CascadeDealSyncService
 {
     public function __construct(
-        private readonly CascadeDealEventRecorder $events = new CascadeDealEventRecorder,
+        private readonly CascadeDealEventRecorder $events,
     ) {}
 
     public function syncFromInternalOrder(Order $order): ?CascadeDeal

@@ -144,13 +144,6 @@ class CascadeService implements CascadeServiceContract
                     break;
                 }
 
-                if ($data['status'] === 'queued' && $waited > $max_wait_ms + ($interval_ms * 2)) {
-                    cache()->put("cascade:deal:create:$job_id", json_encode([
-                        'status' => 'expired',
-                    ]), 60);
-                    break;
-                }
-
                 if ($data['status'] === 'done') {
                     $cascade_deal = CascadeDeal::query()->find($data['cascade_deal_id']);
 
@@ -175,8 +168,6 @@ class CascadeService implements CascadeServiceContract
                     }
 
                     throw CascadeException::make('Произошла неизвестная ошибка при обработке запроса');
-                } elseif ($data['status'] === 'expired') {
-                    break;
                 } elseif ($data['status'] === 'processing') {
                     $processing_time_ms = $processing_time_ms + $interval_ms;
 

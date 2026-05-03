@@ -20,7 +20,7 @@ use App\Utils\Transaction;
 class CascadeProviderCollateralService
 {
     public function __construct(
-        private readonly CascadeDealEventRecorder $events = new CascadeDealEventRecorder,
+        private readonly CascadeDealEventRecorder $events,
     ) {}
 
     public function holdForWinner(CascadeDeal $deal, CascadeProvider $provider): ?FundsOnHold
