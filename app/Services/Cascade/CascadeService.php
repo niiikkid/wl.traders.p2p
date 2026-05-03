@@ -36,6 +36,7 @@ use App\Services\Money\Money;
 use App\Support\TraderCommissionTierResolver;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -749,6 +750,7 @@ class CascadeService implements CascadeServiceContract
         if (! empty($requestData['receipts'])) {
             $receipts[] = [
                 'count' => count($requestData['receipts']),
+                'files' => $this->disputeReceiptMetadata((array) $requestData['receipts']),
                 'stored_at' => now()->toDateTimeString(),
             ];
         }
@@ -766,6 +768,27 @@ class CascadeService implements CascadeServiceContract
             type: CascadeDealEventType::DISPUTE_CHANGED,
             payload: end($history) ?: [],
         );
+    }
+
+    /**
+     * @param  array<int, mixed>  $receipts
+     * @return list<array{index: int, original_name: string|null, mime_type: string|null, size: int|null, extension: string|null, hash_name: string, created_at: string}>
+     */
+    private function disputeReceiptMetadata(array $receipts): array
+    {
+        return collect($receipts)
+            ->filter(fn (mixed $receipt): bool => $receipt instanceof UploadedFile)
+            ->values()
+            ->map(fn (UploadedFile $receipt, int $index): array => [
+                'index' => $index,
+                'original_name' => $receipt->getClientOriginalName() ?: null,
+                'mime_type' => $receipt->getMimeType(),
+                'size' => $receipt->getSize(),
+                'extension' => $receipt->extension(),
+                'hash_name' => $receipt->hashName(),
+                'created_at' => now()->toDateTimeString(),
+            ])
+            ->all();
     }
 
     private function mapProviderDisputeStatus(string $status): ?CascadeDisputeStatus
