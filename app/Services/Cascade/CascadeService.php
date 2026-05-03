@@ -721,7 +721,7 @@ class CascadeService implements CascadeServiceContract
             'payin_id' => $cascadeDeal->uuid,
             'status' => $cascadeDeal->dispute_status?->value ?? $this->mapProviderDisputeStatus((string) Arr::get($responsePayload, 'status'))?->value,
             'reason' => $cascadeDeal->dispute_reason,
-            'canceled_at' => $cascadeDeal->dispute_canceled_at?->getTimestamp(),
+            'canceled_at' => $cascadeDeal->dispute_canceled_at?->toIso8601String(),
         ];
     }
 
