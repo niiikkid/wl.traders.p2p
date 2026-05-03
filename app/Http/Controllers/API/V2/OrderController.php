@@ -13,6 +13,7 @@ use App\Http\Resources\API\V2\OrderResource;
 use App\Jobs\RecordCascadeMerchantLogJob;
 use App\Models\CascadeDeal;
 use App\Models\Merchant;
+use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
@@ -50,11 +51,16 @@ class OrderController extends Controller
         );
     }
 
-    public function showByExternal(string $merchant_id, string $external_id): JsonResponse
+    public function showByExternal(Request $request, string $merchant_id, string $external_id): JsonResponse
     {
-        $cascade_deal = services()->cascade()->findDealByExternalId($merchant_id, $external_id);
+        $auth_merchant = queries()->merchant()->findByID(
+            (string) $request->attributes->get('merchant_api_credential')->merchant_id
+        );
+        abort_unless($auth_merchant instanceof Merchant, 404);
+        Gate::authorize('api-v2-access-to-merchant', $auth_merchant);
+        abort_unless($auth_merchant->uuid === $merchant_id, 404);
 
-        Gate::authorize('api-v2-access-to-merchant', $cascade_deal->merchant);
+        $cascade_deal = services()->cascade()->findDealByExternalId($auth_merchant->uuid, $external_id);
 
         return response()->success(
             OrderResource::make($cascade_deal)
