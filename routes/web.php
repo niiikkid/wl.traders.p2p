@@ -436,6 +436,9 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/cascade-providers/{cascadeProvider}', [CascadeProviderController::class, 'update'])->name('cascade-providers.update');
         Route::get('/cascade-deals', [CascadeDealController::class, 'index'])->name('cascade-deals.index');
         Route::post('/cascade-deals/{cascadeDeal}/dispute', [CascadeDealController::class, 'openDispute'])->name('cascade-deals.dispute.store');
+        Route::get('/cascade-deals/{cascadeDeal}/dispute/receipts/{receipt}', [CascadeDealController::class, 'receipt'])
+            ->whereNumber('receipt')
+            ->name('cascade-deals.dispute.receipts.show');
         Route::get('/cascade-merchant-settings', [MerchantCascadeSettingController::class, 'index'])->name('cascade-merchant-settings.index');
         Route::patch('/cascade-merchant-settings/{merchant}', [MerchantCascadeSettingController::class, 'update'])->name('cascade-merchant-settings.update');
         Route::get('/cascade-provider-logs', [CascadeProviderLogController::class, 'index'])->name('cascade-provider-logs.index');

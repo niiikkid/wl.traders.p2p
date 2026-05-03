@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CascadeDeal\OpenDisputeRequest;
 use App\Http\Resources\TableCascadeDealResource;
 use App\Models\CascadeDeal;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 
 class CascadeDealController extends Controller
@@ -58,5 +59,22 @@ class CascadeDealController extends Controller
         } catch (CascadeException $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
+    }
+
+    public function receipt(CascadeDeal $cascadeDeal, int $receipt)
+    {
+        abort_unless($cascadeDeal->dispute_status?->value === 'opened', 404);
+
+        $files = collect($cascadeDeal->dispute_receipts ?? [])
+            ->flatMap(fn (array $batch): array => Arr::wrap($batch['files'] ?? []))
+            ->values();
+
+        $file = $files->get($receipt);
+        abort_unless(is_array($file) && ! empty($file['stored_name']), 404);
+
+        $filePath = storage_path('receipts/cascade/'.$file['stored_name']);
+        abort_unless(is_file($filePath), 404);
+
+        return response()->file($filePath);
     }
 }

@@ -15,6 +15,7 @@ const modalStore = useModalStore();
 const cascadeDeals = ref(usePage().props.cascadeDeals);
 const selectedDeal = ref(null);
 const disputeDeal = ref(null);
+const selectedDisputeDeal = ref(null);
 const activeModalTab = ref('overview');
 const receiptInput = ref(null);
 
@@ -68,6 +69,22 @@ const closeDisputeModal = () => {
     }
 };
 
+const openCascadeDisputeModal = (deal) => {
+    selectedDisputeDeal.value = deal;
+};
+
+const closeCascadeDisputeModal = () => {
+    selectedDisputeDeal.value = null;
+};
+
+const openCascadeDisputeReceipt = (receipt) => {
+    if (! receipt?.url) {
+        return;
+    }
+
+    window.open(receipt.url, '_blank')?.focus();
+};
+
 const updateDisputeReceipts = (event) => {
     disputeForm.clearErrors('receipts');
     disputeForm.receipts = Array.from(event.target.files ?? []).slice(0, 3);
@@ -112,6 +129,23 @@ const selectedReceiptNames = computed(() => disputeForm.receipts.map((file) => f
 const receiptErrors = computed(() => Object.entries(disputeForm.errors)
     .filter(([field]) => field === 'receipts' || field.startsWith('receipts.'))
     .map(([, message]) => message));
+const selectedCascadeDisputeReceipts = computed(() => (selectedDisputeDeal.value?.dispute?.receipts ?? [])
+    .flatMap((receiptBatch) => receiptBatch.files ?? []));
+const selectedCascadeDisputeHistory = computed(() => selectedDisputeDeal.value?.dispute?.history ?? []);
+
+const hasOpenCascadeDispute = (deal) => deal?.dispute?.status === 'opened';
+
+const formatFileSize = (size) => {
+    if (! size) {
+        return 'Размер неизвестен';
+    }
+
+    if (size < 1024 * 1024) {
+        return `${(size / 1024).toLocaleString('ru-RU', {maximumFractionDigits: 1})} КБ`;
+    }
+
+    return `${(size / 1024 / 1024).toLocaleString('ru-RU', {maximumFractionDigits: 1})} МБ`;
+};
 
 const formatCurrency = (amount, currency) => {
     if (amount === null || amount === undefined || amount === '') {
@@ -260,6 +294,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </svg>
                                         </button>
                                         <button
+                                            v-if="hasOpenCascadeDispute(deal)"
+                                            type="button"
+                                            class="btn btn-warning btn-outline btn-xs"
+                                            aria-label="Открыть каскадный спор"
+                                            @click.prevent="openCascadeDisputeModal(deal)"
+                                        >
+                                            <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                                <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                            </svg>
+                                        </button>
+                                        <button
                                             v-if="deal.order_id"
                                             type="button"
                                             class="btn btn-accent btn-outline btn-xs"
@@ -361,6 +407,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                     >
                                         <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                                        </svg>
+                                    </button>
+                                    <button
+                                        v-if="hasOpenCascadeDispute(deal)"
+                                        type="button"
+                                        class="btn btn-warning btn-outline btn-xs"
+                                        aria-label="Открыть каскадный спор"
+                                        @click.prevent="openCascadeDisputeModal(deal)"
+                                    >
+                                        <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                            <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                            <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                         </svg>
                                     </button>
                                     <button
@@ -678,6 +736,159 @@ defineOptions({ layout: AuthenticatedLayout })
             </div>
             <form method="dialog" class="modal-backdrop">
                 <button type="button" @click="closeDealModal">close</button>
+            </form>
+        </dialog>
+
+        <dialog :open="Boolean(selectedDisputeDeal)" class="modal">
+            <div class="modal-box max-w-4xl">
+                <form method="dialog">
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                        @click="closeCascadeDisputeModal"
+                    >
+                        ✕
+                    </button>
+                </form>
+
+                <template v-if="selectedDisputeDeal">
+                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h3 class="font-bold text-lg">Каскадный спор</h3>
+                            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/70">
+                                <span>PayIn:</span>
+                                <CopyableOrderUid :uuid="selectedDisputeDeal.uuid ?? ''"/>
+                                <span class="badge badge-warning badge-outline badge-sm">
+                                    {{ selectedDisputeDeal.dispute?.status_name ?? selectedDisputeDeal.dispute?.status ?? 'Открыт' }}
+                                </span>
+                            </div>
+                        </div>
+                        <DateTime class="justify-start text-xs sm:justify-end" :data="selectedDisputeDeal.updated_at" show-time/>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                        <div class="card bg-base-200">
+                            <div class="card-body p-4">
+                                <h4 class="font-semibold">Сделка</h4>
+                                <div class="text-sm space-y-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="shrink-0">UUID:</span>
+                                        <CopyableOrderUid :uuid="selectedDisputeDeal.uuid ?? ''"/>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span class="shrink-0">External ID:</span>
+                                        <CopyableOrderUid :uuid="selectedDisputeDeal.external_id ?? ''"/>
+                                    </div>
+                                    <div>Мерчант: {{ selectedDisputeDeal.merchant?.name ?? 'Пусто' }}</div>
+                                    <div>Интеграция: {{ getProviderName(selectedDisputeDeal) }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-200">
+                            <div class="card-body p-4">
+                                <h4 class="font-semibold">Сумма</h4>
+                                <div class="text-sm space-y-1">
+                                    <div>Сумма: {{ formatCurrency(selectedDisputeDeal.amount, selectedDisputeDeal.currency) }}</div>
+                                    <div>USDT amount: {{ formatCurrency(selectedDisputeDeal.usdt_amount, selectedDisputeDeal.base_currency) }}</div>
+                                    <div>Provider deal ID: {{ selectedDisputeDeal.selected_transaction?.provider_deal_id ?? 'Пусто' }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-200 lg:col-span-2">
+                            <div class="card-body p-4">
+                                <h4 class="font-semibold">Причина</h4>
+                                <div class="rounded-box bg-base-100 p-3 text-sm whitespace-pre-wrap wrap-anywhere">
+                                    {{ selectedDisputeDeal.dispute?.reason ?? 'Причина не указана' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-200 lg:col-span-2">
+                            <div class="card-body p-4">
+                                <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="font-semibold">Файлы спора</h4>
+                                    <span class="badge badge-info badge-outline badge-sm">{{ selectedCascadeDisputeReceipts.length }} файл(ов)</span>
+                                </div>
+
+                                <div v-if="! selectedCascadeDisputeReceipts.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                    К открытому каскадному спору файлы не приложены.
+                                </div>
+
+                                <div v-else class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div
+                                        v-for="receipt in selectedCascadeDisputeReceipts"
+                                        :key="receipt.url ?? receipt.hash_name ?? receipt.original_name"
+                                        class="rounded-box border border-base-300 bg-base-100 p-3"
+                                    >
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <div class="truncate text-sm font-medium">
+                                                    {{ receipt.original_name ?? receipt.hash_name ?? 'Файл спора' }}
+                                                </div>
+                                                <div class="mt-1 text-xs text-base-content/60">
+                                                    {{ receipt.mime_type ?? receipt.extension ?? 'Тип неизвестен' }}
+                                                    <span class="px-1">·</span>
+                                                    {{ formatFileSize(receipt.size) }}
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                class="btn btn-info btn-outline btn-xs"
+                                                :disabled="! receipt.url"
+                                                @click.prevent="openCascadeDisputeReceipt(receipt)"
+                                            >
+                                                Открыть
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-200 lg:col-span-2">
+                            <div class="card-body p-4">
+                                <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="font-semibold">История</h4>
+                                    <span class="badge badge-ghost badge-sm">{{ selectedCascadeDisputeHistory.length }} событие(й)</span>
+                                </div>
+
+                                <div v-if="! selectedCascadeDisputeHistory.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                    История каскадного спора пока пустая.
+                                </div>
+
+                                <div v-else class="space-y-3">
+                                    <div
+                                        v-for="(historyItem, index) in selectedCascadeDisputeHistory"
+                                        :key="`${historyItem.changed_at ?? index}-${historyItem.status ?? 'status'}`"
+                                        class="rounded-box border border-base-300 bg-base-100 p-3"
+                                    >
+                                        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <span class="badge badge-warning badge-outline badge-sm">
+                                                    {{ historyItem.status ?? 'Без статуса' }}
+                                                </span>
+                                                <div v-if="historyItem.reason" class="mt-2 text-sm whitespace-pre-wrap wrap-anywhere">
+                                                    {{ historyItem.reason }}
+                                                </div>
+                                                <div v-if="historyItem.dispute_id || historyItem.provider_deal_id" class="mt-2 text-xs text-base-content/60">
+                                                    <span v-if="historyItem.dispute_id">Dispute ID: {{ historyItem.dispute_id }}</span>
+                                                    <span v-if="historyItem.dispute_id && historyItem.provider_deal_id" class="px-1">·</span>
+                                                    <span v-if="historyItem.provider_deal_id">Provider deal ID: {{ historyItem.provider_deal_id }}</span>
+                                                </div>
+                                            </div>
+                                            <DateTime class="justify-start text-xs sm:justify-end" :data="historyItem.changed_at" show-time/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button type="button" @click="closeCascadeDisputeModal">close</button>
             </form>
         </dialog>
 

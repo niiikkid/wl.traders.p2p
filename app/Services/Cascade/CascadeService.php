@@ -40,6 +40,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -376,10 +377,9 @@ class CascadeService implements CascadeServiceContract
 
         // Snapshot receipt metadata while temp files still exist. Internal flow moves the first
         // receipt in DisputeService::create, after which the tmp path is no longer readable.
-        $receipt_file_metadata = [];
-        if (! empty($data['receipts']) && is_array($data['receipts'])) {
-            $receipt_file_metadata = $this->disputeReceiptMetadata((array) $data['receipts']);
-        }
+        $receipts = ! empty($data['receipts']) && is_array($data['receipts'])
+            ? (array) $data['receipts']
+            : [];
 
         $cascadeDeal->loadMissing(['order.dispute', 'selectedProvider', 'selectedTransaction']);
 
@@ -392,6 +392,10 @@ class CascadeService implements CascadeServiceContract
         if (! $provider) {
             throw CascadeException::make('Интеграция провайдера каскада недоступна.');
         }
+
+        $receipt_file_metadata = $receipts !== []
+            ? $this->storeCascadeDisputeReceipts($cascadeDeal, $receipts)
+            : [];
 
         if (! $provider_model->provider_type->equals(ProviderType::INTERNAL)) {
             $local_payload = [
@@ -800,7 +804,7 @@ class CascadeService implements CascadeServiceContract
         } elseif (! empty($requestData['receipts'])) {
             $receipts[] = [
                 'count' => count($requestData['receipts']),
-                'files' => $this->disputeReceiptMetadata((array) $requestData['receipts']),
+                'files' => $this->storeCascadeDisputeReceipts($cascadeDeal, (array) $requestData['receipts']),
                 'stored_at' => now()->toDateTimeString(),
             ];
         }
@@ -822,22 +826,33 @@ class CascadeService implements CascadeServiceContract
 
     /**
      * @param  array<int, mixed>  $receipts
-     * @return list<array{index: int, original_name: string|null, mime_type: string|null, size: int|null, extension: string|null, hash_name: string, created_at: string}>
+     * @return list<array{index: int, original_name: string|null, mime_type: string|null, size: int|null, extension: string|null, hash_name: string, stored_name: string|null, created_at: string}>
      */
-    private function disputeReceiptMetadata(array $receipts): array
+    private function storeCascadeDisputeReceipts(CascadeDeal $cascadeDeal, array $receipts): array
     {
+        $directory = storage_path('receipts/cascade');
+        File::ensureDirectoryExists($directory);
+
         return collect($receipts)
             ->filter(fn (mixed $receipt): bool => $receipt instanceof UploadedFile)
             ->values()
-            ->map(fn (UploadedFile $receipt, int $index): array => [
-                'index' => $index,
-                'original_name' => $receipt->getClientOriginalName() ?: null,
-                'mime_type' => $receipt->getMimeType(),
-                'size' => $receipt->getSize(),
-                'extension' => $receipt->extension(),
-                'hash_name' => $receipt->hashName(),
-                'created_at' => now()->toDateTimeString(),
-            ])
+            ->map(function (UploadedFile $receipt, int $index) use ($cascadeDeal, $directory): array {
+                $extension = $receipt->extension();
+                $stored_name = 'cascade_'.$cascadeDeal->id.'_'.strtolower(Str::random(32)).($extension ? '.'.$extension : '');
+
+                File::copy($receipt->getRealPath(), $directory.'/'.$stored_name);
+
+                return [
+                    'index' => $index,
+                    'original_name' => $receipt->getClientOriginalName() ?: null,
+                    'mime_type' => $receipt->getMimeType(),
+                    'size' => $receipt->getSize(),
+                    'extension' => $extension,
+                    'hash_name' => $receipt->hashName(),
+                    'stored_name' => $stored_name,
+                    'created_at' => now()->toDateTimeString(),
+                ];
+            })
             ->all();
     }
 

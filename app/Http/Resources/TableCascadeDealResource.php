@@ -20,6 +20,9 @@ class TableCascadeDealResource extends JsonResource
         /**
          * @var CascadeDeal $this
          */
+        $cascadeDisputeReceiptBatches = collect($this->dispute_receipts ?? []);
+        $cascadeDisputeReceiptIndex = 0;
+
         return [
             'id' => $this->id,
             'uuid' => $this->uuid,
@@ -60,7 +63,30 @@ class TableCascadeDealResource extends JsonResource
                     ? trans("cascade.dispute_status.{$this->dispute_status->value}")
                     : null,
                 'reason' => $this->dispute_reason,
-                'receipts' => $this->dispute_receipts,
+                'receipts' => $cascadeDisputeReceiptBatches
+                    ->map(function (array $batch) use (&$cascadeDisputeReceiptIndex): array {
+                        $files = collect($batch['files'] ?? [])
+                            ->map(function (array $file) use (&$cascadeDisputeReceiptIndex): array {
+                                $index = $cascadeDisputeReceiptIndex++;
+
+                                return [
+                                    ...$file,
+                                    'url' => ! empty($file['stored_name'])
+                                        ? route('admin.cascade-deals.dispute.receipts.show', [
+                                            'cascadeDeal' => $this->id,
+                                            'receipt' => $index,
+                                        ])
+                                        : null,
+                                ];
+                            })
+                            ->all();
+
+                        return [
+                            ...$batch,
+                            'files' => $files,
+                        ];
+                    })
+                    ->all(),
                 'history' => $this->dispute_history,
                 'canceled_at' => $this->dispute_canceled_at?->toISOString(),
             ],
