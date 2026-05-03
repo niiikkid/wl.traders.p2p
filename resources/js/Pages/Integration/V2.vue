@@ -719,6 +719,14 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                 </button>
                             </div>
 
+                            <div role="alert" class="alert alert-info py-3 text-sm">
+                                <span>
+                                    Очень просим при создании payin-сделки передавать поле
+                                    <code class="rounded bg-base-200 px-1 font-semibold">client_id</code>,
+                                    если в вашей системе есть идентификатор клиента.
+                                </span>
+                            </div>
+
                             <template v-if="!showPayinCodeSamples">
                                 <section class="space-y-3">
                                     <h3 class="font-semibold">Поля запроса</h3>
