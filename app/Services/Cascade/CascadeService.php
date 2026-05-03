@@ -763,11 +763,33 @@ class CascadeService implements CascadeServiceContract
             'url' => $url,
             'request_payload' => $requestPayload,
             'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
+            'status_code' => $this->extractStatusCode($responsePayload),
             'execution_time' => round(microtime(true) - $startedAt, 4),
             'is_successful' => $isSuccessful,
             'error_code' => $errorCode,
             'error_message' => $errorMessage,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $responsePayload
+     */
+    private function extractStatusCode(?array $responsePayload): ?int
+    {
+        if ($responsePayload === null) {
+            return null;
+        }
+
+        $statusCode = Arr::get($responsePayload, 'status_code')
+            ?? Arr::get($responsePayload, 'http_status')
+            ?? Arr::get($responsePayload, 'raw.status_code')
+            ?? Arr::get($responsePayload, 'raw.status');
+
+        if (is_int($statusCode)) {
+            return $statusCode;
+        }
+
+        return is_numeric($statusCode) ? (int) $statusCode : null;
     }
 
     /**

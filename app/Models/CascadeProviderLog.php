@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 
 /**
@@ -128,7 +129,19 @@ class CascadeProviderLog extends Model
         }
 
         $raw = $adapterPayload['raw'] ?? null;
+        $meta = array_filter(
+            Arr::only($adapterPayload, ['status_code', 'request_id', 'duration', 'error_code', 'error_message']),
+            static fn (mixed $value): bool => $value !== null && $value !== ''
+        );
 
-        return is_array($raw) ? $raw : $adapterPayload;
+        if (! is_array($raw)) {
+            return $adapterPayload;
+        }
+
+        if ($meta !== [] && ! array_key_exists('_cascade_meta', $raw)) {
+            $raw['_cascade_meta'] = $meta;
+        }
+
+        return $raw;
     }
 }

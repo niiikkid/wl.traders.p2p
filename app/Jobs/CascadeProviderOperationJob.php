@@ -16,7 +16,9 @@ use App\Models\CascadeProviderLog;
 use App\Services\Cascade\CascadeDealEventRecorder;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 class CascadeProviderOperationJob implements ShouldQueue
@@ -89,7 +91,7 @@ class CascadeProviderOperationJob implements ShouldQueue
 
             $isSuccessful = true;
         } catch (Throwable $e) {
-            $errorCode = get_class($e);
+            $errorCode = $this->normalizeErrorCode(get_class($e), $e->getMessage());
             $errorMessage = $e->getMessage();
             throw $e;
         } finally {
@@ -102,6 +104,7 @@ class CascadeProviderOperationJob implements ShouldQueue
                 'url' => $provider->providerApiLogUrl($this->operation, $deal, $this->payload),
                 'request_payload' => $this->payload,
                 'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
+                'status_code' => $this->extractStatusCode($responsePayload),
                 'execution_time' => round(microtime(true) - $startedAt, 4),
                 'is_successful' => $isSuccessful,
                 'error_code' => $errorCode,
@@ -176,5 +179,46 @@ class CascadeProviderOperationJob implements ShouldQueue
         });
 
         SendCascadeDealCallbackJob::dispatch($deal->refresh());
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $responsePayload
+     */
+    private function extractStatusCode(?array $responsePayload): ?int
+    {
+        if ($responsePayload === null) {
+            return null;
+        }
+
+        $statusCode = Arr::get($responsePayload, 'status_code')
+            ?? Arr::get($responsePayload, 'http_status')
+            ?? Arr::get($responsePayload, 'raw.status_code')
+            ?? Arr::get($responsePayload, 'raw.status');
+
+        if (is_int($statusCode)) {
+            return $statusCode;
+        }
+
+        return is_numeric($statusCode) ? (int) $statusCode : null;
+    }
+
+    private function normalizeErrorCode(string $errorCode, string $errorMessage): string
+    {
+        $haystack = Str::lower($errorCode.' '.$errorMessage);
+
+        if (
+            Str::contains($haystack, [
+                'timeout',
+                'timed out',
+                'curl error 28',
+                'operation timed out',
+                'превышено время',
+                'не удалось обработать запрос вовремя',
+            ])
+        ) {
+            return 'timeout';
+        }
+
+        return $errorCode;
     }
 }
