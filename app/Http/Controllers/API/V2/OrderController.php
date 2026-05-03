@@ -21,18 +21,12 @@ class OrderController extends Controller
 {
     public function index(IndexRequest $request): JsonResponse
     {
-        $merchant = $this->resolveIndexMerchant($request);
-        if ($merchant instanceof JsonResponse) {
-            return $merchant;
-        }
+        $merchant = $this->authenticatedMerchant($request);
 
         $orders = CascadeDeal::query()
             ->with('merchant')
-            ->where('merchant_id', $request->attributes->get('merchant_api_credential')->merchant_id)
+            ->where('merchant_id', $merchant->id)
             ->visibleInMerchantApi()
-            ->when($merchant, function ($query) use ($merchant) {
-                $query->where('merchant_id', $merchant->id);
-            })
             ->orderBy('id', $this->resolveIndexSortDirection($request))
             ->paginate($this->resolveIndexPerPage($request));
 
@@ -51,16 +45,11 @@ class OrderController extends Controller
         );
     }
 
-    public function showByExternal(Request $request, string $merchant_id, string $external_id): JsonResponse
+    public function showByExternal(Request $request, string $external_id): JsonResponse
     {
-        $auth_merchant = queries()->merchant()->findByID(
-            (string) $request->attributes->get('merchant_api_credential')->merchant_id
-        );
-        abort_unless($auth_merchant instanceof Merchant, 404);
-        Gate::authorize('api-v2-access-to-merchant', $auth_merchant);
-        abort_unless($auth_merchant->uuid === $merchant_id, 404);
+        $merchant = $this->authenticatedMerchant($request);
 
-        $cascade_deal = services()->cascade()->findDealByExternalId($auth_merchant->uuid, $external_id);
+        $cascade_deal = services()->cascade()->findDealByExternalId($merchant->uuid, $external_id);
 
         return response()->success(
             OrderResource::make($cascade_deal)
@@ -70,7 +59,8 @@ class OrderController extends Controller
     public function store(StoreRequest $request): JsonResponse
     {
         $started_at = microtime(true);
-        $merchant = queries()->merchant()->findByUUID($request->merchant_id);
+        $merchant = $request->authenticatedMerchant();
+        abort_unless($merchant instanceof Merchant, 404);
 
         Gate::authorize('api-v2-access-to-merchant', $merchant);
 
@@ -241,17 +231,13 @@ class OrderController extends Controller
         ]);
     }
 
-    private function resolveIndexMerchant(IndexRequest $request): Merchant|JsonResponse|null
+    private function authenticatedMerchant(Request $request): Merchant
     {
-        if (! $request->filled('merchant_id')) {
-            return null;
-        }
+        $merchant = queries()->merchant()->findByID(
+            (string) $request->attributes->get('merchant_api_credential')->merchant_id
+        );
 
-        $merchant = queries()->merchant()->findByUUID($request->merchant_id);
-
-        if (! $merchant) {
-            return response()->failWithMessage('Мерчант не найден.', 404);
-        }
+        abort_unless($merchant instanceof Merchant, 404);
 
         Gate::authorize('api-v2-access-to-merchant', $merchant);
 

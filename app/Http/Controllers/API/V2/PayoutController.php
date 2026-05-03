@@ -18,23 +18,18 @@ use App\Models\PaymentGateway;
 use App\Models\Payout\Payout;
 use App\Services\Money\Money;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class PayoutController extends Controller
 {
     public function index(IndexRequest $request): JsonResponse
     {
-        $merchant = $this->resolveIndexMerchant($request);
-        if ($merchant instanceof JsonResponse) {
-            return $merchant;
-        }
+        $merchant = $this->authenticatedMerchant($request);
 
         $payouts = Payout::query()
             ->with(['merchant', 'receipts'])
-            ->where('merchant_id', $request->attributes->get('merchant_api_credential')->merchant_id)
-            ->when($merchant, function ($query) use ($merchant) {
-                $query->where('merchant_id', $merchant->id);
-            })
+            ->where('merchant_id', $merchant->id)
             ->orderBy('id', $this->resolveIndexSortDirection($request))
             ->paginate($this->resolveIndexPerPage($request));
 
@@ -46,7 +41,8 @@ class PayoutController extends Controller
     public function store(StoreRequest $request): JsonResponse
     {
         $started_at = microtime(true);
-        $merchant = queries()->merchant()->findByUUID($request->merchant_id);
+        $merchant = $request->authenticatedMerchant();
+        abort_unless($merchant instanceof Merchant, 404);
 
         Gate::authorize('api-v2-access-to-merchant', $merchant);
 
@@ -208,17 +204,13 @@ class PayoutController extends Controller
         ]);
     }
 
-    private function resolveIndexMerchant(IndexRequest $request): Merchant|JsonResponse|null
+    private function authenticatedMerchant(Request $request): Merchant
     {
-        if (! $request->filled('merchant_id')) {
-            return null;
-        }
+        $merchant = queries()->merchant()->findByID(
+            (string) $request->attributes->get('merchant_api_credential')->merchant_id
+        );
 
-        $merchant = queries()->merchant()->findByUUID($request->merchant_id);
-
-        if (! $merchant) {
-            return response()->failWithMessage('Мерчант не найден.', 404);
-        }
+        abort_unless($merchant instanceof Merchant, 404);
 
         Gate::authorize('api-v2-access-to-merchant', $merchant);
 

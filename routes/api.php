@@ -80,12 +80,12 @@ Route::group(['prefix' => 'v2', 'middleware' => ['api-v2-access-token']], functi
     Route::get('payin', [App\Http\Controllers\API\V2\OrderController::class, 'index'])
         ->name('api.v2.payin.index');
     Route::post('payin', [App\Http\Controllers\API\V2\OrderController::class, 'store']);
+    Route::get('payin/external/{external_id}', [App\Http\Controllers\API\V2\OrderController::class, 'showByExternal']);
     Route::get('payin/{cascadeDeal:uuid}', [App\Http\Controllers\API\V2\OrderController::class, 'show']);
     Route::patch('payin/{cascadeDeal:uuid}/cancel', [App\Http\Controllers\API\V2\OrderController::class, 'cancel']);
     Route::post('payin/{cascadeDeal:uuid}/confirmation-code', [App\Http\Controllers\API\V2\OrderController::class, 'storeConfirmationCode']);
     Route::post('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'store']);
     Route::get('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'show']);
-    Route::get('payin/{merchant_id}/{external_id}', [App\Http\Controllers\API\V2\OrderController::class, 'showByExternal']);
 
     Route::get('payout', [App\Http\Controllers\API\V2\PayoutController::class, 'index'])
         ->name('api.v2.payout.index');

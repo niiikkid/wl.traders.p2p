@@ -7,6 +7,7 @@ namespace App\Http\Requests\API\V2\Payout;
 use App\Enums\MarketEnum;
 use App\Enums\PayoutMethodType;
 use App\Models\Merchant;
+use App\Models\MerchantApiCredential;
 use App\Services\Money\Currency;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Cache;
@@ -21,12 +22,18 @@ class StoreRequest extends FormRequest
         return true;
     }
 
+    public function authenticatedMerchant(): ?Merchant
+    {
+        $credential = $this->attributes->get('merchant_api_credential');
+
+        return $credential instanceof MerchantApiCredential ? $credential->merchant : null;
+    }
+
     public function rules(): array
     {
-        $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+        $merchant = $this->authenticatedMerchant();
 
         return [
-            'merchant_id' => ['required', 'exists:merchants,uuid'],
             'external_id' => [
                 'required',
                 'string',
@@ -87,7 +94,7 @@ class StoreRequest extends FormRequest
     {
         return [
             function (Validator $validator) {
-                $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+                $merchant = $this->authenticatedMerchant();
                 if (! $merchant instanceof Merchant) {
                     return;
                 }

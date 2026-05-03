@@ -29,7 +29,7 @@ const endpoints = [
     { method: 'GET', path: '/api/v2/payin', description: 'Список payin-сделок с пагинацией.' },
     { method: 'POST', path: '/api/v2/payin', description: 'Создание payin-сделки.' },
     { method: 'GET', path: '/api/v2/payin/{payin_id}', description: 'Получение payin-сделки по UUID.' },
-    { method: 'GET', path: '/api/v2/payin/{merchant_id}/{external_id}', description: 'Получение payin-сделки по внешнему ID.' },
+    { method: 'GET', path: '/api/v2/payin/external/{external_id}', description: 'Получение payin-сделки по внешнему ID в рамках мерчанта API token.' },
     { method: 'PATCH', path: '/api/v2/payin/{payin_id}/cancel', description: 'Отмена payin-сделки.' },
     { method: 'POST', path: '/api/v2/payin/{payin_id}/confirmation-code', description: 'Передача кода подтверждения для Manual Control Acquiring.' },
     { method: 'POST', path: '/api/v2/payin/{payin_id}/dispute', description: 'Открытие спора по payin-сделке.' },
@@ -42,14 +42,12 @@ const endpoints = [
 ];
 
 const listQueryFields = [
-    { name: 'merchant_id', type: 'string', required: false, description: 'UUID мерчанта. Обычно совпадает с мерчантом API token; удобно, если у пользователя есть доступ к нескольким магазинам.' },
     { name: 'page', type: 'integer', required: false, description: 'Номер страницы, минимум 1.' },
     { name: 'per_page', type: 'integer', required: false, description: 'Количество записей на странице: от 1 до 100. По умолчанию 20.' },
     { name: 'sort', type: 'string', required: false, description: 'new или old. По умолчанию new: новые записи первыми.' },
 ];
 
 const payinFields = [
-    { name: 'merchant_id', type: 'string', required: true, description: 'UUID магазина/мерчанта. Он должен быть доступен API token, с которым вы выполняете запрос.' },
     { name: 'external_id', type: 'string', required: true, description: 'Уникальный ID сделки в вашей системе, максимум 255 символов. Повторное создание с тем же external_id для одного мерчанта вернёт ошибку.' },
     { name: 'amount', type: 'integer', required: true, description: 'Сумма сделки, целое положительное значение.' },
     { name: 'currency', type: 'string', required: true, description: 'Код валюты, например rub.' },
@@ -93,7 +91,6 @@ const disputeStatuses = [
 ];
 
 const payoutFields = [
-    { name: 'merchant_id', type: 'string', required: true, description: 'UUID магазина/мерчанта. Он должен быть доступен API token, с которым вы выполняете запрос.' },
     { name: 'external_id', type: 'string', required: true, description: 'Уникальный ID выплаты в вашей системе, максимум 255 символов.' },
     { name: 'amount', type: 'integer', required: true, description: 'Сумма выплаты, целое положительное значение.' },
     { name: 'currency', type: 'string', required: true, description: 'Код валюты, например rub.' },
@@ -123,7 +120,6 @@ const payoutSubStatuses = [
 ];
 
 const payinRequest = {
-    merchant_id: '9b2cf9e7-8e37-4bcb-8c9c-7f2b1e3c88c4',
     external_id: 'payin-10001',
     amount: 100000,
     currency: 'rub',
@@ -171,7 +167,6 @@ const payinResponse = {
 };
 
 const manualAcquiringRequest = {
-    merchant_id: '9b2cf9e7-8e37-4bcb-8c9c-7f2b1e3c88c4',
     external_id: 'manual-payin-10002',
     amount: 100000,
     currency: 'rub',
@@ -202,7 +197,6 @@ const manualAcquiringResponse = {
 };
 
 const payoutRequest = {
-    merchant_id: '9b2cf9e7-8e37-4bcb-8c9c-7f2b1e3c88c4',
     external_id: 'payout-20001',
     amount: 25000,
     currency: 'rub',
@@ -549,7 +543,9 @@ console.log(await response.json());`,
                             <div role="alert" class="alert alert-info py-3 text-sm">
                                 <span>
                                     API v2 использует токены из настроек мерчанта: <strong>API token</strong> для входящих запросов
-                                    и <strong>Callback token</strong> для проверки исходящих callback-уведомлений.
+                                    и <strong>Callback token</strong> для проверки исходящих callback-уведомлений. API token всегда привязан
+                                    к одному мерчанту, поэтому <code class="rounded bg-base-200 px-1">merchant_id</code> в запросах API v2
+                                    передавать не нужно.
                                 </span>
                             </div>
 
@@ -593,6 +589,14 @@ console.log(await response.json());`,
                                 Каждый запрос к API v2 должен содержать заголовок <code class="rounded bg-base-200 px-1">Access-Token</code>.
                                 Используйте именно API token из раздела ключей API v2, а не legacy-токен.
                             </p>
+                            <div role="alert" class="alert alert-warning py-3 text-sm">
+                                <span>
+                                    Один API token v2 принадлежит одному мерчанту. Все payin, payout, баланс и списки выполняются только
+                                    в контексте мерчанта этого токена. Не передавайте <code class="rounded bg-base-200 px-1">merchant_id</code>
+                                    в теле запроса, query-параметрах или URL: API определит мерчанта автоматически по
+                                    <code class="rounded bg-base-200 px-1">Access-Token</code>.
+                                </span>
+                            </div>
                             <pre class="overflow-x-auto rounded-xl bg-base-300 p-4 text-sm"><code>Accept: application/json
 Content-Type: application/json
 Access-Token: YOUR_API_V2_TOKEN</code></pre>
@@ -708,6 +712,8 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                         Payin-сделка создаётся через <code class="rounded bg-base-200 px-1">POST /api/v2/payin</code>.
                                         Поле <code class="rounded bg-base-200 px-1">id</code> в ответе — это UUID каскадной сделки;
                                         используйте его в путях <code class="rounded bg-base-200 px-1">/payin/{payin_id}</code>.
+                                        Поиск по вашему внешнему ID выполняется через
+                                        <code class="rounded bg-base-200 px-1">GET /api/v2/payin/external/{external_id}</code>.
                                     </p>
                                 </div>
                                 <button
@@ -724,6 +730,14 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                     Очень просим при создании payin-сделки передавать поле
                                     <code class="rounded bg-base-200 px-1 font-semibold">client_id</code>,
                                     если в вашей системе есть идентификатор клиента.
+                                </span>
+                            </div>
+
+                            <div role="alert" class="alert alert-warning py-3 text-sm">
+                                <span>
+                                    <code class="rounded bg-base-200 px-1">external_id</code> должен относиться к сделке того мерчанта,
+                                    чей API token указан в <code class="rounded bg-base-200 px-1">Access-Token</code>. UUID мерчанта
+                                    в запросе не передаётся.
                                 </span>
                             </div>
 
@@ -903,7 +917,9 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                     <p class="mt-2 text-sm text-base-content/70">
                                         Выплата создаётся через <code class="rounded bg-base-200 px-1">POST /api/v2/payout</code>.
                                         Для выплаты нет отдельного <code class="rounded bg-base-200 px-1">sub_status</code> — ориентируйтесь на поле
-                                        <code class="rounded bg-base-200 px-1">status</code>.
+                                        <code class="rounded bg-base-200 px-1">status</code>. Мерчант определяется по
+                                        <code class="rounded bg-base-200 px-1">Access-Token</code>, поэтому
+                                        <code class="rounded bg-base-200 px-1">merchant_id</code> в теле запроса не используется.
                                     </p>
                                 </div>
                                 <button

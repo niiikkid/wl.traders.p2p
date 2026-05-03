@@ -6,6 +6,7 @@ use App\DTO\Cascade\CreateCascadeDealDTO;
 use App\Enums\CascadePaymentMethod;
 use App\Enums\MarketEnum;
 use App\Models\Merchant;
+use App\Models\MerchantApiCredential;
 use App\Services\Money\Currency;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +26,13 @@ class StoreRequest extends FormRequest
         return true;
     }
 
+    public function authenticatedMerchant(): ?Merchant
+    {
+        $credential = $this->attributes->get('merchant_api_credential');
+
+        return $credential instanceof MerchantApiCredential ? $credential->merchant : null;
+    }
+
     protected function prepareForValidation(): void
     {
         if ($this->has('payin_method') && is_string($this->payin_method)) {
@@ -34,7 +42,7 @@ class StoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+        $merchant = $this->authenticatedMerchant();
 
         // TODO: минимальная сумма для каскада по merchant.min_order_amounts и currency (как в H2H)
         // — поведение не доведено, бизнес-контекст уточнить перед включением реальной проверки.
@@ -82,22 +90,6 @@ class StoreRequest extends FormRequest
                     }
                 },
                 'max:255',
-            ],
-            'merchant_id' => [
-                'required',
-                function ($attribute, $value, $fail) {
-                    $cache_key = "merchant_exists_{$value}";
-
-                    $exists = Cache::remember($cache_key, 3600, function () use ($value) {
-                        return DB::table('merchants')
-                            ->where('uuid', $value)
-                            ->exists();
-                    });
-
-                    if (! $exists) {
-                        $fail('Выбранный мерчант не существует.');
-                    }
-                },
             ],
             'amount' => ['required', 'integer', "min:$min_amount"],
             'currency' => ['required', Rule::in(Currency::getAllCodes())],
@@ -174,7 +166,7 @@ class StoreRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+            $merchant = $this->authenticatedMerchant();
             if (! $merchant instanceof Merchant) {
                 return;
             }
