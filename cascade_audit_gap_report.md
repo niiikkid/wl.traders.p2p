@@ -46,15 +46,17 @@
 
 Что проверить: `CascadeService::handleProviderCallback()`. Если provider token не зависит от найденной сделки, проверка `Access-Token` должна происходить до тяжелой нормализации и поиска deal.
 
-#### 4. Общий stuck `CascadeDeal` при fail/timeout orchestration раскрыт во втором уже, чем в первом
+#### 4. Общий stuck `CascadeDeal` при fail/timeout orchestration — уже неактуально (закрыто в коде)
 
 Первый аудит: `3.2. CascadeDeal создаётся до проверки доступности провайдеров и может остаться вечной pending-записью`.
 
-Во втором аудите есть близкий пункт `MEDIUM-6`, но только про сценарий `cascade_enabled = false`. Первый аудит шире: сделка может остаться `pending` при отсутствии провайдеров, ошибке комиссии/экономики, падении всех attempts или timeout.
+Актуальный код уже закрывает общий stuck-сценарий, а не только частный случай `cascade_enabled = false`:
 
-Почему важно: если исправлен только сценарий disabled merchant, остаются stuck deals после других окончательных fail-сценариев.
+- `CascadeService::createDealWithPendingLock()` в `catch` и при timeout вызывает `markProvisioningFailed()` и переводит сделку в `PROVISIONING_FAILED` + `FAILED_TO_CREATE`;
+- `CascadeProviderAttemptJob::markAttemptFinished()` при завершении всех попыток без winner также переводит сделку в `PROVISIONING_FAILED` + `FAILED_TO_CREATE`;
+- обновление делается только при `selected_transaction_id IS NULL`, что сохраняет корректность winner-path.
 
-Что проверить: `CascadeService::createDeal()` и финализацию `CascadeProviderAttemptJob`. Любой окончательный fail после создания persistent `CascadeDeal` должен переводить deal в финальный fail/canceled/expired state, писать событие и освобождать/idempotently фиксировать `external_id`.
+Вывод: риск "вечного pending после fail/timeout orchestration" из первого отчёта больше не подтверждается и не должен считаться открытым gap.
 
 #### 7. Runtime-риск дубликатов `cascade_providers.code`
 
