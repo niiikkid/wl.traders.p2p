@@ -36,16 +36,6 @@
 
 Что проверить: `app/Http/Controllers/ProviderLiquidity/DashboardController.php`, payload метода `services()`. Вместо `access_token` должен быть безопасный признак вроде `has_access_token`.
 
-#### 2. Миграция с `DB::table(...)->each(...)`
-
-Первый аудит: `3.4. Миграция 2026_04_29_000801_add_supported_currency_codes_to_cascade_providers_table.php использует несуществующий each() на query builder`.
-
-Во втором аудите этого пункта нет.
-
-Почему важно: если миграция осталась в таком виде, чистый прогон миграций может упасть.
-
-Что проверить: `database/migrations/2026_04_29_000801_add_supported_currency_codes_to_cascade_providers_table.php`. Нужно использовать `cursor()->each(...)`, `lazyById()` или `get()->each(...)`.
-
 #### 3. Provider callback парсится и ищет сделку до проверки токена
 
 Первый аудит: `4.2. Callback от провайдера парсится и ищет сделку до проверки токена`.
@@ -65,26 +55,6 @@
 Почему важно: если исправлен только сценарий disabled merchant, остаются stuck deals после других окончательных fail-сценариев.
 
 Что проверить: `CascadeService::createDeal()` и финализацию `CascadeProviderAttemptJob`. Любой окончательный fail после создания persistent `CascadeDeal` должен переводить deal в финальный fail/canceled/expired state, писать событие и освобождать/idempotently фиксировать `external_id`.
-
-#### 5. Horizon callback supervisor может перебивать retry-настройки callback job
-
-Первый аудит: `6.1. Horizon callback supervisor может перебивать retry-настройки job`.
-
-Во втором аудите этого пункта нет.
-
-Почему важно: `SendCascadeDealCallbackJob` ожидает несколько retry, но supervisor очереди `callback` в первом аудите был отмечен как `tries => 1`. Если production worker options действительно переопределяют job-level attempts, merchant callbacks могут не ретраиться как задумано.
-
-Что проверить: `config/horizon.php` для очереди `callback` и фактическую семантику Laravel Horizon в текущей версии проекта. Контракт retry для `SendCascadeDealCallbackJob` должен быть однозначным.
-
-#### 6. Завершение orchestration зависит от cache-counter без persistent fallback
-
-Первый аудит: `6.4. markAttemptFinished() зависит от cache-counter без persistent fallback`.
-
-Во втором аудите этого пункта нет.
-
-Почему важно: при kill/timeout воркера между созданием provider deal и `finally` cache-счетчик может не увеличиться, HTTP create уйдет в timeout, а состояние сделок/транзакций останется промежуточным.
-
-Что проверить: `CascadeProviderAttemptJob::markAttemptFinished()`. Нужен fallback из БД: количество transactions по deal, terminal statuses, `selected_transaction_id`, финальный статус deal.
 
 #### 7. Runtime-риск дубликатов `cascade_providers.code`
 
@@ -241,3 +211,4 @@
 8. Provider-liquidity amount filter соответствует валюте поля.
 9. `CallbackLog` фиксирует transport exceptions.
 10. Остальной список выше можно закрывать как hardening/технический долг.
+
