@@ -39,6 +39,11 @@ const openDealModal = (deal) => {
     activeModalTab.value = 'overview';
 };
 
+const openDealAttemptsModal = (deal) => {
+    selectedDeal.value = deal;
+    activeModalTab.value = 'attempts';
+};
+
 const closeDealModal = () => {
     selectedDeal.value = null;
 };
@@ -132,6 +137,13 @@ const eventTypeLabel = (type) => ({
     timeout: 'Таймаут',
     error: 'Ошибка',
 }[type] ?? type ?? 'Событие');
+
+const transactionStatusBadgeClass = (status) => ({
+    accepted: 'badge-success',
+    opened: 'badge-info',
+    failed_to_open: 'badge-error',
+    cancelled: 'badge-warning',
+}[status] ?? 'badge-ghost');
 
 const formatExecutionTime = (value) => {
     if (value === null || value === undefined) {
@@ -261,6 +273,16 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </button>
                                         <button
                                             type="button"
+                                            class="btn btn-info btn-outline btn-xs"
+                                            aria-label="Открыть попытки провайдеров"
+                                            @click.prevent="openDealAttemptsModal(deal)"
+                                        >
+                                            <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16M8 4v16m8-16v16"/>
+                                            </svg>
+                                        </button>
+                                        <button
+                                            type="button"
                                             class="btn btn-primary btn-outline btn-xs"
                                             aria-label="Открыть каскадную сделку"
                                             @click.prevent="openDealModal(deal)"
@@ -355,6 +377,16 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </button>
                                     <button
                                         type="button"
+                                        class="btn btn-info btn-outline btn-xs"
+                                        aria-label="Открыть попытки провайдеров"
+                                        @click.prevent="openDealAttemptsModal(deal)"
+                                    >
+                                        <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16M8 4v16m8-16v16"/>
+                                        </svg>
+                                    </button>
+                                    <button
+                                        type="button"
                                         class="btn btn-primary btn-outline btn-xs"
                                         aria-label="Открыть каскадную сделку"
                                         @click.prevent="openDealModal(deal)"
@@ -399,6 +431,9 @@ defineOptions({ layout: AuthenticatedLayout })
                         <div class="join self-start">
                             <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'overview' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'overview'">
                                 Обзор
+                            </button>
+                            <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'attempts' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'attempts'">
+                                Попытки
                             </button>
                             <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'logs' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'logs'">
                                 Логи
@@ -460,6 +495,75 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div>Provider deal ID: {{ selectedDeal.selected_transaction?.provider_deal_id ?? 'Пусто' }}</div>
                                     <div>Статус транзакции: {{ selectedDeal.selected_transaction?.status_name ?? selectedDeal.selected_transaction?.status ?? 'Пусто' }}</div>
                                     <div>Попыток: {{ selectedDeal.transactions_count ?? 0 }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="activeModalTab === 'attempts'" class="card bg-base-200">
+                        <div class="card-body p-4">
+                            <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                <h4 class="font-semibold">Попытки провайдеров</h4>
+                                <span class="badge badge-info badge-outline badge-sm">{{ selectedDeal.transactions?.length ?? 0 }} показано</span>
+                            </div>
+
+                            <div v-if="! selectedDeal.transactions?.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                Для этой сделки пока нет попыток создания у провайдеров.
+                            </div>
+
+                            <div v-else class="space-y-3">
+                                <div
+                                    v-for="transaction in selectedDeal.transactions"
+                                    :key="transaction.id"
+                                    class="collapse collapse-arrow rounded-box border border-base-300 bg-base-100"
+                                >
+                                    <input type="checkbox" />
+                                    <div class="collapse-title">
+                                        <div class="flex flex-col gap-2 pr-6 sm:flex-row sm:items-start sm:justify-between">
+                                            <div class="min-w-0">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span :class="['badge badge-sm', transactionStatusBadgeClass(transaction.status)]">
+                                                        {{ transaction.status_name ?? transaction.status ?? 'Без статуса' }}
+                                                    </span>
+                                                    <span class="font-medium">{{ transaction.provider?.name ?? transaction.provider?.code ?? 'Провайдер не найден' }}</span>
+                                                    <span v-if="transaction.provider?.provider_type" class="badge badge-ghost badge-sm">{{ transaction.provider.provider_type }}</span>
+                                                </div>
+                                                <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/70">
+                                                    <span>Attempt #{{ transaction.id }}</span>
+                                                    <span v-if="transaction.provider_deal_id">Provider deal ID: {{ transaction.provider_deal_id }}</span>
+                                                </div>
+                                            </div>
+                                            <DateTime class="justify-start text-xs sm:justify-end" :data="transaction.created_at" show-time/>
+                                        </div>
+                                    </div>
+                                    <div class="collapse-content">
+                                        <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                            <div class="rounded-box bg-base-200 p-3 text-sm">
+                                                <div class="mb-2 font-semibold">Экономика попытки</div>
+                                                <div class="space-y-1">
+                                                    <div>USDT amount: {{ formatCurrency(transaction.usdt_amount, selectedDeal.base_currency) }}</div>
+                                                    <div>Credit: {{ formatCurrency(transaction.credit, selectedDeal.base_currency) }}</div>
+                                                    <div>Fee: {{ formatCurrency(transaction.fee, selectedDeal.base_currency) }}</div>
+                                                    <div>Fee rate: {{ transaction.fee_rate ?? 'Пусто' }}</div>
+                                                </div>
+                                            </div>
+
+                                            <div v-if="transaction.error_code || transaction.error_message" class="rounded-box border border-error/20 bg-error/5 p-3">
+                                                <div class="mb-1 text-sm font-semibold text-error">Ошибка открытия</div>
+                                                <div v-if="transaction.error_code" class="mb-2 wrap-anywhere font-mono text-xs text-error/80">{{ transaction.error_code }}</div>
+                                                <pre v-if="transaction.error_message" class="max-h-36 overflow-auto whitespace-pre-wrap wrap-anywhere text-xs text-error">{{ transaction.error_message }}</pre>
+                                            </div>
+
+                                            <div>
+                                                <div class="mb-1 text-xs font-semibold">Payload запроса</div>
+                                                <pre class="max-h-80 overflow-auto rounded bg-base-200 p-3 text-xs whitespace-pre-wrap wrap-anywhere">{{ prettyJson(transaction.request_payload) }}</pre>
+                                            </div>
+                                            <div>
+                                                <div class="mb-1 text-xs font-semibold">Payload ответа</div>
+                                                <pre class="max-h-80 overflow-auto rounded bg-base-200 p-3 text-xs whitespace-pre-wrap wrap-anywhere">{{ prettyJson(transaction.response_payload) }}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

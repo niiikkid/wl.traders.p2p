@@ -87,6 +87,30 @@ class TableCascadeDealResource extends JsonResource
                 'error_message' => $this->selectedTransaction->error_message,
             ] : null,
             'transactions_count' => $this->transactions_count,
+            'transactions' => $this->whenLoaded('transactions', fn () => $this->transactions->map(fn ($transaction) => [
+                'id' => $transaction->id,
+                'status' => $transaction->status?->value,
+                'status_name' => $transaction->status
+                    ? trans("cascade.transaction_status.{$transaction->status->value}")
+                    : null,
+                'provider_deal_id' => $transaction->provider_deal_id,
+                'usdt_amount' => $transaction->usdt_amount?->toBeauty(),
+                'fee' => $transaction->fee?->toBeauty(),
+                'fee_rate' => $transaction->fee_rate,
+                'credit' => $transaction->credit?->toBeauty(),
+                'request_payload' => $transaction->request_payload,
+                'response_payload' => $transaction->response_payload,
+                'error_code' => $transaction->error_code,
+                'error_message' => $transaction->error_message,
+                'provider' => $transaction->provider ? [
+                    'id' => $transaction->provider->id,
+                    'code' => $transaction->provider->code,
+                    'name' => $transaction->provider->name,
+                    'provider_type' => $transaction->provider->provider_type?->value,
+                ] : null,
+                'created_at' => $transaction->created_at?->toISOString(),
+                'updated_at' => $transaction->updated_at?->toISOString(),
+            ])),
             'provider_logs_count' => $this->provider_logs_count,
             'events' => $this->whenLoaded('events', fn () => $this->events->map(fn ($event) => [
                 'id' => $event->id,

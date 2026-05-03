@@ -24,6 +24,9 @@ class CascadeDealController extends Controller
                 'order.dispute',
                 'selectedProvider',
                 'selectedTransaction',
+                'transactions' => fn ($query) => $query
+                    ->with('provider')
+                    ->latest('id'),
                 'events' => fn ($query) => $query
                     ->with(['provider', 'cascadeTransaction'])
                     ->latest('id')
