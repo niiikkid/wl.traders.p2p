@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\CascadeDealStatus;
 use App\Enums\DisputeStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
@@ -10,6 +11,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\WalletResource;
+use App\Models\CascadeDeal;
 use App\Models\Dispute;
 use App\Models\Invoice;
 use App\Models\NewsPost;
@@ -170,6 +172,18 @@ class HandleInertiaRequests extends Middleware
             return 0;
         });
 
+        $cascadeActiveCount = 0;
+        if ($userRole === 'admin') {
+            $cascadeActiveCount = (int) cache()->remember('cascade_active_admin', 15, function () {
+                return CascadeDeal::query()
+                    ->whereIn('status', [
+                        CascadeDealStatus::PROVISIONING->value,
+                        CascadeDealStatus::PENDING->value,
+                    ])
+                    ->count();
+            });
+        }
+
         $onlineUsers = 0;
         $activeDetails = 0;
         $pendingWithdrawals = 0;
@@ -269,6 +283,7 @@ class HandleInertiaRequests extends Middleware
             'pendingWithdrawals' => (int) $pendingWithdrawals,
             'newsUnreadCount' => (int) $newsUnreadCount,
             'payoutsActiveCount' => (int) $payoutsActiveCount,
+            'cascadeActiveCount' => (int) $cascadeActiveCount,
         ];
 
         $sharedWalletStats = null;
