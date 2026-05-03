@@ -97,6 +97,21 @@ class SendCascadeDealCallbackJob implements ShouldQueue
             );
         } catch (Throwable $e) {
             if (isset($deal, $payload, $started_at)) {
+                try {
+                    $callbackLog = new CallbackLog([
+                        'type' => CallbackLog::TYPE_CASCADE_PAYIN,
+                        'url' => $deal->callback_url,
+                        'request_data' => $payload,
+                        'response_data' => ['message' => $e->getMessage()],
+                        'status_code' => null,
+                        'is_success' => false,
+                    ]);
+
+                    $deal->callbackLogs()->save($callbackLog);
+                } catch (Throwable $logException) {
+                    report($logException);
+                }
+
                 RecordCascadeMerchantLogJob::dispatch([
                     'cascade_deal_id' => $deal->id,
                     'merchant_id' => $deal->merchant_id,
