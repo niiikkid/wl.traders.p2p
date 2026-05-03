@@ -288,6 +288,11 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 ## 14) Что важно помнить при дальнейших изменениях
 
 - Если добавляется новая provider integration — она обязана реализовать `CascadeProviderInterface`.
+- Между приложением и внешней provider integration должен быть чёткий мост:
+  - приложение и orchestration-слой каскада работают только через `CascadeProviderInterface`;
+  - вся логика общения с конкретным внешним провайдером через API капсулируется в файле интеграции провайдера;
+  - создание/получение/отмена сделки, dispute-операции, confirmation code и обработка provider callback должны нормализоваться внутри provider adapter;
+  - внутренняя логика каскада не должна знать HTTP endpoints, payload-форматы, auth-схемы и provider-specific детали конкретной интеграции.
 - Любая новая money-операция в каскаде должна:
   - быть атомарной,
   - иметь понятный `TransactionType`,
@@ -295,4 +300,14 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 - Любой новый статусный переход должен проходить через каскадные enum, не через `OrderSubStatus` напрямую.
 - Любая внешняя операция должна быть queue-safe и timeout-safe.
 - Любая UI-страница провайдера должна оставаться в safe-data режиме.
+
+## 15) Отложенные архитектурные нюансы по границам провайдеров
+
+Эти пункты сейчас не исправляются, но их важно помнить при следующих итерациях, чтобы граница между каскадом и внешними интеграциями оставалась чистой:
+
+- `CascadeService::handleProviderCallback()` пока содержит provider-specific ветку для `SelfTestCascadeProvider` и сам выбирает схему проверки callback token. В идеале callback auth/validation должен быть частью provider adapter или отдельного provider capability.
+- `CascadeService` и `CascadeProviderAttemptJob` ветвятся по `ProviderType::INTERNAL/EXTERNAL`. Часть этих веток относится к доменной экономике и collateral, но provider-operation поведение стоит по возможности переносить за интерфейс/capabilities.
+- `CascadeProviderInterface` возвращает обычные `array` с нормализованными ключами (`provider_deal_id`, `status`, `settlement`, `dispute` и т.п.). Это рабочий контракт, но со временем лучше заменить его на DTO/Value Objects, чтобы мост был типизированным.
+- Внутренние jobs иногда используют интеграционные поля модели провайдера вроде `base_url` как fallback для логирования. Логические URL внешнего API лучше получать только через provider adapter.
+- `SelfTestCascadeProvider` завязан на доменную структуру мерчанта для auth (`merchant->user->api_access_token`). Для тестовой интеграции это допустимо, но реальные внешние провайдеры должны держать auth-схему внутри своего adapter/config.
 
