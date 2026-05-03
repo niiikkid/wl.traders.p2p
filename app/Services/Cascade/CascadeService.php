@@ -374,6 +374,13 @@ class CascadeService implements CascadeServiceContract
             $data['reason'] = $reason === '' ? null : $reason;
         }
 
+        // Snapshot receipt metadata while temp files still exist. Internal flow moves the first
+        // receipt in DisputeService::create, after which the tmp path is no longer readable.
+        $receipt_file_metadata = [];
+        if (! empty($data['receipts']) && is_array($data['receipts'])) {
+            $receipt_file_metadata = $this->disputeReceiptMetadata((array) $data['receipts']);
+        }
+
         $cascadeDeal->loadMissing(['order.dispute', 'selectedProvider', 'selectedTransaction']);
 
         if ($cascadeDeal->dispute_status !== null || $cascadeDeal->order?->dispute !== null) {
@@ -394,7 +401,7 @@ class CascadeService implements CascadeServiceContract
                 'reason' => Arr::get($data, 'reason'),
             ];
 
-            $this->rememberCascadeDispute($cascadeDeal, $local_payload, $data);
+            $this->rememberCascadeDispute($cascadeDeal, $local_payload, $data, $receipt_file_metadata);
             CascadeProviderOperationJob::dispatch(
                 $cascadeDeal->id,
                 $provider_model->id,
@@ -411,7 +418,7 @@ class CascadeService implements CascadeServiceContract
             $response_payload = $provider->openDispute($cascadeDeal, $provider_deal_id, $data);
 
             $this->rememberSelectedTransactionDispute($cascadeDeal, $response_payload);
-            $this->rememberCascadeDispute($cascadeDeal, $response_payload, $data);
+            $this->rememberCascadeDispute($cascadeDeal, $response_payload, $data, $receipt_file_metadata);
             $this->recordProviderLog(
                 cascadeDeal: $cascadeDeal,
                 providerModel: $provider_model,
@@ -764,8 +771,9 @@ class CascadeService implements CascadeServiceContract
     /**
      * @param  array<string, mixed>  $responsePayload
      * @param  array<string, mixed>  $requestData
+     * @param  list<array{index: int, original_name: string|null, mime_type: string|null, size: int|null, extension: string|null, hash_name: string, created_at: string}>  $receiptFileMetadata
      */
-    private function rememberCascadeDispute(CascadeDeal $cascadeDeal, array $responsePayload, array $requestData): void
+    private function rememberCascadeDispute(CascadeDeal $cascadeDeal, array $responsePayload, array $requestData, array $receiptFileMetadata = []): void
     {
         $status = $this->mapProviderDisputeStatus((string) Arr::get($responsePayload, 'status', 'opened'));
         $reason = Arr::get($responsePayload, 'reason')
@@ -783,7 +791,13 @@ class CascadeService implements CascadeServiceContract
         ];
 
         $receipts = $cascadeDeal->dispute_receipts ?? [];
-        if (! empty($requestData['receipts'])) {
+        if ($receiptFileMetadata !== []) {
+            $receipts[] = [
+                'count' => count($receiptFileMetadata),
+                'files' => $receiptFileMetadata,
+                'stored_at' => now()->toDateTimeString(),
+            ];
+        } elseif (! empty($requestData['receipts'])) {
             $receipts[] = [
                 'count' => count($requestData['receipts']),
                 'files' => $this->disputeReceiptMetadata((array) $requestData['receipts']),
