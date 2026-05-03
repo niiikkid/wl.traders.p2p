@@ -12,7 +12,7 @@ return [
     ],
     'sub_status' => [
         'provider_selection' => 'Подбор провайдера',
-        'failed_to_create' => 'Не удалось создать ни у одного провайдера',
+        'failed_to_create' => 'Не удалось создать',
         'successfully_paid' => 'Оплачена',
         'waiting_for_payment' => 'Ожидает оплаты',
         'cancelled' => 'Отменена',
