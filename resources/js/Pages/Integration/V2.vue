@@ -135,6 +135,7 @@ const payinResponse = {
         id: '7e2b4b44-36b9-44a9-8b61-8d4100b166e1',
         external_id: 'payin-10001',
         merchant_id: '9b2cf9e7-8e37-4bcb-8c9c-7f2b1e3c88c4',
+        callback_revision: 1,
         status: 'pending',
         sub_status: 'waiting_for_payment',
         amounts: {
@@ -214,6 +215,7 @@ const payoutResponse = {
         id: 'f0fbb6e3-e1a2-44f1-b3b5-8ea9f307ef8d',
         external_id: 'payout-20001',
         merchant_id: '9b2cf9e7-8e37-4bcb-8c9c-7f2b1e3c88c4',
+        callback_revision: 1,
         status: 'open',
         amounts: {
             amount: { value: '25000.00', currency: 'RUB' },
@@ -1039,6 +1041,32 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                 по payin и payout, оба подписываются <code class="rounded bg-base-200 px-1">Callback token</code> в заголовке
                                 <code class="rounded bg-base-200 px-1">Access-Token</code>.
                             </p>
+                            <div class="rounded-xl border border-base-300 bg-base-200/60 p-4 text-sm">
+                                <h3 class="mb-2 font-semibold">
+                                    Поле <code class="rounded bg-base-300 px-1">callback_revision</code>
+                                </h3>
+                                <p class="text-base-content/70">
+                                    В теле payin и payout (в том числе в callback) приходит целое неотрицательное поле
+                                    <code class="rounded bg-base-300 px-1">callback_revision</code>. Оно монотонно растёт при каждом новом
+                                    уведомлении об изменении данных, которые попадают в этот ресурс: новая ревизия означает новую версию
+                                    состояния для доставки мерчанту.
+                                </p>
+                                <ul class="mt-2 list-inside list-disc space-y-1 text-base-content/70">
+                                    <li>
+                                        Повторная отправка одного и того же уведомления (ретрай после сетевой ошибки или не-2xx) использует
+                                        <strong>ту же</strong> ревизию и тот же смысл полей — обработайте идемпотентно: если ревизия уже была
+                                        применена, ответьте 2xx и не меняйте состояние повторно.
+                                    </li>
+                                    <li>
+                                        Если приходит ревизия <strong>меньше</strong>, чем уже обработанная у вас для этой сделки или выплаты,
+                                        уведомление устарело (например, опоздавший ретрай) — безопасно ответить 2xx и игнорировать тело.
+                                    </li>
+                                    <li>
+                                        Ревизия в callback совпадает с ревизией в соответствующем ответе API после того же изменения;
+                                        ориентируйтесь на неё, а не на <code class="rounded bg-base-300 px-1">current_server_time</code>.
+                                    </li>
+                                </ul>
+                            </div>
                             <div class="grid gap-4 lg:grid-cols-2">
                                 <div class="rounded-xl border border-base-300 bg-base-200/60 p-4">
                                     <h3 class="mb-2 font-semibold">Заголовки callback</h3>

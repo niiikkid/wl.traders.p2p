@@ -57,6 +57,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property float|null $trader_commission_rate
  * @property float|null $teamlead_commission_rate
  * @property string|null $callback_url
+ * @property int $callback_payload_revision
+ * @property int $last_callback_delivered_revision
  * @property string|null $receipt_path
  * @property Merchant $merchant
  * @property User|null $trader
@@ -83,6 +85,8 @@ class Payout extends Model
         'requisites',
         'initials',
         'callback_url',
+        'callback_payload_revision',
+        'last_callback_delivered_revision',
         'amount_fiat',
         'amount_fiat_currency',
         'usdt_body',
@@ -147,6 +151,8 @@ class Payout extends Model
         'callback_url' => 'string',
         'external_id' => 'string',
         'api_version' => 'integer',
+        'callback_payload_revision' => 'integer',
+        'last_callback_delivered_revision' => 'integer',
     ];
 
     public function merchant(): BelongsTo

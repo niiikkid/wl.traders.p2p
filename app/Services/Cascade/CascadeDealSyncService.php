@@ -37,7 +37,9 @@ class CascadeDealSyncService
 
         $beforeCallbackPayload = $this->buildCallbackPayloadSnapshot($deal);
 
-        $deal = DB::transaction(function () use ($deal, $order): CascadeDeal {
+        $callbackRevision = null;
+
+        $deal = DB::transaction(function () use ($deal, $order, $beforeCallbackPayload, &$callbackRevision): CascadeDeal {
             $deal->refresh();
             $fromStatus = $deal->status?->value;
             $fromSubStatus = $deal->sub_status?->value;
@@ -99,13 +101,21 @@ class CascadeDealSyncService
                 );
             }
 
-            return $deal->refresh();
+            $deal->refresh();
+
+            $afterCallbackPayload = $this->buildCallbackPayloadSnapshot($deal->loadMissing('merchant'));
+
+            if ($beforeCallbackPayload !== $afterCallbackPayload) {
+                $callbackRevision = $deal->callback_payload_revision + 1;
+                $deal->forceFill(['callback_payload_revision' => $callbackRevision])->save();
+                $deal->refresh();
+            }
+
+            return $deal;
         });
 
-        $afterCallbackPayload = $this->buildCallbackPayloadSnapshot($deal->loadMissing('merchant'));
-
-        if ($beforeCallbackPayload !== $afterCallbackPayload) {
-            SendCascadeDealCallbackJob::dispatch($deal);
+        if ($callbackRevision !== null) {
+            SendCascadeDealCallbackJob::dispatch($deal, $callbackRevision);
         }
 
         return $deal;

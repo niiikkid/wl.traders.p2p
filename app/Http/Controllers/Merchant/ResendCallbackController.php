@@ -24,7 +24,10 @@ class ResendCallbackController extends Controller
     {
         Gate::authorize('access-to-cascade-deal', $cascadeDeal);
 
-        SendCascadeDealCallbackJob::dispatch($cascadeDeal);
+        $callbackRevision = $cascadeDeal->callback_payload_revision + 1;
+        $cascadeDeal->forceFill(['callback_payload_revision' => $callbackRevision])->save();
+
+        SendCascadeDealCallbackJob::dispatch($cascadeDeal, $callbackRevision);
 
         return redirect()->back()->with('message', 'Callback о текущем статусе повторно отправлен.');
     }

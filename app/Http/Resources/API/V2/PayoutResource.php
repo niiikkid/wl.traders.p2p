@@ -20,6 +20,7 @@ class PayoutResource extends JsonResource
             'id' => $this->uuid,
             'external_id' => $this->external_id,
             'merchant_id' => $this->merchant?->uuid,
+            'callback_revision' => $this->callback_payload_revision,
             'status' => $this->status->value,
             'amounts' => [
                 'amount' => $this->formatMoney($this->amount_fiat, $this->amount_fiat_currency),

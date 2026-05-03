@@ -27,8 +27,10 @@ class SendCascadeDealCallbackJob implements ShouldQueue
 
     private const LOCK_TTL = 120;
 
-    public function __construct(private readonly CascadeDeal $cascadeDeal)
-    {
+    public function __construct(
+        private readonly CascadeDeal $cascadeDeal,
+        private readonly ?int $callbackRevision = null,
+    ) {
         $this->onQueue('callback');
         $this->afterCommit();
     }
@@ -38,6 +40,14 @@ class SendCascadeDealCallbackJob implements ShouldQueue
         $deal = $this->cascadeDeal->fresh(['merchant.apiCredential']);
 
         if (! $deal || ! $deal->callback_url || ! $deal->isVisibleInMerchantApi()) {
+            return;
+        }
+
+        if ($this->callbackRevision === null) {
+            return;
+        }
+
+        if ($deal->last_callback_delivered_revision >= $this->callbackRevision) {
             return;
         }
 
@@ -51,6 +61,7 @@ class SendCascadeDealCallbackJob implements ShouldQueue
 
         try {
             $started_at = microtime(true);
+            $deal->forceFill(['callback_payload_revision' => $this->callbackRevision]);
             $payload = OrderResource::make($deal)->resolve();
             $http = Http::withoutVerifying()->acceptJson()->timeout(10);
             $token = $deal->merchant->apiCredentialOrCreate()->callback_token;
@@ -93,8 +104,16 @@ class SendCascadeDealCallbackJob implements ShouldQueue
                     'url' => $deal->callback_url,
                     'status_code' => $response->status(),
                     'is_success' => $response->successful(),
+                    'callback_revision' => $this->callbackRevision,
                 ],
             );
+
+            if ($response->successful()) {
+                $deal->newQuery()
+                    ->whereKey($deal->id)
+                    ->where('last_callback_delivered_revision', '<', $this->callbackRevision)
+                    ->update(['last_callback_delivered_revision' => $this->callbackRevision]);
+            }
         } catch (Throwable $e) {
             if (isset($deal, $payload, $started_at)) {
                 try {

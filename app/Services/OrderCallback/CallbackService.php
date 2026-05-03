@@ -38,7 +38,7 @@ class CallbackService implements CallbackServiceContract
         $this->sendCallback($callback_url, $data, $token, $order, CallbackLog::TYPE_ORDER);
     }
 
-    public function sendForPayout(Payout $payout): void
+    public function sendForPayout(Payout $payout, ?int $callbackRevision = null): void
     {
         $payout->load(['merchant.user', 'paymentGateway', 'trader']);
 
@@ -49,6 +49,10 @@ class CallbackService implements CallbackServiceContract
             return;
         }
 
+        if ($payout->api_version === 2 && $callbackRevision !== null) {
+            $payout->forceFill(['callback_payload_revision' => $callbackRevision]);
+        }
+
         $data = $payout->api_version === 2
             ? PayoutV2Resource::make($payout)->resolve()
             : PayoutCallbackResource::make($payout)->resolve();
@@ -56,10 +60,17 @@ class CallbackService implements CallbackServiceContract
             ? $payout->merchant->apiCredentialOrCreate()->callback_token
             : $payout->merchant->user->api_access_token;
 
-        $this->sendCallback($callbackUrl, $data, $token, $payout, CallbackLog::TYPE_PAYOUT);
+        $isSuccessful = $this->sendCallback($callbackUrl, $data, $token, $payout, CallbackLog::TYPE_PAYOUT);
+
+        if ($isSuccessful && $payout->api_version === 2 && $callbackRevision !== null) {
+            $payout->newQuery()
+                ->whereKey($payout->id)
+                ->where('last_callback_delivered_revision', '<', $callbackRevision)
+                ->update(['last_callback_delivered_revision' => $callbackRevision]);
+        }
     }
 
-    private function sendCallback(string $url, array $payload, ?string $token, Model $model, string $type): void
+    private function sendCallback(string $url, array $payload, ?string $token, Model $model, string $type): bool
     {
         $startedAt = microtime(true);
         $http = Http::withoutVerifying()->acceptJson();
@@ -112,6 +123,8 @@ class CallbackService implements CallbackServiceContract
             startedAt: $startedAt,
             isSuccessful: $response->successful(),
         );
+
+        return $response->successful();
     }
 
     /**

@@ -9,5 +9,5 @@ interface CallbackServiceContract
 {
     public function sendForOrder(Order $order): void;
 
-    public function sendForPayout(Payout $payout): void;
+    public function sendForPayout(Payout $payout, ?int $callbackRevision = null): void;
 }

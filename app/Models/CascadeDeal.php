@@ -54,6 +54,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property array|null $details Детали платежа (type, initials, value)
  * @property CascadeManualControl|null $manual_control Данные ручного acquiring для внутреннего провайдера
  * @property string|null $callback_url URL для callback'ов мерчанту
+ * @property int $callback_payload_revision Ревизия полезной нагрузки callback'а
+ * @property int $last_callback_delivered_revision Последняя успешно доставленная ревизия callback'а
  * @property Carbon|null $finished_at Дата завершения сделки
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -115,6 +117,8 @@ class CascadeDeal extends Model
 
         // Callback
         'callback_url',
+        'callback_payload_revision',
+        'last_callback_delivered_revision',
 
         // Даты
         'finished_at',
@@ -144,6 +148,8 @@ class CascadeDeal extends Model
         'dispute_canceled_at' => 'datetime',
         'rate_fixed_at' => 'datetime',
         'finished_at' => 'datetime',
+        'callback_payload_revision' => 'integer',
+        'last_callback_delivered_revision' => 'integer',
     ];
 
     public function scopeVisibleInMerchantApi(Builder $query): Builder

@@ -624,7 +624,7 @@ class CascadeService implements CascadeServiceContract
 
         $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $cascadeProvider, $callback_data);
 
-        $should_send_callback = DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): bool {
+        $callback_revision = DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): ?int {
             $from_status = $cascade_deal->status?->value;
             $from_sub_status = $cascade_deal->sub_status?->value;
             $should_send_callback = false;
@@ -672,7 +672,14 @@ class CascadeService implements CascadeServiceContract
                 ]);
             }
 
-            return $should_send_callback;
+            if (! $should_send_callback) {
+                return null;
+            }
+
+            $callback_revision = $cascade_deal->callback_payload_revision + 1;
+            $cascade_deal->forceFill(['callback_payload_revision' => $callback_revision])->save();
+
+            return $callback_revision;
         });
 
         CascadeProviderLog::create([
@@ -688,8 +695,8 @@ class CascadeService implements CascadeServiceContract
             'is_successful' => true,
         ]);
 
-        if ($should_send_callback) {
-            SendCascadeDealCallbackJob::dispatch($cascade_deal->refresh());
+        if ($callback_revision !== null) {
+            SendCascadeDealCallbackJob::dispatch($cascade_deal->refresh(), $callback_revision);
         }
 
         return [];

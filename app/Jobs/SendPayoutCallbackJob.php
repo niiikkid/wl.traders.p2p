@@ -18,19 +18,41 @@ class SendPayoutCallbackJob implements ShouldQueue
 
     private const LOCK_TTL = 120;
 
-    public function __construct(private Payout $payout)
-    {
+    public function __construct(
+        private Payout $payout,
+        private ?int $callbackRevision = null,
+    ) {
         $this->onQueue('callback');
         $this->afterCommit();
     }
 
     public function handle(): void
     {
+        $payout = $this->payout->fresh();
+
+        if (! $payout) {
+            return;
+        }
+
+        $this->payout = $payout;
+
+        if ($this->payout->api_version === 2 && $this->callbackRevision === null) {
+            return;
+        }
+
+        if (
+            $this->payout->api_version === 2
+            && $this->callbackRevision !== null
+            && $this->payout->last_callback_delivered_revision >= $this->callbackRevision
+        ) {
+            return;
+        }
+
         $lockKey = $this->getLockKey();
 
         if ($this->acquireLock($lockKey)) {
             try {
-                services()->callback()->sendForPayout($this->payout);
+                services()->callback()->sendForPayout($this->payout, $this->callbackRevision);
             } finally {
                 $this->releaseLock($lockKey);
             }

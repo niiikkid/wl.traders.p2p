@@ -136,7 +136,7 @@ class CascadeProviderOperationJob implements ShouldQueue
         CascadeDealEventRecorder $events,
         array $responsePayload,
     ): void {
-        DB::transaction(function () use ($deal, $providerModel, $events, $responsePayload): void {
+        $callbackRevision = DB::transaction(function () use ($deal, $providerModel, $events, $responsePayload): int {
             $deal->refresh();
             $deal->loadMissing(['selectedTransaction']);
 
@@ -176,9 +176,14 @@ class CascadeProviderOperationJob implements ShouldQueue
                     toSubStatus: $deal->sub_status?->value,
                 );
             }
+
+            $callbackRevision = $deal->callback_payload_revision + 1;
+            $deal->forceFill(['callback_payload_revision' => $callbackRevision])->save();
+
+            return $callbackRevision;
         });
 
-        SendCascadeDealCallbackJob::dispatch($deal->refresh());
+        SendCascadeDealCallbackJob::dispatch($deal->refresh(), $callbackRevision);
     }
 
     /**
