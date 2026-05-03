@@ -9,7 +9,6 @@ use App\Http\Controllers\Admin\CascadeDealController;
 use App\Http\Controllers\Admin\CascadeMerchantLogController;
 use App\Http\Controllers\Admin\CascadeProviderController;
 use App\Http\Controllers\Admin\CascadeProviderLogController;
-use App\Http\Controllers\Admin\CascadeProviderWalletController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
@@ -435,10 +434,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/cascade-providers', [CascadeProviderController::class, 'store'])->name('cascade-providers.store');
         Route::patch('/cascade-providers/reorder', [CascadeProviderController::class, 'reorder'])->name('cascade-providers.reorder');
         Route::patch('/cascade-providers/{cascadeProvider}', [CascadeProviderController::class, 'update'])->name('cascade-providers.update');
-        Route::post('/cascade-providers/{cascadeProvider}/wallet/deposit', [CascadeProviderWalletController::class, 'deposit'])->name('cascade-providers.wallet.deposit');
-        Route::post('/cascade-providers/{cascadeProvider}/wallet/withdraw', [CascadeProviderWalletController::class, 'withdraw'])->name('cascade-providers.wallet.withdraw');
-        Route::post('/cascade-provider-holds/{fundsOnHold}/release', [CascadeProviderWalletController::class, 'releaseHold'])->name('cascade-provider-holds.release');
-        Route::post('/cascade-provider-holds/{fundsOnHold}/reconcile', [CascadeProviderWalletController::class, 'reconcileHold'])->name('cascade-provider-holds.reconcile');
         Route::get('/cascade-deals', [CascadeDealController::class, 'index'])->name('cascade-deals.index');
         Route::get('/cascade-merchant-settings', [MerchantCascadeSettingController::class, 'index'])->name('cascade-merchant-settings.index');
         Route::patch('/cascade-merchant-settings/{merchant}', [MerchantCascadeSettingController::class, 'update'])->name('cascade-merchant-settings.update');
