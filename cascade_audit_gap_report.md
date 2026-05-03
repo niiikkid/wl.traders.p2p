@@ -112,14 +112,6 @@
 
 Что проверить: порядок lookup/auth в `OrderController::showByExternal()` и `CascadeService::findDealByExternalId()`. Более строгий вариант: сначала авторизовать merchant scope из токена, затем искать external ID только в этом scope.
 
-#### 13. Provider discovery не видит подпапки
-
-Первый аудит: `7.2. Provider discovery не видит подпапки`.
-
-Во втором аудите этого пункта нет.
-
-Что проверить: `CascadeProviderDiscoveryService`. Если adapters должны лежать только плоско в `app/Services/Cascade/Providers`, это стоит задокументировать. Если ожидаются подпапки, нужен recursive discovery.
-
 #### 14. `config` и `weight` в `cascade_providers` стали мертвыми полями
 
 Первый аудит: `7.3. config и weight в cascade_providers стали мёртвыми полями`.
@@ -127,14 +119,6 @@
 Во втором аудите этого пункта нет.
 
 Что проверить: миграции и `CascadeProvider` model. Если поля не используются, лучше удалить отдельной миграцией или явно оставить как reserved-purpose.
-
-#### 15. `MerchantCascadeSetting.allowed_provider_ids` хранится JSON без ссылочной целостности
-
-Первый аудит: `8.3. Merchant cascade settings хранят whitelist как JSON без ссылочной целостности`.
-
-Во втором аудите этого пункта нет.
-
-Что проверить: если provider whitelist должен жить долго и поддерживать удаления провайдеров, лучше pivot-таблица или cleanup при удалении provider.
 
 #### 16. Provider logs пишутся, но timeout/fail контекст неполный
 
