@@ -34,7 +34,7 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         $this->config = $config;
     }
 
-    public function createDeal(CascadeDeal $cascadeDeal): array
+    public function createDeal(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): array
     {
         $merchant = $cascadeDeal->merchant;
 
@@ -67,6 +67,9 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         try {
             $request = H2HStoreRequest::create('/', 'POST', $payload);
             $request->setContainer(app())->setRedirector(app('redirect'));
+            if ($maxWaitMs !== null) {
+                $request->headers->set('X-Max-Wait-Ms', (string) $maxWaitMs);
+            }
             $request->validateResolved();
 
             $response = services()->orderPooling()->processOrderPooling($request);

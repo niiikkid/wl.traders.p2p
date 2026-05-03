@@ -13,8 +13,8 @@ use App\Http\Resources\API\V2\OrderResource;
 use App\Jobs\RecordCascadeMerchantLogJob;
 use App\Models\CascadeDeal;
 use App\Models\Merchant;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class OrderController extends Controller
@@ -72,6 +72,7 @@ class OrderController extends Controller
             $cascade_deal = services()->cascade()->createDeal($dto);
         } catch (CascadeException $e) {
             $response_payload = ['message' => $e->getMessage()];
+            $status_code = str_contains($e->getMessage(), 'вовремя') ? 504 : 400;
 
             $this->recordMerchantLog(
                 merchant: $merchant,
@@ -79,14 +80,14 @@ class OrderController extends Controller
                 operation: 'createDeal',
                 requestPayload: $request->all(),
                 responsePayload: $response_payload,
-                statusCode: 400,
+                statusCode: $status_code,
                 startedAt: $started_at,
                 isSuccessful: false,
                 errorCode: get_class($e),
                 errorMessage: $e->getMessage(),
             );
 
-            return response()->failWithMessage($e->getMessage());
+            return response()->failWithMessage($e->getMessage(), $status_code);
         }
 
         $response_payload = OrderResource::make($cascade_deal)->resolve();

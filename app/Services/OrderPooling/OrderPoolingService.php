@@ -36,11 +36,9 @@ class OrderPoolingService implements OrderPoolingServiceContract
             return $response;
         }
 
-
-
-        $timeout = (int)$merchant->max_order_wait_time;
-        if (request()->header('X-Max-Wait-Ms')) {
-            $timeout = (int)request()->header('X-Max-Wait-Ms');
+        $timeout = (int) $merchant->max_order_wait_time;
+        if ($request->header('X-Max-Wait-Ms')) {
+            $timeout = (int) $request->header('X-Max-Wait-Ms');
         }
 
         $timeout = $timeout === 0 ? config('order-pooling.max_wait_time') : $timeout;
@@ -60,7 +58,6 @@ class OrderPoolingService implements OrderPoolingServiceContract
         cache()->put("order:create:$jobID", json_encode([
             'status' => 'queued',
         ]), 60);
-
 
         $payload = $request->validated();
         if ($request instanceof H2HRequest) {

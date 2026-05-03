@@ -29,7 +29,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         $this->config = $config;
     }
 
-    public function createDeal(CascadeDeal $cascadeDeal): array
+    public function createDeal(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): array
     {
         $payload = [
             'merchant_id' => $cascadeDeal->merchant->uuid,
@@ -57,7 +57,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             ]);
         }
 
-        $response = $this->request($cascadeDeal)->post($this->buildUrl('/api/h2h/order'), $payload);
+        $response = $this->request($cascadeDeal, $maxWaitMs)->post($this->buildUrl('/api/h2h/order'), $payload);
         $this->throwIfInvalid($response);
 
         return $this->normalizeOrderResponse($response->json());
@@ -204,13 +204,24 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         ];
     }
 
-    private function request(CascadeDeal $cascadeDeal): PendingRequest
+    private function request(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): PendingRequest
     {
+        $headers = [
+            'Access-Token' => (string) $cascadeDeal->merchant->user->api_access_token,
+        ];
+
+        if ($maxWaitMs !== null) {
+            $headers['X-Max-Wait-Ms'] = (string) $maxWaitMs;
+        }
+
+        $timeout = (int) ($this->configValue('timeout') ?? 10);
+        if ($maxWaitMs !== null) {
+            $timeout = max(1, min($timeout, (int) ceil($maxWaitMs / 1000)));
+        }
+
         $request = Http::acceptJson()
-            ->withHeaders([
-                'Access-Token' => (string) $cascadeDeal->merchant->user->api_access_token,
-            ])
-            ->timeout((int) ($this->configValue('timeout') ?? 10));
+            ->withHeaders($headers)
+            ->timeout($timeout);
 
         if ($this->configValue('verify_ssl') === false) {
             $request = $request->withoutVerifying();

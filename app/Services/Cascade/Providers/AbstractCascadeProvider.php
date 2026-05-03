@@ -21,7 +21,7 @@ abstract class AbstractCascadeProvider implements CascadeProviderInterface
      * @param  CascadeDeal  $cascadeDeal  Каскадная сделка
      * @return array Данные созданной сделки у провайдера
      */
-    abstract public function createDeal(CascadeDeal $cascadeDeal): array;
+    abstract public function createDeal(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): array;
 
     /**
      * Отменить сделку у провайдера

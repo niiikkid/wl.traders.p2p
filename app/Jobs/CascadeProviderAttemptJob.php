@@ -105,7 +105,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
         $createDealLogUrl = $provider->providerApiLogUrl('createDeal', $cascadeDeal);
 
         try {
-            $responsePayload = $provider->createDeal($cascadeDeal);
+            $responsePayload = $provider->createDeal($cascadeDeal, $this->remainingWaitMs());
 
             $transaction->update([
                 'provider_deal_id' => Arr::get($responsePayload, 'provider_deal_id'),
@@ -123,6 +123,12 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 isSuccessful: true,
             );
 
+            if ($this->isCreationAborted()) {
+                $this->dispatchProviderCancel($providerModel, $transaction, $responsePayload, 'client_wait_timeout');
+
+                return;
+            }
+
             if (
                 ! $providerModel->provider_type->equals(ProviderType::INTERNAL)
                 && ! $this->externalProviderCoversMerchantCredit(
@@ -132,15 +138,13 @@ class CascadeProviderAttemptJob implements ShouldQueue
                     $externalEconomics?->profits,
                 )
             ) {
-                $this->cancelLoser($cascadeDeal, $providerModel, $transaction, $responsePayload);
-
                 throw CascadeException::make('Внешний провайдер вернул сумму меньше обязательства перед мерчантом.');
             }
 
             $won = $this->tryAcceptWinner($cascadeDeal, $providerModel, $transaction, $responsePayload);
 
             if (! $won) {
-                $this->cancelLoser($cascadeDeal, $providerModel, $transaction, $responsePayload);
+                $this->dispatchProviderCancel($providerModel, $transaction, $responsePayload, 'lost_provider_race');
             }
         } catch (Throwable $e) {
             if (
@@ -148,7 +152,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 && $transaction->status->notEquals(CascadeTransactionStatus::ACCEPTED)
                 && $transaction->status->notEquals(CascadeTransactionStatus::CANCELLED)
             ) {
-                $this->cancelLoser($cascadeDeal, $providerModel, $transaction, $responsePayload);
+                $this->dispatchProviderCancel($providerModel, $transaction, $responsePayload, 'create_attempt_failed_after_provider_deal_created');
             }
 
             $this->recordFailure(
@@ -180,6 +184,32 @@ class CascadeProviderAttemptJob implements ShouldQueue
     public function failed(?Throwable $exception): void
     {
         $this->markAttemptFinished();
+    }
+
+    private function dispatchProviderCancel(
+        CascadeProvider $providerModel,
+        CascadeTransaction $transaction,
+        array $responsePayload,
+        string $reason,
+    ): void {
+        $providerDealId = (string) Arr::get($responsePayload, 'provider_deal_id');
+
+        if ($providerDealId === '') {
+            $transaction->update(['status' => CascadeTransactionStatus::CANCELLED]);
+
+            return;
+        }
+
+        CascadeProviderOperationJob::dispatch(
+            $this->cascadeDealId,
+            $providerModel->id,
+            'cancelDeal',
+            [
+                'provider_deal_id' => $providerDealId,
+                'cascade_transaction_id' => $transaction->id,
+                'reason' => $reason,
+            ],
+        );
     }
 
     private function tryAcceptWinner(
@@ -429,7 +459,7 @@ class CascadeProviderAttemptJob implements ShouldQueue
         $current = cache()->get($this->orchestrationKey());
         $currentStatus = $current ? json_decode($current, true) : null;
 
-        if ($expected > 0 && $finished >= $expected && ($currentStatus['status'] ?? null) !== 'done') {
+        if ($expected > 0 && $finished >= $expected && ! in_array($currentStatus['status'] ?? null, ['done', 'expired'], true)) {
             CascadeDeal::query()
                 ->whereKey($this->cascadeDealId)
                 ->whereNull('selected_transaction_id')
@@ -472,6 +502,23 @@ class CascadeProviderAttemptJob implements ShouldQueue
         ]), 60);
 
         return true;
+    }
+
+    private function isCreationAborted(): bool
+    {
+        if ($this->isCancelledBeforeStart()) {
+            return true;
+        }
+
+        $current = cache()->get($this->orchestrationKey());
+        $currentStatus = $current ? json_decode($current, true) : null;
+
+        return in_array($currentStatus['status'] ?? null, ['expired'], true);
+    }
+
+    private function remainingWaitMs(): int
+    {
+        return max(1, $this->maxWaitMs - (now()->getTimestampMs() - $this->createdAt));
     }
 
     private function isCancelledBeforeStart(): bool

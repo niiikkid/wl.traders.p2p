@@ -160,6 +160,7 @@ class StoreRequest extends FormRequest
             'expiry_year' => isset($v['card_expiry_year']) ? (int) $v['card_expiry_year'] : null,
             'cvc' => $v['cvc'] ?? null,
             'cardholder_name' => $v['card_holder_name'] ?? null,
+            'max_wait_ms' => CreateCascadeDealDTO::normalizeMaxWaitMs($this->header('X-Max-Wait-Ms')),
         ];
     }
 

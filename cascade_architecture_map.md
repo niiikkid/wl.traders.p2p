@@ -98,7 +98,7 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
    - merchant-specific flags/whitelist,
    - сортировки по `priority`.
 3. Диспатчит `CascadeProviderAttemptJob` для каждого провайдера.
-4. Ждёт итог в коротком контуре (10 секунд).
+4. Ждёт итог в коротком контуре до `X-Max-Wait-Ms`, но не больше 30 секунд.
 
 ## Race / atomic winner
 - `app/Jobs/CascadeProviderAttemptJob.php`
@@ -112,6 +112,11 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
   - проверка: provider payout >= required amount (`credit + min_profit_percent`).
 
 ## Timeout policy
+- Merchant wait window: заголовок `X-Max-Wait-Ms` в миллисекундах, максимум и default — 30 000 мс.
+- При истечении merchant wait window API возвращает timeout-ошибку, а оркестратор:
+  - помечает cascade deal как `provisioning_failed`, если победитель ещё не выбран;
+  - ставит cache-флаги `cancel-create` для ещё не стартовавших provider attempts;
+  - для уже созданных provider attempts ставит отдельную `CascadeProviderOperationJob` на `cancelDeal` по конкретной `CascadeTransaction`.
 - Job timeout: 10 секунд.
 - Horizon supervisor для cascade attempts: 8 процессов.
 - Отдельная cleanup-линия:

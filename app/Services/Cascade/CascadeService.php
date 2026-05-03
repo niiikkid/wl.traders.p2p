@@ -68,9 +68,7 @@ class CascadeService implements CascadeServiceContract
 
     private function createDealWithPendingLock(CreateCascadeDealDTO $dto): CascadeDeal
     {
-        $timeout = 10 * 1000;
-
-        $max_wait_ms = $timeout;
+        $max_wait_ms = $dto->maxWaitMs;
         $interval_ms = 100;
         $waited = 0;
         $processing_time_ms = 0;
@@ -82,6 +80,7 @@ class CascadeService implements CascadeServiceContract
         ]), 60);
 
         $cascade_deal = null;
+        $providers = collect();
 
         try {
             $cascade_deal = $this->createCascadeDeal($dto);
@@ -165,15 +164,15 @@ class CascadeService implements CascadeServiceContract
                     if ($processing_time_ms > $max_wait_processing_ms) {
                         break;
                     }
+                } elseif ($data['status'] === 'expired') {
+                    break;
                 }
             } else {
                 break;
             }
         }
 
-        if ($cascade_deal instanceof CascadeDeal) {
-            $this->markProvisioningFailed($cascade_deal);
-        }
+        $this->abortTimedOutCreation($cascade_deal, $providers, $job_id, $waited, $max_wait_ms);
 
         throw CascadeException::make('Не удалось обработать запрос вовремя. Повторите попытку позже.');
     }
@@ -309,6 +308,88 @@ class CascadeService implements CascadeServiceContract
                 'status' => CascadeDealStatus::PROVISIONING_FAILED->value,
                 'sub_status' => CascadeDealSubStatus::FAILED_TO_CREATE->value,
             ]);
+    }
+
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function abortTimedOutCreation(
+        ?CascadeDeal $cascadeDeal,
+        Collection $providers,
+        string $jobId,
+        int $waitedMs,
+        int $maxWaitMs,
+    ): void {
+        cache()->put("cascade:deal:create:$jobId", json_encode([
+            'status' => 'expired',
+            'cascade_deal_id' => $cascadeDeal?->id,
+            'reason' => 'client_wait_timeout',
+            'waited_ms' => $waitedMs,
+            'max_wait_ms' => $maxWaitMs,
+        ]), 60);
+
+        if (! $cascadeDeal instanceof CascadeDeal) {
+            return;
+        }
+
+        $this->cancelPendingProviderAttempts($cascadeDeal, $providers);
+        $this->markProvisioningFailed($cascadeDeal);
+
+        $cascadeDeal->refresh();
+        $cascadeDeal->loadMissing(['selectedProvider', 'selectedTransaction', 'order']);
+
+        app(CascadeDealEventRecorder::class)->record(
+            deal: $cascadeDeal,
+            type: CascadeDealEventType::TIMEOUT,
+            payload: [
+                'action' => 'client_wait_timeout',
+                'waited_ms' => $waitedMs,
+                'max_wait_ms' => $maxWaitMs,
+                'orchestration_id' => $jobId,
+            ],
+            transaction: $cascadeDeal->selectedTransaction,
+            provider: $cascadeDeal->selectedProvider,
+        );
+
+        if (
+            $cascadeDeal->selectedProvider instanceof CascadeProvider
+            && $cascadeDeal->selectedTransaction instanceof CascadeTransaction
+            && ($cascadeDeal->status?->equals(CascadeDealStatus::PENDING) ?? false)
+        ) {
+            $providerDealId = (string) (
+                $cascadeDeal->selectedTransaction->provider_deal_id
+                    ?? $cascadeDeal->order?->uuid
+                    ?? ''
+            );
+
+            if ($providerDealId !== '') {
+                CascadeProviderOperationJob::dispatch(
+                    $cascadeDeal->id,
+                    $cascadeDeal->selectedProvider->id,
+                    'cancelDeal',
+                    [
+                        'provider_deal_id' => $providerDealId,
+                        'cascade_transaction_id' => $cascadeDeal->selectedTransaction->id,
+                        'reason' => 'client_wait_timeout',
+                    ],
+                );
+            }
+        }
+    }
+
+    /**
+     * @param  Collection<int, CascadeProvider>  $providers
+     */
+    private function cancelPendingProviderAttempts(CascadeDeal $cascadeDeal, Collection $providers): void
+    {
+        $providers
+            ->pluck('id')
+            ->each(fn (int $providerId) => cache()->put($this->attemptCancelKey($cascadeDeal->id, $providerId), true, 60));
+    }
+
+    private function attemptCancelKey(int $cascadeDealId, int $providerId): string
+    {
+        return "cascade:deal:$cascadeDealId:provider:$providerId:cancel-create";
     }
 
     public function cancelDeal(CascadeDeal $cascadeDeal): CascadeDeal

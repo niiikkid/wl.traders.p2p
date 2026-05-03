@@ -13,6 +13,7 @@ use App\Exceptions\CascadeException;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
 use App\Models\CascadeProviderLog;
+use App\Models\CascadeTransaction;
 use App\Services\Cascade\CascadeDealEventRecorder;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -65,7 +66,8 @@ class CascadeProviderOperationJob implements ShouldQueue
         }
 
         $startedAt = microtime(true);
-        $providerDealId = (string) ($this->payload['provider_deal_id'] ?? $deal->selectedTransaction?->provider_deal_id ?? $deal->order?->uuid ?? '');
+        $transaction = $this->resolveTransaction($deal);
+        $providerDealId = (string) ($this->payload['provider_deal_id'] ?? $transaction?->provider_deal_id ?? $deal->order?->uuid ?? '');
         $responsePayload = null;
         $isSuccessful = false;
         $errorCode = null;
@@ -86,7 +88,7 @@ class CascadeProviderOperationJob implements ShouldQueue
             }
 
             if ($this->operation === 'cancelDeal') {
-                $this->syncSuccessfulExternalCancel($deal, $providerModel, $events, $responsePayload ?? []);
+                $this->syncSuccessfulCancel($deal, $providerModel, $events, $transaction, $responsePayload ?? []);
             }
 
             $isSuccessful = true;
@@ -97,7 +99,7 @@ class CascadeProviderOperationJob implements ShouldQueue
         } finally {
             CascadeProviderLog::query()->create([
                 'cascade_deal_id' => $deal->id,
-                'cascade_transaction_id' => $deal->selected_transaction_id,
+                'cascade_transaction_id' => $transaction?->id,
                 'provider_id' => $providerModel->id,
                 'operation' => $this->operation,
                 'method' => 'POST',
@@ -122,23 +124,53 @@ class CascadeProviderOperationJob implements ShouldQueue
                     'error_message' => $errorMessage,
                 ],
                 provider: $providerModel,
-                transaction: $deal->selectedTransaction,
+                transaction: $transaction,
             );
         }
+    }
+
+    private function resolveTransaction(CascadeDeal $deal): ?CascadeTransaction
+    {
+        $transactionId = isset($this->payload['cascade_transaction_id'])
+            ? (int) $this->payload['cascade_transaction_id']
+            : null;
+
+        if ($transactionId !== null) {
+            return CascadeTransaction::query()
+                ->whereKey($transactionId)
+                ->where('cascade_deal_id', $deal->id)
+                ->first();
+        }
+
+        return $deal->selectedTransaction;
     }
 
     /**
      * @param  array<string, mixed>  $responsePayload
      */
-    private function syncSuccessfulExternalCancel(
+    private function syncSuccessfulCancel(
         CascadeDeal $deal,
         CascadeProvider $providerModel,
         CascadeDealEventRecorder $events,
+        ?CascadeTransaction $transaction,
         array $responsePayload,
     ): void {
-        $callbackRevision = DB::transaction(function () use ($deal, $providerModel, $events, $responsePayload): int {
+        $callbackRevision = null;
+
+        DB::transaction(function () use ($deal, $providerModel, $events, $transaction, $responsePayload, &$callbackRevision): void {
             $deal->refresh();
             $deal->loadMissing(['selectedTransaction']);
+
+            if (! $transaction instanceof CascadeTransaction || $deal->selected_transaction_id !== $transaction->id) {
+                $transaction?->update([
+                    'status' => CascadeTransactionStatus::CANCELLED,
+                    'response_payload' => array_merge($transaction->response_payload ?? [], [
+                        'cancel' => $responsePayload,
+                    ]),
+                ]);
+
+                return;
+            }
 
             $fromStatus = $deal->status?->value;
             $fromSubStatus = $deal->sub_status?->value;
@@ -151,7 +183,7 @@ class CascadeProviderOperationJob implements ShouldQueue
                 'finished_at' => $shouldMarkCancelled ? ($deal->finished_at ?? now()) : $deal->finished_at,
             ]);
 
-            $deal->selectedTransaction?->update([
+            $transaction->update([
                 'status' => CascadeTransactionStatus::CANCELLED,
                 'response_payload' => $responsePayload,
             ]);
@@ -179,11 +211,11 @@ class CascadeProviderOperationJob implements ShouldQueue
 
             $callbackRevision = $deal->callback_payload_revision + 1;
             $deal->forceFill(['callback_payload_revision' => $callbackRevision])->save();
-
-            return $callbackRevision;
         });
 
-        SendCascadeDealCallbackJob::dispatch($deal->refresh(), $callbackRevision);
+        if ($callbackRevision !== null) {
+            SendCascadeDealCallbackJob::dispatch($deal->refresh(), $callbackRevision);
+        }
     }
 
     /**

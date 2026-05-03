@@ -323,6 +323,11 @@ const responseExamples = [
         code: formatJSON({ message: 'The given data was invalid.', errors: { external_id: ['Поле external_id обязательно.'] } }),
     },
     {
+        title: 'Превышено ожидание payin',
+        httpCode: 504,
+        code: formatJSON({ success: false, message: 'Не удалось обработать запрос вовремя. Повторите попытку позже.' }),
+    },
+    {
         title: 'Пагинация',
         httpCode: 200,
         code: formatJSON({
@@ -346,6 +351,7 @@ const codeSamples = [
   -H "Accept: application/json" \\
   -H "Content-Type: application/json" \\
   -H "Access-Token: YOUR_API_V2_TOKEN" \\
+  -H "X-Max-Wait-Ms: 30000" \\
   -d '${formatJSON(payinRequest)}'`,
     },
     {
@@ -364,6 +370,7 @@ curl_setopt_array($ch, [
         'Accept: application/json',
         'Content-Type: application/json',
         'Access-Token: YOUR_API_V2_TOKEN',
+        'X-Max-Wait-Ms: 30000',
     ],
     CURLOPT_POSTFIELDS => json_encode($payload, JSON_THROW_ON_ERROR),
 ]);
@@ -384,6 +391,7 @@ response = requests.post(
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         'Access-Token': 'YOUR_API_V2_TOKEN',
+        'X-Max-Wait-Ms': '30000',
     },
     timeout=15,
 )
@@ -400,6 +408,7 @@ const response = await fetch('https://example.com/api/v2/payin', {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
     'Access-Token': 'YOUR_API_V2_TOKEN',
+    'X-Max-Wait-Ms': '30000',
   },
   body: JSON.stringify(payload),
 });
@@ -740,6 +749,16 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                     <code class="rounded bg-base-200 px-1">external_id</code> должен относиться к сделке того мерчанта,
                                     чей API token указан в <code class="rounded bg-base-200 px-1">Access-Token</code>. UUID мерчанта
                                     в запросе не передаётся.
+                                </span>
+                            </div>
+
+                            <div role="alert" class="alert alert-info py-3 text-sm">
+                                <span>
+                                    При создании payin можно передать заголовок
+                                    <code class="rounded bg-base-200 px-1 font-semibold">X-Max-Wait-Ms</code> — сколько миллисекунд ждать
+                                    подбора реквизитов. Максимум и значение по умолчанию: <code class="rounded bg-base-200 px-1">30000</code>.
+                                    Если ожидание истекло, API вернёт <code class="rounded bg-base-200 px-1">504</code>, а уже запущенные
+                                    provider-попытки будут остановлены или отменены после создания.
                                 </span>
                             </div>
 

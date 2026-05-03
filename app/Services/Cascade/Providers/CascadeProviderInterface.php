@@ -20,7 +20,7 @@ interface CascadeProviderInterface
      * @param  CascadeDeal  $cascadeDeal  Каскадная сделка
      * @return array Данные созданной сделки у провайдера
      */
-    public function createDeal(CascadeDeal $cascadeDeal): array;
+    public function createDeal(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): array;
 
     /**
      * Отменить сделку у провайдера
