@@ -141,21 +141,23 @@ class CascadeProviderCollateralService
 
     public function markReconciled(FundsOnHold $hold): FundsOnHold
     {
-        $hold->update(['status' => FundsOnHoldStatus::COMPLETED]);
+        return Transaction::run(function () use ($hold): FundsOnHold {
+            $hold->update(['status' => FundsOnHoldStatus::COMPLETED]);
 
-        if ($hold->holdable instanceof CascadeDeal) {
-            $this->events->record(
-                deal: $hold->holdable,
-                type: CascadeDealEventType::COLLATERAL_CHANGED,
-                payload: [
-                    'action' => 'reconciled',
-                    'amount' => $hold->amount->toBeauty(),
-                    'currency' => $hold->amount->getCurrency()->getCode(),
-                    'funds_on_hold_id' => $hold->id,
-                ],
-            );
-        }
+            if ($hold->holdable instanceof CascadeDeal) {
+                $this->events->record(
+                    deal: $hold->holdable,
+                    type: CascadeDealEventType::COLLATERAL_CHANGED,
+                    payload: [
+                        'action' => 'reconciled',
+                        'amount' => $hold->amount->toBeauty(),
+                        'currency' => $hold->amount->getCurrency()->getCode(),
+                        'funds_on_hold_id' => $hold->id,
+                    ],
+                );
+            }
 
-        return $hold->refresh();
+            return $hold->refresh();
+        });
     }
 }
