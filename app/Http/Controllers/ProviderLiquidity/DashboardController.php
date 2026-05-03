@@ -36,7 +36,7 @@ class DashboardController extends Controller
                 'provider_type' => $provider->provider_type?->value,
                 'is_active' => $provider->is_active,
                 'base_url' => $provider->base_url,
-                'access_token' => $provider->access_token,
+                'has_access_token' => filled($provider->access_token),
                 'currency_code' => $provider->currency_code,
                 'timeout' => $provider->timeout,
                 'verify_ssl' => $provider->verify_ssl,
