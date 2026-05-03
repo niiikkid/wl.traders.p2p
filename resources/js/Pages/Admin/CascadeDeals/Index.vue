@@ -1,5 +1,5 @@
 <script setup>
-import {Head, router, usePage} from '@inertiajs/vue3';
+import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DateTime from '@/Components/DateTime.vue';
@@ -14,7 +14,13 @@ import {useModalStore} from '@/store/modal.js';
 const modalStore = useModalStore();
 const cascadeDeals = ref(usePage().props.cascadeDeals);
 const selectedDeal = ref(null);
+const disputeDeal = ref(null);
 const activeModalTab = ref('overview');
+const receiptInput = ref(null);
+
+const disputeForm = useForm({
+    receipts: [],
+});
 
 router.on('success', () => {
     cascadeDeals.value = usePage().props.cascadeDeals;
@@ -37,6 +43,46 @@ const closeDealModal = () => {
     selectedDeal.value = null;
 };
 
+const openDisputeModal = (deal) => {
+    disputeDeal.value = deal;
+    disputeForm.reset();
+    disputeForm.clearErrors();
+
+    if (receiptInput.value) {
+        receiptInput.value.value = '';
+    }
+};
+
+const closeDisputeModal = () => {
+    disputeDeal.value = null;
+    disputeForm.reset();
+    disputeForm.clearErrors();
+
+    if (receiptInput.value) {
+        receiptInput.value.value = '';
+    }
+};
+
+const updateDisputeReceipts = (event) => {
+    disputeForm.clearErrors('receipts');
+    disputeForm.receipts = Array.from(event.target.files ?? []).slice(0, 3);
+};
+
+const submitDispute = () => {
+    if (! disputeDeal.value) {
+        return;
+    }
+
+    disputeForm.post(route('admin.cascade-deals.dispute.store', disputeDeal.value.id), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            closeDisputeModal();
+            router.reload({only: ['cascadeDeals']});
+        },
+    });
+};
+
 const openInternalOrderModal = (deal) => {
     if (! deal?.order_id) {
         return;
@@ -56,6 +102,11 @@ const logSummary = computed(() => {
         failed: providerLogs.filter((log) => ! log.is_successful).length,
     };
 });
+
+const selectedReceiptNames = computed(() => disputeForm.receipts.map((file) => file.name).join(', '));
+const receiptErrors = computed(() => Object.entries(disputeForm.errors)
+    .filter(([field]) => field === 'receipts' || field.startsWith('receipts.'))
+    .map(([, message]) => message));
 
 const formatCurrency = (amount, currency) => {
     if (amount === null || amount === undefined || amount === '') {
@@ -186,6 +237,17 @@ defineOptions({ layout: AuthenticatedLayout })
                                 <td class="text-right">
                                     <div class="inline-flex items-center justify-end gap-1">
                                         <button
+                                            v-if="deal.can_open_dispute"
+                                            type="button"
+                                            class="btn btn-warning btn-outline btn-xs"
+                                            aria-label="Открыть спор по каскадной сделке"
+                                            @click.prevent="openDisputeModal(deal)"
+                                        >
+                                            <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                                            </svg>
+                                        </button>
+                                        <button
                                             v-if="deal.order_id"
                                             type="button"
                                             class="btn btn-accent btn-outline btn-xs"
@@ -268,6 +330,17 @@ defineOptions({ layout: AuthenticatedLayout })
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <DateTime class="justify-start text-xs" :data="deal.created_at"/>
                                 <div class="flex flex-wrap items-center justify-end gap-1">
+                                    <button
+                                        v-if="deal.can_open_dispute"
+                                        type="button"
+                                        class="btn btn-warning btn-outline btn-xs"
+                                        aria-label="Открыть спор по каскадной сделке"
+                                        @click.prevent="openDisputeModal(deal)"
+                                    >
+                                        <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/>
+                                        </svg>
+                                    </button>
                                     <button
                                         v-if="deal.order_id"
                                         type="button"
@@ -501,6 +574,65 @@ defineOptions({ layout: AuthenticatedLayout })
             </div>
             <form method="dialog" class="modal-backdrop">
                 <button type="button" @click="closeDealModal">close</button>
+            </form>
+        </dialog>
+
+        <dialog :open="Boolean(disputeDeal)" class="modal">
+            <div class="modal-box max-w-xl">
+                <form method="dialog">
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                        @click="closeDisputeModal"
+                    >
+                        ✕
+                    </button>
+                </form>
+
+                <template v-if="disputeDeal">
+                    <h3 class="font-bold text-lg">Открыть спор по каскадной сделке</h3>
+                    <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-base-content/70">
+                        <span>PayIn:</span>
+                        <CopyableOrderUid :uuid="disputeDeal.uuid ?? ''"/>
+                    </div>
+
+                    <form class="mt-5 space-y-4" @submit.prevent="submitDispute">
+                        <label class="form-control">
+                            <div class="label">
+                                <span class="label-text">Чеки</span>
+                                <span class="label-text-alt">До 3 файлов, необязательно</span>
+                            </div>
+                            <input
+                                ref="receiptInput"
+                                type="file"
+                                multiple
+                                accept=".jpeg,.jpg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                                class="file-input file-input-bordered w-full"
+                                @change="updateDisputeReceipts"
+                            />
+                            <div v-if="selectedReceiptNames" class="label">
+                                <span class="label-text-alt truncate">Выбрано: {{ selectedReceiptNames }}</span>
+                            </div>
+                            <div v-if="receiptErrors.length" class="mt-2 space-y-1">
+                                <div v-for="error in receiptErrors" :key="error" class="text-xs text-error">
+                                    {{ error }}
+                                </div>
+                            </div>
+                        </label>
+
+                        <div class="modal-action">
+                            <button type="button" class="btn btn-ghost" :disabled="disputeForm.processing" @click="closeDisputeModal">
+                                Отмена
+                            </button>
+                            <button type="submit" class="btn btn-warning" :disabled="disputeForm.processing">
+                                {{ disputeForm.processing ? 'Открытие...' : 'Открыть спор' }}
+                            </button>
+                        </div>
+                    </form>
+                </template>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button type="button" @click="closeDisputeModal">close</button>
             </form>
         </dialog>
 

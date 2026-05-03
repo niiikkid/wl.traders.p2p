@@ -162,6 +162,7 @@ class OrderResource extends JsonResource
                 ];
             }),
             'has_dispute' => $this->dispute_exists,
+            'can_open_internal_dispute' => ! $this->shouldSkipMerchantOrderCallbackForCascade(),
             'expires_at' => $this->expires_at?->toISOString(),
             'finished_at' => $this->finished_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),

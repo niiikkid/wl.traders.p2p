@@ -837,7 +837,7 @@ const copyCallbackUrl = async (callback_url) => {
                             Оплачен
                         </button>
                         <button
-                            v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode"
+                            v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode) && order.can_open_internal_dispute"
                             @click.prevent="confirmCreateDispute(order)"
                             type="button"
                             class="btn btn-xs btn-warning btn-outline touch-manipulation sm:btn-sm"

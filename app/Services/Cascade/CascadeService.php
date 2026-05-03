@@ -369,7 +369,16 @@ class CascadeService implements CascadeServiceContract
      */
     public function openDispute(CascadeDeal $cascadeDeal, array $data): array
     {
+        if (array_key_exists('reason', $data)) {
+            $reason = trim((string) $data['reason']);
+            $data['reason'] = $reason === '' ? null : $reason;
+        }
+
         $cascadeDeal->loadMissing(['order.dispute', 'selectedProvider', 'selectedTransaction']);
+
+        if ($cascadeDeal->dispute_status !== null || $cascadeDeal->order?->dispute !== null) {
+            throw CascadeException::make('Спор по этой каскадной сделке уже открыт.');
+        }
 
         [$provider_model, $provider_deal_id] = $this->selectedProviderContext($cascadeDeal);
         $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($provider_model);
@@ -382,7 +391,7 @@ class CascadeService implements CascadeServiceContract
                 'status' => 'opened',
                 'provider_deal_id' => $provider_deal_id,
                 'dispute_id' => null,
-                'reason' => null,
+                'reason' => Arr::get($data, 'reason'),
             ];
 
             $this->rememberCascadeDispute($cascadeDeal, $local_payload, $data);
@@ -761,6 +770,7 @@ class CascadeService implements CascadeServiceContract
         $status = $this->mapProviderDisputeStatus((string) Arr::get($responsePayload, 'status', 'opened'));
         $reason = Arr::get($responsePayload, 'reason')
             ?? Arr::get($responsePayload, 'cancel_reason')
+            ?? Arr::get($requestData, 'reason')
             ?? $cascadeDeal->dispute_reason;
         $history = $cascadeDeal->dispute_history ?? [];
 

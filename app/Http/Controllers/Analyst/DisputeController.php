@@ -37,6 +37,10 @@ class DisputeController extends Controller
     {
         Gate::authorize('access-to-order', $order);
 
+        if ($order->shouldSkipMerchantOrderCallbackForCascade()) {
+            return redirect()->back()->with('error', 'Для каскадной сделки спор нужно открывать через каскад.');
+        }
+
         try {
             services()->dispute()->create($order->id);
 

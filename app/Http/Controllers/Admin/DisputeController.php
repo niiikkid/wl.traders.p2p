@@ -33,6 +33,10 @@ class DisputeController extends Controller
 
     public function store(Order $order)
     {
+        if ($order->shouldSkipMerchantOrderCallbackForCascade()) {
+            return redirect()->back()->with('error', 'Для каскадной сделки спор нужно открывать через каскад.');
+        }
+
         try {
             services()->dispute()->create($order->id);
 

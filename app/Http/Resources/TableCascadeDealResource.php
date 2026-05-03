@@ -56,11 +56,15 @@ class TableCascadeDealResource extends JsonResource
                 : null,
             'dispute' => [
                 'status' => $this->dispute_status?->value,
+                'status_name' => $this->dispute_status
+                    ? trans("cascade.dispute_status.{$this->dispute_status->value}")
+                    : null,
                 'reason' => $this->dispute_reason,
                 'receipts' => $this->dispute_receipts,
                 'history' => $this->dispute_history,
                 'canceled_at' => $this->dispute_canceled_at?->toISOString(),
             ],
+            'can_open_dispute' => $this->dispute_status === null && ! $this->order?->dispute,
             'payment_method' => $this->payment_method?->value,
             'payment_method_name' => $this->payment_method
                 ? trans("cascade.payment_method.{$this->payment_method->value}")
@@ -70,6 +74,7 @@ class TableCascadeDealResource extends JsonResource
                 'id' => $this->selectedProvider->id,
                 'code' => $this->selectedProvider->code,
                 'name' => $this->selectedProvider->name,
+                'provider_type' => $this->selectedProvider->provider_type?->value,
             ] : null,
             'selected_transaction' => $this->selectedTransaction ? [
                 'id' => $this->selectedTransaction->id,

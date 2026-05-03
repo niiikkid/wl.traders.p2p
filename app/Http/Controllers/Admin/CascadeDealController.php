@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Contracts\CascadeServiceContract;
+use App\Exceptions\CascadeException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\CascadeDeal\OpenDisputeRequest;
 use App\Http\Resources\TableCascadeDealResource;
 use App\Models\CascadeDeal;
 use Inertia\Inertia;
@@ -18,7 +21,7 @@ class CascadeDealController extends Controller
             ->with([
                 'merchant',
                 'merchantClient',
-                'order',
+                'order.dispute',
                 'selectedProvider',
                 'selectedTransaction',
                 'events' => fn ($query) => $query
@@ -39,5 +42,18 @@ class CascadeDealController extends Controller
         $cascadeDeals = TableCascadeDealResource::collection($cascadeDeals);
 
         return Inertia::render('Admin/CascadeDeals/Index', compact('cascadeDeals', 'filters', 'filtersVariants'));
+    }
+
+    public function openDispute(OpenDisputeRequest $request, CascadeDeal $cascadeDeal)
+    {
+        $data = $request->validated();
+
+        try {
+            app(CascadeServiceContract::class)->openDispute($cascadeDeal, $data);
+
+            return redirect()->back()->with('message', 'Спор успешно открыт.');
+        } catch (CascadeException $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
 }
