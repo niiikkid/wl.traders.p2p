@@ -14,6 +14,7 @@ use App\Enums\OrderSubStatus;
 use App\Http\Resources\API\V2\OrderResource;
 use App\Jobs\SendCascadeDealCallbackJob;
 use App\Models\CascadeDeal;
+use App\Models\CascadeProviderLog;
 use App\Models\Order;
 use App\Models\ValueObjects\CascadeManualControl;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +28,7 @@ class CascadeDealSyncService
     public function syncFromInternalOrder(Order $order): ?CascadeDeal
     {
         $deal = CascadeDeal::query()
-            ->with('merchant')
+            ->with(['merchant', 'selectedProvider', 'selectedTransaction'])
             ->where('order_id', $order->id)
             ->first();
 
@@ -113,6 +114,21 @@ class CascadeDealSyncService
                     toStatus: $deal->status?->value,
                     toSubStatus: $deal->sub_status?->value,
                 );
+
+                if ($deal->selectedProvider) {
+                    CascadeProviderLog::create([
+                        'cascade_deal_id' => $deal->id,
+                        'cascade_transaction_id' => $deal->selected_transaction_id,
+                        'provider_id' => $deal->selectedProvider->id,
+                        'operation' => 'callback',
+                        'method' => 'POST',
+                        'url' => 'internal://cascade.syncFromInternalOrder',
+                        'request_payload' => $this->buildInternalProviderCallbackPayload($deal, $order, $fromStatus, $fromSubStatus),
+                        'response_payload' => [],
+                        'status_code' => 200,
+                        'is_successful' => true,
+                    ]);
+                }
             }
 
             $deal->refresh();
@@ -178,5 +194,33 @@ class CascadeDealSyncService
         unset($payload['current_server_time']);
 
         return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildInternalProviderCallbackPayload(
+        CascadeDeal $deal,
+        Order $order,
+        ?string $fromStatus,
+        ?string $fromSubStatus,
+    ): array {
+        return [
+            'source' => 'internal_order',
+            'cascade_deal_uuid' => $deal->uuid,
+            'provider_deal_id' => $order->uuid,
+            'status' => $deal->status?->value,
+            'sub_status' => $deal->sub_status?->value,
+            'from_status' => $fromStatus,
+            'from_sub_status' => $fromSubStatus,
+            'amount' => $order->amount?->toPrecision(),
+            'currency' => $order->amount?->getCurrency()->getCode(),
+            'finished_at' => $order->finished_at?->getTimestamp(),
+            'raw' => [
+                'order_id' => $order->uuid,
+                'status' => $order->status?->value,
+                'sub_status' => $order->sub_status?->value,
+            ],
+        ];
     }
 }
