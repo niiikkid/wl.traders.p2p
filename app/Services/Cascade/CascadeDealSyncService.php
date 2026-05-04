@@ -43,6 +43,7 @@ class CascadeDealSyncService
             $deal->refresh();
             $fromStatus = $deal->status?->value;
             $fromSubStatus = $deal->sub_status?->value;
+            $oldAmount = $deal->amount;
             $manualControl = $deal->manual_control;
 
             if ($order->manual_control_acquiring) {
@@ -88,6 +89,19 @@ class CascadeDealSyncService
                 'dispute_canceled_at' => $dispute?->status?->equals(DisputeStatus::CANCELED) ? $dispute->updated_at : $deal->dispute_canceled_at,
                 'finished_at' => $order->finished_at,
             ]);
+
+            if ($oldAmount && ! $oldAmount->equals($order->amount)) {
+                $this->events->record(
+                    deal: $deal,
+                    type: CascadeDealEventType::AMOUNT_CHANGED,
+                    payload: [
+                        'source' => 'internal_order',
+                        'old_amount' => $oldAmount->toBeauty(),
+                        'new_amount' => $order->amount->toBeauty(),
+                        'currency' => $order->amount->getCurrency()->getCode(),
+                    ],
+                );
+            }
 
             if ($fromStatus !== $deal->status?->value || $fromSubStatus !== $deal->sub_status?->value) {
                 $this->events->record(

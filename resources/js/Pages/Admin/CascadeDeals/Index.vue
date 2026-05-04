@@ -136,6 +136,7 @@ const selectedCascadeDisputeHistory = computed(() => {
 
     return [...items].reverse();
 });
+const selectedAmountHistory = computed(() => selectedDeal.value?.amount_history ?? []);
 
 const formatFileSize = (size) => {
     if (! size) {
@@ -173,6 +174,11 @@ const eventTypeLabel = (type) => ({
     timeout: 'Таймаут',
     error: 'Ошибка',
 }[type] ?? type ?? 'Событие');
+
+const amountHistorySourceLabel = (source) => ({
+    provider_callback: 'Callback провайдера',
+    internal_order: 'Внутренняя сделка',
+}[source] ?? source ?? 'Источник не указан');
 
 const transactionStatusBadgeClass = (status) => ({
     accepted: 'badge-success',
@@ -555,6 +561,46 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div>Provider deal ID: {{ selectedDeal.selected_transaction?.provider_deal_id ?? 'Пусто' }}</div>
                                     <div>Статус транзакции: {{ selectedDeal.selected_transaction?.status_name ?? selectedDeal.selected_transaction?.status ?? 'Пусто' }}</div>
                                     <div>Попыток: {{ selectedDeal.transactions_count ?? 0 }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-200 md:col-span-2">
+                            <div class="card-body p-4">
+                                <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="font-semibold">История изменений суммы</h4>
+                                    <span class="badge badge-ghost badge-sm">{{ selectedAmountHistory.length }} событие(й)</span>
+                                </div>
+
+                                <div v-if="! selectedAmountHistory.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                    Изменений суммы по этой каскадной сделке пока нет.
+                                </div>
+
+                                <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Дата</th>
+                                                <th>Источник</th>
+                                                <th>Было</th>
+                                                <th>Стало</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="item in selectedAmountHistory" :key="item.id">
+                                                <td>
+                                                    <DateTime class="justify-start text-xs" :data="item.created_at" show-time/>
+                                                </td>
+                                                <td>
+                                                    <span class="badge badge-info badge-outline badge-sm">
+                                                        {{ amountHistorySourceLabel(item.source) }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ formatCurrency(item.old_amount, item.currency) }}</td>
+                                                <td class="font-medium">{{ formatCurrency(item.new_amount, item.currency) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>

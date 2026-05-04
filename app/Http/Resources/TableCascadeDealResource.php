@@ -7,6 +7,7 @@ use App\Models\CascadeProviderLog;
 use App\Services\Money\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Arr;
 
 class TableCascadeDealResource extends JsonResource
 {
@@ -163,6 +164,14 @@ class TableCascadeDealResource extends JsonResource
                 'to_status' => $event->to_status,
                 'to_sub_status' => $event->to_sub_status,
                 'payload' => $event->payload,
+                'created_at' => $event->created_at?->toISOString(),
+            ])),
+            'amount_history' => $this->whenLoaded('amountChangeEvents', fn () => $this->amountChangeEvents->map(fn ($event) => [
+                'id' => $event->id,
+                'source' => Arr::get($event->payload, 'source'),
+                'old_amount' => Arr::get($event->payload, 'old_amount'),
+                'new_amount' => Arr::get($event->payload, 'new_amount'),
+                'currency' => Arr::get($event->payload, 'currency', $this->currency?->getCode()),
                 'created_at' => $event->created_at?->toISOString(),
             ])),
             'provider_logs' => $this->whenLoaded('providerLogs', fn () => $this->providerLogs->map(fn ($log) => [

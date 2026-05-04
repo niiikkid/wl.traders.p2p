@@ -10,6 +10,7 @@ use App\Casts\CurrencyCast;
 use App\Casts\MoneyCast;
 use App\Enums\CascadeDealStatus;
 use App\Enums\CascadeDealSubStatus;
+use App\Enums\CascadeDealEventType;
 use App\Enums\CascadeDisputeStatus;
 use App\Enums\CascadePaymentMethod;
 use App\Enums\MarketEnum;
@@ -208,6 +209,12 @@ class CascadeDeal extends Model
     public function events(): HasMany
     {
         return $this->hasMany(CascadeDealEvent::class);
+    }
+
+    public function amountChangeEvents(): HasMany
+    {
+        return $this->hasMany(CascadeDealEvent::class)
+            ->where('type', CascadeDealEventType::AMOUNT_CHANGED);
     }
 
     public function collateralHolds(): MorphMany

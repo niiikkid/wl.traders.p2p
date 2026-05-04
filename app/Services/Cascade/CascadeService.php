@@ -1339,16 +1339,18 @@ class CascadeService implements CascadeServiceContract
                 ];
             }
 
-            app(CascadeDealEventRecorder::class)->record(
-                deal: $cascade_deal,
-                type: CascadeDealEventType::AMOUNT_CHANGED,
-                payload: [
-                    'source' => 'provider_callback',
-                    'old_amount' => $cascade_deal->amount?->toBeauty(),
-                    'new_amount' => (string) $callbackAmount,
-                    'currency' => $callbackCurrency,
-                ],
-            );
+            if (! $cascade_deal->amount?->equals($newAmount)) {
+                app(CascadeDealEventRecorder::class)->record(
+                    deal: $cascade_deal,
+                    type: CascadeDealEventType::AMOUNT_CHANGED,
+                    payload: [
+                        'source' => 'provider_callback',
+                        'old_amount' => $cascade_deal->amount?->toBeauty(),
+                        'new_amount' => $newAmount->toBeauty(),
+                        'currency' => $callbackCurrency,
+                    ],
+                );
+            }
         }
 
         $confirmationType = Arr::get($callback_data, 'confirmation_type');
