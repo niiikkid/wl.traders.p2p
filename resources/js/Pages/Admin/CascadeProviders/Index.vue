@@ -665,54 +665,104 @@ defineOptions({ layout: AuthenticatedLayout });
                         </fieldset>
 
                         <fieldset class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Timeout</legend>
+                            <legend class="fieldset-legend text-xs">Timeout, с</legend>
                             <input v-model="form.timeout" type="number" min="1" max="10" class="input input-bordered input-sm w-full" />
                             <p v-if="form.errors.timeout" class="label text-error text-xs">{{ form.errors.timeout }}</p>
                         </fieldset>
+
+                        <fieldset class="fieldset gap-1">
+                            <legend class="fieldset-legend text-xs">Активен</legend>
+                            <label
+                                class="flex min-h-[2.25rem] cursor-pointer items-center gap-3 rounded-box border border-base-300 bg-base-200/40 px-3 py-2"
+                            >
+                                <input v-model="form.is_active" type="checkbox" class="toggle toggle-primary" />
+                                <span class="text-sm leading-snug">Участвует в каскаде и может получать сделки</span>
+                            </label>
+                            <p v-if="form.errors.is_active" class="label text-error text-xs">{{ form.errors.is_active }}</p>
+                        </fieldset>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <label class="label cursor-pointer justify-start gap-2 py-0">
-                            <input v-model="form.is_active" type="checkbox" class="toggle toggle-primary" />
-                            <span class="text-sm">Активен</span>
-                        </label>
+                    <fieldset v-if="! isInternalCascade" class="fieldset gap-2">
+                        <legend class="fieldset-legend text-xs">Проверка HTTPS (TLS)</legend>
+                        <div class="rounded-box border border-base-300 bg-base-200/30 p-3 sm:p-4">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0 flex-1 space-y-2">
+                                    <p class="text-sm font-medium leading-snug">
+                                        Проверять SSL-сертификат сервера провайдера
+                                    </p>
+                                    <p class="text-xs leading-relaxed text-base-content/75">
+                                        При запросах к API провайдера по HTTPS приложение проверяет, что сертификат выдан
+                                        доверенным центром и совпадает с хостом. Это защищает от подмены соединения.
+                                    </p>
+                                </div>
+                                <label
+                                    class="flex w-full min-w-0 cursor-pointer items-center justify-between gap-3 rounded-box border border-base-300 bg-base-100 px-3 py-2.5 sm:max-w-sm sm:shrink-0"
+                                >
+                                    <span class="text-sm font-medium leading-tight text-base-content/80">
+                                        {{ form.verify_ssl ? 'Проверка TLS включена' : 'Проверка TLS отключена' }}
+                                    </span>
+                                    <input v-model="form.verify_ssl" type="checkbox" class="toggle toggle-primary" />
+                                </label>
+                            </div>
+                            <p v-if="form.errors.verify_ssl" class="label mt-2 text-error text-xs">{{ form.errors.verify_ssl }}</p>
+                        </div>
+                    </fieldset>
 
-                        <label v-if="! isInternalCascade" class="label cursor-pointer justify-start gap-2 py-0">
-                            <input v-model="form.verify_ssl" type="checkbox" class="toggle toggle-primary" />
-                            <span class="text-sm">SSL</span>
-                        </label>
-                    </div>
+                    <fieldset v-if="! isInternalCascade" class="fieldset gap-2">
+                        <legend class="fieldset-legend text-xs">Колбеки (webhook URL)</legend>
+                        <div class="rounded-box border border-base-300 bg-base-200/30 p-3 sm:p-4 space-y-3">
+                            <div class="space-y-2">
+                                <p class="text-sm font-medium leading-snug">
+                                    Куда внешний сервис должен слать уведомления о сделках
+                                </p>
+                                <p class="text-xs leading-relaxed text-base-content/75">
+                                    Это <strong class="font-medium text-base-content">ваш адрес приёма колбеков</strong> в этом приложении.
+                                    Его нужно указать <strong class="font-medium text-base-content">в настройках API у провайдера</strong>
+                                    (поле вроде webhook URL, callback URL или notify URL), чтобы провайдер присылал сюда события
+                                    по сделке — смена статуса, подтверждение оплаты и т.д.
+                                </p>
+                                <p class="text-xs leading-relaxed text-base-content/70">
+                                    Ссылка формируется автоматически из кода реализации и не редактируется вручную — достаточно скопировать и вставить у партнёра.
+                                </p>
+                            </div>
 
-                    <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                        <legend class="fieldset-legend text-xs">Callback endpoint</legend>
-                        <div class="rounded-box border border-base-300 p-3 bg-base-200/40 space-y-2">
-                            <div class="flex items-center gap-2 flex-wrap">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-xs font-medium text-base-content/60">Статус интеграции</span>
                                 <span
-                                    class="badge"
+                                    class="badge badge-sm"
                                     :class="selectedProviderSupportsCallbackEndpoint ? 'badge-success' : 'badge-ghost'"
                                 >
-                                    {{ selectedProviderSupportsCallbackEndpoint ? 'Поддерживается в исходящем запросе' : 'В исходящем запросе не используется' }}
+                                    {{ selectedProviderSupportsCallbackEndpoint ? 'Колбек используется при создании сделки' : 'Для этой реализации колбек не передаётся в провайдера' }}
                                 </span>
                             </div>
-                            <div class="join w-full">
-                                <input
-                                    :value="selectedProviderCallbackEndpointUrl"
-                                    type="text"
-                                    class="input input-bordered input-sm join-item w-full"
-                                    readonly
-                                >
-                                <button
-                                    type="button"
-                                    class="btn btn-sm join-item"
-                                    :disabled="! selectedProviderCallbackEndpointUrl"
-                                    @click="copyCallbackEndpoint"
-                                >
-                                    Копировать
-                                </button>
+
+                            <div v-if="! selectedProviderSupportsCallbackEndpoint" role="alert" class="alert alert-info alert-soft py-2 text-xs leading-relaxed">
+                                <span>
+                                    Для выбранного класса провайдера URL ниже может быть пустым или не использоваться при исходящем запросе —
+                                    уточните в документации интеграции, нужен ли webhook.
+                                </span>
                             </div>
-                            <p class="text-xs opacity-70">
-                                Эту ссылку передайте внешнему сервису для webhook callback.
-                            </p>
+
+                            <div>
+                                <p class="mb-1.5 text-xs font-medium text-base-content/70">Скопируйте и укажите у внешнего сервиса</p>
+                                <div class="join w-full">
+                                    <input
+                                        :value="selectedProviderCallbackEndpointUrl"
+                                        type="text"
+                                        class="input input-bordered input-sm join-item w-full font-mono text-xs"
+                                        readonly
+                                        placeholder="Выберите реализацию провайдера"
+                                    >
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm join-item"
+                                        :disabled="! selectedProviderCallbackEndpointUrl"
+                                        @click="copyCallbackEndpoint"
+                                    >
+                                        Копировать
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </fieldset>
 
