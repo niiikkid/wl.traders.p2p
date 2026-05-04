@@ -20,15 +20,14 @@ class CascadeProviderController extends Controller
     public function index(CascadeProviderDiscoveryService $discoveryService)
     {
         $providers = CascadeProvider::query()
-            ->orderBy('priority')
-            ->orderBy('id')
+            ->orderBy('priority', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
         $cascadeProviders = TableCascadeProviderResource::collection($providers)->resolve();
         $implementedProviders = $discoveryService->implementedProviders()->values();
-        $providerCallbackBaseUrl = rtrim(url('/api/v2/providers'), '/');
         $liquidityUsers = User::role('Provider Liquidity')
-            ->orderBy('email')
+            ->orderBy('email', 'asc')
             ->get(['id', 'email']);
         $currencies = Currency::getAll()
             ->map(fn (Currency $currency): array => [
@@ -40,7 +39,6 @@ class CascadeProviderController extends Controller
         return Inertia::render('Admin/CascadeProviders/Index', compact(
             'cascadeProviders',
             'implementedProviders',
-            'providerCallbackBaseUrl',
             'liquidityUsers',
             'currencies'
         ));

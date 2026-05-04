@@ -11,7 +11,6 @@ import TableAction from '@/Components/Table/TableAction.vue';
 const props = defineProps({
     cascadeProviders: Object,
     implementedProviders: Array,
-    providerCallbackBaseUrl: String,
     liquidityUsers: Array,
     currencies: Array,
 });
@@ -328,10 +327,6 @@ const fillFromImplementation = () => {
     }
 };
 
-const selectedProviderCode = computed(() => {
-    return editingProvider.value?.code ?? form.code ?? '';
-});
-
 const selectedProviderSupportsCallbackEndpoint = computed(() => {
     if (editingProvider.value) {
         return Boolean(editingProvider.value.supports_callback_endpoint);
@@ -345,11 +340,7 @@ const selectedProviderCallbackEndpointUrl = computed(() => {
         return editingProvider.value.callback_endpoint_url;
     }
 
-    if (! selectedProviderCode.value || ! props.providerCallbackBaseUrl) {
-        return '';
-    }
-
-    return `${props.providerCallbackBaseUrl}/${selectedProviderCode.value}/callback`;
+    return '';
 });
 
 const copyCallbackEndpoint = async () => {
@@ -853,7 +844,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         type="text"
                                         class="input input-bordered input-sm join-item w-full font-mono text-xs"
                                         readonly
-                                        placeholder="Выберите реализацию провайдера"
+                                        placeholder="URL появится после сохранения интеграции"
                                     >
                                     <button
                                         type="button"

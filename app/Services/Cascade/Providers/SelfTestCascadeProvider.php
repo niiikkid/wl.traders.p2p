@@ -251,6 +251,12 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
 
     private function callbackUrl(): string
     {
+        $callbackUrl = $this->configValue('callback_url');
+
+        if (is_string($callbackUrl) && trim($callbackUrl) !== '') {
+            return trim($callbackUrl);
+        }
+
         return $this->buildUrl('/api/v2/providers/'.$this->getCode().'/callback');
     }
 

@@ -29,14 +29,14 @@ interface CascadeProviderServiceContract
     /**
      * Получить все активные провайдеры
      *
-     * @return array<string, CascadeProviderInterface>
+     * @return array<int, CascadeProviderInterface>
      */
     public function getActiveProviders(): array;
 
     /**
      * Получить все провайдеры (включая неактивные)
      *
-     * @return array<string, CascadeProviderInterface>
+     * @return array<int, CascadeProviderInterface>
      */
     public function getAllProviders(): array;
 

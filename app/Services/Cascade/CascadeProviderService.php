@@ -20,7 +20,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
     /**
      * Кэш загруженных провайдеров
      *
-     * @var array<string, CascadeProviderInterface>
+     * @var array<int, CascadeProviderInterface>
      */
     private array $providersCache = [];
 
@@ -36,10 +36,6 @@ class CascadeProviderService implements CascadeProviderServiceContract
      */
     public function getProvider(string $code): ?CascadeProviderInterface
     {
-        if (isset($this->providersCache[$code])) {
-            return $this->providersCache[$code];
-        }
-
         $providerModel = CascadeProvider::query()
             ->where('code', $code)
             ->first();
@@ -58,14 +54,16 @@ class CascadeProviderService implements CascadeProviderServiceContract
      */
     public function getProviderByModel(CascadeProvider $provider): ?CascadeProviderInterface
     {
-        if (isset($this->providersCache[$provider->code])) {
-            return $this->providersCache[$provider->code];
+        $cacheKey = (int) $provider->getKey();
+
+        if (isset($this->providersCache[$cacheKey])) {
+            return $this->providersCache[$cacheKey];
         }
 
         $providerInstance = $this->createProviderInstance($provider);
 
         if ($providerInstance) {
-            $this->providersCache[$provider->code] = $providerInstance;
+            $this->providersCache[$cacheKey] = $providerInstance;
         }
 
         return $providerInstance;
@@ -74,7 +72,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
     /**
      * Получить все активные провайдеры
      *
-     * @return array<string, CascadeProviderInterface>
+     * @return array<int, CascadeProviderInterface>
      */
     public function getActiveProviders(): array
     {
@@ -84,7 +82,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
             ->mapWithKeys(function (CascadeProvider $provider) {
                 $instance = $this->getProviderByModel($provider);
 
-                return $instance ? [$provider->code => $instance] : [];
+                return $instance ? [$provider->id => $instance] : [];
             })
             ->toArray();
     }
@@ -92,7 +90,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
     /**
      * Получить все провайдеры (включая неактивные)
      *
-     * @return array<string, CascadeProviderInterface>
+     * @return array<int, CascadeProviderInterface>
      */
     public function getAllProviders(): array
     {
@@ -100,7 +98,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
             ->mapWithKeys(function (CascadeProvider $provider) {
                 $instance = $this->getProviderByModel($provider);
 
-                return $instance ? [$provider->code => $instance] : [];
+                return $instance ? [$provider->id => $instance] : [];
             })
             ->toArray();
     }
@@ -115,6 +113,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
         // Получаем коды из базы данных (из модели CascadeProvider)
         // Это гарантирует, что мы возвращаем только те провайдеры, которые реально зарегистрированы
         return CascadeProvider::query()
+            ->distinct()
             ->pluck('code')
             ->toArray();
     }
@@ -189,7 +188,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
             return null;
         }
 
-        return url('/api/v2/providers/'.$provider->code.'/callback');
+        return url('/api/v2/providers/'.$provider->id.'/callback');
     }
 
     private function providerSupportsCallbackEndpoint(string $providerCode): bool

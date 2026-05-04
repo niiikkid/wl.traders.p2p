@@ -344,12 +344,19 @@ class AppServiceProvider extends ServiceProvider
         Route::bind('cascadeProvider', function (string $value): CascadeProvider {
             $query = CascadeProvider::query();
 
-            // Админка и кошелёк: /admin/cascade-providers/{id}. API callback: /api/v2/providers/{code}/callback.
+            // Admin routes and new callback URLs use {id}. Legacy callback URLs may still use {code}
+            // while there is exactly one integration with that implementation code.
             if (ctype_digit($value)) {
                 return $query->findOrFail((int) $value);
             }
 
-            return $query->where('code', $value)->firstOrFail();
+            $providers = $query->where('code', $value)->limit(2)->get();
+
+            if ($providers->count() === 1) {
+                return $providers->first();
+            }
+
+            abort(404);
         });
     }
 }
