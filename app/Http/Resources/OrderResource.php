@@ -29,6 +29,7 @@ class OrderResource extends JsonResource
         $manualControlConfirmationCodes = $this->resource->relationLoaded('manualControlConfirmationCodes')
             ? $this->manualControlConfirmationCodes
             : collect();
+
         /**
          * @var Order $this
          */
@@ -50,11 +51,13 @@ class OrderResource extends JsonResource
             'trader_commission_rate' => $this->trader_commission_rate,
             'team_leader_commission_rate' => $this->team_leader_commission_rate,
             'total_service_commission_rate' => $this->total_service_commission_rate,
-            'service_commission_amount_total' => (float)$this->total_profit
+            'service_commission_amount_total' => (float) $this->total_profit
                 ->mul($this->total_service_commission_rate / 100)
                 ->toBeauty(),
             'currency' => $this->currency->getCode(),
             'base_currency' => Currency::USDT()->getCode(),
+            'market' => $this->market?->value,
+            'market_name' => $this->market ? __('market.name.'.$this->market->value) : null,
             'status' => $this->status->value,
             'status_name' => $this->status_name,
             'callback_url' => $this->callback_url,
@@ -97,7 +100,7 @@ class OrderResource extends JsonResource
                         'id' => $this->trader->id,
                         'name' => $this->trader->name,
                         'email' => $this->trader->email,
-                    ]
+                    ],
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('teamLeader') && $this->teamLeader, function () {
@@ -106,7 +109,7 @@ class OrderResource extends JsonResource
                         'id' => $this->teamLeader->id,
                         'name' => $this->teamLeader->name,
                         'email' => $this->teamLeader->email,
-                    ]
+                    ],
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('smsLog') && $this->smsLog, function () {
@@ -115,7 +118,7 @@ class OrderResource extends JsonResource
                         'sender' => $this->smsLog->sender,
                         'message' => $this->smsLog->message,
                         'created_at' => $this->smsLog->created_at->toISOString(),
-                    ]
+                    ],
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('merchant'), function () {

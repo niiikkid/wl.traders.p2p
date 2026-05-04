@@ -506,7 +506,18 @@ const copyCallbackUrl = async (callback_url) => {
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Курс</dt>
-                                            <dd class="font-medium text-base-content">{{ order.conversion_price }} {{order.currency.toUpperCase()}}</dd>
+                                            <dd class="font-medium text-base-content inline-flex flex-wrap items-baseline justify-end gap-x-1 text-end">
+                                                <span
+                                                    v-if="order.market_name || order.market"
+                                                    class="font-semibold text-primary"
+                                                >{{ order.market_name ?? String(order.market).toUpperCase() }}</span>
+                                                <span
+                                                    v-if="order.market_name || order.market"
+                                                    class="text-base-content/45"
+                                                    aria-hidden="true"
+                                                >·</span>
+                                                <span>{{ order.conversion_price }} {{ order.currency.toUpperCase() }}</span>
+                                            </dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Тело</dt>
