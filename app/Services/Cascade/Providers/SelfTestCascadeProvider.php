@@ -57,7 +57,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             ]);
         }
 
-        $response = $this->request($cascadeDeal, $maxWaitMs)->post($this->buildUrl('/api/h2h/order'), $payload);
+        $response = $this->request($maxWaitMs)->post($this->buildUrl('/api/h2h/order'), $payload);
         $this->throwIfInvalid($response);
 
         return $this->normalizeOrderResponse($response->json());
@@ -65,7 +65,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
 
     public function cancelDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        $response = $this->request($cascadeDeal)->patch($this->buildUrl('/api/h2h/order/'.$providerDealId.'/cancel'));
+        $response = $this->request()->patch($this->buildUrl('/api/h2h/order/'.$providerDealId.'/cancel'));
         $this->throwIfInvalid($response);
 
         return $this->normalizeOrderResponse($response->json(), $providerDealId);
@@ -73,7 +73,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
 
     public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        $response = $this->request($cascadeDeal)->get($this->buildUrl('/api/h2h/order/'.$providerDealId));
+        $response = $this->request()->get($this->buildUrl('/api/h2h/order/'.$providerDealId));
         $this->throwIfInvalid($response);
 
         return $this->normalizeOrderResponse($response->json(), $providerDealId);
@@ -86,7 +86,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             throw new RuntimeException('Self-test provider deal id is missing.');
         }
 
-        $response = $this->request($cascadeDeal)->post(
+        $response = $this->request()->post(
             $this->buildUrl('/api/h2h/order/'.$providerDealId.'/confirmation-code'),
             ['confirmation_code' => $confirmationCode],
         );
@@ -104,7 +104,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             $payload['receipt'] = base64_encode((string) file_get_contents($firstReceipt->getPathname()));
         }
 
-        $response = $this->request($cascadeDeal)->post(
+        $response = $this->request()->post(
             $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
             $payload,
         );
@@ -115,7 +115,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
 
     public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array
     {
-        $response = $this->request($cascadeDeal)->get($this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'));
+        $response = $this->request()->get($this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'));
         $this->throwIfInvalid($response);
 
         return $this->normalizeDisputeResponse($response->json(), $providerDealId, $disputeId);
@@ -204,10 +204,16 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         ];
     }
 
-    private function request(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): PendingRequest
+    private function request(?int $maxWaitMs = null): PendingRequest
     {
+        $accessToken = $this->configValue('access_token');
+        $expectedToken = is_string($accessToken) ? trim($accessToken) : '';
+        if ($expectedToken === '') {
+            throw new RuntimeException('Self-test provider access token is missing.');
+        }
+
         $headers = [
-            'Access-Token' => (string) $cascadeDeal->merchant->user->api_access_token,
+            'Access-Token' => $expectedToken,
         ];
 
         if ($maxWaitMs !== null) {

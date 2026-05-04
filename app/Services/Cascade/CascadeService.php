@@ -29,7 +29,6 @@ use App\Models\Merchant;
 use App\Models\MerchantClient;
 use App\Models\ValueObjects\CascadeManualControl;
 use App\Services\Cascade\Providers\InternalCascadeProvider;
-use App\Services\Cascade\Providers\SelfTestCascadeProvider;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Support\TraderCommissionTierResolver;
@@ -690,8 +689,6 @@ class CascadeService implements CascadeServiceContract
     {
         $payload = $request->all();
         $accessToken = $request->header('Access-Token');
-        $isSelfTestProvider = $cascadeProvider->code === SelfTestCascadeProvider::CODE;
-
         $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($cascadeProvider);
         if (! $provider) {
             $this->recordCallbackFailure($cascadeProvider, $payload, 'provider_unavailable', 'Интеграция провайдера каскада недоступна.');
@@ -699,18 +696,11 @@ class CascadeService implements CascadeServiceContract
             throw CascadeException::make('Интеграция провайдера каскада недоступна.');
         }
 
-        if (! $isSelfTestProvider) {
-            $expectedToken = (string) $cascadeProvider->access_token;
-            $this->validateProviderCallbackToken($cascadeProvider, $payload, $accessToken, $expectedToken);
-        }
+        $expectedToken = (string) $cascadeProvider->access_token;
+        $this->validateProviderCallbackToken($cascadeProvider, $payload, $accessToken, $expectedToken);
 
         $callback_data = $provider->handleCallback($payload);
         $cascade_deal = $this->resolveCallbackCascadeDeal($cascadeProvider, $callback_data);
-
-        if ($isSelfTestProvider) {
-            $expectedToken = (string) $cascade_deal->merchant->user->api_access_token;
-            $this->validateProviderCallbackToken($cascadeProvider, $payload, $accessToken, $expectedToken);
-        }
 
         $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $cascadeProvider, $callback_data);
 
