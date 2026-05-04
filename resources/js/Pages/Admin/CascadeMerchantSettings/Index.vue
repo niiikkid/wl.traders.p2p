@@ -5,11 +5,15 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
 import IsActiveStatus from '@/Components/IsActiveStatus.vue';
+import MerchantSettingsModal from '@/Modals/Merchant/MerchantSettingsModal.vue';
+import {useModalStore} from '@/store/modal.js';
 
 const props = defineProps({
     merchants: Array,
     cascadeProviders: Array,
 });
+
+const modalStore = useModalStore();
 
 const selectedMerchant = ref(null);
 const useProviderWhitelist = ref(false);
@@ -87,6 +91,12 @@ const selectAllProviders = () => {
 
 const clearProviders = () => {
     form.allowed_provider_ids = [];
+};
+
+const openMerchantSettingsModal = (merchant) => {
+    modalStore.openMerchantSettingsModal({
+        merchantId: merchant.id,
+    });
 };
 
 const openSettingsModal = (merchant) => {
@@ -190,17 +200,31 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="line-clamp-2 text-[11px] leading-snug text-base-content/90">{{ providersSummary(merchant) }}</div>
                                 </td>
                                 <td class="ps-1 pe-2 py-1 text-end">
-                                    <div class="tooltip tooltip-left" data-tip="Настройки каскада">
-                                        <button
-                                            type="button"
-                                            class="btn btn-xs btn-square btn-ghost text-base-content/70"
-                                            aria-label="Настройки каскада"
-                                            @click="openSettingsModal(merchant)"
-                                        >
-                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-3.5" aria-hidden="true">
-                                                <path fill-rule="evenodd" d="M8.34 1.804A1 1 0 0 1 9.32 1h1.36a1 1 0 0 1 .98.804l.295 1.473c.497.144.971.342 1.416.587l1.25-.834a1 1 0 0 1 1.262.125l.962.962a1 1 0 0 1 .125 1.262l-.834 1.25c.245.445.443.919.587 1.416l1.473.294a1 1 0 0 1 .804.98v1.361a1 1 0 0 1-.804.98l-1.473.295a6.95 6.95 0 0 1-.587 1.416l.834 1.25a1 1 0 0 1-.125 1.262l-.962.962a1 1 0 0 1-1.262.125l-1.25-.834a6.953 6.953 0 0 1-1.416.587l-.294 1.473a1 1 0 0 1-.98.804H9.32a1 1 0 0 1-.98-.804l-.295-1.473a6.95 6.95 0 0 1-1.416-.587l-1.25.834a1 1 0 0 1-1.262-.125l-.962-.962a1 1 0 0 1-.125-1.262l.834-1.25a6.952 6.952 0 0 1-.587-1.416l-1.473-.294A1 1 0 0 1 1 10.68V9.32a1 1 0 0 1 .804-.98l1.473-.295c.144-.497.342-.971.587-1.416l-.834-1.25a1 1 0 0 1 .125-1.262l.962-.962A1 1 0 0 1 5.38 3.03l1.25.834a6.953 6.953 0 0 1 1.416-.587l.294-1.473ZM13 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" clip-rule="evenodd" />
-                                            </svg>
-                                        </button>
+                                    <div class="flex items-center justify-end gap-0.5">
+                                        <div class="tooltip tooltip-left" data-tip="Настройки мерчанта">
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-square btn-ghost text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-400/10 dark:hover:text-blue-300"
+                                                aria-label="Настройки мерчанта"
+                                                @click="openMerchantSettingsModal(merchant)"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <div class="tooltip tooltip-left" data-tip="Настройки каскада">
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-square btn-ghost text-base-content/70"
+                                                aria-label="Настройки каскада"
+                                                @click="openSettingsModal(merchant)"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-3.5" aria-hidden="true">
+                                                    <path fill-rule="evenodd" d="M8.34 1.804A1 1 0 0 1 9.32 1h1.36a1 1 0 0 1 .98.804l.295 1.473c.497.144.971.342 1.416.587l1.25-.834a1 1 0 0 1 1.262.125l.962.962a1 1 0 0 1 .125 1.262l-.834 1.25c.245.445.443.919.587 1.416l1.473.294a1 1 0 0 1 .804.98v1.361a1 1 0 0 1-.804.98l-1.473.295a6.95 6.95 0 0 1-.587 1.416l.834 1.25a1 1 0 0 1-.125 1.262l-.962.962a1 1 0 0 1-1.262.125l-1.25-.834a6.953 6.953 0 0 1-1.416.587l-.294 1.473a1 1 0 0 1-.98.804H9.32a1 1 0 0 1-.98-.804l-.295-1.473a6.95 6.95 0 0 1-1.416-.587l-1.25.834a1 1 0 0 1-1.262-.125l-.962-.962a1 1 0 0 1-.125-1.262l.834-1.25a6.952 6.952 0 0 1-.587-1.416l-1.473-.294A1 1 0 0 1 1 10.68V9.32a1 1 0 0 1 .804-.98l1.473-.295c.144-.497.342-.971.587-1.416l-.834-1.25a1 1 0 0 1 .125-1.262l.962-.962A1 1 0 0 1 5.38 3.03l1.25.834a6.953 6.953 0 0 1 1.416-.587l.294-1.473ZM13 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -232,13 +256,20 @@ defineOptions({ layout: AuthenticatedLayout });
 
                             <div class="line-clamp-2 text-[11px] opacity-80">{{ providersSummary(merchant) }}</div>
 
-                            <div class="card-actions justify-end pt-0">
+                            <div class="card-actions flex-wrap justify-end gap-1 pt-0">
+                                <button
+                                    type="button"
+                                    class="btn btn-xs min-h-0 h-7 border-blue-500/40 bg-blue-500/10 px-2 text-blue-700 hover:border-blue-500/60 hover:bg-blue-500/15 dark:text-blue-300"
+                                    @click="openMerchantSettingsModal(merchant)"
+                                >
+                                    Мерчант
+                                </button>
                                 <button
                                     type="button"
                                     class="btn btn-xs btn-outline min-h-0 h-7 px-2"
                                     @click="openSettingsModal(merchant)"
                                 >
-                                    Настройки
+                                    Каскад
                                 </button>
                             </div>
                         </div>
@@ -423,5 +454,7 @@ defineOptions({ layout: AuthenticatedLayout });
                 <button type="button" @click="closeSettingsModal">Закрыть</button>
             </form>
         </dialog>
+
+        <MerchantSettingsModal />
     </div>
 </template>
