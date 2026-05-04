@@ -16,6 +16,14 @@ enum CascadeDealStatus: string
     case FAIL = 'fail';
     case PENDING = 'pending';
 
+    public function isFinal(): bool
+    {
+        return match ($this) {
+            self::SUCCESS, self::FAIL => true,
+            default => false,
+        };
+    }
+
     /**
      * @return array<int, self>
      */

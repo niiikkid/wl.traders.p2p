@@ -704,6 +704,19 @@ class CascadeService implements CascadeServiceContract
 
         $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $cascadeProvider, $callback_data);
 
+        if ($cascade_deal->status?->isFinal() === true) {
+            $this->recordIgnoredProviderCallback(
+                cascadeDeal: $cascade_deal,
+                cascadeTransaction: $cascade_transaction,
+                cascadeProvider: $cascadeProvider,
+                requestPayload: $payload,
+                callbackData: $callback_data,
+                url: request()->fullUrl(),
+            );
+
+            return [];
+        }
+
         $callback_revision = DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): ?int {
             $from_status = $cascade_deal->status?->value;
             $from_sub_status = $cascade_deal->sub_status?->value;
@@ -780,6 +793,38 @@ class CascadeService implements CascadeServiceContract
         }
 
         return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $requestPayload
+     * @param  array<string, mixed>  $callbackData
+     */
+    private function recordIgnoredProviderCallback(
+        CascadeDeal $cascadeDeal,
+        ?CascadeTransaction $cascadeTransaction,
+        CascadeProvider $cascadeProvider,
+        array $requestPayload,
+        array $callbackData,
+        string $url,
+    ): void {
+        CascadeProviderLog::create([
+            'cascade_deal_id' => $cascadeDeal->id,
+            'cascade_transaction_id' => $cascadeTransaction?->id,
+            'provider_id' => $cascadeProvider->id,
+            'operation' => 'callback',
+            'method' => 'POST',
+            'url' => $url,
+            'request_payload' => $requestPayload,
+            'response_payload' => [
+                'ignored' => true,
+                'reason' => 'cascade_deal_final_status',
+                'cascade_deal_status' => $cascadeDeal->status?->value,
+                'cascade_deal_sub_status' => $cascadeDeal->sub_status?->value,
+                'callback' => $callbackData,
+            ],
+            'status_code' => 200,
+            'is_successful' => true,
+        ]);
     }
 
     private function validateProviderCallbackToken(

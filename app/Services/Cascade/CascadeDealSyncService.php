@@ -36,6 +36,12 @@ class CascadeDealSyncService
             return null;
         }
 
+        if ($deal->status?->isFinal() === true) {
+            $this->recordIgnoredInternalProviderCallback($deal, $order);
+
+            return $deal;
+        }
+
         $beforeCallbackPayload = $this->buildCallbackPayloadSnapshot($deal);
 
         $callbackRevision = null;
@@ -149,6 +155,36 @@ class CascadeDealSyncService
         }
 
         return $deal;
+    }
+
+    private function recordIgnoredInternalProviderCallback(CascadeDeal $deal, Order $order): void
+    {
+        if (! $deal->selectedProvider) {
+            return;
+        }
+
+        CascadeProviderLog::create([
+            'cascade_deal_id' => $deal->id,
+            'cascade_transaction_id' => $deal->selected_transaction_id,
+            'provider_id' => $deal->selectedProvider->id,
+            'operation' => 'callback',
+            'method' => 'POST',
+            'url' => 'internal://cascade.syncFromInternalOrder',
+            'request_payload' => $this->buildInternalProviderCallbackPayload(
+                $deal,
+                $order,
+                $deal->status?->value,
+                $deal->sub_status?->value,
+            ),
+            'response_payload' => [
+                'ignored' => true,
+                'reason' => 'cascade_deal_final_status',
+                'cascade_deal_status' => $deal->status?->value,
+                'cascade_deal_sub_status' => $deal->sub_status?->value,
+            ],
+            'status_code' => 200,
+            'is_successful' => true,
+        ]);
     }
 
     private function mapOrderStatus(?OrderStatus $status): CascadeDealStatus
