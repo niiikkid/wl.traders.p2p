@@ -163,6 +163,8 @@ const getProviderName = (deal) => {
     return deal.selected_provider?.name ?? deal.selected_provider?.code ?? 'Не выбран';
 };
 
+const isExternalCascadeProvider = (deal) => deal?.selected_provider?.provider_type === 'external';
+
 const eventTypeLabel = (type) => ({
     status_changed: 'Статус',
     dispute_changed: 'Спор',
@@ -547,8 +549,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </div>
                                     <div>Initial: {{ formatCurrency(selectedDeal.initial_amount, selectedDeal.currency) }}</div>
                                     <div>USDT amount: {{ formatCurrency(selectedDeal.usdt_amount, selectedDeal.base_currency) }}</div>
-                                    <div>Fee: {{ formatCurrency(selectedDeal.fee, selectedDeal.base_currency) }}</div>
-                                    <div>Profit: {{ formatCurrency(selectedDeal.service_profit, selectedDeal.base_currency) }}</div>
+                                    <div>Платим мерчанту: {{ formatCurrency(selectedDeal.credit, selectedDeal.base_currency) }}</div>
+                                    <div v-if="isExternalCascadeProvider(selectedDeal)">
+                                        Провайдер платит нам: {{ formatCurrency(selectedDeal.debit, selectedDeal.base_currency) }}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -659,8 +663,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <div class="space-y-1">
                                                     <div>USDT amount: {{ formatCurrency(transaction.usdt_amount, selectedDeal.base_currency) }}</div>
                                                     <div>Credit: {{ formatCurrency(transaction.credit, selectedDeal.base_currency) }}</div>
-                                                    <div>Fee: {{ formatCurrency(transaction.fee, selectedDeal.base_currency) }}</div>
-                                                    <div>Fee rate: {{ transaction.fee_rate ?? 'Пусто' }}</div>
                                                 </div>
                                             </div>
 
