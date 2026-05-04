@@ -63,7 +63,10 @@ class SendCascadeDealCallbackJob implements ShouldQueue
             $started_at = microtime(true);
             $deal->forceFill(['callback_payload_revision' => $this->callbackRevision]);
             $payload = OrderResource::make($deal)->resolve();
-            $http = Http::withoutVerifying()->acceptJson()->timeout(10);
+            $http = Http::withoutVerifying()
+                ->acceptJson()
+                ->timeout(10)
+                ->withHeader('X-Callback-Revision', (string) $this->callbackRevision);
             $token = $deal->merchant->apiCredentialOrCreate()->callback_token;
 
             if ($token) {

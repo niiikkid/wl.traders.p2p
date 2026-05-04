@@ -28,7 +28,6 @@ class OrderResource extends JsonResource
             'id' => $this->uuid,
             'external_id' => $this->external_id,
             'merchant_id' => $this->merchant->uuid,
-            'callback_revision' => $this->callback_payload_revision,
             'status' => $this->status->value,
             'sub_status' => $this->sub_status->value,
             'amounts' => [

@@ -60,7 +60,14 @@ class CallbackService implements CallbackServiceContract
             ? $payout->merchant->apiCredentialOrCreate()->callback_token
             : $payout->merchant->user->api_access_token;
 
-        $isSuccessful = $this->sendCallback($callbackUrl, $data, $token, $payout, CallbackLog::TYPE_PAYOUT);
+        $isSuccessful = $this->sendCallback(
+            url: $callbackUrl,
+            payload: $data,
+            token: $token,
+            model: $payout,
+            type: CallbackLog::TYPE_PAYOUT,
+            callbackRevision: $payout->api_version === 2 ? $callbackRevision : null,
+        );
 
         if ($isSuccessful && $payout->api_version === 2 && $callbackRevision !== null) {
             $payout->newQuery()
@@ -70,13 +77,23 @@ class CallbackService implements CallbackServiceContract
         }
     }
 
-    private function sendCallback(string $url, array $payload, ?string $token, Model $model, string $type): bool
-    {
+    private function sendCallback(
+        string $url,
+        array $payload,
+        ?string $token,
+        Model $model,
+        string $type,
+        ?int $callbackRevision = null,
+    ): bool {
         $startedAt = microtime(true);
         $http = Http::withoutVerifying()->acceptJson();
 
         if ($token) {
             $http = $http->withHeader('Access-Token', $token);
+        }
+
+        if ($callbackRevision !== null) {
+            $http = $http->withHeader('X-Callback-Revision', (string) $callbackRevision);
         }
 
         try {
