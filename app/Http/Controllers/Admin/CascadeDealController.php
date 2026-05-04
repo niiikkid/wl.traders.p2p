@@ -63,7 +63,10 @@ class CascadeDealController extends Controller
 
     public function receipt(CascadeDeal $cascadeDeal, int $receipt)
     {
-        abort_unless($cascadeDeal->dispute_status?->value === 'opened', 404);
+        $hasDisputeFootprint = $cascadeDeal->dispute_status !== null
+            || (($cascadeDeal->dispute_history ?? []) !== [])
+            || (($cascadeDeal->dispute_receipts ?? []) !== []);
+        abort_unless($hasDisputeFootprint, 404);
 
         $files = collect($cascadeDeal->dispute_receipts ?? [])
             ->flatMap(fn (array $batch): array => Arr::wrap($batch['files'] ?? []))

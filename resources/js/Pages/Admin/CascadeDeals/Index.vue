@@ -131,9 +131,11 @@ const receiptErrors = computed(() => Object.entries(disputeForm.errors)
     .map(([, message]) => message));
 const selectedCascadeDisputeReceipts = computed(() => (selectedDisputeDeal.value?.dispute?.receipts ?? [])
     .flatMap((receiptBatch) => receiptBatch.files ?? []));
-const selectedCascadeDisputeHistory = computed(() => selectedDisputeDeal.value?.dispute?.history ?? []);
+const selectedCascadeDisputeHistory = computed(() => {
+    const items = selectedDisputeDeal.value?.dispute?.history ?? [];
 
-const hasOpenCascadeDispute = (deal) => deal?.dispute?.status === 'opened';
+    return [...items].reverse();
+});
 
 const formatFileSize = (size) => {
     if (! size) {
@@ -294,10 +296,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </svg>
                                         </button>
                                         <button
-                                            v-if="hasOpenCascadeDispute(deal)"
+                                            v-if="deal.can_view_cascade_dispute"
                                             type="button"
                                             class="btn btn-warning btn-outline btn-xs"
-                                            aria-label="Открыть каскадный спор"
+                                            aria-label="Просмотр каскадного спора"
                                             @click.prevent="openCascadeDisputeModal(deal)"
                                         >
                                             <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
@@ -410,10 +412,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </svg>
                                     </button>
                                     <button
-                                        v-if="hasOpenCascadeDispute(deal)"
+                                        v-if="deal.can_view_cascade_dispute"
                                         type="button"
                                         class="btn btn-warning btn-outline btn-xs"
-                                        aria-label="Открыть каскадный спор"
+                                        aria-label="Просмотр каскадного спора"
                                         @click.prevent="openCascadeDisputeModal(deal)"
                                     >
                                         <svg class="w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
@@ -796,11 +798,14 @@ defineOptions({ layout: AuthenticatedLayout })
                             </div>
                         </div>
 
-                        <div class="card bg-base-200 lg:col-span-2">
+                        <div
+                            v-if="selectedDisputeDeal.dispute?.status === 'rejected'"
+                            class="card bg-base-200 lg:col-span-2"
+                        >
                             <div class="card-body p-4">
-                                <h4 class="font-semibold">Причина</h4>
+                                <h4 class="font-semibold">Причина отклонения</h4>
                                 <div class="rounded-box bg-base-100 p-3 text-sm whitespace-pre-wrap wrap-anywhere">
-                                    {{ selectedDisputeDeal.dispute?.reason ?? 'Причина не указана' }}
+                                    {{ selectedDisputeDeal.dispute?.reason?.trim() ? selectedDisputeDeal.dispute.reason : 'Причина не указана' }}
                                 </div>
                             </div>
                         </div>

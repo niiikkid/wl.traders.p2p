@@ -464,7 +464,16 @@ class CascadeService implements CascadeServiceContract
 
         $cascadeDeal->loadMissing(['order.dispute', 'selectedProvider', 'selectedTransaction']);
 
-        if ($cascadeDeal->dispute_status !== null || $cascadeDeal->order?->dispute !== null) {
+        if ($cascadeDeal->selected_transaction_id === null) {
+            throw CascadeException::make('Спор можно открыть только после успешного создания сделки у провайдера.');
+        }
+
+        if (
+            $cascadeDeal->dispute_status !== null
+            || $cascadeDeal->order?->dispute !== null
+            || (($cascadeDeal->dispute_history ?? []) !== [])
+            || (($cascadeDeal->dispute_receipts ?? []) !== [])
+        ) {
             throw CascadeException::make('Спор по этой каскадной сделке уже открыт.');
         }
 

@@ -90,7 +90,14 @@ class TableCascadeDealResource extends JsonResource
                 'history' => $this->dispute_history,
                 'canceled_at' => $this->dispute_canceled_at?->toISOString(),
             ],
-            'can_open_dispute' => $this->dispute_status === null && ! $this->order?->dispute,
+            'can_view_cascade_dispute' => $this->dispute_status !== null
+                || (($this->dispute_history ?? []) !== [])
+                || (($this->dispute_receipts ?? []) !== []),
+            'can_open_dispute' => $this->dispute_status === null
+                && ! $this->order?->dispute
+                && (($this->dispute_history ?? []) === [])
+                && (($this->dispute_receipts ?? []) === [])
+                && $this->selected_transaction_id !== null,
             'payment_method' => $this->payment_method?->value,
             'payment_method_name' => $this->payment_method
                 ? trans("cascade.payment_method.{$this->payment_method->value}")
