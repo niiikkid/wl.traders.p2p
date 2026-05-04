@@ -1185,7 +1185,7 @@ class CascadeService implements CascadeServiceContract
         return CascadeProvider::query()
             ->where('is_active', true)
             ->when($setting && ! $setting->allow_internal_providers, fn ($query) => $query->where('provider_type', '!=', ProviderType::INTERNAL->value))
-            ->when($setting && $setting->manual_control_external_only && $cascadeDeal->manual_control !== null, fn ($query) => $query->where('provider_type', '!=', ProviderType::INTERNAL->value))
+            ->when($setting && $setting->manual_control_internal_only && $cascadeDeal->manual_control !== null, fn ($query) => $query->where('provider_type', '!=', ProviderType::EXTERNAL->value))
             ->when($setting && ! $setting->allow_external_providers, fn ($query) => $query->where('provider_type', '!=', ProviderType::EXTERNAL->value))
             ->when($allowedProviderIds->isNotEmpty(), fn ($query) => $query->whereIn('id', $allowedProviderIds))
             ->orderBy('priority')

@@ -22,7 +22,7 @@ const form = useForm({
     cascade_enabled: true,
     allow_internal_providers: true,
     allow_external_providers: true,
-    manual_control_external_only: false,
+    manual_control_internal_only: false,
     internal_first_cascade_enabled: false,
     allowed_provider_ids: [],
 });
@@ -61,10 +61,10 @@ const providersSummary = (merchant) => {
     }
 
     if (! setting.allowed_provider_ids?.length) {
-        return `${parts.join(' + ')}, все провайдеры${setting.manual_control_external_only ? ', manual → external' : ''}${setting.internal_first_cascade_enabled ? ', сначала internal' : ''}`;
+        return `${parts.join(' + ')}, все провайдеры${setting.manual_control_internal_only ? ', manual → internal' : ''}${setting.internal_first_cascade_enabled ? ', сначала internal' : ''}`;
     }
 
-    return `${parts.join(' + ')}, ${setting.allowed_provider_ids.length} пров.${setting.manual_control_external_only ? ', manual → external' : ''}${setting.internal_first_cascade_enabled ? ', сначала internal' : ''}`;
+    return `${parts.join(' + ')}, ${setting.allowed_provider_ids.length} пров.${setting.manual_control_internal_only ? ', manual → internal' : ''}${setting.internal_first_cascade_enabled ? ', сначала internal' : ''}`;
 };
 
 const providerTypeLabel = (type) => ({
@@ -110,7 +110,7 @@ const openSettingsModal = (merchant) => {
         cascade_enabled: setting.cascade_enabled ?? true,
         allow_internal_providers: setting.allow_internal_providers ?? true,
         allow_external_providers: setting.allow_external_providers ?? true,
-        manual_control_external_only: setting.manual_control_external_only ?? false,
+        manual_control_internal_only: setting.manual_control_internal_only ?? false,
         internal_first_cascade_enabled: setting.internal_first_cascade_enabled ?? false,
         allowed_provider_ids: [...(setting.allowed_provider_ids ?? [])],
     });
@@ -325,10 +325,10 @@ defineOptions({ layout: AuthenticatedLayout });
 
                         <label class="flex items-center justify-between gap-3 rounded-box border border-base-300 p-4">
                             <span>
-                                <span class="block font-medium">Manual только external</span>
-                                <span class="block text-xs opacity-70">Не отправлять ручные сделки во внутренний провайдер</span>
+                                <span class="block font-medium">Manual только internal</span>
+                                <span class="block text-xs opacity-70">Отправлять ручные сделки только во внутренний провайдер</span>
                             </span>
-                            <input v-model="form.manual_control_external_only" type="checkbox" class="toggle toggle-primary" />
+                            <input v-model="form.manual_control_internal_only" type="checkbox" class="toggle toggle-primary" />
                         </label>
 
                     </div>
