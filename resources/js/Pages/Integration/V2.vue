@@ -90,6 +90,31 @@ const disputeStatuses = [
     { value: 'rejected', description: 'Спор отклонён.' },
 ];
 
+/** Поля объекта `dispute` в ресурсе payin (GET, списки, callback), когда значение не null. */
+const payinDisputeResourceFields = [
+    {
+        name: 'status',
+        type: 'string',
+        description: 'Текущий статус спора: одно из opened, accepted, rejected (расшифровка — в списке статусов ниже).',
+    },
+    {
+        name: 'reason',
+        type: 'string | null',
+        description: 'Текст причины от провайдера/обработчика (часто при rejected), иначе null.',
+    },
+    {
+        name: 'canceled_at',
+        type: 'string | null',
+        description: 'Момент отмены спора в ISO 8601 (UTC), если зафиксирован; иначе null.',
+    },
+];
+
+const payinDisputeExampleObject = {
+    status: 'opened',
+    reason: null,
+    canceled_at: null,
+};
+
 const payoutFields = [
     { name: 'external_id', type: 'string', required: true, description: 'Уникальный ID выплаты в вашей системе, максимум 255 символов.' },
     { name: 'amount', type: 'integer', required: true, description: 'Сумма выплаты, целое положительное значение.' },
@@ -156,11 +181,7 @@ const payinResponse = {
             recipient_name: 'Ivan Ivanov',
         },
         manual_acquiring: null,
-        dispute: {
-            status: null,
-            reason: null,
-            canceled_at: null,
-        },
+        dispute: null,
         finished_at: null,
         created_at: '2026-05-01T00:00:00+00:00',
         current_server_time: '2026-05-01T00:00:05+00:00',
@@ -725,6 +746,9 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                         используйте его в путях <code class="rounded bg-base-200 px-1">/payin/{payin_id}</code>.
                                         Поиск по вашему внешнему ID выполняется через
                                         <code class="rounded bg-base-200 px-1">GET /api/v2/payin/external/{external_id}</code>.
+                                        Поле <code class="rounded bg-base-200 px-1">dispute</code> имеет тип «<code class="rounded bg-base-200 px-1">null</code>
+                                        или объект»: при отсутствии спора — <code class="rounded bg-base-200 px-1">null</code>; после открытия спора всегда объект
+                                        с тремя полями (см. таблицу и пример ниже), он сохраняется при смене и завершении спора.
                                     </p>
                                 </div>
                                 <button
@@ -838,6 +862,37 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                 </div>
 
                                 <section class="space-y-3 rounded-xl border border-base-300 bg-base-200/60 p-4">
+                                    <h3 class="font-semibold">Поле dispute в теле payin</h3>
+                                    <p class="text-sm text-base-content/70">
+                                        Во всех ответах, где возвращается сделка целиком (создание, GET по id или external id, список, callback),
+                                        поле <code class="rounded bg-base-300 px-1">dispute</code> либо <code class="rounded bg-base-300 px-1">null</code>,
+                                        либо объект следующей структуры — третьих вариантов нет.
+                                    </p>
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-sm">
+                                            <thead>
+                                            <tr>
+                                                <th>Поле</th>
+                                                <th>Тип</th>
+                                                <th>Описание</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody>
+                                            <tr v-for="field in payinDisputeResourceFields" :key="field.name">
+                                                <td><code class="rounded bg-base-200 px-2 py-1">{{ field.name }}</code></td>
+                                                <td>{{ field.type }}</td>
+                                                <td class="min-w-72 text-base-content/70">{{ field.description }}</td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div>
+                                        <h4 class="mb-2 text-sm font-semibold">Пример значения (спор открыт)</h4>
+                                        <pre class="max-h-48 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(payinDisputeExampleObject) }}</code></pre>
+                                    </div>
+                                </section>
+
+                                <section class="space-y-3 rounded-xl border border-base-300 bg-base-200/60 p-4">
                                     <div>
                                         <h3 class="font-semibold">Manual Acquiring</h3>
                                         <p class="mt-1 text-sm text-base-content/70">
@@ -894,8 +949,49 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                             </div>
 
                             <div class="space-y-3 rounded-xl border border-base-300 bg-base-200/60 p-4">
+                                <div>
+                                    <h3 class="text-sm font-semibold">Объект dispute в ресурсе payin</h3>
+                                    <p class="mt-1 text-sm text-base-content/70">
+                                        В <code class="rounded bg-base-300 px-1">GET /api/v2/payin/…</code>, списках payin и callback поле
+                                        <code class="rounded bg-base-300 px-1">dispute</code> — либо <code class="rounded bg-base-300 px-1">null</code>
+                                        (спор ещё не открыт), либо объект с фиксированным набором полей (ниже). После появления объекта он не возвращается к
+                                        <code class="rounded bg-base-300 px-1">null</code> при смене статуса спора.
+                                        Раньше при отсутствии спора приходил объект с тремя полями, в каждом из которых было
+                                        <code class="rounded bg-base-300 px-1">null</code>; теперь в этом случае — одно значение
+                                        <code class="rounded bg-base-300 px-1">null</code>.
+                                    </p>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="table table-sm">
+                                        <thead>
+                                        <tr>
+                                            <th>Поле</th>
+                                            <th>Тип</th>
+                                            <th>Описание</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr v-for="field in payinDisputeResourceFields" :key="`disputes-${field.name}`">
+                                            <td><code class="rounded bg-base-200 px-2 py-1">{{ field.name }}</code></td>
+                                            <td>{{ field.type }}</td>
+                                            <td class="min-w-72 text-base-content/70">{{ field.description }}</td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div>
+                                    <h4 class="mb-2 text-sm font-semibold">Пример JSON объекта</h4>
+                                    <pre class="max-h-48 overflow-auto rounded-xl bg-base-300 p-4 text-xs"><code>{{ formatJSON(payinDisputeExampleObject) }}</code></pre>
+                                </div>
+                                <p class="text-sm text-base-content/70">
+                                    В ответах эндпоинта <code class="rounded bg-base-300 px-1">GET/POST …/dispute</code> поле
+                                    <code class="rounded bg-base-300 px-1">canceled_at</code> может быть Unix timestamp или
+                                    <code class="rounded bg-base-300 px-1">null</code> — это другой контракт, не путать с
+                                    <code class="rounded bg-base-300 px-1">dispute.canceled_at</code> внутри payin (там только ISO 8601 или
+                                    <code class="rounded bg-base-300 px-1">null</code>).
+                                </p>
                                 <div class="text-sm">
-                                    <div class="mb-2 font-semibold">Статусы спора</div>
+                                    <div class="mb-2 font-semibold">Статусы спора (значение dispute.status)</div>
                                     <div class="space-y-1.5">
                                         <div v-for="status in disputeStatuses" :key="status.value" class="flex flex-wrap items-start gap-2">
                                             <code class="rounded bg-base-300 px-2 py-0.5">{{ status.value }}</code>
@@ -903,11 +999,6 @@ Access-Token: YOUR_API_V2_TOKEN</code></pre>
                                         </div>
                                     </div>
                                 </div>
-                                <p class="text-sm text-base-content/70">
-                                    В объекте payin поле <code class="rounded bg-base-300 px-1">dispute.canceled_at</code> приходит в ISO 8601,
-                                    а в ответах эндпоинта спора <code class="rounded bg-base-300 px-1">canceled_at</code> может быть Unix timestamp
-                                    или <code class="rounded bg-base-300 px-1">null</code>.
-                                </p>
                             </div>
 
                             <section class="space-y-3">

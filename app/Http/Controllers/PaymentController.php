@@ -18,6 +18,7 @@ class PaymentController extends Controller
 
         $orders = CascadeDeal::query()
             ->whereRelation('merchant', 'user_id', Auth::id())
+            ->visibleInMerchantApi()
             ->with('merchant:id,name,user_id')
             ->when(! empty($filters->merchantIds), function ($query) use ($filters) {
                 $query->whereIn('merchant_id', $filters->merchantIds);
