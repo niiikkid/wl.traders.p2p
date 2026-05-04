@@ -20,8 +20,7 @@ class MerchantCascadeSettingController extends Controller
         $merchants = Merchant::query()
             ->with(['user', 'cascadeSetting'])
             ->where('active', true)
-            ->orderBy('name')
-            ->orderBy('id')
+            ->orderByDesc('id')
             ->get();
 
         $merchants = TableMerchantCascadeSettingResource::collection($merchants)->resolve();
