@@ -246,7 +246,9 @@ const show = () => {
 
     axios.get(route('orders.show', order_id), {
         params: {
-            view_mode: (viewStore.isSupportViewMode || viewStore.isAnalystViewMode) ? 'support' : 'default',
+            view_mode: viewStore.isAdminViewMode
+                ? 'admin'
+                : ((viewStore.isSupportViewMode || viewStore.isAnalystViewMode) ? 'support' : 'default'),
         },
     })
         .then(response => {
@@ -507,15 +509,10 @@ const copyCallbackUrl = async (callback_url) => {
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Курс</dt>
                                             <dd class="font-medium text-base-content inline-flex flex-wrap items-baseline justify-end gap-x-1 text-end">
-                                                <span
-                                                    v-if="order.market_name || order.market"
-                                                    class="font-semibold text-primary"
-                                                >{{ order.market_name ?? String(order.market).toUpperCase() }}</span>
-                                                <span
-                                                    v-if="order.market_name || order.market"
-                                                    class="text-base-content/45"
-                                                    aria-hidden="true"
-                                                >·</span>
+                                                <template v-if="viewStore.isAdminViewMode && (order.market_name || order.market)">
+                                                    <span class="font-semibold text-primary">{{ order.market_name ?? String(order.market).toUpperCase() }}</span>
+                                                    <span class="text-base-content/45" aria-hidden="true">·</span>
+                                                </template>
                                                 <span>{{ order.conversion_price }} {{ order.currency.toUpperCase() }}</span>
                                             </dd>
                                         </dl>

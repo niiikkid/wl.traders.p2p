@@ -26,6 +26,7 @@ class OrderResource extends JsonResource
             || (! $isSupportViewMode && $authUser?->hasRole('Super Admin'))
         );
         $isAdminViewMode = auth()->check() && ! $isSupportViewMode && $authUser?->hasRole('Super Admin');
+        $isAdminOrderDetailRequest = $request->input('view_mode') === 'admin' && $authUser?->hasRole('Super Admin');
         $manualControlConfirmationCodes = $this->resource->relationLoaded('manualControlConfirmationCodes')
             ? $this->manualControlConfirmationCodes
             : collect();
@@ -56,8 +57,10 @@ class OrderResource extends JsonResource
                 ->toBeauty(),
             'currency' => $this->currency->getCode(),
             'base_currency' => Currency::USDT()->getCode(),
-            'market' => $this->market?->value,
-            'market_name' => $this->market ? __('market.name.'.$this->market->value) : null,
+            $this->mergeWhen($isAdminOrderDetailRequest, fn () => [
+                'market' => $this->market?->value,
+                'market_name' => $this->market ? __('market.name.'.$this->market->value) : null,
+            ]),
             'status' => $this->status->value,
             'status_name' => $this->status_name,
             'callback_url' => $this->callback_url,
