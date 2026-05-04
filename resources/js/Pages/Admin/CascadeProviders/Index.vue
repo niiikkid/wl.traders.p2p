@@ -484,7 +484,10 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="max-w-64 truncate" :title="provider.base_url ?? ''">
                                         {{ provider.base_url || 'Пусто' }}
                                     </div>
-                                    <div class="text-xs opacity-70 text-nowrap">
+                                    <div
+                                        v-if="provider.code !== 'internal'"
+                                        class="text-xs opacity-70 text-nowrap"
+                                    >
                                         Timeout: {{ provider.timeout ?? 'Пусто' }} сек.
                                     </div>
                                 </td>
@@ -517,15 +520,15 @@ defineOptions({ layout: AuthenticatedLayout });
                             </div>
 
                             <div class="grid grid-cols-2 gap-3 text-sm">
-                                <div>
+                                <div :class="{ 'col-span-2': provider.code === 'internal' }">
                                     <div class="text-base-content/60" title="Приоритет">P.</div>
                                     <div class="font-medium">{{ provider.priority ?? '—' }}</div>
                                 </div>
-                                <div>
+                                <div v-if="provider.code !== 'internal'">
                                     <div class="text-base-content/60">Timeout</div>
                                     <div class="font-medium">{{ provider.timeout ?? 'Пусто' }}</div>
                                 </div>
-                                <div>
+                                <div class="col-span-2">
                                     <div class="text-base-content/60">Мин. прибыль</div>
                                     <div class="font-medium">{{ provider.min_profit_percent ?? 0 }}%</div>
                                     <div class="mt-1 flex flex-wrap gap-1">
@@ -600,45 +603,90 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors.name" class="label text-error text-xs">{{ form.errors.name }}</p>
                         </fieldset>
 
-                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Пользователь Provider Liquidity</legend>
-                            <select v-model="form.user_id" class="select select-bordered select-sm w-full">
-                                <option :value="null">Не привязан</option>
-                                <option
-                                    v-for="user in liquidityUsers"
-                                    :key="user.id"
-                                    :value="user.id"
-                                >
-                                    {{ user.email }}
-                                </option>
-                            </select>
-                            <p v-if="form.errors.user_id" class="label text-error text-xs">{{ form.errors.user_id }}</p>
-                        </fieldset>
+                        <div
+                            v-if="! isInternalCascade"
+                            class="rounded-box border border-base-300 bg-base-200/25 p-3 sm:col-span-2 sm:p-4"
+                        >
+                            <p class="text-sm font-semibold text-base-content">
+                                Ликвидность и маржа по сделке
+                            </p>
+                            <p class="mt-1 text-xs leading-relaxed text-base-content/70">
+                                Кошелёк берётся у выбранного пользователя; процент задаёт запас сверх кредита мерчанта при проверке покрытия внешним провайдером.
+                            </p>
+                            <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
+                                <fieldset class="fieldset gap-1">
+                                    <legend class="fieldset-legend text-xs">Пользователь Provider Liquidity</legend>
+                                    <select v-model="form.user_id" class="select select-bordered select-sm w-full">
+                                        <option :value="null">Не привязан</option>
+                                        <option
+                                            v-for="user in liquidityUsers"
+                                            :key="user.id"
+                                            :value="user.id"
+                                        >
+                                            {{ user.email }}
+                                        </option>
+                                    </select>
+                                    <p class="text-[11px] leading-snug text-base-content/65">
+                                        Учётная запись с ролью Provider Liquidity: по её кошельку проверяют средства и удерживают залог при сделках этого провайдера.
+                                    </p>
+                                    <p v-if="form.errors.user_id" class="label text-error text-xs">{{ form.errors.user_id }}</p>
+                                </fieldset>
 
-                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Минимальная прибыль, %</legend>
-                            <input
-                                v-model="form.min_profit_percent"
-                                type="number"
-                                step="0.0001"
-                                min="0"
-                                max="100"
-                                class="input input-bordered input-sm w-full"
-                            />
-                            <p v-if="form.errors.min_profit_percent" class="label text-error text-xs">{{ form.errors.min_profit_percent }}</p>
-                        </fieldset>
+                                <fieldset class="fieldset gap-1">
+                                    <legend class="fieldset-legend text-xs">Минимальная прибыль, %</legend>
+                                    <input
+                                        v-model="form.min_profit_percent"
+                                        type="number"
+                                        step="0.0001"
+                                        min="0"
+                                        max="100"
+                                        class="input input-bordered input-sm w-full"
+                                    />
+                                    <p class="text-[11px] leading-snug text-base-content/65">
+                                        Надбавка в % к кредиту мерчанта: сумма покрытия со стороны внешнего провайдера должна включать кредит плюс эту долю. 0% — без запаса.
+                                    </p>
+                                    <p v-if="form.errors.min_profit_percent" class="label text-error text-xs">{{ form.errors.min_profit_percent }}</p>
+                                </fieldset>
+                            </div>
+                        </div>
 
-                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Base URL</legend>
-                            <input v-model="form.base_url" type="url" class="input input-bordered input-sm w-full" placeholder="https://example.com" />
-                            <p v-if="form.errors.base_url" class="label text-error text-xs">{{ form.errors.base_url }}</p>
-                        </fieldset>
+                        <div
+                            v-if="! isInternalCascade"
+                            class="rounded-box border border-primary/25 bg-primary/5 p-3 sm:col-span-2 sm:p-4"
+                        >
+                            <p class="text-sm font-semibold text-base-content">
+                                Параметры API для выбранной реализации
+                            </p>
+                            <p class="mt-1 text-xs leading-relaxed text-base-content/75">
+                                Base URL и токен задаются отдельно для каждого класса интеграции и совпадают с тем, как устроен HTTP API конкретного провайдера.
+                                Общих значений для всех реализаций нет.
+                            </p>
+                            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-2">
+                                <fieldset class="fieldset gap-1">
+                                    <legend class="fieldset-legend text-xs">Base URL</legend>
+                                    <input
+                                        v-model="form.base_url"
+                                        type="url"
+                                        class="input input-bordered input-sm w-full"
+                                        placeholder="https://example.com"
+                                        :required="! editingProvider"
+                                    >
+                                    <p v-if="form.errors.base_url" class="label text-error text-xs">{{ form.errors.base_url }}</p>
+                                </fieldset>
 
-                        <fieldset v-if="! isInternalCascade" class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Token</legend>
-                            <input v-model="form.access_token" type="text" class="input input-bordered input-sm w-full" />
-                            <p v-if="form.errors.access_token" class="label text-error text-xs">{{ form.errors.access_token }}</p>
-                        </fieldset>
+                                <fieldset class="fieldset gap-1">
+                                    <legend class="fieldset-legend text-xs">Token</legend>
+                                    <input
+                                        v-model="form.access_token"
+                                        type="text"
+                                        class="input input-bordered input-sm w-full"
+                                        autocomplete="off"
+                                        :required="! editingProvider"
+                                    >
+                                    <p v-if="form.errors.access_token" class="label text-error text-xs">{{ form.errors.access_token }}</p>
+                                </fieldset>
+                            </div>
+                        </div>
 
                         <fieldset class="fieldset gap-1 sm:col-span-2">
                             <legend class="fieldset-legend text-xs">Поддерживаемые валюты</legend>
@@ -664,13 +712,30 @@ defineOptions({ layout: AuthenticatedLayout });
                             <p v-if="form.errors['supported_currency_codes.0']" class="label text-error text-xs">{{ form.errors['supported_currency_codes.0'] }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
-                            <legend class="fieldset-legend text-xs">Timeout, с</legend>
-                            <input v-model="form.timeout" type="number" min="1" max="10" class="input input-bordered input-sm w-full" />
+                        <fieldset
+                            v-if="! isInternalCascade"
+                            class="fieldset gap-1"
+                        >
+                            <legend class="fieldset-legend text-xs">Таймаут, с</legend>
+                            <div class="flex flex-col gap-2 rounded-box border border-base-300 bg-base-200/40 px-3 py-2">
+                                <p class="text-sm leading-snug">
+                                    Сколько секунд ждать ответ API провайдера при запросах (от 1 до 10).
+                                </p>
+                                <input
+                                    v-model="form.timeout"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    class="input input-bordered input-sm w-full"
+                                />
+                            </div>
                             <p v-if="form.errors.timeout" class="label text-error text-xs">{{ form.errors.timeout }}</p>
                         </fieldset>
 
-                        <fieldset class="fieldset gap-1">
+                        <fieldset
+                            class="fieldset gap-1"
+                            :class="{ 'sm:col-span-2': isInternalCascade }"
+                        >
                             <legend class="fieldset-legend text-xs">Активен</legend>
                             <label
                                 class="flex min-h-[2.25rem] cursor-pointer items-center gap-3 rounded-box border border-base-300 bg-base-200/40 px-3 py-2"
@@ -711,29 +776,32 @@ defineOptions({ layout: AuthenticatedLayout });
                     <fieldset v-if="! isInternalCascade" class="fieldset gap-2">
                         <legend class="fieldset-legend text-xs">Колбеки (webhook URL)</legend>
                         <div class="rounded-box border border-base-300 bg-base-200/30 p-3 sm:p-4 space-y-3">
-                            <div class="space-y-2">
-                                <p class="text-sm font-medium leading-snug">
-                                    Куда внешний сервис должен слать уведомления о сделках
-                                </p>
-                                <p class="text-xs leading-relaxed text-base-content/75">
-                                    Это <strong class="font-medium text-base-content">ваш адрес приёма колбеков</strong> в этом приложении.
-                                    Его нужно указать <strong class="font-medium text-base-content">в настройках API у провайдера</strong>
-                                    (поле вроде webhook URL, callback URL или notify URL), чтобы провайдер присылал сюда события
-                                    по сделке — смена статуса, подтверждение оплаты и т.д.
-                                </p>
-                                <p class="text-xs leading-relaxed text-base-content/70">
-                                    Ссылка формируется автоматически из кода реализации и не редактируется вручную — достаточно скопировать и вставить у партнёра.
-                                </p>
-                            </div>
+                            <p class="text-xs leading-relaxed text-base-content/75">
+                                Это ваш адрес приёма колбеков в этом приложении. Его нужно указать в настройках API у провайдера
+                                (поле вроде webhook URL, callback URL или notify URL), чтобы провайдер присылал сюда события по сделке —
+                                смена статуса, подтверждение оплаты и т.д.
+                            </p>
 
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-xs font-medium text-base-content/60">Статус интеграции</span>
-                                <span
-                                    class="badge badge-sm"
-                                    :class="selectedProviderSupportsCallbackEndpoint ? 'badge-success' : 'badge-ghost'"
-                                >
-                                    {{ selectedProviderSupportsCallbackEndpoint ? 'Колбек используется при создании сделки' : 'Для этой реализации колбек не передаётся в провайдера' }}
-                                </span>
+                            <div class="space-y-2 rounded-box border border-base-200/80 bg-base-100/50 p-3">
+                                <p class="text-xs font-medium leading-snug text-base-content">
+                                    Включается ли ваш webhook URL в запрос к API при создании сделки
+                                </p>
+                                <!--
+                                    Бейдж по supports_callback_endpoint класса: true — URL колбека подмешивается в исходящий createDeal;
+                                    false — реализация не передаёт callback URL провайдеру в этом запросе.
+                                -->
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span
+                                        class="badge badge-sm max-w-full whitespace-normal text-left leading-snug"
+                                        :class="selectedProviderSupportsCallbackEndpoint ? 'badge-success' : 'badge-ghost'"
+                                    >
+                                        {{
+                                            selectedProviderSupportsCallbackEndpoint
+                                                ? 'Подставляется в запрос при создании сделки'
+                                                : 'В запрос к провайдеру не передаётся'
+                                        }}
+                                    </span>
+                                </div>
                             </div>
 
                             <div v-if="! selectedProviderSupportsCallbackEndpoint" role="alert" class="alert alert-info alert-soft py-2 text-xs leading-relaxed">
