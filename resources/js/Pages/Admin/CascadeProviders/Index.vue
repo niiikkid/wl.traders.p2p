@@ -569,10 +569,10 @@ defineOptions({ layout: AuthenticatedLayout });
                 </button>
 
                 <h3 class="font-bold text-base mb-1">
-                    {{ editingProvider ? 'Редактирование провайдера' : 'Новый провайдер каскада' }}
+                    {{ editingProvider ? 'Редактирование интеграции' : 'Новая интеграция' }}
                 </h3>
                 <p class="text-xs opacity-70 mb-3">
-                    Провайдера можно создать только для класса, найденного в папке реализаций.
+                    Интеграцию можно добавить только для класса, найденного в папке реализаций.
                 </p>
 
                 <form class="space-y-3" @submit.prevent="submit">
@@ -611,7 +611,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                 Ликвидность и маржа по сделке
                             </p>
                             <p class="mt-1 text-xs leading-relaxed text-base-content/70">
-                                Кошелёк берётся у выбранного пользователя; процент задаёт запас сверх кредита мерчанта при проверке покрытия внешним провайдером.
+                                На балансе должно хватать на всю сумму сделки в USDT. Процент «минимальной прибыли» говорит: от провайдера нужно чуть больше, чем просто покрыть выплату мерчанту после комиссии.
                             </p>
                             <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-3">
                                 <fieldset class="fieldset gap-1">
@@ -627,7 +627,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </option>
                                     </select>
                                     <p class="text-[11px] leading-snug text-base-content/65">
-                                        Учётная запись с ролью Provider Liquidity: по её кошельку проверяют средства и удерживают залог при сделках этого провайдера.
+                                        Выберите пользователя, с чьего баланса будут браться деньги для сделок этого провайдера.
                                     </p>
                                     <p v-if="form.errors.user_id" class="label text-error text-xs">{{ form.errors.user_id }}</p>
                                 </fieldset>
@@ -643,10 +643,44 @@ defineOptions({ layout: AuthenticatedLayout });
                                         class="input input-bordered input-sm w-full"
                                     />
                                     <p class="text-[11px] leading-snug text-base-content/65">
-                                        Надбавка в % к кредиту мерчанта: сумма покрытия со стороны внешнего провайдера должна включать кредит плюс эту долю. 0% — без запаса.
+                                        Сколько процентов сверху мы хотим заработать на сделке. `0` = работаем без запаса.
                                     </p>
                                     <p v-if="form.errors.min_profit_percent" class="label text-error text-xs">{{ form.errors.min_profit_percent }}</p>
                                 </fieldset>
+                            </div>
+
+                            <!--
+                                Две проверки для внешнего провайдера (CascadeProviderAttemptJob):
+                                1) Баланс кошелька >= profits.convertedAmount — полная сумма сделки в USDT (зеркало обязательства по «телу»).
+                                2) Сумма в ответе API >= merchantCredit × (1 + min_profit/100) — merchantCredit = convertedAmount − комиссии.
+                            -->
+                            <div class="mt-4 rounded-box border border-base-content/10 bg-base-100/90 p-3 sm:p-4">
+                                <p class="text-xs font-semibold text-base-content">
+                                    Как это работает
+                                </p>
+                                <ul class="mt-2 list-disc space-y-2 ps-4 text-xs leading-relaxed text-base-content/80">
+                                    <li>
+                                        Если сделка открыта на <strong>100 USDT</strong>, значит мы отвечаем перед мерчантом за эти <strong>100 USDT</strong>.
+                                    </li>
+                                    <li>
+                                        Если комиссия сервиса <strong>5%</strong>, то после всех удержаний мерчант должен получить <strong>95 USDT</strong>.
+                                    </li>
+                                    <li>
+                                        От провайдера мы ждём зачисление <strong>не меньше этой суммы</strong>, иначе сделка для нас убыточна.
+                                    </li>
+                                    <li>
+                                        Поле «минимальная прибыль» добавляет сверху ещё небольшой запас, чтобы сделка была не в ноль, а в плюс.
+                                    </li>
+                                </ul>
+                                <p class="mt-3 text-[11px] leading-relaxed text-base-content/65 sm:text-xs">
+                                    Баланс Provider Liquidity проверяется по <strong>полной сумме сделки</strong>. А проверка прибыли — по тому,
+                                    сколько мы ожидаем получить от провайдера.
+                                </p>
+                                <div class="mt-3 rounded-box bg-base-200/60 px-3 py-2 text-xs leading-relaxed text-base-content/85">
+                                    <span class="font-medium text-base-content">Пример:</span>
+                                    сделка на <strong>100</strong> USDT, комиссия <strong>5%</strong> → мерчанту нужно отдать <strong>95</strong> USDT.
+                                    Если минимальная прибыль <strong>1%</strong>, то от провайдера ждём уже не 95, а хотя бы <strong>95,95</strong> USDT.
+                                </div>
                             </div>
                         </div>
 
