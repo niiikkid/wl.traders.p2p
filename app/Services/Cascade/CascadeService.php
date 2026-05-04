@@ -558,8 +558,8 @@ class CascadeService implements CascadeServiceContract
     {
         $cascadeDeal->refresh();
 
-        $from_status = $cascadeDeal->status?->value;
-        $from_sub_status = $cascadeDeal->sub_status?->value;
+        $from_status = $cascadeDeal->status;
+        $from_sub_status = $cascadeDeal->sub_status;
 
         $cascadeDeal->fill([
             'status' => CascadeDealStatus::PENDING,
@@ -574,6 +574,12 @@ class CascadeService implements CascadeServiceContract
         }
 
         $cascadeDeal->save();
+        app(CascadeMerchantBalanceService::class)->syncForStatusTransition(
+            deal: $cascadeDeal,
+            provider: $providerModel,
+            fromStatus: $from_status,
+            toStatus: $cascadeDeal->status,
+        );
 
         app(CascadeDealEventRecorder::class)->record(
             deal: $cascadeDeal->refresh(),
@@ -584,8 +590,8 @@ class CascadeService implements CascadeServiceContract
             ],
             provider: $providerModel,
             transaction: $cascadeDeal->selectedTransaction,
-            fromStatus: $from_status,
-            fromSubStatus: $from_sub_status,
+            fromStatus: $from_status?->value,
+            fromSubStatus: $from_sub_status?->value,
             toStatus: $cascadeDeal->status?->value,
             toSubStatus: $cascadeDeal->sub_status?->value,
         );
@@ -770,8 +776,8 @@ class CascadeService implements CascadeServiceContract
         }
 
         $callback_revision = DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): ?int {
-            $from_status = $cascade_deal->status?->value;
-            $from_sub_status = $cascade_deal->sub_status?->value;
+            $from_status = $cascade_deal->status;
+            $from_sub_status = $cascade_deal->sub_status;
             $should_send_callback = false;
 
             if (
@@ -783,6 +789,12 @@ class CascadeService implements CascadeServiceContract
                 $should_send_callback = $cascade_deal->isDirty($this->cascadeDealCallbackAttributes());
                 $amount_changed = $cascade_deal->isDirty('amount');
                 $cascade_deal->save();
+                app(CascadeMerchantBalanceService::class)->syncForStatusTransition(
+                    deal: $cascade_deal,
+                    provider: $cascadeProvider,
+                    fromStatus: $from_status,
+                    toStatus: $cascade_deal->status,
+                );
 
                 if (
                     $amount_changed
@@ -800,8 +812,8 @@ class CascadeService implements CascadeServiceContract
                     payload: $callback_data,
                     transaction: $cascade_transaction,
                     provider: $cascadeProvider,
-                    fromStatus: $from_status,
-                    fromSubStatus: $from_sub_status,
+                    fromStatus: $from_status?->value,
+                    fromSubStatus: $from_sub_status?->value,
                     toStatus: $cascade_deal->status?->value,
                     toSubStatus: $cascade_deal->sub_status?->value,
                 );
