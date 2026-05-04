@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Cascade\Providers;
 
 use App\Models\CascadeDeal;
+use RuntimeException;
 
 /**
  * Абстрактный базовый класс для провайдеров каскада
@@ -85,4 +86,24 @@ abstract class AbstractCascadeProvider implements CascadeProviderInterface
      * @param  array<string, mixed>  $context
      */
     abstract public function providerApiLogUrl(string $operation, ?CascadeDeal $cascadeDeal = null, array $context = []): string;
+
+    /**
+     * Собирает абсолютный URL исходящего запроса к внешнему API провайдера.
+     * Домен берётся только из настроек интеграции (base_url); запасных источников нет.
+     *
+     * @param  string  $path  Путь, начинающийся с «/»
+     *
+     * @throws RuntimeException
+     */
+    protected function integrationHttpUrl(string $configuredBaseUrl, string $path): string
+    {
+        $base = rtrim(trim($configuredBaseUrl), '/');
+        if ($base === '') {
+            throw new RuntimeException(
+                sprintf('Базовый URL интеграции (base_url) не задан для провайдера каскада «%s».', $this->getCode()),
+            );
+        }
+
+        return $base.$path;
+    }
 }

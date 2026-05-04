@@ -232,7 +232,10 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
 
     protected function buildUrl(string $path): string
     {
-        return rtrim((string) ($this->configValue('base_url') ?: config('app.url')), '/').$path;
+        $raw = $this->configValue('base_url');
+        $base = is_string($raw) ? trim($raw) : '';
+
+        return $this->integrationHttpUrl($base, $path);
     }
 
     private function throwIfInvalid(Response $response): void

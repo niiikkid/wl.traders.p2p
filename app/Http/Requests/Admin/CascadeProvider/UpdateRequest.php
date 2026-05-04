@@ -29,6 +29,8 @@ class UpdateRequest extends FormRequest
             $codeRules[] = Rule::unique(CascadeProvider::class, 'code')->ignore($cascadeProvider?->id);
         }
 
+        $isInternal = $this->input('code') === 'internal';
+
         return [
             'code' => $codeRules,
             'name' => ['required', 'string', 'max:255'],
@@ -37,8 +39,12 @@ class UpdateRequest extends FormRequest
             'is_active' => ['required', 'boolean'],
             'priority' => ['nullable', 'integer', 'min:0'],
             'min_profit_percent' => ['required', 'numeric', 'min:0', 'max:100'],
-            'base_url' => ['nullable', 'url', 'max:255'],
-            'access_token' => ['nullable', 'string', 'max:255'],
+            'base_url' => $isInternal
+                ? ['nullable', 'url', 'max:255']
+                : ['required', 'url', 'max:255'],
+            'access_token' => $isInternal
+                ? ['nullable', 'string', 'max:255']
+                : ['required', 'string', 'max:255'],
             'currency_code' => ['nullable', 'string', 'max:10'],
             'supported_currency_codes' => ['required', 'array', 'min:1'],
             'supported_currency_codes.*' => ['required', 'string', Rule::in($this->availableCurrencyCodes())],
