@@ -10,6 +10,7 @@ use App\Services\Market\Utils\MarketStore;
 use App\Services\Market\Utils\Parser\BinanceParser;
 use App\Services\Market\Utils\Parser\ByBitParser;
 use App\Services\Market\Utils\Parser\Parser;
+use App\Services\Market\Value\ResolvedMarketPrice;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use GuzzleHttp\Exception\ConnectException;
@@ -82,6 +83,11 @@ class MarketService implements MarketServiceContract
 
     public function getSellPrice(Currency $currency, MarketEnum $market = MarketEnum::BYBIT, bool $withoutFalling = true): Money
     {
+        return $this->getResolvedSellPrice($currency, $market, $withoutFalling)->price;
+    }
+
+    public function getResolvedSellPrice(Currency $currency, MarketEnum $market = MarketEnum::BYBIT, bool $withoutFalling = true): ResolvedMarketPrice
+    {
         return $this->resolvePrice(
             currency: $currency,
             market: $market,
@@ -91,6 +97,11 @@ class MarketService implements MarketServiceContract
     }
 
     public function getBuyPrice(Currency $currency, MarketEnum $market = MarketEnum::BYBIT, bool $withoutFalling = true): Money
+    {
+        return $this->getResolvedBuyPrice($currency, $market, $withoutFalling)->price;
+    }
+
+    public function getResolvedBuyPrice(Currency $currency, MarketEnum $market = MarketEnum::BYBIT, bool $withoutFalling = true): ResolvedMarketPrice
     {
         return $this->resolvePrice(
             currency: $currency,
@@ -209,13 +220,15 @@ class MarketService implements MarketServiceContract
         MarketEnum $market,
         bool $withoutFalling,
         callable $getter
-    ): Money {
+    ): ResolvedMarketPrice {
+        $resolvedMarket = $market;
         $price = $getter($currency, $market);
 
         if (! $price && $withoutFalling) {
             foreach ($this->fallbackMarkets($market, $currency) as $fallbackMarket) {
                 $price = $getter($currency, $fallbackMarket);
                 if ($price) {
+                    $resolvedMarket = $fallbackMarket;
                     break;
                 }
             }
@@ -225,7 +238,10 @@ class MarketService implements MarketServiceContract
             $price = 0;
         }
 
-        return new Money($price, $currency);
+        return new ResolvedMarketPrice(
+            price: new Money($price, $currency),
+            market: $resolvedMarket,
+        );
     }
 
     /**

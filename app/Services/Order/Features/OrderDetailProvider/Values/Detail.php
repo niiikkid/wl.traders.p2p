@@ -2,6 +2,7 @@
 
 namespace App\Services\Order\Features\OrderDetailProvider\Values;
 
+use App\Enums\MarketEnum;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 
@@ -27,6 +28,7 @@ class Detail
         public Gateway  $gateway,
         public Trader   $trader,
         public Money    $amount,
+        public MarketEnum $market,
     )
     {}
 }

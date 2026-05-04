@@ -29,6 +29,7 @@ class FindAvailablePaymentDetail
     protected Carbon $start;
     protected Carbon $end;
     protected Money $exchangePrice;
+    protected MarketEnum $exchangeMarket;
     protected int $maxPendingDisputes;
     protected Money $approximateTotalProfit;
 
@@ -51,12 +52,16 @@ class FindAvailablePaymentDetail
         $this->end = Carbon::createFromTimeString($this->primeTimeBonus->ends);
         if ($this->forcedExchangePrice && $this->forcedExchangePrice->greaterThanZero()) {
             $this->exchangePrice = $this->forcedExchangePrice;
+            $this->exchangeMarket = $this->market;
         } else {
             if ($this->market->equals(MarketEnum::MERCHANT_API)) {
                 throw OrderException::marketPriceUnavailable();
             }
 
-            $this->exchangePrice = services()->market()->getSellPrice($this->amount->getCurrency(), $this->market);
+            $resolvedPrice = services()->market()->getResolvedSellPrice($this->amount->getCurrency(), $this->market);
+
+            $this->exchangePrice = $resolvedPrice->price;
+            $this->exchangeMarket = $resolvedPrice->market;
         }
 
         if (! $this->exchangePrice->greaterThanZero()) {
@@ -137,6 +142,7 @@ class FindAvailablePaymentDetail
             gateway: $gateway,
             trader: $trader,
             amount: $this->amount,
+            market: $this->exchangeMarket,
         );
     }
 

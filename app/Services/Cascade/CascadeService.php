@@ -1091,7 +1091,11 @@ class CascadeService implements CascadeServiceContract
             return CascadeDeal::create($attributes);
         }
 
-        $attributes['conversion_price'] = services()->market()->getSellPrice($currency, $market);
+        $resolvedPrice = services()->market()->getResolvedSellPrice($currency, $market);
+
+        $attributes['conversion_price'] = $resolvedPrice->price;
+        $attributes['market'] = $resolvedPrice->market;
+
         if (! $attributes['conversion_price']->greaterThanZero()) {
             throw CascadeException::make('Не удалось получить рыночный курс для расчёта экономики каскада.');
         }

@@ -3,6 +3,7 @@
 namespace App\Contracts;
 
 use App\Enums\MarketEnum;
+use App\Services\Market\Value\ResolvedMarketPrice;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Support\Collection;
@@ -16,6 +17,10 @@ interface MarketServiceContract
     public function getSellPrice(Currency $currency, MarketEnum $market, bool $withoutFalling = true): Money;
 
     public function getBuyPrice(Currency $currency, MarketEnum $market, bool $withoutFalling = true): Money;
+
+    public function getResolvedSellPrice(Currency $currency, MarketEnum $market, bool $withoutFalling = true): ResolvedMarketPrice;
+
+    public function getResolvedBuyPrice(Currency $currency, MarketEnum $market, bool $withoutFalling = true): ResolvedMarketPrice;
 
     public function loadFilterConditions(): void;
 
