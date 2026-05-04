@@ -221,22 +221,15 @@ class InternalCascadeProvider extends AbstractCascadeProvider
 
     public function providerApiLogUrl(string $operation, ?CascadeDeal $cascadeDeal = null, array $context = []): string
     {
-        $providerDealId = (string) ($context['provider_deal_id'] ?? '');
-        $orderUuidForConfirmation = (string) (
-            $cascadeDeal?->selectedTransaction?->provider_deal_id
-                ?? $cascadeDeal?->order?->uuid
-                ?? ''
-        );
-
         return match ($operation) {
-            'createDeal' => url('/api/h2h/order'),
-            'cancelDeal' => url('/api/h2h/order/'.$providerDealId.'/cancel'),
-            'getDeal' => url('/api/h2h/order/'.$providerDealId),
-            'storeConfirmationCode' => url('/api/h2h/order/'.$orderUuidForConfirmation.'/confirmation-code'),
-            'openDispute' => url('/api/h2h/order/'.$providerDealId.'/dispute'),
-            'getDispute' => url('/api/h2h/order/'.$providerDealId.'/dispute'),
-            'cancelDispute' => url('/disputes/'.(string) ($context['dispute_id'] ?? '').'/cancel'),
-            default => url('/api/h2h/order'),
+            'createDeal' => 'internal://services.orderPooling.processOrderPooling',
+            'cancelDeal' => 'internal://services.order.finishOrderAsFailed',
+            'getDeal' => 'internal://order.resolveOrder',
+            'storeConfirmationCode' => 'internal://orderManualControlConfirmationCode.create',
+            'openDispute' => 'internal://services.dispute.create',
+            'getDispute' => 'internal://order.dispute.get',
+            'cancelDispute' => 'internal://services.dispute.cancel',
+            default => 'internal://provider.operation.'.$operation,
         };
     }
 
