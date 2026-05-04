@@ -52,11 +52,11 @@ class OrderResource extends JsonResource
                 'confirmation_type' => $this->manual_control->confirmationType,
                 'reject_reason' => $this->manual_control->rejectReason,
             ],
-            'dispute' => [
+            'dispute' => $this->dispute_status !== null ? [
                 'status' => $this->dispute_status?->value,
                 'reason' => $this->dispute_reason,
                 'canceled_at' => $this->dispute_canceled_at?->toIso8601String(),
-            ],
+            ] : null,
             'finished_at' => $this->finished_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'current_server_time' => now()->toIso8601String(),
