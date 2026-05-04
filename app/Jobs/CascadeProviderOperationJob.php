@@ -15,8 +15,10 @@ use App\Models\CascadeProvider;
 use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Services\Cascade\CascadeDealEventRecorder;
+use App\Services\Cascade\CascadeProviderCollateralService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -74,10 +76,14 @@ class CascadeProviderOperationJob implements ShouldQueue
         $errorMessage = null;
 
         try {
+            $operationPayload = $this->operation === 'openDispute'
+                ? $this->openDisputePayload()
+                : $this->payload;
+
             $responsePayload = match ($this->operation) {
                 'cancelDeal' => $provider->cancelDeal($deal, $providerDealId),
-                'storeConfirmationCode' => $provider->storeConfirmationCode($deal, (string) $this->payload['confirmation_code']),
-                'openDispute' => $provider->openDispute($deal, $providerDealId, $this->payload),
+                'storeConfirmationCode' => $provider->storeConfirmationCode($deal, (string) $operationPayload['confirmation_code']),
+                'openDispute' => $provider->openDispute($deal, $providerDealId, $operationPayload),
                 default => throw CascadeException::make('Неподдерживаемая операция провайдера.'),
             };
 
@@ -146,6 +152,43 @@ class CascadeProviderOperationJob implements ShouldQueue
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function openDisputePayload(): array
+    {
+        $payload = Arr::except($this->payload, ['cascade_dispute_receipts']);
+        $receipts = collect((array) ($this->payload['cascade_dispute_receipts'] ?? []))
+            ->map(function (mixed $receipt): ?UploadedFile {
+                if (! is_array($receipt) || empty($receipt['stored_name'])) {
+                    return null;
+                }
+
+                $path = storage_path('receipts/cascade/'.basename((string) $receipt['stored_name']));
+
+                if (! is_file($path)) {
+                    return null;
+                }
+
+                return new UploadedFile(
+                    path: $path,
+                    originalName: (string) ($receipt['original_name'] ?? basename($path)),
+                    mimeType: $receipt['mime_type'] ?? null,
+                    error: null,
+                    test: true,
+                );
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($receipts !== []) {
+            $payload['receipts'] = $receipts;
+        }
+
+        return $payload;
+    }
+
+    /**
      * @param  array<string, mixed>  $responsePayload
      */
     private function syncSuccessfulCancel(
@@ -187,6 +230,8 @@ class CascadeProviderOperationJob implements ShouldQueue
                 'status' => CascadeTransactionStatus::CANCELLED,
                 'response_payload' => $responsePayload,
             ]);
+
+            app(CascadeProviderCollateralService::class)->releaseActiveForDeal($deal);
 
             $deal->refresh();
             $deal->loadMissing(['selectedTransaction']);

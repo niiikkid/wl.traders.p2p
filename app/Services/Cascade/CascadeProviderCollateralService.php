@@ -111,6 +111,26 @@ class CascadeProviderCollateralService
         });
     }
 
+    public function holdCurrentAmount(CascadeDeal $deal, CascadeProvider $provider): ?FundsOnHold
+    {
+        if ($provider->provider_type->equals(ProviderType::INTERNAL)) {
+            return null;
+        }
+
+        return $this->replaceForAmountChange($deal, $provider);
+    }
+
+    public function releaseActiveForDeal(CascadeDeal $deal): void
+    {
+        Transaction::run(function () use ($deal): void {
+            $deal->collateralHolds()
+                ->whereIn('status', [FundsOnHoldStatus::TIMER_NOT_SET->value, FundsOnHoldStatus::PENDING_FOR_EXECUTION->value])
+                ->lockForUpdate()
+                ->get()
+                ->each(fn (FundsOnHold $hold): FundsOnHold => $this->release($hold));
+        });
+    }
+
     public function replaceForAmountChange(CascadeDeal $deal, CascadeProvider $provider): ?FundsOnHold
     {
         if ($provider->provider_type->equals(ProviderType::INTERNAL)) {

@@ -495,11 +495,18 @@ class CascadeService implements CascadeServiceContract
             ];
 
             $this->rememberCascadeDispute($cascadeDeal, $local_payload, $data, $receipt_file_metadata);
+            $this->reopenCascadeDealForDispute($cascadeDeal->refresh(), $provider_model);
+            app(CascadeProviderCollateralService::class)->holdCurrentAmount($cascadeDeal->refresh(), $provider_model);
+
             CascadeProviderOperationJob::dispatch(
                 $cascadeDeal->id,
                 $provider_model->id,
                 'openDispute',
-                ['provider_deal_id' => $provider_deal_id, ...$data],
+                [
+                    'provider_deal_id' => $provider_deal_id,
+                    ...Arr::except($data, ['receipts']),
+                    'cascade_dispute_receipts' => $receipt_file_metadata,
+                ],
             );
 
             return $this->normalizeDisputeResponse($cascadeDeal->refresh(), $local_payload);
@@ -512,6 +519,7 @@ class CascadeService implements CascadeServiceContract
 
             $this->rememberSelectedTransactionDispute($cascadeDeal, $response_payload);
             $this->rememberCascadeDispute($cascadeDeal, $response_payload, $data, $receipt_file_metadata);
+            $this->reopenCascadeDealForDispute($cascadeDeal->refresh(), $provider_model);
             $this->recordProviderLog(
                 cascadeDeal: $cascadeDeal,
                 providerModel: $provider_model,
@@ -543,6 +551,50 @@ class CascadeService implements CascadeServiceContract
             throw $e instanceof CascadeException
                 ? $e
                 : CascadeException::make($e->getMessage());
+        }
+    }
+
+    private function reopenCascadeDealForDispute(CascadeDeal $cascadeDeal, CascadeProvider $providerModel): void
+    {
+        $cascadeDeal->refresh();
+
+        $from_status = $cascadeDeal->status?->value;
+        $from_sub_status = $cascadeDeal->sub_status?->value;
+
+        $cascadeDeal->fill([
+            'status' => CascadeDealStatus::PENDING,
+            'sub_status' => CascadeDealSubStatus::WAITING_FOR_DISPUTE_TO_BE_RESOLVED,
+            'finished_at' => null,
+        ]);
+
+        $should_send_callback = $cascadeDeal->isDirty($this->cascadeDealCallbackAttributes());
+
+        if (! $cascadeDeal->isDirty()) {
+            return;
+        }
+
+        $cascadeDeal->save();
+
+        app(CascadeDealEventRecorder::class)->record(
+            deal: $cascadeDeal->refresh(),
+            type: CascadeDealEventType::STATUS_CHANGED,
+            payload: [
+                'source' => 'dispute',
+                'operation' => 'openDispute',
+            ],
+            provider: $providerModel,
+            transaction: $cascadeDeal->selectedTransaction,
+            fromStatus: $from_status,
+            fromSubStatus: $from_sub_status,
+            toStatus: $cascadeDeal->status?->value,
+            toSubStatus: $cascadeDeal->sub_status?->value,
+        );
+
+        if ($should_send_callback) {
+            $callback_revision = $cascadeDeal->callback_payload_revision + 1;
+            $cascadeDeal->forceFill(['callback_payload_revision' => $callback_revision])->save();
+
+            SendCascadeDealCallbackJob::dispatch($cascadeDeal->refresh(), $callback_revision);
         }
     }
 
