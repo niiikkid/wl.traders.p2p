@@ -8,9 +8,9 @@ use App\Casts\BaseCurrencyMoneyCast;
 use App\Casts\CascadeManualControlCast;
 use App\Casts\CurrencyCast;
 use App\Casts\MoneyCast;
+use App\Enums\CascadeDealEventType;
 use App\Enums\CascadeDealStatus;
 use App\Enums\CascadeDealSubStatus;
-use App\Enums\CascadeDealEventType;
 use App\Enums\CascadeDisputeStatus;
 use App\Enums\CascadePaymentMethod;
 use App\Enums\MarketEnum;
@@ -161,6 +161,15 @@ class CascadeDeal extends Model
     public function isVisibleInMerchantApi(): bool
     {
         return in_array($this->status, CascadeDealStatus::merchantApiVisibleCases(), true);
+    }
+
+    public function amountWasModified(): bool
+    {
+        if ($this->amount === null || $this->initial_amount === null) {
+            return false;
+        }
+
+        return ! $this->amount->equals($this->initial_amount);
     }
 
     public function merchant(): BelongsTo

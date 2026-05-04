@@ -4,6 +4,7 @@ import {usePage} from "@inertiajs/vue3";
 import {computed, ref, watch} from "vue";
 import Pagination from "@/Components/Pagination/Pagination.vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
+import AmountModifiedIndicator from "@/Components/AmountModifiedIndicator.vue";
 
 const emit = defineEmits(['openPage']);
 
@@ -81,7 +82,10 @@ const openPage = (pageNumber) => {
                         <DisplayUUID :uuid="order.uuid"/>
                     </th>
                     <td>
-                        <div class="text-nowrap">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
+                        <div class="flex flex-nowrap items-baseline gap-1.5">
+                            <div class="text-nowrap">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
+                            <AmountModifiedIndicator :modified="order.amount_was_modified" />
+                        </div>
                         <div class="text-nowrap text-xs text-base-content/60">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
                     </td>
                     <td>

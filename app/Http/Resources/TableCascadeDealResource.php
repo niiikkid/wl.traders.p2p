@@ -41,6 +41,7 @@ class TableCascadeDealResource extends JsonResource
             'order_uuid' => $this->order?->uuid,
             'amount' => $this->amount?->toBeauty(),
             'initial_amount' => $this->initial_amount?->toBeauty(),
+            'amount_was_modified' => $this->amountWasModified(),
             'currency' => $this->currency?->getCode(),
             'debit' => $this->debit?->toBeauty(),
             'credit' => $this->credit?->toBeauty(),

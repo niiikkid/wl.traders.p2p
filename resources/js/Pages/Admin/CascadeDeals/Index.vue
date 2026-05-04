@@ -4,6 +4,7 @@ import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DateTime from '@/Components/DateTime.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
+import AmountModifiedIndicator from '@/Components/AmountModifiedIndicator.vue';
 import OrderStatus from '@/Components/OrderStatus.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
@@ -259,9 +260,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="text-nowrap text-base-content">
-                                        {{ deal.amount }}
-                                        <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
+                                    <div class="flex flex-nowrap items-baseline gap-1.5">
+                                        <div class="text-nowrap text-base-content">
+                                            {{ deal.amount }}
+                                            <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
+                                        </div>
+                                        <AmountModifiedIndicator :modified="deal.amount_was_modified" />
                                     </div>
                                     <div class="text-nowrap text-xs">
                                         <span class="text-base-content/50">{{ deal.usdt_amount ?? '—' }}</span>
@@ -384,9 +388,12 @@ defineOptions({ layout: AuthenticatedLayout })
                             <div class="grid grid-cols-2 gap-3 text-sm">
                                 <div class="col-span-2">
                                     <div class="text-base-content/60">Сумма</div>
-                                    <div class="text-nowrap text-base-content">
-                                        {{ deal.amount }}
-                                        <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
+                                    <div class="flex flex-nowrap items-baseline gap-1.5">
+                                        <div class="text-nowrap text-base-content">
+                                            {{ deal.amount }}
+                                            <span class="text-primary/70">{{ (deal.currency ?? '').toUpperCase() }}</span>
+                                        </div>
+                                        <AmountModifiedIndicator :modified="deal.amount_was_modified" />
                                     </div>
                                     <div class="text-nowrap text-xs">
                                         <span class="text-base-content/50">{{ deal.usdt_amount ?? '—' }}</span>
@@ -534,7 +541,10 @@ defineOptions({ layout: AuthenticatedLayout })
                             <div class="card-body p-4">
                                 <h4 class="font-semibold">Экономика</h4>
                                 <div class="text-sm space-y-1">
-                                    <div>Сумма: {{ formatCurrency(selectedDeal.amount, selectedDeal.currency) }}</div>
+                                    <div class="flex flex-wrap items-baseline gap-1.5">
+                                        <span>Сумма: {{ formatCurrency(selectedDeal.amount, selectedDeal.currency) }}</span>
+                                        <AmountModifiedIndicator :modified="selectedDeal.amount_was_modified" />
+                                    </div>
                                     <div>Initial: {{ formatCurrency(selectedDeal.initial_amount, selectedDeal.currency) }}</div>
                                     <div>USDT amount: {{ formatCurrency(selectedDeal.usdt_amount, selectedDeal.base_currency) }}</div>
                                     <div>Fee: {{ formatCurrency(selectedDeal.fee, selectedDeal.base_currency) }}</div>

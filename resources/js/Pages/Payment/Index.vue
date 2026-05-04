@@ -7,6 +7,7 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import OrderModal from "@/Modals/OrderModal.vue";
 import DateTime from "@/Components/DateTime.vue";
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
+import AmountModifiedIndicator from "@/Components/AmountModifiedIndicator.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
@@ -170,7 +171,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </th>
                                     <td>
-                                        <div class="text-nowrap text-base-content">{{ order.amount }} <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span></div>
+                                        <div class="flex flex-nowrap items-baseline gap-1.5">
+                                            <div class="text-nowrap text-base-content">{{ order.amount }} <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span></div>
+                                            <AmountModifiedIndicator :modified="order.amount_was_modified" />
+                                        </div>
                                         <div class="text-nowrap text-xs"><span class="text-base-content/50">{{ order.total_profit }}</span> <span class="text-primary/50">{{ order.base_currency.toUpperCase() }}</span></div>
                                     </td>
                                     <td>
@@ -238,7 +242,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex items-start justify-between">
                                             <div class="text-base-content/70 text-sm">Сумма </div>
                                             <div>
-                                                <div class="text-nowrap text-base-content">{{ order.amount }} <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span></div>
+                                                <div class="flex flex-nowrap items-baseline justify-end gap-1.5">
+                                                    <div class="text-nowrap text-base-content">{{ order.amount }} <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span></div>
+                                                    <AmountModifiedIndicator :modified="order.amount_was_modified" />
+                                                </div>
                                                 <div class="text-nowrap text-xs"><span class="text-base-content/50">{{ order.total_profit }}</span> <span class="text-primary/50">{{ order.base_currency.toUpperCase() }}</span></div>
                                             </div>
                                         </div>

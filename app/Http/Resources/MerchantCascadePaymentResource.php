@@ -26,6 +26,7 @@ class MerchantCascadePaymentResource extends JsonResource
             'uuid' => $this->uuid,
             'external_id' => $this->external_id,
             'amount' => $this->amount?->toBeauty(),
+            'amount_was_modified' => $this->amountWasModified(),
             'total_profit' => $this->usdt_amount?->toBeauty(),
             'merchant_profit' => $this->credit?->toBeauty(),
             'service_commission_amount_total' => $this->fee?->toBeauty(),
