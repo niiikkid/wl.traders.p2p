@@ -63,6 +63,8 @@ class OrderResource extends JsonResource
             ]),
             'status' => $this->status->value,
             'status_name' => $this->status_name,
+            'has_dispute' => (bool) $this->dispute_exists,
+            'can_open_internal_dispute' => ! $this->dispute_exists,
             'callback_url' => $this->callback_url,
             'is_h2h' => $this->is_h2h,
             'manual_control_acquiring' => (bool) $this->manual_control_acquiring,
