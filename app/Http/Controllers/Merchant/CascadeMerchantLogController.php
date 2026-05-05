@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\TableCascadeMerchantLogResource;
 use App\Models\CascadeMerchantLog;
 use App\Models\Merchant;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,6 +17,11 @@ class CascadeMerchantLogController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+        if ($user instanceof User && $user->hasRole('Merchant') && ! $user->hasRole('Super Admin')) {
+            abort(404);
+        }
+
         $merchantIds = Merchant::query()
             ->where('user_id', $request->user()->id)
             ->pluck('id');

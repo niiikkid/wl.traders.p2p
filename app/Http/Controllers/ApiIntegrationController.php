@@ -6,6 +6,7 @@ use App\Models\Merchant;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -18,6 +19,11 @@ class ApiIntegrationController extends Controller
 
     public function v2()
     {
+        $user = Auth::user();
+        if ($user instanceof User && $user->hasRole('Merchant') && ! $user->hasRole('Super Admin')) {
+            abort(404);
+        }
+
         return Inertia::render('Integration/V2');
     }
 
@@ -26,7 +32,10 @@ class ApiIntegrationController extends Controller
      */
     private function integrationPageProps(): array
     {
-        $user = auth()->user();
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
         $token = $user->api_access_token;
 
         $merchants = Merchant::query()
@@ -78,7 +87,10 @@ class ApiIntegrationController extends Controller
 
     public function regenerateToken(): JsonResponse
     {
-        $user = auth()->user();
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
         $token = $this->generateApiAccessToken();
 
         $user->update([

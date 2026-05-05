@@ -25,10 +25,11 @@ class MerchantApiLogController extends Controller
         if (! $user instanceof User) {
             abort(403);
         }
+        if ($user->hasRole('Merchant') && ! $user->hasRole('Super Admin')) {
+            abort(404);
+        }
 
-        $logs = $user->hasRole('Merchant') && ! $user->hasRole('Super Admin')
-            ? queries()->merchantApiLog()->paginateForMerchant($user, $filters)
-            : queries()->merchantApiLog()->paginateForAdmin($filters);
+        $logs = queries()->merchantApiLog()->paginateForAdmin($filters);
 
         // Получаем статистику из сервиса
         $statistics = $statisticsService->getStatistics();
@@ -46,7 +47,7 @@ class MerchantApiLogController extends Controller
                 $chartDate = now()->startOfDay();
             }
         }
-        $merchantUser = $user->hasRole('Merchant') && ! $user->hasRole('Super Admin') ? $user : null;
+        $merchantUser = null;
         $chartMode = $request->query('chart_mode') === 'average' ? 'average' : 'day';
         $chartWeekdays = collect((array) $request->query('chart_weekdays', range(1, 7)))
             ->map(fn ($weekday) => (int) $weekday)
