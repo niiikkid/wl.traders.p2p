@@ -169,7 +169,6 @@ const payinResponse = {
             merchant_credit: { value: '1040.75', currency: 'USDT' },
         },
         exchange_rate: {
-            market: 'merchant_api',
             price: { value: '95.12345678', currency: 'RUB' },
             fixed_at: '2026-05-01T00:00:00+00:00',
         },
@@ -243,7 +242,6 @@ const payoutResponse = {
             commission: { value: '2.63', currency: 'USDT' },
         },
         exchange_rate: {
-            market: 'merchant_api',
             price: { value: '95.12345678', currency: 'RUB' },
             fixed_at: '2026-05-01T00:00:00+00:00',
         },

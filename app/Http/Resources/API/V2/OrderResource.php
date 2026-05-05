@@ -37,7 +37,6 @@ class OrderResource extends JsonResource
                 'merchant_credit' => $this->formatMoney($this->credit, null),
             ],
             'exchange_rate' => [
-                'market' => $this->market?->value,
                 'price' => $this->formatMoney($this->conversion_price, null),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],

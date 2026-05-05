@@ -28,7 +28,6 @@ class PayoutResource extends JsonResource
                 'commission' => $this->formatMoney($this->total_fee, $this->total_fee_currency),
             ],
             'exchange_rate' => [
-                'market' => $this->rate_market->value,
                 'price' => $this->formatMoney($this->conversion_price, $this->conversion_price_currency),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
