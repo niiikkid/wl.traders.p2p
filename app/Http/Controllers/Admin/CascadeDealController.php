@@ -21,9 +21,11 @@ class CascadeDealController extends Controller
         $cascadeDeals = CascadeDeal::query()
             ->with([
                 'merchant',
+                'merchant.user.wallet',
                 'merchantClient',
                 'order.dispute',
                 'selectedProvider',
+                'selectedProvider.user.wallet',
                 'selectedTransaction',
                 'transactions' => fn ($query) => $query
                     ->with('provider')

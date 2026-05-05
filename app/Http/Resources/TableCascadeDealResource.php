@@ -4,7 +4,9 @@ namespace App\Http\Resources;
 
 use App\Models\CascadeDeal;
 use App\Models\CascadeProviderLog;
+use App\Models\Wallet;
 use App\Services\Money\Currency;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Arr;
@@ -208,9 +210,76 @@ class TableCascadeDealResource extends JsonResource
                 'status' => $hold->status?->value,
                 'created_at' => $hold->created_at?->toISOString(),
             ])),
+            'wallet_transactions' => [
+                'merchant' => $this->resolveMerchantWalletTransactions(),
+                'provider' => $this->resolveProviderWalletTransactions(),
+            ],
             'finished_at' => $this->finished_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveMerchantWalletTransactions(): array
+    {
+        $wallet = $this->merchant?->user?->wallet;
+
+        if (! $wallet instanceof Wallet) {
+            return [];
+        }
+
+        return $this->resolveWalletTransactionsByTypes($wallet, [
+            'income_from_a_successful_cascade_deal',
+            'rollback_income_from_a_successful_cascade_deal',
+        ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveProviderWalletTransactions(): array
+    {
+        $wallet = $this->selectedProvider?->user?->wallet;
+
+        if (! $wallet instanceof Wallet) {
+            return [];
+        }
+
+        return $this->resolveWalletTransactionsByTypes($wallet, [
+            'cascade_provider_collateral_hold',
+            'cascade_provider_collateral_release',
+        ]);
+    }
+
+    /**
+     * @param  array<int, string>  $types
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveWalletTransactionsByTypes(Wallet $wallet, array $types): array
+    {
+        $windowStart = $this->created_at?->copy()->subMinutes(5);
+        $windowEnd = ($this->finished_at ?? $this->updated_at)?->copy()->addMinutes(5);
+
+        $query = $wallet->transactions()
+            ->whereIn('type', $types)
+            ->latest('id')
+            ->limit(50);
+
+        if ($windowStart instanceof CarbonInterface && $windowEnd instanceof CarbonInterface) {
+            $query->whereBetween('created_at', [$windowStart, $windowEnd]);
+        }
+
+        return $query->get()->map(fn ($transaction) => [
+            'id' => $transaction->id,
+            'amount' => $transaction->amount?->toBeauty(),
+            'currency' => $transaction->amount?->getCurrency()->getCode(),
+            'direction' => $transaction->direction?->value,
+            'type' => $transaction->type?->value,
+            'balance_type' => $transaction->balance_type?->value,
+            'created_at' => $transaction->created_at?->toISOString(),
+        ])->all();
     }
 }

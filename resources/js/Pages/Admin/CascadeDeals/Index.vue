@@ -138,6 +138,8 @@ const selectedCascadeDisputeHistory = computed(() => {
     return [...items].reverse();
 });
 const selectedAmountHistory = computed(() => selectedDeal.value?.amount_history ?? []);
+const selectedMerchantWalletTransactions = computed(() => selectedDeal.value?.wallet_transactions?.merchant ?? []);
+const selectedProviderWalletTransactions = computed(() => selectedDeal.value?.wallet_transactions?.provider ?? []);
 
 const formatFileSize = (size) => {
     if (! size) {
@@ -182,6 +184,18 @@ const amountHistorySourceLabel = (source) => ({
     provider_callback: 'Callback провайдера',
     internal_order: 'Внутренняя сделка',
 }[source] ?? source ?? 'Источник не указан');
+
+const walletTransactionTypeLabel = (type) => ({
+    income_from_a_successful_cascade_deal: 'Зачисление мерчанту',
+    rollback_income_from_a_successful_cascade_deal: 'Списание мерчанта (rollback)',
+    cascade_provider_collateral_hold: 'Удержание залога провайдера',
+    cascade_provider_collateral_release: 'Возврат залога провайдера',
+}[type] ?? type ?? 'Операция');
+
+const walletTransactionDirectionBadgeClass = (direction) => ({
+    in: 'badge-success',
+    out: 'badge-warning',
+}[direction] ?? 'badge-ghost');
 
 const transactionStatusBadgeClass = (status) => ({
     accepted: 'badge-success',
@@ -513,6 +527,9 @@ defineOptions({ layout: AuthenticatedLayout })
                             <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'logs' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'logs'">
                                 Логи
                             </button>
+                            <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'wallets' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'wallets'">
+                                Кошельки
+                            </button>
                             <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'raw' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'raw'">
                                 Raw
                             </button>
@@ -784,6 +801,96 @@ defineOptions({ layout: AuthenticatedLayout })
 
                                         <pre class="mt-3 max-h-56 overflow-auto rounded bg-base-200 p-3 text-xs whitespace-pre-wrap wrap-anywhere">{{ prettyJson(event.payload) }}</pre>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else-if="activeModalTab === 'wallets'" class="grid grid-cols-1 gap-4">
+                        <div class="card bg-base-200">
+                            <div class="card-body p-4">
+                                <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="font-semibold">Транзакции кошелька мерчанта</h4>
+                                    <span class="badge badge-primary badge-outline badge-sm">{{ selectedMerchantWalletTransactions.length }} найдено</span>
+                                </div>
+
+                                <div v-if="! selectedMerchantWalletTransactions.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                    По кошельку мерчанта не найдено операций каскада в окне этой сделки.
+                                </div>
+
+                                <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Тип</th>
+                                                <th>Направление</th>
+                                                <th>Сумма</th>
+                                                <th>Баланс</th>
+                                                <th>Дата</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="transaction in selectedMerchantWalletTransactions" :key="`merchant-wallet-${transaction.id}`">
+                                                <td>{{ transaction.id }}</td>
+                                                <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                <td>
+                                                    <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                        {{ transaction.direction ?? '—' }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ formatCurrency(transaction.amount, transaction.currency) }}</td>
+                                                <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                <td>
+                                                    <DateTime class="justify-start text-xs" :data="transaction.created_at" show-time/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-200">
+                            <div class="card-body p-4">
+                                <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+                                    <h4 class="font-semibold">Транзакции кошелька провайдера</h4>
+                                    <span class="badge badge-info badge-outline badge-sm">{{ selectedProviderWalletTransactions.length }} найдено</span>
+                                </div>
+
+                                <div v-if="! selectedProviderWalletTransactions.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-4 text-sm text-base-content/60">
+                                    По кошельку провайдера не найдено операций залога в окне этой сделки.
+                                </div>
+
+                                <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Тип</th>
+                                                <th>Направление</th>
+                                                <th>Сумма</th>
+                                                <th>Баланс</th>
+                                                <th>Дата</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="transaction in selectedProviderWalletTransactions" :key="`provider-wallet-${transaction.id}`">
+                                                <td>{{ transaction.id }}</td>
+                                                <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                <td>
+                                                    <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                        {{ transaction.direction ?? '—' }}
+                                                    </span>
+                                                </td>
+                                                <td>{{ formatCurrency(transaction.amount, transaction.currency) }}</td>
+                                                <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                <td>
+                                                    <DateTime class="justify-start text-xs" :data="transaction.created_at" show-time/>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         </div>
