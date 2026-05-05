@@ -19,6 +19,8 @@ class CascadeProviderController extends Controller
 {
     public function index(CascadeProviderDiscoveryService $discoveryService)
     {
+        $this->abortIfCascadeHidden();
+
         $providers = CascadeProvider::query()
             ->orderBy('priority', 'asc')
             ->orderBy('id', 'asc')
@@ -46,6 +48,8 @@ class CascadeProviderController extends Controller
 
     public function store(StoreRequest $request)
     {
+        $this->abortIfCascadeHidden();
+
         $provider = CascadeProvider::query()->create($request->validated());
         $this->ensureLiquidityProviderWallet($provider);
 
@@ -54,6 +58,8 @@ class CascadeProviderController extends Controller
 
     public function update(UpdateRequest $request, CascadeProvider $cascadeProvider)
     {
+        $this->abortIfCascadeHidden();
+
         $cascadeProvider->update($request->validated());
         $this->ensureLiquidityProviderWallet($cascadeProvider);
 
@@ -62,6 +68,8 @@ class CascadeProviderController extends Controller
 
     public function reorder(ReorderCascadeProvidersRequest $request): RedirectResponse
     {
+        $this->abortIfCascadeHidden();
+
         /** @var list<int> $ids */
         $ids = $request->validated('ids');
 
@@ -83,5 +91,10 @@ class CascadeProviderController extends Controller
         }
 
         services()->wallet()->create($provider->user);
+    }
+
+    private function abortIfCascadeHidden(): void
+    {
+        abort(404);
     }
 }

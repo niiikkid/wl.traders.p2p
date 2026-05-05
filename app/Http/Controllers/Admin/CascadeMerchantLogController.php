@@ -16,6 +16,8 @@ class CascadeMerchantLogController extends Controller
 {
     public function index(Request $request)
     {
+        $this->abortIfCascadeHidden();
+
         $filters = [
             'direction' => $request->string('direction')->toString(),
             'payment_type' => $request->string('payment_type')->toString(),
@@ -95,5 +97,10 @@ class CascadeMerchantLogController extends Controller
                     ->all(),
             ],
         ]);
+    }
+
+    private function abortIfCascadeHidden(): void
+    {
+        abort(404);
     }
 }

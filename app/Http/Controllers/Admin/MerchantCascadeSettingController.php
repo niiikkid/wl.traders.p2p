@@ -17,6 +17,8 @@ class MerchantCascadeSettingController extends Controller
 {
     public function index()
     {
+        $this->abortIfCascadeHidden();
+
         $merchants = Merchant::query()
             ->with(['user', 'cascadeSetting'])
             ->where('active', true)
@@ -40,6 +42,8 @@ class MerchantCascadeSettingController extends Controller
 
     public function update(UpdateRequest $request, Merchant $merchant): RedirectResponse
     {
+        $this->abortIfCascadeHidden();
+
         $validated = $request->validated();
         $validated['allowed_provider_ids'] = collect($validated['allowed_provider_ids'] ?? [])
             ->map(fn (mixed $id): int => (int) $id)
@@ -54,5 +58,10 @@ class MerchantCascadeSettingController extends Controller
         );
 
         return redirect()->route('admin.cascade-merchant-settings.index');
+    }
+
+    private function abortIfCascadeHidden(): void
+    {
+        abort(404);
     }
 }

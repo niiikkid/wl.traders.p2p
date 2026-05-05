@@ -15,6 +15,8 @@ class CascadeDealController extends Controller
 {
     public function index()
     {
+        $this->abortIfCascadeHidden();
+
         $filters = [];
         $filtersVariants = [];
 
@@ -58,6 +60,8 @@ class CascadeDealController extends Controller
 
     public function openDispute(OpenDisputeRequest $request, CascadeDeal $cascadeDeal)
     {
+        $this->abortIfCascadeHidden();
+
         $data = $request->validated();
 
         try {
@@ -71,6 +75,8 @@ class CascadeDealController extends Controller
 
     public function receipt(CascadeDeal $cascadeDeal, int $receipt)
     {
+        $this->abortIfCascadeHidden();
+
         $hasDisputeFootprint = $cascadeDeal->dispute_status !== null
             || (($cascadeDeal->dispute_history ?? []) !== [])
             || (($cascadeDeal->dispute_receipts ?? []) !== []);
@@ -87,5 +93,10 @@ class CascadeDealController extends Controller
         abort_unless(is_file($filePath), 404);
 
         return response()->file($filePath);
+    }
+
+    private function abortIfCascadeHidden(): void
+    {
+        abort(404);
     }
 }

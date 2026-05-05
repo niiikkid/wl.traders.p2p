@@ -16,6 +16,8 @@ class CascadeProviderLogController extends Controller
 {
     public function index(Request $request)
     {
+        $this->abortIfCascadeHidden();
+
         $filters = [
             'type' => $request->string('type')->toString(),
             'provider_id' => $request->integer('provider_id') ?: null,
@@ -79,5 +81,10 @@ class CascadeProviderLogController extends Controller
                     ->all(),
             ],
         ]);
+    }
+
+    private function abortIfCascadeHidden(): void
+    {
+        abort(404);
     }
 }
