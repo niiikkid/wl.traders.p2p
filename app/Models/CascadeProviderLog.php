@@ -106,7 +106,6 @@ class CascadeProviderLog extends Model
         return match ($operation) {
             'createDeal' => 'Создание сделки',
             'cancelDeal' => 'Отмена сделки',
-            'getDeal' => 'Получение сделки',
             'openDispute' => 'Открытие спора',
             'getDispute' => 'Данные спора',
             'cancelDispute' => 'Отмена спора',

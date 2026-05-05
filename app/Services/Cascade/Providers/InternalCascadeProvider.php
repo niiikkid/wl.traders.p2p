@@ -204,74 +204,6 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         }
     }
 
-    public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
-    {
-        $url = $this->providerApiLogUrl('getDeal', $cascadeDeal, ['provider_deal_id' => $providerDealId]);
-        $payload = ['provider_deal_id' => $providerDealId];
-        $startedAt = microtime(true);
-
-        try {
-            $order = $this->resolveOrder($cascadeDeal, $providerDealId);
-
-            $responsePayload = [
-                'order_id' => $order->uuid,
-                'status' => $order->status->value,
-                'sub_status' => $order->sub_status?->value,
-            ];
-
-            $normalizedResponse = [
-                'provider_deal_id' => $order->uuid,
-                'status' => $order->status->value,
-                'sub_status' => $order->sub_status?->value,
-                'gateway' => [
-                    'code' => $order->paymentGateway?->code,
-                    'name' => $order->paymentGateway?->name,
-                    'logo_link' => null,
-                ],
-                'details' => [
-                    'type' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail_type,
-                    'value' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail,
-                    'initials' => $order->manual_control_acquiring ? null : $order->paymentDetail?->initials,
-                ],
-                'finished_at' => $order->finished_at?->getTimestamp(),
-                'raw' => $responsePayload,
-            ];
-
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDeal',
-                method: 'GET',
-                url: $url,
-                requestPayload: $payload,
-                responsePayload: $responsePayload,
-                statusCode: 200,
-                startedAt: $startedAt,
-                isSuccessful: true,
-                context: $payload,
-            );
-
-            return $normalizedResponse;
-        } catch (Throwable $e) {
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDeal',
-                method: 'GET',
-                url: $url,
-                requestPayload: $payload,
-                responsePayload: null,
-                statusCode: null,
-                startedAt: $startedAt,
-                isSuccessful: false,
-                exception: $e,
-                context: $payload,
-            );
-
-            throw $e instanceof CascadeException
-                ? $e
-                : CascadeException::make($e->getMessage());
-        }
-    }
-
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
     {
         $url = $this->providerApiLogUrl('storeConfirmationCode', $cascadeDeal);
@@ -445,7 +377,6 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         return match ($operation) {
             'createDeal' => 'internal://services.orderPooling.processOrderPooling',
             'cancelDeal' => 'internal://services.order.finishOrderAsFailed',
-            'getDeal' => 'internal://order.resolveOrder',
             'storeConfirmationCode' => 'internal://orderManualControlConfirmationCode.create',
             'openDispute' => 'internal://services.dispute.create',
             'cancelDispute' => 'internal://services.dispute.cancel',

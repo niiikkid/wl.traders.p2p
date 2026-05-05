@@ -44,15 +44,6 @@ abstract class AbstractCascadeProvider implements CascadeProviderInterface
     abstract public function cancelDeal(CascadeDeal $cascadeDeal, string $providerDealId): array;
 
     /**
-     * Получить состояние сделки у провайдера
-     *
-     * @param  CascadeDeal  $cascadeDeal  Каскадная сделка
-     * @param  string  $providerDealId  ID сделки у провайдера
-     * @return array Данные сделки у провайдера
-     */
-    abstract public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array;
-
-    /**
      * Открыть спор у провайдера
      *
      * @param  CascadeDeal  $cascadeDeal  Каскадная сделка

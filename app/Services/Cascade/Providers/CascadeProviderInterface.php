@@ -32,15 +32,6 @@ interface CascadeProviderInterface
     public function cancelDeal(CascadeDeal $cascadeDeal, string $providerDealId): array;
 
     /**
-     * Получить состояние сделки у провайдера
-     *
-     * @param  CascadeDeal  $cascadeDeal  Каскадная сделка
-     * @param  string  $providerDealId  ID сделки у провайдера
-     * @return array Данные сделки у провайдера
-     */
-    public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array;
-
-    /**
      * Сохранить код подтверждения для сделки у провайдера
      *
      * @param  CascadeDeal  $cascadeDeal  Каскадная сделка

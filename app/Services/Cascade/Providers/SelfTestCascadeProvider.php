@@ -147,52 +147,6 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         }
     }
 
-    public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
-    {
-        $url = $this->buildUrl('/api/h2h/order/'.$providerDealId);
-        $startedAt = microtime(true);
-        $responsePayload = null;
-        $statusCode = null;
-
-        try {
-            $response = $this->request()->get($url);
-            $statusCode = $response->status();
-            $responsePayload = $this->responsePayload($response);
-            $this->throwIfInvalid($response);
-
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDeal',
-                method: 'GET',
-                url: $url,
-                requestPayload: [],
-                responsePayload: $responsePayload,
-                statusCode: $statusCode,
-                startedAt: $startedAt,
-                isSuccessful: true,
-                context: ['provider_deal_id' => $providerDealId],
-            );
-
-            return $this->normalizeOrderResponse($responsePayload, $providerDealId);
-        } catch (Throwable $e) {
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDeal',
-                method: 'GET',
-                url: $url,
-                requestPayload: [],
-                responsePayload: $responsePayload,
-                statusCode: $statusCode,
-                startedAt: $startedAt,
-                isSuccessful: false,
-                exception: $e,
-                context: ['provider_deal_id' => $providerDealId],
-            );
-
-            throw $e;
-        }
-    }
-
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
     {
         $providerDealId = (string) $cascadeDeal->selectedTransaction?->provider_deal_id;
@@ -327,7 +281,6 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         return match ($operation) {
             'createDeal' => $this->buildUrl('/api/h2h/order'),
             'cancelDeal' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/cancel'),
-            'getDeal' => $this->buildUrl('/api/h2h/order/'.$providerDealId),
             'storeConfirmationCode' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/confirmation-code'),
             'openDispute' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
             default => $this->buildUrl('/api/h2h/order'),
