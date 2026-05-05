@@ -214,6 +214,37 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         ];
     }
 
+    public function handleCallback(array $payload): array
+    {
+        $dispute = Arr::get($payload, 'dispute');
+
+        return [
+            'provider_deal_id' => Arr::get($payload, 'order_id'),
+            'cascade_deal_uuid' => Arr::get($payload, 'cascade_deal_uuid'),
+            'status' => Arr::get($payload, 'status', 'pending'),
+            'sub_status' => Arr::get($payload, 'sub_status'),
+            'amount' => Arr::get($payload, 'amount'),
+            'initial_amount' => Arr::get($payload, 'initial_amount'),
+            'currency' => Arr::get($payload, 'currency'),
+            'debit' => Arr::get($payload, 'debit'),
+            'credit' => Arr::get($payload, 'credit'),
+            'service_profit' => Arr::get($payload, 'service_profit'),
+            'usdt_amount' => Arr::get($payload, 'usdt_amount'),
+            'market' => Arr::get($payload, 'market'),
+            'conversion_price' => Arr::get($payload, 'conversion_price'),
+            'rate_fixed_at' => Arr::get($payload, 'rate_fixed_at'),
+            'confirmation_type' => Arr::get($payload, 'manual_control_confirmation_type'),
+            'reject_reason' => Arr::get($payload, 'manual_control_reject_reason'),
+            'dispute' => is_array($dispute) ? $dispute : null,
+            'gateway' => Arr::get($payload, 'gateway'),
+            'details' => Arr::get($payload, 'details'),
+            'created_at' => Arr::get($payload, 'created_at'),
+            'finished_at' => Arr::get($payload, 'finished_at'),
+            'event' => 'status_update',
+            'data' => $payload,
+        ];
+    }
+
     public function getCode(): string
     {
         return $this->code;
@@ -229,6 +260,7 @@ class InternalCascadeProvider extends AbstractCascadeProvider
             'openDispute' => 'internal://services.dispute.create',
             'getDispute' => 'internal://order.dispute.get',
             'cancelDispute' => 'internal://services.dispute.cancel',
+            'callback' => 'internal://provider.callback.handle',
             default => 'internal://provider.operation.'.$operation,
         };
     }

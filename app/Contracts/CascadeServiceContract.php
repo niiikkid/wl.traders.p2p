@@ -37,4 +37,16 @@ interface CascadeServiceContract
      * @return array<string, mixed>
      */
     public function handleProviderCallback(Request $request, CascadeProvider $cascadeProvider): array;
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public function handleProviderCallbackPayload(
+        CascadeProvider $cascadeProvider,
+        array $payload,
+        ?string $accessToken = null,
+        ?string $url = null,
+        bool $validateAccessToken = true,
+    ): array;
 }

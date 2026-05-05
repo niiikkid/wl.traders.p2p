@@ -4,32 +4,13 @@ namespace App\Observers;
 
 use App\Enums\OrderStatus;
 use App\Events\OrderSucceeded;
+use App\Jobs\CascadeInternalProviderCallbackJob;
 use App\Jobs\SendOrderCallbackJob;
 use App\Models\CascadeDeal;
 use App\Models\Order;
-use App\Services\Cascade\CascadeDealSyncService;
 
 class OrderObserver
 {
-    /**
-     * @var array<int, string>
-     */
-    private const CASCADE_SYNC_RELEVANT_FIELDS = [
-        'amount',
-        'total_profit',
-        'merchant_profit',
-        'service_profit',
-        'market',
-        'conversion_price',
-        'rate_fixed_at',
-        'status',
-        'sub_status',
-        'manual_control_acquiring',
-        'manual_control_confirmation_type',
-        'manual_control_reject_reason',
-        'finished_at',
-    ];
-
     public $afterCommit = true;
 
     /**
@@ -46,20 +27,17 @@ class OrderObserver
             event(new OrderSucceeded($order));
         }
 
-        $cascadeDealExists = CascadeDeal::query()
+        if ($order->wasChanged('status') || $order->isDirty('status')) {
+
+            $cascadeDealExists = CascadeDeal::query()
             ->where('order_id', $order->id)
             ->exists();
 
-        if ($cascadeDealExists) {
-            if ($this->hasCascadeSyncRelevantChanges($order)) {
-                app(CascadeDealSyncService::class)->syncFromInternalOrder($order);
+            if ($cascadeDealExists) {
+                CascadeInternalProviderCallbackJob::dispatch($order->id);
+            } else {
+                SendOrderCallbackJob::dispatch($order);
             }
-
-            return;
-        }
-
-        if ($order->wasChanged('status') || $order->isDirty('status')) {
-            SendOrderCallbackJob::dispatch($order);
         }
     }
 
@@ -85,12 +63,5 @@ class OrderObserver
     public function forceDeleted(Order $order): void
     {
         //
-    }
-
-    private function hasCascadeSyncRelevantChanges(Order $order): bool
-    {
-        $changes = array_keys($order->getChanges());
-
-        return (bool) array_intersect($changes, self::CASCADE_SYNC_RELEVANT_FIELDS);
     }
 }

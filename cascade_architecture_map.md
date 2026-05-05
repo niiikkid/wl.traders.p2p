@@ -144,19 +144,15 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 
 ---
 
-## 7) Sync, pseudo-callback и callbacks мерчанту
+## 7) Provider callbacks и callbacks мерчанту
 
-## Internal pseudo-callback
+## Internal provider callback
 - `app/Observers/OrderObserver.php`
 - Если `Order` связан с `CascadeDeal`, вместо legacy H2H callback запускается:
-  - `app/Services/Cascade/CascadeDealSyncService.php`.
-
-## Sync service
-- `CascadeDealSyncService`:
-  - маппит Order->Cascade statuses/substatuses;
-  - переносит amount/dispute/manual-control данные в `CascadeDeal`;
-  - пишет event в `cascade_deal_events`;
-  - ставит callback мерчанту.
+  - `app/Jobs/CascadeInternalProviderCallbackJob.php`.
+- Job вызывает `handleCallback()` внутренней интеграции напрямую, без HTTP.
+- После нормализации данные проходят через общий cascade provider callback handler.
+- Отдельной прямой синхронизации `Order -> CascadeDeal` больше нет.
 
 ## Callback мерчанту
 - `app/Jobs/SendCascadeDealCallbackJob.php`
@@ -277,8 +273,8 @@ Cascade — верхнеуровневый orchestration-слой для PayIn, 
 ## Create PayIn
 `API v2` -> `CascadeService::createDeal` -> dispatch provider attempts -> atomic winner -> collateral hold (external) -> `CascadeDeal` updated -> callback queued.
 
-## Internal update
-`Order` changed -> `OrderObserver` detects cascade link -> `CascadeDealSyncService` -> update + events + callback queued.
+## Internal callback
+`Order` changed -> `OrderObserver` detects cascade link -> `CascadeInternalProviderCallbackJob` -> `InternalCascadeProvider::handleCallback` -> `CascadeService::handleProviderCallbackPayload` -> update + events + callback queued.
 
 ## External callback
 `/api/v2/providers/{code}/callback` -> provider adapter normalize -> `CascadeService::handleProviderCallback` -> update deal/transaction + events -> callback queued.
