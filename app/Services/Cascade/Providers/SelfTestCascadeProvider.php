@@ -298,58 +298,6 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         }
     }
 
-    public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array
-    {
-        $url = $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute');
-        $startedAt = microtime(true);
-        $responsePayload = null;
-        $statusCode = null;
-
-        try {
-            $response = $this->request()->get($url);
-            $statusCode = $response->status();
-            $responsePayload = $this->responsePayload($response);
-            $this->throwIfInvalid($response);
-
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDispute',
-                method: 'GET',
-                url: $url,
-                requestPayload: [],
-                responsePayload: $responsePayload,
-                statusCode: $statusCode,
-                startedAt: $startedAt,
-                isSuccessful: true,
-                context: [
-                    'provider_deal_id' => $providerDealId,
-                    'dispute_id' => $disputeId,
-                ],
-            );
-
-            return $this->normalizeDisputeResponse($responsePayload, $providerDealId, $disputeId);
-        } catch (Throwable $e) {
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDispute',
-                method: 'GET',
-                url: $url,
-                requestPayload: [],
-                responsePayload: $responsePayload,
-                statusCode: $statusCode,
-                startedAt: $startedAt,
-                isSuccessful: false,
-                exception: $e,
-                context: [
-                    'provider_deal_id' => $providerDealId,
-                    'dispute_id' => $disputeId,
-                ],
-            );
-
-            throw $e;
-        }
-    }
-
     public function handleCallback(array $payload): array
     {
         return [
@@ -382,7 +330,6 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             'getDeal' => $this->buildUrl('/api/h2h/order/'.$providerDealId),
             'storeConfirmationCode' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/confirmation-code'),
             'openDispute' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
-            'getDispute' => $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
             default => $this->buildUrl('/api/h2h/order'),
         };
     }
@@ -421,13 +368,13 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         ];
     }
 
-    private function normalizeDisputeResponse(array $response, string $providerDealId, ?string $fallbackDisputeId = null): array
+    private function normalizeDisputeResponse(array $response, string $providerDealId): array
     {
         $data = $response['data'] ?? $response;
         $dispute = Arr::get($data, 'payment_detail.dispute', $data);
 
         return [
-            'dispute_id' => Arr::get($dispute, 'dispute_id', $fallbackDisputeId),
+            'dispute_id' => Arr::get($dispute, 'dispute_id'),
             'provider_deal_id' => Arr::get($data, 'order_id', $providerDealId),
             'status' => Arr::get($dispute, 'status'),
             'cancel_reason' => Arr::get($dispute, 'cancel_reason'),

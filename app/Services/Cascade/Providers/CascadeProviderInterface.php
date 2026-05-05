@@ -60,16 +60,6 @@ interface CascadeProviderInterface
     public function openDispute(CascadeDeal $cascadeDeal, string $providerDealId, array $data = []): array;
 
     /**
-     * Получить состояние спора у провайдера
-     *
-     * @param  CascadeDeal  $cascadeDeal  Каскадная сделка
-     * @param  string  $providerDealId  ID сделки у провайдера
-     * @param  string  $disputeId  ID спора у провайдера
-     * @return array Данные спора у провайдера
-     */
-    public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array;
-
-    /**
      * Обработать callback от провайдера
      *
      * @param  array  $payload  Данные callback'а

@@ -404,75 +404,6 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         }
     }
 
-    public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array
-    {
-        $url = $this->providerApiLogUrl('getDispute', $cascadeDeal, [
-            'provider_deal_id' => $providerDealId,
-            'dispute_id' => $disputeId,
-        ]);
-        $payload = [
-            'provider_deal_id' => $providerDealId,
-            'dispute_id' => $disputeId,
-        ];
-        $startedAt = microtime(true);
-
-        try {
-            $order = $this->resolveOrder($cascadeDeal, $providerDealId);
-            $dispute = $order->dispute;
-
-            if (! $dispute) {
-                throw CascadeException::make('По сделке пока что небыло споров.');
-            }
-
-            $responsePayload = [
-                'order_id' => $order->uuid,
-                'status' => $dispute->status->value,
-                'cancel_reason' => $dispute->reason,
-            ];
-
-            $normalizedResponse = [
-                'dispute_id' => (string) $dispute->id,
-                'provider_deal_id' => $order->uuid,
-                'status' => $dispute->status->value,
-                'cancel_reason' => $dispute->reason,
-                'raw' => $responsePayload,
-            ];
-
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDispute',
-                method: 'GET',
-                url: $url,
-                requestPayload: $payload,
-                responsePayload: $responsePayload,
-                statusCode: 200,
-                startedAt: $startedAt,
-                isSuccessful: true,
-                context: $payload,
-            );
-
-            return $normalizedResponse;
-        } catch (Throwable $e) {
-            $this->recordProviderOperation(
-                cascadeDeal: $cascadeDeal,
-                operation: 'getDispute',
-                method: 'GET',
-                url: $url,
-                requestPayload: $payload,
-                responsePayload: null,
-                statusCode: null,
-                startedAt: $startedAt,
-                isSuccessful: false,
-                exception: $e,
-                context: $payload,
-            );
-
-            throw $e instanceof CascadeException
-                ? $e
-                : CascadeException::make($e->getMessage());
-        }
-    }
-
     public function handleCallback(array $payload): array
     {
         $dispute = Arr::get($payload, 'dispute');
@@ -517,7 +448,6 @@ class InternalCascadeProvider extends AbstractCascadeProvider
             'getDeal' => 'internal://order.resolveOrder',
             'storeConfirmationCode' => 'internal://orderManualControlConfirmationCode.create',
             'openDispute' => 'internal://services.dispute.create',
-            'getDispute' => 'internal://order.dispute.get',
             'cancelDispute' => 'internal://services.dispute.cancel',
             'callback' => 'internal://provider.callback.handle',
             default => 'internal://provider.operation.'.$operation,
