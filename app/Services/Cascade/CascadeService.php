@@ -1515,6 +1515,12 @@ class CascadeService implements CascadeServiceContract
             return Money::fromPrecision((string) $amount, 'USDT');
         }
 
+        $settlementProviderPayout = Arr::get($callback_data, 'settlement.provider_fee_amount')
+            ?? Arr::get($callback_data, 'raw.payment.settlement.provider_fee_amount');
+        if ($settlementProviderPayout !== null) {
+            return Money::fromPrecision((string) $settlementProviderPayout, 'USDT');
+        }
+
         if (Arr::get($callback_data, 'currency') === 'USDT' && Arr::get($callback_data, 'amount') !== null) {
             return Money::fromPrecision((string) Arr::get($callback_data, 'amount'), 'USDT');
         }

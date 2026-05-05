@@ -742,6 +742,12 @@ class CascadeProviderAttemptJob implements ShouldQueue
             return Money::fromPrecision((string) $amount, 'USDT');
         }
 
+        $settlementProviderPayout = Arr::get($responsePayload, 'settlement.provider_fee_amount')
+            ?? Arr::get($responsePayload, 'raw.payment.settlement.provider_fee_amount');
+        if ($settlementProviderPayout !== null) {
+            return Money::fromPrecision((string) $settlementProviderPayout, 'USDT');
+        }
+
         if (Arr::get($responsePayload, 'currency') === 'USDT' && Arr::get($responsePayload, 'amount') !== null) {
             return Money::fromPrecision((string) Arr::get($responsePayload, 'amount'), 'USDT');
         }

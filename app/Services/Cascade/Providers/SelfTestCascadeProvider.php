@@ -130,6 +130,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             'sub_status' => Arr::get($payload, 'sub_status'),
             'amount' => Arr::get($payload, 'amount'),
             'currency' => Arr::get($payload, 'currency'),
+            'merchant_profit' => Arr::get($payload, 'merchant_profit'),
             'confirmation_type' => Arr::get($payload, 'manual_control_confirmation_type'),
             'reject_reason' => Arr::get($payload, 'reject_reason'),
             'event' => 'status_update',
@@ -167,6 +168,7 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             'sub_status' => Arr::get($data, 'sub_status'),
             'amount' => Arr::get($data, 'amount'),
             'currency' => Arr::get($data, 'currency'),
+            'merchant_profit' => Arr::get($data, 'merchant_profit'),
             'settlement' => [
                 'provider_fee_percent' => null,
                 'provider_fee_amount' => Arr::get($data, 'merchant_profit'),
