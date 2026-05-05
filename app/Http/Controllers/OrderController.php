@@ -8,11 +8,9 @@ use App\Enums\OrderSubStatus;
 use App\Http\Resources\OrderResource;
 use App\Http\Resources\TableOrderResource;
 use App\Models\Order;
-use App\Services\Money\Currency;
-use App\Services\Money\Money;
 use App\Utils\Transaction;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Inertia;
 
 class OrderController extends Controller
 {
@@ -29,17 +27,31 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        $order->load([
-                'trader:id,name,email',
-                'smsLog:id,sender,message,created_at,order_id',
-                'paymentGateway:id,name,code,logo,currency',
-                'paymentDetail:id,detail,detail_type,name,additional_info,currency,created_at,user_device_id',
-                'paymentDetail.userDevice:id,name',
-                'merchant:id,name',
-                'teamLeader:id,name,email',
-                'manualControlTakenByUser:id,name,email',
-                'manualControlConfirmationCodes' => fn ($query) => $query->orderByDesc('id'),
+        $authUser = auth()->user();
+        $loadWalletRelations = $authUser?->hasRole('Super Admin')
+            && request()->input('view_mode') === 'admin';
+
+        $with = [
+            'trader:id,name,email',
+            'smsLog:id,sender,message,created_at,order_id',
+            'paymentGateway:id,name,code,logo,currency',
+            'paymentDetail:id,detail,detail_type,name,additional_info,currency,created_at,user_device_id',
+            'paymentDetail.userDevice:id,name',
+            'merchant:id,name',
+            'teamLeader:id,name,email',
+            'manualControlTakenByUser:id,name,email',
+            'manualControlConfirmationCodes' => fn ($query) => $query->orderByDesc('id'),
+        ];
+
+        if ($loadWalletRelations) {
+            $with = array_merge($with, [
+                'trader.wallet',
+                'merchant.user.wallet',
+                'teamLeader.wallet',
             ]);
+        }
+
+        $order->load($with);
         $order->loadExists('dispute');
 
         $order = OrderResource::make($order);

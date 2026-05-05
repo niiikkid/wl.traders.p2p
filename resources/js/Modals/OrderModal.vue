@@ -148,6 +148,16 @@ const formattedManualControlExpiry = computed(() => {
     return `${String(month).padStart(2, '0')}/${String(year).slice(-2)}`;
 });
 
+const merchantWalletTransactions = computed(() => order.value?.wallet_transactions?.merchant ?? []);
+const teamLeaderWalletTransactions = computed(() => order.value?.wallet_transactions?.team_leader ?? []);
+const traderWalletTransactions = computed(() => order.value?.wallet_transactions?.trader ?? []);
+/** Транзакции кошельков по сделке — только в админском режиме (Super Admin). */
+const canSeeOrderWalletTransactions = computed(() => viewStore.isAdminViewMode);
+/** Вкладки «Основная / Транзакции / Manual» показываем только когда есть хотя бы одна доп. вкладка. */
+const hasOrderDetailTabs = computed(() => {
+    return isAdminManualControlOrder.value || canSeeOrderWalletTransactions.value;
+});
+
 /** С бэка — от новых к старым; в списке так же: сначала новые. */
 const manualControlConfirmationCodesOrdered = computed(() => {
     const codes = order.value?.manual_control?.confirmation_codes;
@@ -181,6 +191,22 @@ const displayPercent = (value) => {
     }
     return `${formatted}%`;
 };
+
+const walletTransactionTypeLabel = (type) => ({
+    income_from_a_successful_order: 'Зачисление мерчанту',
+    rollback_income_from_a_successful_order: 'Списание мерчанта (rollback)',
+    income_from_referrals_successful_order: 'Зачисление тимлиду',
+    rollback_income_from_referrals_successful_order: 'Списание тимлида (rollback)',
+    payment_for_opened_order: 'Списание трейдера при открытии',
+    refund_for_canceled_order: 'Возврат трейдеру при отмене',
+    refund_for_change_order_amount: 'Возврат трейдеру при изменении суммы',
+    payment_for_change_order_amount: 'Доп. списание трейдера при изменении суммы',
+}[type] ?? type ?? 'Операция');
+
+const walletTransactionDirectionBadgeClass = (direction) => ({
+    in: 'badge-success',
+    out: 'badge-warning',
+}[direction] ?? 'badge-ghost');
 
 const manualControlProcessingStatusClass = computed(() => {
     const status = order.value?.manual_control?.processing_status;
@@ -399,7 +425,7 @@ const copyCallbackUrl = async (callback_url) => {
 
                     <div class="space-y-4">
                                     <div
-                                        v-if="isAdminManualControlOrder"
+                                        v-if="hasOrderDetailTabs"
                                         role="tablist"
                                         aria-label="Раздел деталей сделки"
                                         class="flex w-full gap-0.5 rounded-2xl bg-base-200/80 p-1 shadow-inner ring-1 ring-base-300/40"
@@ -417,6 +443,20 @@ const copyCallbackUrl = async (callback_url) => {
                                             Основная информация
                                         </button>
                                         <button
+                                            v-if="canSeeOrderWalletTransactions"
+                                            type="button"
+                                            role="tab"
+                                            :aria-selected="detailsTab === 'wallets'"
+                                            class="flex-1 rounded-xl px-2 py-2 text-center text-xs font-medium normal-case transition-all duration-200 ease-out"
+                                            :class="detailsTab === 'wallets'
+                                                ? 'bg-base-100 text-base-content shadow-sm ring-1 ring-base-300/50'
+                                                : 'text-base-content/55 hover:bg-base-100/50 hover:text-base-content/85'"
+                                            @click="detailsTab = 'wallets'"
+                                        >
+                                            Транзакции
+                                        </button>
+                                        <button
+                                            v-if="isAdminManualControlOrder"
                                             type="button"
                                             role="tab"
                                             :aria-selected="detailsTab === 'manual'"
@@ -431,7 +471,7 @@ const copyCallbackUrl = async (callback_url) => {
                                     </div>
 
                                     <div
-                                        v-if="!isAdminManualControlOrder || detailsTab === 'main'"
+                                        v-if="!hasOrderDetailTabs || detailsTab === 'main'"
                                         class="overflow-hidden rounded-box border border-base-300/80 bg-base-300/50 text-xs shadow-sm divide-y divide-base-300/80 sm:text-sm
                                         [&>dl]:flex [&>dl]:items-center [&>dl]:justify-between [&>dl]:gap-2 [&>dl]:px-2.5 [&>dl]:py-1.5
                                         sm:[&>dl]:gap-3 sm:[&>dl]:px-3 sm:[&>dl]:py-2
@@ -655,6 +695,118 @@ const copyCallbackUrl = async (callback_url) => {
                                         </dl>
                                     </div>
                                     <div
+                                        v-if="canSeeOrderWalletTransactions && detailsTab === 'wallets'"
+                                        class="space-y-3"
+                                    >
+                                        <div class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm">
+                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                <h4 class="font-semibold text-base-content">Кошелёк мерчанта</h4>
+                                                <span class="badge badge-primary badge-outline badge-sm">{{ merchantWalletTransactions.length }}</span>
+                                            </div>
+                                            <div v-if="!merchantWalletTransactions.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-3 text-xs text-base-content/60">
+                                                Операций не найдено.
+                                            </div>
+                                            <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+                                                <table class="table table-xs">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>ID</th>
+                                                            <th>Тип</th>
+                                                            <th>Направление</th>
+                                                            <th>Сумма</th>
+                                                            <th>Дата</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="transaction in merchantWalletTransactions" :key="`merchant-${transaction.id}`">
+                                                            <td>{{ transaction.id }}</td>
+                                                            <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                            <td>
+                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                    {{ transaction.direction ?? '—' }}
+                                                                </span>
+                                                            </td>
+                                                            <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
+                                                            <td><DateTime :data="transaction.created_at" :simple="true" /></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm">
+                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                <h4 class="font-semibold text-base-content">Кошелёк тимлида</h4>
+                                                <span class="badge badge-info badge-outline badge-sm">{{ teamLeaderWalletTransactions.length }}</span>
+                                            </div>
+                                            <div v-if="!teamLeaderWalletTransactions.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-3 text-xs text-base-content/60">
+                                                Операций не найдено.
+                                            </div>
+                                            <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+                                                <table class="table table-xs">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>ID</th>
+                                                            <th>Тип</th>
+                                                            <th>Направление</th>
+                                                            <th>Сумма</th>
+                                                            <th>Дата</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="transaction in teamLeaderWalletTransactions" :key="`teamleader-${transaction.id}`">
+                                                            <td>{{ transaction.id }}</td>
+                                                            <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                            <td>
+                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                    {{ transaction.direction ?? '—' }}
+                                                                </span>
+                                                            </td>
+                                                            <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
+                                                            <td><DateTime :data="transaction.created_at" :simple="true" /></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm">
+                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                <h4 class="font-semibold text-base-content">Кошелёк трейдера</h4>
+                                                <span class="badge badge-warning badge-outline badge-sm">{{ traderWalletTransactions.length }}</span>
+                                            </div>
+                                            <div v-if="!traderWalletTransactions.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-3 text-xs text-base-content/60">
+                                                Операций не найдено.
+                                            </div>
+                                            <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+                                                <table class="table table-xs">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>ID</th>
+                                                            <th>Тип</th>
+                                                            <th>Направление</th>
+                                                            <th>Сумма</th>
+                                                            <th>Дата</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="transaction in traderWalletTransactions" :key="`trader-${transaction.id}`">
+                                                            <td>{{ transaction.id }}</td>
+                                                            <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                            <td>
+                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                    {{ transaction.direction ?? '—' }}
+                                                                </span>
+                                                            </td>
+                                                            <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
+                                                            <td><DateTime :data="transaction.created_at" :simple="true" /></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div
                                         v-if="isAdminManualControlOrder && detailsTab === 'manual'"
                                         class="overflow-hidden rounded-box border border-base-300/80 bg-base-300/50 text-xs shadow-sm divide-y divide-base-300/80 sm:text-sm
                                         [&>dl]:flex [&>dl]:items-center [&>dl]:justify-between [&>dl]:gap-2 [&>dl]:px-2.5 [&>dl]:py-1.5
@@ -801,7 +953,7 @@ const copyCallbackUrl = async (callback_url) => {
                                         </dl>
                                     </div>
                                     <div
-                                        v-if="order.sms_log"
+                                        v-if="order.sms_log && (!hasOrderDetailTabs || detailsTab !== 'wallets')"
                                         class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm"
                                     >
                                         <div class="flex justify-between items-center mb-2">
