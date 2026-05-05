@@ -12,16 +12,15 @@ use App\Exceptions\OrderException;
 use App\Models\Order;
 use App\Services\Order\Features\OrderDetailProvider\OrderDetailProvider;
 use App\Services\Order\Utils\DailyLimit;
-use App\Services\Order\Utils\MonthlyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
+use App\Services\Order\Utils\MonthlyLimit;
 
 class OrderDetailAssigner
 {
     public function __construct(
         protected Order $order,
         protected AssignDetailsToOrderDTO $data
-    )
-    {
+    ) {
         if ($this->order->status->notEquals(OrderStatus::PENDING)) {
             throw OrderException::orderIsFinished($this->order);
         }
@@ -81,12 +80,12 @@ class OrderDetailAssigner
             $this->order->trader->wallet->id,
             $this->order->trader_paid_for_order,
             TransactionType::PAYMENT_FOR_OPENED_ORDER,
-            BalanceType::TRUST
+            BalanceType::TRUST,
+            $this->order,
         );
 
         DetailsAssignedToOrderEvent::dispatch($this->order);
 
         return $this->order;
     }
-
 }

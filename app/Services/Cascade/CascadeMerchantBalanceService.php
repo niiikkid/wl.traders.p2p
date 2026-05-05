@@ -40,6 +40,7 @@ class CascadeMerchantBalanceService
                 amount: $amount,
                 transactionType: TransactionType::from('income_from_a_successful_cascade_deal'),
                 balanceType: BalanceType::MERCHANT,
+                transactionable: $deal,
             );
 
             return;
@@ -51,6 +52,7 @@ class CascadeMerchantBalanceService
                 amount: $amount,
                 transactionType: TransactionType::from('rollback_income_from_a_successful_cascade_deal'),
                 balanceType: BalanceType::MERCHANT,
+                transactionable: $deal,
             );
         }
     }

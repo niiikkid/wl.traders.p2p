@@ -37,7 +37,8 @@ class HandleOrderFinishedAsFailedListener implements ShouldQueue
                 $event->order->paymentDetail->user->wallet->id,
                 $event->order->trader_paid_for_order,
                 TransactionType::REFUND_FOR_CANCELED_ORDER,
-                BalanceType::TRUST
+                BalanceType::TRUST,
+                $event->order,
             );
         });
     }

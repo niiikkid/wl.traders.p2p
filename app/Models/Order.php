@@ -250,6 +250,11 @@ class Order extends Model
         return $this->morphMany(CallbackLog::class, 'callbackable');
     }
 
+    public function walletTransactions(): MorphMany
+    {
+        return $this->morphMany(Transaction::class, 'transactionable');
+    }
+
     /**
      * Колбеки мерчанту по внутреннему ордеру (SendOrderCallbackJob / CallbackService) не должны
      * уходить, если сделка ведётся через каскад: уведомления идут через SendCascadeDealCallbackJob.

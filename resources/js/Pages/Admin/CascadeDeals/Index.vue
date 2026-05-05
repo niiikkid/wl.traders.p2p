@@ -140,6 +140,9 @@ const selectedCascadeDisputeHistory = computed(() => {
 const selectedAmountHistory = computed(() => selectedDeal.value?.amount_history ?? []);
 const selectedMerchantWalletTransactions = computed(() => selectedDeal.value?.wallet_transactions?.merchant ?? []);
 const selectedProviderWalletTransactions = computed(() => selectedDeal.value?.wallet_transactions?.provider ?? []);
+const hasSelectedDealWalletTransactions = computed(() => {
+    return selectedMerchantWalletTransactions.value.length + selectedProviderWalletTransactions.value.length > 0;
+});
 
 const formatFileSize = (size) => {
     if (! size) {
@@ -527,7 +530,7 @@ defineOptions({ layout: AuthenticatedLayout })
                             <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'logs' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'logs'">
                                 Логи
                             </button>
-                            <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'wallets' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'wallets'">
+                            <button v-if="hasSelectedDealWalletTransactions" type="button" :class="['btn btn-sm join-item', activeModalTab === 'wallets' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'wallets'">
                                 Кошельки
                             </button>
                             <button type="button" :class="['btn btn-sm join-item', activeModalTab === 'raw' ? 'btn-primary' : 'btn-outline']" @click="activeModalTab = 'raw'">
@@ -827,6 +830,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <th>Направление</th>
                                                 <th>Сумма</th>
                                                 <th>Баланс</th>
+                                                <th>Кошелёк</th>
                                                 <th>Дата</th>
                                             </tr>
                                         </thead>
@@ -841,6 +845,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </td>
                                                 <td>{{ formatCurrency(transaction.amount, transaction.currency) }}</td>
                                                 <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                 <td>
                                                     <DateTime class="justify-start text-xs" :data="transaction.created_at" show-time/>
                                                 </td>
@@ -871,6 +876,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <th>Направление</th>
                                                 <th>Сумма</th>
                                                 <th>Баланс</th>
+                                                <th>Кошелёк</th>
                                                 <th>Дата</th>
                                             </tr>
                                         </thead>
@@ -885,6 +891,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </td>
                                                 <td>{{ formatCurrency(transaction.amount, transaction.currency) }}</td>
                                                 <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                 <td>
                                                     <DateTime class="justify-start text-xs" :data="transaction.created_at" show-time/>
                                                 </td>

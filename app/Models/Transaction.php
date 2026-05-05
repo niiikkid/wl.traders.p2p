@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * @property int $id
@@ -36,6 +37,8 @@ class Transaction extends Model
         'type',
         'balance_type',
         'wallet_id',
+        'transactionable_id',
+        'transactionable_type',
     ];
 
     protected $casts = [
@@ -48,5 +51,10 @@ class Transaction extends Model
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function transactionable(): MorphTo
+    {
+        return $this->morphTo();
     }
 }

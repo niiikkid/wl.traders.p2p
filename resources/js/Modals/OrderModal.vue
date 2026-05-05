@@ -151,8 +151,13 @@ const formattedManualControlExpiry = computed(() => {
 const merchantWalletTransactions = computed(() => order.value?.wallet_transactions?.merchant ?? []);
 const teamLeaderWalletTransactions = computed(() => order.value?.wallet_transactions?.team_leader ?? []);
 const traderWalletTransactions = computed(() => order.value?.wallet_transactions?.trader ?? []);
+const walletTransactionsCount = computed(() => {
+    return merchantWalletTransactions.value.length
+        + teamLeaderWalletTransactions.value.length
+        + traderWalletTransactions.value.length;
+});
 /** Транзакции кошельков по сделке — только в админском режиме (Super Admin). */
-const canSeeOrderWalletTransactions = computed(() => viewStore.isAdminViewMode);
+const canSeeOrderWalletTransactions = computed(() => viewStore.isAdminViewMode && walletTransactionsCount.value > 0);
 /** Вкладки «Основная / Транзакции / Manual» показываем только когда есть хотя бы одна доп. вкладка. */
 const hasOrderDetailTabs = computed(() => {
     return isAdminManualControlOrder.value || canSeeOrderWalletTransactions.value;
@@ -714,6 +719,8 @@ const copyCallbackUrl = async (callback_url) => {
                                                             <th>Тип</th>
                                                             <th>Направление</th>
                                                             <th>Сумма</th>
+                                                            <th>Баланс</th>
+                                                            <th>Кошелёк</th>
                                                             <th>Дата</th>
                                                         </tr>
                                                     </thead>
@@ -727,6 +734,8 @@ const copyCallbackUrl = async (callback_url) => {
                                                                 </span>
                                                             </td>
                                                             <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
+                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                             <td><DateTime :data="transaction.created_at" :simple="true" /></td>
                                                         </tr>
                                                     </tbody>
@@ -750,6 +759,8 @@ const copyCallbackUrl = async (callback_url) => {
                                                             <th>Тип</th>
                                                             <th>Направление</th>
                                                             <th>Сумма</th>
+                                                            <th>Баланс</th>
+                                                            <th>Кошелёк</th>
                                                             <th>Дата</th>
                                                         </tr>
                                                     </thead>
@@ -763,6 +774,8 @@ const copyCallbackUrl = async (callback_url) => {
                                                                 </span>
                                                             </td>
                                                             <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
+                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                             <td><DateTime :data="transaction.created_at" :simple="true" /></td>
                                                         </tr>
                                                     </tbody>
@@ -786,6 +799,8 @@ const copyCallbackUrl = async (callback_url) => {
                                                             <th>Тип</th>
                                                             <th>Направление</th>
                                                             <th>Сумма</th>
+                                                            <th>Баланс</th>
+                                                            <th>Кошелёк</th>
                                                             <th>Дата</th>
                                                         </tr>
                                                     </thead>
@@ -799,6 +814,8 @@ const copyCallbackUrl = async (callback_url) => {
                                                                 </span>
                                                             </td>
                                                             <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
+                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                             <td><DateTime :data="transaction.created_at" :simple="true" /></td>
                                                         </tr>
                                                     </tbody>

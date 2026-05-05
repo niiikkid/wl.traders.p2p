@@ -7,10 +7,10 @@ use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Enums\TransactionType;
-use App\Events\OrderReopenedFromFailedEvent;
-use App\Events\OrderReopenedFromSucessfulEvent;
 use App\Events\OrderFinishedAsFailedEvent;
 use App\Events\OrderFinishedAsSuccessfulEvent;
+use App\Events\OrderReopenedFromFailedEvent;
+use App\Events\OrderReopenedFromSucessfulEvent;
 use App\Exceptions\OrderException;
 use App\Models\Order;
 use App\Services\Money\Money;
@@ -19,8 +19,7 @@ class OrderOperator
 {
     public function __construct(
         protected int $orderID
-    )
-    {}
+    ) {}
 
     public function finishOrderAsSuccessful(OrderSubStatus $subStatus): void
     {
@@ -33,7 +32,7 @@ class OrderOperator
         $order->update([
             'status' => OrderStatus::SUCCESS,
             'sub_status' => $subStatus,
-            'finished_at' => now()
+            'finished_at' => now(),
         ]);
 
         OrderFinishedAsSuccessfulEvent::dispatch($order);
@@ -50,7 +49,7 @@ class OrderOperator
         $order->update([
             'status' => OrderStatus::FAIL,
             'sub_status' => $subStatus,
-            'finished_at' => now()
+            'finished_at' => now(),
         ]);
 
         OrderFinishedAsFailedEvent::dispatch($order);
@@ -69,12 +68,12 @@ class OrderOperator
         $order->update([
             'status' => OrderStatus::PENDING,
             'sub_status' => $subStatus,
-            'finished_at' => null
+            'finished_at' => null,
         ]);
 
         if ($status->equals(OrderStatus::SUCCESS)) {
             OrderReopenedFromSucessfulEvent::dispatch($order);
-        } else if ($status->equals(OrderStatus::FAIL)) {
+        } elseif ($status->equals(OrderStatus::FAIL)) {
             OrderReopenedFromFailedEvent::dispatch($order);
         }
     }
@@ -87,7 +86,7 @@ class OrderOperator
         $order = Order::where('id', $this->orderID)->lockForUpdate()->first();
 
         if (
-            !(
+            ! (
                 $order->dispute
                 && $order->dispute->status->equals(DisputeStatus::PENDING)
                 && $order->status->equals(OrderStatus::PENDING)
@@ -100,7 +99,8 @@ class OrderOperator
             $order->trader->wallet->id,
             $order->trader_paid_for_order,
             TransactionType::REFUND_FOR_CHANGE_ORDER_AMOUNT,
-            BalanceType::TRUST
+            BalanceType::TRUST,
+            $order,
         );
 
         $profits = services()->profit()->calculateInBody(
@@ -125,7 +125,8 @@ class OrderOperator
             $order->trader->wallet->id,
             $profits->traderDebit,
             TransactionType::PAYMENT_FOR_CHANGE_ORDER_AMOUNT,
-            BalanceType::TRUST
+            BalanceType::TRUST,
+            $order,
         );
 
         $rateFixedAt = $order->rate_fixed_at ?? now();
@@ -143,5 +144,4 @@ class OrderOperator
             'amount_updates_history' => $amountUpdatesHistory,
         ]);
     }
-
 }

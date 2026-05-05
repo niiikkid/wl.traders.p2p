@@ -31,6 +31,7 @@ use App\Services\Wallet\ValueObjects\EscrowsValue;
 use App\Services\Wallet\ValueObjects\EscrowValue;
 use App\Services\Wallet\ValueObjects\WalletStatsValue;
 use App\Utils\Transaction;
+use Illuminate\Database\Eloquent\Model;
 
 class WalletService implements WalletServiceContract
 {
@@ -56,9 +57,9 @@ class WalletService implements WalletServiceContract
         ]);
     }
 
-    public function takeFromBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType): void
+    public function takeFromBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType, ?Model $transactionable = null): void
     {
-        Transaction::run(function () use ($walletID, $amount, $transactionType, $balanceType) {
+        Transaction::run(function () use ($walletID, $amount, $transactionType, $balanceType, $transactionable) {
             $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
 
             $handler = null;
@@ -75,13 +76,13 @@ class WalletService implements WalletServiceContract
                 $handler = new TakeFromTeamleader;
             }
 
-            $handler->handle($wallet, $amount, $transactionType);
+            $handler->handle($wallet, $amount, $transactionType, $transactionable);
         });
     }
 
-    public function giveToBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType): void
+    public function giveToBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType, ?Model $transactionable = null): void
     {
-        Transaction::run(function () use ($walletID, $amount, $transactionType, $balanceType) {
+        Transaction::run(function () use ($walletID, $amount, $transactionType, $balanceType, $transactionable) {
             $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
 
             $handler = null;
@@ -98,7 +99,7 @@ class WalletService implements WalletServiceContract
                 $handler = new GiveToTeamleader;
             }
 
-            $handler->handle($wallet, $amount, $transactionType);
+            $handler->handle($wallet, $amount, $transactionType, $transactionable);
         });
     }
 

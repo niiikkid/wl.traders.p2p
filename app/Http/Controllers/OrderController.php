@@ -48,6 +48,7 @@ class OrderController extends Controller
                 'trader.wallet',
                 'merchant.user.wallet',
                 'teamLeader.wallet',
+                'walletTransactions' => fn ($query) => $query->latest('id')->limit(50),
             ]);
         }
 

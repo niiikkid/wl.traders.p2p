@@ -24,19 +24,19 @@ class FundsHolderService implements FundsHolderServiceContract
         ?BalanceType $destinationWalletBalanceType,
         Model $forAction,
         ?Carbon $until = null,
-    ): FundsOnHold
-    {
+    ): FundsOnHold {
         if ($amount->getCurrency()->notEquals(Currency::USDT())) {
             throw FundsHolderException::invalidAmountCurrency();
         }
 
-        //TODO validate insufficient funds
+        // TODO validate insufficient funds
 
         services()->wallet()->takeFromBalance(
             walletID: $sourceWallet->id,
             amount: $amount,
             transactionType: TransactionType::PAYMENT_FOR_OPENED_ORDER,
             balanceType: $sourceWalletBalanceType,
+            transactionable: $forAction,
         );
 
         $fundsOnHold = FundsOnHold::create([
@@ -65,7 +65,7 @@ class FundsHolderService implements FundsHolderServiceContract
 
         $fundsOnHold->update([
             'hold_until' => $timer,
-            'status' => FundsOnHoldStatus::PENDING_FOR_EXECUTION ,
+            'status' => FundsOnHoldStatus::PENDING_FOR_EXECUTION,
         ]);
     }
 
@@ -73,8 +73,7 @@ class FundsHolderService implements FundsHolderServiceContract
         FundsOnHold $fundsOnHold,
         ?Wallet $destinationWallet,
         ?BalanceType $destinationWalletBalanceType
-    ): FundsOnHold
-    {
+    ): FundsOnHold {
         if ($fundsOnHold->status->notEquals(FundsOnHoldStatus::TIMER_NOT_SET)) {
             throw FundsHolderException::invalidStatus();
         }
@@ -105,7 +104,8 @@ class FundsHolderService implements FundsHolderServiceContract
             walletID: $fundsOnHold->destinationWallet->id,
             amount: $fundsOnHold->amount,
             transactionType: TransactionType::INCOME_FROM_A_SUCCESSFUL_ORDER,
-            balanceType: $fundsOnHold->destination_wallet_balance_type
+            balanceType: $fundsOnHold->destination_wallet_balance_type,
+            transactionable: $fundsOnHold->holdable,
         );
 
         $fundsOnHold->update([
@@ -125,7 +125,8 @@ class FundsHolderService implements FundsHolderServiceContract
             walletID: $fundsOnHold->sourceWallet->id,
             amount: $fundsOnHold->amount,
             transactionType: TransactionType::REFUND_FOR_CANCELED_ORDER,
-            balanceType: $fundsOnHold->source_wallet_balance_type
+            balanceType: $fundsOnHold->source_wallet_balance_type,
+            transactionable: $fundsOnHold->holdable,
         );
 
         $fundsOnHold->update([

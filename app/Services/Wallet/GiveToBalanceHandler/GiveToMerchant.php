@@ -8,10 +8,11 @@ use App\Enums\TransactionType;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Services\Money\Money;
+use Illuminate\Database\Eloquent\Model;
 
 class GiveToMerchant extends GiveToBalance
 {
-    public function handle(Wallet $wallet, Money $amount, TransactionType $transactionType): void
+    public function handle(Wallet $wallet, Money $amount, TransactionType $transactionType, ?Model $transactionable = null): void
     {
         $balance = $wallet->merchant_balance->add($amount);
 
@@ -25,6 +26,8 @@ class GiveToMerchant extends GiveToBalance
             'type' => $transactionType,
             'balance_type' => BalanceType::MERCHANT,
             'wallet_id' => $wallet->id,
+            'transactionable_id' => $transactionable?->getKey(),
+            'transactionable_type' => $transactionable?->getMorphClass(),
         ]);
     }
 }

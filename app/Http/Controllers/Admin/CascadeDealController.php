@@ -37,6 +37,9 @@ class CascadeDealController extends Controller
                 'amountChangeEvents' => fn ($query) => $query
                     ->latest('id')
                     ->limit(20),
+                'walletTransactions' => fn ($query) => $query
+                    ->latest('id')
+                    ->limit(50),
                 'providerLogs' => fn ($query) => $query
                     ->with(['provider', 'cascadeTransaction'])
                     ->latest('id')

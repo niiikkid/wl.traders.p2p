@@ -235,4 +235,9 @@ class CascadeDeal extends Model
     {
         return $this->morphMany(CallbackLog::class, 'callbackable');
     }
+
+    public function walletTransactions(): MorphMany
+    {
+        return $this->morphMany(Transaction::class, 'transactionable');
+    }
 }

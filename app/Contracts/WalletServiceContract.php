@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Money\Money;
 use App\Services\Wallet\ValueObjects\WalletStatsValue;
+use Illuminate\Database\Eloquent\Model;
 
 interface WalletServiceContract
 {
@@ -15,9 +16,9 @@ interface WalletServiceContract
 
     public function create(User $user): Wallet;
 
-    public function takeFromBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType): void;
+    public function takeFromBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType, ?Model $transactionable = null): void;
 
-    public function giveToBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType): void;
+    public function giveToBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType, ?Model $transactionable = null): void;
 
     public function getTotalAvailableBalance(Wallet $wallet, BalanceType $balanceType): Money;
 

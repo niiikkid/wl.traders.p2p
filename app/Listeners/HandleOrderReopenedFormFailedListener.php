@@ -37,7 +37,8 @@ class HandleOrderReopenedFormFailedListener implements ShouldQueue
                 $event->order->paymentDetail->user->wallet->id,
                 $event->order->trader_paid_for_order,
                 TransactionType::PAYMENT_FOR_OPENED_ORDER,
-                BalanceType::TRUST
+                BalanceType::TRUST,
+                $event->order,
             );
         });
     }

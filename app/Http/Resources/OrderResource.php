@@ -4,10 +4,8 @@ namespace App\Http\Resources;
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
-use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Support\PaymentLink;
-use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -188,16 +186,7 @@ class OrderResource extends JsonResource
      */
     private function resolveMerchantWalletTransactions(): array
     {
-        $wallet = $this->merchant?->user?->wallet;
-
-        if (! $wallet instanceof Wallet) {
-            return [];
-        }
-
-        return $this->resolveWalletTransactionsByTypes($wallet, [
-            'income_from_a_successful_order',
-            'rollback_income_from_a_successful_order',
-        ]);
+        return $this->resolveWalletTransactionsByBalanceType('merchant');
     }
 
     /**
@@ -205,16 +194,7 @@ class OrderResource extends JsonResource
      */
     private function resolveTeamLeaderWalletTransactions(): array
     {
-        $wallet = $this->teamLeader?->wallet;
-
-        if (! $wallet instanceof Wallet) {
-            return [];
-        }
-
-        return $this->resolveWalletTransactionsByTypes($wallet, [
-            'income_from_referrals_successful_order',
-            'rollback_income_from_referrals_successful_order',
-        ]);
+        return $this->resolveWalletTransactionsByBalanceType('teamleader');
     }
 
     /**
@@ -222,40 +202,27 @@ class OrderResource extends JsonResource
      */
     private function resolveTraderWalletTransactions(): array
     {
-        $wallet = $this->trader?->wallet;
-
-        if (! $wallet instanceof Wallet) {
-            return [];
-        }
-
-        return $this->resolveWalletTransactionsByTypes($wallet, [
-            'payment_for_opened_order',
-            'refund_for_canceled_order',
-            'refund_for_change_order_amount',
-            'payment_for_change_order_amount',
-        ]);
+        return $this->resolveWalletTransactionsByBalanceType('trust');
     }
 
     /**
-     * @param  array<int, string>  $types
      * @return array<int, array<string, mixed>>
      */
-    private function resolveWalletTransactionsByTypes(Wallet $wallet, array $types): array
+    private function resolveWalletTransactionsByBalanceType(string $balanceType): array
     {
-        $windowStart = $this->created_at?->copy()->subMinutes(5);
-        $windowEnd = ($this->finished_at ?? $this->updated_at)?->copy()->addMinutes(5);
+        $transactions = $this->resource->relationLoaded('walletTransactions')
+            ? $this->walletTransactions
+                ->filter(fn ($transaction) => $transaction->balance_type?->value === $balanceType)
+                ->values()
+            : $this->walletTransactions()
+                ->where('balance_type', $balanceType)
+                ->latest('id')
+                ->limit(50)
+                ->get();
 
-        $query = $wallet->transactions()
-            ->whereIn('type', $types)
-            ->latest('id')
-            ->limit(50);
-
-        if ($windowStart instanceof CarbonInterface && $windowEnd instanceof CarbonInterface) {
-            $query->whereBetween('created_at', [$windowStart, $windowEnd]);
-        }
-
-        return $query->get()->map(fn ($transaction) => [
+        return $transactions->map(fn ($transaction) => [
             'id' => $transaction->id,
+            'wallet_id' => $transaction->wallet_id,
             'amount' => $transaction->amount?->toBeauty(),
             'currency' => $transaction->amount?->getCurrency()->getCode(),
             'direction' => $transaction->direction?->value,

@@ -9,10 +9,11 @@ use App\Exceptions\WalletException;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use App\Services\Money\Money;
+use Illuminate\Database\Eloquent\Model;
 
 class TakeFromProvider extends TakeFromBalance
 {
-    public function handle(Wallet $wallet, Money $amount, TransactionType $transactionType): void
+    public function handle(Wallet $wallet, Money $amount, TransactionType $transactionType, ?Model $transactionable = null): void
     {
         if ($transactionType->direction()->notEquals(TransactionDirection::OUT)) {
             throw WalletException::invalidTransactionTypeForTake();
@@ -35,6 +36,8 @@ class TakeFromProvider extends TakeFromBalance
             'type' => $transactionType,
             'balance_type' => BalanceType::PROVIDER,
             'wallet_id' => $wallet->id,
+            'transactionable_id' => $transactionable?->getKey(),
+            'transactionable_type' => $transactionable?->getMorphClass(),
         ]);
     }
 }

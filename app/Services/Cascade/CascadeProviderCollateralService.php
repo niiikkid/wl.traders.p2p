@@ -48,6 +48,7 @@ class CascadeProviderCollateralService
                 amount: $amount,
                 transactionType: TransactionType::CASCADE_PROVIDER_COLLATERAL_HOLD,
                 balanceType: BalanceType::PROVIDER,
+                transactionable: $deal,
             );
 
             $hold = FundsOnHold::query()->create([
@@ -90,6 +91,7 @@ class CascadeProviderCollateralService
                 amount: $hold->amount,
                 transactionType: TransactionType::CASCADE_PROVIDER_COLLATERAL_RELEASE,
                 balanceType: $hold->source_wallet_balance_type,
+                transactionable: $hold->holdable,
             );
 
             $hold->update(['status' => FundsOnHoldStatus::CANCELED]);
