@@ -27,22 +27,6 @@ const orderPaymentLink = (payment_link) => {
     window.open(payment_link, '_blank')
 }
 
-const apiLogsRouteName = route().has('merchant.cascade-merchant-logs.index')
-    ? 'merchant.cascade-merchant-logs.index'
-    : null;
-
-const openOrderApiLogs = (orderUuid) => {
-    if (!apiLogsRouteName || !orderUuid) {
-        return;
-    }
-
-    router.visit(route(apiLogsRouteName), {
-        data: {
-            search: orderUuid,
-        },
-    });
-};
-
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
 })
@@ -198,14 +182,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </td>
                                     <td class="text-right">
                                         <TableActionsDropdown>
-                                            <TableAction v-if="order.can_open_payment_page" @click="orderPaymentLink(order.payment_link)">
+                                            <TableAction v-if="!order.is_h2h" @click="orderPaymentLink(order.payment_link)">
                                                 Платежная страница
                                             </TableAction>
                                             <TableAction @click="router.post(route('payment.callback.resend', order.id))">
                                                 Отправить Callback
-                                            </TableAction>
-                                            <TableAction v-if="apiLogsRouteName" @click="openOrderApiLogs(order.uuid)">
-                                                Посмотреть логи
                                             </TableAction>
                                         </TableActionsDropdown>
                                     </td>
@@ -294,7 +275,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </div>
                                             </div>
                                             <button
-                                                v-if="order.can_open_payment_page"
+                                                v-if="!order.is_h2h"
                                                 class="btn btn-sm btn-outline w-full"
                                                 @click="orderPaymentLink(order.payment_link)"
                                             >
@@ -305,13 +286,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 @click="router.post(route('payment.callback.resend', order.id))"
                                             >
                                                 Отправить Callback
-                                            </button>
-                                            <button
-                                                v-if="apiLogsRouteName"
-                                                class="btn btn-sm btn-outline w-full"
-                                                @click="openOrderApiLogs(order.uuid)"
-                                            >
-                                                Посмотреть логи
                                             </button>
                                         </div>
                                     </div>

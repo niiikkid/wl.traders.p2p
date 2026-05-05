@@ -356,7 +356,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::resource('/payments', PaymentController::class)->only(['index']);
         Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant.merchant-api-logs.index');
 
-        Route::post('/payment/{cascadeDeal}/callback/resend', [ResendCallbackController::class, 'resendCascade'])->name('payment.callback.resend');
+        Route::post('/payment/{order}/callback/resend', [ResendCallbackController::class, 'resend'])->name('payment.callback.resend');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Super Admin']], function () {
