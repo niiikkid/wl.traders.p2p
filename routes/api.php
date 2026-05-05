@@ -13,7 +13,6 @@ use App\Http\Controllers\API\PaymentGatewayController;
 use App\Http\Controllers\API\Payout\PayoutController;
 use App\Http\Controllers\API\Payout\PayoutReceiptController;
 use App\Http\Controllers\API\Statement\StatementController;
-use App\Http\Controllers\API\V2\ProviderCallbackController;
 use App\Http\Controllers\API\Withdraw\WithdrawController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -70,36 +69,9 @@ Route::group(['middleware' => ['api-access-token']], function () {
 
 });
 
-Route::group(['prefix' => 'v2', 'middleware' => ['api-v2-access-token']], function () {
-    Route::get('currencies', [App\Http\Controllers\API\V2\CurrencyController::class, 'index'])
-        ->name('api.v2.currencies.index');
-
-    Route::get('wallet/balance', [App\Http\Controllers\API\V2\WalletController::class, 'balance'])
-        ->name('api.v2.wallet.balance');
-
-    Route::get('payin', [App\Http\Controllers\API\V2\OrderController::class, 'index'])
-        ->name('api.v2.payin.index');
-    Route::post('payin', [App\Http\Controllers\API\V2\OrderController::class, 'store']);
-    Route::get('payin/external/{external_id}', [App\Http\Controllers\API\V2\OrderController::class, 'showByExternal']);
-    Route::get('payin/{cascadeDeal:uuid}', [App\Http\Controllers\API\V2\OrderController::class, 'show']);
-    Route::patch('payin/{cascadeDeal:uuid}/cancel', [App\Http\Controllers\API\V2\OrderController::class, 'cancel']);
-    Route::post('payin/{cascadeDeal:uuid}/confirmation-code', [App\Http\Controllers\API\V2\OrderController::class, 'storeConfirmationCode']);
-    Route::post('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'store']);
-    Route::get('payin/{cascadeDeal:uuid}/dispute', [App\Http\Controllers\API\V2\DisputeController::class, 'show']);
-
-    Route::get('payout', [App\Http\Controllers\API\V2\PayoutController::class, 'index'])
-        ->name('api.v2.payout.index');
-    Route::post('payout', [App\Http\Controllers\API\V2\PayoutController::class, 'store'])
-        ->name('api.v2.payout.store');
-    Route::get('payout/{payout:uuid}', [App\Http\Controllers\API\V2\PayoutController::class, 'show'])
-        ->name('api.v2.payout.show');
-    Route::patch('payout/{payout:uuid}/cancel', [App\Http\Controllers\API\V2\PayoutController::class, 'cancel'])
-        ->name('api.v2.payout.cancel');
-    Route::get('payout/{payout:uuid}/receipts', [App\Http\Controllers\API\V2\PayoutReceiptController::class, 'index'])
-        ->name('api.v2.payout.receipts.index');
+Route::group(['prefix' => 'v2'], function () {
+    Route::any('{path}', fn () => abort(404))->where('path', '.*');
 });
-
-Route::post('v2/providers/{cascadeProvider}/callback', [ProviderCallbackController::class, 'store']);
 
 Route::group(['prefix' => 'deposit', 'middleware' => ['api-deposits-access-token']], function () {
     Route::post('webhook', [DepositController::class, 'webhook']);
