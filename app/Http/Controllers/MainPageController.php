@@ -5,9 +5,7 @@ namespace App\Http\Controllers;
 use App\Contracts\MainPageCacheServiceContract;
 use App\Contracts\MainPageStatsServiceContract;
 use App\Enums\BalanceType;
-use App\Enums\CascadePaymentMethod;
 use App\Enums\DetailType;
-use App\Models\CascadeDeal;
 use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\PaymentDetail;
@@ -284,7 +282,7 @@ class MainPageController extends Controller
         }
 
         $options = match ($type) {
-            'payment_method' => $this->searchMerchantCascadePaymentMethods($user, $search, $selectedIds, $merchantIds, $dateFrom, $dateTo),
+            'payment_method' => $this->searchMerchantPaymentMethods($user, $search, $selectedIds, $merchantIds, $dateFrom, $dateTo),
             'merchant' => $this->searchUserMerchants($user, $search, $selectedIds),
             default => collect(),
         };
@@ -596,80 +594,6 @@ class MainPageController extends Controller
         );
     }
 
-    private function searchMerchantCascadePaymentMethods(
-        User $user,
-        string $search,
-        array $selectedIds,
-        array $merchantIds = [],
-        ?Carbon $dateFrom = null,
-        ?Carbon $dateTo = null,
-    ): Collection {
-        $allowedMerchantIds = Merchant::query()
-            ->where('user_id', $user->id)
-            ->pluck('id');
-
-        if ($allowedMerchantIds->isEmpty()) {
-            return collect();
-        }
-
-        $scopedMerchantIds = collect($merchantIds)
-            ->filter(fn (int $id) => $allowedMerchantIds->contains($id))
-            ->values();
-
-        if ($scopedMerchantIds->isEmpty()) {
-            $scopedMerchantIds = $allowedMerchantIds->values();
-        }
-
-        $methodsQuery = CascadeDeal::query()
-            ->whereIn('merchant_id', $scopedMerchantIds->all())
-            ->distinct();
-
-        if ($dateFrom && $dateTo) {
-            $methodsQuery->whereBetween('created_at', [
-                $dateFrom->copy()->startOfDay(),
-                $dateTo->copy()->endOfDay(),
-            ]);
-        }
-
-        $allowedMethods = $methodsQuery
-            ->pluck('payment_method')
-            ->map(fn ($method) => $method instanceof CascadePaymentMethod ? $method->value : (is_string($method) ? $method : null))
-            ->filter()
-            ->unique()
-            ->values();
-
-        $options = $allowedMethods
-            ->map(fn (string $method) => CascadePaymentMethod::tryFrom($method))
-            ->filter()
-            ->map(fn (CascadePaymentMethod $method) => [
-                'value' => $this->cascadePaymentMethodId($method),
-                'label' => $this->cascadePaymentMethodLabel($method),
-            ])
-            ->filter(fn (array $option) => $option['value'] !== null)
-            ->values();
-
-        if ($search !== '') {
-            $searchLower = mb_strtolower($search);
-            $options = $options
-                ->filter(fn (array $option) => str_contains(mb_strtolower($option['label']), $searchLower)
-                    || str_contains((string) $option['value'], $searchLower))
-                ->values();
-        }
-
-        $selectedOptions = collect($selectedIds)
-            ->map(fn (int $id) => $this->cascadePaymentMethodFromId($id))
-            ->filter(fn (?CascadePaymentMethod $method) => $method !== null && $allowedMethods->contains($method->value))
-            ->map(fn (CascadePaymentMethod $method) => [
-                'value' => $this->cascadePaymentMethodId($method),
-                'label' => $this->cascadePaymentMethodLabel($method),
-            ]);
-
-        return $this->mergeSelectedFirst(
-            $options->take(10),
-            $selectedOptions,
-        );
-    }
-
     private function parseFilterDate(mixed $value): ?Carbon
     {
         if (! is_string($value) || trim($value) === '') {
@@ -757,34 +681,5 @@ class MainPageController extends Controller
         $middle = str_repeat('•', max($length - 4, 3));
 
         return "{$firstPart}{$middle}{$lastPart}";
-    }
-
-    private function cascadePaymentMethodId(CascadePaymentMethod $method): ?int
-    {
-        foreach (CascadePaymentMethod::cases() as $index => $case) {
-            if ($case === $method) {
-                return $index + 1;
-            }
-        }
-
-        return null;
-    }
-
-    private function cascadePaymentMethodFromId(int $id): ?CascadePaymentMethod
-    {
-        $methods = CascadePaymentMethod::cases();
-
-        return $methods[$id - 1] ?? null;
-    }
-
-    private function cascadePaymentMethodLabel(CascadePaymentMethod $method): string
-    {
-        return match ($method) {
-            CascadePaymentMethod::CARD => 'Карта',
-            CascadePaymentMethod::SBP => 'СБП',
-            CascadePaymentMethod::MOBILE_COMMERCE => 'Мобильная коммерция',
-            CascadePaymentMethod::IBAN_UAH => 'IBAN UAH',
-            CascadePaymentMethod::E_COM => 'E-COM',
-        };
     }
 }

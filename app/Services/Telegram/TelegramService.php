@@ -3,7 +3,6 @@
 namespace App\Services\Telegram;
 
 use App\Contracts\TelegramServiceContract;
-use App\Exceptions\TelegramAccountNotLinkedException;
 use App\Exceptions\TelegramServiceException;
 use App\Exceptions\TelegramStartTokenInvalidException;
 use App\Models\TelegramAccount;
@@ -70,7 +69,7 @@ class TelegramService implements TelegramServiceContract
         $account = $this->getOrCreateForUser($user);
 
         if (! $account->is_active || ! $account->chat_id) {
-            throw new TelegramAccountNotLinkedException;
+            return;
         }
 
         try {
