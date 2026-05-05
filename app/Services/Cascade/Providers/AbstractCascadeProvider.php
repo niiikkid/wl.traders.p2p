@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Cascade\Providers;
 
 use App\Models\CascadeDeal;
+use App\Models\CascadeProvider;
+use App\Services\Cascade\CascadeProviderOperationLogger;
 use RuntimeException;
+use Throwable;
 
 /**
  * Абстрактный базовый класс для провайдеров каскада
@@ -16,6 +19,13 @@ use RuntimeException;
  */
 abstract class AbstractCascadeProvider implements CascadeProviderInterface
 {
+    public function __construct(
+        protected string $code,
+        protected array $config = [],
+        protected ?CascadeProvider $providerModel = null,
+        protected ?CascadeProviderOperationLogger $operationLogger = null,
+    ) {}
+
     /**
      * Создать сделку у провайдера
      *
@@ -105,5 +115,44 @@ abstract class AbstractCascadeProvider implements CascadeProviderInterface
         }
 
         return $base.$path;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $requestPayload
+     * @param  array<string, mixed>|null  $responsePayload
+     * @param  array<string, mixed>  $context
+     */
+    protected function recordProviderOperation(
+        CascadeDeal $cascadeDeal,
+        string $operation,
+        string $method,
+        string $url,
+        ?array $requestPayload,
+        ?array $responsePayload,
+        ?int $statusCode,
+        float $startedAt,
+        bool $isSuccessful,
+        ?Throwable $exception = null,
+        array $context = [],
+    ): void {
+        if (! $this->providerModel instanceof CascadeProvider || ! $this->operationLogger instanceof CascadeProviderOperationLogger) {
+            return;
+        }
+
+        $this->operationLogger->providerOperation(
+            provider: $this->providerModel,
+            operation: $operation,
+            method: $method,
+            url: $url,
+            deal: $cascadeDeal,
+            requestPayload: $requestPayload,
+            responsePayload: $responsePayload,
+            statusCode: $statusCode,
+            startedAt: $startedAt,
+            isSuccessful: $isSuccessful,
+            errorCode: $exception ? get_class($exception) : null,
+            errorMessage: $exception?->getMessage(),
+            context: $context,
+        );
     }
 }

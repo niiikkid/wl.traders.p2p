@@ -12,7 +12,6 @@ use App\Enums\CascadeTransactionStatus;
 use App\Exceptions\CascadeException;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
-use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Services\Cascade\CascadeDealEventRecorder;
 use App\Services\Cascade\CascadeProviderCollateralService;
@@ -67,7 +66,6 @@ class CascadeProviderOperationJob implements ShouldQueue
             throw CascadeException::make('Интеграция провайдера каскада недоступна.');
         }
 
-        $startedAt = microtime(true);
         $transaction = $this->resolveTransaction($deal);
         $providerDealId = (string) ($this->payload['provider_deal_id'] ?? $transaction?->provider_deal_id ?? $deal->order?->uuid ?? '');
         $responsePayload = null;
@@ -103,22 +101,6 @@ class CascadeProviderOperationJob implements ShouldQueue
             $errorMessage = $e->getMessage();
             throw $e;
         } finally {
-            CascadeProviderLog::query()->create([
-                'cascade_deal_id' => $deal->id,
-                'cascade_transaction_id' => $transaction?->id,
-                'provider_id' => $providerModel->id,
-                'operation' => $this->operation,
-                'method' => 'POST',
-                'url' => $provider->providerApiLogUrl($this->operation, $deal, $this->payload),
-                'request_payload' => $this->payload,
-                'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
-                'status_code' => $this->extractStatusCode($responsePayload),
-                'execution_time' => round(microtime(true) - $startedAt, 4),
-                'is_successful' => $isSuccessful,
-                'error_code' => $errorCode,
-                'error_message' => $errorMessage,
-            ]);
-
             $events->record(
                 deal: $deal,
                 type: $isSuccessful ? CascadeDealEventType::PROVIDER_OPERATION : CascadeDealEventType::ERROR,
@@ -261,27 +243,6 @@ class CascadeProviderOperationJob implements ShouldQueue
         if ($callbackRevision !== null) {
             SendCascadeDealCallbackJob::dispatch($deal->refresh(), $callbackRevision);
         }
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $responsePayload
-     */
-    private function extractStatusCode(?array $responsePayload): ?int
-    {
-        if ($responsePayload === null) {
-            return null;
-        }
-
-        $statusCode = Arr::get($responsePayload, 'status_code')
-            ?? Arr::get($responsePayload, 'http_status')
-            ?? Arr::get($responsePayload, 'raw.status_code')
-            ?? Arr::get($responsePayload, 'raw.status');
-
-        if (is_int($statusCode)) {
-            return $statusCode;
-        }
-
-        return is_numeric($statusCode) ? (int) $statusCode : null;
     }
 
     private function normalizeErrorCode(string $errorCode, string $errorMessage): string

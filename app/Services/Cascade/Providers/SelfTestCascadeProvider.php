@@ -6,12 +6,15 @@ namespace App\Services\Cascade\Providers;
 
 use App\Enums\MarketEnum;
 use App\Models\CascadeDeal;
+use App\Models\CascadeProvider;
+use App\Services\Cascade\CascadeProviderOperationLogger;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use Throwable;
 
 class SelfTestCascadeProvider extends AbstractCascadeProvider
 {
@@ -19,14 +22,13 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
 
     public const SUPPORTS_CALLBACK_ENDPOINT = true;
 
-    protected array $config;
-
-    protected string $code;
-
-    public function __construct(string $code, array $config = [])
-    {
-        $this->code = $code;
-        $this->config = $config;
+    public function __construct(
+        string $code,
+        array $config = [],
+        ?CascadeProvider $providerModel = null,
+        ?CascadeProviderOperationLogger $operationLogger = null,
+    ) {
+        parent::__construct($code, $config, $providerModel, $operationLogger);
     }
 
     public function createDeal(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): array
@@ -57,26 +59,138 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             ]);
         }
 
-        $response = $this->request($maxWaitMs)->post($this->buildUrl('/api/h2h/order'), $payload);
-        $this->throwIfInvalid($response);
+        $url = $this->buildUrl('/api/h2h/order');
+        $startedAt = microtime(true);
+        $responsePayload = null;
+        $statusCode = null;
 
-        return $this->normalizeOrderResponse($response->json());
+        try {
+            $response = $this->request($maxWaitMs)->post($url, $payload);
+            $statusCode = $response->status();
+            $responsePayload = $this->responsePayload($response);
+            $this->throwIfInvalid($response);
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'createDeal',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: true,
+            );
+
+            return $this->normalizeOrderResponse($responsePayload);
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'createDeal',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+            );
+
+            throw $e;
+        }
     }
 
     public function cancelDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        $response = $this->request()->patch($this->buildUrl('/api/h2h/order/'.$providerDealId.'/cancel'));
-        $this->throwIfInvalid($response);
+        $url = $this->buildUrl('/api/h2h/order/'.$providerDealId.'/cancel');
+        $startedAt = microtime(true);
+        $responsePayload = null;
+        $statusCode = null;
 
-        return $this->normalizeOrderResponse($response->json(), $providerDealId);
+        try {
+            $response = $this->request()->patch($url);
+            $statusCode = $response->status();
+            $responsePayload = $this->responsePayload($response);
+            $this->throwIfInvalid($response);
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'cancelDeal',
+                method: 'PATCH',
+                url: $url,
+                requestPayload: [],
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            return $this->normalizeOrderResponse($responsePayload, $providerDealId);
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'cancelDeal',
+                method: 'PATCH',
+                url: $url,
+                requestPayload: [],
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            throw $e;
+        }
     }
 
     public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        $response = $this->request()->get($this->buildUrl('/api/h2h/order/'.$providerDealId));
-        $this->throwIfInvalid($response);
+        $url = $this->buildUrl('/api/h2h/order/'.$providerDealId);
+        $startedAt = microtime(true);
+        $responsePayload = null;
+        $statusCode = null;
 
-        return $this->normalizeOrderResponse($response->json(), $providerDealId);
+        try {
+            $response = $this->request()->get($url);
+            $statusCode = $response->status();
+            $responsePayload = $this->responsePayload($response);
+            $this->throwIfInvalid($response);
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDeal',
+                method: 'GET',
+                url: $url,
+                requestPayload: [],
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            return $this->normalizeOrderResponse($responsePayload, $providerDealId);
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDeal',
+                method: 'GET',
+                url: $url,
+                requestPayload: [],
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            throw $e;
+        }
     }
 
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
@@ -86,13 +200,49 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             throw new RuntimeException('Self-test provider deal id is missing.');
         }
 
-        $response = $this->request()->post(
-            $this->buildUrl('/api/h2h/order/'.$providerDealId.'/confirmation-code'),
-            ['confirmation_code' => $confirmationCode],
-        );
-        $this->throwIfInvalid($response);
+        $url = $this->buildUrl('/api/h2h/order/'.$providerDealId.'/confirmation-code');
+        $payload = ['confirmation_code' => $confirmationCode];
+        $startedAt = microtime(true);
+        $responsePayload = null;
+        $statusCode = null;
 
-        return $response->json('data') ?? $response->json();
+        try {
+            $response = $this->request()->post($url, $payload);
+            $statusCode = $response->status();
+            $responsePayload = $this->responsePayload($response);
+            $this->throwIfInvalid($response);
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'storeConfirmationCode',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            return $responsePayload['data'] ?? $responsePayload;
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'storeConfirmationCode',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            throw $e;
+        }
     }
 
     public function openDispute(CascadeDeal $cascadeDeal, string $providerDealId, array $data = []): array
@@ -104,21 +254,100 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
             $payload['receipt'] = base64_encode((string) file_get_contents($firstReceipt->getPathname()));
         }
 
-        $response = $this->request()->post(
-            $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'),
-            $payload,
-        );
-        $this->throwIfInvalid($response);
+        $url = $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute');
+        $startedAt = microtime(true);
+        $responsePayload = null;
+        $statusCode = null;
 
-        return $this->normalizeDisputeResponse($response->json(), $providerDealId);
+        try {
+            $response = $this->request()->post($url, $payload);
+            $statusCode = $response->status();
+            $responsePayload = $this->responsePayload($response);
+            $this->throwIfInvalid($response);
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'openDispute',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            return $this->normalizeDisputeResponse($responsePayload, $providerDealId);
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'openDispute',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            throw $e;
+        }
     }
 
     public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array
     {
-        $response = $this->request()->get($this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute'));
-        $this->throwIfInvalid($response);
+        $url = $this->buildUrl('/api/h2h/order/'.$providerDealId.'/dispute');
+        $startedAt = microtime(true);
+        $responsePayload = null;
+        $statusCode = null;
 
-        return $this->normalizeDisputeResponse($response->json(), $providerDealId, $disputeId);
+        try {
+            $response = $this->request()->get($url);
+            $statusCode = $response->status();
+            $responsePayload = $this->responsePayload($response);
+            $this->throwIfInvalid($response);
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDispute',
+                method: 'GET',
+                url: $url,
+                requestPayload: [],
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: [
+                    'provider_deal_id' => $providerDealId,
+                    'dispute_id' => $disputeId,
+                ],
+            );
+
+            return $this->normalizeDisputeResponse($responsePayload, $providerDealId, $disputeId);
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDispute',
+                method: 'GET',
+                url: $url,
+                requestPayload: [],
+                responsePayload: $responsePayload,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: [
+                    'provider_deal_id' => $providerDealId,
+                    'dispute_id' => $disputeId,
+                ],
+            );
+
+            throw $e;
+        }
     }
 
     public function handleCallback(array $payload): array
@@ -255,6 +484,16 @@ class SelfTestCascadeProvider extends AbstractCascadeProvider
         $message = $response->json('message') ?? $response->json('error.message') ?? $response->body();
 
         throw new RuntimeException($message ?: 'Self-test host API error');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function responsePayload(Response $response): array
+    {
+        $json = $response->json();
+
+        return is_array($json) ? $json : ['body' => $response->body()];
     }
 
     private function callbackUrl(): string

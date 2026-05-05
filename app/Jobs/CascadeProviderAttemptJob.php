@@ -14,7 +14,6 @@ use App\Enums\ProviderType;
 use App\Exceptions\CascadeException;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
-use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Models\Order;
 use App\Services\Cascade\CascadeProviderCollateralService;
@@ -101,8 +100,6 @@ class CascadeProviderAttemptJob implements ShouldQueue
             'request_payload' => $this->requestPayload($cascadeDeal),
         ], $externalEconomics?->transactionAttributes ?? []));
         $responsePayload = null;
-        $startedAt = microtime(true);
-        $createDealLogUrl = $provider->providerApiLogUrl('createDeal', $cascadeDeal);
 
         try {
             $responsePayload = $provider->createDeal($cascadeDeal, $this->remainingWaitMs());
@@ -111,17 +108,6 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'provider_deal_id' => Arr::get($responsePayload, 'provider_deal_id'),
                 'response_payload' => $responsePayload,
             ]);
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $providerModel,
-                transaction: $transaction,
-                operation: 'createDeal',
-                requestUrl: $createDealLogUrl,
-                requestPayload: $transaction->request_payload ?? [],
-                responsePayload: $responsePayload,
-                startedAt: $startedAt,
-                isSuccessful: true,
-            );
 
             if ($this->isCreationAborted()) {
                 $this->dispatchProviderCancel($providerModel, $transaction, $responsePayload, 'client_wait_timeout');
@@ -162,19 +148,6 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 errorCode: get_class($e),
                 errorMessage: $e->getMessage(),
                 responsePayload: $responsePayload,
-            );
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $providerModel,
-                transaction: $transaction,
-                operation: 'createDeal',
-                requestUrl: $createDealLogUrl,
-                requestPayload: $transaction->request_payload ?? [],
-                responsePayload: $responsePayload,
-                startedAt: $startedAt,
-                isSuccessful: false,
-                errorCode: get_class($e),
-                errorMessage: $e->getMessage(),
             );
         } finally {
             $this->markAttemptFinished();
@@ -282,7 +255,6 @@ class CascadeProviderAttemptJob implements ShouldQueue
         }
 
         try {
-            $startedAt = microtime(true);
             $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($providerModel);
             $cancelPayload = $provider?->cancelDeal($cascadeDeal, $providerDealId) ?? [];
 
@@ -292,26 +264,10 @@ class CascadeProviderAttemptJob implements ShouldQueue
                     'cancel' => $cancelPayload,
                 ]),
             ]);
-
-            $cancelLogUrl = $provider?->providerApiLogUrl('cancelDeal', $cascadeDeal, ['provider_deal_id' => $providerDealId])
-                ?? ($providerModel->base_url ?? $providerModel->code);
-
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $providerModel,
-                transaction: $transaction,
-                operation: 'cancelDeal',
-                requestUrl: $cancelLogUrl,
-                requestPayload: ['provider_deal_id' => $providerDealId],
-                responsePayload: $cancelPayload,
-                startedAt: $startedAt,
-                isSuccessful: true,
-            );
         } catch (Throwable $e) {
             $existingResponsePayload = is_array($transaction->response_payload)
                 ? $transaction->response_payload
                 : [];
-            $startedAt = microtime(true);
             $normalizedErrorCode = $this->normalizeErrorCode(get_class($e), $e->getMessage());
 
             $transaction->update([
@@ -327,24 +283,6 @@ class CascadeProviderAttemptJob implements ShouldQueue
                 'error_code' => $normalizedErrorCode,
                 'error_message' => $e->getMessage(),
             ]);
-
-            $cancelLogUrl = $providerModel->base_url ?? $providerModel->code;
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $providerModel,
-                transaction: $transaction,
-                operation: 'cancelDeal',
-                requestUrl: (string) $cancelLogUrl,
-                requestPayload: ['provider_deal_id' => $providerDealId],
-                responsePayload: [
-                    'error_code' => $normalizedErrorCode,
-                    'error_message' => $e->getMessage(),
-                ],
-                startedAt: $startedAt,
-                isSuccessful: false,
-                errorCode: $normalizedErrorCode,
-                errorMessage: $e->getMessage(),
-            );
         }
     }
 
@@ -395,61 +333,6 @@ class CascadeProviderAttemptJob implements ShouldQueue
         }
 
         return $errorCode;
-    }
-
-    /**
-     * @param  array<string, mixed>  $requestPayload
-     * @param  array<string, mixed>|null  $responsePayload
-     */
-    private function recordProviderLog(
-        CascadeDeal $cascadeDeal,
-        CascadeProvider $providerModel,
-        ?CascadeTransaction $transaction,
-        string $operation,
-        string $requestUrl,
-        array $requestPayload,
-        ?array $responsePayload,
-        float $startedAt,
-        bool $isSuccessful,
-        ?string $errorCode = null,
-        ?string $errorMessage = null,
-    ): void {
-        CascadeProviderLog::create([
-            'cascade_deal_id' => $cascadeDeal->id,
-            'cascade_transaction_id' => $transaction?->id,
-            'provider_id' => $providerModel->id,
-            'operation' => $operation,
-            'method' => 'POST',
-            'url' => $requestUrl,
-            'request_payload' => $requestPayload,
-            'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
-            'status_code' => $this->extractStatusCode($responsePayload),
-            'execution_time' => round(microtime(true) - $startedAt, 4),
-            'is_successful' => $isSuccessful,
-            'error_code' => $errorCode,
-            'error_message' => $errorMessage,
-        ]);
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $responsePayload
-     */
-    private function extractStatusCode(?array $responsePayload): ?int
-    {
-        if ($responsePayload === null) {
-            return null;
-        }
-
-        $statusCode = Arr::get($responsePayload, 'status_code')
-            ?? Arr::get($responsePayload, 'http_status')
-            ?? Arr::get($responsePayload, 'raw.status_code')
-            ?? Arr::get($responsePayload, 'raw.status');
-
-        if (is_int($statusCode)) {
-            return $statusCode;
-        }
-
-        return is_numeric($statusCode) ? (int) $statusCode : null;
     }
 
     private function markAttemptFinished(): void

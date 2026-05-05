@@ -27,7 +27,6 @@ use App\Jobs\CascadeProviderOperationJob;
 use App\Jobs\SendCascadeDealCallbackJob;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
-use App\Models\CascadeProviderLog;
 use App\Models\CascadeTransaction;
 use App\Models\Merchant;
 use App\Models\MerchantClient;
@@ -421,20 +420,7 @@ class CascadeService implements CascadeServiceContract
                 return $cascadeDeal->refresh();
             }
 
-            $started_at = microtime(true);
             $response_payload = $provider->cancelDeal($cascadeDeal, $provider_deal_id);
-
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $provider_model,
-                operation: 'cancelDeal',
-                method: 'PATCH',
-                url: $provider->providerApiLogUrl('cancelDeal', $cascadeDeal, ['provider_deal_id' => $provider_deal_id]),
-                requestPayload: ['provider_deal_id' => $provider_deal_id],
-                responsePayload: $response_payload,
-                startedAt: $started_at,
-                isSuccessful: true,
-            );
 
             return $cascadeDeal->refresh();
         } catch (Throwable $e) {
@@ -512,42 +498,15 @@ class CascadeService implements CascadeServiceContract
             return $this->normalizeDisputeResponse($cascadeDeal->refresh(), $local_payload);
         }
 
-        $started_at = microtime(true);
-
         try {
             $response_payload = $provider->openDispute($cascadeDeal, $provider_deal_id, $data);
 
             $this->rememberSelectedTransactionDispute($cascadeDeal, $response_payload);
             $this->rememberCascadeDispute($cascadeDeal, $response_payload, $data, $receipt_file_metadata);
             $this->reopenCascadeDealForDispute($cascadeDeal->refresh(), $provider_model);
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $provider_model,
-                operation: 'openDispute',
-                method: 'POST',
-                url: $provider->providerApiLogUrl('openDispute', $cascadeDeal, ['provider_deal_id' => $provider_deal_id]),
-                requestPayload: ['provider_deal_id' => $provider_deal_id, ...$data],
-                responsePayload: $response_payload,
-                startedAt: $started_at,
-                isSuccessful: true,
-            );
 
             return $this->normalizeDisputeResponse($cascadeDeal->refresh(), $response_payload);
         } catch (Throwable $e) {
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $provider_model,
-                operation: 'openDispute',
-                method: 'POST',
-                url: $provider->providerApiLogUrl('openDispute', $cascadeDeal, ['provider_deal_id' => $provider_deal_id]),
-                requestPayload: ['provider_deal_id' => $provider_deal_id, ...$data],
-                responsePayload: null,
-                startedAt: $started_at,
-                isSuccessful: false,
-                errorCode: get_class($e),
-                errorMessage: $e->getMessage(),
-            );
-
             throw $e instanceof CascadeException
                 ? $e
                 : CascadeException::make($e->getMessage());
@@ -630,53 +589,14 @@ class CascadeService implements CascadeServiceContract
             ?? ''
         );
 
-        $started_at = microtime(true);
-
         try {
             $response_payload = $provider->getDispute($cascadeDeal, $provider_deal_id, $dispute_id);
 
             $this->rememberSelectedTransactionDispute($cascadeDeal, $response_payload);
             $this->rememberCascadeDispute($cascadeDeal, $response_payload, []);
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $provider_model,
-                operation: 'getDispute',
-                method: 'GET',
-                url: $provider->providerApiLogUrl('getDispute', $cascadeDeal, [
-                    'provider_deal_id' => $provider_deal_id,
-                    'dispute_id' => $dispute_id,
-                ]),
-                requestPayload: [
-                    'provider_deal_id' => $provider_deal_id,
-                    'dispute_id' => $dispute_id,
-                ],
-                responsePayload: $response_payload,
-                startedAt: $started_at,
-                isSuccessful: true,
-            );
 
             return $this->normalizeDisputeResponse($cascadeDeal->refresh(), $response_payload);
         } catch (Throwable $e) {
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $provider_model,
-                operation: 'getDispute',
-                method: 'GET',
-                url: $provider->providerApiLogUrl('getDispute', $cascadeDeal, [
-                    'provider_deal_id' => $provider_deal_id,
-                    'dispute_id' => $dispute_id,
-                ]),
-                requestPayload: [
-                    'provider_deal_id' => $provider_deal_id,
-                    'dispute_id' => $dispute_id,
-                ],
-                responsePayload: null,
-                startedAt: $started_at,
-                isSuccessful: false,
-                errorCode: get_class($e),
-                errorMessage: $e->getMessage(),
-            );
-
             throw $e instanceof CascadeException
                 ? $e
                 : CascadeException::make($e->getMessage());
@@ -715,24 +635,9 @@ class CascadeService implements CascadeServiceContract
                 ];
             }
 
-            $started_at = microtime(true);
             $response_payload = $provider->storeConfirmationCode(
                 $cascadeDeal,
                 $confirmationCode,
-            );
-
-            $this->recordProviderLog(
-                cascadeDeal: $cascadeDeal,
-                providerModel: $provider_model,
-                operation: 'storeConfirmationCode',
-                method: 'POST',
-                url: $provider->providerApiLogUrl('storeConfirmationCode', $cascadeDeal, [
-                    'confirmation_code' => $confirmationCode,
-                ]),
-                requestPayload: ['confirmation_code' => $confirmationCode],
-                responsePayload: $response_payload,
-                startedAt: $started_at,
-                isSuccessful: true,
             );
 
             return $response_payload;
@@ -765,170 +670,207 @@ class CascadeService implements CascadeServiceContract
         bool $validateAccessToken = true,
     ): array {
         $url ??= 'internal://provider.callback';
-        $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($cascadeProvider);
-        if (! $provider) {
-            $this->recordCallbackFailure($cascadeProvider, $payload, 'provider_unavailable', 'Интеграция провайдера каскада недоступна.', $url);
+        $cascade_deal = null;
+        $cascade_transaction = null;
+        $response_payload = [];
 
-            throw CascadeException::make('Интеграция провайдера каскада недоступна.');
-        }
+        try {
+            $provider = app(CascadeProviderServiceContract::class)->getProviderByModel($cascadeProvider);
+            if (! $provider) {
+                throw CascadeException::make('Интеграция провайдера каскада недоступна.');
+            }
 
-        if ($validateAccessToken) {
-            $expectedToken = (string) $cascadeProvider->access_token;
-            $this->validateProviderCallbackToken($cascadeProvider, $payload, $accessToken, $expectedToken, $url);
-        }
+            if ($validateAccessToken) {
+                $expectedToken = (string) $cascadeProvider->access_token;
+                $this->validateProviderCallbackToken($accessToken, $expectedToken);
+            }
 
-        $callback_data = $provider->handleCallback($payload);
-        $cascade_deal = $this->resolveCallbackCascadeDeal($cascadeProvider, $callback_data);
+            $callback_data = $provider->handleCallback($payload);
+            $cascade_deal = $this->resolveCallbackCascadeDeal($cascadeProvider, $callback_data);
 
-        $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $cascadeProvider, $callback_data);
+            $cascade_transaction = $this->resolveCallbackTransaction($cascade_deal, $cascadeProvider, $callback_data);
 
-        if ($cascade_deal->status?->isFinal() === true) {
-            $this->recordIgnoredProviderCallback(
-                cascadeDeal: $cascade_deal,
-                cascadeTransaction: $cascade_transaction,
-                cascadeProvider: $cascadeProvider,
-                requestPayload: $payload,
-                callbackData: $callback_data,
-                url: $url,
-            );
-
-            return [];
-        }
-
-        $callback_revision = DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): ?int {
-            $from_status = $cascade_deal->status;
-            $from_sub_status = $cascade_deal->sub_status;
-            $should_send_callback = false;
-
-            if (
-                (! $cascade_transaction && $cascade_deal->selected_transaction_id === null)
-                || $cascade_deal->selected_transaction_id === $cascade_transaction?->id
-            ) {
-                $attributes = $this->callbackCascadeDealAttributes($cascade_deal, $cascadeProvider, $callback_data);
-                $cascade_deal->fill($attributes);
-                $should_send_callback = $cascade_deal->isDirty($this->cascadeDealCallbackAttributes());
-                $amount_changed = $cascade_deal->isDirty('amount');
-                $cascade_deal->save();
-                app(CascadeMerchantBalanceService::class)->syncForStatusTransition(
-                    deal: $cascade_deal,
-                    provider: $cascadeProvider,
-                    fromStatus: $from_status,
-                    toStatus: $cascade_deal->status,
+            if ($cascade_deal->status?->isFinal() === true) {
+                $response_payload = [];
+                $this->logProviderCallback(
+                    cascadeProvider: $cascadeProvider,
+                    requestPayload: $payload,
+                    responsePayload: $this->providerCallbackSuccessResponsePayload($response_payload),
+                    url: $url,
+                    statusCode: 200,
+                    isSuccessful: true,
+                    cascadeDeal: $cascade_deal,
+                    cascadeTransaction: $cascade_transaction,
                 );
 
+                return $response_payload;
+            }
+
+            $callback_revision = DB::transaction(function () use ($cascade_deal, $cascade_transaction, $callback_data, $cascadeProvider): ?int {
+                $from_status = $cascade_deal->status;
+                $from_sub_status = $cascade_deal->sub_status;
+                $should_send_callback = false;
+
                 if (
-                    $amount_changed
-                    && $cascadeProvider->provider_type->equals(ProviderType::EXTERNAL)
+                    (! $cascade_transaction && $cascade_deal->selected_transaction_id === null)
+                    || $cascade_deal->selected_transaction_id === $cascade_transaction?->id
                 ) {
-                    app(CascadeProviderCollateralService::class)->replaceForAmountChange(
-                        $cascade_deal->refresh(),
-                        $cascadeProvider,
+                    $attributes = $this->callbackCascadeDealAttributes($cascade_deal, $cascadeProvider, $callback_data);
+                    $cascade_deal->fill($attributes);
+                    $should_send_callback = $cascade_deal->isDirty($this->cascadeDealCallbackAttributes());
+                    $amount_changed = $cascade_deal->isDirty('amount');
+                    $cascade_deal->save();
+                    app(CascadeMerchantBalanceService::class)->syncForStatusTransition(
+                        deal: $cascade_deal,
+                        provider: $cascadeProvider,
+                        fromStatus: $from_status,
+                        toStatus: $cascade_deal->status,
+                    );
+
+                    if (
+                        $amount_changed
+                        && $cascadeProvider->provider_type->equals(ProviderType::EXTERNAL)
+                    ) {
+                        app(CascadeProviderCollateralService::class)->replaceForAmountChange(
+                            $cascade_deal->refresh(),
+                            $cascadeProvider,
+                        );
+                    }
+
+                    app(CascadeDealEventRecorder::class)->record(
+                        deal: $cascade_deal->refresh(),
+                        type: CascadeDealEventType::PROVIDER_CALLBACK_RECEIVED,
+                        payload: $callback_data,
+                        transaction: $cascade_transaction,
+                        provider: $cascadeProvider,
+                        fromStatus: $from_status?->value,
+                        fromSubStatus: $from_sub_status?->value,
+                        toStatus: $cascade_deal->status?->value,
+                        toSubStatus: $cascade_deal->sub_status?->value,
                     );
                 }
 
-                app(CascadeDealEventRecorder::class)->record(
-                    deal: $cascade_deal->refresh(),
-                    type: CascadeDealEventType::PROVIDER_CALLBACK_RECEIVED,
-                    payload: $callback_data,
-                    transaction: $cascade_transaction,
-                    provider: $cascadeProvider,
-                    fromStatus: $from_status?->value,
-                    fromSubStatus: $from_sub_status?->value,
-                    toStatus: $cascade_deal->status?->value,
-                    toSubStatus: $cascade_deal->sub_status?->value,
-                );
+                if ($cascade_transaction) {
+                    $cascade_transaction->update([
+                        'response_payload' => $callback_data,
+                        'status' => $this->callbackTransactionStatus(
+                            (string) Arr::get($callback_data, 'status'),
+                            $cascade_transaction->status,
+                        ),
+                    ]);
+                }
+
+                if (! $should_send_callback) {
+                    return null;
+                }
+
+                $callback_revision = $cascade_deal->callback_payload_revision + 1;
+                $cascade_deal->forceFill(['callback_payload_revision' => $callback_revision])->save();
+
+                return $callback_revision;
+            });
+
+            $response_payload = [];
+            $this->logProviderCallback(
+                cascadeProvider: $cascadeProvider,
+                requestPayload: $payload,
+                responsePayload: $this->providerCallbackSuccessResponsePayload($response_payload),
+                url: $url,
+                statusCode: 200,
+                isSuccessful: true,
+                cascadeDeal: $cascade_deal,
+                cascadeTransaction: $cascade_transaction,
+            );
+
+            if ($callback_revision !== null) {
+                SendCascadeDealCallbackJob::dispatch($cascade_deal->refresh(), $callback_revision);
             }
 
-            if ($cascade_transaction) {
-                $cascade_transaction->update([
-                    'response_payload' => $callback_data,
-                    'status' => $this->callbackTransactionStatus(
-                        (string) Arr::get($callback_data, 'status'),
-                        $cascade_transaction->status,
-                    ),
-                ]);
-            }
+            return $response_payload;
+        } catch (Throwable $e) {
+            $exception = $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
 
-            if (! $should_send_callback) {
-                return null;
-            }
+            $this->logProviderCallback(
+                cascadeProvider: $cascadeProvider,
+                requestPayload: $payload,
+                responsePayload: $this->providerCallbackFailureResponsePayload($exception->getMessage()),
+                url: $url,
+                statusCode: 422,
+                isSuccessful: false,
+                cascadeDeal: $cascade_deal,
+                cascadeTransaction: $cascade_transaction,
+                errorCode: get_class($e),
+                errorMessage: $exception->getMessage(),
+            );
 
-            $callback_revision = $cascade_deal->callback_payload_revision + 1;
-            $cascade_deal->forceFill(['callback_payload_revision' => $callback_revision])->save();
-
-            return $callback_revision;
-        });
-
-        CascadeProviderLog::create([
-            'cascade_deal_id' => $cascade_deal->id,
-            'cascade_transaction_id' => $cascade_transaction?->id,
-            'provider_id' => $cascadeProvider->id,
-            'operation' => 'callback',
-            'method' => 'POST',
-            'url' => $url,
-            'request_payload' => $payload,
-            'response_payload' => [],
-            'status_code' => 200,
-            'is_successful' => true,
-        ]);
-
-        if ($callback_revision !== null) {
-            SendCascadeDealCallbackJob::dispatch($cascade_deal->refresh(), $callback_revision);
+            throw $exception;
         }
-
-        return [];
     }
 
     /**
      * @param  array<string, mixed>  $requestPayload
-     * @param  array<string, mixed>  $callbackData
+     * @param  array<string, mixed>  $responsePayload
      */
-    private function recordIgnoredProviderCallback(
-        CascadeDeal $cascadeDeal,
-        ?CascadeTransaction $cascadeTransaction,
+    private function logProviderCallback(
         CascadeProvider $cascadeProvider,
         array $requestPayload,
-        array $callbackData,
+        array $responsePayload,
         string $url,
+        int $statusCode,
+        bool $isSuccessful,
+        ?CascadeDeal $cascadeDeal = null,
+        ?CascadeTransaction $cascadeTransaction = null,
+        ?string $errorCode = null,
+        ?string $errorMessage = null,
     ): void {
-        CascadeProviderLog::create([
-            'cascade_deal_id' => $cascadeDeal->id,
-            'cascade_transaction_id' => $cascadeTransaction?->id,
-            'provider_id' => $cascadeProvider->id,
-            'operation' => 'callback',
-            'method' => 'POST',
-            'url' => $url,
-            'request_payload' => $requestPayload,
-            'response_payload' => [
-                'ignored' => true,
-                'reason' => 'cascade_deal_final_status',
-                'cascade_deal_status' => $cascadeDeal->status?->value,
-                'cascade_deal_sub_status' => $cascadeDeal->sub_status?->value,
-                'callback' => $callbackData,
-            ],
-            'status_code' => 200,
-            'is_successful' => true,
-        ]);
+        app(CascadeProviderOperationLogger::class)->callback(
+            provider: $cascadeProvider,
+            url: $url,
+            requestPayload: $requestPayload,
+            responsePayload: $responsePayload,
+            statusCode: $statusCode,
+            isSuccessful: $isSuccessful,
+            deal: $cascadeDeal,
+            transaction: $cascadeTransaction,
+            errorCode: $errorCode,
+            errorMessage: $errorMessage,
+        );
     }
 
-    private function validateProviderCallbackToken(
-        CascadeProvider $cascadeProvider,
-        array $payload,
-        ?string $accessToken,
-        string $expectedToken,
-        string $url,
-    ): void {
+    private function validateProviderCallbackToken(?string $accessToken, string $expectedToken): void
+    {
         if ($expectedToken === '') {
-            $this->recordCallbackFailure($cascadeProvider, $payload, 'provider_token_missing', 'Токен провайдера каскада не настроен.', $url);
-
             throw CascadeException::make('Токен провайдера каскада не настроен.');
         }
 
         if (! hash_equals($expectedToken, (string) $accessToken)) {
-            $this->recordCallbackFailure($cascadeProvider, $payload, 'invalid_provider_token', 'Неверный токен провайдера.', $url);
-
             throw CascadeException::make('Неверный токен провайдера.');
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array{success: true, data: array<string, mixed>}
+     */
+    private function providerCallbackSuccessResponsePayload(array $data): array
+    {
+        return [
+            'success' => true,
+            'data' => $data,
+        ];
+    }
+
+    /**
+     * @return array{success: false, message: string}
+     */
+    private function providerCallbackFailureResponsePayload(string $message): array
+    {
+        return [
+            'success' => false,
+            'message' => $message,
+        ];
     }
 
     /**
@@ -1081,87 +1023,6 @@ class CascadeService implements CascadeServiceContract
             'rejected', 'canceled', 'cancelled' => CascadeDisputeStatus::REJECTED,
             default => null,
         };
-    }
-
-    /**
-     * @param  array<string, mixed>  $requestPayload
-     * @param  array<string, mixed>|null  $responsePayload
-     */
-    private function recordProviderLog(
-        CascadeDeal $cascadeDeal,
-        CascadeProvider $providerModel,
-        string $operation,
-        string $method,
-        string $url,
-        array $requestPayload,
-        ?array $responsePayload,
-        float $startedAt,
-        bool $isSuccessful,
-        ?string $errorCode = null,
-        ?string $errorMessage = null,
-    ): void {
-        CascadeProviderLog::create([
-            'cascade_deal_id' => $cascadeDeal->id,
-            'cascade_transaction_id' => $cascadeDeal->selected_transaction_id,
-            'provider_id' => $providerModel->id,
-            'operation' => $operation,
-            'method' => $method,
-            'url' => $url,
-            'request_payload' => $requestPayload,
-            'response_payload' => CascadeProviderLog::literalHttpJsonForLog($responsePayload),
-            'status_code' => $this->extractStatusCode($responsePayload),
-            'execution_time' => round(microtime(true) - $startedAt, 4),
-            'is_successful' => $isSuccessful,
-            'error_code' => $errorCode,
-            'error_message' => $errorMessage,
-        ]);
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $responsePayload
-     */
-    private function extractStatusCode(?array $responsePayload): ?int
-    {
-        if ($responsePayload === null) {
-            return null;
-        }
-
-        $statusCode = Arr::get($responsePayload, 'status_code')
-            ?? Arr::get($responsePayload, 'http_status')
-            ?? Arr::get($responsePayload, 'raw.status_code')
-            ?? Arr::get($responsePayload, 'raw.status');
-
-        if (is_int($statusCode)) {
-            return $statusCode;
-        }
-
-        return is_numeric($statusCode) ? (int) $statusCode : null;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function recordCallbackFailure(
-        CascadeProvider $providerModel,
-        array $payload,
-        string $errorCode,
-        string $errorMessage,
-        string $url,
-    ): void {
-        CascadeProviderLog::create([
-            'provider_id' => $providerModel->id,
-            'operation' => 'callback',
-            'method' => 'POST',
-            'url' => $url,
-            'request_payload' => $payload,
-            'response_payload' => [
-                'message' => $errorMessage,
-            ],
-            'status_code' => 422,
-            'is_successful' => false,
-            'error_code' => $errorCode,
-            'error_message' => $errorMessage,
-        ]);
     }
 
     private function createCascadeDeal(CreateCascadeDealDTO $dto): CascadeDeal

@@ -11,8 +11,10 @@ use App\Enums\OrderSubStatus;
 use App\Exceptions\CascadeException;
 use App\Http\Requests\API\H2H\Order\StoreRequest as H2HStoreRequest;
 use App\Models\CascadeDeal;
+use App\Models\CascadeProvider;
 use App\Models\Order;
 use App\Models\OrderManualControlConfirmationCode;
+use App\Services\Cascade\CascadeProviderOperationLogger;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Throwable;
@@ -24,14 +26,13 @@ class InternalCascadeProvider extends AbstractCascadeProvider
 {
     public const CODE = 'internal';
 
-    protected array $config;
-
-    protected string $code;
-
-    public function __construct(string $code, array $config = [])
-    {
-        $this->code = $code;
-        $this->config = $config;
+    public function __construct(
+        string $code,
+        array $config = [],
+        ?CascadeProvider $providerModel = null,
+        ?CascadeProviderOperationLogger $operationLogger = null,
+    ) {
+        parent::__construct($code, $config, $providerModel, $operationLogger);
     }
 
     public function createDeal(CascadeDeal $cascadeDeal, ?int $maxWaitMs = null): array
@@ -64,6 +65,11 @@ class InternalCascadeProvider extends AbstractCascadeProvider
             ]);
         }
 
+        $url = $this->providerApiLogUrl('createDeal', $cascadeDeal);
+        $startedAt = microtime(true);
+        $response_data = null;
+        $statusCode = null;
+
         try {
             $request = H2HStoreRequest::create('/', 'POST', $payload);
             $request->setContainer(app())->setRedirector(app('redirect'));
@@ -74,19 +80,49 @@ class InternalCascadeProvider extends AbstractCascadeProvider
 
             $response = services()->orderPooling()->processOrderPooling($request);
             $response_data = json_decode($response->getContent(), true);
+            $response_data = is_array($response_data) ? $response_data : ['body' => $response->getContent()];
+            $statusCode = $response->getStatusCode();
         } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'createDeal',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $response_data,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+            );
+
             throw $e instanceof CascadeException
                 ? $e
                 : CascadeException::make($e->getMessage());
         }
 
         if (! ($response_data['success'] ?? false)) {
-            throw CascadeException::make($response_data['message'] ?? 'Не удалось создать сделку у внутреннего провайдера.');
+            $exception = CascadeException::make($response_data['message'] ?? 'Не удалось создать сделку у внутреннего провайдера.');
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'createDeal',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $response_data,
+                statusCode: $statusCode,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $exception,
+            );
+
+            throw $exception;
         }
 
         $order_data = $response_data['data'] ?? $response_data;
 
-        return [
+        $normalizedResponse = [
             'provider_deal_id' => Arr::get($order_data, 'order_id'),
             'status' => Arr::get($order_data, 'status'),
             'amount' => Arr::get($order_data, 'amount'),
@@ -105,113 +141,336 @@ class InternalCascadeProvider extends AbstractCascadeProvider
             'expires_at' => Arr::get($order_data, 'expires_at'),
             'raw' => $response_data,
         ];
+
+        $this->recordProviderOperation(
+            cascadeDeal: $cascadeDeal,
+            operation: 'createDeal',
+            method: 'POST',
+            url: $url,
+            requestPayload: $payload,
+            responsePayload: $response_data,
+            statusCode: $statusCode,
+            startedAt: $startedAt,
+            isSuccessful: true,
+            context: ['provider_deal_id' => (string) Arr::get($normalizedResponse, 'provider_deal_id')],
+        );
+
+        return $normalizedResponse;
     }
 
     public function cancelDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+        $url = $this->providerApiLogUrl('cancelDeal', $cascadeDeal, ['provider_deal_id' => $providerDealId]);
+        $payload = ['provider_deal_id' => $providerDealId];
+        $startedAt = microtime(true);
+        $responsePayload = null;
 
-        return $this->cancelOrder($order);
+        try {
+            $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+            $responsePayload = $this->cancelOrder($order);
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'cancelDeal',
+                method: 'PATCH',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload['raw'] ?? $responsePayload,
+                statusCode: 200,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: $payload,
+            );
+
+            return $responsePayload;
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'cancelDeal',
+                method: 'PATCH',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: null,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: $payload,
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
     }
 
     public function getDeal(CascadeDeal $cascadeDeal, string $providerDealId): array
     {
-        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+        $url = $this->providerApiLogUrl('getDeal', $cascadeDeal, ['provider_deal_id' => $providerDealId]);
+        $payload = ['provider_deal_id' => $providerDealId];
+        $startedAt = microtime(true);
 
-        return [
-            'provider_deal_id' => $order->uuid,
-            'status' => $order->status->value,
-            'sub_status' => $order->sub_status?->value,
-            'gateway' => [
-                'code' => $order->paymentGateway?->code,
-                'name' => $order->paymentGateway?->name,
-                'logo_link' => null,
-            ],
-            'details' => [
-                'type' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail_type,
-                'value' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail,
-                'initials' => $order->manual_control_acquiring ? null : $order->paymentDetail?->initials,
-            ],
-            'finished_at' => $order->finished_at?->getTimestamp(),
-            'raw' => [
+        try {
+            $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+
+            $responsePayload = [
                 'order_id' => $order->uuid,
                 'status' => $order->status->value,
                 'sub_status' => $order->sub_status?->value,
-            ],
-        ];
+            ];
+
+            $normalizedResponse = [
+                'provider_deal_id' => $order->uuid,
+                'status' => $order->status->value,
+                'sub_status' => $order->sub_status?->value,
+                'gateway' => [
+                    'code' => $order->paymentGateway?->code,
+                    'name' => $order->paymentGateway?->name,
+                    'logo_link' => null,
+                ],
+                'details' => [
+                    'type' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail_type,
+                    'value' => $order->manual_control_acquiring ? null : $order->paymentDetail?->detail,
+                    'initials' => $order->manual_control_acquiring ? null : $order->paymentDetail?->initials,
+                ],
+                'finished_at' => $order->finished_at?->getTimestamp(),
+                'raw' => $responsePayload,
+            ];
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDeal',
+                method: 'GET',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: 200,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: $payload,
+            );
+
+            return $normalizedResponse;
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDeal',
+                method: 'GET',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: null,
+                statusCode: null,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: $payload,
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
     }
 
     public function storeConfirmationCode(CascadeDeal $cascadeDeal, string $confirmationCode): array
     {
-        $order = $this->resolveCascadeOrder($cascadeDeal);
+        $url = $this->providerApiLogUrl('storeConfirmationCode', $cascadeDeal);
+        $payload = ['confirmation_code' => $confirmationCode];
+        $startedAt = microtime(true);
+        $responsePayload = null;
 
-        if (! $order->manual_control_acquiring) {
-            throw CascadeException::make('Эндпоинт доступен только для сделок в режиме Manual Control Acquiring.');
+        try {
+            $order = $this->resolveCascadeOrder($cascadeDeal);
+
+            if (! $order->manual_control_acquiring) {
+                throw CascadeException::make('Эндпоинт доступен только для сделок в режиме Manual Control Acquiring.');
+            }
+
+            if ($order->status->notEquals(OrderStatus::PENDING)) {
+                throw CascadeException::make('Нельзя отправить код для завершенной сделки.');
+            }
+
+            $created_code = OrderManualControlConfirmationCode::query()->create([
+                'order_id' => $order->id,
+                'confirmation_code' => $confirmationCode,
+            ]);
+
+            $responsePayload = [
+                'order_id' => $order->uuid,
+                'confirmation_code' => [
+                    'value' => $created_code->confirmation_code,
+                    'created_at' => $created_code->created_at?->getTimestamp(),
+                ],
+            ];
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'storeConfirmationCode',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: 200,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: ['provider_deal_id' => $order->uuid],
+            );
+
+            return $responsePayload;
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'storeConfirmationCode',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: null,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
         }
-
-        if ($order->status->notEquals(OrderStatus::PENDING)) {
-            throw CascadeException::make('Нельзя отправить код для завершенной сделки.');
-        }
-
-        $created_code = OrderManualControlConfirmationCode::query()->create([
-            'order_id' => $order->id,
-            'confirmation_code' => $confirmationCode,
-        ]);
-
-        return [
-            'order_id' => $order->uuid,
-            'confirmation_code' => [
-                'value' => $created_code->confirmation_code,
-                'created_at' => $created_code->created_at?->getTimestamp(),
-            ],
-        ];
     }
 
     public function openDispute(CascadeDeal $cascadeDeal, string $providerDealId, array $data = []): array
     {
-        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+        $url = $this->providerApiLogUrl('openDispute', $cascadeDeal, ['provider_deal_id' => $providerDealId]);
+        $payload = $this->disputeRequestPayload($providerDealId, $data);
+        $startedAt = microtime(true);
+        $responsePayload = null;
 
-        if ($order->dispute) {
-            throw CascadeException::make('Dispute already exists.');
-        }
+        try {
+            $order = $this->resolveOrder($cascadeDeal, $providerDealId);
 
-        /** @var UploadedFile|null $firstReceipt */
-        $firstReceipt = Arr::get($data, 'receipts.0');
-        $dispute = services()->dispute()->create($order->id, $firstReceipt);
+            if ($order->dispute) {
+                throw CascadeException::make('Dispute already exists.');
+            }
 
-        return [
-            'dispute_id' => (string) $dispute->id,
-            'provider_deal_id' => $order->uuid,
-            'status' => $dispute->status->value,
-            'cancel_reason' => $dispute->reason,
-            'raw' => [
+            /** @var UploadedFile|null $firstReceipt */
+            $firstReceipt = Arr::get($data, 'receipts.0');
+            $dispute = services()->dispute()->create($order->id, $firstReceipt);
+
+            $responsePayload = [
                 'order_id' => $order->uuid,
                 'status' => $dispute->status->value,
                 'cancel_reason' => $dispute->reason,
-            ],
-        ];
+            ];
+
+            $normalizedResponse = [
+                'dispute_id' => (string) $dispute->id,
+                'provider_deal_id' => $order->uuid,
+                'status' => $dispute->status->value,
+                'cancel_reason' => $dispute->reason,
+                'raw' => $responsePayload,
+            ];
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'openDispute',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: 200,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            return $normalizedResponse;
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'openDispute',
+                method: 'POST',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: null,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: ['provider_deal_id' => $providerDealId],
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
     }
 
     public function getDispute(CascadeDeal $cascadeDeal, string $providerDealId, string $disputeId): array
     {
-        $order = $this->resolveOrder($cascadeDeal, $providerDealId);
-        $dispute = $order->dispute;
+        $url = $this->providerApiLogUrl('getDispute', $cascadeDeal, [
+            'provider_deal_id' => $providerDealId,
+            'dispute_id' => $disputeId,
+        ]);
+        $payload = [
+            'provider_deal_id' => $providerDealId,
+            'dispute_id' => $disputeId,
+        ];
+        $startedAt = microtime(true);
 
-        if (! $dispute) {
-            throw CascadeException::make('По сделке пока что небыло споров.');
-        }
+        try {
+            $order = $this->resolveOrder($cascadeDeal, $providerDealId);
+            $dispute = $order->dispute;
 
-        return [
-            'dispute_id' => (string) $dispute->id,
-            'provider_deal_id' => $order->uuid,
-            'status' => $dispute->status->value,
-            'cancel_reason' => $dispute->reason,
-            'raw' => [
+            if (! $dispute) {
+                throw CascadeException::make('По сделке пока что небыло споров.');
+            }
+
+            $responsePayload = [
                 'order_id' => $order->uuid,
                 'status' => $dispute->status->value,
                 'cancel_reason' => $dispute->reason,
-            ],
-        ];
+            ];
+
+            $normalizedResponse = [
+                'dispute_id' => (string) $dispute->id,
+                'provider_deal_id' => $order->uuid,
+                'status' => $dispute->status->value,
+                'cancel_reason' => $dispute->reason,
+                'raw' => $responsePayload,
+            ];
+
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDispute',
+                method: 'GET',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: $responsePayload,
+                statusCode: 200,
+                startedAt: $startedAt,
+                isSuccessful: true,
+                context: $payload,
+            );
+
+            return $normalizedResponse;
+        } catch (Throwable $e) {
+            $this->recordProviderOperation(
+                cascadeDeal: $cascadeDeal,
+                operation: 'getDispute',
+                method: 'GET',
+                url: $url,
+                requestPayload: $payload,
+                responsePayload: null,
+                statusCode: null,
+                startedAt: $startedAt,
+                isSuccessful: false,
+                exception: $e,
+                context: $payload,
+            );
+
+            throw $e instanceof CascadeException
+                ? $e
+                : CascadeException::make($e->getMessage());
+        }
     }
 
     public function handleCallback(array $payload): array
@@ -293,6 +552,44 @@ class InternalCascadeProvider extends AbstractCascadeProvider
         }
 
         return $order;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function disputeRequestPayload(string $providerDealId, array $data): array
+    {
+        $payload = [
+            'provider_deal_id' => $providerDealId,
+            ...Arr::except($data, ['receipts']),
+        ];
+
+        $receipts = collect((array) ($data['receipts'] ?? []))
+            ->values()
+            ->map(function (mixed $receipt, int $index): array {
+                if (! $receipt instanceof UploadedFile) {
+                    return [
+                        'index' => $index,
+                        'type' => get_debug_type($receipt),
+                    ];
+                }
+
+                return [
+                    'index' => $index,
+                    'original_name' => $receipt->getClientOriginalName() ?: null,
+                    'mime_type' => $receipt->getMimeType(),
+                    'size' => $receipt->getSize(),
+                    'extension' => $receipt->extension(),
+                ];
+            })
+            ->all();
+
+        if ($receipts !== []) {
+            $payload['receipts'] = $receipts;
+        }
+
+        return $payload;
     }
 
     private function cancelOrder(Order $order): array

@@ -162,7 +162,7 @@ class CascadeProviderService implements CascadeProviderServiceContract
                 'verify_ssl' => $provider->verify_ssl,
             ];
 
-            return new $providerClass($provider->code, $config);
+            return new $providerClass($provider->code, $config, $provider, app(CascadeProviderOperationLogger::class));
         } catch (\Throwable $e) {
             // Логируем ошибку создания провайдера
             Log::error('Failed to create cascade provider instance', [
