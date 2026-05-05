@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Каскад: синхронизация баланса мерчанта со статусом сделки.
+ */
+
 namespace App\Services\Cascade;
 
 use App\Enums\BalanceType;
@@ -14,6 +18,9 @@ use App\Models\CascadeProvider;
 use App\Models\Wallet;
 use App\Services\Money\Money;
 
+/**
+ * Зачисляет и возвращает кредит на кошелёк мерчанта при переходах в/из SUCCESS для внешних провайдеров без привязки к заказу.
+ */
 class CascadeMerchantBalanceService
 {
     public function syncForStatusTransition(

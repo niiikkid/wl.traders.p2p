@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Каскад: обнаружение реализаций провайдеров в кодовой базе.
+ */
+
 namespace App\Services\Cascade;
 
 use App\Services\Cascade\Providers\CascadeProviderInterface;
@@ -10,6 +14,9 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use ReflectionClass;
 
+/**
+ * Сканирует `app/Services/Cascade/Providers`, отдаёт список и карту code → class для фабрики и админки.
+ */
 class CascadeProviderDiscoveryService
 {
     /**

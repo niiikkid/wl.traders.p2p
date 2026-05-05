@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Каскад: журнал событий сделки (аудит переходов и действий).
+ */
+
 namespace App\Services\Cascade;
 
 use App\Enums\CascadeDealEventType;
@@ -11,6 +15,9 @@ use App\Models\CascadeProvider;
 use App\Models\CascadeTransaction;
 use App\Models\User;
 
+/**
+ * Создаёт записи {@see CascadeDealEvent} по типу события, статусам и контексту (провайдер, транзакция, пользователь).
+ */
 class CascadeDealEventRecorder
 {
     /**

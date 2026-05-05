@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Каскад: залог ликвидности внешнего провайдера (USDT).
+ */
+
 namespace App\Services\Cascade;
 
 use App\Enums\BalanceType;
@@ -17,6 +21,9 @@ use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Utils\Transaction;
 
+/**
+ * Удерживает и освобождает залог провайдера через {@see FundsOnHold} и движения по кошельку (внутренние провайдеры не затрагиваются).
+ */
 class CascadeProviderCollateralService
 {
     public function __construct(

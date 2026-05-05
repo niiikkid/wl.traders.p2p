@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Каскад: оркестрация сделки, провайдеров, статусов, колбэков и споров.
+ */
+
 namespace App\Services\Cascade;
 
 use App\Contracts\CascadeProviderServiceContract;
@@ -44,9 +48,7 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * Центральный сервис каскада.
- *
- * Создаёт каскадную сделку и запускает гонку провайдеров через очередь.
+ * Главная точка домена: создание сделки, гонка провайдеров (очередь), смена статусов, ручное управление и интеграции.
  */
 class CascadeService implements CascadeServiceContract
 {

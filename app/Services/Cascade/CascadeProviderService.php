@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+/**
+ * Каскад: разрешение и кэширование экземпляров провайдеров ликвидности по модели БД.
+ */
+
 namespace App\Services\Cascade;
 
 use App\Contracts\CascadeProviderServiceContract;
@@ -11,9 +15,7 @@ use App\Services\Cascade\Providers\InternalCascadeProvider;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Сервис работы с провайдерами каскада
- *
- * Предоставляет интерфейс для получения и работы с провайдерами ликвидности
+ * Отдаёт {@see CascadeProviderInterface} по коду/модели, кэширует экземпляры и метаданные (в т.ч. callback endpoint).
  */
 class CascadeProviderService implements CascadeProviderServiceContract
 {
