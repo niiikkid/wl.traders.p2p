@@ -268,10 +268,6 @@ const roleToMode = (roleName) => {
     if (roleName === 'Analyst') {
         return 'analyst';
     }
-    if (roleName === 'Provider Liquidity') {
-        return 'provider-liquidity';
-    }
-
     return 'trader';
 };
 
@@ -300,11 +296,6 @@ const setViewMode = (mode) => {
         viewStore.setAnalystViewMode();
         return;
     }
-    if (mode === 'provider-liquidity') {
-        viewStore.setProviderLiquidityViewMode();
-        return;
-    }
-
     viewStore.setTraderViewMode();
 };
 

@@ -94,8 +94,8 @@ abstract class Controller
 
         $roles = request()->input('filters.roles', '');
         $roles = explode(',', $roles);
-
         $roles = array_filter($roles);
+        $roles = array_values(array_filter($roles, fn (string $role): bool => $role !== 'Provider Liquidity'));
 
         $payoutStatuses = request()->input('filters.payoutStatuses', '');
         $payoutStatuses = explode(',', $payoutStatuses);
@@ -263,7 +263,9 @@ abstract class Controller
         }
 
         // Получаем список всех ролей из БД
-        $roles = Role::all()
+        $roles = Role::query()
+            ->where('name', '!=', 'Provider Liquidity')
+            ->get()
             ->map(function ($role) {
                 return [
                     'name' => $role->name,

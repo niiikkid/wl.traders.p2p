@@ -65,7 +65,9 @@ class UserController extends Controller
 
     public function roles()
     {
-        $roles = Role::query()->get(['id', 'name']);
+        $roles = Role::query()
+            ->where('name', '!=', 'Provider Liquidity')
+            ->get(['id', 'name']);
 
         return response()->json([
             'success' => true,

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\User;
 
 use App\Models\User;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -21,7 +22,7 @@ class UpdateRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -31,7 +32,11 @@ class UpdateRequest extends FormRequest
             // Используем поле login, но проверяем уникальность по колонке email
             'login' => ['required', 'string', 'max:255', Rule::unique(User::class, 'email')->ignore($user->id)],
             'telegram_username' => ['nullable', 'string', 'max:32', 'regex:/^@?[A-Za-z0-9_]{5,32}$/'],
-            'role_id' => ['required', 'integer', 'exists:roles,id'],
+            'role_id' => [
+                'required',
+                'integer',
+                Rule::exists('roles', 'id')->where(fn ($query) => $query->where('name', '!=', 'Provider Liquidity')),
+            ],
             'banned' => ['required', 'boolean'],
             'stop_traffic' => ['required', 'boolean'],
             'can_work_without_device' => ['required', 'boolean'],

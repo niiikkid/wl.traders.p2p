@@ -39,11 +39,6 @@ const visitDefaultPage = () => {
             preserveScroll: true
         })
     }
-    if (viewStore.viewMode === 'provider-liquidity') {
-        router.visit(route('provider-liquidity.main.index'), {
-            preserveScroll: true
-        })
-    }
 }
 
 const selectViewMode = (mode) => {
@@ -59,7 +54,6 @@ const getCurrentViewModeLabel = () => {
         'leader': 'Тимлидер',
         'support': 'Саппорт',
         'analyst': 'Аналитик',
-        'provider-liquidity': 'Провайдер'
     };
     return labels[viewStore.viewMode] || 'Выберите режим';
 }
@@ -101,11 +95,6 @@ const getCurrentViewModeLabel = () => {
                 <li>
                     <a @click="selectViewMode('analyst')">
                         Аналитик
-                    </a>
-                </li>
-                <li>
-                    <a @click="selectViewMode('provider-liquidity')">
-                        Провайдер
                     </a>
                 </li>
             </ul>

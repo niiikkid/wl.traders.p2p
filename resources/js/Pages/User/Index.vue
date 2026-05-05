@@ -111,7 +111,7 @@ const openPage = (tab) => {
 const isTraderRole = (user) => user.role?.name === 'Trader';
 
 /** Баланс и переход в кошелёк — только для ролей с финансовым кошельком в админке. */
-const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Provider Liquidity', 'Super Admin'];
+const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Super Admin'];
 
 const userShowsWalletBalanceAndLink = (user) => {
     const role_name = user?.role?.name;
