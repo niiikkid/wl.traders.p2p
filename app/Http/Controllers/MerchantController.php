@@ -86,8 +86,15 @@ class MerchantController extends Controller
     {
         Gate::authorize('access-to-merchant', $merchant);
 
-        $merchant->apiCredentialOrCreate();
-        $merchant->load('categories', 'apiCredential');
+        $user = request()->user();
+        $canManageApiCredentials = $user?->hasRole('Super Admin') ?? false;
+
+        if ($canManageApiCredentials) {
+            $merchant->apiCredentialOrCreate();
+            $merchant->load('categories', 'apiCredential');
+        } else {
+            $merchant->load('categories');
+        }
 
         $paymentGateways = [
             'data' => PaymentGatewayResource::collection(
@@ -109,6 +116,11 @@ class MerchantController extends Controller
     public function regenerateApiCredential(Merchant $merchant, string $tokenType): JsonResponse
     {
         Gate::authorize('access-to-merchant', $merchant);
+        $user = request()->user();
+
+        if (! ($user?->hasRole('Super Admin') ?? false)) {
+            abort(404);
+        }
 
         if (! in_array($tokenType, ['api', 'callback'], true)) {
             abort(404);

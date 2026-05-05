@@ -696,8 +696,11 @@ const adminTabs = [
 const tabs = computed(() => {
     const rows = [
         {id: 'callback', title: 'Callback', description: 'URL уведомлений'},
-        {id: 'api_credentials', title: 'API Keys', description: 'Ключи API v2'},
     ];
+
+    if (viewStore.isAdminViewMode) {
+        rows.push({id: 'api_credentials', title: 'API Keys', description: 'Ключи API v2'});
+    }
 
     if (!viewStore.isAdminViewMode) {
         rows.push({id: 'geo', title: 'Гео', description: 'Текущие направления'});
@@ -847,7 +850,7 @@ const merchantStatus = computed(() => {
             </div>
 
             <!-- Таб: API Keys -->
-            <div v-if="activeTab === 'api_credentials'" class="space-y-3">
+            <div v-if="activeTab === 'api_credentials' && viewStore.isAdminViewMode" class="space-y-3">
                 <div v-if="merchant" class="rounded-lg bg-base-200/60 p-2.5 sm:p-3">
                     <div role="alert" class="alert alert-info mb-3 py-2 text-xs">
                         <span>
