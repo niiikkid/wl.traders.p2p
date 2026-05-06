@@ -120,7 +120,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
                     <div class="space-y-6">
                         <div class="card bg-base-100 shadow-md">
-                            <div class="card-bod yp-4 sm:p-6">
+                            <div class="card-body p-4 sm:p-6">
                                 <h3 class="card-title mb-1.5">Скачайте и установите APK</h3>
                                 <p class="text-base-content/70">
                                     Для получения СМС нужно приложение, которое доступно только для Android —
@@ -211,7 +211,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                     </div>
 
                                     <div class="sm:flex items-center gap-4 space-y-2 sm:space-y-0">
-                                        <PrimaryButton class="btn btn-primary" :disabled="form.processing">
+                                        <PrimaryButton type="submit" class="btn btn-primary" :disabled="form.processing">
                                             Создать токен
                                         </PrimaryButton>
 
