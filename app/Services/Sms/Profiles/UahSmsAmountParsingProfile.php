@@ -34,12 +34,14 @@ class UahSmsAmountParsingProfile implements SmsAmountParsingProfileContract
             '^\x{27A1}\x{FE0F}?\s+(?<amount>\d+(?:\s\d{3})*(?:\.\d{2})?)\s*uah\s*\|\s*rozetka\s+card\s+mc\b',
             // A-Bank account-to-card (a2c): сумма без тысяч («529.00») или с пробелом — только после ➡️.
             '^\x{27A1}\x{FE0F}?\s+(?<amount>\d+(?:\s\d{3})*(?:\.\d{2})?)\s*uah\s*\|\s*a\-bank\s+a2c\b',
-            // Mono / зараховано: … после «zarahovano +»; ФИО не перечисляем — \S+ и опциональные «слова» между * и card (латиница/кириллица в \S).
-            'zarahovano\s+\+(?<amount>\d+(?:\s\d{3})*(?:\.\d{2})?)\s*uah\s+(?:(?:monodirect|abnk)\s+card|a2c\s+pumb\s+online\s+mob\s+card|p24\s+\*\S+(?:\s+\S+)*\s+card|fuib\s+moneytransfer\s+card|mono\*\S+(?:\s+\S+)*\s+card|abnk\*\S+(?:\s+\S+)*\s+card)\b',
+            // Mono / зараховано: … після «zarahovano +»; хвости: monodirect/abnk card, PUMB, P24, FUIB, mono*/abnk*, або два слова + card (ПІБ без префікса).
+            'zarahovano\s+\+(?<amount>\d+(?:\s\d{3})*(?:\.\d{2})?)\s*uah\s+(?:(?:monodirect|abnk)\s+card|a2c\s+pumb\s+online\s+mob\s+card|p24\s+\*\S+(?:\s+\S+)*\s+card|fuib\s+moneytransfer\s+card|mono\*\S+(?:\s+\S+)*\s+card|abnk\*\S+(?:\s+\S+)*\s+card|\S+\s+\S+\s+card)\b',
             // «+… ₴ | переказ на картку …» — операційна сума на початку, не «баланс: …» в кінці.
             '^\+\s*(?<amount>\d+(?:\s\d{3})*(?:\.\d{2})?)\s*₴\s*\|\s*переказ\s+на\s+картку\b',
             // Monobank: «надходження | …uah monobank …», не «доступно: …».
             '^надходження\s*\|\s*(?<amount>\d+(?:\s\d{3})*(?:\.\d{2})?)\s*uah\s+monobank\b',
+            // «zachisleniye perevoda: …uah ua, mono*|p24 *… dostupno:» — сума після двокрапки, не «dostupno».
+            'zachisleniye\s+perevoda:\s*(?<amount>\d+(?:\s\d{3})*(?:[.,]\d{2})?)\s*uah\s+ua,\s+(?:mono\*\S+(?:\s+\S+)*|p24\s+\*\S+(?:\s+\S+)*)\s+dostupno:',
             // 💰 +сума ₴ | … баланс: … — толерантно к префиксу, пробелам, |/¦ и дробной части через . или ,.
             '(?:^|\s)\x{1F4B0}\x{FE0F}?\s*\+(?<amount>\d+(?:[\s\p{Zs}]\d{3})*(?:[.,]\d{2})?)\s*₴\s*[|¦](?=.*баланс\s*:)',
         ];
