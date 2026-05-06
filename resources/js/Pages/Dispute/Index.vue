@@ -405,7 +405,6 @@ defineOptions({ layout: AuthenticatedLayout })
             @cancel="modalStore.openDisputeCancelModal({dispute:$event})"
             @rollback="confirmRollbackDispute"
         />
-
         <CancelDisputeModal/>
         <ConfirmModal/>
     </div>

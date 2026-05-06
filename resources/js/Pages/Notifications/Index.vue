@@ -1,6 +1,6 @@
 <script setup>
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, nextTick, onMounted, ref, watch} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from "@/Components/InputError.vue";
 import CopyPaymentText from "@/Components/CopyPaymentText.vue";
@@ -34,6 +34,8 @@ const telegramForm = useForm({});
 const soundForm = useForm({
     settings: {},
 });
+const soundPickerDialog = ref(null);
+const soundPickerEventKey = ref(null);
 
 const eventLabels = computed(() => {
     return Object.fromEntries((filtersVariants.value.event ?? []).map((item) => [item.value, item.name]));
@@ -75,6 +77,7 @@ const trackOptionDisplay = (track) => {
 };
 
 const findTrackByValue = (trackValue) => audioTracks.value.find((item) => item.value === trackValue);
+const getSelectedTrackForEvent = (eventKey) => findTrackByValue(soundForm.settings[eventKey]?.track ?? null);
 
 const isMessageEvent = computed(() => ruleForm.event === 'message.received');
 const showMinAmountFilter = computed(() => {
@@ -207,6 +210,32 @@ const previewSoundTrack = (trackValue) => {
     playNotificationAudio(track.url, {interrupt: true});
 };
 
+const openSoundPicker = async (eventKey) => {
+    if (!showInAppSoundSettings.value || !soundPickerDialog.value) {
+        return;
+    }
+
+    soundPickerEventKey.value = eventKey;
+    await nextTick();
+    soundPickerDialog.value.showModal();
+};
+
+const closeSoundPicker = () => {
+    if (soundPickerDialog.value?.open) {
+        soundPickerDialog.value.close();
+    }
+    soundPickerEventKey.value = null;
+};
+
+const chooseTrackFromModal = (trackValue) => {
+    if (!soundPickerEventKey.value) {
+        return;
+    }
+
+    selectSoundTrack(soundPickerEventKey.value, trackValue);
+    closeSoundPicker();
+};
+
 const refreshTelegramLink = () => {
     telegramForm.post(route('notifications.telegram.link'), {
         preserveScroll: true,
@@ -290,14 +319,17 @@ router.on('success', () => {
                             <div
                                 v-for="eventKey in SOUND_EVENT_KEYS"
                                 :key="eventKey"
-                                class="grid grid-cols-1 gap-3 rounded-box border border-base-300 p-3 md:grid-cols-[12rem_11.5rem_minmax(0,1fr)_auto] md:items-stretch md:gap-x-3 md:gap-y-1"
+                                class="grid grid-cols-1 gap-2 rounded-box border border-base-300 px-3 py-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center sm:gap-x-6"
                             >
-                                <div class="flex min-h-0 min-w-0 items-center md:h-full">
-                                    <div class="font-medium leading-snug">{{ soundEventLabels[eventKey] }}</div>
+                                <div class="min-h-0 min-w-0">
+                                    <div class="text-sm font-medium leading-snug">{{ soundEventLabels[eventKey] }}</div>
+                                    <div class="text-xs text-base-content/60 truncate">
+                                        {{ trackOptionDisplay(getSelectedTrackForEvent(eventKey)) || 'Звук не выбран' }}
+                                    </div>
                                 </div>
 
                                 <label
-                                    class="flex min-h-0 w-full max-w-full items-center gap-2 md:h-full"
+                                    class="flex min-h-0 w-full max-w-full items-center justify-self-start gap-2 sm:justify-self-auto"
                                 >
                                     <input
                                         type="checkbox"
@@ -306,35 +338,19 @@ router.on('success', () => {
                                         :disabled="soundForm.processing"
                                         @change="toggleSoundEnabled(eventKey)"
                                     />
-                                    <span class="text-sm whitespace-nowrap">
+                                    <span class="text-xs whitespace-nowrap">
                                         {{ soundForm.settings[eventKey]?.enabled ? 'Включено' : 'Выключено' }}
                                     </span>
                                 </label>
 
-                                <div
-                                    class="flex min-h-0 w-full max-w-full flex-col justify-center gap-0.5 md:h-full md:max-w-none"
-                                >
-                                    <select
-                                        class="select select-bordered select-sm min-w-0 w-full max-w-xs md:max-w-none"
-                                        :value="soundForm.settings[eventKey]?.track ?? ''"
-                                        :disabled="soundForm.processing || !audioTracks.length"
-                                        @change="selectSoundTrack(eventKey, $event.target.value)"
-                                    >
-                                        <option disabled value="">Выберите звук</option>
-                                        <option v-for="track in audioTracks" :key="track.value" :value="track.value">
-                                            {{ trackOptionDisplay(track) }}
-                                        </option>
-                                    </select>
-                                </div>
-
-                                <div class="flex min-h-0 items-center md:h-full md:justify-end">
+                                <div class="flex min-h-0 items-center justify-self-start sm:justify-self-end">
                                     <button
                                         type="button"
-                                        class="btn btn-sm btn-outline w-fit shrink-0"
-                                        :disabled="!soundForm.settings[eventKey]?.track"
-                                        @click.prevent="previewSoundTrack(soundForm.settings[eventKey]?.track)"
+                                        class="btn btn-xs btn-outline w-fit shrink-0"
+                                        :disabled="soundForm.processing || !audioTracks.length"
+                                        @click.prevent="openSoundPicker(eventKey)"
                                     >
-                                        Проверить
+                                        Выбрать звук
                                     </button>
                                 </div>
                             </div>
@@ -516,5 +532,71 @@ router.on('success', () => {
         </div>
 
         <ConfirmModal />
+
+        <dialog ref="soundPickerDialog" class="modal" @close="closeSoundPicker">
+            <div class="modal-box flex max-h-[78vh] w-[calc(100vw-2rem)] max-w-xl flex-col gap-3 p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold">Выбор звука</h3>
+                        <p class="text-sm text-base-content/70">
+                            {{ soundPickerEventKey ? soundEventLabels[soundPickerEventKey] : '' }}
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-circle btn-ghost" @click="closeSoundPicker">✕</button>
+                </div>
+
+                <div v-if="!audioTracks.length" class="alert alert-info text-sm">
+                    Доступные звуки не найдены.
+                </div>
+
+                <div v-else class="min-h-0 overflow-y-auto overflow-x-hidden rounded-box border border-base-300">
+                    <table class="table table-xs">
+                        <tbody>
+                            <tr v-for="track in audioTracks" :key="track.value">
+                                <td class="min-w-0 py-2">
+                                    <div class="font-medium truncate">{{ trackOptionLabel(track) }}</div>
+                                    <div v-if="getNamedTrackSubtitle(track)" class="text-xs text-base-content/70 truncate">
+                                        {{ getNamedTrackSubtitle(track) }}
+                                    </div>
+                                </td>
+                                <td class="w-px py-2">
+                                    <button
+                                        type="button"
+                                        class="btn btn-xs btn-square btn-outline"
+                                        :disabled="soundForm.processing"
+                                        :aria-label="`Проиграть ${trackOptionLabel(track)}`"
+                                        @click.prevent="previewSoundTrack(track.value)"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                            class="size-3.5"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M6.5 4.75v10.5L15 10 6.5 4.75Z" />
+                                        </svg>
+                                    </button>
+                                </td>
+                                <td class="w-px py-2 text-right">
+                                    <button
+                                        type="button"
+                                        class="btn btn-xs"
+                                        :class="soundPickerEventKey && soundForm.settings[soundPickerEventKey]?.track === track.value ? 'btn-primary' : 'btn-ghost'"
+                                        :disabled="soundForm.processing"
+                                        @click.prevent="chooseTrackFromModal(track.value)"
+                                    >
+                                        {{ soundPickerEventKey && soundForm.settings[soundPickerEventKey]?.track === track.value ? 'Выбрано' : 'Выбрать' }}
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button @click="closeSoundPicker">close</button>
+            </form>
+        </dialog>
     </div>
 </template>

@@ -11,8 +11,8 @@ import Modal from '@/Components/Modals/Modal.vue';
 import Pagination from '@/Components/Pagination/Pagination.vue';
 import { formatDistanceStrict } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import DisplayUUID from "../../../Components/DisplayUUID.vue";
 import TraderExportModal from '@/Components/Export/TraderExportModal.vue';
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 
 const PAYOUT_LIST_PER_PAGE = 10;
 
@@ -402,6 +402,25 @@ const displayActivePayoutRequisites = (payout) => {
     return formatCardDigitsGroups(payout.requisites);
 };
 
+const displayAvailablePayoutRequisites = (payout) => {
+    if (payout?.payout_method_type?.value !== 'card') {
+        return payout?.requisites ?? '';
+    }
+
+    const digits = String(payout?.requisites ?? '').replace(/\D/g, '');
+    if (!digits) {
+        return payout?.requisites ?? '';
+    }
+
+    if (digits.length <= 8) {
+        return digits;
+    }
+
+    const middle_mask = '*'.repeat(digits.length - 8);
+
+    return `${digits.slice(0, 4)}${middle_mask}${digits.slice(-4)}`;
+};
+
 const active_payout_copied_id = ref(null);
 
 /** Сырой номер для буфера: только цифры, без пробелов и форматирования. */
@@ -421,7 +440,44 @@ const copyActivePayoutRawRequisites = async (payout) => {
     }
 
     try {
-        await navigator.clipboard.writeText(text);
+        const copyWithFallback = async (value) => {
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(value);
+                return true;
+            }
+
+            if (typeof document === 'undefined') {
+                return false;
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            textarea.style.pointerEvents = 'none';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+
+            let copied = false;
+
+            try {
+                copied = document.execCommand('copy');
+            } finally {
+                document.body.removeChild(textarea);
+            }
+
+            return copied;
+        };
+
+        const copied = await copyWithFallback(text);
+        if (!copied) {
+            return;
+        }
+
         active_payout_copied_id.value = payout.id;
 
         if (active_payout_copied_clear_timer) {
@@ -656,9 +712,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="card-body space-y-2 p-4 pt-2 pb-3 xl:space-y-4 xl:p-6">
                                         <div class="xl:hidden flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                             <div class="min-w-0 flex-1 text-[11px]">
-                                                <div class="inline-flex items-center text-base-content/70 min-w-0">
-                                                    <span>UUID:</span>
-                                                    <DisplayUUID :uuid="payout.uuid" />
+                                                <div class="inline-flex items-center gap-1 pl-1 min-w-0">
+                                                    <span class="text-base-content/70">UUID:</span>
+                                                    <CopyableOrderUid :uuid="payout.uuid ?? ''" />
                                                 </div>
                                             </div>
                                             <div class="shrink-0 text-right leading-tight">
@@ -765,6 +821,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     <div class="space-y-0">
                                                         <div class="text-xs uppercase text-base-content/60">Получатель</div>
                                                         <div class="font-semibold">{{ payout.initials }}</div>
+                                                    </div>
+                                                    <div class="space-y-0">
+                                                        <div class="text-xs uppercase text-base-content/60">UUID</div>
+                                                        <div class="font-semibold">
+                                                            <CopyableOrderUid :uuid="payout.uuid ?? ''" />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -968,6 +1030,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <thead class="text-xs uppercase bg-base-300">
                                             <tr>
                                                 <th scope="col">
+                                                    UUID
+                                                </th>
+                                                <th scope="col">
                                                     Реквизит
                                                 </th>
                                                 <th scope="col">
@@ -993,7 +1058,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <tbody>
                                             <template v-if="payoutEmptyState">
                                                 <tr>
-                                                    <td colspan="7" class="text-center text-sm text-base-content/60 py-6">Пока нет заявок</td>
+                                                    <td colspan="8" class="text-center text-sm text-base-content/60 py-6">Пока нет заявок</td>
                                                 </tr>
                                             </template>
                                             <template v-else>
@@ -1002,6 +1067,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 :key="payout.id"
                                                 class="bg-base-100 border-b last:border-none border-base-200"
                                             >
+                                                <td class="font-mono text-xs">
+                                                    <CopyableOrderUid :uuid="payout.uuid ?? ''" />
+                                                </td>
                                                 <td>
                                                     <div class="flex items-center gap-3">
                                                         <div v-if="hasCustomBank(payout)" class="text-base-content/70">
@@ -1024,7 +1092,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         </div>
                                                         <div>
                                                             <div class="text-nowrap text-base-content">
-                                                                {{ payout.requisites }}
+                                                                {{ displayAvailablePayoutRequisites(payout) }}
                                                             </div>
                                                             <div class="text-xs text-base-content/60">
                                                                 {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
@@ -1082,9 +1150,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="card-body p-4 pt-2 pb-3">
                                                 <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                                     <div class="min-w-0 flex-1 text-[11px]">
-                                                        <div class="inline-flex items-center text-base-content/70 min-w-0">
-                                                            <span>UUID:</span>
-                                                            <DisplayUUID :uuid="payout.uuid"/>
+                                                        <div class="inline-flex items-center gap-1 pl-1 min-w-0">
+                                                            <span class="text-base-content/70">UUID:</span>
+                                                            <CopyableOrderUid :uuid="payout.uuid ?? ''" />
                                                         </div>
                                                     </div>
                                                     <div class="shrink-0 text-right leading-tight">
@@ -1118,7 +1186,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     </div>
                                                     <div class="min-w-0 flex-1">
                                                         <div class="text-xs font-medium text-base-content leading-snug break-words">
-                                                            {{ payout.requisites }}
+                                                            {{ displayAvailablePayoutRequisites(payout) }}
                                                         </div>
                                                         <div class="text-[11px] text-base-content/60 leading-snug">
                                                             {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
@@ -1247,7 +1315,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <template v-else>
                                 <tr v-for="payout in historyList" :key="payout.id">
                                     <td class="font-mono text-xs">
-                                        <DisplayUUID :uuid="payout.uuid"/>
+                                        <CopyableOrderUid :uuid="payout.uuid ?? ''" />
                                     </td>
                                     <td>
                                         <div class="flex items-center gap-3">
@@ -1330,9 +1398,9 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div class="card-body p-4 pt-2 pb-3">
                                         <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                             <div class="min-w-0 flex-1 text-[11px]">
-                                                <div class="inline-flex items-center text-base-content/70 min-w-0">
-                                                    <span>UUID:</span>
-                                                    <DisplayUUID :uuid="payout.uuid" />
+                                                <div class="inline-flex items-center gap-1 pl-1 min-w-0">
+                                                    <span class="text-base-content/70">UUID:</span>
+                                                    <CopyableOrderUid :uuid="payout.uuid ?? ''" />
                                                 </div>
                                             </div>
                                             <div class="shrink-0 text-right leading-tight">

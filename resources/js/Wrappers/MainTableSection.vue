@@ -5,9 +5,11 @@ import Pagination from "@/Components/Pagination/Pagination.vue";
 import TableEmptyState from "@/Components/TableEmptyState.vue";
 import AlertError from "@/Components/Alerts/AlertError.vue";
 import AlertInfo from "@/Components/Alerts/AlertInfo.vue";
+import {useModalStore} from "@/store/modal.js";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 
 const tableFiltersStore = useTableFiltersStore();
+const modalStore = useModalStore();
 const page = usePage();
 
 const props = defineProps({
@@ -95,11 +97,32 @@ const openPage = () => {
 
 const {uid} = getCurrentInstance();
 
-const hasPendingDisputes = ref(usePage().props.data.hasPendingDisputes);
+const hasPendingDisputes = ref(usePage().props.data?.hasPendingDisputes);
+const pendingDisputesCount = computed(() => Number(usePage().props.menu?.pendingDisputesCount ?? 0));
+const pendingDisputePreview = ref(usePage().props.data?.pendingDisputePreview ?? null);
 
-router.on('success', (event) => {
-    hasPendingDisputes.value = usePage().props.data.hasPendingDisputes;
-})
+const pendingDisputeBannerMessage = computed(() => {
+    if (pendingDisputesCount.value <= 1) {
+        return 'У вас есть незакрытый спор.';
+    }
+
+    return `У вас есть незакрытые споры (${pendingDisputesCount.value}).`;
+});
+
+const openPendingDisputePrimary = () => {
+    if (pendingDisputePreview.value && pendingDisputesCount.value === 1) {
+        modalStore.openDisputeModal({dispute: pendingDisputePreview.value});
+
+        return;
+    }
+
+    router.visit(route('disputes.index'));
+};
+
+router.on('success', () => {
+    hasPendingDisputes.value = usePage().props.data?.hasPendingDisputes;
+    pendingDisputePreview.value = usePage().props.data?.pendingDisputePreview ?? null;
+});
 </script>
 
 <template>
@@ -121,7 +144,20 @@ router.on('success', (event) => {
                     <slot name="button"></slot>
                 </div>
 
-                <AlertError v-if="hasPendingDisputes" message="У вас есть не закрытый спор!"></AlertError>
+                <div
+                    v-if="hasPendingDisputes"
+                    role="alert"
+                    class="alert alert-error flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <span class="min-w-0">{{ pendingDisputeBannerMessage }}</span>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline shrink-0"
+                        @click.prevent="openPendingDisputePrimary"
+                    >
+                        Посмотреть
+                    </button>
+                </div>
                 <AlertError :message="$page.props.flash.error"></AlertError>
                 <AlertInfo :message="$page.props.flash.message"></AlertInfo>
 

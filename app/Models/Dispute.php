@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DisputeStatus;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +36,18 @@ class Dispute extends Model
     protected $casts = [
         'status' => DisputeStatus::class,
     ];
+
+    /**
+     * Pending disputes first, then newest by creation time (admin/trader index tables).
+     */
+    public function scopeOrderedWithPendingFirst(Builder $query): Builder
+    {
+        $table = $query->getModel()->getTable();
+
+        return $query
+            ->orderByRaw("CASE WHEN {$table}.status = ? THEN 0 ELSE 1 END", [DisputeStatus::PENDING->value])
+            ->orderByDesc("{$table}.created_at");
+    }
 
     public function order(): BelongsTo
     {
