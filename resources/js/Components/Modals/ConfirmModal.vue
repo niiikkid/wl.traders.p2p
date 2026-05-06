@@ -15,9 +15,12 @@ const close = () => {
 };
 const confirm = () => {
     processing.value = true;
-    confirmModal.value.params.confirm()
-    processing.value = false;
-    modalStore.closeModal('confirm')
+    try {
+        confirmModal.value.params.confirm?.();
+    } finally {
+        processing.value = false;
+        modalStore.closeModal('confirm');
+    }
 };
 </script>
 

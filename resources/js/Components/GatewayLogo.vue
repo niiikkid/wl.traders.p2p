@@ -17,9 +17,12 @@ const uid = computed(() => Math.random().toString(36).substring(2, 9));
 <template>
     <div>
         <div :class="{'tooltip': !!name}" :data-tip="name || ''" class="rounded-lg overflow-hidden">
-            <img v-if="img_path"
-                 :src="img_path"
-                 class=""
+            <img
+                v-if="img_path"
+                :src="img_path"
+                class=""
+                loading="lazy"
+                decoding="async"
             />
             <svg v-else
                  aria-hidden="true"

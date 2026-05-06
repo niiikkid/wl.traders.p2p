@@ -305,7 +305,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </tr>
                                     </thead>
                                     <tbody>
-                                    <tr v-for="sms_log in smsLogs.data" class="hover">
+                                    <tr v-for="sms_log in smsLogs.data" :key="sms_log.id" class="hover">
                                         <th scope="row" class="font-medium whitespace-nowrap">
                                             {{ sms_log.id }}
                                         </th>
@@ -625,6 +625,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                 :src="paymentGateway.logo_path"
                                 class="size-8 shrink-0 rounded opacity-90"
                                 alt="Логотип банка"
+                                loading="lazy"
+                                decoding="async"
                             >
                             <div
                                 class="min-w-0 truncate text-sm"
@@ -649,6 +651,8 @@ defineOptions({ layout: AuthenticatedLayout })
                             :src="selectedPaymentGateway.logo_path"
                             class="size-9 shrink-0 rounded-md opacity-95"
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                         >
                         <div class="min-w-0 text-base font-semibold text-base-content">
                             {{ selectedPaymentGateway.name }}
