@@ -17,7 +17,7 @@ class Parser
     protected ?PaymentGateway $paymentGateway = null;
 
     public function __construct(
-        protected SmsAmountParsingProfileResolver $profileResolver = new SmsAmountParsingProfileResolver(),
+        protected SmsAmountParsingProfileResolver $profileResolver = new SmsAmountParsingProfileResolver,
     ) {}
 
     public function parse(string $sender, string $message): ?ParserResultValue
@@ -46,7 +46,8 @@ class Parser
     public function normalizeAmount(string $raw): string
     {
         $raw = trim($raw);
-        $raw = str_replace(["\xC2\xA0", ' '], '', $raw); // убираем пробелы и неразрывные пробелы
+        // NBSP, узкий пробел U+202F между тысячами и прочие Unicode-пробелы (\p{Zs})
+        $raw = preg_replace('/\p{Zs}+/u', '', $raw);
 
         // Если число содержит и точку и запятую
         if (str_contains($raw, ',') && str_contains($raw, '.')) {
@@ -102,7 +103,7 @@ class Parser
         $amount = null;
 
         foreach ($stopWords as $stopWord) {
-            $regex = '/(|^|\s|;)' . $stopWord . '(\s|\.|:)/mi';
+            $regex = '/(|^|\s|;)'.$stopWord.'(\s|\.|:)/mi';
             preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
             if (! empty($matches[0])) {
@@ -111,7 +112,7 @@ class Parser
         }
 
         foreach ($exceptions as $exception) {
-            $regex = '/' . $exception . '/miu';
+            $regex = '/'.$exception.'/miu';
             preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
             if (! empty($matches[0]['amount'])) {
@@ -123,7 +124,7 @@ class Parser
         if (empty($amount)) {
             foreach ($triggerPatterns as $triggerWord) {
                 // Сообщение уже в нижнем регистре (NormalizeMessage). mb_strtolower() по шаблону ломает escapes (\S → \s).
-                $regex = '/' . $triggerWord . '/miu';
+                $regex = '/'.$triggerWord.'/miu';
                 preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
                 if (! empty($matches[0])) {
@@ -146,7 +147,7 @@ class Parser
         $profile = $this->profileResolver->resolve($currency);
 
         $body = $profile->cardLastDigitsPattern();
-        $regex = '/' . $body . '/miu';
+        $regex = '/'.$body.'/miu';
         preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
         $digits = null;
@@ -174,9 +175,9 @@ class Parser
     protected function findAmount(string $message, SmsAmountParsingProfileContract $profile): ?string
     {
         $markers = $profile->amountCurrencyMarkers();
-        $amountRegex = '(\s|\+)(?<amount>\d+(.\d+){0,3})\s{0,1}(' . $markers . ')(\s|\.|\,|\;|$)';
+        $amountRegex = '(\s|\+)(?<amount>\d+(.\d+){0,3})\s{0,1}('.$markers.')(\s|\.|\,|\;|$)';
 
-        $regex = '/' . $amountRegex . '/miu';
+        $regex = '/'.$amountRegex.'/miu';
         preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
 
         $amount = null;
