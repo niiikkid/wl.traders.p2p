@@ -7,6 +7,7 @@ use App\Models\PaymentGateway;
 use App\Rules\UniquePaymentDetail;
 use App\Rules\UniquePhonePaymentDetail;
 use App\Services\Money\Currency;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -25,7 +26,7 @@ class StoreRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -42,43 +43,44 @@ class StoreRequest extends FormRequest
                     // Пытаемся определить страну по префиксу
                     $country = $this->guessCountryByPrefix($normalized);
 
-                    if (!$country) {
+                    if (! $country) {
                         $fail('Не удалось определить страну по номеру телефона.');
+
                         return;
                     }
                 },
             ];
-        } else if (DetailType::CARD->equals($this->detail_type)) {
+        } elseif (DetailType::CARD->equals($this->detail_type)) {
             $detail = [
                 'required',
                 'digits:16',
-                new UniquePaymentDetail()
+                new UniquePaymentDetail,
             ];
-        } else if (in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
+        } elseif (in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
             $detail = [
                 'required',
                 'string',
                 'url:https',
-                new UniquePaymentDetail(),
+                new UniquePaymentDetail,
             ];
-        } else if (DetailType::ACCOUNT_NUMBER->equals($this->detail_type)) {
+        } elseif (DetailType::ACCOUNT_NUMBER->equals($this->detail_type)) {
             $detail = [
                 'required',
                 'digits:20',
-                new UniquePaymentDetail()
+                new UniquePaymentDetail,
             ];
-        } else if (DetailType::IBAN_UAH->equals($this->detail_type)) {
+        } elseif (DetailType::IBAN_UAH->equals($this->detail_type)) {
             $detail = [
                 'required',
                 'string',
                 'regex:/^UA\d{27}$/',
-                new UniquePaymentDetail()
+                new UniquePaymentDetail,
             ];
         } else {
             $detail = [
                 'required',
                 'digits:16',
-                new UniquePaymentDetail()
+                new UniquePaymentDetail,
             ];
         }
 
@@ -109,15 +111,18 @@ class StoreRequest extends FormRequest
                 'integer',
                 'min:1',
                 'max:100000000',
-                Rule::requiredIf($this->monthly_limit_reset_day !== null && $this->monthly_limit_reset_day !== ''),
             ],
             'monthly_limit_reset_day' => [
                 'nullable',
                 'integer',
                 'min:1',
-                'max:28',
-                Rule::requiredIf($this->monthly_limit !== null && $this->monthly_limit !== ''),
+                'max:31',
+                Rule::requiredIf(
+                    ($this->monthly_limit !== null && $this->monthly_limit !== '')
+                    || ($this->monthly_successful_orders_limit !== null && $this->monthly_successful_orders_limit !== '')
+                ),
             ],
+            'monthly_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'min_order_amount' => [
                 'nullable',
@@ -172,18 +177,18 @@ class StoreRequest extends FormRequest
                 'required',
                 'exists:payment_gateways,id',
                 function ($attribute, $value, $fail) {
-                    $gateway = PaymentGateway::find($value);
+                    $gateway = PaymentGateway::query()->find($value);
                     if ($gateway && $gateway->currency->getCode() !== $this->currency) {
                         $fail('Валюта платежного метода не соответствует выбранной валюте.');
                     }
-                }
+                },
             ],
             'max_pending_orders_quantity' => ['required', 'integer', 'min:1', 'max:100000000'],
             'order_interval_minutes' => ['nullable', 'integer', 'min:1'],
             'user_device_id' => [
                 Rule::requiredIf($this->deviceIsRequired()),
                 'nullable',
-                'exists:user_devices,id'
+                'exists:user_devices,id',
             ],
         ];
     }
@@ -198,6 +203,7 @@ class StoreRequest extends FormRequest
             'daily_limit' => __('дневной лимит'),
             'monthly_limit' => __('месячный лимит'),
             'monthly_limit_reset_day' => __('день сброса месячного лимита'),
+            'monthly_successful_orders_limit' => __('месячный лимит по количеству сделок'),
             'daily_successful_orders_limit' => __('дневной лимит по количеству сделок'),
             'min_order_amount' => __('минимальная сумма сделки'),
             'max_order_amount' => __('максимальная сумма сделки'),
@@ -214,6 +220,7 @@ class StoreRequest extends FormRequest
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
         $monthlyLimit = $this->monthly_limit;
         $monthlyLimitResetDay = $this->monthly_limit_reset_day;
+        $monthlySuccessfulOrdersLimit = $this->monthly_successful_orders_limit;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
 
@@ -235,6 +242,9 @@ class StoreRequest extends FormRequest
         if ($monthlyLimitResetDay === '' || $monthlyLimitResetDay === null) {
             $monthlyLimitResetDay = null;
         }
+        if ($monthlySuccessfulOrdersLimit === '' || $monthlySuccessfulOrdersLimit === null) {
+            $monthlySuccessfulOrdersLimit = null;
+        }
         if ($minOrderAmount === '' || $minOrderAmount === null) {
             $minOrderAmount = null;
         }
@@ -249,6 +259,7 @@ class StoreRequest extends FormRequest
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
             'monthly_limit' => $monthlyLimit,
             'monthly_limit_reset_day' => $monthlyLimitResetDay,
+            'monthly_successful_orders_limit' => $monthlySuccessfulOrdersLimit,
             'min_order_amount' => $minOrderAmount,
             'max_order_amount' => $maxOrderAmount,
         ]);
@@ -313,5 +324,4 @@ class StoreRequest extends FormRequest
             'max' => $maxBound,
         ];
     }
-
 }

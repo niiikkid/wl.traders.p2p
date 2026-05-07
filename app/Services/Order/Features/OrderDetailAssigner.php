@@ -14,6 +14,7 @@ use App\Services\Order\Features\OrderDetailProvider\OrderDetailProvider;
 use App\Services\Order\Utils\DailyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
 use App\Services\Order\Utils\MonthlyLimit;
+use App\Services\Order\Utils\MonthlySuccessfulOrdersLimit;
 
 class OrderDetailAssigner
 {
@@ -75,6 +76,7 @@ class OrderDetailAssigner
         DailyLimit::increment($this->order->payment_detail_id, $this->order->amount, $this->order->created_at);
         MonthlyLimit::increment($this->order->payment_detail_id, $this->order->amount, $this->order->created_at);
         DailySuccessfulOrdersLimit::increment($this->order->payment_detail_id, $this->order->created_at);
+        MonthlySuccessfulOrdersLimit::increment($this->order->payment_detail_id, $this->order->created_at);
 
         services()->wallet()->takeFromBalance(
             $this->order->trader->wallet->id,

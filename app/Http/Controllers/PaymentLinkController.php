@@ -13,15 +13,15 @@ class PaymentLinkController extends Controller
 {
     public function show(Order $order)
     {
-        //Временно отключено
+        // Временно отключено
         /*$gatewaySettings = collect($order->merchant->gateway_settings)->filter(function ($setting) {
             return $setting['active'] ?? true;
         });*/
 
         $availableGateways = PaymentGateway::query()
-            //->whereIn('id', $gatewaySettings->keys()->all())В ременно отключено
+            // ->whereIn('id', $gatewaySettings->keys()->all())В ременно отключено
             ->where(function ($query) use ($order) {
-                $query->where('min_limit', '<=', intval($order->amount->toBeauty())); //TODO min_limit as units
+                $query->where('min_limit', '<=', intval($order->amount->toBeauty())); // TODO min_limit as units
                 $query->where('max_limit', '>=', intval($order->amount->toBeauty()));
             })
             ->where('currency', $order->currency)
@@ -40,13 +40,18 @@ class PaymentLinkController extends Controller
                     $subQuery->whereNull('daily_successful_orders_limit')
                         ->orWhereColumn('current_daily_successful_orders_count', '<', 'daily_successful_orders_limit');
                 });
+                $query->where(function ($subQuery) {
+                    $subQuery->whereNull('monthly_successful_orders_limit')
+                        ->orWhereNull('monthly_limit_reset_day')
+                        ->orWhereColumn('current_monthly_successful_orders_count', '<', 'monthly_successful_orders_limit');
+                });
             })
             ->get()
-            ->transform(function (PaymentGateway $paymentGateway) use ($order) {
+            ->transform(function (PaymentGateway $paymentGateway) {
                 return [
                     'id' => $paymentGateway->id,
                     'name' => $paymentGateway->name,
-                    'logo_path' => $paymentGateway->logo ? asset('storage/logos/'.$paymentGateway->logo) : null, //TODO убрать в модель
+                    'logo_path' => $paymentGateway->logo ? asset('storage/logos/'.$paymentGateway->logo) : null, // TODO убрать в модель
                 ];
             })
             ->toArray();
@@ -69,12 +74,12 @@ class PaymentLinkController extends Controller
             'created_at' => $order->created_at->toDateTimeString(),
             'expires_at' => $order->expires_at?->toDateTimeString(),
             'now' => now()->toDateTimeString(),
-            'has_dispute' => intval(!! $order->dispute),
+            'has_dispute' => intval((bool) $order->dispute),
             'dispute_status' => $order->dispute?->status->value,
             'dispute_cancel_reason' => $order->dispute?->reason,
-            'manually' => !$order->paymentDetail?->detail,
+            'manually' => ! $order->paymentDetail?->detail,
             'gateway_selected' => (bool) $order->paymentDetail,
-            'available_gateways' => $availableGateways
+            'available_gateways' => $availableGateways,
         ];
 
         return Inertia::render('PaymentLink/Index', compact('data'));

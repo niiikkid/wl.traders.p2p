@@ -14,6 +14,7 @@ readonly class PaymentDetailUpdateDTO extends BaseDTO
         public int $daily_limit,
         public ?int $monthly_limit,
         public ?int $monthly_limit_reset_day,
+        public ?int $monthly_successful_orders_limit,
         public ?int $daily_successful_orders_limit,
         /** @var array<int> */
         public array $payment_gateway_ids,
@@ -34,6 +35,9 @@ readonly class PaymentDetailUpdateDTO extends BaseDTO
             daily_limit: (int) $data['daily_limit'],
             monthly_limit: isset($data['monthly_limit']) ? (int) $data['monthly_limit'] : null,
             monthly_limit_reset_day: isset($data['monthly_limit_reset_day']) ? (int) $data['monthly_limit_reset_day'] : null,
+            monthly_successful_orders_limit: isset($data['monthly_successful_orders_limit'])
+                ? (int) $data['monthly_successful_orders_limit']
+                : null,
             daily_successful_orders_limit: isset($data['daily_successful_orders_limit'])
                 ? (int) $data['daily_successful_orders_limit']
                 : null,
@@ -46,5 +50,3 @@ readonly class PaymentDetailUpdateDTO extends BaseDTO
         );
     }
 }
-
-

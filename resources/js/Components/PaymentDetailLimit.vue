@@ -2,6 +2,10 @@
 import {computed} from "vue";
 
 const props = defineProps({
+    label: {
+        type: String,
+        default: '',
+    },
     current_daily_limit: {
         type: String,
     },
@@ -27,8 +31,11 @@ const color = computed(() => {
 </script>
 
 <template>
-    <div class="flex justify-end mb-1">
-        <div class="relative text-nowrap">
+    <div class="mb-1 flex min-w-0 flex-nowrap items-center justify-between gap-2">
+        <div v-if="label" class="min-w-0 truncate text-xs text-base-content/70">
+            {{ label }}
+        </div>
+        <div class="relative shrink-0 text-nowrap">
             <span
                 class="text-xs font-semibold"
                 :class="{

@@ -15,8 +15,8 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -25,12 +25,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property DetailType $detail_type
  * @property string $initials
  * @property string|null $additional_info
- * @property boolean $is_active
+ * @property bool $is_active
  * @property Money $daily_limit
  * @property Money $current_daily_limit
  * @property Money|null $monthly_limit
  * @property Money $current_monthly_limit
  * @property int|null $monthly_limit_reset_day
+ * @property int|null $monthly_successful_orders_limit
+ * @property int $current_monthly_successful_orders_count
  * @property int|null $daily_successful_orders_limit
  * @property int $current_daily_successful_orders_count
  * @property Money $max_pending_orders_quantity
@@ -67,6 +69,8 @@ class PaymentDetail extends Model
         'monthly_limit',
         'current_monthly_limit',
         'monthly_limit_reset_day',
+        'monthly_successful_orders_limit',
+        'current_monthly_successful_orders_count',
         'daily_successful_orders_limit',
         'current_daily_successful_orders_count',
         'max_pending_orders_quantity',

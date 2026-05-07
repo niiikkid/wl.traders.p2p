@@ -32,6 +32,8 @@ class PaymentDetailResource extends JsonResource
             'monthly_limit' => $this->monthly_limit?->toBeauty(),
             'current_monthly_limit' => $this->current_monthly_limit->toBeauty(),
             'monthly_limit_reset_day' => $this->monthly_limit_reset_day,
+            'monthly_successful_orders_limit' => $this->monthly_successful_orders_limit,
+            'current_monthly_successful_orders_count' => $this->current_monthly_successful_orders_count,
             'daily_successful_orders_limit' => $this->daily_successful_orders_limit,
             'current_daily_successful_orders_count' => $this->current_daily_successful_orders_count,
             'pending_orders_count' => $this->pending_orders_count,

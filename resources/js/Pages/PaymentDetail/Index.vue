@@ -662,58 +662,81 @@ defineOptions({ layout: AuthenticatedLayout })
                                                             </div>
                                                         </div>
                                                     </template>
-                                                    <div class="grid gap-3 text-sm">
-                                                        <div class="grid gap-1">
-                                                            <div class="text-xs text-base-content/70">Активных сделок</div>
-                                                            <div class="flex justify-end mb-1">
-                                                                <div class="relative text-nowrap">
-                                                                    <span
-                                                                        class="text-xs font-semibold"
+                                                    <div class="grid gap-2 text-sm">
+                                                        <div class="rounded-box border border-base-200 bg-base-100 p-2">
+                                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                                <span class="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">В день</span>
+                                                                <span class="badge badge-xs badge-outline">суточные</span>
+                                                            </div>
+                                                            <div class="grid gap-2">
+                                                                <div class="grid gap-1">
+                                                                    <div class="flex min-w-0 flex-nowrap items-center justify-between gap-2">
+                                                                        <div class="min-w-0 truncate text-xs text-base-content/70">Активных сделок</div>
+                                                                        <div class="relative shrink-0 text-nowrap">
+                                                                            <span
+                                                                                class="text-xs font-semibold"
+                                                                                :class="{
+                                                                                    'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
+                                                                                    'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
+                                                                                    'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
+                                                                                }"
+                                                                            >
+                                                                                {{ payment_detail.pending_orders_count }}
+                                                                            </span>
+                                                                            <span class="mx-1 opacity-70">из</span>
+                                                                            <span class="text-xs font-semibold">
+                                                                                {{ payment_detail.max_pending_orders_quantity }}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <progress
+                                                                        class="progress w-full"
                                                                         :class="{
-                                                                            'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                                            'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                                            'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
+                                                                            'progress-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
+                                                                            'progress-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
+                                                                            'progress-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
                                                                         }"
-                                                                    >
-                                                                        {{ payment_detail.pending_orders_count }}
-                                                                    </span>
-                                                                    <span class="mx-1 opacity-70">из</span>
-                                                                    <span class="text-xs font-semibold">
-                                                                        {{ payment_detail.max_pending_orders_quantity }}
-                                                                    </span>
+                                                                        :value="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
+                                                                        max="100"
+                                                                    ></progress>
+                                                                </div>
+                                                                <div class="grid gap-1">
+                                                                    <PaymentDetailOrdersLimit
+                                                                        label="Количество сделок"
+                                                                        :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
+                                                                        :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
+                                                                    />
+                                                                </div>
+                                                                <div class="grid gap-1">
+                                                                    <PaymentDetailLimit
+                                                                        label="Объём сделок"
+                                                                        :current_daily_limit="payment_detail.current_daily_limit"
+                                                                        :daily_limit="payment_detail.daily_limit"
+                                                                    />
                                                                 </div>
                                                             </div>
-                                                            <progress
-                                                                class="progress w-full"
-                                                                :class="{
-                                                                    'progress-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                                    'progress-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                                    'progress-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
-                                                                }"
-                                                                :value="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
-                                                                max="100"
-                                                            ></progress>
                                                         </div>
-                                                        <div class="grid gap-1">
-                                                            <div class="text-xs text-base-content/70">Количество сделок за день</div>
-                                                            <PaymentDetailOrdersLimit
-                                                                :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
-                                                                :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
-                                                            />
-                                                        </div>
-                                                        <div class="grid gap-1">
-                                                            <div class="text-xs text-base-content/70">Объём сделок за день</div>
-                                                            <PaymentDetailLimit
-                                                                :current_daily_limit="payment_detail.current_daily_limit"
-                                                                :daily_limit="payment_detail.daily_limit"
-                                                            />
-                                                        </div>
-                                                        <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1">
-                                                            <div class="text-xs text-base-content/70">Объём сделок за месяц</div>
-                                                            <PaymentDetailLimit
-                                                                :current_daily_limit="payment_detail.current_monthly_limit"
-                                                                :daily_limit="payment_detail.monthly_limit"
-                                                            />
+                                                        <div class="rounded-box border border-base-200 bg-base-100 p-2">
+                                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                                <span class="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">В месяц</span>
+                                                                <span class="badge badge-xs badge-outline">сброс {{ payment_detail.monthly_limit_reset_day ?? '—' }}</span>
+                                                            </div>
+                                                            <div class="grid gap-2">
+                                                                <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1">
+                                                                    <PaymentDetailLimit
+                                                                        label="Объём сделок"
+                                                                        :current_daily_limit="payment_detail.current_monthly_limit"
+                                                                        :daily_limit="payment_detail.monthly_limit"
+                                                                    />
+                                                                </div>
+                                                                <div class="grid gap-1">
+                                                                    <PaymentDetailOrdersLimit
+                                                                        label="Количество сделок"
+                                                                        :current_daily_successful_orders_count="payment_detail.current_monthly_successful_orders_count"
+                                                                        :daily_successful_orders_limit="payment_detail.monthly_successful_orders_limit"
+                                                                    />
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </TableCellPopover>
@@ -907,57 +930,80 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </div>
                                                 </div>
                                                 <div class="divider my-0.5"></div>
-                                                <div class="grid gap-1">
-                                                    <div class="text-[10px] text-base-content/70">Активных сделок</div>
-                                                    <div class="flex justify-end">
-                                                        <div class="relative text-nowrap">
-                                                            <span
-                                                                class="text-xs font-semibold"
+                                                <div class="rounded-box border border-base-200 bg-base-100 p-2">
+                                                    <div class="mb-1.5 flex items-center justify-between gap-2">
+                                                        <span class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60">В день</span>
+                                                        <span class="badge badge-xs badge-outline">суточные</span>
+                                                    </div>
+                                                    <div class="grid gap-1.5">
+                                                        <div class="grid gap-1">
+                                                            <div class="flex min-w-0 flex-nowrap items-center justify-between gap-2">
+                                                                <div class="min-w-0 truncate text-[10px] text-base-content/70">Активных сделок</div>
+                                                                <div class="relative shrink-0 text-nowrap">
+                                                                    <span
+                                                                        class="text-xs font-semibold"
+                                                                        :class="{
+                                                                            'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
+                                                                            'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
+                                                                            'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
+                                                                        }"
+                                                                    >
+                                                                        {{ payment_detail.pending_orders_count }}
+                                                                    </span>
+                                                                    <span class="mx-1 opacity-70">из</span>
+                                                                    <span class="text-xs font-semibold">
+                                                                        {{ payment_detail.max_pending_orders_quantity }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <progress
+                                                                class="progress w-full"
                                                                 :class="{
-                                                                    'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                                    'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                                    'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
+                                                                    'progress-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
+                                                                    'progress-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
+                                                                    'progress-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
                                                                 }"
-                                                            >
-                                                                {{ payment_detail.pending_orders_count }}
-                                                            </span>
-                                                            <span class="mx-1 opacity-70">из</span>
-                                                            <span class="text-xs font-semibold">
-                                                                {{ payment_detail.max_pending_orders_quantity }}
-                                                            </span>
+                                                                :value="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
+                                                                max="100"
+                                                            ></progress>
+                                                        </div>
+                                                        <div class="grid gap-1">
+                                                            <PaymentDetailOrdersLimit
+                                                                label="Количество сделок"
+                                                                :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
+                                                                :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
+                                                            />
+                                                        </div>
+                                                        <div class="grid gap-1">
+                                                            <PaymentDetailLimit
+                                                                label="Объём сделок"
+                                                                :current_daily_limit="payment_detail.current_daily_limit"
+                                                                :daily_limit="payment_detail.daily_limit"
+                                                            />
                                                         </div>
                                                     </div>
-                                                    <progress
-                                                        class="progress w-full"
-                                                        :class="{
-                                                            'progress-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                            'progress-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                            'progress-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
-                                                        }"
-                                                        :value="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
-                                                        max="100"
-                                                    ></progress>
                                                 </div>
-                                                <div class="grid gap-1 mt-1.5">
-                                                    <div class="text-[10px] text-base-content/70">Количество сделок за день</div>
-                                                    <PaymentDetailOrdersLimit
-                                                        :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
-                                                        :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
-                                                    />
-                                                </div>
-                                                <div class="grid gap-1 mt-1.5">
-                                                    <div class="text-[10px] text-base-content/70">Объём сделок за день</div>
-                                                    <PaymentDetailLimit
-                                                        :current_daily_limit="payment_detail.current_daily_limit"
-                                                        :daily_limit="payment_detail.daily_limit"
-                                                    />
-                                                </div>
-                                                <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1 mt-1.5">
-                                                    <div class="text-[10px] text-base-content/70">Объём сделок за месяц</div>
-                                                    <PaymentDetailLimit
-                                                        :current_daily_limit="payment_detail.current_monthly_limit"
-                                                        :daily_limit="payment_detail.monthly_limit"
-                                                    />
+                                                <div class="rounded-box border border-base-200 bg-base-100 p-2">
+                                                    <div class="mb-1.5 flex items-center justify-between gap-2">
+                                                        <span class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60">В месяц</span>
+                                                        <span class="badge badge-xs badge-outline">сброс {{ payment_detail.monthly_limit_reset_day ?? '—' }}</span>
+                                                    </div>
+                                                    <div class="grid gap-1.5">
+                                                        <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1">
+                                                            <PaymentDetailLimit
+                                                                label="Объём сделок"
+                                                                :current_daily_limit="payment_detail.current_monthly_limit"
+                                                                :daily_limit="payment_detail.monthly_limit"
+                                                            />
+                                                        </div>
+                                                        <div class="grid gap-1">
+                                                            <PaymentDetailOrdersLimit
+                                                                label="Количество сделок"
+                                                                :current_daily_successful_orders_count="payment_detail.current_monthly_successful_orders_count"
+                                                                :daily_successful_orders_limit="payment_detail.monthly_successful_orders_limit"
+                                                            />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                                 <div class="divider my-0.5"></div>
                                                 <div class="grid gap-1">

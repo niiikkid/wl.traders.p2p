@@ -4,6 +4,7 @@ namespace App\Http\Requests\PaymentDetail;
 
 use App\Enums\DetailType;
 use App\Models\PaymentGateway;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -21,7 +22,7 @@ class UpdateRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -50,15 +51,18 @@ class UpdateRequest extends FormRequest
                 'integer',
                 'min:1',
                 'max:100000000',
-                Rule::requiredIf($this->monthly_limit_reset_day !== null && $this->monthly_limit_reset_day !== ''),
             ],
             'monthly_limit_reset_day' => [
                 'nullable',
                 'integer',
                 'min:1',
-                'max:28',
-                Rule::requiredIf($this->monthly_limit !== null && $this->monthly_limit !== ''),
+                'max:31',
+                Rule::requiredIf(
+                    ($this->monthly_limit !== null && $this->monthly_limit !== '')
+                    || ($this->monthly_successful_orders_limit !== null && $this->monthly_successful_orders_limit !== '')
+                ),
             ],
+            'monthly_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'max_pending_orders_quantity' => ['required', 'integer', 'min:1', 'max:100000000'],
             'min_order_amount' => [
@@ -112,7 +116,7 @@ class UpdateRequest extends FormRequest
             'user_device_id' => [
                 Rule::requiredIf($this->deviceIsRequired()),
                 'nullable',
-                'exists:user_devices,id'
+                'exists:user_devices,id',
             ],
             'payment_gateway_ids' => ['required', 'array', 'min:1'],
             'payment_gateway_ids.*' => ['required', 'exists:payment_gateways,id'],
@@ -128,6 +132,7 @@ class UpdateRequest extends FormRequest
             'daily_limit' => __('дневной лимит'),
             'monthly_limit' => __('месячный лимит'),
             'monthly_limit_reset_day' => __('день сброса месячного лимита'),
+            'monthly_successful_orders_limit' => __('месячный лимит по количеству сделок'),
             'daily_successful_orders_limit' => __('дневной лимит по количеству сделок'),
             'min_order_amount' => __('минимальная сумма сделки'),
             'max_order_amount' => __('максимальная сумма сделки'),
@@ -150,6 +155,7 @@ class UpdateRequest extends FormRequest
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
         $monthlyLimit = $this->monthly_limit;
         $monthlyLimitResetDay = $this->monthly_limit_reset_day;
+        $monthlySuccessfulOrdersLimit = $this->monthly_successful_orders_limit;
         $additionalInfo = $this->additional_info;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
@@ -166,6 +172,9 @@ class UpdateRequest extends FormRequest
         if ($monthlyLimitResetDay === '' || $monthlyLimitResetDay === null) {
             $monthlyLimitResetDay = null;
         }
+        if ($monthlySuccessfulOrdersLimit === '' || $monthlySuccessfulOrdersLimit === null) {
+            $monthlySuccessfulOrdersLimit = null;
+        }
         if ($minOrderAmount === '' || $minOrderAmount === null) {
             $minOrderAmount = null;
         }
@@ -177,6 +186,7 @@ class UpdateRequest extends FormRequest
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
             'monthly_limit' => $monthlyLimit,
             'monthly_limit_reset_day' => $monthlyLimitResetDay,
+            'monthly_successful_orders_limit' => $monthlySuccessfulOrdersLimit,
             'additional_info' => $additionalInfo,
             'min_order_amount' => $minOrderAmount,
             'max_order_amount' => $maxOrderAmount,

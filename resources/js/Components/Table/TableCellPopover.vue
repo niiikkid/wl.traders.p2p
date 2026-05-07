@@ -5,29 +5,47 @@ const isOpen = ref(false);
 const dropdown = ref(null);
 const button = ref(null);
 const dropdownPosition = ref({top: 0, left: 0});
+const dropdownMaxHeight = ref(null);
 const isMobile = ref(false);
+
+const updateDropdownPosition = () => {
+    if (!button.value || !dropdown.value) {
+        return;
+    }
+
+    const gap = 6;
+    const viewportPadding = 8;
+    const rect = button.value.getBoundingClientRect();
+    const dropdownWidth = dropdown.value.offsetWidth;
+    const dropdownHeight = dropdown.value.offsetHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const minLeft = window.scrollX + viewportPadding;
+    const maxLeft = window.scrollX + viewportWidth - dropdownWidth - viewportPadding;
+    const defaultLeft = rect.left + window.scrollX;
+    const mobileLeft = rect.right + window.scrollX - dropdownWidth;
+    const targetLeft = isMobile.value ? mobileLeft : defaultLeft;
+    const spaceAbove = rect.top - viewportPadding - gap;
+    const spaceBelow = viewportHeight - rect.bottom - viewportPadding - gap;
+    const opensUp = spaceAbove > spaceBelow;
+    const availableHeight = Math.max(120, opensUp ? spaceAbove : spaceBelow);
+    const top = opensUp
+        ? rect.top + window.scrollY - Math.min(dropdownHeight, availableHeight) - gap
+        : rect.bottom + window.scrollY + gap;
+
+    dropdownPosition.value = {
+        top: Math.max(window.scrollY + viewportPadding, top),
+        left: Math.max(minLeft, Math.min(targetLeft, maxLeft)),
+    };
+    dropdownMaxHeight.value = `${availableHeight}px`;
+};
 
 const toggleDropdown = async () => {
     isOpen.value = !isOpen.value;
 
     if (isOpen.value) {
         await nextTick();
-
-        if (button.value && dropdown.value) {
-            const rect = button.value.getBoundingClientRect();
-            const dropdownWidth = dropdown.value.offsetWidth;
-            const viewportWidth = window.innerWidth;
-            const horizontalPadding = 8;
-            const maxLeft = viewportWidth - dropdownWidth - horizontalPadding;
-            const defaultLeft = rect.left + window.scrollX;
-            const mobileLeft = rect.right + window.scrollX - dropdownWidth;
-            const targetLeft = isMobile.value ? mobileLeft : defaultLeft;
-
-            dropdownPosition.value = {
-                top: rect.bottom + window.scrollY + 6,
-                left: Math.max(horizontalPadding, Math.min(targetLeft, maxLeft)),
-            };
-        }
+        updateDropdownPosition();
     }
 };
 
@@ -41,14 +59,18 @@ const overlay = ref(null);
 
 const updateMobileState = () => {
     isMobile.value = window.innerWidth < 768;
+
+    if (isOpen.value) {
+        updateDropdownPosition();
+    }
 };
 
 const dropdownStyles = computed(() => ({
     top: `${dropdownPosition.value.top}px`,
     left: `${dropdownPosition.value.left}px`,
     minWidth: "260px",
-    maxHeight: isMobile.value ? "60vh" : "none",
-    overflowY: isMobile.value ? "auto" : "visible",
+    maxHeight: dropdownMaxHeight.value ?? (isMobile.value ? "60vh" : "none"),
+    overflowY: dropdownMaxHeight.value || isMobile.value ? "auto" : "visible",
 }));
 
 const handleClickOutside = (event) => {

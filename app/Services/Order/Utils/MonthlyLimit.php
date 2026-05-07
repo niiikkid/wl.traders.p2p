@@ -62,7 +62,7 @@ class MonthlyLimit
         return $day->greaterThanOrEqualTo($periodStart);
     }
 
-    private static function resolveCurrentPeriodStart(int $resetDay, Carbon $now): Carbon
+    public static function resolveCurrentPeriodStart(int $resetDay, Carbon $now): Carbon
     {
         $currentMonthStartDay = min($resetDay, $now->daysInMonth);
         $currentMonthResetDate = $now->copy()->startOfMonth()->day($currentMonthStartDay)->startOfDay();

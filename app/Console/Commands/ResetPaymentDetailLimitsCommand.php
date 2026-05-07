@@ -46,6 +46,7 @@ class ResetPaymentDetailLimitsCommand extends Command
             })
             ->update([
                 'current_monthly_limit' => 0,
+                'current_monthly_successful_orders_count' => 0,
             ]);
     }
 }

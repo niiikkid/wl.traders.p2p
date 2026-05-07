@@ -4,7 +4,6 @@ namespace App\DTO\PaymentDetail;
 
 use App\DTO\BaseDTO;
 use App\Enums\DetailType;
-use App\Services\Money\Currency;
 
 readonly class PaymentDetailCreateDTO extends BaseDTO
 {
@@ -18,6 +17,7 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
         public int $daily_limit,
         public ?int $monthly_limit,
         public ?int $monthly_limit_reset_day,
+        public ?int $monthly_successful_orders_limit,
         public ?int $daily_successful_orders_limit,
         public string $currency,
         /** @var array<int> */
@@ -42,6 +42,9 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
             daily_limit: (int) $data['daily_limit'],
             monthly_limit: isset($data['monthly_limit']) ? (int) $data['monthly_limit'] : null,
             monthly_limit_reset_day: isset($data['monthly_limit_reset_day']) ? (int) $data['monthly_limit_reset_day'] : null,
+            monthly_successful_orders_limit: isset($data['monthly_successful_orders_limit'])
+                ? (int) $data['monthly_successful_orders_limit']
+                : null,
             daily_successful_orders_limit: isset($data['daily_successful_orders_limit'])
                 ? (int) $data['daily_successful_orders_limit']
                 : null,
@@ -56,5 +59,3 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
         );
     }
 }
-
-

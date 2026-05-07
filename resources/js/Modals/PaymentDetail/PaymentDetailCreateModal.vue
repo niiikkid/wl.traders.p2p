@@ -45,6 +45,7 @@ const form = ref({
     daily_limit: '',
     monthly_limit: '',
     monthly_limit_reset_day: '',
+    monthly_successful_orders_limit: '',
     daily_successful_orders_limit: '',
     max_pending_orders_quantity: 1,
     payment_gateway_ids: [],
@@ -214,6 +215,7 @@ const resetState = () => {
         daily_limit: '',
         monthly_limit: '',
         monthly_limit_reset_day: '',
+        monthly_successful_orders_limit: '',
         daily_successful_orders_limit: '',
         max_pending_orders_quantity: 1,
         payment_gateway_ids: [],
@@ -775,8 +777,25 @@ watch(
                             </div>
                             <div>
                                 <InputLabel
+                                    for="monthly_successful_orders_limit"
+                                    value="Количество сделок"
+                                    :error="!!errors.monthly_successful_orders_limit?.[0]"
+                                    :hint="paymentDetailFieldHints.monthly_successful_orders_limit"
+                                />
+                                <NumberInput
+                                    id="monthly_successful_orders_limit"
+                                    v-model="form.monthly_successful_orders_limit"
+                                    class="mt-1 block w-full"
+                                    :error="!!errors.monthly_successful_orders_limit?.[0]"
+                                    @input="errors.monthly_successful_orders_limit = null"
+                                    :disabled="processing"
+                                />
+                                <InputError :message="errors.monthly_successful_orders_limit?.[0]" class="mt-2" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <InputLabel
                                     for="monthly_limit_reset_day"
-                                    value="День сброса (1-28)"
+                                    value="День сброса (1-31)"
                                     :error="!!errors.monthly_limit_reset_day?.[0]"
                                     :hint="paymentDetailFieldHints.monthly_limit_reset_day"
                                 />
@@ -792,7 +811,7 @@ watch(
                             </div>
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
-                            Заполните оба поля или оставьте оба пустыми для отключения лимита
+                            Лимиты можно оставить пустыми, чтобы отключить их. Количество сделок должно быть не меньше 1. День сброса общий: в этот день обнуляются и объем сделок, и количество сделок, после чего расчет начинается заново.
                         </div>
                     </div>
 

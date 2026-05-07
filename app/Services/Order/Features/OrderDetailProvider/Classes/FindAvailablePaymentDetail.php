@@ -26,23 +26,28 @@ use Illuminate\Support\Carbon;
 class FindAvailablePaymentDetail
 {
     protected PrimeTimeSettings $primeTimeBonus;
+
     protected Carbon $start;
+
     protected Carbon $end;
+
     protected Money $exchangePrice;
+
     protected MarketEnum $exchangeMarket;
+
     protected int $maxPendingDisputes;
+
     protected Money $approximateTotalProfit;
 
     public function __construct(
-        protected Merchant        $merchant,
-        protected MarketEnum      $market,
-        protected Money           $amount,
-        protected ?DetailType     $detailType = null,
-        protected ?Currency       $currency = null,
+        protected Merchant $merchant,
+        protected MarketEnum $market,
+        protected Money $amount,
+        protected ?DetailType $detailType = null,
+        protected ?Currency $currency = null,
         protected ?PaymentGateway $gateway = null,
-        protected ?Money          $forcedExchangePrice = null,
-    )
-    {
+        protected ?Money $forcedExchangePrice = null,
+    ) {
         if (is_null($this->gateway) && is_null($this->currency)) {
             throw OrderException::make('Должен быть указан либо gateway, либо currency.');
         }
@@ -76,12 +81,12 @@ class FindAvailablePaymentDetail
     {
         $paymentDetail = $this->queryPaymentDetails()->first();
 
-        if (!$paymentDetail) {
+        if (! $paymentDetail) {
             return null;
         }
 
         $paymentDetail->update([
-            'last_used_at' => now()
+            'last_used_at' => now(),
         ]);
 
         $randomGatewayID = $paymentDetail->paymentGateways->pluck('id')->random();
@@ -97,14 +102,14 @@ class FindAvailablePaymentDetail
             ->first();
 
         $gateway = (new GatewayFactory($this->merchant, $this->amount, $paymentDetail->detail_type))->make($paymentGateway);
-        $trader = (new TraderFactory())->make($user);
+        $trader = (new TraderFactory)->make($user);
 
         return $this->makeDetail($paymentDetail, $gateway, $trader);
     }
 
     protected function makeDetail(PaymentDetail $paymentDetail, Gateway $gateway, Trader $trader): Detail
     {
-        //Trader Commission Rate Prime Time
+        // Trader Commission Rate Prime Time
         $traderCommissionRate = $gateway->traderCommissionRate;
 
         if (now()->between($this->start, $this->end)) {
@@ -112,7 +117,7 @@ class FindAvailablePaymentDetail
         }
 
         $teamLeaderCommissionRate = $trader->teamLeaderCommissionRate;
-        //Расчёт прибыли
+        // Расчёт прибыли
         $profits = services()->profit()->calculateInBody(
             sourceAmount: $this->amount,
             exchangeRate: $this->exchangePrice,
@@ -145,7 +150,6 @@ class FindAvailablePaymentDetail
             market: $this->exchangeMarket,
         );
     }
-
 
     protected function queryPaymentDetails(): Builder
     {
@@ -187,21 +191,26 @@ class FindAvailablePaymentDetail
                 $query->whereNull('daily_successful_orders_limit')
                     ->orWhereColumn('current_daily_successful_orders_count', '<', 'daily_successful_orders_limit');
             })
+            ->where(function (Builder $query) {
+                $query->whereNull('monthly_successful_orders_limit')
+                    ->orWhereNull('monthly_limit_reset_day')
+                    ->orWhereColumn('current_monthly_successful_orders_count', '<', 'monthly_successful_orders_limit');
+            })
             ->where(function ($query) {
                 // Проверяем, что сумма сделки больше или равна минимальной сумме сделки
                 // или минимальная сумма сделки равна нулю или NULL (не установлена)
                 $query->where(function ($q) {
                     $q->whereNull('min_order_amount')
-                      ->orWhere('min_order_amount', 0)
-                      ->orWhere('min_order_amount', '<=', $this->amount->toUnitsInt());
+                        ->orWhere('min_order_amount', 0)
+                        ->orWhere('min_order_amount', '<=', $this->amount->toUnitsInt());
                 });
 
                 // Проверяем, что сумма сделки меньше или равна максимальной сумме сделки
                 // или максимальная сумма сделки равна нулю или NULL (не установлена)
                 $query->where(function ($q) {
                     $q->whereNull('max_order_amount')
-                      ->orWhere('max_order_amount', 0)
-                      ->orWhere('max_order_amount', '>=', $this->amount->toUnitsInt());
+                        ->orWhere('max_order_amount', 0)
+                        ->orWhere('max_order_amount', '>=', $this->amount->toUnitsInt());
                 });
             })
             ->when($this->detailType, function (Builder $query) {
@@ -239,8 +248,8 @@ class FindAvailablePaymentDetail
                 ) < payment_details.max_pending_orders_quantity
             ', [OrderStatus::PENDING->value]);
             })
-            //метод
-            ->when(!$this->gateway, function (Builder $query) {
+            // метод
+            ->when(! $this->gateway, function (Builder $query) {
                 $query->whereHas('paymentGateways', function ($query) {
                     $query->where('min_limit', '<=', intval($this->amount->toBeauty()))
                         ->where('max_limit', '>=', intval($this->amount->toBeauty()))
@@ -259,7 +268,7 @@ class FindAvailablePaymentDetail
             })
             ->active()
             ->orderBy('last_used_at')
-            ->when(!is_local(), function (Builder $query) {
+            ->when(! is_local(), function (Builder $query) {
                 $query->lock('FOR UPDATE SKIP LOCKED');
             });
     }

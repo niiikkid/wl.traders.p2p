@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, provide, nextTick } from "vue";
+import { computed, ref, onMounted, onUnmounted, provide, nextTick } from "vue";
 
 const props = defineProps({
     buttonClass: {
@@ -12,20 +12,45 @@ const isOpen = ref(false);
 const dropdown = ref(null);
 const button = ref(null);
 const dropdownPosition = ref({ top: 0, left: 0 });
+const dropdownMaxHeight = ref(null);
+const dropdownWidth = 220;
+
+const updateDropdownPosition = () => {
+    if (!button.value || !dropdown.value) {
+        return;
+    }
+
+    const gap = 4;
+    const viewportPadding = 8;
+    const rect = button.value.getBoundingClientRect();
+    const currentDropdownWidth = dropdown.value.offsetWidth || dropdownWidth;
+    const dropdownHeight = dropdown.value.offsetHeight;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const minLeft = window.scrollX + viewportPadding;
+    const maxLeft = window.scrollX + viewportWidth - currentDropdownWidth - viewportPadding;
+    const targetLeft = rect.right + window.scrollX - currentDropdownWidth;
+    const spaceAbove = rect.top - viewportPadding - gap;
+    const spaceBelow = viewportHeight - rect.bottom - viewportPadding - gap;
+    const opensUp = spaceAbove > spaceBelow;
+    const availableHeight = Math.max(120, opensUp ? spaceAbove : spaceBelow);
+    const top = opensUp
+        ? rect.top + window.scrollY - Math.min(dropdownHeight, availableHeight) - gap
+        : rect.bottom + window.scrollY + gap;
+
+    dropdownPosition.value = {
+        top: Math.max(window.scrollY + viewportPadding, top),
+        left: Math.max(minLeft, Math.min(targetLeft, maxLeft)),
+    };
+    dropdownMaxHeight.value = `${availableHeight}px`;
+};
 
 const toggleDropdown = async () => {
     isOpen.value = !isOpen.value;
 
     if (isOpen.value) {
         await nextTick();
-
-        if (button.value && dropdown.value) {
-            const rect = button.value.getBoundingClientRect();
-            dropdownPosition.value = {
-                top: rect.bottom + window.scrollY + 4,
-                left: rect.right + window.scrollX - 240,
-            };
-        }
+        updateDropdownPosition();
     }
 };
 
@@ -36,6 +61,14 @@ const closeDropdown = () => {
 provide("closeMenu", closeDropdown);
 
 const overlay = ref(null);
+
+const dropdownStyles = computed(() => ({
+    top: `${dropdownPosition.value.top}px`,
+    left: `${dropdownPosition.value.left}px`,
+    minWidth: `${dropdownWidth}px`,
+    maxHeight: dropdownMaxHeight.value ?? "none",
+    overflowY: dropdownMaxHeight.value ? "auto" : "visible",
+}));
 
 const handleClickOutside = (event) => {
     if (
@@ -52,10 +85,12 @@ const handleClickOutside = (event) => {
 
 onMounted(() => {
     document.addEventListener("click", handleClickOutside);
+    window.addEventListener("resize", updateDropdownPosition);
 });
 
 onUnmounted(() => {
     document.removeEventListener("click", handleClickOutside);
+    window.removeEventListener("resize", updateDropdownPosition);
 });
 </script>
 
@@ -85,7 +120,7 @@ onUnmounted(() => {
                 v-if="isOpen"
                 ref="dropdown"
                 class="absolute z-50 bg-base-100 border border-base-300 rounded-box shadow-lg pointer-events-auto"
-                :style="{ top: dropdownPosition.top + 'px', left: dropdownPosition.left + 'px', minWidth: '220px' }"
+                :style="dropdownStyles"
             >
                 <div class="p-3">
                     <slot />
