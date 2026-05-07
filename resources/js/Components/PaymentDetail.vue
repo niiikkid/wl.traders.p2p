@@ -49,8 +49,8 @@ const shortCard = computed(() => {
 
     return [
         cardGroups.value[0],
-        '**',
-        '**',
+        '****',
+        '****',
         cardGroups.value[cardGroups.value.length - 1],
     ].join(' ');
 });
