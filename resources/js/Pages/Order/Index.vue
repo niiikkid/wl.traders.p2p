@@ -24,6 +24,8 @@ import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import MoneyValue from "@/Components/MoneyValue.vue";
+import PaymentDetailInfoDropdown from "@/Components/PaymentDetailInfoDropdown.vue";
+import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 //import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
 
 const viewStore = useViewStore();
@@ -369,7 +371,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 :type="order.payment_detail_type"
                                                 :name="order.payment_detail_name"
                                                 :short="displayShortDetail"
-                                            ></PaymentDetail>
+                                            >
+                                                <template #actions>
+                                                    <PaymentDetailInfoDropdown
+                                                        v-if="viewStore.isTraderViewMode && order.payment_detail_id"
+                                                        :payment-detail-id="order.payment_detail_id"
+                                                    />
+                                                </template>
+                                            </PaymentDetail>
                                         </div>
                                     </td>
                                     <td v-if="viewStore.isAdminViewMode">
@@ -472,7 +481,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 :detail="order.payment_detail"
                                                 :type="order.payment_detail_type"
                                                 :name="order.payment_detail_name"
-                                            ></PaymentDetail>
+                                            >
+                                                <template #actions>
+                                                    <PaymentDetailInfoDropdown
+                                                        v-if="viewStore.isTraderViewMode && order.payment_detail_id"
+                                                        :payment-detail-id="order.payment_detail_id"
+                                                    />
+                                                </template>
+                                            </PaymentDetail>
                                         </div>
                                         <div>
                                             <MoneyValue :value="order.amount" :currency="order.currency" block />
@@ -529,7 +545,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     :detail="order.payment_detail"
                                                     :type="order.payment_detail_type"
                                                     :name="order.payment_detail_name"
-                                                ></PaymentDetail>
+                                                >
+                                                    <template #actions>
+                                                        <PaymentDetailInfoDropdown
+                                                            v-if="viewStore.isTraderViewMode && order.payment_detail_id"
+                                                            :payment-detail-id="order.payment_detail_id"
+                                                        />
+                                                    </template>
+                                                </PaymentDetail>
                                             </div>
                                             <div>
                                                 <OrderStatus :status="order.status" :status_name="order.status_name"></OrderStatus>
@@ -592,6 +615,7 @@ defineOptions({ layout: AuthenticatedLayout })
         </MainTableSection>
 
         <OrderModal/>
+        <PaymentDetailEditModal/>
         <EditOrderAmountModal/>
         <DisputeModal
             @accept="confirmAcceptDispute"

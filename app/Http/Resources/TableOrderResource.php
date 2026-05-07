@@ -66,6 +66,7 @@ class TableOrderResource extends JsonResource
             ] : null,
             'payment_gateway_name' => $this->paymentGateway->name,
             'payment_gateway_logo_path' => asset('storage/logos/'.$this->paymentGateway->logo),
+            ...(isRouteFor('Trader') ? ['payment_detail_id' => $this->paymentDetail->id] : []),
             'payment_detail' => $this->paymentDetail->detail,
             'payment_detail_type' => $this->paymentDetail->detail_type->value,
             'payment_detail_name' => $this->paymentDetail->name,

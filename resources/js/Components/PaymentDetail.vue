@@ -118,13 +118,14 @@ const processingIndicatorIconClass = computed(() => {
                         </svg>
                     </span>
                 </div>
+                <slot name="actions" />
             </div>
             <div v-if="name" class="text-nowrap text-xs text-base-content/70">
                 {{ name }}
             </div>
         </template>
         <template v-else-if="copyable">
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-0">
                 <div class="tooltip tooltip-top" :data-tip="copied ? 'Скопировано!' : 'Скопировать'">
                     <a
                         href="#"
@@ -193,6 +194,7 @@ const processingIndicatorIconClass = computed(() => {
                         </svg>
                     </span>
                 </div>
+                <slot name="actions" />
             </div>
             <div v-if="name" class="w-40 truncate text-nowrap text-xs ml-2 text-base-content/70">
                 {{ name }}
@@ -261,6 +263,7 @@ const processingIndicatorIconClass = computed(() => {
                         </svg>
                     </span>
                 </div>
+                <slot name="actions" />
             </div>
             <div v-if="name" class="text-nowrap text-xs text-base-content/70">
                 {{ name }}

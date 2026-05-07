@@ -272,8 +272,16 @@ const submit = () => {
         .then((res) => {
             processing.value = false;
             if (res.data?.success || res.status === 200) {
+                const params = paymentDetailEditModal.value.params || {};
+                const reloadProps = params.reloadProps || ['paymentDetails'];
+                const onSaved = params.onSaved;
+
                 close();
-                router.reload({ only: ['paymentDetails'] });
+                router.reload({ only: reloadProps });
+
+                if (typeof onSaved === 'function') {
+                    onSaved();
+                }
             }
         })
         .catch((error) => {

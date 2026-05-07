@@ -152,6 +152,7 @@ class PaymentDetailController extends Controller
         }]);
 
         $paymentDetail->setAttribute('payment_gateway_ids', $paymentDetail->paymentGateways()->pluck('payment_gateways.id')->toArray());
+        $this->appendSuccessfulOrdersStats(collect([$paymentDetail]));
 
         $paymentDetail = PaymentDetailResource::make($paymentDetail)->resolve();
 
