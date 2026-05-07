@@ -358,7 +358,10 @@ router.on('success', () => {
                     </div>
                 </div>
 
-                <div class="card bg-base-100 shadow xl:col-start-2 xl:row-start-1">
+                <div
+                    class="card bg-base-100 shadow"
+                    :class="showInAppSoundSettings ? 'xl:col-start-2 xl:row-start-1' : 'xl:col-span-2 xl:col-start-1 xl:row-start-1'"
+                >
                     <div class="card-body space-y-4">
                         <div
                             class="alert text-sm"
@@ -413,7 +416,7 @@ router.on('success', () => {
                 </div>
 
                 <div class="card bg-base-100 shadow xl:col-start-1 xl:row-start-2">
-                    <div class="card-body space-y-4">
+                    <div class="card-body space-y-1">
                         <h3 class="text-lg font-semibold">Новое правило</h3>
                         <p class="text-sm text-base-content/70">
                             Канал доставки всегда Telegram.
@@ -469,7 +472,7 @@ router.on('success', () => {
                         </div>
                         <button
                             type="button"
-                            class="btn btn-primary"
+                            class="btn btn-primary mt-2"
                             :disabled="ruleForm.processing"
                             @click.prevent="createRule"
                         >

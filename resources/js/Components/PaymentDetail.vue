@@ -34,6 +34,27 @@ const { text, copy, copied, isSupported } = useClipboard()
 
 const isPhoneType = computed(() => ['phone', 'mobile_commerce'].includes(props.type));
 
+const cardGroups = computed(() => {
+    if (props.type !== 'card' || !props.detail) {
+        return [];
+    }
+
+    return props.detail.match(/.{1,4}/g) ?? [];
+});
+
+const shortCard = computed(() => {
+    if (!cardGroups.value.length) {
+        return '';
+    }
+
+    return [
+        cardGroups.value[0],
+        '**',
+        '**',
+        cardGroups.value[cardGroups.value.length - 1],
+    ].join(' ');
+});
+
 const phone = computed(() => {
     if (!isPhoneType.value) {
         return null;
@@ -113,7 +134,7 @@ const processingIndicatorIconClass = computed(() => {
                     >
                         <template v-if="type === 'card'">
                             <template v-if="short">
-                                {{ detail.substring(0, 4) }}**{{ detail.substring(detail.length - 4) }}
+                                {{ shortCard }}
                             </template>
                             <template v-else>
                                 {{ detail.match(/.{1,4}/g).join(' ') }}
@@ -182,7 +203,7 @@ const processingIndicatorIconClass = computed(() => {
                 <span class="text-nowrap" :class="name ? 'text-base-content' : ''">
                     <template v-if="type === 'card'">
                         <template v-if="short">
-                            {{ detail.substring(0, 4) }}**{{ detail.substring(detail.length - 4) }}
+                            {{ shortCard }}
                         </template>
                         <template v-else>
                             {{ detail.match(/.{1,4}/g).join(' ') }}
