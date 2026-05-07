@@ -16,6 +16,7 @@ import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import {ref, watch} from "vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
+import MoneyValue from "@/Components/MoneyValue.vue";
 
 const viewStore = useViewStore();
 const modalStore = useModalStore();
@@ -177,8 +178,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             {{ dispute.id }}
                                         </th>
                                         <td>
-                                            <div class="text-nowrap text-base-content">{{ dispute.order.amount }} {{dispute.order.currency.toUpperCase()}}</div>
-                                            <div class="text-nowrap text-base-content/70 text-xs">{{ dispute.order.total_profit }} {{dispute.order.base_currency.toUpperCase()}}</div>
+                                            <MoneyValue :value="dispute.order.amount" :currency="dispute.order.currency" block />
+                                            <MoneyValue :value="dispute.order.total_profit" :currency="dispute.order.base_currency" secondary block />
                                         </td>
                                         <td>
                                             <div class="flex items-center gap-3">
@@ -283,8 +284,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 ></PaymentDetail>
                                             </div>
                                             <div class="text-right">
-                                                <div class="text-nowrap text-base-content">{{ dispute.order.amount }} {{ dispute.order.currency.toUpperCase() }}</div>
-                                                <div class="text-nowrap text-xs opacity-70">{{ dispute.order.total_profit }} {{ dispute.order.base_currency.toUpperCase() }}</div>
+                                                <MoneyValue :value="dispute.order.amount" :currency="dispute.order.currency" block />
+                                                <MoneyValue :value="dispute.order.total_profit" :currency="dispute.order.base_currency" secondary block />
                                             </div>
                                             <div>
                                                 <DisputeStatus :status="dispute.status"></DisputeStatus>
@@ -346,12 +347,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="border-b border-base-content/10 my-2"></div>
                                             <div class="flex items-center justify-between">
                                                 <div class="inline-flex gap-3">
-                                                    <div class="text-nowrap text-xs text-base-content">
-                                                        {{ dispute.order.amount }} {{ dispute.order.currency.toUpperCase() }}
-                                                    </div>
-                                                    <div class="text-nowrap text-xs opacity-70">
-                                                        {{ dispute.order.total_profit }} {{ dispute.order.base_currency.toUpperCase() }}
-                                                    </div>
+                                                    <MoneyValue :value="dispute.order.amount" :currency="dispute.order.currency" compact />
+                                                    <MoneyValue :value="dispute.order.total_profit" :currency="dispute.order.base_currency" secondary />
                                                 </div>
                                                 <div class="inline-flex shrink-0 items-center gap-2">
                                                     <button

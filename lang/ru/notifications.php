@@ -21,7 +21,7 @@ return [
             ],
         ],
         'message' => [
-            'received' => 'Новое сообщение (SMS/PUSH)',
+            'received' => 'SMS/PUSH',
         ],
     ],
     'message_scopes' => [
@@ -46,7 +46,7 @@ return [
             'body' => 'Ваш траст-баланс снизился до :current_balance :currency. Пополните средства, чтобы избежать остановки работы.',
         ],
         'message_received' => [
-            'title' => 'Новое сообщение (SMS/PUSH)',
+            'title' => 'SMS/PUSH',
             'body' => '',
         ],
     ],

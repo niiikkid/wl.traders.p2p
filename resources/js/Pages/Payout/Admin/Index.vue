@@ -21,6 +21,7 @@ import Modal from '@/Components/Modals/Modal.vue';
 import {useModalStore} from '@/store/modal.js';
 import {useTableFiltersStore} from '@/store/tableFilters.js';
 import PayoutSettingsModal from '@/Modals/Payout/PayoutSettingsModal.vue';
+import MoneyValue from '@/Components/MoneyValue.vue';
 
 const tableFiltersStore = useTableFiltersStore();
 
@@ -236,14 +237,6 @@ const openStatusConfirm = (payout, option) => {
     });
 };
 
-const formatMoney = (money, empty = '—') => {
-    if (!money) {
-        return empty;
-    }
-
-    return `${money.value} ${money.currency ?? ''}`.trim();
-};
-
 const payoutReceiptLinks = (payout) => {
     if (Array.isArray(payout?.receipt_urls)) {
         return payout.receipt_urls;
@@ -406,17 +399,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </td>
                                         <td>
                                             <div>
-                                                <div class="text-nowrap text-base-content">
-                                                    {{ formatMoney(payout.amount) }}
-                                                </div>
-                                                <div class="text-nowrap text-xs text-base-content/60">
-                                                    {{ formatMoney(payout.usdt_body) }}
-                                                </div>
+                                                <MoneyValue :value="payout.amount?.value" :currency="payout.amount?.currency" block />
+                                                <MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" secondary block />
                                             </div>
                                         </td>
                                         <td>
                                             <div>
-                                                {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" />
                                             </div>
                                         </td>
                                         <td>
@@ -486,19 +475,19 @@ defineOptions({ layout: AuthenticatedLayout });
                                                             <div class="text-xs uppercase text-base-content/50">Комиссии</div>
                                                             <div class="flex items-center justify-between">
                                                                 <span>Всего</span>
-                                                                <span class="font-semibold">{{ payout.fees.total ?? '—' }} {{ payout.fees.currency }}</span>
+                                                                <span class="font-semibold"><MoneyValue :value="payout.fees.total" :currency="payout.fees.currency" /></span>
                                                             </div>
                                                             <div class="flex items-center justify-between">
                                                                 <span>Трейдер</span>
-                                                                <span class="font-semibold">{{ payout.fees.trader ?? '—' }} {{ payout.fees.currency }}</span>
+                                                                <span class="font-semibold"><MoneyValue :value="payout.fees.trader" :currency="payout.fees.currency" /></span>
                                                             </div>
                                                             <div class="flex items-center justify-between">
                                                                 <span>Тимлид</span>
-                                                                <span class="font-semibold">{{ payout.fees.teamlead ?? '—' }} {{ payout.fees.currency }}</span>
+                                                                <span class="font-semibold"><MoneyValue :value="payout.fees.teamlead" :currency="payout.fees.currency" /></span>
                                                             </div>
                                                             <div class="flex items-center justify-between">
                                                                 <span>Сервис</span>
-                                                                <span class="font-semibold">{{ payout.fees.service ?? '—' }} {{ payout.fees.currency }}</span>
+                                                                <span class="font-semibold"><MoneyValue :value="payout.fees.service" :currency="payout.fees.currency" /></span>
                                                             </div>
                                                             <div class="divider my-0"></div>
                                                             <div class="text-xs uppercase text-base-content/50">Ставки</div>
@@ -515,25 +504,25 @@ defineOptions({ layout: AuthenticatedLayout });
                                                             <div class="space-y-2">
                                                                 <div class="flex items-center justify-between">
                                                                     <span class="text-xs text-base-content/60">Клиенту (₽)</span>
-                                                                    <span class="font-semibold">{{ formatMoney(payout.amount) }}</span>
+                                                                    <span class="font-semibold"><MoneyValue :value="payout.amount?.value" :currency="payout.amount?.currency" /></span>
                                                                 </div>
                                                                 <div class="flex items-center justify-between">
                                                                     <span class="text-xs text-base-content/60">Списано у мерчанта</span>
-                                                                    <span class="font-semibold">{{ formatMoney(payout.merchant_debit) }}</span>
+                                                                    <span class="font-semibold"><MoneyValue :value="payout.merchant_debit?.value" :currency="payout.merchant_debit?.currency" /></span>
                                                                 </div>
                                                                 <div class="flex items-center justify-between">
                                                                     <span class="text-xs text-base-content/60">Получит трейдер</span>
-                                                                    <span class="font-semibold">{{ formatMoney(payout.trader_credit) }}</span>
+                                                                    <span class="font-semibold"><MoneyValue :value="payout.trader_credit?.value" :currency="payout.trader_credit?.currency" /></span>
                                                                 </div>
                                                                 <div class="flex items-center justify-between">
                                                                     <span class="text-xs text-base-content/60">Получит Team Leader</span>
                                                                     <span class="font-semibold">
-                                                                        {{ (payout.fees.teamlead ?? '0') }} {{ payout.fees.currency }}
+                                                                        <MoneyValue :value="payout.fees.teamlead ?? '0'" :currency="payout.fees.currency" />
                                                                     </span>
                                                                 </div>
                                                                 <div class="flex items-center justify-between">
                                                                     <span class="text-xs text-base-content/60">Тело (USDT)</span>
-                                                                    <span class="font-semibold">{{ formatMoney(payout.usdt_body) }}</span>
+                                                                    <span class="font-semibold"><MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" /></span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -575,7 +564,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                             </div>
                                                             <div>
                                                                 <div class="text-xs text-base-content/60">Цена</div>
-                                                                <div class="font-semibold">{{ payout.rate.price ?? '—' }} {{ payout.rate.currency }}</div>
+                                                                <div class="font-semibold"><MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" /></div>
                                                             </div>
                                                             <div>
                                                                 <div class="text-xs text-base-content/60">Зафиксирован</div>
@@ -663,7 +652,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                             <tbody>
                                                             <tr v-for="operation in payout.operations" :key="operation.id" class="align-top">
                                                                 <td class="font-semibold text-xs">{{ operation.type_label }}</td>
-                                                                <td class="text-xs">{{ formatMoney(operation.amount) }}</td>
+                                                                <td class="text-xs"><MoneyValue :value="operation.amount?.value" :currency="operation.amount?.currency" compact /></td>
                                                                 <td class="text-xs">
                                                                     <DateTime :data="operation.created_at" simple class="justify-start font-semibold" />
                                                                 </td>
@@ -740,11 +729,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <div class="flex flex-col gap-1 text-sm sm:text-right min-w-[120px]">
                                             <div>
                                                 <div class="text-[10px] uppercase text-base-content/50">Сумма клиенту</div>
-                                                <div class="font-semibold">{{ formatMoney(payout.amount) }}</div>
+                                                <div class="font-semibold"><MoneyValue :value="payout.amount?.value" :currency="payout.amount?.currency" /></div>
                                             </div>
                                             <div>
                                                 <div class="text-[10px] uppercase text-base-content/50">Тело (USDT)</div>
-                                                <div class="font-semibold">{{ formatMoney(payout.usdt_body) }}</div>
+                                                <div class="font-semibold"><MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" /></div>
                                             </div>
                                         </div>
                                     </div>
@@ -753,7 +742,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <div>
                                         <div class="text-[10px] uppercase text-base-content/50">Курс</div>
                                         <div class="font-semibold">
-                                            {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                            <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" />
                                         </div>
                                     </div>
                                         <div>
@@ -767,11 +756,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </div>
                                         <div>
                                             <div class="text-[10px] uppercase text-base-content/50">Списано у мерчанта</div>
-                                            <div class="font-semibold">{{ formatMoney(payout.merchant_debit) }}</div>
+                                            <div class="font-semibold"><MoneyValue :value="payout.merchant_debit?.value" :currency="payout.merchant_debit?.currency" /></div>
                                         </div>
                                         <div>
                                             <div class="text-[10px] uppercase text-base-content/50">Получит трейдер</div>
-                                            <div class="font-semibold">{{ formatMoney(payout.trader_credit) }}</div>
+                                            <div class="font-semibold"><MoneyValue :value="payout.trader_credit?.value" :currency="payout.trader_credit?.currency" /></div>
                                         </div>
                                     </div>
 
@@ -808,19 +797,19 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="collapse-content text-sm space-y-3">
                                                 <div class="flex items-center justify-between">
                                                     <span>Всего</span>
-                                                    <span class="font-semibold">{{ payout.fees.total ?? '—' }} {{ payout.fees.currency }}</span>
+                                                    <span class="font-semibold"><MoneyValue :value="payout.fees.total" :currency="payout.fees.currency" /></span>
                                                 </div>
                                                 <div class="flex items-center justify-between">
                                                     <span>Трейдер</span>
-                                                    <span class="font-semibold">{{ payout.fees.trader ?? '—' }} {{ payout.fees.currency }}</span>
+                                                    <span class="font-semibold"><MoneyValue :value="payout.fees.trader" :currency="payout.fees.currency" /></span>
                                                 </div>
                                                 <div class="flex items-center justify-between">
                                                     <span>Тимлид</span>
-                                                    <span class="font-semibold">{{ payout.fees.teamlead ?? '—' }} {{ payout.fees.currency }}</span>
+                                                    <span class="font-semibold"><MoneyValue :value="payout.fees.teamlead" :currency="payout.fees.currency" /></span>
                                                 </div>
                                                 <div class="flex items-center justify-between">
                                                     <span>Сервис</span>
-                                                    <span class="font-semibold">{{ payout.fees.service ?? '—' }} {{ payout.fees.currency }}</span>
+                                                    <span class="font-semibold"><MoneyValue :value="payout.fees.service" :currency="payout.fees.currency" /></span>
                                                 </div>
                                                 <div class="divider my-0"></div>
                                                 <div class="grid grid-cols-2 gap-2 text-xs">
@@ -837,11 +826,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 Суммы и тело
                                             </div>
                                             <div class="collapse-content text-sm space-y-2">
-                                                <div class="flex items-center justify-between"><span>Клиенту</span><span class="font-semibold">{{ formatMoney(payout.amount) }}</span></div>
-                                                <div class="flex items-center justify-between"><span>Списано у мерчанта</span><span class="font-semibold">{{ formatMoney(payout.merchant_debit) }}</span></div>
-                                                <div class="flex items-center justify-between"><span>Получит трейдер</span><span class="font-semibold">{{ formatMoney(payout.trader_credit) }}</span></div>
-                                                <div class="flex items-center justify-between"><span>Получит Team Leader</span><span class="font-semibold">{{ (payout.fees.teamlead ?? '0') }} {{ payout.fees.currency }}</span></div>
-                                                <div class="flex items-center justify-between"><span>Тело (USDT)</span><span class="font-semibold">{{ formatMoney(payout.usdt_body) }}</span></div>
+                                                <div class="flex items-center justify-between"><span>Клиенту</span><span class="font-semibold"><MoneyValue :value="payout.amount?.value" :currency="payout.amount?.currency" /></span></div>
+                                                <div class="flex items-center justify-between"><span>Списано у мерчанта</span><span class="font-semibold"><MoneyValue :value="payout.merchant_debit?.value" :currency="payout.merchant_debit?.currency" /></span></div>
+                                                <div class="flex items-center justify-between"><span>Получит трейдер</span><span class="font-semibold"><MoneyValue :value="payout.trader_credit?.value" :currency="payout.trader_credit?.currency" /></span></div>
+                                                <div class="flex items-center justify-between"><span>Получит Team Leader</span><span class="font-semibold"><MoneyValue :value="payout.fees.teamlead ?? '0'" :currency="payout.fees.currency" /></span></div>
+                                                <div class="flex items-center justify-between"><span>Тело (USDT)</span><span class="font-semibold"><MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" /></span></div>
                                             </div>
                                         </div>
 
@@ -875,7 +864,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                             </div>
                                             <div class="collapse-content text-sm space-y-2">
                                                 <div><span class="text-xs text-base-content/60">Маркет</span><div class="font-semibold">{{ payout.rate.market ?? '—' }}</div></div>
-                                                <div><span class="text-xs text-base-content/60">Цена</span><div class="font-semibold">{{ payout.rate.price ?? '—' }} {{ payout.rate.currency }}</div></div>
+                                                <div><span class="text-xs text-base-content/60">Цена</span><div class="font-semibold"><MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" /></div></div>
                                                 <div><span class="text-xs text-base-content/60">Зафиксирован</span><DateTime :data="payout.rate.fixed_at" simple class="justify-start font-semibold" /></div>
                                             </div>
                                         </div>
@@ -953,7 +942,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         class="border border-base-200 rounded-box p-3 space-y-1 text-xs"
                                                     >
                                                         <div class="font-semibold text-sm">{{ operation.type_label }}</div>
-                                                        <div>Сумма: {{ formatMoney(operation.amount) }}</div>
+                                                        <div>Сумма: <MoneyValue :value="operation.amount?.value" :currency="operation.amount?.currency" compact /></div>
                                                         <div>Когда: <DateTime :data="operation.created_at" simple class="justify-start font-semibold" /></div>
                                                     </div>
                                                 </div>

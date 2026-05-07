@@ -13,6 +13,7 @@ import { formatDistanceStrict } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import TraderExportModal from '@/Components/Export/TraderExportModal.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
+import MoneyValue from '@/Components/MoneyValue.vue';
 
 const PAYOUT_LIST_PER_PAGE = 10;
 
@@ -803,7 +804,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     <div class="space-y-0.5">
                                                         <div class="text-[10px] text-base-content/50 uppercase">Сумма</div>
                                                         <div class="text-xs font-medium">
-                                                            {{ payout.amount.fiat }} {{ payout.amount.currency }}
+                                                            <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" compact />
                                                         </div>
                                                     </div>
                                                     <div class="space-y-0.5">
@@ -815,7 +816,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     <div class="space-y-0">
                                                         <div class="text-xs uppercase text-base-content/60">Сумма</div>
                                                         <div class="font-semibold">
-                                                            {{ payout.amount.fiat }} {{ payout.amount.currency }}
+                                                            <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" />
                                                         </div>
                                                     </div>
                                                     <div class="space-y-0">
@@ -854,24 +855,24 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="space-y-1">
                                                 <div class="text-base-content/60 uppercase text-xs">Сумма в USDT</div>
                                                 <div class="font-semibold">
-                                                    {{ payout.usdt_body.value }} {{ payout.usdt_body.currency }}
+                                                    <MoneyValue :value="payout.usdt_body.value" :currency="payout.usdt_body.currency" />
                                                 </div>
                                             </div>
                                             <div class="space-y-1">
                                                 <div class="text-base-content/60 uppercase text-xs">Будет зачислено</div>
                                                 <div class="font-semibold">
-                                                    {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                    <MoneyValue :value="payout.trader_credit.value" :currency="payout.trader_credit.currency" />
                                                 </div>
                                             </div>
                                             <div class="space-y-1">
                                                 <div class="text-base-content/60 uppercase text-xs">Курс</div>
                                                 <div class="font-semibold">
-                                                    {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                    <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" />
                                                 </div>
                                             </div>
                                             <div class="space-y-1">
                                                 <div class="text-base-content/60 uppercase text-xs">Ваша прибыль</div>
-                                                <div class="font-semibold">{{ payout.commissions.trader_fee }} USDT ({{ payout.commissions.trader_rate }}%)</div>
+                                                <div class="font-semibold"><MoneyValue :value="payout.commissions.trader_fee" currency="USDT" /> <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span></div>
                                             </div>
                                             <div class="space-y-1">
                                                 <div class="text-base-content/60 uppercase text-xs">Взяли в работу</div>
@@ -902,25 +903,25 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Сумма в USDT</div>
                                                 <div class="font-medium text-xs text-base-content mt-0.5">
-                                                    {{ payout.usdt_body?.value }} {{ payout.usdt_body?.currency }}
+                                                    <MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" compact />
                                                 </div>
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Будет зачислено</div>
                                                 <div class="font-medium text-xs text-base-content mt-0.5">
-                                                    {{ payout.trader_credit?.value }} {{ payout.trader_credit?.currency }}
+                                                    <MoneyValue :value="payout.trader_credit?.value" :currency="payout.trader_credit?.currency" compact />
                                                 </div>
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
                                                 <div class="font-medium text-xs text-base-content mt-0.5 text-nowrap">
-                                                    {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                    <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" compact />
                                                 </div>
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-[10px] text-base-content/50 uppercase">Ваша прибыль</div>
                                                 <div class="font-medium text-xs text-base-content mt-0.5">
-                                                    {{ payout.commissions.trader_fee }} USDT
+                                                    <MoneyValue :value="payout.commissions.trader_fee" currency="USDT" compact />
                                                     <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
                                                 </div>
                                             </div>
@@ -1102,22 +1103,22 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 </td>
                                                 <td>
                                                     <div>
-                                                        {{ payout.amount.fiat }} {{ payout.amount.currency }}
+                                                        <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" />
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div>
-                                                        {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                        <MoneyValue :value="payout.trader_credit.value" :currency="payout.trader_credit.currency" />
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div class="text-nowrap">
-                                                        {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                        <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" />
                                                     </div>
                                                 </td>
                                                 <td>
                                                     <div >
-                                                        {{ payout.commissions.trader_fee }} USDT
+                                                        <MoneyValue :value="payout.commissions.trader_fee" currency="USDT" />
                                                     </div>
                                                 </td>
                                                 <td>
@@ -1212,25 +1213,25 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         <div class="min-w-0">
                                                             <div class="text-[10px] text-base-content/50 uppercase">Отправляете</div>
                                                             <div class="font-medium text-xs text-base-content text-nowrap">
-                                                                {{ payout.amount.fiat }} {{ payout.amount.currency }} <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                                <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" compact /> <span class="text-base-content/50 font-normal">(<MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" secondary />)</span>
                                                             </div>
                                                         </div>
                                                         <div class="min-w-0">
                                                             <div class="text-[10px] text-base-content/50 uppercase">Получаете</div>
                                                             <div class="font-medium text-xs text-base-content text-nowrap">
-                                                                {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                                <MoneyValue :value="payout.trader_credit.value" :currency="payout.trader_credit.currency" compact />
                                                             </div>
                                                         </div>
                                                         <div class="min-w-0">
                                                             <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
                                                             <div class="font-medium text-xs text-base-content text-nowrap">
-                                                                {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                                <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" compact />
                                                             </div>
                                                         </div>
                                                         <div class="min-w-0">
                                                             <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
                                                             <div class="font-medium text-xs text-base-content">
-                                                                {{ payout.commissions.trader_fee }} USDT
+                                                                <MoneyValue :value="payout.commissions.trader_fee" currency="USDT" compact />
                                                                 <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
                                                             </div>
                                                         </div>
@@ -1242,25 +1243,25 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         <div>
                                                             <div class="text-[10px] text-base-content/50 uppercase">Отправляете</div>
                                                             <div class="font-medium text-xs text-base-content text-nowrap">
-                                                                {{ payout.amount.fiat }} {{ payout.amount.currency }} <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                                <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" compact /> <span class="text-base-content/50 font-normal">(<MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" secondary />)</span>
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <div class="text-[10px] text-base-content/50 uppercase">Получаете</div>
                                                             <div class="font-medium text-xs text-base-content text-nowrap">
-                                                                {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                                <MoneyValue :value="payout.trader_credit.value" :currency="payout.trader_credit.currency" compact />
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
                                                             <div class="font-medium text-xs text-base-content text-nowrap">
-                                                                {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                                <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" compact />
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
                                                             <div class="font-medium text-xs text-base-content">
-                                                                {{ payout.commissions.trader_fee }} USDT
+                                                                <MoneyValue :value="payout.commissions.trader_fee" currency="USDT" compact />
                                                                 <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
                                                             </div>
                                                         </div>
@@ -1349,20 +1350,20 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </td>
                                     <td>
                                         <div>
-                                            {{ payout.amount.fiat }} {{ payout.amount.currency }}
+                                            <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" />
                                         </div>
                                     </td>
                                     <td>
                                         <div>
-                                            {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                            <MoneyValue :value="payout.trader_credit.value" :currency="payout.trader_credit.currency" />
                                         </div>
                                     </td>
                                     <td>
-                                        {{ payout.commissions.trader_fee }} USDT
+                                        <MoneyValue :value="payout.commissions.trader_fee" currency="USDT" />
                                     </td>
                                     <td>
                                         <div>
-                                            {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                            <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" />
                                         </div>
                                     </td>
                                     <td>
@@ -1455,26 +1456,26 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     <div class="min-w-0">
                                                         <div class="text-[10px] text-base-content/50 uppercase">Отправленно</div>
                                                         <div class="font-medium text-xs text-base-content text-nowrap">
-                                                            {{ payout.amount.fiat }} {{ payout.amount.currency }}
-                                                            <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                            <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" compact />
+                                                            <span class="text-base-content/50 font-normal">(<MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" secondary />)</span>
                                                         </div>
                                                     </div>
                                                     <div class="min-w-0">
                                                         <div class="text-[10px] text-base-content/50 uppercase">Получено</div>
                                                         <div class="font-medium text-xs text-base-content text-nowrap">
-                                                            {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                            <MoneyValue :value="payout.trader_credit.value" :currency="payout.trader_credit.currency" compact />
                                                         </div>
                                                     </div>
                                                     <div class="min-w-0">
                                                         <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
                                                         <div class="font-medium text-xs text-base-content text-nowrap">
-                                                            {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                            <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" compact />
                                                         </div>
                                                     </div>
                                                     <div class="min-w-0">
                                                         <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
                                                         <div class="font-medium text-xs text-base-content">
-                                                            {{ payout.commissions.trader_fee }} USDT
+                                                            <MoneyValue :value="payout.commissions.trader_fee" currency="USDT" compact />
                                                             <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
                                                         </div>
                                                     </div>
@@ -1505,26 +1506,26 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 <div>
                                                     <div class="text-[10px] text-base-content/50 uppercase">Отправленно</div>
                                                     <div class="font-medium text-xs text-base-content text-nowrap">
-                                                        {{ payout.amount.fiat }} {{ payout.amount.currency }}
-                                                        <span class="text-base-content/50 font-normal">({{ payout.usdt_body?.value ?? '—' }} {{ payout.usdt_body?.currency ?? '' }})</span>
+                                                        <MoneyValue :value="payout.amount.fiat" :currency="payout.amount.currency" compact />
+                                                        <span class="text-base-content/50 font-normal">(<MoneyValue :value="payout.usdt_body?.value" :currency="payout.usdt_body?.currency" secondary />)</span>
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <div class="text-[10px] text-base-content/50 uppercase">Получено</div>
                                                     <div class="font-medium text-xs text-base-content text-nowrap">
-                                                        {{ payout.trader_credit.value }} {{ payout.trader_credit.currency }}
+                                                        <MoneyValue :value="payout.trader_credit.value" :currency="payout.trader_credit.currency" compact />
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
                                                     <div class="font-medium text-xs text-base-content text-nowrap">
-                                                        {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                        <MoneyValue :value="payout.rate?.price" :currency="payout.rate?.currency" compact />
                                                     </div>
                                                 </div>
                                                 <div>
                                                     <div class="text-[10px] text-base-content/50 uppercase">Доход</div>
                                                     <div class="font-medium text-xs text-base-content">
-                                                        {{ payout.commissions.trader_fee }} USDT
+                                                        <MoneyValue :value="payout.commissions.trader_fee" currency="USDT" compact />
                                                         <span class="text-base-content/50 font-normal">({{ payout.commissions.trader_rate }}%)</span>
                                                     </div>
                                                 </div>

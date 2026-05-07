@@ -307,8 +307,8 @@ router.on('success', () => {
                 <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Уведомления</h2>
             </div>
 
-            <div class="grid gap-6 grid-cols-1 lg:grid-cols-2">
-                <div v-if="showInAppSoundSettings" class="card bg-base-100 shadow lg:col-span-2">
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
+                <div v-if="showInAppSoundSettings" class="card bg-base-100 shadow xl:col-start-1 xl:row-start-1">
                     <div class="card-body space-y-3">
                         <h3 class="text-lg font-semibold">Звуковые уведомления в панели</h3>
                         <p class="text-sm text-base-content/70">
@@ -357,62 +357,62 @@ router.on('success', () => {
                         </div>
                     </div>
                 </div>
-      
-                <div class="card bg-base-100 shadow">
-                <div class="card-body space-y-4">
-                    <div
-                        class="alert text-sm"
-                        :class="telegramAccount.is_active ? 'alert-success' : 'alert-info'"
-                    >
-                        {{ telegramAlertText }}
+
+                <div class="card bg-base-100 shadow xl:col-start-2 xl:row-start-1">
+                    <div class="card-body space-y-4">
+                        <div
+                            class="alert text-sm"
+                            :class="telegramAccount.is_active ? 'alert-success' : 'alert-info'"
+                        >
+                            {{ telegramAlertText }}
+                        </div>
+                        <h3 class="text-lg font-semibold">Telegram</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <span class="badge" :class="telegramAccount.is_active ? 'badge-success' : 'badge-warning'">
+                                    {{ telegramAccount.is_active ? 'Привязан' : 'Не привязан' }}
+                                </span>
+                                <span v-if="telegramAccount.bot_username" class="text-sm text-base-content/70">
+                                    @{{ telegramAccount.bot_username }}
+                                </span>
+                            </div>
+                            <div v-if="!telegramAccount.is_active && telegramAccount.start_link" class="flex flex-wrap items-center gap-3">
+                                <a
+                                    class="btn btn-sm btn-outline"
+                                    :href="telegramAccount.start_link"
+                                    target="_blank"
+                                    rel="noopener"
+                                >
+                                    Открыть Telegram
+                                </a>
+                                <CopyPaymentText text="Скопировать ссылку" :copy_text="telegramAccount.start_link" />
+                            </div>
+                            <div v-else-if="!telegramAccount.is_active" class="text-sm text-base-content/70">
+                                Укажите `TELEGRAM_BOT_NAME`, чтобы сформировать ссылку привязки.
+                            </div>
+                        </div>
+                        <button
+                            v-if="telegramAccount.is_active"
+                            type="button"
+                            class="btn btn-sm btn-outline btn-error"
+                            :disabled="telegramForm.processing"
+                            @click.prevent="unlinkTelegram"
+                        >
+                            Отвязать бота
+                        </button>
+                        <button
+                            v-else
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            :disabled="telegramForm.processing"
+                            @click.prevent="refreshTelegramLink"
+                        >
+                            Обновить ссылку
+                        </button>
                     </div>
-                    <h3 class="text-lg font-semibold">Telegram</h3>
-                    <div class="space-y-2">
-                        <div class="flex items-center gap-2">
-                            <span class="badge" :class="telegramAccount.is_active ? 'badge-success' : 'badge-warning'">
-                                {{ telegramAccount.is_active ? 'Привязан' : 'Не привязан' }}
-                            </span>
-                            <span v-if="telegramAccount.bot_username" class="text-sm text-base-content/70">
-                                @{{ telegramAccount.bot_username }}
-                            </span>
-                        </div>
-                        <div v-if="!telegramAccount.is_active && telegramAccount.start_link" class="flex flex-wrap items-center gap-3">
-                            <a
-                                class="btn btn-sm btn-outline"
-                                :href="telegramAccount.start_link"
-                                target="_blank"
-                                rel="noopener"
-                            >
-                                Открыть Telegram
-                            </a>
-                            <CopyPaymentText text="Скопировать ссылку" :copy_text="telegramAccount.start_link" />
-                        </div>
-                        <div v-else-if="!telegramAccount.is_active" class="text-sm text-base-content/70">
-                            Укажите `TELEGRAM_BOT_NAME`, чтобы сформировать ссылку привязки.
-                        </div>
-                    </div>
-                    <button
-                        v-if="telegramAccount.is_active"
-                        type="button"
-                        class="btn btn-sm btn-outline btn-error"
-                        :disabled="telegramForm.processing"
-                        @click.prevent="unlinkTelegram"
-                    >
-                        Отвязать бота
-                    </button>
-                    <button
-                        v-else
-                        type="button"
-                        class="btn btn-sm btn-primary"
-                        :disabled="telegramForm.processing"
-                        @click.prevent="refreshTelegramLink"
-                    >
-                        Обновить ссылку
-                    </button>
-                </div>
                 </div>
 
-                <div class="card bg-base-100 shadow">
+                <div class="card bg-base-100 shadow xl:col-start-1 xl:row-start-2">
                     <div class="card-body space-y-4">
                         <h3 class="text-lg font-semibold">Новое правило</h3>
                         <p class="text-sm text-base-content/70">
@@ -477,53 +477,53 @@ router.on('success', () => {
                         </button>
                     </div>
                 </div>
-            </div>
 
-            <div class="card bg-base-100 shadow">
-                <div class="card-body">
-                    <h3 class="text-lg font-semibold mb-4">Правила</h3>
-                    <div v-if="!rules.length" class="text-sm text-base-content/70">
-                        Пока что правил нет.
-                    </div>
-                    <div v-else class="space-y-3">
-                        <div
-                            v-for="rule in rules"
-                            :key="rule.id"
-                            class="flex flex-wrap items-center justify-between gap-3 border border-base-300 rounded-box p-3"
-                        >
-                            <div class="space-y-1">
-                                <div class="font-medium">{{ eventLabels[rule.event] ?? rule.event }}</div>
-                                <div class="flex flex-wrap gap-2 text-xs text-base-content/70">
-                                    <span class="badge badge-ghost badge-xs">
-                                        Telegram
-                                    </span>
-                                    <span v-if="rule.message_scope" class="badge badge-outline badge-xs">
-                                        {{ messageScopeLabels[rule.message_scope] ?? rule.message_scope }}
-                                    </span>
-                                    <span v-if="hasRuleAmount(rule)" class="badge badge-outline badge-xs">
-                                        {{ ruleAmountLabel(rule) }}
-                                    </span>
+                <div class="card bg-base-100 shadow xl:col-start-2 xl:row-start-2">
+                    <div class="card-body">
+                        <h3 class="text-lg font-semibold mb-4">Правила</h3>
+                        <div v-if="!rules.length" class="text-sm text-base-content/70">
+                            Пока что правил нет.
+                        </div>
+                        <div v-else class="space-y-3">
+                            <div
+                                v-for="rule in rules"
+                                :key="rule.id"
+                                class="flex flex-wrap items-center justify-between gap-3 border border-base-300 rounded-box p-3"
+                            >
+                                <div class="space-y-1">
+                                    <div class="font-medium">{{ eventLabels[rule.event] ?? rule.event }}</div>
+                                    <div class="flex flex-wrap gap-2 text-xs text-base-content/70">
+                                        <span class="badge badge-ghost badge-xs">
+                                            Telegram
+                                        </span>
+                                        <span v-if="rule.message_scope" class="badge badge-outline badge-xs">
+                                            {{ messageScopeLabels[rule.message_scope] ?? rule.message_scope }}
+                                        </span>
+                                        <span v-if="hasRuleAmount(rule)" class="badge badge-outline badge-xs">
+                                            {{ ruleAmountLabel(rule) }}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <label class="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        class="toggle toggle-sm"
-                                        :checked="rule.enabled"
+                                <div class="flex items-center gap-3">
+                                    <label class="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            class="toggle toggle-sm"
+                                            :checked="rule.enabled"
+                                            :disabled="ruleActionForm.processing"
+                                            @change="toggleRule(rule)"
+                                        />
+                                        <span class="text-sm">{{ rule.enabled ? 'Включено' : 'Выключено' }}</span>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        class="btn btn-xs btn-outline btn-error"
                                         :disabled="ruleActionForm.processing"
-                                        @change="toggleRule(rule)"
-                                    />
-                                    <span class="text-sm">{{ rule.enabled ? 'Включено' : 'Выключено' }}</span>
-                                </label>
-                                <button
-                                    type="button"
-                                    class="btn btn-xs btn-outline btn-error"
-                                    :disabled="ruleActionForm.processing"
-                                    @click.prevent="deleteRule(rule)"
-                                >
-                                    Удалить
-                                </button>
+                                        @click.prevent="deleteRule(rule)"
+                                    >
+                                        Удалить
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

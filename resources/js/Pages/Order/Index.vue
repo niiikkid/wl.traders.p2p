@@ -23,6 +23,7 @@ import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
+import MoneyValue from "@/Components/MoneyValue.vue";
 //import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
 
 const viewStore = useViewStore();
@@ -357,8 +358,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </th>
                                     <td>
-                                        <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
-                                        <div class="text-nowrap text-xs opacity-70">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                        <MoneyValue :value="order.amount" :currency="order.currency" block />
+                                        <MoneyValue :value="order.total_profit" :currency="order.base_currency" secondary block />
                                     </td>
                                     <td>
                                         <div class="flex items-center gap-3">
@@ -474,8 +475,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             ></PaymentDetail>
                                         </div>
                                         <div>
-                                            <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
-                                            <div class="text-nowrap text-xs opacity-70">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                            <MoneyValue :value="order.amount" :currency="order.currency" block />
+                                            <MoneyValue :value="order.total_profit" :currency="order.base_currency" secondary block />
                                         </div>
                                         <div>
                                             <OrderStatus :status="order.status" :status_name="order.status_name"></OrderStatus>
@@ -539,8 +540,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                         <div class="flex items-center justify-between">
                                             <div class="inline-flex gap-3">
-                                                <div class="text-nowrap text-xs text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
-                                                <div class="text-nowrap text-xs opacity-70">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                                <MoneyValue :value="order.amount" :currency="order.currency" compact />
+                                                <MoneyValue :value="order.total_profit" :currency="order.base_currency" secondary />
                                             </div>
                                             <div class="inline-flex shrink-0 items-center gap-1">
                                                 <button
