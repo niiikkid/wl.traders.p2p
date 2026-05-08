@@ -307,6 +307,15 @@ class PaymentDetailController extends Controller
         if (in_array('daily_successful_orders_limit', $fields, true)) {
             $payload['daily_successful_orders_limit'] = $request->input('daily_successful_orders_limit');
         }
+        if (in_array('monthly_limit', $fields, true)) {
+            $payload['monthly_limit'] = $request->input('monthly_limit');
+        }
+        if (in_array('monthly_limit_reset_day', $fields, true)) {
+            $payload['monthly_limit_reset_day'] = $request->input('monthly_limit_reset_day');
+        }
+        if (in_array('monthly_successful_orders_limit', $fields, true)) {
+            $payload['monthly_successful_orders_limit'] = $request->input('monthly_successful_orders_limit');
+        }
         if (in_array('max_pending_orders_quantity', $fields, true)) {
             $payload['max_pending_orders_quantity'] = $request->input('max_pending_orders_quantity');
         }

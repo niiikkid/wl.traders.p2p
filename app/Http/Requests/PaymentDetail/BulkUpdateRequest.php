@@ -20,6 +20,9 @@ class BulkUpdateRequest extends FormRequest
         $fieldNames = [
             'is_active',
             'daily_limit',
+            'monthly_limit',
+            'monthly_limit_reset_day',
+            'monthly_successful_orders_limit',
             'daily_successful_orders_limit',
             'max_pending_orders_quantity',
             'min_order_amount',
@@ -47,6 +50,18 @@ class BulkUpdateRequest extends FormRequest
                 'numeric',
                 'min:0',
             ],
+            'monthly_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
+            'monthly_limit_reset_day' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:31',
+                Rule::requiredIf(
+                    (in_array('monthly_limit', $fields, true) && $this->input('monthly_limit') !== null && $this->input('monthly_limit') !== '')
+                    || (in_array('monthly_successful_orders_limit', $fields, true) && $this->input('monthly_successful_orders_limit') !== null && $this->input('monthly_successful_orders_limit') !== '')
+                ),
+            ],
+            'monthly_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'daily_successful_orders_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'max_pending_orders_quantity' => [
                 Rule::requiredIf(in_array('max_pending_orders_quantity', $fields, true)),
@@ -68,6 +83,9 @@ class BulkUpdateRequest extends FormRequest
             'fields' => __('поля'),
             'is_active' => __('активность'),
             'daily_limit' => __('дневной лимит'),
+            'monthly_limit' => __('месячный лимит'),
+            'monthly_limit_reset_day' => __('день сброса месячного лимита'),
+            'monthly_successful_orders_limit' => __('месячный лимит по количеству сделок'),
             'daily_successful_orders_limit' => __('дневной лимит по количеству сделок'),
             'min_order_amount' => __('минимальная сумма сделки'),
             'max_order_amount' => __('максимальная сумма сделки'),
@@ -78,6 +96,9 @@ class BulkUpdateRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $nullableFields = [
+            'monthly_limit',
+            'monthly_limit_reset_day',
+            'monthly_successful_orders_limit',
             'daily_successful_orders_limit',
             'min_order_amount',
             'max_order_amount',

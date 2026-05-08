@@ -44,6 +44,9 @@ const selectedFields = ref([]);
 const form = ref({
     is_active: null,
     daily_limit: '',
+    monthly_limit: '',
+    monthly_limit_reset_day: '',
+    monthly_successful_orders_limit: '',
     daily_successful_orders_limit: '',
     max_pending_orders_quantity: '',
     min_order_amount: '',
@@ -75,6 +78,9 @@ const canEdit = computed(() => {
 const fieldsDisabled = computed(() => processing.value || !canEdit.value);
 
 const hasField = (field) => selectedFields.value.includes(field);
+const hasMonthlyLimitsSelected = computed(() => {
+    return hasField('monthly_limit') || hasField('monthly_successful_orders_limit');
+});
 
 const resetState = () => {
     errors.value = {};
@@ -85,6 +91,9 @@ const resetState = () => {
     form.value = {
         is_active: null,
         daily_limit: '',
+        monthly_limit: '',
+        monthly_limit_reset_day: '',
+        monthly_successful_orders_limit: '',
         daily_successful_orders_limit: '',
         max_pending_orders_quantity: '',
         min_order_amount: '',
@@ -106,14 +115,22 @@ const ensureBooleanValue = () => {
 };
 
 const buildPayload = () => {
+    const fields = [...selectedFields.value];
+    if (hasMonthlyLimitsSelected.value && !fields.includes('monthly_limit_reset_day')) {
+        fields.push('monthly_limit_reset_day');
+    }
+
     const payload = {
         scope: scope.value,
         tag_id: scope.value === 'tag' ? tagId.value : null,
-        fields: selectedFields.value,
+        fields,
     };
 
     if (hasField('is_active')) payload.is_active = form.value.is_active;
     if (hasField('daily_limit')) payload.daily_limit = form.value.daily_limit;
+    if (hasField('monthly_limit')) payload.monthly_limit = form.value.monthly_limit;
+    if (hasMonthlyLimitsSelected.value) payload.monthly_limit_reset_day = form.value.monthly_limit_reset_day;
+    if (hasField('monthly_successful_orders_limit')) payload.monthly_successful_orders_limit = form.value.monthly_successful_orders_limit;
     if (hasField('daily_successful_orders_limit')) payload.daily_successful_orders_limit = form.value.daily_successful_orders_limit;
     if (hasField('max_pending_orders_quantity')) payload.max_pending_orders_quantity = form.value.max_pending_orders_quantity;
     if (hasField('min_order_amount')) payload.min_order_amount = form.value.min_order_amount;
@@ -336,6 +353,61 @@ watch(
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
                             Оставьте пустым для отключения лимита
+                        </div>
+                    </div>
+
+                    <div class="rounded-box border border-base-300 p-4">
+                        <div class="text-sm font-medium mb-3">
+                            Ежемесячные лимиты
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
+                                    <input type="checkbox" class="checkbox checkbox-sm" value="monthly_limit" v-model="selectedFields" :disabled="fieldsDisabled" />
+                                    <span class="label-text">Объем сделок</span>
+                                </label>
+                                <div v-if="hasField('monthly_limit')" class="grid gap-2">
+                                    <NumberInputBlock
+                                        v-model="form.monthly_limit"
+                                        :form="{}"
+                                        :errors="errors"
+                                        :on-clear="(field) => (errors[field] = null)"
+                                        field="monthly_limit"
+                                        label="Объем сделок"
+                                    />
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
+                                    <input type="checkbox" class="checkbox checkbox-sm" value="monthly_successful_orders_limit" v-model="selectedFields" :disabled="fieldsDisabled" />
+                                    <span class="label-text">Количество сделок</span>
+                                </label>
+                                <div v-if="hasField('monthly_successful_orders_limit')" class="grid gap-2">
+                                    <NumberInputBlock
+                                        v-model="form.monthly_successful_orders_limit"
+                                        :form="{}"
+                                        :errors="errors"
+                                        :on-clear="(field) => (errors[field] = null)"
+                                        field="monthly_successful_orders_limit"
+                                        label="Количество сделок"
+                                    />
+                                </div>
+                            </div>
+                            <div v-if="hasMonthlyLimitsSelected" class="space-y-2 md:col-span-2">
+                                <div class="grid gap-2">
+                                    <NumberInputBlock
+                                        v-model="form.monthly_limit_reset_day"
+                                        :form="{}"
+                                        :errors="errors"
+                                        :on-clear="(field) => (errors[field] = null)"
+                                        field="monthly_limit_reset_day"
+                                        label="День сброса (1-31)"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-base-content/70 mt-2">
+                            Лимиты можно оставить пустыми, чтобы отключить их. День сброса общий: в этот день обнуляются и объем сделок, и количество сделок.
                         </div>
                     </div>
 
