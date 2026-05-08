@@ -219,7 +219,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </th>
                                         <td>
                                             <MoneyValue :value="dispute.order.amount" :currency="dispute.order.currency" block />
-                                            <MoneyValue :value="dispute.order.total_profit" :currency="dispute.order.base_currency" secondary block />
+                                            <MoneyValue
+                                                v-if="viewStore.isAdminViewMode"
+                                                :value="dispute.order.total_profit"
+                                                :currency="dispute.order.base_currency"
+                                                secondary
+                                                block
+                                            />
                                         </td>
                                         <td>
                                             <div class="flex items-center gap-3">
@@ -325,7 +331,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                             <div class="text-right">
                                                 <MoneyValue :value="dispute.order.amount" :currency="dispute.order.currency" block />
-                                                <MoneyValue :value="dispute.order.total_profit" :currency="dispute.order.base_currency" secondary block />
+                                                <MoneyValue
+                                                    v-if="viewStore.isAdminViewMode"
+                                                    :value="dispute.order.total_profit"
+                                                    :currency="dispute.order.base_currency"
+                                                    secondary
+                                                    block
+                                                />
                                             </div>
                                             <div>
                                                 <DisputeStatus :status="dispute.status"></DisputeStatus>
@@ -388,7 +400,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="flex items-center justify-between">
                                                 <div class="inline-flex gap-3">
                                                     <MoneyValue :value="dispute.order.amount" :currency="dispute.order.currency" compact />
-                                                    <MoneyValue :value="dispute.order.total_profit" :currency="dispute.order.base_currency" secondary />
+                                                    <MoneyValue
+                                                        v-if="viewStore.isAdminViewMode"
+                                                        :value="dispute.order.total_profit"
+                                                        :currency="dispute.order.base_currency"
+                                                        secondary
+                                                    />
                                                 </div>
                                                 <div class="inline-flex shrink-0 items-center gap-2">
                                                     <button

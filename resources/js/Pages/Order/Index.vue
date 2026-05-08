@@ -387,19 +387,22 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </PaymentDetail>
                                         </div>
                                     </td>
-                                    <td v-if="viewStore.isAdminViewMode">
-                                        <div>
+                                    <td v-if="viewStore.isAdminViewMode" class="min-w-0">
+                                        <div class="min-w-0">
                                             <div class="flex items-center gap-2 text-nowrap">
-                                                <svg class="w-5 h-5 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                                <svg class="h-5 w-5 shrink-0 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                                     <path stroke="currentColor" stroke-width="1.5" d="M7 17v1a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1a3 3 0 0 0-3-3h-4a3 3 0 0 0-3 3Zm8-9a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                                 </svg>
                                                 <span class="text-base-content">{{ order.trader_email }}</span>
                                             </div>
-                                            <div class="flex items-center gap-2 text-nowrap">
-                                                <svg class="w-4 h-4 ml-0.5 mr-0.5 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                            <div class="flex min-w-0 items-center gap-2">
+                                                <svg class="ml-0.5 mr-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
                                                 </svg>
-                                                <span class="text-base-content/70">{{ order.device_name ?? 'Без устройства' }}</span>
+                                                <span
+                                                    class="min-w-0 max-w-[4rem] flex-1 truncate text-base-content/70"
+                                                    :title="order.device_name ?? 'Без устройства'"
+                                                >{{ order.device_name ?? 'Без устройства' }}</span>
                                             </div>
                                         </div>
                                     </td>
