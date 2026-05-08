@@ -467,6 +467,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/sms-stop-word', [SmsStopWordController::class, 'store'])->name('sms-stop-word.store');
         Route::delete('/sms-stop-word/{smsStopWord}', [SmsStopWordController::class, 'destroy'])->name('sms-stop-word.destroy');
 
+        Route::get('/payment-details/statistics', [App\Http\Controllers\Admin\PaymentDetailController::class, 'statistics'])->name('payment-details.statistics');
         Route::get('/payment-details', [App\Http\Controllers\Admin\PaymentDetailController::class, 'index'])->name('payment-details.index');
 
         Route::get('/disputes', [App\Http\Controllers\Admin\DisputeController::class, 'index'])->name('disputes.index');
