@@ -253,6 +253,16 @@ class PaymentDetailController extends Controller
             $query->whereDoesntHave('tags');
         }
 
+        if ($scope === 'selected') {
+            $selectedIds = collect((array) $request->input('selected_ids', []))
+                ->map(static fn (mixed $id) => (int) $id)
+                ->filter(static fn (int $id) => $id > 0)
+                ->values()
+                ->all();
+
+            $query->whereIn('id', $selectedIds);
+        }
+
         $paymentDetails = $query->get();
 
         $updatedCount = 0;

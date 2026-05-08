@@ -40,6 +40,8 @@ const isVipUser = computed(() => {
 const scope = ref('all');
 const tagId = ref(null);
 const selectedFields = ref([]);
+const selectedIds = ref([]);
+const selectedPreview = ref([]);
 
 const form = ref({
     is_active: null,
@@ -68,6 +70,10 @@ const tagOptions = computed(() => {
 });
 
 const canEdit = computed(() => {
+    if (scope.value === 'selected') {
+        return selectedIds.value.length > 0;
+    }
+
     if (scope.value === 'tag') {
         return !!tagId.value;
     }
@@ -76,6 +82,7 @@ const canEdit = computed(() => {
 });
 
 const fieldsDisabled = computed(() => processing.value || !canEdit.value);
+const isSelectedMode = computed(() => scope.value === 'selected');
 
 const hasField = (field) => selectedFields.value.includes(field);
 const hasMonthlyLimitsSelected = computed(() => {
@@ -88,6 +95,8 @@ const resetState = () => {
     scope.value = 'all';
     tagId.value = null;
     selectedFields.value = [];
+    selectedIds.value = [];
+    selectedPreview.value = [];
     form.value = {
         is_active: null,
         daily_limit: '',
@@ -125,6 +134,7 @@ const buildPayload = () => {
         tag_id: scope.value === 'tag' ? tagId.value : null,
         fields,
     };
+    if (scope.value === 'selected') payload.selected_ids = selectedIds.value;
 
     if (hasField('is_active')) payload.is_active = form.value.is_active;
     if (hasField('daily_limit')) payload.daily_limit = form.value.daily_limit;
@@ -141,6 +151,10 @@ const buildPayload = () => {
 };
 
 watch(scope, (value) => {
+    if (value === 'selected') {
+        return;
+    }
+
     if (value !== 'tag') {
         tagId.value = null;
         errors.value.tag_id = null;
@@ -200,6 +214,14 @@ watch(
     async (state) => {
         if (state) {
             resetState();
+
+            if (paymentDetailBulkEditModal.value.params?.scope === 'selected') {
+                scope.value = 'selected';
+                selectedIds.value = (paymentDetailBulkEditModal.value.params?.selected_ids || [])
+                    .map((id) => Number(id))
+                    .filter((id) => Number.isFinite(id));
+                selectedPreview.value = paymentDetailBulkEditModal.value.params?.selected_preview || [];
+            }
         } else {
             resetState();
         }
@@ -216,7 +238,7 @@ watch(
                     <div class="text-sm font-medium">
                         Какие реквизиты редактируем
                     </div>
-                    <div>
+                    <div v-if="!isSelectedMode">
                         <InputLabel
                             for="bulk_scope"
                             value="Выбор реквизитов"
@@ -254,7 +276,13 @@ watch(
                             Теги не созданы — можно выбрать только «Все реквизиты».
                         </div>
                     </div>
-                    <div class="text-xs text-base-content/60">
+                    <div v-else-if="isSelectedMode" class="text-xs text-base-content/70">
+                        Выбрано вручную: {{ selectedIds.length }} шт.
+                        <span v-if="selectedPreview.length" class="opacity-70">
+                            ({{ selectedPreview.slice(0, 8).join(', ') }}<span v-if="selectedPreview.length > 8">...</span>)
+                        </span>
+                    </div>
+                    <div v-if="!isSelectedMode" class="text-xs text-base-content/60">
                         Редактирование полей доступно после выбора набора реквизитов.
                     </div>
                 </div>

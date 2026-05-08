@@ -31,11 +31,21 @@ class BulkUpdateRequest extends FormRequest
         ];
 
         return [
-            'scope' => ['required', Rule::in(['all', 'tag', 'without_tags'])],
+            'scope' => ['required', Rule::in(['all', 'tag', 'without_tags', 'selected'])],
             'tag_id' => [
                 Rule::requiredIf($this->input('scope') === 'tag'),
                 'nullable',
                 Rule::exists('payment_detail_tags', 'id')
+                    ->where('user_id', $this->user()?->id),
+            ],
+            'selected_ids' => [
+                Rule::requiredIf($this->input('scope') === 'selected'),
+                'array',
+                'min:1',
+            ],
+            'selected_ids.*' => [
+                'integer',
+                Rule::exists('payment_details', 'id')
                     ->where('user_id', $this->user()?->id),
             ],
             'fields' => ['required', 'array', 'min:1'],
@@ -80,6 +90,7 @@ class BulkUpdateRequest extends FormRequest
         return [
             'scope' => __('набор реквизитов'),
             'tag_id' => __('тег'),
+            'selected_ids' => __('выбранные реквизиты'),
             'fields' => __('поля'),
             'is_active' => __('активность'),
             'daily_limit' => __('дневной лимит'),
