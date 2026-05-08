@@ -361,7 +361,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </th>
                                     <td>
                                         <MoneyValue :value="order.amount" :currency="order.currency" block />
-                                        <MoneyValue :value="order.total_profit" :currency="order.base_currency" secondary block />
+                                        <MoneyValue
+                                            v-if="viewStore.isAdminViewMode"
+                                            :value="order.total_profit"
+                                            :currency="order.base_currency"
+                                            secondary
+                                            block
+                                        />
                                     </td>
                                     <td>
                                         <div class="flex items-center gap-3">
@@ -492,7 +498,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                         <div>
                                             <MoneyValue :value="order.amount" :currency="order.currency" block />
-                                            <MoneyValue :value="order.total_profit" :currency="order.base_currency" secondary block />
+                                            <MoneyValue
+                                                v-if="viewStore.isAdminViewMode"
+                                                :value="order.total_profit"
+                                                :currency="order.base_currency"
+                                                secondary
+                                                block
+                                            />
                                         </div>
                                         <div>
                                             <OrderStatus :status="order.status" :status_name="order.status_name"></OrderStatus>
@@ -564,7 +576,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex items-center justify-between">
                                             <div class="inline-flex gap-3">
                                                 <MoneyValue :value="order.amount" :currency="order.currency" compact />
-                                                <MoneyValue :value="order.total_profit" :currency="order.base_currency" secondary />
+                                                <MoneyValue
+                                                    v-if="viewStore.isAdminViewMode"
+                                                    :value="order.total_profit"
+                                                    :currency="order.base_currency"
+                                                    secondary
+                                                />
                                             </div>
                                             <div class="inline-flex shrink-0 items-center gap-1">
                                                 <button
