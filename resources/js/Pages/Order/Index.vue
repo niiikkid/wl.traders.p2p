@@ -400,7 +400,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
                                                 </svg>
                                                 <span
-                                                    class="min-w-0 max-w-[4rem] flex-1 truncate text-base-content/70"
+                                                    class="min-w-0 max-w-[8rem] flex-1 truncate text-base-content/70"
                                                     :title="order.device_name ?? 'Без устройства'"
                                                 >{{ order.device_name ?? 'Без устройства' }}</span>
                                             </div>
