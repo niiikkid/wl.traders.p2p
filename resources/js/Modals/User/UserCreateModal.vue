@@ -9,7 +9,7 @@ import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import Select from "@/Components/Select.vue";
-import {ref, watch} from "vue";
+import {computed, ref, watch} from "vue";
 import { router } from '@inertiajs/vue3';
 import Multiselect from "@/Components/Form/Multiselect.vue";
 
@@ -18,6 +18,7 @@ const { userCreateModal } = storeToRefs(modalStore);
 
 const roles = ref([]);
 const teamLeaders = ref([]);
+const agents = ref([]);
 const loading = ref(false);
 const processing = ref(false);
 const errors = ref({});
@@ -29,6 +30,11 @@ const form = ref({
     password_confirmation: '',
     role_id: 0,
     team_leader_id: [],
+    agent_id: [],
+});
+
+const selectedRoleName = computed(() => {
+    return roles.value.find((role) => Number(role.id) === Number(form.value.role_id))?.name ?? null;
 });
 
 const resetForm = () => {
@@ -39,6 +45,7 @@ const resetForm = () => {
         password_confirmation: '',
         role_id: 0,
         team_leader_id: [],
+        agent_id: [],
     };
     errors.value = {};
 };
@@ -52,10 +59,15 @@ const loadRoles = () => {
     Promise.all([
         axios.get(route('admin.users.roles')),
         axios.get(route('admin.users.team-leaders')),
+        axios.get(route('admin.users.agents')),
     ])
-    .then(([rolesResponse, leadersResponse]) => {
+    .then(([rolesResponse, leadersResponse, agentsResponse]) => {
         roles.value = rolesResponse.data?.data || rolesResponse.data || [];
         teamLeaders.value = (leadersResponse.data?.data || leadersResponse.data || []).map(item => ({
+            value: item.id,
+            label: item.email,
+        }));
+        agents.value = (agentsResponse.data?.data || agentsResponse.data || []).map(item => ({
             value: item.id,
             label: item.email,
         }));
@@ -72,6 +84,7 @@ const submit = () => {
     const payload = {
         ...form.value,
         team_leader_id: Array.isArray(form.value.team_leader_id) ? form.value.team_leader_id[0] ?? null : form.value.team_leader_id,
+        agent_id: Array.isArray(form.value.agent_id) ? form.value.agent_id[0] ?? null : form.value.agent_id,
     };
 
     axios.post(route('admin.users.store'), payload, {
@@ -103,6 +116,7 @@ watch(
         } else {
             resetForm();
             roles.value = [];
+            agents.value = [];
         }
     }
 );
@@ -211,7 +225,7 @@ watch(
                     <InputError class="mt-1" :message="errors.role_id?.[0]" />
                 </div>
 
-                <div v-if="form.role_id === 2">
+                <div v-if="selectedRoleName === 'Trader'">
                     <InputLabel
                         for="team_leader_id"
                         value="Team Leader"
@@ -229,6 +243,29 @@ watch(
                         @change="errors.team_leader_id = null"
                     />
                     <InputError class="mt-1" :message="errors.team_leader_id?.[0]" />
+                </div>
+
+                <div v-if="selectedRoleName === 'Merchant'">
+                    <InputLabel
+                        for="agent_id"
+                        value="Агент"
+                        :error="!!errors.agent_id?.[0]"
+                    />
+                    <Multiselect
+                        v-model="form.agent_id"
+                        :options="agents"
+                        :enable-search="true"
+                        :single-select="true"
+                        label-key="label"
+                        value-key="value"
+                        placeholder="Выберите агента"
+                        :disabled="processing"
+                        @change="errors.agent_id = null"
+                    />
+                    <InputError class="mt-1" :message="errors.agent_id?.[0]" />
+                    <p class="mt-1 text-xs text-base-content/70">
+                        Необязательно. Агент будет получать комиссию с новых успешных сделок мерчанта.
+                    </p>
                 </div>
             </form>
         </ModalBody>

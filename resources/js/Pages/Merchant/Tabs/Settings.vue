@@ -8,14 +8,10 @@ import {computed, reactive, ref, watch} from "vue";
 import {useViewStore} from "@/store/view.js";
 import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
-import Multiselect from "@/Components/Form/Multiselect.vue";
 import DatepickerInput from "@/Pages/Merchant/Tabs/Partials/DatepickerInput.vue";
 import DUUID from "@/Components/DUUID.vue";
-import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
-import {useModalStore} from "@/store/modal.js";
 
 const viewStore = useViewStore();
-const modalStore = useModalStore();
 const emit = defineEmits(['updated']);
 const MERCHANT_API_MARKET = 'merchant_api';
 
@@ -48,10 +44,6 @@ const props = defineProps({
         type: Object,
         default: () => ({ data: [] }),
     },
-    agents: {
-        type: Array,
-        default: () => [],
-    },
 });
 
 const page = usePage();
@@ -74,7 +66,6 @@ const categories = ref(deepClone(props.categories?.length ? props.categories : p
 const currencies = ref(deepClone(props.currencies?.length ? props.currencies : page?.props?.currencies ?? []));
 const detailTypes = ref(deepClone(props.detailTypes?.length ? props.detailTypes : page?.props?.detailTypes ?? []));
 const commissionSettings = ref(deepClone(props.commissionSettings ?? page?.props?.commissionSettings ?? [], []));
-const agents = ref(deepClone(props.agents?.length ? props.agents : page?.props?.agents ?? []));
 const paymentGateways = ref(deepClone(
     (props.paymentGateways && Object.keys(props.paymentGateways).length)
         ? props.paymentGateways
@@ -133,7 +124,6 @@ const geoForm = reactive({
 const formSettings = reactive({
     categories: merchant.value?.categories ?? [],
     max_order_wait_time: merchant.value?.max_order_wait_time ?? null,
-    agent_id: merchant.value?.agent_id ?? null,
     errors: {},
     processing: false,
     recentlySuccessful: false,
@@ -152,11 +142,6 @@ const formResendCallback = reactive({
     recentlySuccessful: false,
     _successTimer: null,
 });
-
-const formApiCredentials = reactive({
-    processingType: null,
-});
-const copiedCredentialType = ref(null);
 
 const availableCurrencies = computed(() => {
     return currencies.value.filter(
@@ -198,7 +183,6 @@ const resetFormsFromMerchant = (value) => {
     formCallback.payout_callback_url = value.payout_callback_url ?? '';
     formSettings.categories = value.categories ?? [];
     formSettings.max_order_wait_time = value.max_order_wait_time ?? null;
-    formSettings.agent_id = value.agent_id ?? null;
     minOrderAmounts.value = value.min_order_amounts ? {...value.min_order_amounts} : {};
     geoItems.value = normalizeGeoItems(value.geos ?? []);
 };
@@ -336,26 +320,6 @@ watch(
 );
 
 watch(
-    () => props.agents,
-    (value) => {
-        if (value !== undefined) {
-            agents.value = deepClone(value ?? [], []);
-        }
-    },
-    { immediate: false }
-);
-
-watch(
-    () => page.props?.agents,
-    (value) => {
-        if (value !== undefined && (!props.agents || !props.agents.length)) {
-            agents.value = deepClone(value ?? [], []);
-        }
-    },
-    { immediate: true }
-);
-
-watch(
     () => page.props?.commissionSettings,
     (value) => {
         if (value !== undefined && (!props.commissionSettings || !props.commissionSettings.length)) {
@@ -436,87 +400,6 @@ const submitCallback = () => {
     });
 };
 
-const copyApiCredential = async (tokenType, value) => {
-    if (!value) {
-        return;
-    }
-
-    const text = String(value);
-
-    const copyWithExecCommand = () => {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.setAttribute('readonly', '');
-        textarea.style.position = 'fixed';
-        textarea.style.top = '0';
-        textarea.style.left = '-9999px';
-        document.body.appendChild(textarea);
-        textarea.select();
-        const ok = document.execCommand('copy');
-        document.body.removeChild(textarea);
-        if (!ok) {
-            throw new Error('execCommand copy failed');
-        }
-    };
-
-    try {
-        if (navigator.clipboard?.writeText) {
-            try {
-                await navigator.clipboard.writeText(text);
-            } catch {
-                copyWithExecCommand();
-            }
-        } else {
-            copyWithExecCommand();
-        }
-
-        copiedCredentialType.value = tokenType;
-
-        setTimeout(() => {
-            if (copiedCredentialType.value === tokenType) {
-                copiedCredentialType.value = null;
-            }
-        }, 1500);
-    } catch (e) {
-        console.error('Clipboard copy failed:', e);
-    }
-};
-
-const regenerateApiCredential = (tokenType) => {
-    if (!merchant.value || formApiCredentials.processingType) {
-        return;
-    }
-
-    formApiCredentials.processingType = tokenType;
-
-    axios.post(route('merchants.api-credentials.regenerate', {
-        merchant: merchant.value.id,
-        tokenType,
-    }), {}, {
-        headers: {Accept: 'application/json'},
-    }).then(({data}) => {
-        if (data?.merchant) {
-            merchant.value = data.merchant;
-            resetFormsFromMerchant(merchant.value);
-            emit('updated', merchant.value);
-        }
-    }).finally(() => {
-        formApiCredentials.processingType = null;
-    });
-};
-
-const openRegenerateApiCredentialConfirm = (tokenType) => {
-    const label = tokenType === 'api' ? 'API token' : 'Callback token';
-
-    modalStore.openConfirmModal({
-        title: `Перегенерировать ${label}?`,
-        body: 'Старый ключ сразу перестанет работать. Действие невозможно отменить.',
-        confirm_button_name: 'Перегенерировать',
-        cancel_button_name: 'Отмена',
-        confirm: () => regenerateApiCredential(tokenType),
-    });
-};
-
 const submitSettings = () => {
     if (!merchant.value || formSettings.processing) {
         return;
@@ -529,7 +412,6 @@ const submitSettings = () => {
         categories: formSettings.categories,
         max_order_wait_time: formSettings.max_order_wait_time,
         min_order_amounts: minOrderAmounts.value,
-        agent_id: formSettings.agent_id,
     }, {
         headers: {Accept: 'application/json'},
     }).then(({data}) => {
@@ -726,10 +608,6 @@ const tabs = computed(() => {
         {id: 'callback', title: 'Callback', description: 'URL уведомлений'},
     ];
 
-    if (viewStore.isAdminViewMode) {
-        rows.push({id: 'api_credentials', title: 'API Keys', description: 'Ключи API v2'});
-    }
-
     if (!viewStore.isAdminViewMode) {
         rows.push({id: 'geo', title: 'Гео', description: 'Текущие направления'});
     }
@@ -873,69 +751,6 @@ const merchantStatus = computed(() => {
                                 />
                             </div>
                         </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Таб: API Keys -->
-            <div v-if="activeTab === 'api_credentials' && viewStore.isAdminViewMode" class="space-y-3">
-                <div v-if="merchant" class="rounded-lg bg-base-200/60 p-2.5 sm:p-3">
-                    <div role="alert" class="alert alert-info mb-3 py-2 text-xs">
-                        <span>
-                            Эти ключи используются только для API v2. Legacy API продолжает работать со старым токеном из раздела «API Интеграция».
-                        </span>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                        <div
-                            v-for="credential in [
-                                {
-                                    type: 'api',
-                                    label: 'API token',
-                                    description: 'Для входящих запросов мерчанта к API v2.',
-                                    value: merchant.api_credentials?.api_token,
-                                },
-                                {
-                                    type: 'callback',
-                                    label: 'Callback token',
-                                    description: 'Для исходящих callback’ов по API v2 и каскаду.',
-                                    value: merchant.api_credentials?.callback_token,
-                                },
-                            ]"
-                            :key="credential.type"
-                            class="rounded-lg bg-base-100 p-3 ring-1 ring-base-content/5"
-                        >
-                            <div class="mb-2">
-                                <div class="font-semibold text-base-content">{{ credential.label }}</div>
-                                <div class="text-[11px] text-base-content/60">{{ credential.description }}</div>
-                            </div>
-
-                            <div class="flex items-stretch gap-2">
-                                <input
-                                    :value="credential.value"
-                                    type="text"
-                                    class="input input-bordered input-sm min-h-0 flex-1 self-stretch font-mono text-[11px]"
-                                    readonly
-                                >
-                                <button
-                                    type="button"
-                                    class="btn btn-ghost btn-sm shrink-0 self-stretch px-3"
-                                    :disabled="!credential.value"
-                                    @click="copyApiCredential(credential.type, credential.value)"
-                                >
-                                    {{ copiedCredentialType === credential.type ? 'Скопировано' : 'Копировать' }}
-                                </button>
-                            </div>
-
-                            <button
-                                type="button"
-                                class="btn btn-outline btn-xs mt-3"
-                                :disabled="formApiCredentials.processingType === credential.type"
-                                @click="openRegenerateApiCredentialConfirm(credential.type)"
-                            >
-                                {{ formApiCredentials.processingType === credential.type ? 'Обновляем...' : 'Перегенерировать' }}
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1210,31 +1025,6 @@ const merchantStatus = computed(() => {
                         <form class="space-y-3" @submit.prevent="submitSettings">
                             <div>
                                 <InputLabel
-                                    for="agent_id"
-                                    value="Агент"
-                                    :error="!!formSettings.errors.agent_id"
-                                    class="mb-0.5"
-                                />
-                                <Select
-                                    id="agent_id"
-                                    v-model="formSettings.agent_id"
-                                    :items="agents"
-                                    value="id"
-                                    name="email"
-                                    default_title="Без агента"
-                                    :required="false"
-                                    size="sm"
-                                    :error="!!formSettings.errors.agent_id"
-                                    @change="clearFormError(formSettings, 'agent_id')"
-                                />
-                                <p class="mt-1 text-xs text-base-content/70">
-                                    Агент получает 0.2% с оборота новых успешных сделок этого мерчанта.
-                                </p>
-                                <InputError :message="formSettings.errors.agent_id" class="mt-1" />
-                            </div>
-
-                            <div>
-                                <InputLabel
                                     for="max_order_wait_time"
                                     value="Время на выдачу реквизита (max)"
                                     :error="!!formSettings.errors.max_order_wait_time"
@@ -1402,7 +1192,6 @@ const merchantStatus = computed(() => {
             </div>
         </div>
     </div>
-    <ConfirmModal />
 </template>
 
 <style scoped>

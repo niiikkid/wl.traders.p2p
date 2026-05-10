@@ -24,9 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $payout_callback_url
  * @property bool $active
  * @property int $user_id
- * @property int|null $agent_id
  * @property User $user
- * @property User|null $agent
  * @property Collection<int, Order> $orders
  * @property Collection<int, Category> $categories
  * @property Collection<int, User> $supports Саппорты, имеющие доступ к этому мерчанту
@@ -54,7 +52,6 @@ class Merchant extends Model
         'payout_callback_url',
         'token',
         'user_id',
-        'agent_id',
         'active',
         'settings',
         'gateway_settings',
@@ -106,11 +103,6 @@ class Merchant extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function agent(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'agent_id');
     }
 
     /**

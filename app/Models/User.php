@@ -66,6 +66,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $avatar_style
  * @property string $google2fa_secret
  * @property int|null $team_leader_id
+ * @property int|null $agent_id
  * @property int|null $user_team_id
  * @property bool $team_leader_extended_access_enabled
  * @property bool $team_leader_flexible_trader_commission_enabled
@@ -78,7 +79,8 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $archived_at
  * @property float|null $team_leader_individual_commission_percentage
  * @property User|null $teamLeader
- * @property Collection<int, Merchant> $agentMerchants
+ * @property User|null $agent
+ * @property Collection<int, User> $agentMerchants
  * @property UserTeam|null $userTeam
  * @property Carbon $banned_at
  * @property Carbon $created_at
@@ -126,6 +128,7 @@ class User extends Authenticatable
         'avatar_style',
         'google2fa_secret',
         'team_leader_id',
+        'agent_id',
         'user_team_id',
         'team_leader_extended_access_enabled',
         'team_leader_flexible_trader_commission_enabled',
@@ -235,6 +238,11 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'agent_id');
     }
 
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'agent_id');
+    }
+
     public function disputes(): HasMany
     {
         return $this->hasMany(Dispute::class, 'trader_id');
@@ -282,7 +290,7 @@ class User extends Authenticatable
 
     public function agentMerchants(): HasMany
     {
-        return $this->hasMany(Merchant::class, 'agent_id');
+        return $this->hasMany(User::class, 'agent_id');
     }
 
     /**

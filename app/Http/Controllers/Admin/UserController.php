@@ -89,6 +89,20 @@ class UserController extends Controller
         ]);
     }
 
+    public function agents()
+    {
+        $agents = User::query()
+            ->role('Agent')
+            ->select('id', 'email')
+            ->orderBy('email')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $agents,
+        ]);
+    }
+
     public function store(StoreRequest $request)
     {
         $dto = UserCreateDTO::makeFromRequest($request->validated());
@@ -107,7 +121,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load('roles', 'meta', 'teamLeader', 'userTeam');
+        $user->load('roles', 'meta', 'teamLeader', 'agent', 'userTeam');
         $user = UserResource::make($user)->resolve();
 
         return response()->json([

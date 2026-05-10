@@ -20,6 +20,7 @@ class UserService implements UserServiceContract
         return $this->transaction(function () use ($data) {
             $roleName = Role::find($data->role_id)?->name;
             $teamLeaderId = $this->resolveTeamLeaderIdForTrader($data->team_leader_id, $roleName);
+            $agentId = $this->resolveAgentIdForMerchant($data->agent_id, $roleName);
 
             $referralCommissionPercentage = $roleName === 'Team Leader'
                 ? self::DEFAULT_TEAM_LEADER_COMMISSION_PERCENTAGE
@@ -37,6 +38,7 @@ class UserService implements UserServiceContract
                 'traffic_enabled_at' => now(),
                 'reserve_balance_limit' => services()->settings()->getDefaultReserveBalanceLimit(),
                 'team_leader_id' => $teamLeaderId,
+                'agent_id' => $agentId,
                 'team_leader_extended_access_enabled' => false,
                 'referral_commission_percentage' => $referralCommissionPercentage,
                 // Настройки выплат по умолчанию для всех новых пользователей
@@ -64,6 +66,7 @@ class UserService implements UserServiceContract
             if (! $user->team_leader_id) {
                 $teamLeaderId = $this->resolveTeamLeaderIdForTrader($data->team_leader_id, $roleName);
             }
+            $agentId = $this->resolveAgentIdForMerchant($data->agent_id, $roleName);
 
             $extendedAccessEnabled = in_array($roleName, ['Team Leader', 'Super Admin'], true)
                 ? $data->team_leader_extended_access_enabled
@@ -91,6 +94,7 @@ class UserService implements UserServiceContract
                 'payout_team_leader_split_from_service_percent' => $data->payout_team_leader_split_from_service_percent
                     ?? $user->payout_team_leader_split_from_service_percent,
                 'reserve_balance_limit' => $data->reserve_balance_limit,
+                'agent_id' => $agentId,
                 'traffic_enabled_at' => $wasTrafficStopped && ! $data->stop_traffic ? now() : $user->traffic_enabled_at,
                 'team_leader_extended_access_enabled' => $extendedAccessEnabled,
                 'team_leader_flexible_trader_commission_enabled' => $flexibleTraderCommissionEnabled,
@@ -155,6 +159,22 @@ class UserService implements UserServiceContract
 
         return $teamLeader?->id;
     }
+
+    private function resolveAgentIdForMerchant(?int $agentId, ?string $roleName): ?int
+    {
+        if (! $agentId) {
+            return null;
+        }
+
+        if ($roleName !== 'Merchant') {
+            return null;
+        }
+
+        $agent = User::query()
+            ->where('id', $agentId)
+            ->role('Agent')
+            ->first();
+
+        return $agent?->id;
+    }
 }
-
-

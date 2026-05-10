@@ -6,7 +6,6 @@ use App\Enums\MarketEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MerchantResource;
 use App\Models\Merchant;
-use App\Models\User;
 use App\Services\Money\Currency;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +18,7 @@ class MerchantController extends Controller
     public function index()
     {
         $merchants = Merchant::query()
-            ->with(['user', 'agent'])
+            ->with('user')
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
 
@@ -31,7 +30,7 @@ class MerchantController extends Controller
     public function indexData(Request $request): JsonResponse
     {
         $merchants = Merchant::query()
-            ->with(['user', 'agent'])
+            ->with('user')
             ->orderByDesc('id')
             ->paginate($request->get('per_page', 10));
 
@@ -95,20 +94,11 @@ class MerchantController extends Controller
             'max_order_wait_time' => 'nullable|integer|min:1000',
             'min_order_amounts' => 'nullable|array',
             'min_order_amounts.*' => 'numeric|min:0',
-            'agent_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ]);
-        $agentId = $this->resolveAgentId($request->integer('agent_id') ?: null);
-
-        if ($request->filled('agent_id') && ! $agentId) {
-            throw ValidationException::withMessages([
-                'agent_id' => 'Выберите пользователя с ролью Agent.',
-            ]);
-        }
 
         $merchant->update([
             'max_order_wait_time' => $request->max_order_wait_time,
             'min_order_amounts' => $request->min_order_amounts,
-            'agent_id' => $agentId,
         ]);
 
         if ($request->has('categories')) {
@@ -117,12 +107,12 @@ class MerchantController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh()->load(['categories', 'agent']))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh()->load('categories'))->resolve(),
             ]);
         }
 
         return back()->with([
-            'merchant' => new MerchantResource($merchant->fresh()->load(['categories', 'agent'])),
+            'merchant' => new MerchantResource($merchant->fresh()->load('categories')),
         ]);
     }
 
@@ -275,17 +265,5 @@ class MerchantController extends Controller
         $scale = isset($matches[1]) ? strlen($matches[1]) : 0;
 
         return $scale <= $maxScale;
-    }
-
-    private function resolveAgentId(?int $agentId): ?int
-    {
-        if (! $agentId) {
-            return null;
-        }
-
-        return User::query()
-            ->where('id', $agentId)
-            ->role('Agent')
-            ->value('id');
     }
 }

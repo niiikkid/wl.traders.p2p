@@ -194,7 +194,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
     public function buildAgentStats(User $user): array
     {
-        $merchantIds = Merchant::query()
+        $merchantUserIds = User::query()
             ->where('agent_id', $user->id)
             ->pluck('id');
 
@@ -209,7 +209,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
             : Money::fromUnits(0, Currency::USDT());
 
         $merchants = Merchant::query()
-            ->where('agent_id', $user->id)
+            ->whereHas('user', fn (Builder $query) => $query->where('agent_id', $user->id))
             ->withSum(['orders as successful_turnover' => function (Builder $query) {
                 $query->where('status', OrderStatus::SUCCESS);
             }], 'total_profit')
@@ -230,7 +230,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
         return [
             'statistics' => [
-                'merchantsCount' => $merchantIds->count(),
+                'merchantsCount' => $merchantUserIds->count(),
                 'totalTurnover' => $totalTurnover->toBeauty(),
                 'totalProfit' => $totalProfit->toBeauty(),
                 'balance' => $balance->toBeauty(),

@@ -11,6 +11,7 @@ readonly class UserCreateDTO extends BaseDTO
         public string $password,
         public int $role_id,
         public ?int $team_leader_id = null,
+        public ?int $agent_id = null,
         public ?string $telegram_username = null,
     ) {}
 
@@ -21,6 +22,7 @@ readonly class UserCreateDTO extends BaseDTO
             password: $data['password'],
             role_id: (int) $data['role_id'],
             team_leader_id: $data['team_leader_id'] ?? null,
+            agent_id: $data['agent_id'] ?? null,
             telegram_username: self::normalizeTelegramUsername($data['telegram_username'] ?? null),
         );
     }
@@ -39,5 +41,3 @@ readonly class UserCreateDTO extends BaseDTO
         return ltrim($value, '@');
     }
 }
-
-

@@ -7,6 +7,8 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Validator;
+use Spatie\Permission\Models\Role;
 
 class StoreRequest extends FormRequest
 {
@@ -36,6 +38,7 @@ class StoreRequest extends FormRequest
                 Rule::exists('roles', 'id')->where(fn ($query) => $query->where('name', '!=', 'Provider Liquidity')),
             ],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
+            'agent_id' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 
@@ -44,7 +47,28 @@ class StoreRequest extends FormRequest
         return [
             'role_id' => __('роль'),
             'team_leader_id' => __('тим лидер'),
+            'agent_id' => __('агент'),
             'telegram_username' => __('telegram'),
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            $agentId = $this->integer('agent_id') ?: null;
+            if (! $agentId) {
+                return;
+            }
+
+            $roleName = Role::query()->whereKey($this->integer('role_id'))->value('name');
+            $agentExists = User::query()
+                ->whereKey($agentId)
+                ->role('Agent')
+                ->exists();
+
+            if ($roleName !== 'Merchant' || ! $agentExists) {
+                $validator->errors()->add('agent_id', __('Выберите пользователя с ролью Agent.'));
+            }
+        });
     }
 }

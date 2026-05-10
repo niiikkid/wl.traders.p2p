@@ -31,6 +31,7 @@ class OrderDetailAssigner
     public function assign(): Order
     {
         $merchant = queries()->merchant()->findByID($this->order->merchant_id);
+        $merchant->loadMissing('user');
 
         $details = (new OrderDetailProvider(
             order: $this->order,
@@ -49,7 +50,7 @@ class OrderDetailAssigner
             teamLeaderFeeRate: $details->teamLeaderCommissionRate,
             teamLeaderServiceSplitPercent: $details->trader->teamLeaderSplitFromServicePercent
         );
-        $agentId = $merchant->agent_id;
+        $agentId = $merchant->user?->agent_id;
         $agentProfit = $agentId
             ? AgentCommission::calculate($profits->convertedAmount, $profits->serviceFee)
             : AgentCommission::zero();

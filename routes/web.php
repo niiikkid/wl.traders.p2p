@@ -421,6 +421,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/users/{user}/team', [App\Http\Controllers\Admin\UserController::class, 'updateTeam'])->name('users.team.update');
         Route::get('/users/roles', [App\Http\Controllers\Admin\UserController::class, 'roles'])->name('users.roles');
         Route::get('/users/team-leaders', [App\Http\Controllers\Admin\UserController::class, 'teamLeaders'])->name('users.team-leaders');
+        Route::get('/users/agents', [App\Http\Controllers\Admin\UserController::class, 'agents'])->name('users.agents');
         Route::get('/users/{user}/temp-vip-history', [App\Http\Controllers\Admin\UserController::class, 'tempVipHistory'])->name('users.temp-vip-history');
         Route::get('/users/{user}', [App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
         Route::resource('/users', App\Http\Controllers\Admin\UserController::class)->only(['index', 'store', 'update']);

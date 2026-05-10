@@ -14,7 +14,6 @@ use App\Http\Resources\PaymentGatewayResource;
 use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\Order;
-use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Http\JsonResponse;
@@ -87,15 +86,7 @@ class MerchantController extends Controller
     {
         Gate::authorize('access-to-merchant', $merchant);
 
-        $user = request()->user();
-        $canManageApiCredentials = $user?->hasRole('Super Admin') ?? false;
-
-        if ($canManageApiCredentials) {
-            $merchant->apiCredentialOrCreate();
-            $merchant->load('categories', 'apiCredential', 'agent');
-        } else {
-            $merchant->load('categories');
-        }
+        $merchant->load('categories');
 
         $paymentGateways = [
             'data' => PaymentGatewayResource::collection(
@@ -111,34 +102,12 @@ class MerchantController extends Controller
             'categories' => CategoryResource::collection(Category::orderBy('name')->get())->resolve(),
             'currencies' => $this->getCurrencies(),
             'detail_types' => $this->getDetailTypes(),
-            'agents' => $canManageApiCredentials ? $this->getAgents() : [],
         ]);
     }
 
     public function regenerateApiCredential(Merchant $merchant, string $tokenType): JsonResponse
     {
-        Gate::authorize('access-to-merchant', $merchant);
-        $user = request()->user();
-
-        if (! ($user?->hasRole('Super Admin') ?? false)) {
-            abort(404);
-        }
-
-        if (! in_array($tokenType, ['api', 'callback'], true)) {
-            abort(404);
-        }
-
-        $credential = $merchant->apiCredentialOrCreate();
-
-        if ($tokenType === 'api') {
-            $credential->regenerateApiToken();
-        } else {
-            $credential->regenerateCallbackToken();
-        }
-
-        return response()->json([
-            'merchant' => MerchantResource::make($merchant->fresh(['categories', 'apiCredential']))->resolve(),
-        ]);
+        abort(404);
     }
 
     public function updateCommissionSettings(
@@ -285,19 +254,5 @@ class MerchantController extends Controller
         }
 
         return $detailTypes;
-    }
-
-    private function getAgents(): array
-    {
-        return User::query()
-            ->role('Agent')
-            ->select(['id', 'email'])
-            ->orderBy('email')
-            ->get()
-            ->map(fn (User $user) => [
-                'id' => $user->id,
-                'email' => $user->email,
-            ])
-            ->toArray();
     }
 }

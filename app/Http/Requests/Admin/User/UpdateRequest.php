@@ -51,6 +51,7 @@ class UpdateRequest extends FormRequest
             'payout_team_leader_split_from_service_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'reserve_balance_limit' => ['nullable', 'integer', 'min:0'],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
+            'agent_id' => ['nullable', 'integer', 'exists:users,id'],
             'team_leader_extended_access_enabled' => ['required', 'boolean'],
             'team_leader_flexible_trader_commission_enabled' => ['required', 'boolean'],
             'team_leader_flexible_trader_commission_min' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -66,6 +67,18 @@ class UpdateRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $roleId = (int) $this->input('role_id');
             $roleName = Role::query()->whereKey($roleId)->value('name');
+            $agentId = $this->integer('agent_id') ?: null;
+            if ($agentId) {
+                $agentExists = User::query()
+                    ->whereKey($agentId)
+                    ->role('Agent')
+                    ->exists();
+
+                if ($roleName !== 'Merchant' || ! $agentExists) {
+                    $validator->errors()->add('agent_id', __('Выберите пользователя с ролью Agent.'));
+                }
+            }
+
             $isTeamLeaderLikeRole = in_array($roleName, ['Super Admin', 'Team Leader'], true);
             $extendedAccessEnabled = (bool) $this->input('team_leader_extended_access_enabled', false);
             $flexibleEnabled = (bool) $this->input('team_leader_flexible_trader_commission_enabled', false);
@@ -123,6 +136,7 @@ class UpdateRequest extends FormRequest
             'payout_team_leader_split_from_service_percent' => __('сплит комиссии тимлида от выплат'),
             'reserve_balance_limit' => __('страховой депозит'),
             'team_leader_id' => __('тим лидер'),
+            'agent_id' => __('агент'),
             'telegram_username' => __('telegram'),
             'team_leader_extended_access_enabled' => __('расширенный доступ тимлида'),
             'team_leader_flexible_trader_commission_enabled' => __('гибкая комиссия тимлида по трейдерам'),

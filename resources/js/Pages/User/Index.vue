@@ -111,7 +111,7 @@ const openPage = (tab) => {
 const isTraderRole = (user) => user.role?.name === 'Trader';
 
 /** Баланс и переход в кошелёк — только для ролей с финансовым кошельком в админке. */
-const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Super Admin'];
+const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Agent', 'Super Admin'];
 
 const userShowsWalletBalanceAndLink = (user) => {
     const role_name = user?.role?.name;
@@ -356,7 +356,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     v-if="userShowsWalletBalanceAndLink(user)"
                                                     @click="visitUserWallet(user)"
                                                 >
-                                                    Кошелек
+                                                    Финансы
                                                 </TableAction>
                                                 <TableAction @click="openUserNotesModal(user)">
                                                     Заметки
@@ -506,7 +506,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                             v-if="userShowsWalletBalanceAndLink(user)"
                                                             @click="visitUserWallet(user)"
                                                         >
-                                                            Кошелек
+                                                            Финансы
                                                         </TableAction>
                                                         <TableAction @click="openUserNotesModal(user)">
                                                             Заметки
@@ -628,7 +628,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         v-if="userShowsWalletBalanceAndLink(user)"
                                                         @click="visitUserWallet(user)"
                                                     >
-                                                        Кошелек
+                                                        Финансы
                                                     </TableAction>
                                                     <TableAction @click="openUserNotesModal(user)">
                                                         Заметки

@@ -39,6 +39,7 @@ class UserResource extends JsonResource
             'archived_at' => $this->archived_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'team_leader_id' => $this->team_leader_id,
+            'agent_id' => $this->agent_id,
             'team_leader_extended_access_enabled' => (bool) $this->team_leader_extended_access_enabled,
             'team_leader_flexible_trader_commission_enabled' => (bool) $this->team_leader_flexible_trader_commission_enabled,
             'team_leader_flexible_trader_commission_min' => $this->team_leader_flexible_trader_commission_min !== null
@@ -58,6 +59,12 @@ class UserResource extends JsonResource
                     'id' => $this->teamLeader->id,
                     'email' => $this->teamLeader->email,
                 ];
+            }),
+            'agent' => $this->whenLoaded('agent', function () {
+                return $this->agent ? [
+                    'id' => $this->agent->id,
+                    'email' => $this->agent->email,
+                ] : null;
             }),
             'user_team' => $this->whenLoaded('userTeam', function () {
                 if (! $this->userTeam) {
