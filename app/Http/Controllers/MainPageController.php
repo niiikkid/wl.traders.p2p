@@ -129,6 +129,13 @@ class MainPageController extends Controller
         return Inertia::render('MainPage/Leader/Index', $stats);
     }
 
+    public function agent()
+    {
+        $stats = $this->mainPageStatsService->buildAgentStats(auth()->user());
+
+        return Inertia::render('MainPage/Agent/Index', $stats);
+    }
+
     public function admin()
     {
         $merchantId = request()->get('merchant_id');

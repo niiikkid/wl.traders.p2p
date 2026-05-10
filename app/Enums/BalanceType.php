@@ -13,4 +13,5 @@ enum BalanceType: string
     case MERCHANT = 'merchant';
     case COMMISSION = 'commission';
     case TEAMLEADER = 'teamleader';
+    case AGENT = 'agent';
 }

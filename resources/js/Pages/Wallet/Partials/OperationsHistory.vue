@@ -184,6 +184,7 @@ const openTransactionsExport = () => {
                                         <template v-else-if="invoice.balance_type === 'merchant'">Мерчант</template>
                                         <template v-else-if="invoice.balance_type === 'teamleader'">Тимлид</template>
                                         <template v-else-if="invoice.balance_type === 'provider'">Провайдер</template>
+                                        <template v-else-if="invoice.balance_type === 'agent'">Агент</template>
                                     </div>
                                 </td>
                                 <td>
@@ -253,6 +254,7 @@ const openTransactionsExport = () => {
                                         <template v-else-if="invoice.balance_type === 'merchant'">Мерчант</template>
                                         <template v-else-if="invoice.balance_type === 'teamleader'">Тимлид</template>
                                         <template v-else-if="invoice.balance_type === 'provider'">Провайдер</template>
+                                        <template v-else-if="invoice.balance_type === 'agent'">Агент</template>
                                     </div>
                                 </template>
                             </div>

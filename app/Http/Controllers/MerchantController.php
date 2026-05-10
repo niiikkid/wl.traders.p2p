@@ -14,6 +14,7 @@ use App\Http\Resources\PaymentGatewayResource;
 use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Http\JsonResponse;
@@ -91,7 +92,7 @@ class MerchantController extends Controller
 
         if ($canManageApiCredentials) {
             $merchant->apiCredentialOrCreate();
-            $merchant->load('categories', 'apiCredential');
+            $merchant->load('categories', 'apiCredential', 'agent');
         } else {
             $merchant->load('categories');
         }
@@ -110,6 +111,7 @@ class MerchantController extends Controller
             'categories' => CategoryResource::collection(Category::orderBy('name')->get())->resolve(),
             'currencies' => $this->getCurrencies(),
             'detail_types' => $this->getDetailTypes(),
+            'agents' => $canManageApiCredentials ? $this->getAgents() : [],
         ]);
     }
 
@@ -283,5 +285,19 @@ class MerchantController extends Controller
         }
 
         return $detailTypes;
+    }
+
+    private function getAgents(): array
+    {
+        return User::query()
+            ->role('Agent')
+            ->select(['id', 'email'])
+            ->orderBy('email')
+            ->get()
+            ->map(fn (User $user) => [
+                'id' => $user->id,
+                'email' => $user->email,
+            ])
+            ->toArray();
     }
 }

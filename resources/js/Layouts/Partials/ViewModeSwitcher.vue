@@ -39,6 +39,11 @@ const visitDefaultPage = () => {
             preserveScroll: true
         })
     }
+    if (viewStore.viewMode === 'agent') {
+        router.visit(route('agent.main.index'), {
+            preserveScroll: true
+        })
+    }
 }
 
 const selectViewMode = (mode) => {
@@ -54,6 +59,7 @@ const getCurrentViewModeLabel = () => {
         'leader': 'Тимлидер',
         'support': 'Саппорт',
         'analyst': 'Аналитик',
+        'agent': 'Агент',
     };
     return labels[viewStore.viewMode] || 'Выберите режим';
 }
@@ -95,6 +101,11 @@ const getCurrentViewModeLabel = () => {
                 <li>
                     <a @click="selectViewMode('analyst')">
                         Аналитик
+                    </a>
+                </li>
+                <li>
+                    <a @click="selectViewMode('agent')">
+                        Агент
                     </a>
                 </li>
             </ul>

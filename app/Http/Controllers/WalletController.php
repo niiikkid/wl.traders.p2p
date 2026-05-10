@@ -17,11 +17,13 @@ class WalletController extends Controller
     {
         if ($request->route()->action['as'] === 'wallet.index') {
             $balanceType = BalanceType::TRUST;
-        } else if ($request->route()->action['as'] === 'merchant.finances.index') {
+        } elseif ($request->route()->action['as'] === 'merchant.finances.index') {
             $balanceType = BalanceType::MERCHANT;
-        } else if ($request->route()->action['as'] === 'leader.finances.index') {
+        } elseif ($request->route()->action['as'] === 'leader.finances.index') {
             $balanceType = BalanceType::TEAMLEADER;
-        } else if ($request->route()->action['as'] === 'provider-liquidity.wallet.index') {
+        } elseif ($request->route()->action['as'] === 'agent.finances.index') {
+            $balanceType = BalanceType::AGENT;
+        } elseif ($request->route()->action['as'] === 'provider-liquidity.wallet.index') {
             $balanceType = BalanceType::PROVIDER;
         }
 
@@ -38,7 +40,7 @@ class WalletController extends Controller
             'transactions' => [
                 'key' => 'transactions',
                 'name' => 'Транзакции',
-            ]
+            ],
         ];
 
         $filters = [
@@ -83,7 +85,7 @@ class WalletController extends Controller
                 balanceType: $balanceType,
             );
             $invoices = InvoiceResource::collection($invoices);
-        } else if ($currentTab === 'transactions') {
+        } elseif ($currentTab === 'transactions') {
             $transactions = queries()->transaction()->paginate(
                 wallet: $wallet,
                 balanceType: $balanceType,
@@ -98,6 +100,18 @@ class WalletController extends Controller
                 'merchant' => false,
                 'teamleader' => false,
                 'provider' => true,
+                'agent' => false,
+                'escrow' => false,
+                'dispute' => false,
+            ];
+        }
+        if ($request->route()->action['as'] === 'agent.finances.index') {
+            $walletSurfaces = [
+                'trust' => false,
+                'merchant' => false,
+                'teamleader' => false,
+                'provider' => false,
+                'agent' => true,
                 'escrow' => false,
                 'dispute' => false,
             ];

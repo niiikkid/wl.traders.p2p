@@ -12,6 +12,7 @@ import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
 import AnalystMenu from "@/Layouts/Partials/AnalystMenu.vue";
 import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
 import ProviderLiquidityMenu from "@/Layouts/Partials/ProviderLiquidityMenu.vue";
+import AgentMenu from "@/Layouts/Partials/AgentMenu.vue";
 import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 
 const viewStore = useViewStore();
@@ -268,6 +269,12 @@ const roleToMode = (roleName) => {
     if (roleName === 'Analyst') {
         return 'analyst';
     }
+    if (roleName === 'Provider Liquidity') {
+        return 'provider-liquidity';
+    }
+    if (roleName === 'Agent') {
+        return 'agent';
+    }
     return 'trader';
 };
 
@@ -294,6 +301,14 @@ const setViewMode = (mode) => {
     }
     if (mode === 'analyst') {
         viewStore.setAnalystViewMode();
+        return;
+    }
+    if (mode === 'provider-liquidity') {
+        viewStore.setProviderLiquidityViewMode();
+        return;
+    }
+    if (mode === 'agent') {
+        viewStore.setAgentViewMode();
         return;
     }
     viewStore.setTraderViewMode();
@@ -330,6 +345,10 @@ const resolveViewMode = () => {
 
     if (route().current('provider-liquidity.*')) {
         return 'provider-liquidity';
+    }
+
+    if (route().current('agent.*')) {
+        return 'agent';
     }
 
     if (
@@ -438,6 +457,7 @@ const openDocs = () => {
                             <SupportMenu v-show="viewStore.isSupportViewMode" />
                             <AnalystMenu v-show="viewStore.isAnalystViewMode" />
                             <ProviderLiquidityMenu v-show="viewStore.isProviderLiquidityViewMode" />
+                            <AgentMenu v-show="viewStore.isAgentViewMode" />
                         </div>
                     </div>
 
@@ -502,6 +522,7 @@ const openDocs = () => {
                             <SupportMenu v-show="viewStore.isSupportViewMode" />
                             <AnalystMenu v-show="viewStore.isAnalystViewMode" />
                             <ProviderLiquidityMenu v-show="viewStore.isProviderLiquidityViewMode" />
+                            <AgentMenu v-show="viewStore.isAgentViewMode" />
                         </div>
 
                         <div v-show="viewStore.isAdminViewMode" class="card bg-base-100 shadow w-60">

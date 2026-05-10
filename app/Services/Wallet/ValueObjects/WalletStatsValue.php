@@ -18,8 +18,7 @@ class WalletStatsValue extends ValueObject
         protected EscrowsValue $escrowBalances,
         protected CurrencyValue $currency,
         protected int $maxReserveBalance,
-    )
-    {}
+    ) {}
 
     public function toArray(): array
     {
@@ -28,19 +27,20 @@ class WalletStatsValue extends ValueObject
             'trustAmount' => $this->base->trustAmount->toBeauty(),
             'trustReserveAmount' => $this->base->trustReserveAmount->toBeauty(),
             'teamleaderAmount' => $this->base->teamleaderAmount->toBeauty(),
+            'agentAmount' => $this->base->agentAmount->toBeauty(),
         ];
 
         $result['totalAvailableBalances'] = $this->totalAvailableBalances->transform(function (BalanceValue $item) {
             return [
                 'primary' => $item->primary->toBeauty(),
-                'secondary' => $item->secondary->toBeauty()
+                'secondary' => $item->secondary->toBeauty(),
             ];
         })->toArray();
 
         $result['lockedForWithdrawalBalances'] = $this->lockedForWithdrawalBalances->transform(function (BalanceValue $item) {
             return [
                 'primary' => $item->primary->toBeauty(),
-                'secondary' => $item->secondary->toBeauty()
+                'secondary' => $item->secondary->toBeauty(),
             ];
         })->toArray();
 
@@ -48,7 +48,7 @@ class WalletStatsValue extends ValueObject
             return [
                 'balance' => [
                     'primary' => $item->balance->primary->toBeauty(),
-                    'secondary' => $item->balance->secondary->toBeauty()
+                    'secondary' => $item->balance->secondary->toBeauty(),
                 ],
                 'count' => $item->count,
             ];

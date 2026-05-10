@@ -31,6 +31,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Collection<int, PaymentDetailTag> $paymentDetailTags
  * @property Collection<int, Order> $orders
  * @property Collection<int, Order> $teamLeaderOrders
+ * @property Collection<int, Order> $agentOrders
  * @property Collection<int, Dispute> $disputes
  * @property Collection<int, SmsLog> $smsLogs
  * @property Collection<int, UserLoginHistory> $loginHistories
@@ -77,6 +78,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Carbon|null $archived_at
  * @property float|null $team_leader_individual_commission_percentage
  * @property User|null $teamLeader
+ * @property Collection<int, Merchant> $agentMerchants
  * @property UserTeam|null $userTeam
  * @property Carbon $banned_at
  * @property Carbon $created_at
@@ -228,6 +230,11 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'team_leader_id');
     }
 
+    public function agentOrders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'agent_id');
+    }
+
     public function disputes(): HasMany
     {
         return $this->hasMany(Dispute::class, 'trader_id');
@@ -271,6 +278,11 @@ class User extends Authenticatable
     public function referrals(): HasMany
     {
         return $this->hasMany(User::class, 'team_leader_id');
+    }
+
+    public function agentMerchants(): HasMany
+    {
+        return $this->hasMany(Merchant::class, 'agent_id');
     }
 
     /**

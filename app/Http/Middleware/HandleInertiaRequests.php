@@ -70,6 +70,7 @@ class HandleInertiaRequests extends Middleware
                 'support.news.index',
                 'analyst.news.index',
                 'leader.news.index',
+                'agent.news.index',
             ])) {
                 $user->meta()->updateOrCreate(
                     ['user_id' => $userId],
@@ -121,7 +122,7 @@ class HandleInertiaRequests extends Middleware
             ->where('status', DisputeStatus::PENDING);
 
         $userId = Auth::id();
-        $userRole = isRouteFor('Merchant') ? 'merchant' : (isRouteFor('Trader') ? 'trader' : (isRouteFor('Super Admin') ? 'admin' : 'guest'));
+        $userRole = isRouteFor('Merchant') ? 'merchant' : (isRouteFor('Trader') ? 'trader' : (isRouteFor('Super Admin') ? 'admin' : (isRouteFor('Agent') ? 'agent' : 'guest')));
 
         $pendingOrdersCount = cache()->remember("pending_orders_{$userRole}_{$userId}", 15, function () use ($orderQuery, $userRole, $userId) {
             if ($userRole === 'merchant') {
@@ -304,7 +305,7 @@ class HandleInertiaRequests extends Middleware
         ];
 
         $sharedWalletStats = null;
-        if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant'))) {
+        if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant') || isRouteFor('Agent'))) {
             /** @var WalletStatsValue $walletStatsValue */
             $walletStatsValue = services()->wallet()->getWalletStats($authUser->wallet);
             $sharedWalletStats = $walletStatsValue->toArray();
@@ -323,6 +324,7 @@ class HandleInertiaRequests extends Middleware
                 'role' => $request->user()?->roles()?->first(),
                 'is_admin' => $request->user()?->hasRole('Super Admin'),
                 'is_trader' => $request->user()?->hasRole('Trader'),
+                'is_agent' => $request->user()?->hasRole('Agent'),
                 'is_impersonated' => $request->user()?->isImpersonated(),
             ],
             'ziggy' => fn () => [

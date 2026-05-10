@@ -167,6 +167,12 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/traders/{trader}/finances', [TraderFinanceController::class, 'index'])->name('traders.finances.index');
     });
 
+    Route::group(['prefix' => 'agent', 'as' => 'agent.', 'middleware' => ['auth', 'banned', 'role:Agent|Super Admin']], function () {
+        Route::get('/main', [MainPageController::class, 'agent'])->name('main.index');
+        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+        Route::get('/finances', [WalletController::class, 'index'])->name('finances.index');
+    });
+
     Route::group(['prefix' => 'provider-liquidity', 'as' => 'provider-liquidity.', 'middleware' => ['auth', 'banned', 'role:Provider Liquidity|Super Admin']], function () {
         Route::get('/main', [MainPageController::class, 'providerLiquidity'])->name('main.index');
         Route::get('/services', [ProviderLiquidityDashboardController::class, 'services'])->name('services.index');
@@ -180,7 +186,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/disputes/{dispute}/receipt', [DisputeController::class, 'receipt'])->name('disputes.receipt');
     });
 
-    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Team Leader|Super Admin']], function () {
+    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Team Leader|Agent|Super Admin']], function () {
         Route::post('/news/views', [NewsController::class, 'trackViews'])->name('news.views.store');
         Route::post('/news/reactions', [NewsController::class, 'react'])->name('news.reactions.store');
     });

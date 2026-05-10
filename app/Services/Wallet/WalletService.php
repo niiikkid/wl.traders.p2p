@@ -14,11 +14,13 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\Wallet\GiveToBalanceHandler\GiveToAgent;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToCommission;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToMerchant;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToProvider;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToTeamleader;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToTrust;
+use App\Services\Wallet\TakeFromBalanceHandler\TakeFromAgent;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromCommission;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromMerchant;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromProvider;
@@ -53,6 +55,7 @@ class WalletService implements WalletServiceContract
             'reserve_balance' => 0,
             'commission_balance' => 0,
             'teamleader_balance' => 0,
+            'agent_balance' => 0,
             'user_id' => $user->id,
         ]);
     }
@@ -74,6 +77,8 @@ class WalletService implements WalletServiceContract
                 $handler = new TakeFromCommission;
             } elseif ($balanceType->equals(BalanceType::TEAMLEADER)) {
                 $handler = new TakeFromTeamleader;
+            } elseif ($balanceType->equals(BalanceType::AGENT)) {
+                $handler = new TakeFromAgent;
             }
 
             $handler->handle($wallet, $amount, $transactionType, $transactionable);
@@ -97,6 +102,8 @@ class WalletService implements WalletServiceContract
                 $handler = new GiveToCommission;
             } elseif ($balanceType->equals(BalanceType::TEAMLEADER)) {
                 $handler = new GiveToTeamleader;
+            } elseif ($balanceType->equals(BalanceType::AGENT)) {
+                $handler = new GiveToAgent;
             }
 
             $handler->handle($wallet, $amount, $transactionType, $transactionable);
@@ -119,6 +126,9 @@ class WalletService implements WalletServiceContract
         }
         if ($balanceType->equals(BalanceType::TEAMLEADER)) {
             $balanceAmount = $wallet->teamleader_balance;
+        }
+        if ($balanceType->equals(BalanceType::AGENT)) {
+            $balanceAmount = $wallet->agent_balance;
         }
 
         return $balanceAmount;
@@ -191,7 +201,8 @@ class WalletService implements WalletServiceContract
                 merchantAmount: $wallet->merchant_balance,
                 trustAmount: $wallet->trust_balance,
                 trustReserveAmount: $wallet->reserve_balance,
-                teamleaderAmount: $wallet->teamleader_balance
+                teamleaderAmount: $wallet->teamleader_balance,
+                agentAmount: $wallet->agent_balance
             ),
             totalAvailableBalances: $totalAvailableBalances,
             lockedForWithdrawalBalances: $lockedForWithdrawalBalances,

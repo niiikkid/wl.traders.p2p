@@ -27,6 +27,7 @@ class MerchantResource extends JsonResource
             'description' => $this->description,
             'domain' => $this->domain,
             'user_id' => $this->user_id,
+            'agent_id' => $this->agent_id,
             'active' => $this->active,
             'today_profit' => $this->when(isset($this->orders_sum_merchant_profit), Money::fromUnits($this->orders_sum_merchant_profit ?? 0, Currency::USDT())->toBeauty()),
             'profit_currency' => $this->when(isset($this->orders_sum_merchant_profit), Currency::USDT()->getCode()),
@@ -34,6 +35,12 @@ class MerchantResource extends JsonResource
                 'id' => $this->user->id,
                 'email' => $this->user->email,
             ],
+            'agent' => $this->whenLoaded('agent', function () {
+                return $this->agent ? [
+                    'id' => $this->agent->id,
+                    'email' => $this->agent->email,
+                ] : null;
+            }),
             'callback_url' => $this->callback_url,
             'payout_callback_url' => $this->payout_callback_url,
             'api_credentials' => $this->whenLoaded('apiCredential', function () {

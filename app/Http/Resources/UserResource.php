@@ -86,6 +86,8 @@ class UserResource extends JsonResource
                     $amount = $wallet->trust_balance;
                 } elseif ($this->hasRole('Team Leader')) {
                     $amount = $wallet->teamleader_balance;
+                } elseif ($this->hasRole('Agent')) {
+                    $amount = $wallet->agent_balance;
                 } elseif ($this->hasRole('Provider Liquidity')) {
                     $amount = $wallet->provider_balance;
                 }

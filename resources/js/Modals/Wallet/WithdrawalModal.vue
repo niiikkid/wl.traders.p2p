@@ -57,7 +57,7 @@ const withdraw = () => {
                 },
             });
     }
-    if (viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode || viewStore.isProviderLiquidityViewMode) {
+    if (viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode || viewStore.isProviderLiquidityViewMode || viewStore.isAgentViewMode) {
         form
             .transform((data) => {
                 data.balance_type = props.balanceType;
@@ -101,6 +101,12 @@ const withdraw = () => {
                 @close="close"
             />
         </template>
+        <template v-if="balanceType === 'agent'">
+            <ModalHeader
+                title="Вывод с баланса агента"
+                @close="close"
+            />
+        </template>
         <ModalBody>
             <h1 class="text-base-content/70 text-sm">Введите сумму которую хотите вывести с баланса в USDT и нажмите «Продолжить»</h1>
             <form action="#" class="mx-auto max-w-screen-xl 2xl:px-0 mt-8 mb-5">
@@ -132,7 +138,7 @@ const withdraw = () => {
                                 <InputHelper v-if="! form.errors.amount" :model-value="'Максимум: ' + total_merchant_withdrawable_amount + ' USDT'"></InputHelper>
                             </template>
                         </div>
-                        <div class="mt-3" v-if="viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode || viewStore.isProviderLiquidityViewMode">
+                        <div class="mt-3" v-if="viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode || viewStore.isProviderLiquidityViewMode || viewStore.isAgentViewMode">
                             <InputLabel
                                 for="address"
                                 value="Адрес"

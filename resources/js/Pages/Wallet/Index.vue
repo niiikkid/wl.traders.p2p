@@ -14,6 +14,7 @@ import DisputeBalance from "@/Pages/Wallet/Partials/DisputeBalance.vue";
 import TrustBalance from "@/Pages/Wallet/Partials/TrustBalance.vue";
 import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import ProviderBalance from "@/Pages/Wallet/Partials/ProviderBalance.vue";
+import AgentBalance from "@/Pages/Wallet/Partials/AgentBalance.vue";
 import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
 import {useModalStore} from "@/store/modal.js";
 
@@ -56,6 +57,14 @@ const showProviderBalanceCard = computed(() => {
         return ws.provider;
     }
     return false;
+});
+
+const showAgentBalanceCard = computed(() => {
+    const ws = walletSurfaces.value;
+    if (ws) {
+        return ws.agent;
+    }
+    return viewStore.isAgentViewMode || viewStore.isAdminViewMode;
 });
 
 /** У админа на кошельке пользователя — «баланс провайдера»; у самого провайдера в финансах — «баланс». */
@@ -181,6 +190,7 @@ defineOptions({ layout: AuthenticatedLayout })
                 :title="providerBalanceCardTitle"
                 @setBalanceType="setBalanceType"
             />
+            <AgentBalance v-show="showAgentBalanceCard" @setBalanceType="setBalanceType"/>
             <EscrowBalance v-show="showEscrowBalanceCard" @setBalanceType="setBalanceType"/>
             <DisputeBalance v-show="showDisputeBalanceCard" @setBalanceType="setBalanceType"/>
         </div>

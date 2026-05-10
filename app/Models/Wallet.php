@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Money $reserve_balance
  * @property Money $commission_balance
  * @property Money $teamleader_balance
+ * @property Money $agent_balance
  * @property int $user_id
  * @property User $user
  * @property Collection<int, Invoice> $invoices
@@ -39,6 +40,7 @@ class Wallet extends Model
         'reserve_balance',
         'commission_balance',
         'teamleader_balance',
+        'agent_balance',
         'user_id',
     ];
 
@@ -49,6 +51,7 @@ class Wallet extends Model
         'reserve_balance' => BaseCurrencyMoneyCast::class,
         'commission_balance' => BaseCurrencyMoneyCast::class,
         'teamleader_balance' => BaseCurrencyMoneyCast::class,
+        'agent_balance' => BaseCurrencyMoneyCast::class,
     ];
 
     public function user(): BelongsTo

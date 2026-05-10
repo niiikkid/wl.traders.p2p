@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Money $total_profit
  * @property Money $trader_profit
  * @property Money $team_leader_profit
+ * @property Money $agent_profit
  * @property Money $merchant_profit
  * @property Money $service_profit
  * @property Money|null $total_fee
@@ -46,6 +47,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Carbon|null $rate_fixed_at
  * @property float $trader_commission_rate
  * @property float $team_leader_commission_rate
+ * @property float $agent_commission_rate
  * @property float $total_service_commission_rate
  * @property OrderStatus $status
  * @property OrderSubStatus $sub_status
@@ -73,12 +75,14 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property int $payment_detail_id
  * @property int $trader_id
  * @property int $team_leader_id
+ * @property int|null $agent_id
  * @property int $merchant_id
  * @property int|null $merchant_client_id
  * @property PaymentGateway $paymentGateway
  * @property PaymentDetail $paymentDetail
  * @property User $trader
  * @property User $teamLeader
+ * @property User|null $agent
  * @property Merchant $merchant
  * @property MerchantClient|null $merchantClient
  * @property SmsLog $smsLog
@@ -103,6 +107,7 @@ class Order extends Model
         'total_profit', // Тело (totalProfit)
         'trader_profit', // Комиссия трейдера (traderProfit)
         'team_leader_profit', // Комиссия тимлида / Зачислено тимлиду (teamLeaderProfit)
+        'agent_profit', // Комиссия агента / Зачислено агенту
         'merchant_profit', // Получит мерчант (merchantProfit)
         'service_profit', // Комиссия сервиса (serviceProfit)
         'total_fee', // Комиссия всего (totalFee)
@@ -114,6 +119,7 @@ class Order extends Model
         'rate_fixed_at',
         'trader_commission_rate', // Комиссия трейдера, %
         'team_leader_commission_rate', // Комиссия тимлида, %
+        'agent_commission_rate', // Комиссия агента, %
         'total_service_commission_rate', // Комиссия всего, %
         'status',
         'sub_status',
@@ -139,6 +145,7 @@ class Order extends Model
         'payment_detail_id',
         'trader_id',
         'team_leader_id',
+        'agent_id',
         'merchant_id',
         'merchant_client_id',
         'expires_at',
@@ -157,6 +164,7 @@ class Order extends Model
         'total_profit' => BaseCurrencyMoneyCast::class,
         'trader_profit' => BaseCurrencyMoneyCast::class,
         'team_leader_profit' => BaseCurrencyMoneyCast::class,
+        'agent_profit' => BaseCurrencyMoneyCast::class,
         'merchant_profit' => BaseCurrencyMoneyCast::class,
         'service_profit' => BaseCurrencyMoneyCast::class,
         'total_fee' => BaseCurrencyMoneyCast::class,
@@ -164,6 +172,7 @@ class Order extends Model
         'merchant_credit' => BaseCurrencyMoneyCast::class,
         'trader_paid_for_order' => BaseCurrencyMoneyCast::class,
         'team_leader_split_from_service_percent' => 'float',
+        'agent_commission_rate' => 'float',
         'conversion_price' => MoneyCast::class,
         'rate_fixed_at' => 'datetime',
         'amount_updates_history' => 'array',
@@ -210,6 +219,11 @@ class Order extends Model
     public function teamLeader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'team_leader_id');
+    }
+
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'agent_id');
     }
 
     public function smsLog(): HasOne

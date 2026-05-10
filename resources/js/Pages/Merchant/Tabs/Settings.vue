@@ -48,6 +48,10 @@ const props = defineProps({
         type: Object,
         default: () => ({ data: [] }),
     },
+    agents: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();
@@ -70,6 +74,7 @@ const categories = ref(deepClone(props.categories?.length ? props.categories : p
 const currencies = ref(deepClone(props.currencies?.length ? props.currencies : page?.props?.currencies ?? []));
 const detailTypes = ref(deepClone(props.detailTypes?.length ? props.detailTypes : page?.props?.detailTypes ?? []));
 const commissionSettings = ref(deepClone(props.commissionSettings ?? page?.props?.commissionSettings ?? [], []));
+const agents = ref(deepClone(props.agents?.length ? props.agents : page?.props?.agents ?? []));
 const paymentGateways = ref(deepClone(
     (props.paymentGateways && Object.keys(props.paymentGateways).length)
         ? props.paymentGateways
@@ -128,6 +133,7 @@ const geoForm = reactive({
 const formSettings = reactive({
     categories: merchant.value?.categories ?? [],
     max_order_wait_time: merchant.value?.max_order_wait_time ?? null,
+    agent_id: merchant.value?.agent_id ?? null,
     errors: {},
     processing: false,
     recentlySuccessful: false,
@@ -192,6 +198,7 @@ const resetFormsFromMerchant = (value) => {
     formCallback.payout_callback_url = value.payout_callback_url ?? '';
     formSettings.categories = value.categories ?? [];
     formSettings.max_order_wait_time = value.max_order_wait_time ?? null;
+    formSettings.agent_id = value.agent_id ?? null;
     minOrderAmounts.value = value.min_order_amounts ? {...value.min_order_amounts} : {};
     geoItems.value = normalizeGeoItems(value.geos ?? []);
 };
@@ -326,6 +333,26 @@ watch(
         }
     },
     { immediate: false }
+);
+
+watch(
+    () => props.agents,
+    (value) => {
+        if (value !== undefined) {
+            agents.value = deepClone(value ?? [], []);
+        }
+    },
+    { immediate: false }
+);
+
+watch(
+    () => page.props?.agents,
+    (value) => {
+        if (value !== undefined && (!props.agents || !props.agents.length)) {
+            agents.value = deepClone(value ?? [], []);
+        }
+    },
+    { immediate: true }
 );
 
 watch(
@@ -502,6 +529,7 @@ const submitSettings = () => {
         categories: formSettings.categories,
         max_order_wait_time: formSettings.max_order_wait_time,
         min_order_amounts: minOrderAmounts.value,
+        agent_id: formSettings.agent_id,
     }, {
         headers: {Accept: 'application/json'},
     }).then(({data}) => {
@@ -1180,6 +1208,31 @@ const merchantStatus = computed(() => {
                 <div v-if="merchant">
                     <div class="rounded-lg bg-base-200/60 p-2.5 sm:p-3">
                         <form class="space-y-3" @submit.prevent="submitSettings">
+                            <div>
+                                <InputLabel
+                                    for="agent_id"
+                                    value="Агент"
+                                    :error="!!formSettings.errors.agent_id"
+                                    class="mb-0.5"
+                                />
+                                <Select
+                                    id="agent_id"
+                                    v-model="formSettings.agent_id"
+                                    :items="agents"
+                                    value="id"
+                                    name="email"
+                                    default_title="Без агента"
+                                    :required="false"
+                                    size="sm"
+                                    :error="!!formSettings.errors.agent_id"
+                                    @change="clearFormError(formSettings, 'agent_id')"
+                                />
+                                <p class="mt-1 text-xs text-base-content/70">
+                                    Агент получает 0.2% с оборота новых успешных сделок этого мерчанта.
+                                </p>
+                                <InputError :message="formSettings.errors.agent_id" class="mt-1" />
+                            </div>
+
                             <div>
                                 <InputLabel
                                     for="max_order_wait_time"

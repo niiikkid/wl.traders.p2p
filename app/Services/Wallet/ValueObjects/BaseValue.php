@@ -11,6 +11,6 @@ class BaseValue extends ValueObject
         public Money $trustAmount,
         public Money $trustReserveAmount,
         public Money $teamleaderAmount,
-    )
-    {}
+        public Money $agentAmount,
+    ) {}
 }

@@ -42,6 +42,15 @@ class HandleOrderFinishedAsSuccessfulListener implements ShouldQueue
                     $event->order,
                 );
             }
+            if ($event->order->agent_id) {
+                services()->wallet()->giveToBalance(
+                    $event->order->agent->wallet->id,
+                    $event->order->agent_profit,
+                    TransactionType::INCOME_FROM_REFERRALS_SUCCESSFUL_ORDER,
+                    BalanceType::AGENT,
+                    $event->order,
+                );
+            }
         });
     }
 

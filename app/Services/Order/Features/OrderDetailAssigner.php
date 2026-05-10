@@ -15,6 +15,7 @@ use App\Services\Order\Utils\DailyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
 use App\Services\Order\Utils\MonthlyLimit;
 use App\Services\Order\Utils\MonthlySuccessfulOrdersLimit;
+use App\Support\AgentCommission;
 
 class OrderDetailAssigner
 {
@@ -48,15 +49,21 @@ class OrderDetailAssigner
             teamLeaderFeeRate: $details->teamLeaderCommissionRate,
             teamLeaderServiceSplitPercent: $details->trader->teamLeaderSplitFromServicePercent
         );
+        $agentId = $merchant->agent_id;
+        $agentProfit = $agentId
+            ? AgentCommission::calculate($profits->convertedAmount, $profits->serviceFee)
+            : AgentCommission::zero();
+        $serviceProfit = $profits->serviceFee->sub($agentProfit);
 
         $this->order->update([
             'amount' => $details->amount,
             'total_profit' => $profits->convertedAmount,
             'total_fee' => $profits->totalFee,
             'merchant_profit' => $profits->merchantCredit,
-            'service_profit' => $profits->serviceFee,
+            'service_profit' => $serviceProfit,
             'trader_profit' => $profits->traderFee,
             'team_leader_profit' => $profits->teamLeaderFee,
+            'agent_profit' => $agentProfit,
             'trader_paid_for_order' => $profits->traderDebit,
             'team_leader_split_from_service_percent' => $details->trader->teamLeaderSplitFromServicePercent,
             'conversion_price' => $details->exchangePrice,
@@ -64,11 +71,13 @@ class OrderDetailAssigner
             'rate_fixed_at' => now(),
             'trader_commission_rate' => $details->traderCommissionRate,
             'team_leader_commission_rate' => $details->teamLeaderCommissionRate,
+            'agent_commission_rate' => $agentId ? AgentCommission::DEFAULT_RATE : 0,
             'total_service_commission_rate' => $details->gateway->serviceCommissionRate,
             'payment_gateway_id' => $details->gateway->id,
             'payment_detail_id' => $details->id,
             'trader_id' => $details->trader->id,
             'team_leader_id' => $details->trader->teamLeaderID,
+            'agent_id' => $agentId,
             'expires_at' => now()->addMinutes($details->gateway->reservationTime),
             'sub_status' => OrderSubStatus::WAITING_FOR_PAYMENT,
         ]);

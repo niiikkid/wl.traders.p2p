@@ -335,6 +335,7 @@ class InfrastructureController extends Controller
                     'reserve_balance' => $wallet->reserve_balance->toBeauty(),
                     'commission_balance' => $wallet->commission_balance->toBeauty(),
                     'teamleader_balance' => $wallet->teamleader_balance->toBeauty(),
+                    'agent_balance' => $wallet->agent_balance?->toBeauty(),
                 ],
                 'created_at' => $wallet->created_at?->toIso8601String(),
                 'updated_at' => $wallet->updated_at?->toIso8601String(),

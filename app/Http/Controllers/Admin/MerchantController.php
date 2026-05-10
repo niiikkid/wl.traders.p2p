@@ -6,6 +6,7 @@ use App\Enums\MarketEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MerchantResource;
 use App\Models\Merchant;
+use App\Models\User;
 use App\Services\Money\Currency;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ class MerchantController extends Controller
     public function index()
     {
         $merchants = Merchant::query()
-            ->with('user')
+            ->with(['user', 'agent'])
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
 
@@ -30,7 +31,7 @@ class MerchantController extends Controller
     public function indexData(Request $request): JsonResponse
     {
         $merchants = Merchant::query()
-            ->with('user')
+            ->with(['user', 'agent'])
             ->orderByDesc('id')
             ->paginate($request->get('per_page', 10));
 
@@ -94,11 +95,20 @@ class MerchantController extends Controller
             'max_order_wait_time' => 'nullable|integer|min:1000',
             'min_order_amounts' => 'nullable|array',
             'min_order_amounts.*' => 'numeric|min:0',
+            'agent_id' => ['nullable', 'integer', Rule::exists('users', 'id')],
         ]);
+        $agentId = $this->resolveAgentId($request->integer('agent_id') ?: null);
+
+        if ($request->filled('agent_id') && ! $agentId) {
+            throw ValidationException::withMessages([
+                'agent_id' => 'Выберите пользователя с ролью Agent.',
+            ]);
+        }
 
         $merchant->update([
             'max_order_wait_time' => $request->max_order_wait_time,
             'min_order_amounts' => $request->min_order_amounts,
+            'agent_id' => $agentId,
         ]);
 
         if ($request->has('categories')) {
@@ -107,12 +117,12 @@ class MerchantController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh()->load('categories'))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh()->load(['categories', 'agent']))->resolve(),
             ]);
         }
 
         return back()->with([
-            'merchant' => new MerchantResource($merchant->fresh()->load('categories')),
+            'merchant' => new MerchantResource($merchant->fresh()->load(['categories', 'agent'])),
         ]);
     }
 
@@ -141,12 +151,14 @@ class MerchantController extends Controller
 
                 if (isset($geoMap[$currencyCode])) {
                     $validator->errors()->add('geos', "Валюта {$currencyCode} уже добавлена в GEO.");
+
                     continue;
                 }
 
                 $marketEnum = MarketEnum::tryFrom($marketValue);
                 if (! $marketEnum) {
                     $validator->errors()->add('geos', "Маркет {$marketValue} не поддерживается.");
+
                     continue;
                 }
 
@@ -160,7 +172,7 @@ class MerchantController extends Controller
                     if (! $supportsCurrency) {
                         $validator->errors()->add(
                             'geos',
-                            "Маркет {$marketEnum->value} не поддерживает валюту " . strtoupper($currencyCode)
+                            "Маркет {$marketEnum->value} не поддерживает валюту ".strtoupper($currencyCode)
                         );
                     }
 
@@ -172,36 +184,36 @@ class MerchantController extends Controller
                         if ($orderReferenceRate === null || $orderReferenceRate === '') {
                             $validator->errors()->add(
                                 'geos',
-                                "Для валюты " . strtoupper($currencyCode) . " в маркете merchant_api нужно указать опорный курс для сделок."
+                                'Для валюты '.strtoupper($currencyCode).' в маркете merchant_api нужно указать опорный курс для сделок.'
                             );
                         } elseif (! $this->isDecimalWithinPrecision((string) $orderReferenceRate, $currency->getPrecision())) {
                             $validator->errors()->add(
                                 'geos',
-                                "Опорный курс сделок для " . strtoupper($currencyCode) . " может содержать не более {$currency->getPrecision()} знаков после запятой."
+                                'Опорный курс сделок для '.strtoupper($currencyCode)." может содержать не более {$currency->getPrecision()} знаков после запятой."
                             );
                         }
 
                         if ($payoutReferenceRate === null || $payoutReferenceRate === '') {
                             $validator->errors()->add(
                                 'geos',
-                                "Для валюты " . strtoupper($currencyCode) . " в маркете merchant_api нужно указать опорный курс для выплат."
+                                'Для валюты '.strtoupper($currencyCode).' в маркете merchant_api нужно указать опорный курс для выплат.'
                             );
                         } elseif (! $this->isDecimalWithinPrecision((string) $payoutReferenceRate, $currency->getPrecision())) {
                             $validator->errors()->add(
                                 'geos',
-                                "Опорный курс выплат для " . strtoupper($currencyCode) . " может содержать не более {$currency->getPrecision()} знаков после запятой."
+                                'Опорный курс выплат для '.strtoupper($currencyCode)." может содержать не более {$currency->getPrecision()} знаков после запятой."
                             );
                         }
 
                         if ($maxDeviationPercent === null || $maxDeviationPercent === '') {
                             $validator->errors()->add(
                                 'geos',
-                                "Для валюты " . strtoupper($currencyCode) . " в маркете merchant_api нужно указать допустимое расхождение в процентах."
+                                'Для валюты '.strtoupper($currencyCode).' в маркете merchant_api нужно указать допустимое расхождение в процентах.'
                             );
                         } elseif (! $this->isDecimalWithinPrecision((string) $maxDeviationPercent, 2)) {
                             $validator->errors()->add(
                                 'geos',
-                                "Допустимое расхождение для " . strtoupper($currencyCode) . " может содержать не более 2 знаков после запятой."
+                                'Допустимое расхождение для '.strtoupper($currencyCode).' может содержать не более 2 знаков после запятой.'
                             );
                         }
                     }
@@ -263,5 +275,17 @@ class MerchantController extends Controller
         $scale = isset($matches[1]) ? strlen($matches[1]) : 0;
 
         return $scale <= $maxScale;
+    }
+
+    private function resolveAgentId(?int $agentId): ?int
+    {
+        if (! $agentId) {
+            return null;
+        }
+
+        return User::query()
+            ->where('id', $agentId)
+            ->role('Agent')
+            ->value('id');
     }
 }

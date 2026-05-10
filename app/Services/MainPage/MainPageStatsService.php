@@ -16,6 +16,7 @@ use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Support\AgentCommission;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -188,6 +189,54 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'labels' => $labels,
                 'data' => $data,
             ],
+        ];
+    }
+
+    public function buildAgentStats(User $user): array
+    {
+        $merchantIds = Merchant::query()
+            ->where('agent_id', $user->id)
+            ->pluck('id');
+
+        $query = Order::query()
+            ->where('agent_id', $user->id)
+            ->where('status', OrderStatus::SUCCESS);
+
+        $totalTurnover = Money::fromUnits($query->clone()->sum('total_profit'), Currency::USDT());
+        $totalProfit = Money::fromUnits($query->clone()->sum('agent_profit'), Currency::USDT());
+        $balance = $user->wallet
+            ? services()->wallet()->getTotalAvailableBalance($user->wallet, BalanceType::AGENT)
+            : Money::fromUnits(0, Currency::USDT());
+
+        $merchants = Merchant::query()
+            ->where('agent_id', $user->id)
+            ->withSum(['orders as successful_turnover' => function (Builder $query) {
+                $query->where('status', OrderStatus::SUCCESS);
+            }], 'total_profit')
+            ->withSum(['orders as agent_profit' => function (Builder $query) {
+                $query->where('status', OrderStatus::SUCCESS);
+            }], 'agent_profit')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(function (Merchant $merchant) {
+                return [
+                    'id' => $merchant->id,
+                    'name' => $merchant->name,
+                    'turnover' => Money::fromUnits($merchant->successful_turnover ?? 0, Currency::USDT())->toBeauty(),
+                    'agent_profit' => Money::fromUnits($merchant->agent_profit ?? 0, Currency::USDT())->toBeauty(),
+                ];
+            })
+            ->values();
+
+        return [
+            'statistics' => [
+                'merchantsCount' => $merchantIds->count(),
+                'totalTurnover' => $totalTurnover->toBeauty(),
+                'totalProfit' => $totalProfit->toBeauty(),
+                'balance' => $balance->toBeauty(),
+                'agentRate' => AgentCommission::DEFAULT_RATE,
+            ],
+            'merchants' => $merchants,
         ];
     }
 

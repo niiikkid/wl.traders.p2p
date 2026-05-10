@@ -20,6 +20,7 @@ const currencies = ref([]);
 const detailTypes = ref([]);
 const commissionSettings = ref([]);
 const paymentGateways = ref({ data: [] });
+const agents = ref([]);
 const loading = ref(false);
 const error = ref(null);
 
@@ -43,6 +44,7 @@ const resetState = () => {
     detailTypes.value = [];
     commissionSettings.value = [];
     paymentGateways.value = { data: [] };
+    agents.value = [];
     error.value = null;
 };
 
@@ -69,6 +71,7 @@ const fetchSettings = async () => {
         detailTypes.value = data.detail_types ?? [];
         commissionSettings.value = data.commission_settings ?? [];
         paymentGateways.value = data.payment_gateways ?? { data: [] };
+        agents.value = data.agents ?? [];
     } catch (e) {
         error.value = e.response?.data?.message ?? 'Не удалось загрузить настройки мерчанта.';
     } finally {
@@ -119,6 +122,7 @@ watch(
                 :detail-types="detailTypes"
                 :commission-settings="commissionSettings"
                 :payment-gateways="paymentGateways"
+                :agents="agents"
                 @updated="notifyUpdated"
             />
             <div v-else class="py-8 text-center text-xs text-base-content/60">

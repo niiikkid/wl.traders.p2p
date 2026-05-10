@@ -37,6 +37,9 @@ class AppHomeController extends Controller
         if ($user->hasRole('Provider Liquidity')) {
             return redirect()->route('provider-liquidity.main.index');
         }
+        if ($user->hasRole('Agent')) {
+            return redirect()->route('agent.main.index');
+        }
 
         return redirect()->route('admin.main.index');
     }

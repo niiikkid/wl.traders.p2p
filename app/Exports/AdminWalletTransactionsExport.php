@@ -139,6 +139,8 @@ class AdminWalletTransactionsExport implements FromQuery, WithColumnFormatting, 
             BalanceType::TRUST => 'Траст',
             BalanceType::MERCHANT => 'Мерчант',
             BalanceType::TEAMLEADER => 'Тимлид',
+            BalanceType::PROVIDER => 'Провайдер',
+            BalanceType::AGENT => 'Агент',
             BalanceType::COMMISSION => 'Комиссия',
         };
     }
