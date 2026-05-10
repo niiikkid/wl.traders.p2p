@@ -340,10 +340,10 @@ defineOptions({layout: AuthenticatedLayout});
                             <tr>
                                 <th class="text-center">День</th>
                                 <th class="text-center">Курс ₴/$</th>
-                                <th class="text-center">На начало</th>
+                                <th class="text-center">На начало, $</th>
                                 <th class="text-center">На картах, ₴</th>
-                                <th class="text-center">На конец</th>
-                                <th class="text-center">Биржа</th>
+                                <th class="text-center">На конец, $</th>
+                                <th class="text-center">Бирже, $</th>
                                 <th class="text-center">Всего в $</th>
                                 <th class="text-center">Прибыль</th>
                                 <th class="text-center">Арбитраж, $</th>
