@@ -12,6 +12,7 @@ use App\Models\PaymentDetail;
 use App\Models\PaymentGateway;
 use App\Models\Payout\Payout;
 use App\Models\User;
+use App\Services\EnabledCards\MinAmountStatsService;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Services\ProviderLiquidity\ProviderLiquidityDashboardService;
@@ -28,6 +29,7 @@ class MainPageController extends Controller
     public function __construct(
         private readonly MainPageCacheServiceContract $mainPageCacheService,
         private readonly MainPageStatsServiceContract $mainPageStatsService,
+        private readonly MinAmountStatsService $minAmountStatsService,
     ) {}
 
     public function merchant()
@@ -69,6 +71,7 @@ class MainPageController extends Controller
         return Inertia::render('MainPage/Merchant/Index', [
             ...$stats,
             'activeStatsMode' => $activeStatsMode,
+            'enabledCardsMinAmountStatistics' => $this->minAmountStatsService->buildForMerchantUser($user),
         ]);
     }
 

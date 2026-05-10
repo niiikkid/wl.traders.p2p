@@ -4,10 +4,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import ApexCharts from 'apexcharts';
 import axios from 'axios';
+import MinAmountStatsSection from './Components/MinAmountStatsSection.vue';
 
 const page = usePage();
 const activeStatsMode = computed(() => (page.props.activeStatsMode === 'payouts' ? 'payouts' : 'deals'));
 const statistics = computed(() => page.props.statistics || {});
+const enabledCardsMinAmountStatistics = computed(() => page.props.enabledCardsMinAmountStatistics || { availableCurrencies: [], minAmountStats: {} });
 const incomeChartData = computed(() => page.props.chart || { labels: [], data: [] });
 const conversionChartData = computed(() => page.props.conversionChart || { labels: [], data: [] });
 const turnoverChartData = computed(() => page.props.turnoverChart || { labels: [], data: [] });
@@ -1307,6 +1309,8 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div ref="chart" class="h-50"></div>
                 </div>
             </section>
+
+            <MinAmountStatsSection :statistics="enabledCardsMinAmountStatistics" />
         </div>
     </div>
 </template>
