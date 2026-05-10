@@ -194,9 +194,12 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
     public function buildAgentStats(User $user): array
     {
-        $merchantUserIds = User::query()
+        $merchantUsers = User::query()
             ->where('agent_id', $user->id)
-            ->pluck('id');
+            ->select(['id'])
+            ->orderBy('id')
+            ->get();
+        $merchantUserIds = $merchantUsers->pluck('id');
 
         $query = Order::query()
             ->where('agent_id', $user->id)
@@ -208,22 +211,28 @@ class MainPageStatsService implements MainPageStatsServiceContract
             ? services()->wallet()->getTotalAvailableBalance($user->wallet, BalanceType::AGENT)
             : Money::fromUnits(0, Currency::USDT());
 
-        $merchants = Merchant::query()
-            ->whereHas('user', fn (Builder $query) => $query->where('agent_id', $user->id))
-            ->withSum(['orders as successful_turnover' => function (Builder $query) {
-                $query->where('status', OrderStatus::SUCCESS);
-            }], 'total_profit')
-            ->withSum(['orders as agent_profit' => function (Builder $query) {
-                $query->where('status', OrderStatus::SUCCESS);
-            }], 'agent_profit')
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(function (Merchant $merchant) {
+        $merchantStats = Order::query()
+            ->join('merchants', 'orders.merchant_id', '=', 'merchants.id')
+            ->whereIn('merchants.user_id', $merchantUserIds)
+            ->where('orders.agent_id', $user->id)
+            ->where('orders.status', OrderStatus::SUCCESS)
+            ->groupBy('merchants.user_id')
+            ->select([
+                'merchants.user_id',
+                DB::raw('SUM(orders.total_profit) as successful_turnover'),
+                DB::raw('SUM(orders.agent_profit) as agent_profit'),
+            ])
+            ->get()
+            ->keyBy('user_id');
+
+        $merchantUsers = $merchantUsers
+            ->map(function (User $merchantUser) use ($merchantStats) {
+                $stats = $merchantStats->get($merchantUser->id);
+
                 return [
-                    'id' => $merchant->id,
-                    'name' => $merchant->name,
-                    'turnover' => Money::fromUnits($merchant->successful_turnover ?? 0, Currency::USDT())->toBeauty(),
-                    'agent_profit' => Money::fromUnits($merchant->agent_profit ?? 0, Currency::USDT())->toBeauty(),
+                    'id' => $merchantUser->id,
+                    'turnover' => Money::fromUnits($stats->successful_turnover ?? 0, Currency::USDT())->toBeauty(),
+                    'agent_profit' => Money::fromUnits($stats->agent_profit ?? 0, Currency::USDT())->toBeauty(),
                 ];
             })
             ->values();
@@ -236,7 +245,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'balance' => $balance->toBeauty(),
                 'agentRate' => AgentCommission::DEFAULT_RATE,
             ],
-            'merchants' => $merchants,
+            'merchantUsers' => $merchantUsers,
         ];
     }
 

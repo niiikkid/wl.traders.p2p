@@ -4,7 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import {computed} from 'vue';
 
 const statistics = usePage().props.statistics;
-const merchants = usePage().props.merchants ?? [];
+const merchantUsers = usePage().props.merchantUsers ?? [];
 
 const formatNumber = (value) => {
     const normalized = Number(String(value ?? 0).replace(/[,\s]/g, ''));
@@ -77,7 +77,7 @@ defineOptions({ layout: AuthenticatedLayout });
             <div class="card bg-base-100 shadow">
                 <div class="card-body">
                     <div class="flex items-center justify-between gap-3">
-                        <h3 class="card-title">Мерчанты агента</h3>
+                        <h3 class="card-title">Мерчант оборот</h3>
                         <button type="button" class="btn btn-outline btn-primary btn-sm" @click="openFinances">
                             Вывести
                         </button>
@@ -87,18 +87,18 @@ defineOptions({ layout: AuthenticatedLayout });
                         <table class="table table-sm">
                             <thead>
                                 <tr>
-                                    <th>Название мерчанта</th>
+                                    <th>Мерчант</th>
                                     <th class="text-right">Оборот</th>
-                                    <th class="text-right">Прибыль агента</th>
+                                    <th class="text-right">Прибыль</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr v-for="merchant in merchants" :key="merchant.id">
-                                    <td>{{ merchant.name || `#${merchant.id}` }}</td>
-                                    <td class="text-right">{{ formatNumber(merchant.turnover) }} USDT</td>
-                                    <td class="text-right">{{ formatNumber(merchant.agent_profit) }} USDT</td>
+                                <tr v-for="merchantUser in merchantUsers" :key="merchantUser.id">
+                                    <td>#{{ merchantUser.id }}</td>
+                                    <td class="text-right">{{ formatNumber(merchantUser.turnover) }} USDT</td>
+                                    <td class="text-right">{{ formatNumber(merchantUser.agent_profit) }} USDT</td>
                                 </tr>
-                                <tr v-if="!merchants.length">
+                                <tr v-if="!merchantUsers.length">
                                     <td colspan="3" class="py-8 text-center text-base-content/60">
                                         К агенту пока не привязаны мерчанты.
                                     </td>
