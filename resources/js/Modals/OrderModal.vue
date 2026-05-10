@@ -150,10 +150,12 @@ const formattedManualControlExpiry = computed(() => {
 
 const merchantWalletTransactions = computed(() => order.value?.wallet_transactions?.merchant ?? []);
 const teamLeaderWalletTransactions = computed(() => order.value?.wallet_transactions?.team_leader ?? []);
+const agentWalletTransactions = computed(() => order.value?.wallet_transactions?.agent ?? []);
 const traderWalletTransactions = computed(() => order.value?.wallet_transactions?.trader ?? []);
 const walletTransactionsCount = computed(() => {
     return merchantWalletTransactions.value.length
         + teamLeaderWalletTransactions.value.length
+        + agentWalletTransactions.value.length
         + traderWalletTransactions.value.length;
 });
 /** Транзакции кошельков по сделке — только в админском режиме (Super Admin). */
@@ -197,16 +199,26 @@ const displayPercent = (value) => {
     return `${formatted}%`;
 };
 
-const walletTransactionTypeLabel = (type) => ({
-    income_from_a_successful_order: 'Зачисление мерчанту',
-    rollback_income_from_a_successful_order: 'Списание мерчанта (rollback)',
-    income_from_referrals_successful_order: 'Зачисление тимлиду',
-    rollback_income_from_referrals_successful_order: 'Списание тимлида (rollback)',
-    payment_for_opened_order: 'Списание трейдера при открытии',
-    refund_for_canceled_order: 'Возврат трейдеру при отмене',
-    refund_for_change_order_amount: 'Возврат трейдеру при изменении суммы',
-    payment_for_change_order_amount: 'Доп. списание трейдера при изменении суммы',
-}[type] ?? type ?? 'Операция');
+const walletTransactionTypeLabel = (transaction) => {
+    if (transaction?.type === 'income_from_referrals_successful_order' && transaction?.balance_type === 'agent') {
+        return 'Зачисление агенту';
+    }
+
+    if (transaction?.type === 'rollback_income_from_referrals_successful_order' && transaction?.balance_type === 'agent') {
+        return 'Списание агента (rollback)';
+    }
+
+    return ({
+        income_from_a_successful_order: 'Зачисление мерчанту',
+        rollback_income_from_a_successful_order: 'Списание мерчанта (rollback)',
+        income_from_referrals_successful_order: 'Зачисление тимлиду',
+        rollback_income_from_referrals_successful_order: 'Списание тимлида (rollback)',
+        payment_for_opened_order: 'Списание трейдера при открытии',
+        refund_for_canceled_order: 'Возврат трейдеру при отмене',
+        refund_for_change_order_amount: 'Возврат трейдеру при изменении суммы',
+        payment_for_change_order_amount: 'Доп. списание трейдера при изменении суммы',
+    }[transaction?.type] ?? transaction?.type ?? 'Операция');
+};
 
 const walletTransactionDirectionBadgeClass = (direction) => ({
     in: 'badge-success',
@@ -583,6 +595,10 @@ const copyCallbackUrl = async (callback_url) => {
                                                 <dt class="text-base-content/70">Комиссия тимлида</dt>
                                                 <dd class="font-medium text-base-content">{{ displayMoney(order.team_leader_profit, order.base_currency) }}</dd>
                                             </dl>
+                                            <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
+                                                <dt class="text-base-content/70">Комиссия агента</dt>
+                                                <dd class="font-medium text-base-content">{{ displayMoney(order.agent_profit, order.base_currency) }}</dd>
+                                            </dl>
 
                                             <dl class="block sm:flex items-center justify-between gap-4">
                                                 <dt class="text-base-content/70">Списание у трейдера</dt>
@@ -619,6 +635,10 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Комиссия тимлида, %</dt>
                                             <dd class="font-medium text-base-content">{{ displayPercent(order.team_leader_commission_rate) }}</dd>
                                         </dl>
+                                        <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Комиссия агента, %</dt>
+                                            <dd class="font-medium text-base-content">{{ displayPercent(order.agent_commission_rate) }}</dd>
+                                        </dl>
 
                                         <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Сплит тимлида (платит сервис), %</dt>
@@ -635,6 +655,10 @@ const copyCallbackUrl = async (callback_url) => {
                                         <dl v-if="viewStore.isAdminViewMode && order.team_leader" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Тимлидер</dt>
                                             <dd class="font-medium text-base-content">{{ order.team_leader.email }}</dd>
+                                        </dl>
+                                        <dl v-if="viewStore.isAdminViewMode && order.agent" class="block sm:flex items-center justify-between gap-4">
+                                            <dt class="text-base-content/70">Агент</dt>
+                                            <dd class="font-medium text-base-content">{{ order.agent.email }}</dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Метод</dt>
@@ -727,7 +751,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                     <tbody>
                                                         <tr v-for="transaction in merchantWalletTransactions" :key="`merchant-${transaction.id}`">
                                                             <td>{{ transaction.id }}</td>
-                                                            <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
                                                             <td>
                                                                 <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
                                                                     {{ transaction.direction ?? '—' }}
@@ -767,7 +791,47 @@ const copyCallbackUrl = async (callback_url) => {
                                                     <tbody>
                                                         <tr v-for="transaction in teamLeaderWalletTransactions" :key="`teamleader-${transaction.id}`">
                                                             <td>{{ transaction.id }}</td>
-                                                            <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
+                                                            <td>
+                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                    {{ transaction.direction ?? '—' }}
+                                                                </span>
+                                                            </td>
+                                                            <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
+                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
+                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
+                                                            <td><DateTime :data="transaction.created_at" :simple="true" /></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm">
+                                            <div class="mb-2 flex items-center justify-between gap-2">
+                                                <h4 class="font-semibold text-base-content">Кошелёк агента</h4>
+                                                <span class="badge badge-secondary badge-outline badge-sm">{{ agentWalletTransactions.length }}</span>
+                                            </div>
+                                            <div v-if="!agentWalletTransactions.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-3 text-xs text-base-content/60">
+                                                Операций не найдено.
+                                            </div>
+                                            <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
+                                                <table class="table table-xs">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>ID</th>
+                                                            <th>Тип</th>
+                                                            <th>Направление</th>
+                                                            <th>Сумма</th>
+                                                            <th>Баланс</th>
+                                                            <th>Кошелёк</th>
+                                                            <th>Дата</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="transaction in agentWalletTransactions" :key="`agent-${transaction.id}`">
+                                                            <td>{{ transaction.id }}</td>
+                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
                                                             <td>
                                                                 <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
                                                                     {{ transaction.direction ?? '—' }}
@@ -807,7 +871,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                     <tbody>
                                                         <tr v-for="transaction in traderWalletTransactions" :key="`trader-${transaction.id}`">
                                                             <td>{{ transaction.id }}</td>
-                                                            <td>{{ walletTransactionTypeLabel(transaction.type) }}</td>
+                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
                                                             <td>
                                                                 <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
                                                                     {{ transaction.direction ?? '—' }}

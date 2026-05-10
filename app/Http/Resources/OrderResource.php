@@ -119,6 +119,15 @@ class OrderResource extends JsonResource
                     ],
                 ];
             }),
+            $this->mergeWhen($this->resource->relationLoaded('agent') && $this->agent, function () {
+                return [
+                    'agent' => [
+                        'id' => $this->agent->id,
+                        'name' => $this->agent->name,
+                        'email' => $this->agent->email,
+                    ],
+                ];
+            }),
             $this->mergeWhen($this->resource->relationLoaded('smsLog') && $this->smsLog, function () {
                 return [
                     'sms_log' => [
@@ -175,6 +184,7 @@ class OrderResource extends JsonResource
                 'wallet_transactions' => [
                     'merchant' => $this->resolveMerchantWalletTransactions(),
                     'team_leader' => $this->resolveTeamLeaderWalletTransactions(),
+                    'agent' => $this->resolveAgentWalletTransactions(),
                     'trader' => $this->resolveTraderWalletTransactions(),
                 ],
             ]),
@@ -199,6 +209,14 @@ class OrderResource extends JsonResource
     private function resolveTeamLeaderWalletTransactions(): array
     {
         return $this->resolveWalletTransactionsByBalanceType('teamleader');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolveAgentWalletTransactions(): array
+    {
+        return $this->resolveWalletTransactionsByBalanceType('agent');
     }
 
     /**

@@ -39,6 +39,7 @@ class OrderController extends Controller
             'paymentDetail.userDevice:id,name',
             'merchant:id,name',
             'teamLeader:id,name,email',
+            'agent:id,name,email',
             'manualControlTakenByUser:id,name,email',
             'manualControlConfirmationCodes' => fn ($query) => $query->orderByDesc('id'),
         ];
@@ -48,6 +49,7 @@ class OrderController extends Controller
                 'trader.wallet',
                 'merchant.user.wallet',
                 'teamLeader.wallet',
+                'agent.wallet',
                 'walletTransactions' => fn ($query) => $query->latest('id')->limit(50),
             ]);
         }
