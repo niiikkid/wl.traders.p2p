@@ -143,19 +143,17 @@ const computeRow = (row) => {
 const computedRows = computed(() => rows.value.map(computeRow));
 
 const totals = computed(() => {
-    let profit = 0, expenseUsd = 0, netUsd = 0, netUah = 0;
-    let hasProfit = false, hasExpense = false, hasNet = false, hasNetUah = false;
+    let profit = 0, netUsd = 0, netUah = 0;
+    let hasProfit = false, hasNet = false, hasNetUah = false;
 
     computedRows.value.forEach((c) => {
         if (c.grossProfit !== null) { profit += c.grossProfit; hasProfit = true; }
-        if (c.expenseUsd !== null) { expenseUsd += c.expenseUsd; hasExpense = true; }
         if (c.netUsd !== null) { netUsd += c.netUsd; hasNet = true; }
         if (c.netUah !== null) { netUah += c.netUah; hasNetUah = true; }
     });
 
     return {
         profit: hasProfit ? profit : null,
-        expenseUsd: hasExpense ? expenseUsd : null,
         netUsd: hasNet ? netUsd : null,
         netUah: hasNetUah ? netUah : null,
     };
@@ -341,19 +339,17 @@ defineOptions({layout: AuthenticatedLayout});
                         <thead class="sticky top-0 bg-base-200 text-[11px]">
                             <tr>
                                 <th class="text-center">День</th>
-                                <th class="text-center">Курс</th>
-                                <th class="text-center">Баланс на начало</th>
-                                <th class="text-center">Остаток грн на картах</th>
-                                <th class="text-center">Остаток в $</th>
-                                <th class="text-center">Баланс на конец</th>
-                                <th class="text-center">Баланс на бирже</th>
-                                <th class="text-center">Конец + биржа + $</th>
+                                <th class="text-center">Курс ₴/$</th>
+                                <th class="text-center">На начало</th>
+                                <th class="text-center">На картах, ₴</th>
+                                <th class="text-center">На конец</th>
+                                <th class="text-center">Биржа</th>
+                                <th class="text-center">Всего в $</th>
                                 <th class="text-center">Прибыль</th>
-                                <th class="text-center">Арбитраж $</th>
-                                <th class="text-center">Расходы грн</th>
-                                <th class="text-center">Расходы в $</th>
-                                <th class="text-center">Чистая прибыль</th>
-                                <th class="text-center">Прибыль в грн</th>
+                                <th class="text-center">Арбитраж, $</th>
+                                <th class="text-center">Расходы, ₴</th>
+                                <th class="text-center">Прибыль, $</th>
+                                <th class="text-center">Прибыль, ₴</th>
                             </tr>
                         </thead>
                         <tbody class="text-[11px]">
@@ -366,7 +362,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-20 text-right px-1"
+                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'rate')]"
                                         @input="handleDecimalInput(row, 'rate', $event)"
                                         @blur="handleBlur(row)"
@@ -376,7 +372,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-24 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'start_balance')]"
                                         @input="handleDecimalInput(row, 'start_balance', $event)"
                                         @blur="handleBlur(row)"
@@ -386,20 +382,17 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-24 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'card_uah')]"
                                         @input="handleDecimalInput(row, 'card_uah', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
-                                <td class="text-right text-base-content/70">
-                                    {{ formatMoney(computedRows[index].cardUsd, 2) }}
-                                </td>
                                 <td>
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-24 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'end_balance')]"
                                         @input="handleDecimalInput(row, 'end_balance', $event)"
                                         @blur="handleBlur(row)"
@@ -409,7 +402,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-24 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'exchange_balance')]"
                                         @input="handleDecimalInput(row, 'exchange_balance', $event)"
                                         @blur="handleBlur(row)"
@@ -429,7 +422,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-20 text-right px-1"
+                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'arbitrage_usd')]"
                                         @input="handleDecimalInput(row, 'arbitrage_usd', $event)"
                                         @blur="handleBlur(row)"
@@ -439,14 +432,11 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-24 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'expense_uah')]"
                                         @input="handleDecimalInput(row, 'expense_uah', $event)"
                                         @blur="handleBlur(row)"
                                     >
-                                </td>
-                                <td class="text-right text-base-content/70">
-                                    {{ formatMoney(computedRows[index].expenseUsd, 2) }}
                                 </td>
                                 <td
                                     class="text-right font-semibold"
@@ -466,7 +456,7 @@ defineOptions({layout: AuthenticatedLayout});
                         </tbody>
                         <tfoot class="text-[11px] bg-base-200 font-semibold">
                             <tr>
-                                <td colspan="8" class="text-right pr-2">Итого</td>
+                                <td colspan="7" class="text-right pr-2">Итого</td>
                                 <td
                                     class="text-right"
                                     :class="totals.profit === null ? ''
@@ -476,13 +466,6 @@ defineOptions({layout: AuthenticatedLayout});
                                 </td>
                                 <td></td>
                                 <td></td>
-                                <td
-                                    class="text-right"
-                                    :class="totals.expenseUsd === null ? ''
-                                        : 'text-base-content'"
-                                >
-                                    {{ formatMoney(totals.expenseUsd, 2) }}
-                                </td>
                                 <td
                                     class="text-right"
                                     :class="totals.netUsd === null ? ''
