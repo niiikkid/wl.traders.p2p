@@ -1,7 +1,9 @@
 <script setup>
-import {Head, router} from '@inertiajs/vue3';
+import {Head, router, usePage} from '@inertiajs/vue3';
 import {computed, reactive, ref, watch} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+
+const page = usePage();
 
 const props = defineProps({
     months: {
@@ -41,7 +43,7 @@ const toNumber = (value) => {
     if (value === null || value === undefined || value === '') {
         return null;
     }
-    const normalized = typeof value === 'string' ? value.replace(',', '.') : value;
+    const normalized = typeof value === 'string' ? value.replace(/\s/g, '').replace(',', '.') : value;
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
 };
@@ -161,6 +163,17 @@ const totals = computed(() => {
 
 const saveTimers = new Map();
 const savingRows = ref(new Set());
+const activeBalanceTarget = ref(null);
+
+const walletStats = computed(() => page.props.walletStats ?? page.props.data?.wallet_stats ?? null);
+const currentExchangeBalance = computed(() => walletStats.value?.base?.trustAmount ?? page.props.data?.wallet?.trust_balance ?? null);
+const currentExchangeCurrency = computed(() => (walletStats.value?.currency?.primary ?? 'USDT').toUpperCase());
+const hasCurrentExchangeBalance = computed(() => toNumber(currentExchangeBalance.value) !== null);
+const currentExchangeBalanceLabel = computed(() => {
+    const balance = toNumber(currentExchangeBalance.value);
+
+    return balance === null ? '—' : formatMoney(balance, DISPLAY_FRACTION_DIGITS);
+});
 
 const handleDecimalInput = (row, field, event) => {
     const value = limitDecimalInput(event.target.value);
@@ -168,6 +181,34 @@ const handleDecimalInput = (row, field, event) => {
     event.target.value = value;
     inputDrafts.value[getInputKey(row.day, field)] = value;
     row[field] = value;
+    scheduleSave(row);
+};
+
+const showBalanceSuggestion = (row, field) => {
+    if (!['start_balance', 'end_balance'].includes(field)) {
+        activeBalanceTarget.value = null;
+
+        return;
+    }
+
+    activeBalanceTarget.value = {row, field};
+};
+
+const isActiveBalanceTarget = (row, field) => (
+    activeBalanceTarget.value?.row === row
+    && activeBalanceTarget.value?.field === field
+);
+
+const applyCurrentExchangeBalance = () => {
+    if (!activeBalanceTarget.value || !hasCurrentExchangeBalance.value) {
+        return;
+    }
+
+    const {row, field} = activeBalanceTarget.value;
+    const value = String(currentExchangeBalance.value);
+
+    row[field] = value;
+    inputDrafts.value[getInputKey(row.day, field)] = formatInputValue(value);
     scheduleSave(row);
 };
 
@@ -214,10 +255,12 @@ const scheduleSave = (row) => {
 
 const handleBlur = (row) => {
     const existing = saveTimers.get(row.day);
-    if (existing) {
-        clearTimeout(existing);
-        saveTimers.delete(row.day);
+    if (!existing) {
+        return;
     }
+
+    clearTimeout(existing);
+    saveTimers.delete(row.day);
     persistRow(row);
 };
 
@@ -369,14 +412,40 @@ defineOptions({layout: AuthenticatedLayout});
                                     >
                                 </td>
                                 <td>
-                                    <input
-                                        type="text"
-                                        inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-right px-1"
-                                        :value="inputDrafts[getInputKey(row.day, 'start_balance')]"
-                                        @input="handleDecimalInput(row, 'start_balance', $event)"
-                                        @blur="handleBlur(row)"
-                                    >
+                                    <div class="relative inline-block">
+                                        <input
+                                            type="text"
+                                            inputmode="decimal"
+                                            class="input input-xs input-bordered w-16 text-right px-1"
+                                            :value="inputDrafts[getInputKey(row.day, 'start_balance')]"
+                                            @input="handleDecimalInput(row, 'start_balance', $event)"
+                                            @focus="showBalanceSuggestion(row, 'start_balance')"
+                                            @blur="handleBlur(row)"
+                                        >
+                                        <div
+                                            v-if="isActiveBalanceTarget(row, 'start_balance')"
+                                            class="absolute left-1/2 top-full z-50 mt-1 w-52 -translate-x-1/2 rounded-box bg-base-100 p-2 text-left text-xs shadow-lg ring-1 ring-base-300"
+                                        >
+                                            <p class="mb-2 text-base-content/70">
+                                                <template v-if="hasCurrentExchangeBalance">
+                                                    Баланс кошелька:
+                                                    <strong class="text-base-content">{{ currentExchangeBalanceLabel }} {{ currentExchangeCurrency }}</strong>
+                                                </template>
+                                                <template v-else>
+                                                    Баланс кошелька не найден.
+                                                </template>
+                                            </p>
+                                            <button
+                                                type="button"
+                                                class="btn btn-primary btn-xs w-full"
+                                                :disabled="!hasCurrentExchangeBalance"
+                                                @mousedown.prevent
+                                                @click="applyCurrentExchangeBalance"
+                                            >
+                                                Установить
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <input
@@ -389,14 +458,40 @@ defineOptions({layout: AuthenticatedLayout});
                                     >
                                 </td>
                                 <td>
-                                    <input
-                                        type="text"
-                                        inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-right px-1"
-                                        :value="inputDrafts[getInputKey(row.day, 'end_balance')]"
-                                        @input="handleDecimalInput(row, 'end_balance', $event)"
-                                        @blur="handleBlur(row)"
-                                    >
+                                    <div class="relative inline-block">
+                                        <input
+                                            type="text"
+                                            inputmode="decimal"
+                                            class="input input-xs input-bordered w-16 text-right px-1"
+                                            :value="inputDrafts[getInputKey(row.day, 'end_balance')]"
+                                            @input="handleDecimalInput(row, 'end_balance', $event)"
+                                            @focus="showBalanceSuggestion(row, 'end_balance')"
+                                            @blur="handleBlur(row)"
+                                        >
+                                        <div
+                                            v-if="isActiveBalanceTarget(row, 'end_balance')"
+                                            class="absolute left-1/2 top-full z-50 mt-1 w-52 -translate-x-1/2 rounded-box bg-base-100 p-2 text-left text-xs shadow-lg ring-1 ring-base-300"
+                                        >
+                                            <p class="mb-2 text-base-content/70">
+                                                <template v-if="hasCurrentExchangeBalance">
+                                                    Баланс кошелька:
+                                                    <strong class="text-base-content">{{ currentExchangeBalanceLabel }} {{ currentExchangeCurrency }}</strong>
+                                                </template>
+                                                <template v-else>
+                                                    Баланс кошелька не найден.
+                                                </template>
+                                            </p>
+                                            <button
+                                                type="button"
+                                                class="btn btn-primary btn-xs w-full"
+                                                :disabled="!hasCurrentExchangeBalance"
+                                                @mousedown.prevent
+                                                @click="applyCurrentExchangeBalance"
+                                            >
+                                                Установить
+                                            </button>
+                                        </div>
+                                    </div>
                                 </td>
                                 <td>
                                     <input
