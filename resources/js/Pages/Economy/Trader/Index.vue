@@ -34,6 +34,9 @@ const FIELDS = [
     'expense_uah',
 ];
 
+const CALCULATION_FRACTION_DIGITS = 8;
+const DISPLAY_FRACTION_DIGITS = 2;
+
 const toNumber = (value) => {
     if (value === null || value === undefined || value === '') {
         return null;
@@ -41,6 +44,16 @@ const toNumber = (value) => {
     const normalized = typeof value === 'string' ? value.replace(',', '.') : value;
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
+};
+
+const roundToCalculationPrecision = (value) => {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return null;
+    }
+
+    const factor = 10 ** CALCULATION_FRACTION_DIGITS;
+
+    return Math.round(value * factor) / factor;
 };
 
 const formatMoney = (value, fractionDigits = 2) => {
@@ -53,6 +66,22 @@ const formatMoney = (value, fractionDigits = 2) => {
     });
 };
 
+const formatInputValue = (value) => {
+    const number = toNumber(value);
+
+    if (number === null) {
+        return '';
+    }
+
+    return number.toFixed(DISPLAY_FRACTION_DIGITS);
+};
+
+const limitDecimalInput = (value) => value
+    .replace(/[^\d.,-]/g, '')
+    .replace(',', '.')
+    .replace(/^(-?)0+(\d)/, '$1$2')
+    .replace(/^(-?\d*\.?\d{0,2}).*$/, '$1');
+
 const makeRowState = (dayData) => {
     const state = reactive({day: dayData.day});
     FIELDS.forEach((field) => {
@@ -61,12 +90,28 @@ const makeRowState = (dayData) => {
     return state;
 };
 
+const getInputKey = (day, field) => `${day}:${field}`;
+
+const makeInputDrafts = (days) => {
+    const drafts = {};
+
+    days.forEach((dayData) => {
+        FIELDS.forEach((field) => {
+            drafts[getInputKey(dayData.day, field)] = formatInputValue(dayData[field]);
+        });
+    });
+
+    return drafts;
+};
+
 const rows = ref(props.days.map(makeRowState));
+const inputDrafts = ref(makeInputDrafts(props.days));
 
 watch(
     () => props.days,
     (next) => {
         rows.value = next.map(makeRowState);
+        inputDrafts.value = makeInputDrafts(next);
     },
 );
 
@@ -79,18 +124,18 @@ const computeRow = (row) => {
     const arbitrageUsd = toNumber(row.arbitrage_usd);
     const expenseUah = toNumber(row.expense_uah);
 
-    const cardUsd = (cardUah !== null && rate) ? cardUah / rate : null;
+    const cardUsd = roundToCalculationPrecision((cardUah !== null && rate) ? cardUah / rate : null);
     const totalEnd = (endBalance !== null || exchangeBalance !== null || cardUsd !== null)
-        ? (endBalance ?? 0) + (exchangeBalance ?? 0) + (cardUsd ?? 0)
+        ? roundToCalculationPrecision((endBalance ?? 0) + (exchangeBalance ?? 0) + (cardUsd ?? 0))
         : null;
     const grossProfit = (totalEnd !== null && startBalance !== null)
-        ? totalEnd - startBalance
+        ? roundToCalculationPrecision(totalEnd - startBalance)
         : null;
-    const expenseUsd = (expenseUah !== null && rate) ? expenseUah / rate : null;
+    const expenseUsd = roundToCalculationPrecision((expenseUah !== null && rate) ? expenseUah / rate : null);
     const netUsd = (grossProfit !== null)
-        ? grossProfit - (arbitrageUsd ?? 0) - (expenseUsd ?? 0)
+        ? roundToCalculationPrecision(grossProfit - (arbitrageUsd ?? 0) - (expenseUsd ?? 0))
         : null;
-    const netUah = (netUsd !== null && rate) ? netUsd * rate : null;
+    const netUah = roundToCalculationPrecision((netUsd !== null && rate) ? netUsd * rate : null);
 
     return {cardUsd, totalEnd, grossProfit, expenseUsd, netUsd, netUah};
 };
@@ -118,6 +163,15 @@ const totals = computed(() => {
 
 const saveTimers = new Map();
 const savingRows = ref(new Set());
+
+const handleDecimalInput = (row, field, event) => {
+    const value = limitDecimalInput(event.target.value);
+
+    event.target.value = value;
+    inputDrafts.value[getInputKey(row.day, field)] = value;
+    row[field] = value;
+    scheduleSave(row);
+};
 
 const persistRow = (row) => {
     if (!props.selectedMonth) {
@@ -294,7 +348,6 @@ defineOptions({layout: AuthenticatedLayout});
                                 <th class="text-center">Баланс на конец</th>
                                 <th class="text-center">Баланс на бирже</th>
                                 <th class="text-center">Конец + биржа + $</th>
-                                <th class="text-center">Кол-во кругов</th>
                                 <th class="text-center">Прибыль</th>
                                 <th class="text-center">Арбитраж $</th>
                                 <th class="text-center">Расходы грн</th>
@@ -314,8 +367,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         type="text"
                                         inputmode="decimal"
                                         class="input input-xs input-bordered w-20 text-right px-1"
-                                        v-model="row.rate"
-                                        @input="scheduleSave(row)"
+                                        :value="inputDrafts[getInputKey(row.day, 'rate')]"
+                                        @input="handleDecimalInput(row, 'rate', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
@@ -324,8 +377,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         type="text"
                                         inputmode="decimal"
                                         class="input input-xs input-bordered w-24 text-right px-1"
-                                        v-model="row.start_balance"
-                                        @input="scheduleSave(row)"
+                                        :value="inputDrafts[getInputKey(row.day, 'start_balance')]"
+                                        @input="handleDecimalInput(row, 'start_balance', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
@@ -334,8 +387,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         type="text"
                                         inputmode="decimal"
                                         class="input input-xs input-bordered w-24 text-right px-1"
-                                        v-model="row.card_uah"
-                                        @input="scheduleSave(row)"
+                                        :value="inputDrafts[getInputKey(row.day, 'card_uah')]"
+                                        @input="handleDecimalInput(row, 'card_uah', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
@@ -347,8 +400,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         type="text"
                                         inputmode="decimal"
                                         class="input input-xs input-bordered w-24 text-right px-1"
-                                        v-model="row.end_balance"
-                                        @input="scheduleSave(row)"
+                                        :value="inputDrafts[getInputKey(row.day, 'end_balance')]"
+                                        @input="handleDecimalInput(row, 'end_balance', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
@@ -357,23 +410,13 @@ defineOptions({layout: AuthenticatedLayout});
                                         type="text"
                                         inputmode="decimal"
                                         class="input input-xs input-bordered w-24 text-right px-1"
-                                        v-model="row.exchange_balance"
-                                        @input="scheduleSave(row)"
+                                        :value="inputDrafts[getInputKey(row.day, 'exchange_balance')]"
+                                        @input="handleDecimalInput(row, 'exchange_balance', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
                                 <td class="text-right text-base-content/70">
                                     {{ formatMoney(computedRows[index].totalEnd, 2) }}
-                                </td>
-                                <td>
-                                    <input
-                                        type="text"
-                                        inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-right px-1"
-                                        v-model="row.circles"
-                                        @input="scheduleSave(row)"
-                                        @blur="handleBlur(row)"
-                                    >
                                 </td>
                                 <td
                                     class="text-right font-medium"
@@ -387,8 +430,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         type="text"
                                         inputmode="decimal"
                                         class="input input-xs input-bordered w-20 text-right px-1"
-                                        v-model="row.arbitrage_usd"
-                                        @input="scheduleSave(row)"
+                                        :value="inputDrafts[getInputKey(row.day, 'arbitrage_usd')]"
+                                        @input="handleDecimalInput(row, 'arbitrage_usd', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
@@ -397,8 +440,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         type="text"
                                         inputmode="decimal"
                                         class="input input-xs input-bordered w-24 text-right px-1"
-                                        v-model="row.expense_uah"
-                                        @input="scheduleSave(row)"
+                                        :value="inputDrafts[getInputKey(row.day, 'expense_uah')]"
+                                        @input="handleDecimalInput(row, 'expense_uah', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
@@ -423,7 +466,7 @@ defineOptions({layout: AuthenticatedLayout});
                         </tbody>
                         <tfoot class="text-[11px] bg-base-200 font-semibold">
                             <tr>
-                                <td colspan="9" class="text-right pr-2">Итого</td>
+                                <td colspan="8" class="text-right pr-2">Итого</td>
                                 <td
                                     class="text-right"
                                     :class="totals.profit === null ? ''
