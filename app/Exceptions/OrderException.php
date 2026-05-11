@@ -68,6 +68,11 @@ class OrderException extends BaseException
         return new self('Не удалось получить актуальный курс конвертации.');
     }
 
+    public static function trafficPaused(): OrderException
+    {
+        return new self('Трафик временно остановлен администратором.');
+    }
+
     public static function merchantApiRateRequired(string $currency): OrderException
     {
         return new self("Для валюты {$currency} требуется передать параметр rate.");

@@ -451,6 +451,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/cascade-provider-logs', [CascadeProviderLogController::class, 'index'])->name('cascade-provider-logs.index');
         Route::get('/cascade-merchant-logs', [CascadeMerchantLogController::class, 'index'])->name('cascade-merchant-logs.index');
         Route::get('/orders', [App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
+        Route::patch('/orders/traffic-paused', [App\Http\Controllers\Admin\OrderController::class, 'updateTrafficPaused'])->name('orders.traffic-paused.update');
         Route::get('/payouts', [App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('payouts.index');
         Route::get('/payouts/export', [App\Http\Controllers\Admin\PayoutController::class, 'export'])->name('payouts.export');
         Route::patch('/payouts/{payout}/status', [App\Http\Controllers\Admin\PayoutController::class, 'updateStatus'])->name('payouts.status.update');

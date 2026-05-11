@@ -40,6 +40,10 @@ class SettingsService implements SettingsServiceContract
 
     const TEMP_VIP_ENABLED = 'temp_vip_enabled';
 
+    const TRAFFIC_PAUSED = 'traffic_paused';
+
+    const TRAFFIC_PAUSED_CACHE_KEY = 'settings_traffic_paused';
+
     const DEFAULT_RESERVE_BALANCE_LIMIT = 'default_reserve_balance_limit';
 
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
@@ -228,6 +232,21 @@ class SettingsService implements SettingsServiceContract
         }
     }
 
+    public function isTrafficPaused(): bool
+    {
+        return (bool) cache()->remember(self::TRAFFIC_PAUSED_CACHE_KEY, now()->addMinute(), function () {
+            return (int) Setting::query()
+                ->where('key', self::TRAFFIC_PAUSED)
+                ->value('value') === 1;
+        });
+    }
+
+    public function updateTrafficPaused(bool $paused): void
+    {
+        $this->updateParam(self::TRAFFIC_PAUSED, $paused ? 1 : 0);
+        cache()->put(self::TRAFFIC_PAUSED_CACHE_KEY, $paused, now()->addMinute());
+    }
+
     public function getDefaultReserveBalanceLimit(): int
     {
         return (int) $this->getParam(self::DEFAULT_RESERVE_BALANCE_LIMIT);
@@ -348,6 +367,11 @@ class SettingsService implements SettingsServiceContract
         Setting::firstOrCreate([
             'key' => self::TEMP_VIP_ENABLED,
             'value' => 1,
+        ]);
+
+        Setting::firstOrCreate([
+            'key' => self::TRAFFIC_PAUSED,
+            'value' => 0,
         ]);
 
         Setting::firstOrCreate([

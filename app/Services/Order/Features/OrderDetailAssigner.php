@@ -30,6 +30,10 @@ class OrderDetailAssigner
 
     public function assign(): Order
     {
+        if (services()->settings()->isTrafficPaused()) {
+            throw OrderException::trafficPaused();
+        }
+
         $merchant = queries()->merchant()->findByID($this->order->merchant_id);
         $merchant->loadMissing('user.agent');
 

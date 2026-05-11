@@ -31,6 +31,10 @@ interface SettingsServiceContract
 
     public function updateTempVipEnabled(bool $enabled): void;
 
+    public function isTrafficPaused(): bool;
+
+    public function updateTrafficPaused(bool $paused): void;
+
     public function getMarketPriceParser(
         Currency $currency,
         MarketEnum $market

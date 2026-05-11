@@ -16,11 +16,26 @@ class OrderController extends Controller
     {
         $filters = $this->getTableFilters();
         $filtersVariants = $this->getFiltersData();
+        $trafficPaused = services()->settings()->isTrafficPaused();
 
         $orders = queries()->order()->paginateForAdmin($filters);
         $orders = TableOrderResource::collection($orders);
 
-        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants'));
+        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants', 'trafficPaused'));
+    }
+
+    public function updateTrafficPaused(Request $request)
+    {
+        $validated = $request->validate([
+            'paused' => ['required', 'boolean'],
+        ]);
+
+        services()->settings()->updateTrafficPaused((bool) $validated['paused']);
+
+        return redirect()->back()->with(
+            'message',
+            $validated['paused'] ? 'Трафик остановлен.' : 'Трафик запущен.'
+        );
     }
 
     public function updateAmount(Request $request, Order $order)
@@ -46,5 +61,4 @@ class OrderController extends Controller
 
         return redirect()->back()->with('message', 'Сумма сделки обновлена.');
     }
-
 }

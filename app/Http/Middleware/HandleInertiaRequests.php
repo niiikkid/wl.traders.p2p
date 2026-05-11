@@ -304,6 +304,10 @@ class HandleInertiaRequests extends Middleware
             'cascadeActiveCount' => (int) $cascadeActiveCount,
         ];
 
+        $trafficPaused = $authUser instanceof User && isRouteFor('Super Admin')
+            ? services()->settings()->isTrafficPaused()
+            : false;
+
         $sharedWalletStats = null;
         if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant') || isRouteFor('Agent'))) {
             /** @var WalletStatsValue $walletStatsValue */
@@ -343,6 +347,7 @@ class HandleInertiaRequests extends Middleware
                 'pendingDisputePreview' => fn () => $pendingDisputePreview,
             ],
             'menu' => $menu,
+            'adminTrafficPaused' => fn () => $trafficPaused,
             'notificationsSound' => $authUser instanceof User && $authUser->hasRole('Trader') ? [
                 'order_assigned' => [
                     'enabled' => $authUser->meta?->notification_sound_order_enabled ?? true,
