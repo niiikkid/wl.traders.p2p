@@ -81,7 +81,7 @@ const avatarsStyles = [
                     Перегенерировать
                 </button>
 
-                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
+                <PrimaryButton type="submit" class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
