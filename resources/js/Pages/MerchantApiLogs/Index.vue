@@ -6,15 +6,40 @@ import DateTime from "@/Components/DateTime.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, unref, watch} from "vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import DisplayID from "@/Components/DisplayID.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal";
+import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import ApexCharts from 'apexcharts';
 
 const modalStore = useModalStore();
 const page = usePage();
+
+const isAdminMerchantApiLogsPage = computed(() => route().current() === 'admin.merchant-api-logs.index');
+const filtersPanelRef = ref(null);
+const hasActiveMerchantApiLogFilters = useHasActiveTableFilters();
+const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
+const isRefreshingPage = ref(false);
+
+const toggleFiltersFromToolbar = () => {
+    filtersPanelRef.value?.toggleFiltersDisplay?.();
+};
+
+const refreshMerchantApiLogsPage = () => {
+    if (isRefreshingPage.value) {
+        return;
+    }
+
+    isRefreshingPage.value = true;
+    router.reload({
+        preserveScroll: true,
+        onFinish: () => {
+            isRefreshingPage.value = false;
+        },
+    });
+};
 const logs = usePage().props.logs;
 const canManageMerchantApiLogDeletion = computed(() => Boolean(page.props.can_manage_merchant_api_log_deletion));
 const expandedRows = ref({}); // Для отслеживания развернутых строк (desktop)
@@ -359,43 +384,105 @@ onBeforeUnmount(() => {
             title="Логи API-запросов"
             :data="logs"
         >
-            <template v-slot:table-filters>
-                <div>
-                    <FiltersPanel name="merchant-api-logs">
-                        <InputFilter
-                            name="merchant"
-                            placeholder="Мерчант (имя или uuid)"
-                        />
-                        <InputFilter
-                            name="externalID"
-                            placeholder="Внешний ID"
-                        />
-                        <InputFilter
-                            name="uuid"
-                            placeholder="UUID сделки"
-                        />
-                        <InputFilter
-                            name="minAmount"
-                            placeholder="Мин. сумма"
-                        />
-                        <InputFilter
-                            name="maxAmount"
-                            placeholder="Макс. сумма"
-                        />
-                        <InputFilter
-                            name="currency"
-                            placeholder="Валюта"
-                        />
-                        <InputFilter
-                            name="method"
-                            placeholder="Метод (код)"
-                        />
-                        <DropdownFilter
-                            name="apiLogStatuses"
-                            title="Статусы"
-                        />
-                    </FiltersPanel>
+            <template v-if="isAdminMerchantApiLogsPage" #button>
+                <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+                    <div
+                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
+                    >
+                        <div class="relative inline-flex shrink-0">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
+                                :class="{ 'btn-active': filtersPanelOpen }"
+                                title="Фильтры"
+                                aria-label="Показать или скрыть фильтры"
+                                @click.prevent="toggleFiltersFromToolbar"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                                </svg>
+                            </button>
+                            <span
+                                v-if="hasActiveMerchantApiLogFilters"
+                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
+                                aria-hidden="true"
+                                title="Есть применённые фильтры"
+                            />
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-square btn-secondary btn-outline shrink-0 rounded-lg"
+                            :disabled="isRefreshingPage"
+                            title="Обновить"
+                            aria-label="Обновить страницу"
+                            @click="refreshMerchantApiLogsPage"
+                        >
+                            <span
+                                v-if="isRefreshingPage"
+                                class="loading loading-spinner loading-sm text-secondary"
+                                role="status"
+                            />
+                            <svg
+                                v-else
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.5"
+                                stroke="currentColor"
+                                class="h-5 w-5 shrink-0"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                                />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
+            </template>
+
+            <template #header>
+                <FiltersPanel
+                    ref="filtersPanelRef"
+                    name="merchant-api-logs"
+                    :omit-default-toggle-button="isAdminMerchantApiLogsPage"
+                >
+                    <InputFilter
+                        name="merchant"
+                        placeholder="Мерчант (имя или uuid)"
+                    />
+                    <InputFilter
+                        name="externalID"
+                        placeholder="Внешний ID"
+                    />
+                    <InputFilter
+                        name="uuid"
+                        placeholder="UUID сделки"
+                    />
+                    <InputFilter
+                        name="minAmount"
+                        placeholder="Мин. сумма"
+                    />
+                    <InputFilter
+                        name="maxAmount"
+                        placeholder="Макс. сумма"
+                    />
+                    <InputFilter
+                        name="currency"
+                        placeholder="Валюта"
+                    />
+                    <InputFilter
+                        name="method"
+                        placeholder="Метод (код)"
+                    />
+                    <DropdownFilter
+                        name="apiLogStatuses"
+                        title="Статусы"
+                    />
+                </FiltersPanel>
             </template>
 
             <template v-slot:body>
