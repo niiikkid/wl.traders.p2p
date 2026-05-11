@@ -59,6 +59,7 @@ class OrderQueriesEloquent implements OrderQueries
                 'manual_control_acquiring',
             ])
             ->withExists('dispute')
+            ->withExists('smsLog')
             ->when(! empty($filters->orderStatuses), function ($query) use ($filters) {
                 $query->whereIn('status', $filters->orderStatuses);
             })
@@ -69,20 +70,20 @@ class OrderQueriesEloquent implements OrderQueries
                 $query->whereDate('created_at', '<=', $filters->endDate);
             })
             ->when($filters->externalID, function ($query) use ($filters) {
-                $query->where('external_id', 'LIKE', '%' . $filters->externalID . '%');
+                $query->where('external_id', 'LIKE', '%'.$filters->externalID.'%');
             })
             ->when($filters->uuid, function ($query) use ($filters) {
-                $query->where('uuid', 'LIKE', '%' . $filters->uuid . '%');
+                $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
             })
             ->when($filters->amount, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
                     $amount = Money::fromPrecision($filters->amount, Currency::USDT())->toUnits();
-                    $query->where('amount', 'LIKE', '%' . $amount . '%');
-                    $query->orWhere('total_profit', 'LIKE', '%' . $amount . '%');
+                    $query->where('amount', 'LIKE', '%'.$amount.'%');
+                    $query->orWhere('total_profit', 'LIKE', '%'.$amount.'%');
                 });
             })
             ->when($filters->paymentDetail, function ($query) use ($filters) {
-                $query->whereRelation('paymentDetail', 'detail', 'LIKE', '%' . $filters->paymentDetail . '%');
+                $query->whereRelation('paymentDetail', 'detail', 'LIKE', '%'.$filters->paymentDetail.'%');
             })
             ->when($filters->detailTypes && count($filters->detailTypes) > 0, function ($query) use ($filters) {
                 $query->whereRelation('paymentDetail', function ($subQuery) use ($filters) {
@@ -91,14 +92,14 @@ class OrderQueriesEloquent implements OrderQueries
             })
             ->when($filters->paymentGateway, function ($query) use ($filters) {
                 $query->whereRelation('paymentGateway', function ($subQuery) use ($filters) {
-                    $subQuery->where('name', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
+                    $subQuery->where('name', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhere('code', 'LIKE', '%'.$filters->paymentGateway.'%');
                 });
             })
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
-                    $query->whereRelation('paymentDetail.user', 'name', 'LIKE', '%' . $filters->user . '%');
-                    $query->orWhereRelation('paymentDetail.user', 'email', 'LIKE', '%' . $filters->user . '%');
+                    $query->whereRelation('paymentDetail.user', 'name', 'LIKE', '%'.$filters->user.'%');
+                    $query->orWhereRelation('paymentDetail.user', 'email', 'LIKE', '%'.$filters->user.'%');
                 });
             })
             ->orderByDesc('id')
@@ -131,7 +132,7 @@ class OrderQueriesEloquent implements OrderQueries
                 $query->whereDate('created_at', '<=', $filters->endDate);
             })
             ->when($filters->uuid, function ($query) use ($filters) {
-                $query->where('uuid', 'LIKE', '%' . $filters->uuid . '%');
+                $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
             })
             ->when($filters->amount, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
@@ -141,7 +142,7 @@ class OrderQueriesEloquent implements OrderQueries
                 });
             })
             ->when($filters->paymentDetail, function ($query) use ($filters) {
-                $query->whereRelation('paymentDetail', 'detail', 'LIKE', '%' . $filters->paymentDetail . '%');
+                $query->whereRelation('paymentDetail', 'detail', 'LIKE', '%'.$filters->paymentDetail.'%');
             })
             ->when($filters->detailTypes && count($filters->detailTypes) > 0, function ($query) use ($filters) {
                 $query->whereRelation('paymentDetail', function ($subQuery) use ($filters) {
@@ -150,8 +151,8 @@ class OrderQueriesEloquent implements OrderQueries
             })
             ->when($filters->paymentGateway, function ($query) use ($filters) {
                 $query->whereRelation('paymentGateway', function ($subQuery) use ($filters) {
-                    $subQuery->where('name', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
+                    $subQuery->where('name', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhere('code', 'LIKE', '%'.$filters->paymentGateway.'%');
                 });
             })
             ->select([
@@ -168,6 +169,7 @@ class OrderQueriesEloquent implements OrderQueries
                 'manual_control_acquiring',
             ])
             ->withExists('dispute')
+            ->withExists('smsLog')
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
     }
@@ -199,7 +201,7 @@ class OrderQueriesEloquent implements OrderQueries
                 $query->whereDate('created_at', '<=', $filters->endDate);
             })
             ->when($filters->uuid, function ($query) use ($filters) {
-                $query->where('uuid', 'LIKE', '%' . $filters->uuid . '%');
+                $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
             })
             ->when($filters->amount, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
@@ -209,7 +211,7 @@ class OrderQueriesEloquent implements OrderQueries
                 });
             })
             ->when($filters->paymentDetail, function ($query) use ($filters) {
-                $query->whereRelation('paymentDetail', 'detail', 'LIKE', '%' . $filters->paymentDetail . '%');
+                $query->whereRelation('paymentDetail', 'detail', 'LIKE', '%'.$filters->paymentDetail.'%');
             })
             ->when($filters->detailTypes && count($filters->detailTypes) > 0, function ($query) use ($filters) {
                 $query->whereRelation('paymentDetail', function ($subQuery) use ($filters) {
@@ -218,8 +220,8 @@ class OrderQueriesEloquent implements OrderQueries
             })
             ->when($filters->paymentGateway, function ($query) use ($filters) {
                 $query->whereRelation('paymentGateway', function ($subQuery) use ($filters) {
-                    $subQuery->where('name', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
+                    $subQuery->where('name', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhere('code', 'LIKE', '%'.$filters->paymentGateway.'%');
                 });
             })
             ->select([
@@ -236,6 +238,7 @@ class OrderQueriesEloquent implements OrderQueries
                 'manual_control_acquiring',
             ])
             ->withExists('dispute')
+            ->withExists('smsLog')
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
     }
@@ -254,10 +257,10 @@ class OrderQueriesEloquent implements OrderQueries
                 $query->whereIn('status', $filters->orderStatuses);
             })
             ->when($filters->externalID, function ($query) use ($filters) {
-                $query->where('external_id', 'LIKE', '%' . $filters->externalID . '%');
+                $query->where('external_id', 'LIKE', '%'.$filters->externalID.'%');
             })
             ->when($filters->uuid, function ($query) use ($filters) {
-                $query->where('uuid', 'LIKE', '%' . $filters->uuid . '%');
+                $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
             })
             ->when($filters->amount, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
@@ -273,14 +276,13 @@ class OrderQueriesEloquent implements OrderQueries
             })
             ->when($filters->paymentGateway, function ($query) use ($filters) {
                 $query->whereRelation('paymentGateway', function ($subQuery) use ($filters) {
-                    $subQuery->where('name', 'LIKE', '%' . $filters->paymentGateway . '%')
-                        ->orWhere('code', 'LIKE', '%' . $filters->paymentGateway . '%');
+                    $subQuery->where('name', 'LIKE', '%'.$filters->paymentGateway.'%')
+                        ->orWhere('code', 'LIKE', '%'.$filters->paymentGateway.'%');
                 });
             })
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
     }
-
 
     /**
      * @return Collection<int, Dispute>

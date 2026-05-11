@@ -76,6 +76,7 @@ class TableOrderResource extends JsonResource
             'trader_name' => $this->trader->name,
             'created_at' => $this->created_at->toISOString(),
             'manual_control_acquiring' => (bool) $this->manual_control_acquiring,
+            'has_order_sms' => (bool) ($this->sms_log_exists ?? false),
         ];
     }
 }
