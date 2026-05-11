@@ -67,6 +67,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $google2fa_secret
  * @property int|null $team_leader_id
  * @property int|null $agent_id
+ * @property float $agent_commission_percentage
  * @property int|null $user_team_id
  * @property bool $team_leader_extended_access_enabled
  * @property bool $team_leader_flexible_trader_commission_enabled
@@ -129,6 +130,7 @@ class User extends Authenticatable
         'google2fa_secret',
         'team_leader_id',
         'agent_id',
+        'agent_commission_percentage',
         'user_team_id',
         'team_leader_extended_access_enabled',
         'team_leader_flexible_trader_commission_enabled',
@@ -182,6 +184,7 @@ class User extends Authenticatable
             'team_leader_split_from_service_percent' => 'float',
             'payout_referral_commission_percentage' => 'float',
             'payout_team_leader_split_from_service_percent' => 'float',
+            'agent_commission_percentage' => 'float',
             'team_leader_extended_access_enabled' => 'boolean',
             'team_leader_flexible_trader_commission_enabled' => 'boolean',
             'team_leader_flexible_trader_commission_min' => 'float',

@@ -52,6 +52,7 @@ const form = ref({
     support_can_use_manual_control_acq: false,
     team_leader_id: [],
     agent_id: [],
+    agent_commission_percentage: 0.2,
 });
 
 const isAdmin = (roleId) => roleId === 1;
@@ -59,6 +60,10 @@ const isTrader = (roleId) => roleId === 2;
 const isMerchant = (roleId) => roleId === 3;
 const isSupport = (roleId) => roleId === 4;
 const isTeamLeader = (roleId) => roleId === 5;
+const selectedRoleName = computed(() => {
+    return roles.value.find((role) => Number(role.id) === Number(form.value.role_id))?.name ?? null;
+});
+const isAgent = () => selectedRoleName.value === 'Agent';
 const hasPayoutsToggle = (roleId) => isTrader(roleId) || isMerchant(roleId) || isAdmin(roleId);
 const canManageSupportFeatures = (roleId) => isSupport(roleId) || isAdmin(roleId);
 
@@ -96,6 +101,7 @@ const resetState = () => {
         support_can_use_manual_control_acq: false,
         team_leader_id: [],
         agent_id: [],
+        agent_commission_percentage: 0.2,
     };
 };
 
@@ -152,6 +158,7 @@ const loadUser = () => {
             form.value.support_can_use_manual_control_acq = !!data.support_can_use_manual_control_acq;
             form.value.team_leader_id = data.team_leader_id ? [data.team_leader_id] : [];
             form.value.agent_id = data.agent_id ? [data.agent_id] : [];
+            form.value.agent_commission_percentage = data.agent_commission_percentage ?? 0.2;
         });
 };
 
@@ -845,6 +852,29 @@ watch(
                     <InputError class="mt-1" :message="errors.agent_id?.[0]" />
                     <p class="mt-1 text-xs text-base-content/70">
                         Необязательно. Агент будет получать комиссию с новых успешных сделок мерчанта.
+                    </p>
+                </div>
+
+                <div v-if="isAgent()">
+                    <InputLabel
+                        for="agent_commission_percentage"
+                        value="Комиссия агента (%)"
+                        :error="!!errors.agent_commission_percentage?.[0]"
+                    />
+                    <NumberInput
+                        id="agent_commission_percentage"
+                        v-model="form.agent_commission_percentage"
+                        class="mt-1 block w-full"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        :error="!!errors.agent_commission_percentage?.[0]"
+                        :disabled="processing"
+                        @input="errors.agent_commission_percentage = null"
+                    />
+                    <InputError class="mt-1" :message="errors.agent_commission_percentage?.[0]" />
+                    <p class="mt-1 text-xs text-base-content/70">
+                        Новое значение будет применяться только к новым сделкам.
                     </p>
                 </div>
             </form>

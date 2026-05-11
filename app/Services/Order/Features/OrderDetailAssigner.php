@@ -31,7 +31,7 @@ class OrderDetailAssigner
     public function assign(): Order
     {
         $merchant = queries()->merchant()->findByID($this->order->merchant_id);
-        $merchant->loadMissing('user');
+        $merchant->loadMissing('user.agent');
 
         $details = (new OrderDetailProvider(
             order: $this->order,
@@ -50,9 +50,11 @@ class OrderDetailAssigner
             teamLeaderFeeRate: $details->teamLeaderCommissionRate,
             teamLeaderServiceSplitPercent: $details->trader->teamLeaderSplitFromServicePercent
         );
-        $agentId = $merchant->user?->agent_id;
+        $agent = $merchant->user?->agent;
+        $agentId = $agent?->id;
+        $agentCommissionRate = $agent?->agent_commission_percentage ?? AgentCommission::DEFAULT_RATE;
         $agentProfit = $agentId
-            ? AgentCommission::calculate($profits->convertedAmount, $profits->serviceFee)
+            ? AgentCommission::calculate($profits->convertedAmount, $profits->serviceFee, $agentCommissionRate)
             : AgentCommission::zero();
         $serviceProfit = $profits->serviceFee->sub($agentProfit);
 
@@ -72,7 +74,7 @@ class OrderDetailAssigner
             'rate_fixed_at' => now(),
             'trader_commission_rate' => $details->traderCommissionRate,
             'team_leader_commission_rate' => $details->teamLeaderCommissionRate,
-            'agent_commission_rate' => $agentId ? AgentCommission::DEFAULT_RATE : 0,
+            'agent_commission_rate' => $agentId ? $agentCommissionRate : 0,
             'total_service_commission_rate' => $details->gateway->serviceCommissionRate,
             'payment_gateway_id' => $details->gateway->id,
             'payment_detail_id' => $details->id,

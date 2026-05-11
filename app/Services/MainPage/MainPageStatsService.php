@@ -243,7 +243,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'totalTurnover' => $totalTurnover->toBeauty(),
                 'totalProfit' => $totalProfit->toBeauty(),
                 'balance' => $balance->toBeauty(),
-                'agentRate' => AgentCommission::DEFAULT_RATE,
+                'agentRate' => round((float) ($user->agent_commission_percentage ?? AgentCommission::DEFAULT_RATE), 2),
             ],
             'merchantUsers' => $merchantUsers,
         ];

@@ -15,6 +15,8 @@ class UserService implements UserServiceContract
 {
     private const DEFAULT_TEAM_LEADER_COMMISSION_PERCENTAGE = 0.20;
 
+    private const DEFAULT_AGENT_COMMISSION_PERCENTAGE = 0.20;
+
     public function create(UserCreateDTO $data): User
     {
         return $this->transaction(function () use ($data) {
@@ -25,6 +27,9 @@ class UserService implements UserServiceContract
             $referralCommissionPercentage = $roleName === 'Team Leader'
                 ? self::DEFAULT_TEAM_LEADER_COMMISSION_PERCENTAGE
                 : 0.00;
+            $agentCommissionPercentage = $roleName === 'Agent'
+                ? $data->agent_commission_percentage
+                : self::DEFAULT_AGENT_COMMISSION_PERCENTAGE;
 
             $user = User::create([
                 'name' => '',
@@ -39,6 +44,7 @@ class UserService implements UserServiceContract
                 'reserve_balance_limit' => services()->settings()->getDefaultReserveBalanceLimit(),
                 'team_leader_id' => $teamLeaderId,
                 'agent_id' => $agentId,
+                'agent_commission_percentage' => $agentCommissionPercentage,
                 'team_leader_extended_access_enabled' => false,
                 'referral_commission_percentage' => $referralCommissionPercentage,
                 // Настройки выплат по умолчанию для всех новых пользователей
@@ -76,6 +82,9 @@ class UserService implements UserServiceContract
                 : false;
             $supportFeatureAllowed = in_array($roleName, ['Support', 'Super Admin'], true);
             $manualControlAcqAllowed = in_array($roleName, ['Support', 'Super Admin'], true);
+            $agentCommissionPercentage = $roleName === 'Agent'
+                ? $data->agent_commission_percentage
+                : self::DEFAULT_AGENT_COMMISSION_PERCENTAGE;
 
             $updateData = [
                 'email' => strtolower($data->login),
@@ -95,6 +104,7 @@ class UserService implements UserServiceContract
                     ?? $user->payout_team_leader_split_from_service_percent,
                 'reserve_balance_limit' => $data->reserve_balance_limit,
                 'agent_id' => $agentId,
+                'agent_commission_percentage' => $agentCommissionPercentage,
                 'traffic_enabled_at' => $wasTrafficStopped && ! $data->stop_traffic ? now() : $user->traffic_enabled_at,
                 'team_leader_extended_access_enabled' => $extendedAccessEnabled,
                 'team_leader_flexible_trader_commission_enabled' => $flexibleTraderCommissionEnabled,

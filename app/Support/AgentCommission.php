@@ -9,9 +9,9 @@ class AgentCommission
 {
     public const DEFAULT_RATE = 0.2;
 
-    public static function calculate(Money $turnover, Money $serviceProfit): Money
+    public static function calculate(Money $turnover, Money $serviceProfit, float $rate = self::DEFAULT_RATE): Money
     {
-        $commission = $turnover->mul((string) (self::DEFAULT_RATE / 100));
+        $commission = $turnover->mul((string) ($rate / 100));
 
         if ($commission->greaterThan($serviceProfit)) {
             return $serviceProfit;

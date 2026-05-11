@@ -112,8 +112,11 @@ class OrderOperator
             teamLeaderFeeRate: $order->team_leader_commission_rate,
             teamLeaderServiceSplitPercent: $order->team_leader_split_from_service_percent
         );
+        $agentCommissionRate = $order->agent_id
+            ? ($order->agent_commission_rate ?: AgentCommission::DEFAULT_RATE)
+            : 0;
         $agentProfit = $order->agent_id
-            ? AgentCommission::calculate($profits->convertedAmount, $profits->serviceFee)
+            ? AgentCommission::calculate($profits->convertedAmount, $profits->serviceFee, $agentCommissionRate)
             : AgentCommission::zero();
         $serviceProfit = $profits->serviceFee->sub($agentProfit);
 
@@ -146,7 +149,7 @@ class OrderOperator
             'agent_profit' => $agentProfit,
             'trader_paid_for_order' => $profits->traderDebit,
             'team_leader_split_from_service_percent' => $order->team_leader_split_from_service_percent,
-            'agent_commission_rate' => $order->agent_id ? AgentCommission::DEFAULT_RATE : 0,
+            'agent_commission_rate' => $agentCommissionRate,
             'rate_fixed_at' => $rateFixedAt,
             'amount_updates_history' => $amountUpdatesHistory,
         ]);

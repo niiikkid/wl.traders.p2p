@@ -40,6 +40,7 @@ class UserResource extends JsonResource
             'created_at' => $this->created_at->toISOString(),
             'team_leader_id' => $this->team_leader_id,
             'agent_id' => $this->agent_id,
+            'agent_commission_percentage' => (float) $this->agent_commission_percentage,
             'team_leader_extended_access_enabled' => (bool) $this->team_leader_extended_access_enabled,
             'team_leader_flexible_trader_commission_enabled' => (bool) $this->team_leader_flexible_trader_commission_enabled,
             'team_leader_flexible_trader_commission_min' => $this->team_leader_flexible_trader_commission_min !== null

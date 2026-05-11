@@ -8,6 +8,7 @@ import { useModalStore } from "@/store/modal.js";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
+import NumberInput from "@/Components/NumberInput.vue";
 import Select from "@/Components/Select.vue";
 import {computed, ref, watch} from "vue";
 import { router } from '@inertiajs/vue3';
@@ -31,6 +32,7 @@ const form = ref({
     role_id: 0,
     team_leader_id: [],
     agent_id: [],
+    agent_commission_percentage: 0.2,
 });
 
 const selectedRoleName = computed(() => {
@@ -46,6 +48,7 @@ const resetForm = () => {
         role_id: 0,
         team_leader_id: [],
         agent_id: [],
+        agent_commission_percentage: 0.2,
     };
     errors.value = {};
 };
@@ -265,6 +268,29 @@ watch(
                     <InputError class="mt-1" :message="errors.agent_id?.[0]" />
                     <p class="mt-1 text-xs text-base-content/70">
                         Необязательно. Агент будет получать комиссию с новых успешных сделок мерчанта.
+                    </p>
+                </div>
+
+                <div v-if="selectedRoleName === 'Agent'">
+                    <InputLabel
+                        for="agent_commission_percentage"
+                        value="Комиссия агента (%)"
+                        :error="!!errors.agent_commission_percentage?.[0]"
+                    />
+                    <NumberInput
+                        id="agent_commission_percentage"
+                        v-model="form.agent_commission_percentage"
+                        class="mt-1 block w-full"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        :error="!!errors.agent_commission_percentage?.[0]"
+                        :disabled="processing"
+                        @input="errors.agent_commission_percentage = null"
+                    />
+                    <InputError class="mt-1" :message="errors.agent_commission_percentage?.[0]" />
+                    <p class="mt-1 text-xs text-base-content/70">
+                        Комиссия будет применяться к новым сделкам мерчантов, привязанных к этому агенту.
                     </p>
                 </div>
             </form>

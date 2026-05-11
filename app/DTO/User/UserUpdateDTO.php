@@ -25,6 +25,7 @@ readonly class UserUpdateDTO extends BaseDTO
         public ?int $reserve_balance_limit = null,
         public ?int $team_leader_id = null,
         public ?int $agent_id = null,
+        public float $agent_commission_percentage = 0.20,
         public bool $team_leader_extended_access_enabled = false,
         public bool $team_leader_flexible_trader_commission_enabled = false,
         public ?float $team_leader_flexible_trader_commission_min = null,
@@ -63,6 +64,9 @@ readonly class UserUpdateDTO extends BaseDTO
             role_id: (int) $data['role_id'],
             team_leader_id: $data['team_leader_id'] ?? null,
             agent_id: $data['agent_id'] ?? null,
+            agent_commission_percentage: isset($data['agent_commission_percentage'])
+                ? (float) $data['agent_commission_percentage']
+                : 0.20,
             team_leader_extended_access_enabled: (bool) ($data['team_leader_extended_access_enabled'] ?? false),
             team_leader_flexible_trader_commission_enabled: (bool) ($data['team_leader_flexible_trader_commission_enabled'] ?? false),
             team_leader_flexible_trader_commission_min: isset($data['team_leader_flexible_trader_commission_min'])

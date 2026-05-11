@@ -39,6 +39,7 @@ class StoreRequest extends FormRequest
             ],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
             'agent_id' => ['nullable', 'integer', 'exists:users,id'],
+            'agent_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100', 'regex:/^\d+(\.\d{1,2})?$/'],
         ];
     }
 
@@ -48,6 +49,7 @@ class StoreRequest extends FormRequest
             'role_id' => __('роль'),
             'team_leader_id' => __('тим лидер'),
             'agent_id' => __('агент'),
+            'agent_commission_percentage' => __('комиссия агента'),
             'telegram_username' => __('telegram'),
         ];
     }
