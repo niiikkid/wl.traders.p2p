@@ -40,7 +40,7 @@ const refreshMerchantApiLogsPage = () => {
         },
     });
 };
-const logs = usePage().props.logs;
+const logs = computed(() => page.props.logs);
 const canManageMerchantApiLogDeletion = computed(() => Boolean(page.props.can_manage_merchant_api_log_deletion));
 const expandedRows = ref({}); // Для отслеживания развернутых строк (desktop)
 const expandedCards = ref({}); // Для отслеживания развернутых карточек (mobile)
@@ -93,15 +93,15 @@ const formatChartValue = (value) => chartMode.value === 'average'
     ? Number(value).toLocaleString('ru-RU', {maximumFractionDigits: 2})
     : Math.round(value).toString();
 
-// Получение статистических данных из props
-const failedTotal = usePage().props.failedTotal;
-const failedToday = usePage().props.failedToday;
-const successTotal = usePage().props.successTotal;
-const successToday = usePage().props.successToday;
-const sumBySuccessCurrencyToday = usePage().props.sumBySuccessCurrencyToday;
-const sumByFailedCurrencyToday = usePage().props.sumByFailedCurrencyToday;
-const sumBySuccessCurrencyTotal = usePage().props.sumBySuccessCurrencyTotal;
-const sumByFailedCurrencyTotal = usePage().props.sumByFailedCurrencyTotal;
+// Получение статистических данных из props (реактивно к Inertia reload / visit)
+const failedTotal = computed(() => page.props.failedTotal);
+const failedToday = computed(() => page.props.failedToday);
+const successTotal = computed(() => page.props.successTotal);
+const successToday = computed(() => page.props.successToday);
+const sumBySuccessCurrencyToday = computed(() => page.props.sumBySuccessCurrencyToday);
+const sumByFailedCurrencyToday = computed(() => page.props.sumByFailedCurrencyToday);
+const sumBySuccessCurrencyTotal = computed(() => page.props.sumBySuccessCurrencyTotal);
+const sumByFailedCurrencyTotal = computed(() => page.props.sumByFailedCurrencyTotal);
 
 // Данные для удаления логов по периоду
 const startDate = ref('');
