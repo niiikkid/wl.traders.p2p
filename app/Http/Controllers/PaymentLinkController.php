@@ -96,6 +96,10 @@ class PaymentLinkController extends Controller
             return;
         }
 
+        if (services()->settings()->isTrafficPaused()) {
+            return redirect()->back()->with('message', OrderException::trafficPaused()->getMessage());
+        }
+
         try {
             retry(5, function () use ($order, $paymentGateway) {
                 return services()->order()->assignDetailsToOrder(
