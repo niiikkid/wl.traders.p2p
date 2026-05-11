@@ -189,6 +189,7 @@ class OrderResource extends JsonResource
                 ],
             ]),
             'finished_at' => $this->finished_at?->toISOString(),
+            'expires_at' => $this->expires_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'payment_link' => PaymentLink::order($this->uuid),
             'canEditAmount' => $this->status->equals(OrderStatus::PENDING) && $this->dispute_exists && $this->trader_paid_for_order,
