@@ -197,7 +197,7 @@ router.on('success', (event) => {
                 </span>
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.sms-logs.*') || route().current('admin.app.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('admin.sms-logs.*') || route().current('admin.app.*') || route().current('admin.devices.*') }]">
             <span
                 @click="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"

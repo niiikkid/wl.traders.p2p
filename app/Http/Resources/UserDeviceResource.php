@@ -23,6 +23,11 @@ class UserDeviceResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'token' => $this->token,
+            'user' => $this->whenLoaded('user', fn () => [
+                'id' => $this->user->id,
+                'email' => $this->user->email,
+                'sms_auto_close_orders_enabled' => (bool) $this->user->sms_auto_close_orders_enabled,
+            ]),
             'android_id' => $this->android_id,
             'device_model' => $this->device_model,
             'android_version' => $this->android_version,
@@ -30,13 +35,13 @@ class UserDeviceResource extends JsonResource
             'brand' => $this->brand,
             'connected_at' => $this->connected_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
-            'latest_ping_at' => $this->normalizeCachedDate(cache()->get('user-device-latest-ping-at-' . $this->id)),
+            'latest_ping_at' => $this->normalizeCachedDate(cache()->get('user-device-latest-ping-at-'.$this->id)),
         ];
     }
 
     private function normalizeCachedDate(mixed $date): ?string
     {
-        if (!is_string($date) || $date === '') {
+        if (! is_string($date) || $date === '') {
             return null;
         }
 
@@ -46,4 +51,4 @@ class UserDeviceResource extends JsonResource
             return null;
         }
     }
-} 
+}

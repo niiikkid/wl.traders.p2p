@@ -71,13 +71,22 @@ const submit = () => {
             :display-pagination="false"
         >
             <template #button>
-                <button
-                    type="button"
-                    class="btn btn-outline btn-sm shrink-0"
-                    @click="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"
-                >
-                    Сообщения
-                </button>
+                <div class="ml-auto flex flex-wrap justify-end gap-2">
+                    <button
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0"
+                        @click="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"
+                    >
+                        Сообщения
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0"
+                        @click="router.visit(route('admin.devices.index'), { preserveScroll: true })"
+                    >
+                        Устройства
+                    </button>
+                </div>
             </template>
             <template #header>
                 <div class="flex flex-wrap items-center justify-between gap-3">

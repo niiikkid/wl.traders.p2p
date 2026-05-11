@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\ProfitCalculatorController;
 use App\Http\Controllers\Admin\SenderStopListController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SmsStopWordController;
+use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
 use App\Http\Controllers\Admin\UserNoteController;
 use App\Http\Controllers\Admin\UserTeamController;
 use App\Http\Controllers\Admin\UserWalletController;
@@ -469,6 +470,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('currencies/{currency}/price-parsers', [PriceParserController::class, 'update'])->name('currencies.price-parsers.update');
 
         Route::get('/sms-logs', [App\Http\Controllers\Admin\SmsLogController::class, 'index'])->name('sms-logs.index');
+        Route::get('/devices', [AdminUserDeviceController::class, 'index'])->name('devices.index');
         Route::post('/sender-stop-list/{smsLog}', [SenderStopListController::class, 'store'])->name('sender-stop-list.store');
         Route::post('/sender-payment-gateway/{smsLog}', [SenderStopListController::class, 'attachToPaymentGateway'])->name('sender-payment-gateway.store');
         Route::delete('/sender-stop-list/{senderStopList}', [SenderStopListController::class, 'destroy'])->name('sender-stop-list.destroy');

@@ -202,14 +202,22 @@ defineOptions({ layout: AuthenticatedLayout })
             :display-pagination="currentTab === 'logs'"
         >
             <template #button>
-                <button
-                    v-if="viewStore.isAdminViewMode"
-                    type="button"
-                    class="btn btn-outline btn-sm shrink-0"
-                    @click="router.visit(route('admin.app.index'), { preserveScroll: true })"
-                >
-                    Приложение
-                </button>
+                <div v-if="viewStore.isAdminViewMode" class="ml-auto flex flex-wrap justify-end gap-2">
+                    <button
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0"
+                        @click="router.visit(route('admin.app.index'), { preserveScroll: true })"
+                    >
+                        Приложение
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-outline btn-sm shrink-0"
+                        @click="router.visit(route('admin.devices.index'), { preserveScroll: true })"
+                    >
+                        Устройства
+                    </button>
+                </div>
                 <button
                     v-else
                     type="button"
@@ -248,14 +256,13 @@ defineOptions({ layout: AuthenticatedLayout })
                 </ul>
             </template>
             <template v-slot:table-filters>
-                <FiltersPanel name="sms-logs" v-if="currentTab === 'logs'">
+                <FiltersPanel v-if="viewStore.isAdminViewMode && currentTab === 'logs'" name="sms-logs">
                     <InputFilter
                         name="search"
                         placeholder="Поиск"
                         class="w-64"
                     />
                     <FilterCheckbox
-                        v-if="viewStore.isAdminViewMode"
                         name="onlySuccessParsing"
                         title="Только зачисления"
                     />
