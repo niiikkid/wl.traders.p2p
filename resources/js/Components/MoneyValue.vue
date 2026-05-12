@@ -40,7 +40,7 @@ defineProps({
         <span
             v-if="currency"
             class="ml-1"
-            :class="secondary ? 'text-primary/50' : 'text-primary/70'"
+            :class="secondary ? 'text-base-content/30' : 'text-primary/70'"
         >{{ uppercaseCurrency ? currency.toUpperCase() : currency }}</span>
     </span>
 </template>
