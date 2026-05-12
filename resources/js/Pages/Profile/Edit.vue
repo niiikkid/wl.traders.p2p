@@ -139,7 +139,7 @@ defineOptions({ layout: AuthenticatedLayout })
                     aria-label="Сессии входа"
                     class="w-full"
                 >
-                    <LoginHistoryForm :login-history="loginHistory" class="w-full"/>
+                    <LoginHistoryForm :login-history="loginHistory" :status="status" class="w-full"/>
                 </section>
             </div>
         </div>

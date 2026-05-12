@@ -6,9 +6,11 @@ use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
+use PragmaRX\Google2FALaravel\Google2FA;
 
 class ProfileController extends Controller
 {
@@ -17,13 +19,13 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
-        $user = auth()->user();
+        $user = $request->user();
 
         $auth2fa = [];
 
         if (! $user->google2fa_secret) {
             /**
-             * @var \PragmaRX\Google2FALaravel\Google2FA $google2fa
+             * @var Google2FA $google2fa
              */
             $google2fa = app('pragmarx.google2fa');
 
@@ -36,7 +38,7 @@ class ProfileController extends Controller
                 220
             );
 
-            $auth2fa =  [
+            $auth2fa = [
                 'qr' => $qrCodeUrlInline,
                 'secret' => $secret,
             ];
@@ -91,5 +93,18 @@ class ProfileController extends Controller
         ]);
 
         return Redirect::route('profile.edit');
+    }
+
+    public function logoutOtherDevices(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+        ]);
+
+        Auth::logoutOtherDevices($validated['current_password']);
+
+        $request->session()->regenerate();
+
+        return Redirect::route('profile.edit')->with('status', 'other-sessions-logged-out');
     }
 }

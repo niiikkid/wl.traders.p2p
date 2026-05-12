@@ -1,12 +1,29 @@
 <script setup>
 import { formatDateTime } from '@/utils';
 import DateTime from "@/Components/DateTime.vue";
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import Modal from '@/Components/Modals/Modal.vue';
+import TextInput from '@/Components/TextInput.vue';
+import { useForm } from '@inertiajs/vue3';
+import { nextTick, ref } from 'vue';
 
-const props = defineProps({
+defineProps({
     loginHistory: {
         type: Array,
         required: true,
     },
+    status: {
+        type: String,
+        default: null,
+    },
+});
+
+const confirmingLogout = ref(false);
+const currentPasswordInput = ref(null);
+
+const form = useForm({
+    current_password: '',
 });
 
 const formatDate = (date) => {
@@ -20,17 +37,51 @@ const getStatusClass = (isSuccessful) => {
 const getStatusText = (isSuccessful) => {
     return isSuccessful ? 'Успешно' : 'Неудачно';
 };
+
+const openLogoutModal = () => {
+    confirmingLogout.value = true;
+
+    nextTick(() => currentPasswordInput.value?.focus());
+};
+
+const closeLogoutModal = () => {
+    confirmingLogout.value = false;
+    form.reset();
+    form.clearErrors();
+};
+
+const logoutOtherDevices = () => {
+    form.post(route('profile.logout-other-devices'), {
+        preserveScroll: true,
+        onSuccess: closeLogoutModal,
+        onError: () => currentPasswordInput.value?.focus(),
+    });
+};
 </script>
 
 <template>
     <section class="text-left">
-        <header class="space-y-1">
-            <h2 class="text-base font-semibold text-base-content">Сессии входа</h2>
+        <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="space-y-1">
+                <h2 class="text-base font-semibold text-base-content">Сессии входа</h2>
 
-            <p class="text-xs leading-relaxed text-base-content/60">
-                Последние попытки входа: устройство, сеть и результат.
-            </p>
+                <p class="text-xs leading-relaxed text-base-content/60">
+                    Последние попытки входа: устройство, сеть и результат.
+                </p>
+            </div>
+
+            <button
+                type="button"
+                class="btn btn-sm btn-outline btn-error sm:ml-auto"
+                @click="openLogoutModal"
+            >
+                Выйти из других аккаунтов
+            </button>
         </header>
+
+        <div v-if="status === 'other-sessions-logged-out'" class="alert alert-success mt-4 py-2 text-sm">
+            Другие активные сессии завершены.
+        </div>
 
         <div class="mt-5">
             <!-- Desktop/tablet view (table) -->
@@ -125,5 +176,57 @@ const getStatusText = (isSuccessful) => {
                 </div>
             </div>
         </div>
+
+        <Modal :show="confirmingLogout" max-width="md" @close="closeLogoutModal">
+            <form class="space-y-4" @submit.prevent="logoutOtherDevices">
+                <div>
+                    <h2 class="text-lg font-semibold text-base-content">Выйти из других аккаунтов</h2>
+                    <p class="mt-1 text-sm text-base-content/70">
+                        Все другие активные сессии будут завершены. Текущая сессия останется активной.
+                    </p>
+                </div>
+
+                <div>
+                    <InputLabel
+                        for="logout_other_devices_current_password"
+                        value="Текущий пароль"
+                        :error="!!form.errors.current_password"
+                    />
+
+                    <TextInput
+                        id="logout_other_devices_current_password"
+                        ref="currentPasswordInput"
+                        v-model="form.current_password"
+                        type="password"
+                        class="mt-1 block w-full"
+                        autocomplete="current-password"
+                        :error="!!form.errors.current_password"
+                        @input="form.clearErrors('current_password')"
+                    />
+
+                    <InputError :message="form.errors.current_password" class="mt-2" />
+                </div>
+
+                <div class="modal-action">
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        :disabled="form.processing"
+                        @click="closeLogoutModal"
+                    >
+                        Отмена
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn btn-sm btn-error"
+                        :disabled="form.processing"
+                        :class="{ 'btn-disabled': form.processing }"
+                    >
+                        Выйти из других аккаунтов
+                    </button>
+                </div>
+            </form>
+        </Modal>
     </section>
 </template>
