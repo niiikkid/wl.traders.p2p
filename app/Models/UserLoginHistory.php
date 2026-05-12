@@ -23,6 +23,10 @@ class UserLoginHistory extends Model
         'browser',
         'operating_system',
         'location',
+        'country_code',
+        'country',
+        'region',
+        'city',
         'is_successful',
     ];
 

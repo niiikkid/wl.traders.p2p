@@ -46,4 +46,9 @@ return [
         // ID мерчанта, обязателен для создания инвойса
         'merchant_id' => env('DEPOSIT_PROVIDER_MERCHANT_ID'),
     ],
+
+    'ipgeolocation' => [
+        'api_key' => env('IPGEOLOCATION_API_KEY'),
+        'base_url' => env('IPGEOLOCATION_BASE_URL', 'https://api.ipgeolocation.io/v2'),
+    ],
 ];

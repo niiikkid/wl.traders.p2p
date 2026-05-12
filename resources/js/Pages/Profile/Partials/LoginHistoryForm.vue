@@ -38,6 +38,108 @@ const getStatusText = (isSuccessful) => {
     return isSuccessful ? 'Успешно' : 'Неудачно';
 };
 
+const getLocationText = (item) => {
+    const locationParts = [item.city, item.region, item.country].filter(Boolean);
+
+    if (locationParts.length > 0) {
+        return locationParts.join(', ');
+    }
+
+    return item.location || 'Локация не определена';
+};
+
+const getCountryCode = (item) => {
+    if (!item.country_code) {
+        return null;
+    }
+
+    return String(item.country_code).toUpperCase();
+};
+
+const getCountryFlag = (item) => {
+    const code = getCountryCode(item);
+
+    if (!code || code.length !== 2) {
+        return '';
+    }
+
+    return code
+        .split('')
+        .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+        .join('');
+};
+
+const normalizeDeviceType = (deviceType) => {
+    const normalized = String(deviceType || '').trim().toLowerCase();
+
+    if (['компьютер', 'desktop'].includes(normalized)) {
+        return 'desktop';
+    }
+
+    if (['телефон', 'mobile'].includes(normalized)) {
+        return 'mobile';
+    }
+
+    if (['планшет', 'tablet'].includes(normalized)) {
+        return 'tablet';
+    }
+
+    if (['робот', 'bot'].includes(normalized)) {
+        return 'bot';
+    }
+
+    return normalized || 'unknown';
+};
+
+const normalizeOperatingSystem = (operatingSystem) => {
+    const normalized = String(operatingSystem || '').trim();
+    const lowerValue = normalized.toLowerCase();
+
+    if (lowerValue === '') {
+        return null;
+    }
+
+    if (lowerValue.includes('mac') || lowerValue.includes('os x')) {
+        return 'macOS';
+    }
+
+    if (lowerValue.includes('windows')) {
+        return 'Windows';
+    }
+
+    if (lowerValue.includes('linux')) {
+        return 'Linux';
+    }
+
+    if (lowerValue.includes('android')) {
+        return 'Android';
+    }
+
+    if (lowerValue.includes('iphone') || lowerValue.includes('ipad') || lowerValue.includes('ios')) {
+        return 'iOS';
+    }
+
+    return normalized;
+};
+
+const normalizeBrowser = (browser) => {
+    const normalized = String(browser || '').trim();
+
+    if (normalized === '') {
+        return null;
+    }
+
+    return normalized.split(' ')[0] || normalized;
+};
+
+const getDeviceSummary = (item) => {
+    const browser = normalizeBrowser(item.browser);
+    const platform = normalizeOperatingSystem(item.operating_system);
+    const deviceType = normalizeDeviceType(item.device_type);
+
+    return [platform, browser, deviceType].filter(Boolean).join(' · ');
+};
+
 const openLogoutModal = () => {
     confirmingLogout.value = true;
 
@@ -91,28 +193,38 @@ const logoutOtherDevices = () => {
                         <thead>
                             <tr>
                                 <th>Устройство</th>
-                                <th>IP адрес</th>
-                                <th>Браузер</th>
-                                <th>ОС</th>
-<!--                                <th>Местоположение</th>-->
+                                <th>Локация</th>
+                                <th>Окружение</th>
                                 <th>Дата и время</th>
                                 <th>Статус</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="(item, index) in loginHistory" :key="index">
-                                <td>{{ item.device_type }}</td>
-                                <td>{{ item.ip_address }}</td>
-                                <td>{{ item.browser }}</td>
-                                <td>{{ item.operating_system }}</td>
-<!--                                <td>{{ item.location }}</td>-->
+                                <td>
+                                    <div class="font-medium">{{ getDeviceSummary(item) || 'Не определено' }}</div>
+                                    <div class="text-xs text-base-content/60">{{ item.device_type || 'Тип не определён' }}</div>
+                                </td>
+                                <td>
+                                    <div class="flex items-center gap-2">
+                                        <span v-if="getCountryFlag(item)" class="text-lg leading-none">{{ getCountryFlag(item) }}</span>
+                                        <span class="font-medium">{{ getLocationText(item) }}</span>
+                                    </div>
+                                    <div class="text-xs text-base-content/60">
+                                        IP: {{ item.ip_address || 'Не определен' }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="font-medium">{{ item.browser || 'Не определено' }}</div>
+                                    <div class="text-xs text-base-content/60">{{ item.operating_system || 'ОС не определена' }}</div>
+                                </td>
                                 <td>{{ formatDate(item.created_at) }}</td>
                                 <td class="text-sm" :class="getStatusClass(item.is_successful)">
                                     {{ getStatusText(item.is_successful) }}
                                 </td>
                             </tr>
                             <tr v-if="loginHistory.length === 0">
-                                <td colspan="7" class="text-center text-base-content/60">
+                                <td colspan="5" class="text-center text-base-content/60">
                                     Сессий пока нет
                                 </td>
                             </tr>
@@ -132,7 +244,8 @@ const logoutOtherDevices = () => {
                         <div class="mb-1.5 flex items-start justify-between gap-2 border-b border-base-content/10 pb-1.5">
                             <div class="min-w-0 text-xs leading-snug">
                                 <div class="text-[11px] uppercase tracking-wide text-base-content/60">Устройство</div>
-                                <div class="mt-0.5 font-medium text-base-content">{{ item.device_type }}</div>
+                                <div class="mt-0.5 font-medium text-base-content">{{ getDeviceSummary(item) || 'Не определено' }}</div>
+                                <div class="text-[11px] text-base-content/60">{{ item.device_type || 'Тип не определён' }}</div>
                             </div>
                             <div class="shrink-0">
                                 <div
@@ -146,16 +259,29 @@ const logoutOtherDevices = () => {
 
                         <div class="grid grid-cols-1 gap-1.5 text-xs leading-snug">
                             <div class="flex items-start justify-between gap-2">
-                                <span class="shrink-0 text-base-content/60">IP</span>
-                                <span class="min-w-0 text-right font-medium text-base-content">{{ item.ip_address }}</span>
+                                <span class="shrink-0 text-base-content/60">Локация</span>
+                                <span class="min-w-0 text-right font-medium text-base-content inline-flex items-center justify-end gap-2">
+                                    <span v-if="getCountryFlag(item)" class="text-lg leading-none">{{ getCountryFlag(item) }}</span>
+                                    <span class="truncate">{{ getLocationText(item) }}</span>
+                                </span>
                             </div>
                             <div class="flex items-start justify-between gap-2">
-                                <span class="shrink-0 text-base-content/60">Браузер</span>
-                                <span class="min-w-0 text-right font-medium text-base-content truncate">{{ item.browser }}</span>
+                                <span class="shrink-0 text-base-content/60">IP адрес</span>
+                                <span class="min-w-0 text-right font-medium text-base-content">{{ item.ip_address || 'Не определен' }}</span>
+                            </div>
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="shrink-0 text-base-content/60">Окружение</span>
+                                <span class="min-w-0 text-right font-medium text-base-content truncate">{{ item.browser || 'Не определено' }}</span>
                             </div>
                             <div class="flex items-start justify-between gap-2">
                                 <span class="shrink-0 text-base-content/60">ОС</span>
-                                <span class="min-w-0 text-right font-medium text-base-content truncate">{{ item.operating_system }}</span>
+                                <span class="min-w-0 text-right font-medium text-base-content truncate">{{ item.operating_system || 'ОС не определена' }}</span>
+                            </div>
+                            <div class="flex items-start justify-between gap-2">
+                                <span class="shrink-0 text-base-content/60">Устройство</span>
+                                <span class="min-w-0 text-right font-medium text-base-content truncate">
+                                    {{ getDeviceSummary(item) || 'Не определено' }}
+                                </span>
                             </div>
                             <div class="flex items-start justify-between gap-2">
                                 <span class="shrink-0 text-base-content/60">Время</span>
