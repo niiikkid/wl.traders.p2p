@@ -166,6 +166,7 @@ class WalletService implements WalletServiceContract
             ->where('status', InvoiceStatus::PENDING)
             ->selectRaw('balance_type, COALESCE(SUM(amount), 0) as amount')
             ->groupBy('balance_type')
+            ->toBase()
             ->pluck('amount', 'balance_type');
 
         foreach (BalanceType::cases() as $balanceType) {
