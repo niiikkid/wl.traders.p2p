@@ -708,14 +708,14 @@ watch(
 
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
-                            <span>Дневные лимиты ({{ form.currency?.toUpperCase() }})</span>
+                            <span>Дневные лимиты</span>
                             <FieldHint :text="paymentDetailSectionHints.dailyLimits" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <InputLabel
                                     for="daily_limit"
-                                    value="Объем сделок"
+                                    :value="form.currency ? `Объем сделок (${form.currency.toUpperCase()})` : 'Объем сделок'"
                                     :error="!!errors.daily_limit?.[0]"
                                     :hint="paymentDetailFieldHints.daily_limit"
                                 />
@@ -754,14 +754,14 @@ watch(
 
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
-                            <span>Ежемесячные лимиты ({{ form.currency?.toUpperCase() }})</span>
+                            <span>Ежемесячные лимиты</span>
                             <FieldHint :text="paymentDetailSectionHints.monthlyLimits" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <InputLabel
                                     for="monthly_limit"
-                                    value="Объем сделок"
+                                    :value="form.currency ? `Объем сделок (${form.currency.toUpperCase()})` : 'Объем сделок'"
                                     :error="!!errors.monthly_limit?.[0]"
                                     :hint="paymentDetailFieldHints.monthly_limit"
                                 />

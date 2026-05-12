@@ -478,7 +478,7 @@ watch(
 
                 <div class="rounded-box border border-base-300 p-4">
                     <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
-                        <span>Дневные лимиты ({{ payment_detail?.currency?.toUpperCase() || '' }})</span>
+                        <span>Дневные лимиты</span>
                         <FieldHint :text="paymentDetailSectionHints.dailyLimits" />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -488,7 +488,7 @@ watch(
                             :errors="errors"
                             :on-clear="(field) => (errors[field] = null)"
                             field="daily_limit"
-                            label="Объем сделок"
+                            :label="payment_detail?.currency ? `Объем сделок (${payment_detail.currency.toUpperCase()})` : 'Объем сделок'"
                             :label-tooltip="paymentDetailFieldHints.daily_limit"
                         />
                         <NumberInputBlock
@@ -508,7 +508,7 @@ watch(
 
                 <div class="rounded-box border border-base-300 p-4">
                     <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
-                        <span>Ежемесячные лимиты ({{ payment_detail?.currency?.toUpperCase() || '' }})</span>
+                        <span>Ежемесячные лимиты</span>
                         <FieldHint :text="paymentDetailSectionHints.monthlyLimits" />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -518,7 +518,7 @@ watch(
                             :errors="errors"
                             :on-clear="(field) => (errors[field] = null)"
                             field="monthly_limit"
-                            label="Объем сделок"
+                            :label="payment_detail?.currency ? `Объем сделок (${payment_detail.currency.toUpperCase()})` : 'Объем сделок'"
                             :label-tooltip="paymentDetailFieldHints.monthly_limit"
                         />
                         <NumberInputBlock
