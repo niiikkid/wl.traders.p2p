@@ -6,10 +6,35 @@ import GatewayLogo from '@/Components/GatewayLogo.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 
 const paymentDetailBankStats = ref(usePage().props.paymentDetailBankStats);
+const selectedPeriod = ref(usePage().props.period ?? 'all');
+const periodOptions = ref(usePage().props.periodOptions ?? []);
 
 router.on('success', () => {
     paymentDetailBankStats.value = usePage().props.paymentDetailBankStats;
+    selectedPeriod.value = usePage().props.period ?? 'all';
+    periodOptions.value = usePage().props.periodOptions ?? [];
 });
+
+const formatPercent = (value) => {
+    return `${Number(value ?? 0).toLocaleString('ru-RU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })}%`;
+};
+
+const applyPeriod = (period) => {
+    if (selectedPeriod.value === period) {
+        return;
+    }
+
+    router.get(route('admin.payment-details.statistics'), {
+        period,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
 
 defineOptions({ layout: AuthenticatedLayout })
 </script>
@@ -33,6 +58,19 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
 
             <template v-slot:body>
+                <div class="mb-3 flex flex-wrap gap-2">
+                    <button
+                        v-for="option in periodOptions"
+                        :key="option.value"
+                        type="button"
+                        class="btn btn-xs"
+                        :class="selectedPeriod === option.value ? 'btn-primary' : 'btn-outline btn-primary'"
+                        @click="applyPeriod(option.value)"
+                    >
+                        {{ option.label }}
+                    </button>
+                </div>
+
                 <div class="overflow-x-auto card bg-base-100 shadow-sm">
                     <table class="table table-xs">
                         <thead class="text-[11px] uppercase bg-base-300">
@@ -63,12 +101,22 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </div>
                                 </td>
                                 <td class="px-3 py-1.5 text-right">
-                                    <span class="badge badge-xs badge-primary badge-outline">
-                                        {{ bankStat.payment_details_count }}
-                                    </span>
+                                    <div class="inline-flex flex-col items-end gap-0.5">
+                                        <span class="badge badge-xs badge-primary badge-outline">
+                                            {{ bankStat.payment_details_count }}
+                                        </span>
+                                        <span class="text-[11px] text-base-content/60">
+                                            {{ formatPercent(bankStat.payment_details_percent) }} от общего
+                                        </span>
+                                    </div>
                                 </td>
                                 <td class="px-3 py-1.5 text-right text-xs font-medium text-nowrap">
-                                    {{ bankStat.successful_orders_total_turnover_usdt }} USDT
+                                    <div class="inline-flex flex-col items-end gap-0.5">
+                                        <span>{{ bankStat.successful_orders_total_turnover_usdt }} USDT</span>
+                                        <span class="text-[11px] text-base-content/60 font-normal">
+                                            {{ formatPercent(bankStat.successful_orders_total_turnover_percent) }} от общего
+                                        </span>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>
