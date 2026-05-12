@@ -20,7 +20,8 @@ class OrderQueriesEloquent implements OrderQueries
 {
     public function findPending(Money $amount, User $user, PaymentGateway $paymentGateway, UserDevice $device): ?Order
     {
-        return Order::where('amount', $amount->toUnits())
+        return Order::query()
+            ->where('amount', $amount->toUnits())
             ->whereDoesntHave('dispute')
             ->where('status', OrderStatus::PENDING)
             ->where('currency', $amount->getCurrency()->getCode())
@@ -109,7 +110,7 @@ class OrderQueriesEloquent implements OrderQueries
     public function paginateForUser(User $user, TableFiltersValue $filters): LengthAwarePaginator
     {
         return Order::query()
-            ->whereRelation('paymentDetail', 'user_id', $user->id)
+            ->where('trader_id', $user->id)
             ->with([
                 'trader:id,email',
                 'paymentGateway:id,logo,name',
@@ -121,7 +122,6 @@ class OrderQueriesEloquent implements OrderQueries
                         ->select(['id', 'order_id', 'status', 'reason', 'receipt', 'created_at']);
                 },
             ])
-            ->whereNotNull('payment_detail_id')
             ->when(! empty($filters->orderStatuses), function ($query) use ($filters) {
                 $query->whereIn('status', $filters->orderStatuses);
             })
@@ -177,8 +177,8 @@ class OrderQueriesEloquent implements OrderQueries
     public function paginateForTeamLeader(User $teamLeader, User $trader, TableFiltersValue $filters): LengthAwarePaginator
     {
         return Order::query()
-            ->whereRelation('paymentDetail', 'user_id', $trader->id)
-            ->whereRelation('paymentDetail.user', 'team_leader_id', $teamLeader->id)
+            ->where('trader_id', $trader->id)
+            ->whereRelation('trader', 'team_leader_id', $teamLeader->id)
             ->with([
                 'trader:id,email',
                 'paymentGateway:id,logo,name',
@@ -190,7 +190,6 @@ class OrderQueriesEloquent implements OrderQueries
                         ->select(['id', 'order_id', 'status', 'reason', 'receipt', 'created_at']);
                 },
             ])
-            ->whereNotNull('payment_detail_id')
             ->when(! empty($filters->orderStatuses), function ($query) use ($filters) {
                 $query->whereIn('status', $filters->orderStatuses);
             })

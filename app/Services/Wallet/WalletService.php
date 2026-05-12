@@ -160,16 +160,19 @@ class WalletService implements WalletServiceContract
         // ===
 
         $lockedForWithdrawalBalances = collect();
+        $lockedForWithdrawalSums = Invoice::query()
+            ->where('type', InvoiceType::WITHDRAWAL)
+            ->where('wallet_id', $wallet->id)
+            ->where('status', InvoiceStatus::PENDING)
+            ->selectRaw('balance_type, COALESCE(SUM(amount), 0) as amount')
+            ->groupBy('balance_type')
+            ->pluck('amount', 'balance_type');
 
         foreach (BalanceType::cases() as $balanceType) {
-            $value = Invoice::query()
-                ->where('type', InvoiceType::WITHDRAWAL)
-                ->where('wallet_id', $wallet->id)
-                ->where('status', InvoiceStatus::PENDING)
-                ->where('balance_type', $balanceType)
-                ->sum('amount');
-
-            $balance = Money::fromUnits($value, $primaryCurrency);
+            $balance = Money::fromUnits(
+                (int) $lockedForWithdrawalSums->get($balanceType->value, 0),
+                $primaryCurrency
+            );
 
             $lockedForWithdrawalBalances->put($balanceType->value,
                 new BalanceValue($balance, $conversionRate->mul($balance))
@@ -178,23 +181,22 @@ class WalletService implements WalletServiceContract
 
         // ===
 
-        $escrowOrdersQuery = Order::query()
-            ->where('status', OrderStatus::PENDING)
+        $escrowTotals = Order::query()
+            ->leftJoin('disputes', 'disputes.order_id', '=', 'orders.id')
+            ->where('orders.status', OrderStatus::PENDING)
             ->whereRelation('paymentDetail', 'user_id', $wallet->user_id)
-            ->whereDoesntHave('dispute');
+            ->selectRaw('
+                COALESCE(SUM(CASE WHEN disputes.id IS NULL THEN orders.total_profit ELSE 0 END), 0) as orders_balance,
+                COUNT(CASE WHEN disputes.id IS NULL THEN 1 END) as orders_count,
+                COALESCE(SUM(CASE WHEN disputes.id IS NOT NULL THEN orders.total_profit ELSE 0 END), 0) as disputes_balance,
+                COUNT(CASE WHEN disputes.id IS NOT NULL THEN 1 END) as disputes_count
+            ')
+            ->first();
 
-        $escrowOrdersBalance = Money::fromUnits($escrowOrdersQuery->sum('total_profit'), $primaryCurrency);
-        $escrowOrdersCount = $escrowOrdersQuery->count();
-
-        // ===
-
-        $disputeOrdersQuery = Order::query()
-            ->where('status', OrderStatus::PENDING)
-            ->whereRelation('paymentDetail', 'user_id', $wallet->user_id)
-            ->whereHas('dispute');
-
-        $escrowDisputeBalance = Money::fromUnits($disputeOrdersQuery->sum('total_profit'), $primaryCurrency);
-        $escrowDisputeCount = $disputeOrdersQuery->count();
+        $escrowOrdersBalance = Money::fromUnits($escrowTotals?->orders_balance ?? 0, $primaryCurrency);
+        $escrowOrdersCount = (int) ($escrowTotals?->orders_count ?? 0);
+        $escrowDisputeBalance = Money::fromUnits($escrowTotals?->disputes_balance ?? 0, $primaryCurrency);
+        $escrowDisputeCount = (int) ($escrowTotals?->disputes_count ?? 0);
 
         return new WalletStatsValue(
             base: new BaseValue(

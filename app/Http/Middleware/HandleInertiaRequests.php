@@ -54,6 +54,18 @@ class HandleInertiaRequests extends Middleware
     {
         /** @var User|null $authUser */
         $authUser = $request->user();
+        $isAdmin = false;
+        $isTrader = false;
+        $isAgent = false;
+        $authRole = null;
+
+        if ($authUser instanceof User) {
+            $authUser->loadMissing('roles', 'wallet', 'meta');
+            $isAdmin = $authUser->hasRole('Super Admin');
+            $isTrader = $authUser->hasRole('Trader');
+            $isAgent = $authUser->hasRole('Agent');
+            $authRole = $authUser->roles->first();
+        }
 
         // Save latest frontend ping time for authenticated user (Inertia request)
         if ($authUser instanceof User) {
@@ -274,7 +286,7 @@ class HandleInertiaRequests extends Middleware
 
         $pendingDisputePreview = null;
         if ($authUser instanceof User
-            && $authUser->hasRole('Trader')
+            && $isTrader
             && ((int) $pendingDisputesCount) === 1) {
             $singlePendingDispute = Dispute::query()
                 ->where('status', DisputeStatus::PENDING)
@@ -305,9 +317,13 @@ class HandleInertiaRequests extends Middleware
 
         $sharedWalletStats = null;
         if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant') || isRouteFor('Agent'))) {
-            /** @var WalletStatsValue $walletStatsValue */
-            $walletStatsValue = services()->wallet()->getWalletStats($authUser->wallet);
-            $sharedWalletStats = $walletStatsValue->toArray();
+            $walletStatsCacheKey = "shared_wallet_stats_{$userRole}_{$authUser->id}";
+            $sharedWalletStats = cache()->remember($walletStatsCacheKey, 15, function () use ($authUser) {
+                /** @var WalletStatsValue $walletStatsValue */
+                $walletStatsValue = services()->wallet()->getWalletStats($authUser->wallet);
+
+                return $walletStatsValue->toArray();
+            });
         }
 
         return [
@@ -317,14 +333,14 @@ class HandleInertiaRequests extends Middleware
                 'slogan' => services()->settings()->getAppSlogan(),
             ],
             'auth' => [
-                'user' => fn () => $request->user()
-                    ? UserResource::make($request->user()->loadMissing('roles', 'wallet'))->resolve()
+                'user' => fn () => $authUser
+                    ? UserResource::make($authUser)->resolve()
                     : null,
-                'role' => $request->user()?->roles()?->first(),
-                'is_admin' => $request->user()?->hasRole('Super Admin'),
-                'is_trader' => $request->user()?->hasRole('Trader'),
-                'is_agent' => $request->user()?->hasRole('Agent'),
-                'is_impersonated' => $request->user()?->isImpersonated(),
+                'role' => $authRole,
+                'is_admin' => $isAdmin,
+                'is_trader' => $isTrader,
+                'is_agent' => $isAgent,
+                'is_impersonated' => $authUser?->isImpersonated(),
             ],
             'ziggy' => fn () => [
                 // ...(new Ziggy)->toArray(),
@@ -336,14 +352,14 @@ class HandleInertiaRequests extends Middleware
             ],
             'data' => [
                 'rates' => fn () => $rates,
-                'wallet' => fn () => $request->user() ? WalletResource::make($request->user()->wallet)->resolve() : null,
+                'wallet' => fn () => $authUser ? WalletResource::make($authUser->wallet)->resolve() : null,
                 'wallet_stats' => fn () => $sharedWalletStats,
-                'hasPendingDisputes' => fn () => $request->user()?->hasRole('Trader') ? $menu['pendingDisputesCount'] > 0 : 0,
+                'hasPendingDisputes' => fn () => $isTrader ? $menu['pendingDisputesCount'] > 0 : 0,
                 'pendingDisputePreview' => fn () => $pendingDisputePreview,
             ],
             'menu' => $menu,
             'adminTrafficPaused' => fn () => $trafficPaused,
-            'notificationsSound' => $authUser instanceof User && $authUser->hasRole('Trader') ? [
+            'notificationsSound' => $authUser instanceof User && $isTrader ? [
                 'order_assigned' => [
                     'enabled' => $authUser->meta?->notification_sound_order_enabled ?? true,
                     'track' => $authUser->meta?->notification_sound_order_track ?? 'radwimps.mp3',

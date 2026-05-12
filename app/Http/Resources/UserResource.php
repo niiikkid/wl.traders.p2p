@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
-use App\Services\Trader\TraderLeaderboardService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -106,9 +105,6 @@ class UserResource extends JsonResource
             }),
             'stop_traffic' => $this->stop_traffic,
             'hide_name_in_trader_top' => (bool) $this->hide_name_in_trader_top,
-            'weekly_top_rank' => $this->hasRole('Trader')
-                ? app(TraderLeaderboardService::class)->getTraderWeeklyRank((int) $this->id)
-                : null,
             'can_work_without_device' => (bool) $this->can_work_without_device,
             'sms_auto_close_orders_enabled' => (bool) $this->sms_auto_close_orders_enabled,
             'traffic_enabled_at' => $this->traffic_enabled_at?->toISOString(),
@@ -120,7 +116,6 @@ class UserResource extends JsonResource
             'is_temp_vip_active' => services()->settings()->isTempVipEnabled() && $this->temp_vip_active_until
                 ? now()->lt($this->temp_vip_active_until)
                 : false,
-            'temp_vip_progress' => $this->getTempVipProgressData(),
             'referral_commission_percentage' => $this->referral_commission_percentage,
             'team_leader_split_from_service_percent' => $this->team_leader_split_from_service_percent,
             'payout_referral_commission_percentage' => $this->payout_referral_commission_percentage,

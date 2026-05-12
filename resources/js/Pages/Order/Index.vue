@@ -18,7 +18,6 @@ import EditOrderAmountModal from "@/Modals/Order/EditOrderAmountModal.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
 import DateFilter from "@/Components/Filters/Pertials/DateFilter.vue";
-import TempVipBanner from "@/Pages/MainPage/Trader/TempVipBanner.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
@@ -31,7 +30,6 @@ import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModa
 
 const viewStore = useViewStore();
 const orders = ref(usePage().props.orders);
-const tempVip = usePage().props.auth?.user?.temp_vip_progress || null;
 const modalStore = useModalStore();
 const trafficPaused = ref(usePage().props.trafficPaused ?? usePage().props.adminTrafficPaused ?? false);
 const trafficPauseForm = useForm({
@@ -309,10 +307,6 @@ defineOptions({ layout: AuthenticatedLayout })
                         <MoneyTreeGame />
                     </div>-->
 
-                    <TempVipBanner
-                        v-if="!viewStore.isAdminViewMode && tempVip?.enabled"
-                        :temp-vip="tempVip"
-                    />
                     <FiltersPanel
                         ref="filtersPanelRef"
                         name="orders"
