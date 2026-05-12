@@ -75,50 +75,58 @@ class PaymentDetailEnabledPeriodService
                 return;
             }
 
-            $details = PaymentDetail::query()
-                ->where('user_id', $user->id)
-                ->whereNull('archived_at')
-                ->get(['id', 'user_id', 'is_active', 'archived_at']);
+            $eligible_detail_ids = $this->getEligibleDetailIds($user);
 
-            $eligible_detail_ids = $details
-                ->filter(fn (PaymentDetail $detail) => $this->isEffectiveEnabled($detail, $user))
-                ->pluck('id')
-                ->values();
-
-            $open_periods = PaymentDetailEnabledPeriod::query()
+            $open_detail_ids = PaymentDetailEnabledPeriod::query()
                 ->where('user_id', $user->id)
                 ->whereNull('ended_at')
                 ->lockForUpdate()
-                ->get(['id', 'payment_detail_id', 'started_at']);
+                ->pluck('payment_detail_id');
 
-            $open_by_detail = $open_periods->keyBy('payment_detail_id');
-
-            $this->closeNotEligibleOpenPeriods($open_periods, $eligible_detail_ids, $occurred_at);
-            $this->openEligibleMissingPeriods($eligible_detail_ids, $open_by_detail, $user->id, $occurred_at);
+            $this->closeNotEligibleOpenPeriods($user->id, $eligible_detail_ids, $occurred_at);
+            $this->openEligibleMissingPeriods($eligible_detail_ids, $open_detail_ids, $user->id, $occurred_at);
         });
     }
 
-    private function closeNotEligibleOpenPeriods(Collection $open_periods, Collection $eligible_detail_ids, Carbon $occurred_at): void
+    private function getEligibleDetailIds(User $user): Collection
     {
-        $eligible_map = $eligible_detail_ids->flip();
+        if (! $user->is_online || $user->stop_traffic) {
+            return collect();
+        }
 
-        $open_periods
-            ->filter(fn (PaymentDetailEnabledPeriod $period) => ! $eligible_map->has($period->payment_detail_id))
-            ->each(function (PaymentDetailEnabledPeriod $period) use ($occurred_at) {
-                $close_at = $occurred_at->lt($period->started_at)
-                    ? $period->started_at
-                    : $occurred_at;
-
-                $period->update([
-                    'ended_at' => $close_at,
-                ]);
-            });
+        return PaymentDetail::query()
+            ->where('user_id', $user->id)
+            ->whereNull('archived_at')
+            ->where('is_active', true)
+            ->pluck('id');
     }
 
-    private function openEligibleMissingPeriods(Collection $eligible_detail_ids, Collection $open_by_detail, int $user_id, Carbon $occurred_at): void
+    private function closeNotEligibleOpenPeriods(int $user_id, Collection $eligible_detail_ids, Carbon $occurred_at): void
+    {
+        $query = PaymentDetailEnabledPeriod::query()
+            ->where('user_id', $user_id)
+            ->whereNull('ended_at')
+            ->when($eligible_detail_ids->isNotEmpty(), function ($query) use ($eligible_detail_ids) {
+                $query->whereNotIn('payment_detail_id', $eligible_detail_ids);
+            });
+
+        (clone $query)
+            ->where('started_at', '>', $occurred_at)
+            ->update([
+                'ended_at' => DB::raw('started_at'),
+            ]);
+
+        $query
+            ->where('started_at', '<=', $occurred_at)
+            ->update([
+                'ended_at' => $occurred_at,
+            ]);
+    }
+
+    private function openEligibleMissingPeriods(Collection $eligible_detail_ids, Collection $open_detail_ids, int $user_id, Carbon $occurred_at): void
     {
         $rows = $eligible_detail_ids
-            ->filter(fn (int $detail_id) => ! $open_by_detail->has($detail_id))
+            ->diff($open_detail_ids)
             ->map(fn (int $detail_id) => [
                 'payment_detail_id' => $detail_id,
                 'user_id' => $user_id,

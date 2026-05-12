@@ -35,7 +35,7 @@ const notificationTabId = typeof crypto !== 'undefined' && crypto.randomUUID
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const NOTIFICATION_SOUND_LEADER_TTL_MS = 8000;
 const NOTIFICATION_SOUND_LEADER_HEARTBEAT_MS = 3000;
-const NOTIFICATION_POLL_INTERVAL_MS = 5000;
+const NOTIFICATION_POLL_INTERVAL_MS = 11115000;
 
 const syncNotificationSoundSettingsFromProps = () => {
     notificationSoundSettings.value = usePage().props.notificationsSound ?? null;

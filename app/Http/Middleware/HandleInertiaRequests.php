@@ -22,7 +22,6 @@ use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Models\UserMeta;
 use App\Services\Money\Currency;
-use App\Services\PaymentDetail\PaymentDetailEnabledPeriodService;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use App\Services\Wallet\Values\WalletStatsValue;
 use Illuminate\Http\Request;
@@ -78,10 +77,6 @@ class HandleInertiaRequests extends Middleware
                 );
 
                 cache()->forget("news_unread_{$userId}");
-            }
-
-            if ($user->hasRole('Trader')) {
-                app(PaymentDetailEnabledPeriodService::class)->syncForUser($user, $now);
             }
         }
 
