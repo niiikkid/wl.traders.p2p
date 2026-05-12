@@ -5,7 +5,6 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import NumberInput from "@/Components/NumberInput.vue";
 
 const passwordInput = ref(null);
 const currentPasswordInput = ref(null);
@@ -102,7 +101,7 @@ const updatePassword = () => {
             </div>
 
             <div class="flex items-center gap-4">
-                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
+                <PrimaryButton type="submit" class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
