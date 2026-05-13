@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, useSlots, watch } from 'vue';
 
 const props = defineProps({
     show: {
@@ -17,6 +17,11 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'onShow', 'onHide']);
+const slots = useSlots();
+const modalBoxRef = ref(null);
+const asideCoordinates = ref({ top: 0, left: 0 });
+const asideReady = ref(false);
+let modalResizeObserver = null;
 
 watch(
     () => props.show,
@@ -64,13 +69,89 @@ const maxWidthClass = computed(() => {
         '7xl': 'sm:max-w-7xl',
     }[props.maxWidth];
 });
+
+const hasAside = computed(() => !!slots.aside);
+
+const updateAsideCoordinates = () => {
+    if (!props.show || !hasAside.value || !modalBoxRef.value) {
+        return;
+    }
+
+    const rect = modalBoxRef.value.getBoundingClientRect();
+    asideCoordinates.value = {
+        top: rect.top,
+        left: rect.right + 16,
+    };
+};
+
+const prepareAsidePosition = async () => {
+    asideReady.value = false;
+    await nextTick();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    updateAsideCoordinates();
+    asideReady.value = true;
+};
+
+watch(
+    () => props.show,
+    async (value) => {
+        if (!value) {
+            asideReady.value = false;
+            return;
+        }
+
+        await prepareAsidePosition();
+    }
+);
+
+onMounted(() => {
+    window.addEventListener('resize', updateAsideCoordinates);
+    window.addEventListener('scroll', updateAsideCoordinates, true);
+
+    if (typeof ResizeObserver !== 'undefined') {
+        modalResizeObserver = new ResizeObserver(() => {
+            updateAsideCoordinates();
+        });
+    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', updateAsideCoordinates);
+    window.removeEventListener('scroll', updateAsideCoordinates, true);
+    modalResizeObserver?.disconnect();
+    modalResizeObserver = null;
+});
+
+watch(
+    modalBoxRef,
+    (element, previousElement) => {
+        if (previousElement) {
+            modalResizeObserver?.unobserve(previousElement);
+        }
+
+        if (element) {
+            modalResizeObserver?.observe(element);
+            updateAsideCoordinates();
+        }
+    },
+    { flush: 'post' }
+);
 </script>
 
 <template>
     <Teleport defer to="body">
         <div :class="['modal p-1 sm:p-6', show ? 'modal-open' : '']" @keydown.esc.prevent="close">
-            <div class="modal-box max-h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-4rem)] overflow-auto" :class="maxWidthClass">
+            <div ref="modalBoxRef" class="modal-box max-h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-4rem)] overflow-auto" :class="maxWidthClass">
                 <slot v-if="show" />
+            </div>
+            <div
+                v-if="show && hasAside && asideReady"
+                class="pointer-events-none fixed hidden xl:block"
+                :style="{ top: `${asideCoordinates.top}px`, left: `${asideCoordinates.left}px` }"
+            >
+                <div class="pointer-events-auto">
+                    <slot name="aside" />
+                </div>
             </div>
             <div class="modal-backdrop" @click="close" />
         </div>

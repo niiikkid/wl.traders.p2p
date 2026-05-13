@@ -27,6 +27,10 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    labelTooltipClass: {
+        type: String,
+        default: '',
+    },
 });
 
 // Универсальная карта ошибок: сперва берем из form.errors, иначе из пропса errors
@@ -45,6 +49,7 @@ const errorsMap = computed(() => {
             :value="label"
             :error="!!errorsMap[field]"
             :hint="labelTooltip"
+            :hint-class="labelTooltipClass"
         />
 
         <div class="mt-1">

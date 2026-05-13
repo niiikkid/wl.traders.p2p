@@ -68,6 +68,8 @@ const details = ref({
 });
 
 const selectedDetailType = ref(null);
+const activeHelpKey = ref('currency');
+const desktopHintClass = 'xl:hidden';
 
 const availableCurrencies = computed(() => {
     const currencies = [...new Set(payment_gateways.value.map(pg => pg.currency))];
@@ -144,6 +146,89 @@ const isManualProcessing = computed(() => {
 const currentDetailHint = computed(() => {
     return paymentDetailTypeHints[selectedDetailType.value] ?? null;
 });
+
+const helpTopics = computed(() => ({
+    currency: {
+        title: 'Валюта',
+        text: paymentDetailFieldHints.currency,
+    },
+    detail_type: {
+        title: 'Тип реквизита',
+        text: paymentDetailFieldHints.detail_type,
+    },
+    payment_gateway_ids: {
+        title: isMultipleGatewaysAllowed.value ? 'Платежные методы' : 'Платежный метод',
+        text: paymentDetailFieldHints.payment_gateway_ids,
+    },
+    user_device_id: {
+        title: canWorkWithoutDevice.value ? 'Способ обработки' : 'Устройство',
+        text: paymentDetailFieldHints.user_device_id,
+    },
+    detail: {
+        title: detail_type_names[selectedDetailType.value] ?? 'Реквизит',
+        text: currentDetailHint.value ?? paymentDetailSectionHints.paymentData,
+    },
+    name: {
+        title: 'Никнейм реквизитов',
+        text: paymentDetailFieldHints.name,
+    },
+    initials: {
+        title: 'Инициалы',
+        text: paymentDetailFieldHints.initials,
+    },
+    additional_info: {
+        title: 'ИПН (ИНН)',
+        text: paymentDetailFieldHints.additional_info,
+    },
+    min_order_amount: {
+        title: 'Минимум суммы сделки',
+        text: paymentDetailFieldHints.min_order_amount,
+    },
+    max_order_amount: {
+        title: 'Максимум суммы сделки',
+        text: paymentDetailFieldHints.max_order_amount,
+    },
+    daily_limit: {
+        title: 'Дневной объем сделок',
+        text: paymentDetailFieldHints.daily_limit,
+    },
+    daily_successful_orders_limit: {
+        title: 'Дневное количество сделок',
+        text: paymentDetailFieldHints.daily_successful_orders_limit,
+    },
+    monthly_limit: {
+        title: 'Месячный объем сделок',
+        text: paymentDetailFieldHints.monthly_limit,
+    },
+    monthly_successful_orders_limit: {
+        title: 'Месячное количество сделок',
+        text: paymentDetailFieldHints.monthly_successful_orders_limit,
+    },
+    monthly_limit_reset_day: {
+        title: 'День сброса',
+        text: paymentDetailFieldHints.monthly_limit_reset_day,
+    },
+    max_pending_orders_quantity: {
+        title: 'Макс. активных сделок',
+        text: paymentDetailFieldHints.max_pending_orders_quantity,
+    },
+    order_interval_minutes: {
+        title: 'Интервал выдачи',
+        text: paymentDetailFieldHints.order_interval_minutes,
+    },
+    is_active: {
+        title: 'Реквизит включен',
+        text: paymentDetailFieldHints.is_active,
+    },
+}));
+
+const activeHelp = computed(() => {
+    return helpTopics.value[activeHelpKey.value] ?? helpTopics.value.currency;
+});
+
+const setActiveHelp = (key) => {
+    activeHelpKey.value = key;
+};
 
 const clampVipOrderRangeToGatewayLimits = () => {
     const gateway = selectedPaymentGateway.value;
@@ -236,6 +321,7 @@ const resetState = () => {
         'e-com': '',
     };
     selectedDetailType.value = null;
+    activeHelpKey.value = 'currency';
     errors.value = {};
     devices.value = [];
     payment_gateways.value = [];
@@ -324,15 +410,16 @@ watch(
                 <div class="rounded-box border border-base-300 p-4">
                     <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                         <span>Параметры реквизита</span>
-                        <FieldHint :text="paymentDetailSectionHints.parameters" />
+                        <FieldHint :text="paymentDetailSectionHints.parameters" :class="desktopHintClass" />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                        <div @mouseenter="setActiveHelp('currency')" @focusin="setActiveHelp('currency')">
                             <InputLabel
                                 for="currency"
                                 value="Валюта"
                                 :error="!!errors.currency?.[0]"
                                 :hint="paymentDetailFieldHints.currency"
+                                :hint-class="desktopHintClass"
                                 class="mb-1"
                             />
                             <Select
@@ -349,12 +436,13 @@ watch(
                             ></Select>
                             <InputError :message="errors.currency?.[0]" class="mt-2" />
                         </div>
-                        <div>
+                        <div @mouseenter="setActiveHelp('detail_type')" @focusin="setActiveHelp('detail_type')">
                             <InputLabel
                                 for="detail_type"
                                 value="Тип реквизита"
                                 :error="!!errors.detail_type?.[0]"
                                 :hint="paymentDetailFieldHints.detail_type"
+                                :hint-class="desktopHintClass"
                                 class="mb-1"
                             />
                             <Select
@@ -377,14 +465,15 @@ watch(
                     <div class="rounded-box border border-base-300 p-4 space-y-4">
                         <div class="flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Платежные данные</span>
-                            <FieldHint :text="paymentDetailSectionHints.paymentData" />
+                            <FieldHint :text="paymentDetailSectionHints.paymentData" :class="desktopHintClass" />
                         </div>
-                        <div>
+                        <div @mouseenter="setActiveHelp('payment_gateway_ids')" @focusin="setActiveHelp('payment_gateway_ids')">
                             <InputLabel
                                 for="payment_gateway_ids"
                                 :value="isMultipleGatewaysAllowed ? 'Платежные методы' : 'Платежный метод'"
                                 :error="!!errors.payment_gateway_ids?.[0]"
                                 :hint="paymentDetailFieldHints.payment_gateway_ids"
+                                :hint-class="desktopHintClass"
                                 class="mb-1"
                             />
                             <Multiselect
@@ -400,12 +489,13 @@ watch(
                             />
                             <InputError :message="errors.payment_gateway_ids?.[0]" class="mt-2"/>
                         </div>
-                        <div>
+                        <div @mouseenter="setActiveHelp('user_device_id')" @focusin="setActiveHelp('user_device_id')">
                             <InputLabel
                                 for="user_device_id"
                                 :value="canWorkWithoutDevice ? 'Способ обработки' : 'Устройство'"
                                 :error="!!errors.user_device_id?.[0]"
                                 :hint="paymentDetailFieldHints.user_device_id"
+                                :hint-class="desktopHintClass"
                                 class="mb-1"
                             />
                             <Select
@@ -454,12 +544,13 @@ watch(
                                 </div>
                             </div>
                         </div>
-                        <div v-if="selectedDetailType === 'phone'">
+                        <div v-if="selectedDetailType === 'phone'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
                                 value="Номер телефона"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
+                                :hint-class="desktopHintClass"
                             />
                             <div class="relative">
                                 <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
@@ -477,12 +568,13 @@ watch(
                             </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
-                        <div v-if="selectedDetailType === 'mobile_commerce'">
+                        <div v-if="selectedDetailType === 'mobile_commerce'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
                                 value="Номер телефона"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
+                                :hint-class="desktopHintClass"
                             />
                             <div class="relative">
                                 <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
@@ -500,12 +592,13 @@ watch(
                             </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
-                        <div v-if="selectedDetailType === 'card'">
+                        <div v-if="selectedDetailType === 'card'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
                                 value="Карта"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
+                                :hint-class="desktopHintClass"
                             />
                             <TextInput
                                 id="detail"
@@ -520,12 +613,13 @@ watch(
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
-                        <div v-if="selectedDetailType === 'account_number'">
+                        <div v-if="selectedDetailType === 'account_number'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
                                 value="Номер счета"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
+                                :hint-class="desktopHintClass"
                             />
                             <TextInput
                                 id="detail"
@@ -540,12 +634,13 @@ watch(
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
-                        <div v-if="selectedDetailType === 'iban_uah'">
+                        <div v-if="selectedDetailType === 'iban_uah'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
                                 value="Номер счета IBAN"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
+                                :hint-class="desktopHintClass"
                             />
                             <TextInput
                                 id="detail"
@@ -560,12 +655,13 @@ watch(
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
-                        <div v-if="selectedDetailType === 'nspk'">
+                        <div v-if="selectedDetailType === 'nspk'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
                                 value="Ссылка NSPK/SBP"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
+                                :hint-class="desktopHintClass"
                             />
                             <TextInput
                                 id="detail"
@@ -580,12 +676,13 @@ watch(
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
-                        <div v-if="selectedDetailType === 'e-com'">
+                        <div v-if="selectedDetailType === 'e-com'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
                                 value="Ссылка E-COM"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
+                                :hint-class="desktopHintClass"
                             />
                             <TextInput
                                 id="detail"
@@ -604,15 +701,16 @@ watch(
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Данные получателя</span>
-                            <FieldHint :text="paymentDetailSectionHints.recipientData" />
+                            <FieldHint :text="paymentDetailSectionHints.recipientData" :class="desktopHintClass" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                            <div @mouseenter="setActiveHelp('name')" @focusin="setActiveHelp('name')">
                                 <InputLabel
                                     for="name"
                                     value="Никнейм реквизитов"
                                     :error="!!errors.name?.[0]"
                                     :hint="paymentDetailFieldHints.name"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <TextInput
                                     id="name"
@@ -625,12 +723,13 @@ watch(
                                 />
                                 <InputError :message="errors.name?.[0]" class="mt-2" />
                             </div>
-                            <div>
+                            <div @mouseenter="setActiveHelp('initials')" @focusin="setActiveHelp('initials')">
                                 <InputLabel
                                     for="initials"
                                     value="Инициалы"
                                     :error="!!errors.initials?.[0]"
                                     :hint="paymentDetailFieldHints.initials"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <TextInput
                                     id="initials"
@@ -643,12 +742,13 @@ watch(
                                 />
                                 <InputError :message="errors.initials?.[0]" class="mt-2" />
                             </div>
-                            <div v-if="selectedDetailType === 'iban_uah'">
+                            <div v-if="selectedDetailType === 'iban_uah'" @mouseenter="setActiveHelp('additional_info')" @focusin="setActiveHelp('additional_info')">
                                 <InputLabel
                                     for="additional_info"
                                     value="ИПН (ИНН)"
                                     :error="!!errors.additional_info?.[0]"
                                     :hint="paymentDetailFieldHints.additional_info"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <TextInput
                                     id="additional_info"
@@ -665,10 +765,13 @@ watch(
                         </div>
                     </div>
 
-                    <div v-if="isVipUser" class="rounded-box border border-base-300 p-4">
+                    <div
+                        v-if="isVipUser"
+                        class="rounded-box border border-base-300 p-4"
+                    >
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Лимит на сумму сделки ({{ form.currency?.toUpperCase() }})</span>
-                            <FieldHint :text="paymentDetailSectionHints.vipOrderAmountLimits" />
+                            <FieldHint :text="paymentDetailSectionHints.vipOrderAmountLimits" :class="desktopHintClass" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <NumberInputBlock
@@ -679,6 +782,9 @@ watch(
                                 field="min_order_amount"
                                 label="Минимум"
                                 :label-tooltip="paymentDetailFieldHints.min_order_amount"
+                                :label-tooltip-class="desktopHintClass"
+                                @mouseenter="setActiveHelp('min_order_amount')"
+                                @focusin="setActiveHelp('min_order_amount')"
                             />
                             <NumberInputBlock
                                 v-model="form.max_order_amount"
@@ -688,6 +794,9 @@ watch(
                                 field="max_order_amount"
                                 label="Максимум"
                                 :label-tooltip="paymentDetailFieldHints.max_order_amount"
+                                :label-tooltip-class="desktopHintClass"
+                                @mouseenter="setActiveHelp('max_order_amount')"
+                                @focusin="setActiveHelp('max_order_amount')"
                             />
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
@@ -709,15 +818,16 @@ watch(
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Дневные лимиты</span>
-                            <FieldHint :text="paymentDetailSectionHints.dailyLimits" />
+                            <FieldHint :text="paymentDetailSectionHints.dailyLimits" :class="desktopHintClass" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                            <div @mouseenter="setActiveHelp('daily_limit')" @focusin="setActiveHelp('daily_limit')">
                                 <InputLabel
                                     for="daily_limit"
                                     :value="form.currency ? `Объем сделок (${form.currency.toUpperCase()})` : 'Объем сделок'"
                                     :error="!!errors.daily_limit?.[0]"
                                     :hint="paymentDetailFieldHints.daily_limit"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <NumberInput
                                     id="daily_limit"
@@ -729,12 +839,13 @@ watch(
                                 />
                                 <InputError :message="errors.daily_limit?.[0]" class="mt-2" />
                             </div>
-                            <div>
+                            <div @mouseenter="setActiveHelp('daily_successful_orders_limit')" @focusin="setActiveHelp('daily_successful_orders_limit')">
                                 <InputLabel
                                     for="daily_successful_orders_limit"
                                     value="Количество сделок"
                                     :error="!!errors.daily_successful_orders_limit?.[0]"
                                     :hint="paymentDetailFieldHints.daily_successful_orders_limit"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <NumberInput
                                     id="daily_successful_orders_limit"
@@ -755,15 +866,16 @@ watch(
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Ежемесячные лимиты</span>
-                            <FieldHint :text="paymentDetailSectionHints.monthlyLimits" />
+                            <FieldHint :text="paymentDetailSectionHints.monthlyLimits" :class="desktopHintClass" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                            <div @mouseenter="setActiveHelp('monthly_limit')" @focusin="setActiveHelp('monthly_limit')">
                                 <InputLabel
                                     for="monthly_limit"
                                     :value="form.currency ? `Объем сделок (${form.currency.toUpperCase()})` : 'Объем сделок'"
                                     :error="!!errors.monthly_limit?.[0]"
                                     :hint="paymentDetailFieldHints.monthly_limit"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <NumberInput
                                     id="monthly_limit"
@@ -775,12 +887,13 @@ watch(
                                 />
                                 <InputError :message="errors.monthly_limit?.[0]" class="mt-2" />
                             </div>
-                            <div>
+                            <div @mouseenter="setActiveHelp('monthly_successful_orders_limit')" @focusin="setActiveHelp('monthly_successful_orders_limit')">
                                 <InputLabel
                                     for="monthly_successful_orders_limit"
                                     value="Количество сделок"
                                     :error="!!errors.monthly_successful_orders_limit?.[0]"
                                     :hint="paymentDetailFieldHints.monthly_successful_orders_limit"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <NumberInput
                                     id="monthly_successful_orders_limit"
@@ -792,12 +905,13 @@ watch(
                                 />
                                 <InputError :message="errors.monthly_successful_orders_limit?.[0]" class="mt-2" />
                             </div>
-                            <div class="md:col-span-2">
+                            <div class="md:col-span-2" @mouseenter="setActiveHelp('monthly_limit_reset_day')" @focusin="setActiveHelp('monthly_limit_reset_day')">
                                 <InputLabel
                                     for="monthly_limit_reset_day"
                                     value="День сброса (1-31)"
                                     :error="!!errors.monthly_limit_reset_day?.[0]"
                                     :hint="paymentDetailFieldHints.monthly_limit_reset_day"
+                                    :hint-class="desktopHintClass"
                                 />
                                 <NumberInput
                                     id="monthly_limit_reset_day"
@@ -818,7 +932,7 @@ watch(
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Ограничения активности</span>
-                            <FieldHint :text="paymentDetailSectionHints.activityLimits" />
+                            <FieldHint :text="paymentDetailSectionHints.activityLimits" :class="desktopHintClass" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <NumberInputBlock
@@ -829,6 +943,9 @@ watch(
                                 field="max_pending_orders_quantity"
                                 label="Макс. активных"
                                 :label-tooltip="paymentDetailFieldHints.max_pending_orders_quantity"
+                                :label-tooltip-class="desktopHintClass"
+                                @mouseenter="setActiveHelp('max_pending_orders_quantity')"
+                                @focusin="setActiveHelp('max_pending_orders_quantity')"
                             />
                             <NumberInputBlock
                                 v-model="form.order_interval_minutes"
@@ -838,6 +955,9 @@ watch(
                                 field="order_interval_minutes"
                                 label="Интервал (мин)"
                                 :label-tooltip="paymentDetailFieldHints.order_interval_minutes"
+                                :label-tooltip-class="desktopHintClass"
+                                @mouseenter="setActiveHelp('order_interval_minutes')"
+                                @focusin="setActiveHelp('order_interval_minutes')"
                             />
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
@@ -845,11 +965,19 @@ watch(
                         </div>
                     </div>
 
-                    <div>
-                        <label class="label cursor-pointer mb-3 mt-3 justify-start gap-3">
+                    <div class="rounded-box border border-base-300 p-4">
+                        <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                            <span>Состояние реквизита</span>
+                            <FieldHint :text="paymentDetailSectionHints.activeState" :class="desktopHintClass" />
+                        </div>
+                        <label
+                            class="label cursor-pointer justify-start gap-3 rounded-box border border-base-200 bg-base-100 p-3"
+                            @mouseenter="setActiveHelp('is_active')"
+                            @focusin="setActiveHelp('is_active')"
+                        >
                             <span class="inline-flex max-w-full flex-wrap items-center gap-1.5">
                                 <span class="label-text">Реквизит включен</span>
-                                <FieldHint :text="paymentDetailFieldHints.is_active" />
+                                <FieldHint :text="paymentDetailFieldHints.is_active" :class="desktopHintClass" />
                             </span>
                             <input type="checkbox" class="toggle toggle-primary" v-model="form.is_active" :disabled="processing" />
                         </label>
@@ -863,6 +991,28 @@ watch(
                 Сохранить
             </button>
         </ModalFooter>
+        <template #aside>
+            <aside class="hidden w-80 shrink-0 xl:block">
+                <div class="card max-h-[calc(100dvh-4rem)] overflow-auto border border-base-300 bg-base-100 shadow-xl">
+                    <div class="card-body gap-3 p-4">
+                        <div>
+                            <div class="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                                Подсказка
+                            </div>
+                            <h3 class="card-title mt-1 text-base">
+                                {{ activeHelp.title }}
+                            </h3>
+                        </div>
+                        <p class="text-sm leading-6 text-base-content/75 whitespace-pre-line">
+                            {{ activeHelp.text }}
+                        </p>
+                        <div class="alert alert-info alert-outline py-2 text-xs">
+                            <span>Наводите курсор на поля формы или переходите по ним с клавиатуры — описание появится здесь.</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </template>
     </Modal>
 </template>
 

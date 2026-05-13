@@ -13,6 +13,10 @@ defineProps({
         type: String,
         default: null,
     },
+    hintClass: {
+        type: String,
+        default: '',
+    },
 });
 </script>
 
@@ -21,7 +25,7 @@ defineProps({
         <span class="inline-flex max-w-full flex-wrap items-center gap-1.5">
             <span v-if="value" class="label-text break-words text-inherit">{{ value }}</span>
             <span v-else class="label-text break-words text-inherit"><slot /></span>
-            <FieldHint v-if="hint" :text="hint" />
+            <FieldHint v-if="hint" :text="hint" :class="hintClass" />
         </span>
     </label>
 </template>

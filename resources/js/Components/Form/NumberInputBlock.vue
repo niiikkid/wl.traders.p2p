@@ -30,6 +30,10 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    labelTooltipClass: {
+        type: String,
+        default: '',
+    },
     helper: {
         type: String,
         default: null,
@@ -66,6 +70,7 @@ const clearErrors = (field) => {
             :field="field"
             :label="label"
             :label-tooltip="labelTooltip"
+            :label-tooltip-class="labelTooltipClass"
             :helper="helper"
         >
             <NumberInput
