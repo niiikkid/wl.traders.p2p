@@ -378,7 +378,7 @@ defineOptions({layout: AuthenticatedLayout});
 
             <div v-if="selectedMonth" class="space-y-3">
                 <div class="overflow-x-auto rounded-lg border border-base-300">
-                    <table class="table table-xs table-zebra w-full [&_th]:px-1 [&_td]:px-1 [&_th]:py-1 [&_td]:py-1">
+                    <table class="table table-xs table-zebra w-full [&_th]:px-1 [&_td]:px-1 [&_th]:py-1 [&_td]:py-1 [&_th]:text-center [&_td]:text-center">
                         <thead class="sticky top-0 bg-base-200 text-[11px]">
                             <tr>
                                 <th class="text-center">День</th>
@@ -405,7 +405,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-right px-1"
+                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-center px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'rate')]"
                                         @input="handleDecimalInput(row, 'rate', $event)"
                                         @blur="handleBlur(row)"
@@ -416,7 +416,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <input
                                             type="text"
                                             inputmode="decimal"
-                                            class="input input-xs input-bordered w-16 text-right px-1"
+                                            class="input input-xs input-bordered w-16 text-center px-1"
                                             :value="inputDrafts[getInputKey(row.day, 'start_balance')]"
                                             @input="handleDecimalInput(row, 'start_balance', $event)"
                                             @focus="showBalanceSuggestion(row, 'start_balance')"
@@ -451,7 +451,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-center px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'card_uah')]"
                                         @input="handleDecimalInput(row, 'card_uah', $event)"
                                         @blur="handleBlur(row)"
@@ -462,7 +462,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <input
                                             type="text"
                                             inputmode="decimal"
-                                            class="input input-xs input-bordered w-16 text-right px-1"
+                                            class="input input-xs input-bordered w-16 text-center px-1"
                                             :value="inputDrafts[getInputKey(row.day, 'end_balance')]"
                                             @input="handleDecimalInput(row, 'end_balance', $event)"
                                             @focus="showBalanceSuggestion(row, 'end_balance')"
@@ -497,17 +497,17 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-center px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'exchange_balance')]"
                                         @input="handleDecimalInput(row, 'exchange_balance', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
-                                <td class="text-right text-base-content/70">
+                                <td class="text-base-content/70">
                                     {{ formatMoney(computedRows[index].totalEnd, 2) }}
                                 </td>
                                 <td
-                                    class="text-right font-medium"
+                                    class="font-medium"
                                     :class="computedRows[index].grossProfit === null ? 'text-base-content/60'
                                         : computedRows[index].grossProfit >= 0 ? 'text-success' : 'text-error'"
                                 >
@@ -517,7 +517,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-right px-1"
+                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-center px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'arbitrage_usd')]"
                                         @input="handleDecimalInput(row, 'arbitrage_usd', $event)"
                                         @blur="handleBlur(row)"
@@ -527,21 +527,21 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-right px-1"
+                                        class="input input-xs input-bordered w-16 text-center px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'expense_uah')]"
                                         @input="handleDecimalInput(row, 'expense_uah', $event)"
                                         @blur="handleBlur(row)"
                                     >
                                 </td>
                                 <td
-                                    class="text-right font-semibold"
+                                    class="font-semibold"
                                     :class="computedRows[index].netUsd === null ? 'text-base-content/60'
                                         : computedRows[index].netUsd >= 0 ? 'text-success' : 'text-error'"
                                 >
                                     {{ formatMoney(computedRows[index].netUsd, 2) }}
                                 </td>
                                 <td
-                                    class="text-right font-semibold"
+                                    class="font-semibold"
                                     :class="computedRows[index].netUah === null ? 'text-base-content/60'
                                         : computedRows[index].netUah >= 0 ? 'text-success' : 'text-error'"
                                 >
@@ -551,9 +551,9 @@ defineOptions({layout: AuthenticatedLayout});
                         </tbody>
                         <tfoot class="text-[11px] bg-base-200 font-semibold">
                             <tr>
-                                <td colspan="7" class="text-right pr-2">Итого</td>
+                                <td colspan="7">Итого</td>
                                 <td
-                                    class="text-right"
+                                    class=""
                                     :class="totals.profit === null ? ''
                                         : totals.profit >= 0 ? 'text-success' : 'text-error'"
                                 >
@@ -562,14 +562,14 @@ defineOptions({layout: AuthenticatedLayout});
                                 <td></td>
                                 <td></td>
                                 <td
-                                    class="text-right"
+                                    class=""
                                     :class="totals.netUsd === null ? ''
                                         : totals.netUsd >= 0 ? 'text-success' : 'text-error'"
                                 >
                                     {{ formatMoney(totals.netUsd, 2) }}
                                 </td>
                                 <td
-                                    class="text-right"
+                                    class=""
                                     :class="totals.netUah === null ? ''
                                         : totals.netUah >= 0 ? 'text-success' : 'text-error'"
                                 >
