@@ -739,27 +739,22 @@ const copyCallbackUrl = async (callback_url) => {
                                                 <table class="table table-xs">
                                                     <thead>
                                                         <tr>
-                                                            <th>ID</th>
                                                             <th>Тип</th>
-                                                            <th>Направление</th>
                                                             <th>Сумма</th>
-                                                            <th>Баланс</th>
-                                                            <th>Кошелёк</th>
                                                             <th>Дата</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="transaction in merchantWalletTransactions" :key="`merchant-${transaction.id}`">
-                                                            <td>{{ transaction.id }}</td>
-                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
                                                             <td>
-                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
-                                                                    {{ transaction.direction ?? '—' }}
-                                                                </span>
+                                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                                    <span :class="['badge badge-sm shrink-0', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                        {{ transaction.direction ?? '—' }}
+                                                                    </span>
+                                                                    <span>{{ walletTransactionTypeLabel(transaction) }}</span>
+                                                                </div>
                                                             </td>
                                                             <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
-                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
-                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                             <td><DateTime :data="transaction.created_at" :simple="true" /></td>
                                                         </tr>
                                                     </tbody>
@@ -779,27 +774,22 @@ const copyCallbackUrl = async (callback_url) => {
                                                 <table class="table table-xs">
                                                     <thead>
                                                         <tr>
-                                                            <th>ID</th>
                                                             <th>Тип</th>
-                                                            <th>Направление</th>
                                                             <th>Сумма</th>
-                                                            <th>Баланс</th>
-                                                            <th>Кошелёк</th>
                                                             <th>Дата</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="transaction in teamLeaderWalletTransactions" :key="`teamleader-${transaction.id}`">
-                                                            <td>{{ transaction.id }}</td>
-                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
                                                             <td>
-                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
-                                                                    {{ transaction.direction ?? '—' }}
-                                                                </span>
+                                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                                    <span :class="['badge badge-sm shrink-0', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                        {{ transaction.direction ?? '—' }}
+                                                                    </span>
+                                                                    <span>{{ walletTransactionTypeLabel(transaction) }}</span>
+                                                                </div>
                                                             </td>
                                                             <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
-                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
-                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                             <td><DateTime :data="transaction.created_at" :simple="true" /></td>
                                                         </tr>
                                                     </tbody>
@@ -819,27 +809,22 @@ const copyCallbackUrl = async (callback_url) => {
                                                 <table class="table table-xs">
                                                     <thead>
                                                         <tr>
-                                                            <th>ID</th>
                                                             <th>Тип</th>
-                                                            <th>Направление</th>
                                                             <th>Сумма</th>
-                                                            <th>Баланс</th>
-                                                            <th>Кошелёк</th>
                                                             <th>Дата</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="transaction in agentWalletTransactions" :key="`agent-${transaction.id}`">
-                                                            <td>{{ transaction.id }}</td>
-                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
                                                             <td>
-                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
-                                                                    {{ transaction.direction ?? '—' }}
-                                                                </span>
+                                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                                    <span :class="['badge badge-sm shrink-0', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                        {{ transaction.direction ?? '—' }}
+                                                                    </span>
+                                                                    <span>{{ walletTransactionTypeLabel(transaction) }}</span>
+                                                                </div>
                                                             </td>
                                                             <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
-                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
-                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                             <td><DateTime :data="transaction.created_at" :simple="true" /></td>
                                                         </tr>
                                                     </tbody>
@@ -859,27 +844,22 @@ const copyCallbackUrl = async (callback_url) => {
                                                 <table class="table table-xs">
                                                     <thead>
                                                         <tr>
-                                                            <th>ID</th>
                                                             <th>Тип</th>
-                                                            <th>Направление</th>
                                                             <th>Сумма</th>
-                                                            <th>Баланс</th>
-                                                            <th>Кошелёк</th>
                                                             <th>Дата</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="transaction in traderWalletTransactions" :key="`trader-${transaction.id}`">
-                                                            <td>{{ transaction.id }}</td>
-                                                            <td>{{ walletTransactionTypeLabel(transaction) }}</td>
                                                             <td>
-                                                                <span :class="['badge badge-sm', walletTransactionDirectionBadgeClass(transaction.direction)]">
-                                                                    {{ transaction.direction ?? '—' }}
-                                                                </span>
+                                                                <div class="flex items-center gap-1.5 flex-wrap">
+                                                                    <span :class="['badge badge-sm shrink-0', walletTransactionDirectionBadgeClass(transaction.direction)]">
+                                                                        {{ transaction.direction ?? '—' }}
+                                                                    </span>
+                                                                    <span>{{ walletTransactionTypeLabel(transaction) }}</span>
+                                                                </div>
                                                             </td>
                                                             <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
-                                                            <td>{{ transaction.balance_type ?? '—' }}</td>
-                                                            <td>{{ transaction.wallet_id ?? '—' }}</td>
                                                             <td><DateTime :data="transaction.created_at" :simple="true" /></td>
                                                         </tr>
                                                     </tbody>
