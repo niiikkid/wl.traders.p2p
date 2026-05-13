@@ -405,7 +405,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-center px-1"
+                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'rate')]"
                                         @input="handleDecimalInput(row, 'rate', $event)"
                                         @blur="handleBlur(row)"
@@ -416,7 +416,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <input
                                             type="text"
                                             inputmode="decimal"
-                                            class="input input-xs input-bordered w-16 text-center px-1"
+                                            class="input input-xs input-bordered w-16 text-right px-1"
                                             :value="inputDrafts[getInputKey(row.day, 'start_balance')]"
                                             @input="handleDecimalInput(row, 'start_balance', $event)"
                                             @focus="showBalanceSuggestion(row, 'start_balance')"
@@ -451,7 +451,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-center px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'card_uah')]"
                                         @input="handleDecimalInput(row, 'card_uah', $event)"
                                         @blur="handleBlur(row)"
@@ -462,7 +462,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <input
                                             type="text"
                                             inputmode="decimal"
-                                            class="input input-xs input-bordered w-16 text-center px-1"
+                                            class="input input-xs input-bordered w-16 text-right px-1"
                                             :value="inputDrafts[getInputKey(row.day, 'end_balance')]"
                                             @input="handleDecimalInput(row, 'end_balance', $event)"
                                             @focus="showBalanceSuggestion(row, 'end_balance')"
@@ -497,7 +497,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-center px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'exchange_balance')]"
                                         @input="handleDecimalInput(row, 'exchange_balance', $event)"
                                         @blur="handleBlur(row)"
@@ -517,7 +517,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-center px-1"
+                                        class="input input-xs input-bordered w-[calc(5rem/1.5)] text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'arbitrage_usd')]"
                                         @input="handleDecimalInput(row, 'arbitrage_usd', $event)"
                                         @blur="handleBlur(row)"
@@ -527,7 +527,7 @@ defineOptions({layout: AuthenticatedLayout});
                                     <input
                                         type="text"
                                         inputmode="decimal"
-                                        class="input input-xs input-bordered w-16 text-center px-1"
+                                        class="input input-xs input-bordered w-16 text-right px-1"
                                         :value="inputDrafts[getInputKey(row.day, 'expense_uah')]"
                                         @input="handleDecimalInput(row, 'expense_uah', $event)"
                                         @blur="handleBlur(row)"
