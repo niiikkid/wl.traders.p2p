@@ -249,7 +249,7 @@ const scheduleSave = (row) => {
     const timer = setTimeout(() => {
         saveTimers.delete(row.day);
         persistRow(row);
-    }, 600);
+    }, 2400);
     saveTimers.set(row.day, timer);
 };
 
