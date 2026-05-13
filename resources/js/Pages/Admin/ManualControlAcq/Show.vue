@@ -198,7 +198,24 @@ const select_confirm_code_sound = async () => {
     await save_sound_settings();
 };
 
+const prepare_modal_open = () => {
+    try {
+        const selection = window.getSelection?.();
+        if (selection && selection.rangeCount > 0) {
+            selection.removeAllRanges();
+        }
+    } catch (error) {
+        // ignored
+    }
+
+    const active_element = document.activeElement;
+    if (active_element && typeof active_element.blur === 'function') {
+        active_element.blur();
+    }
+};
+
 const open_notification_settings_modal = () => {
+    prepare_modal_open();
     notification_settings_dialog.value?.showModal();
 };
 
@@ -208,6 +225,7 @@ const close_notification_settings_modal = () => {
 
 const open_reject_reason_modal = () => {
     selected_reject_reason.value = '';
+    prepare_modal_open();
     reject_reason_dialog.value?.showModal();
 };
 
