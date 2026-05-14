@@ -17,7 +17,7 @@ const tocSections = [
 </script>
 
 <template>
-    <div class="space-y-10">
+    <div class="space-y-10" data-api-docs-markdown-root>
         <div class="grid grid-cols-1 xl:flex gap-6">
             <aside>
                 <div class="card menu menu-sm p-0 bg-base-100 shadow sticky top-6 w-full">

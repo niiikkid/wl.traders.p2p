@@ -47,6 +47,7 @@ const activeTab = ref(getTabFromUrl());
 const loading = ref(false);
 const receiptTemplate = ref('');
 const regenerating = ref(false);
+const downloadingDocumentation = ref(false);
 
 const scrollToHash = (hashOverride = null) => {
     if (!hasWindow) {
@@ -333,6 +334,222 @@ const openRegenerateConfirm = () => {
     });
 };
 
+const normalizeText = (value = '') => value.replace(/\s+/g, ' ').trim();
+
+const pushMarkdownLine = (lines, value = '') => {
+    const line = value ?? '';
+
+    if (!line) {
+        if (lines.length && lines[lines.length - 1] !== '') {
+            lines.push('');
+        }
+        return;
+    }
+
+    lines.push(line);
+};
+
+const getMarkdownTable = (tableElement) => {
+    const rows = Array.from(tableElement.querySelectorAll('tr'))
+        .map((row) => Array.from(row.querySelectorAll('th, td')).map((cell) => normalizeText(cell.innerText)));
+
+    if (!rows.length || !rows[0].length) {
+        return '';
+    }
+
+    const [header, ...bodyRows] = rows;
+    const separator = header.map(() => '---');
+    const markdownRows = [
+        `| ${header.join(' | ')} |`,
+        `| ${separator.join(' | ')} |`,
+        ...bodyRows.map((row) => `| ${row.join(' | ')} |`)
+    ];
+
+    return `${markdownRows.join('\n')}\n`;
+};
+
+const getHeadingPrefix = (tagName) => {
+    if (tagName === 'H1') {
+        return '#';
+    }
+
+    if (tagName === 'H2') {
+        return '##';
+    }
+
+    if (tagName === 'H3') {
+        return '###';
+    }
+
+    if (tagName === 'H4') {
+        return '####';
+    }
+
+    return '#####';
+};
+
+const appendEndpointLine = (element, lines) => {
+    const badge = element.querySelector(':scope > span.badge');
+    const endpointCode = element.querySelector(':scope > code');
+
+    if (!badge || !endpointCode) {
+        return false;
+    }
+
+    const method = normalizeText(badge.innerText);
+    const endpoint = normalizeText(endpointCode.innerText);
+
+    if (!method || !endpoint) {
+        return false;
+    }
+
+    pushMarkdownLine(lines, `- \`${method}\` \`${endpoint}\``);
+    pushMarkdownLine(lines);
+
+    return true;
+};
+
+const walkDocumentationNode = (element, lines) => {
+    if (!(element instanceof HTMLElement)) {
+        return;
+    }
+
+    if (appendEndpointLine(element, lines)) {
+        return;
+    }
+
+    const tagName = element.tagName;
+
+    if (element.classList.contains('collapse-title')) {
+        const title = normalizeText(element.textContent ?? '');
+        if (title) {
+            pushMarkdownLine(lines, `#### ${title}`);
+            pushMarkdownLine(lines);
+        }
+        return;
+    }
+
+    if (/^H[1-5]$/.test(tagName)) {
+        const title = normalizeText(element.innerText);
+        if (title) {
+            pushMarkdownLine(lines, `${getHeadingPrefix(tagName)} ${title}`);
+            pushMarkdownLine(lines);
+        }
+        return;
+    }
+
+    if (tagName === 'P') {
+        const text = normalizeText(element.textContent ?? '');
+        if (text) {
+            pushMarkdownLine(lines, text);
+            pushMarkdownLine(lines);
+        }
+        return;
+    }
+
+    if (tagName === 'UL' || tagName === 'OL') {
+        const items = Array.from(element.querySelectorAll(':scope > li'))
+            .map((item) => normalizeText(item.textContent ?? ''))
+            .filter(Boolean);
+
+        items.forEach((itemText) => {
+            pushMarkdownLine(lines, `- ${itemText}`);
+        });
+
+        if (items.length) {
+            pushMarkdownLine(lines);
+        }
+        return;
+    }
+
+    if (tagName === 'TABLE') {
+        const tableMarkdown = getMarkdownTable(element);
+        if (tableMarkdown) {
+            pushMarkdownLine(lines, tableMarkdown.trimEnd());
+            pushMarkdownLine(lines);
+        }
+        return;
+    }
+
+    if (tagName === 'PRE') {
+        const code = (element.textContent ?? '').trim();
+        if (code) {
+            pushMarkdownLine(lines, '```json');
+            pushMarkdownLine(lines, code);
+            pushMarkdownLine(lines, '```');
+            pushMarkdownLine(lines);
+        }
+        return;
+    }
+
+    if (['DIV', 'SECTION', 'ARTICLE'].includes(tagName) && element.children.length === 0) {
+        const text = normalizeText(element.textContent ?? '');
+        if (text) {
+            pushMarkdownLine(lines, text);
+            pushMarkdownLine(lines);
+        }
+        return;
+    }
+
+    Array.from(element.children).forEach((child) => {
+        walkDocumentationNode(child, lines);
+    });
+};
+
+const buildDocumentationMarkdown = () => {
+    const root = document.querySelector('[data-api-docs-markdown-root]');
+
+    if (!root) {
+        return '';
+    }
+
+    const sections = Array.from(root.querySelectorAll('article'));
+    const lines = ['# API Интеграция', ''];
+
+    sections.forEach((section) => {
+        walkDocumentationNode(section, lines);
+    });
+
+    while (lines.length && lines[lines.length - 1] === '') {
+        lines.pop();
+    }
+
+    return lines.join('\n');
+};
+
+const downloadDocumentation = async () => {
+    if (downloadingDocumentation.value) {
+        return;
+    }
+
+    downloadingDocumentation.value = true;
+
+    try {
+        if (activeTab.value !== 'docs') {
+            setActiveTab('docs');
+            await nextTick();
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+
+        const markdown = buildDocumentationMarkdown();
+        if (!markdown) {
+            return;
+        }
+
+        const blob = new Blob([markdown], {type: 'text/markdown;charset=utf-8'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'api-integration-documentation.md';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } finally {
+        downloadingDocumentation.value = false;
+    }
+};
+
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -341,7 +558,18 @@ defineOptions({ layout: AuthenticatedLayout });
 
     <div class="antialiased">
         <div class="mx-auto max-w-7xl">
-            <h2 class="text-3xl font-bold text-base-content mb-6">API Интеграция</h2>
+            <div class="mb-6 flex items-center justify-between gap-4">
+                <h2 class="text-3xl font-bold text-base-content">API Интеграция</h2>
+                <button
+                    type="button"
+                    class="btn btn-outline btn-primary btn-sm"
+                    :class="{ 'btn-disabled': downloadingDocumentation }"
+                    :disabled="downloadingDocumentation"
+                    @click="downloadDocumentation"
+                >
+                    Скачать документацию
+                </button>
+            </div>
 
             <!-- Блок с токеном -->
             <div class="card w-full bg-base-100 shadow mb-6">
