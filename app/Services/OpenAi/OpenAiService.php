@@ -68,6 +68,13 @@ class OpenAiService implements OpenAiServiceContract
 
     public function prompt(string $prompt, ?string $systemPrompt = null, ?string $model = null): string
     {
+        $response = $this->promptRaw($prompt, $systemPrompt, $model);
+
+        return (string) ($response['output_text'] ?? '');
+    }
+
+    public function promptRaw(string $prompt, ?string $systemPrompt = null, ?string $model = null): array
+    {
         $setting = $this->getSettings();
 
         if (! $setting->hasApiKey()) {
@@ -103,7 +110,7 @@ class OpenAiService implements OpenAiServiceContract
             throw new RuntimeException($response->json('error.message') ?: 'OpenAI API вернул ошибку.');
         }
 
-        return (string) ($response->json('output_text') ?? '');
+        return $response->json();
     }
 
     private function client(string $apiKey): PendingRequest

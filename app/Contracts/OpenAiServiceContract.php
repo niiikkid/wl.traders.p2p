@@ -13,4 +13,6 @@ interface OpenAiServiceContract
     public function refreshModels(?string $apiKey = null): OpenAiSetting;
 
     public function prompt(string $prompt, ?string $systemPrompt = null, ?string $model = null): string;
+
+    public function promptRaw(string $prompt, ?string $systemPrompt = null, ?string $model = null): array;
 }

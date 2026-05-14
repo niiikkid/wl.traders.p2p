@@ -9,6 +9,18 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    test_form: {
+        type: Object,
+        default: () => ({
+            model: '',
+            system_prompt: '',
+            user_prompt: '',
+        }),
+    },
+    test_response: {
+        type: String,
+        default: '',
+    },
 });
 
 const form = useForm({
@@ -27,6 +39,18 @@ const refreshModels = () => {
     form.post(route('admin.open-ai.models.refresh'), {
         preserveScroll: true,
         onSuccess: () => form.reset('api_key'),
+    });
+};
+
+const promptForm = useForm({
+    model: props.test_form.model ?? props.setting.selected_model ?? '',
+    system_prompt: props.test_form.system_prompt ?? '',
+    user_prompt: props.test_form.user_prompt ?? '',
+});
+
+const sendPrompt = () => {
+    promptForm.post(route('admin.open-ai.prompt'), {
+        preserveScroll: true,
     });
 };
 </script>
@@ -104,6 +128,75 @@ const refreshModels = () => {
                         >
                             Обновить список моделей
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 shadow">
+                <div class="card-body">
+                    <h3 class="text-lg font-semibold">Тестовый запрос</h3>
+                    <p class="text-sm text-base-content/60 mb-4">
+                        Заполните оба промпта, отправьте запрос и посмотрите сырой ответ OpenAI.
+                    </p>
+
+                    <div class="grid gap-4 lg:grid-cols-2">
+                        <div class="space-y-4">
+                            <fieldset class="fieldset">
+                                <legend class="fieldset-legend">Модель</legend>
+                                <select v-model="promptForm.model" class="select select-bordered w-full">
+                                    <option value="">Выберите модель</option>
+                                    <option
+                                        v-for="model in setting.available_models"
+                                        :key="`prompt-${model}`"
+                                        :value="model"
+                                    >
+                                        {{ model }}
+                                    </option>
+                                </select>
+                                <p v-if="promptForm.errors.model" class="text-sm text-error">{{ promptForm.errors.model }}</p>
+                            </fieldset>
+
+                            <fieldset class="fieldset">
+                                <legend class="fieldset-legend">System prompt</legend>
+                                <textarea
+                                    v-model="promptForm.system_prompt"
+                                    class="textarea textarea-bordered min-h-28 w-full"
+                                    placeholder="System instruction..."
+                                />
+                                <p v-if="promptForm.errors.system_prompt" class="text-sm text-error">{{ promptForm.errors.system_prompt }}</p>
+                            </fieldset>
+
+                            <fieldset class="fieldset">
+                                <legend class="fieldset-legend">User prompt</legend>
+                                <textarea
+                                    v-model="promptForm.user_prompt"
+                                    class="textarea textarea-bordered min-h-36 w-full"
+                                    placeholder="Ваш текст запроса..."
+                                />
+                                <p v-if="promptForm.errors.user_prompt" class="text-sm text-error">{{ promptForm.errors.user_prompt }}</p>
+                            </fieldset>
+
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                :disabled="promptForm.processing"
+                                @click="sendPrompt"
+                            >
+                                Отправить запрос
+                            </button>
+                        </div>
+
+                        <div>
+                            <fieldset class="fieldset h-full">
+                                <legend class="fieldset-legend">Сырой ответ</legend>
+                                <textarea
+                                    :value="test_response || ''"
+                                    class="textarea textarea-bordered h-full min-h-96 w-full font-mono text-xs"
+                                    readonly
+                                    placeholder="После отправки запроса здесь появится raw JSON-ответ."
+                                />
+                            </fieldset>
+                        </div>
                     </div>
                 </div>
             </div>

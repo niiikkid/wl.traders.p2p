@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\OpenAiSetting\PromptRequest;
 use App\Http\Requests\Admin\OpenAiSetting\UpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -22,6 +23,12 @@ class OpenAiSettingController extends Controller
                 'available_models' => $setting->available_models ?? [],
                 'models_loaded_at' => $setting->models_loaded_at?->toDateTimeString(),
             ],
+            'test_form' => [
+                'model' => old('model', $setting->selected_model),
+                'system_prompt' => old('system_prompt', ''),
+                'user_prompt' => old('user_prompt', ''),
+            ],
+            'test_response' => request()->session()->get('open_ai_test_response'),
         ]);
     }
 
@@ -68,5 +75,28 @@ class OpenAiSettingController extends Controller
         return redirect()
             ->route('admin.open-ai.index')
             ->with('message', 'Список моделей OpenAI обновлен.');
+    }
+
+    public function prompt(PromptRequest $request): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        try {
+            $response = services()->openAi()->promptRaw(
+                prompt: $validated['user_prompt'],
+                systemPrompt: $validated['system_prompt'],
+                model: $validated['model'],
+            );
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('admin.open-ai.index')
+                ->withInput()
+                ->with('error', $exception->getMessage());
+        }
+
+        return redirect()
+            ->route('admin.open-ai.index')
+            ->withInput()
+            ->with('open_ai_test_response', json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 }
