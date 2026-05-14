@@ -27,6 +27,7 @@ const notificationLatestEventIds = ref({
     dispute_opened: null,
     message_received: null,
 });
+const isNotificationLatestEventIdsInitialized = ref(false);
 const notificationPollInterval = ref(null);
 const notificationLeaderHeartbeatInterval = ref(null);
 const isNotificationPollingRequestRunning = ref(false);
@@ -174,13 +175,17 @@ const playNotificationSoundForEvent = (eventKey) => {
 };
 
 const detectNewestEvent = (latestEventIds) => {
+    if (!isNotificationLatestEventIdsInitialized.value) {
+        return null;
+    }
+
     const eventPriority = ['message_received', 'dispute_opened', 'order_assigned'];
 
     for (const eventKey of eventPriority) {
         const previousValue = Number(notificationLatestEventIds.value?.[eventKey] ?? 0);
         const nextValue = Number(latestEventIds?.[eventKey] ?? 0);
 
-        if (previousValue > 0 && nextValue > previousValue) {
+        if (nextValue > previousValue) {
             return eventKey;
         }
     }
@@ -205,6 +210,7 @@ const pollNotifications = async () => {
 
         const newestEvent = detectNewestEvent(latestEventIds);
         notificationLatestEventIds.value = latestEventIds;
+        isNotificationLatestEventIdsInitialized.value = true;
 
         if (newestEvent) {
             playNotificationSoundForEvent(newestEvent);

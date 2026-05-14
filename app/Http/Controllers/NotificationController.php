@@ -145,10 +145,9 @@ class NotificationController extends Controller
             'message_received' => (int) (SmsLog::query()
                 ->where('user_id', $user->id)
                 ->whereNotNull('parsing_result')
-                ->where(function ($query) {
-                    $query->where('parsing_result->operation_type', 'in')
-                        ->orWhere('parsing_result->operation_type', 'out');
-                })
+                ->whereRaw(
+                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) IN ('in', 'out')"
+                )
                 ->max('id') ?? 0),
         ];
     }
