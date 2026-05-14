@@ -72,7 +72,7 @@ class SmsService implements SmsServiceContract
      * @param  array{operation_type: string, amount: string, card: ?string, balance: ?string, bank: ?string}|null  $parsingResult
      */
     protected function logSms(SmsDTO $sms, UserDevice $device, User $user, ?array $parsingResult): SmsLog
-    {dd($parsingResult);
+    {
         return SmsLog::create([
             'sender' => $sms->sender,
             'message' => $sms->message,
