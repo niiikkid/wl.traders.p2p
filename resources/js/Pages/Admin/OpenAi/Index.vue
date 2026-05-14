@@ -21,6 +21,10 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    test_model_output: {
+        type: String,
+        default: '',
+    },
 });
 
 const form = useForm({
@@ -186,7 +190,23 @@ const sendPrompt = () => {
                             </button>
                         </div>
 
-                        <div>
+                        <div class="space-y-4">
+                            <fieldset class="fieldset">
+                                <legend class="fieldset-legend">Ответ модели (JSON)</legend>
+                                <p v-if="!test_model_output && !test_response" class="label">
+                                    После успешного запроса здесь появится распознанный JSON из поля <code class="text-xs">output → message → content → output_text</code>.
+                                </p>
+                                <div
+                                    v-else-if="test_model_output"
+                                    class="mockup-code max-h-80 w-full overflow-auto"
+                                >
+                                    <pre class="px-4 py-3"><code class="whitespace-pre-wrap break-words text-xs">{{ test_model_output }}</code></pre>
+                                </div>
+                                <p v-else class="label text-warning">
+                                    В сыром ответе не найден блок <code class="text-xs">output_text</code> с текстом модели.
+                                </p>
+                            </fieldset>
+
                             <fieldset class="fieldset h-full">
                                 <legend class="fieldset-legend">Сырой ответ</legend>
                                 <textarea

@@ -29,6 +29,7 @@ class OpenAiSettingController extends Controller
                 'user_prompt' => old('user_prompt', ''),
             ],
             'test_response' => request()->session()->get('open_ai_test_response'),
+            'test_model_output' => request()->session()->get('open_ai_test_model_output'),
         ]);
     }
 
@@ -94,9 +95,44 @@ class OpenAiSettingController extends Controller
                 ->with('error', $exception->getMessage());
         }
 
+        $modelOutput = $this->formatOpenAiAssistantOutputText($response);
+
         return redirect()
             ->route('admin.open-ai.index')
             ->withInput()
-            ->with('open_ai_test_response', json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            ->with('open_ai_test_response', json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
+            ->with('open_ai_test_model_output', $modelOutput);
+    }
+
+    /**
+     * Extract assistant `output_text` from OpenAI Responses API payload and pretty-print JSON when possible.
+     */
+    private function formatOpenAiAssistantOutputText(array $response): ?string
+    {
+        foreach ($response['output'] ?? [] as $item) {
+            if (($item['type'] ?? '') !== 'message') {
+                continue;
+            }
+
+            foreach ($item['content'] ?? [] as $block) {
+                if (($block['type'] ?? '') !== 'output_text') {
+                    continue;
+                }
+
+                $text = $block['text'] ?? null;
+                if (! is_string($text) || $text === '') {
+                    continue;
+                }
+
+                $decoded = json_decode($text, true);
+                if (json_last_error() === JSON_ERROR_NONE && (is_array($decoded) || is_object($decoded))) {
+                    return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                }
+
+                return $text;
+            }
+        }
+
+        return null;
     }
 }
