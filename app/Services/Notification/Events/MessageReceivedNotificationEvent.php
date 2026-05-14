@@ -55,7 +55,7 @@ class MessageReceivedNotificationEvent implements NotificationEventInterface
             'message_type' => strtoupper($this->smsLog->type->value),
             'sender' => $this->smsLog->sender,
             'message' => $this->smsLog->message,
-            'bank_name' => $this->paymentGateway?->name,
+            'bank_name' => $this->paymentGateway?->name ?? ($parsingResult['bank'] ?? null),
             'amount' => $parsingResult['amount'] ?? null,
             'card_last_digits' => $parsingResult['card'] ?? null,
             'device_name' => $this->smsLog->device?->name,

@@ -10,7 +10,6 @@ import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 
 const modalStore = useModalStore();
@@ -93,6 +92,32 @@ const addSmsStopWord = () => {
             })
         },
     });
+}
+
+const paymentDirectionLabel = (smsLog) => {
+    const operationType = smsLog?.parsing_result?.operation_type;
+
+    return operationType === 'in'
+        ? 'Поступление'
+        : (operationType === 'out' ? 'списание' : 'неопределено');
+}
+
+const paymentDirectionBadgeClass = (smsLog) => {
+    const operationType = smsLog?.parsing_result?.operation_type;
+
+    if (operationType === 'in') {
+        return 'badge-success';
+    }
+
+    if (operationType === 'out') {
+        return 'badge-error';
+    }
+
+    return 'badge-neutral';
+}
+
+const messageTypeBadgeClass = (type) => {
+    return type === 'push' ? 'badge-info' : 'badge-accent';
 }
 
 onMounted(() => {
@@ -203,22 +228,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                             ID
                                         </th>
                                         <th scope="col">
-                                            Отправитель
-                                        </th>
-                                        <th scope="col">
                                             Сообщение
                                         </th>
-                                        <th scope="col" v-if="viewStore.isAdminViewMode">
-                                            Парсинг
+                                        <th scope="col">
+                                            Операции
                                         </th>
                                         <th scope="col">
-                                            Тип
-                                        </th>
-                                        <th scope="col" class="text-nowrap">
-                                            UUID сделки
-                                        </th>
-                                        <th scope="col">
-                                            Профиль
+                                            Приложение
                                         </th>
                                         <th scope="col">
                                             Время
@@ -231,44 +247,51 @@ defineOptions({ layout: AuthenticatedLayout })
                                             {{ sms_log.id }}
                                         </th>
                                         <td>
-                                            <div class="flex items-center gap-2">
-                                                <div class="text-nowrap text-xs">
-                                                    {{ sms_log.sender }}
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="text-primary text-xs text-nowrap">
+                                                        {{ sms_log.sender }}
+                                                    </div>
+                                                    <span class="badge badge-outline badge-xs" :class="messageTypeBadgeClass(sms_log.type)">
+                                                        {{ sms_log.type.toUpperCase() }}
+                                                    </span>
+                                                    <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-0.5">
+                                                        <button
+                                                            @click.prevent="confirmAddSenderToStopLost(sms_log)"
+                                                            class="btn btn-ghost btn-xs text-error"
+                                                            aria-label="Добавить в стоп-лист"
+                                                        >
+                                                            <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                                            </svg>
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                                <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-0.5">
-                                                    <button
-                                                        @click.prevent="confirmAddSenderToStopLost(sms_log)"
-                                                        class="btn btn-ghost btn-xs text-error"
-                                                        aria-label="Добавить в стоп-лист"
-                                                    >
-                                                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style="min-width: 100px; max-width: 150px">{{ sms_log.message }}</div>
-                                        </td>
-                                        <td v-if="viewStore.isAdminViewMode">
-                                            <div v-if="sms_log.parsing_result">
-                                                <div v-if="sms_log.parsing_result.amount" class="flex gap-1">
-                                                    <div>{{sms_log.parsing_result.amount}}</div>
-                                                </div>
-                                                <div v-if="sms_log.parsing_result.card" class="flex gap-1">
-                                                    <div>*{{sms_log.parsing_result.card}}</div>
-                                                </div>
-                                                <div v-if="sms_log.parsing_result.balance" class="flex gap-1">
-                                                    <div>Баланс: {{sms_log.parsing_result.balance}}</div>
+                                                <div class="text-base-content" style="min-width: 100px; max-width: 220px">
+                                                    {{ sms_log.message }}
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            {{ sms_log.type }}
-                                        </td>
-                                        <td>
-                                            <DisplayUUID v-if="sms_log.order?.uuid" :uuid="sms_log.order?.uuid"/>
+                                            <div class="space-y-1">
+                                                <span class="badge badge-sm whitespace-nowrap" :class="paymentDirectionBadgeClass(sms_log)">
+                                                    {{ paymentDirectionLabel(sms_log) }}
+                                                </span>
+                                                <div v-if="['in', 'out'].includes(sms_log?.parsing_result?.operation_type)" class="text-xs space-y-0.5">
+                                                    <div v-if="sms_log.parsing_result?.bank">
+                                                        Банк: {{ sms_log.parsing_result.bank }}
+                                                    </div>
+                                                    <div v-if="sms_log.parsing_result?.amount">
+                                                        Сумма: {{ sms_log.parsing_result.amount }}
+                                                    </div>
+                                                    <div v-if="sms_log.parsing_result?.card">
+                                                        Карта: *{{ sms_log.parsing_result.card }}
+                                                    </div>
+                                                    <div v-if="sms_log.parsing_result?.balance">
+                                                        Баланс: {{ sms_log.parsing_result.balance }}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td class="text-nowrap">
                                             <div>
@@ -309,32 +332,30 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </div>
 
                                     <div class="flex items-center justify-between gap-3">
-                                        <div class="flex items-center gap-3">
+                                        <div class="flex min-w-0 flex-1 items-center gap-2">
                                             <div class="min-w-0">
-                                                <div class="flex items-center">
-                                                    <div class="font-medium">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <div class="text-primary text-sm font-medium text-nowrap">
                                                         {{ sms_log.sender }}
                                                     </div>
-                                                    <div v-if="viewStore.isAdminViewMode">
-                                                        <div class="flex items-center gap-0.5">
-                                                            <button
-                                                                @click.prevent="confirmAddSenderToStopLost(sms_log)"
-                                                                class="btn btn-ghost btn-xs text-error"
-                                                                aria-label="Добавить в стоп-лист"
-                                                            >
-                                                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
+                                                    <span class="badge badge-outline badge-xs shrink-0" :class="messageTypeBadgeClass(sms_log.type)">
+                                                        {{ sms_log.type.toUpperCase() }}
+                                                    </span>
+                                                    <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-0.5">
+                                                        <button
+                                                            @click.prevent="confirmAddSenderToStopLost(sms_log)"
+                                                            class="btn btn-ghost btn-xs text-error"
+                                                            aria-label="Добавить в стоп-лист"
+                                                        >
+                                                            <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                                            </svg>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="text-sm">
-                                            <div class="font-medium">{{ sms_log.type.toUpperCase() }}</div>
-                                        </div>
-                                        <div class="flex items-center gap-1">
+                                        <div class="flex shrink-0 items-center gap-1">
                                             <button
                                                 class="btn btn-primary btn-xs"
                                                 @click.stop="toggleExpand(sms_log.id)"
@@ -364,20 +385,24 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </div>
 
-                                    <div v-if="!!expandedCards[sms_log.id] && sms_log.parsing_result && viewStore.isAdminViewMode" class="bg-base-300/40 rounded-box p-2">
-                                        <div class="flex items-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-info">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
-                                            </svg>
-                                            <div v-if="sms_log.parsing_result?.amount">
-                                                Сумма: {{ sms_log.parsing_result.amount }}
-                                            </div>
-                                            <div v-if="sms_log.parsing_result?.card">
-                                                Карта: *{{ sms_log.parsing_result.card }}
-                                            </div>
-                                            <div v-if="sms_log.parsing_result?.balance">
-                                                Баланс: {{ sms_log.parsing_result.balance }}
-                                            </div>
+                                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                                        <span class="badge badge-sm whitespace-nowrap" :class="paymentDirectionBadgeClass(sms_log)">
+                                            {{ paymentDirectionLabel(sms_log) }}
+                                        </span>
+                                    </div>
+
+                                    <div v-if="['in', 'out'].includes(sms_log?.parsing_result?.operation_type)" class="text-xs space-y-0.5 pt-1 text-base-content/90">
+                                        <div v-if="sms_log.parsing_result?.bank">
+                                            Банк: {{ sms_log.parsing_result.bank }}
+                                        </div>
+                                        <div v-if="sms_log.parsing_result?.amount">
+                                            Сумма: {{ sms_log.parsing_result.amount }}
+                                        </div>
+                                        <div v-if="sms_log.parsing_result?.card">
+                                            Карта: *{{ sms_log.parsing_result.card }}
+                                        </div>
+                                        <div v-if="sms_log.parsing_result?.balance">
+                                            Баланс: {{ sms_log.parsing_result.balance }}
                                         </div>
                                     </div>
 
@@ -396,14 +421,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
                                                 </svg>
                                                 <span class="text-base-content truncate">{{ sms_log.device?.name }}</span>
-                                            </div>
-                                        </div>
-                                        <div v-if="sms_log.order?.uuid" class="bg-base-300/40 rounded-box p-2">
-                                            <div class="flex items-center gap-2">
-                                                <svg class="size-4 text-info" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 17.345a4.76 4.76 0 0 0 2.558 1.618c2.274.589 4.512-.446 4.999-2.31.487-1.866-1.273-3.9-3.546-4.49-2.273-.59-4.034-2.623-3.547-4.488.486-1.865 2.724-2.899 4.998-2.31.982.236 1.87.793 2.538 1.592m-3.879 12.171V21m0-18v2.2"/>
-                                                </svg>
-                                                <DisplayUUID v-if="sms_log.order?.uuid" :uuid="sms_log.order?.uuid"/>
                                             </div>
                                         </div>
                                     </div>

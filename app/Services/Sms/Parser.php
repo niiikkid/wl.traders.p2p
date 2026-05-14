@@ -3,6 +3,7 @@
 namespace App\Services\Sms;
 
 use App\Contracts\OpenAiServiceContract;
+use App\Enums\SmsType;
 use App\Models\PaymentGateway;
 use App\Models\SmsStopWord;
 use App\Services\Money\Currency;
@@ -40,30 +41,49 @@ class Parser
 PROMPT;
 
     private const PAYMENT_DETAILS_EXTRACTION_PROMPT = <<<'PROMPT'
-Извлеки из текста SMS или push-уведомления данные финансовой операции.
+Ты извлекаешь данные из push-уведомления или SMS о финансовой операции.
+
+Операция уже заранее определена как поступление или списание средств.
+
+Формат входного текста:
+- в начале сообщения всегда указан отправитель;
+- отправитель отделён от текста уведомления символом "|";
+- отправитель может быть названием приложения, названием банка, номером или адресом отправителя.
 
 Возвращай только валидный JSON без пояснений:
 
 {
   "amount": string | null,
   "card": string | null,
-  "balance": string | null
+  "balance": string | null,
+  "bank": string | null
 }
 
 Правила:
-1. amount — сумма самой операции, а не баланс.
-2. balance — баланс после операции, если он явно указан. Иначе null.
-3. amount и balance возвращай строкой без валюты, пробелов и разделителей тысяч.
-4. Если есть копейки/центы, используй точку как десятичный разделитель.
-5. Примеры нормализации:
+1. bank — значение до первого символа "|", очищенное от лишних пробелов.
+2. Если bank состоит только из цифр, верни его как есть.
+3. Если bank — текстовое название, приведи его к аккуратному виду:
+   - убери лишние пробелы;
+   - сохрани дефисы и точки, если они есть;
+   - каждое отдельное слово начинай с заглавной буквы.
+4. Примеры bank:
+   - "freebank" → "Freebank"
+   - "mono bank" → "Mono Bank"
+   - "privat24" → "Privat24"
+   - "3700" → "3700"
+5. amount — сумма самой операции, а не баланс и не комиссия.
+6. balance — баланс после операции, если он явно указан. Иначе null.
+7. amount и balance возвращай строкой без валюты, пробелов и разделителей тысяч.
+8. Если есть копейки/центы, используй точку как десятичный разделитель.
+9. Примеры нормализации сумм:
    - "1 000.00 uah" → "1000.00"
    - "+1 000.00 ₴" → "1000.00"
    - "1 000,50 грн" → "1000.50"
    - "1000" → "1000"
-6. card — только последние 4 цифры карты, счёта или реквизитов, если они явно указаны.
-7. Если указано несколько чисел, не используй баланс как amount или card.
-8. Если сумму, карту или баланс определить нельзя, верни null в соответствующем поле.
-9. Не добавляй дополнительных полей.
+10. card — только последние 4 цифры карты, счёта или реквизитов, если они явно указаны.
+11. Если указано несколько сумм, не используй баланс или комиссию как amount.
+12. Если сумму, карту, баланс или банк определить нельзя, верни null в соответствующем поле.
+13. Не добавляй дополнительных полей.
 PROMPT;
 
     protected ?PaymentGateway $paymentGateway = null;
@@ -73,9 +93,10 @@ PROMPT;
     ) {}
 
     /**
-     * @return array{operation_type: string, amount: string, card: ?string, balance: ?string}|null
+     * @param  SmsType  $messageType  Канал: SMS или push (передаётся в OpenAI user-промпт).
+     * @return array{operation_type: string, amount: string, card: ?string, balance: ?string, bank: ?string}|null
      */
-    public function parse(string $sender, string $message): ?array
+    public function parse(string $sender, string $message, SmsType $messageType): ?array
     {
         if ($this->containsStopWord($message)) {
             return null;
@@ -85,13 +106,13 @@ PROMPT;
             return null;
         }
 
-        $operationType = $this->classifyOperation($sender, $message);
+        $operationType = $this->classifyOperation($sender, $message, $messageType);
 
         if (! in_array($operationType, ['in', 'out'], true)) {
             return null;
         }
 
-        $details = $this->extractPaymentDetails($sender, $message);
+        $details = $this->extractPaymentDetails($sender, $message, $messageType);
         $amount = $details['amount'] ?? null;
 
         if (! is_string($amount) || $amount === '') {
@@ -103,6 +124,7 @@ PROMPT;
             'amount' => $amount,
             'card' => $this->nullableString($details['card'] ?? null),
             'balance' => $this->nullableString($details['balance'] ?? null),
+            'bank' => $this->nullableString($details['bank'] ?? null),
         ];
     }
 
@@ -297,23 +319,23 @@ PROMPT;
         return preg_match($regex, NormalizeMessage::normalize($message)) === 1;
     }
 
-    protected function classifyOperation(string $sender, string $message): ?string
+    protected function classifyOperation(string $sender, string $message, SmsType $messageType): ?string
     {
-        $response = $this->askOpenAi(self::OPERATION_CLASSIFICATION_PROMPT, $sender, $message);
+        $response = $this->askOpenAi(self::OPERATION_CLASSIFICATION_PROMPT, $sender, $message, $messageType);
         $value = $response['value'] ?? null;
 
         return is_string($value) ? $value : null;
     }
 
     /**
-     * @return array{amount?: mixed, card?: mixed, balance?: mixed}
+     * @return array{amount?: mixed, card?: mixed, balance?: mixed, bank?: mixed}
      */
-    protected function extractPaymentDetails(string $sender, string $message): array
+    protected function extractPaymentDetails(string $sender, string $message, SmsType $messageType): array
     {
-        return $this->askOpenAi(self::PAYMENT_DETAILS_EXTRACTION_PROMPT, $sender, $message) ?? [];
+        return $this->askOpenAi(self::PAYMENT_DETAILS_EXTRACTION_PROMPT, $sender, $message, $messageType) ?? [];
     }
 
-    protected function askOpenAi(string $systemPrompt, string $sender, string $message): ?array
+    protected function askOpenAi(string $systemPrompt, string $sender, string $message, SmsType $messageType): ?array
     {
         try {
             $openAi = app(OpenAiServiceContract::class);
@@ -324,8 +346,11 @@ PROMPT;
                 return null;
             }
 
+            $typeLine = $this->formatMessageTypeForPrompt($messageType);
+            $userPrompt = "Тип сообщения: {$typeLine}\nsender: {$sender}\nmessage: {$message}";
+
             $response = $openAi->prompt(
-                prompt: "sender: {$sender}\nmessage: {$message}",
+                prompt: $userPrompt,
                 systemPrompt: $systemPrompt,
                 model: $model,
             );
@@ -343,6 +368,14 @@ PROMPT;
     protected function nullableString(mixed $value): ?string
     {
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    protected function formatMessageTypeForPrompt(SmsType $messageType): string
+    {
+        return match ($messageType) {
+            SmsType::SMS => 'SMS (текстовое сообщение с телефона)',
+            SmsType::PUSH => 'PUSH (push-уведомление от приложения)',
+        };
     }
 
     public function getGatewayBySender(string $sender): ?PaymentGateway

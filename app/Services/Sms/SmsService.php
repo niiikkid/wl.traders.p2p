@@ -31,7 +31,7 @@ class SmsService implements SmsServiceContract
         );
         $user = $device->user;
 
-        $result = $parser->parse($sms->sender, $sms->message);
+        $result = $parser->parse($sms->sender, $sms->message, $sms->type);
         $smsLog = $this->logSms($sms, $device, $user, $result);
 
         $order = null;
@@ -69,7 +69,7 @@ class SmsService implements SmsServiceContract
     }
 
     /**
-     * @param  array{operation_type: string, amount: string, card: ?string, balance: ?string}|null  $parsingResult
+     * @param  array{operation_type: string, amount: string, card: ?string, balance: ?string, bank: ?string}|null  $parsingResult
      */
     protected function logSms(SmsDTO $sms, UserDevice $device, User $user, ?array $parsingResult): SmsLog
     {
