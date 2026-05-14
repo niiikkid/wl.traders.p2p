@@ -98,7 +98,7 @@ PROMPT;
      */
     public function parse(string $sender, string $message, SmsType $messageType): ?array
     {
-        if ($this->containsStopWord($message)) {
+        if ($this->hasStopWord($message)) {
             return null;
         }
 
@@ -114,7 +114,7 @@ PROMPT;
 
         $details = $this->extractPaymentDetails($sender, $message, $messageType);
         $amount = $details['amount'] ?? null;
-
+        
         if (! is_string($amount) || $amount === '') {
             return null;
         }
@@ -206,7 +206,7 @@ PROMPT;
 
         $amount = null;
 
-        if ($this->containsStopWord($message)) {
+        if ($this->hasStopWord($message)) {
             return null;
         }
 
@@ -287,7 +287,7 @@ PROMPT;
         return $amount;
     }
 
-    protected function containsStopWord(string $message): bool
+    public function hasStopWord(string $message): bool
     {
         $stopWords = Cache::remember('sms_stop_words', 60, function () {
             return SmsStopWord::all()->pluck('word')->toArray();
@@ -296,10 +296,15 @@ PROMPT;
         $message = NormalizeMessage::normalize($message);
 
         foreach ($stopWords as $stopWord) {
-            $regex = '/(|^|\s|;)'.$stopWord.'(\s|\.|:)/mi';
-            preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
+            $stopWord = trim((string) $stopWord);
+            if ($stopWord === '') {
+                continue;
+            }
 
-            if (! empty($matches[0])) {
+            $quoted = preg_quote($stopWord, '/');
+            // Whole token in any script: not surrounded by Unicode letters (works at line/string ends).
+            $regex = '/(?<!\p{L})'.$quoted.'(?!\p{L})/iu';
+            if (preg_match($regex, $message) === 1) {
                 return true;
             }
         }

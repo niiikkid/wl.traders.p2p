@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\API\SMS\StoreRequest;
 use App\Jobs\HandleSmsJob;
 use App\Models\SenderStopList;
+use App\Services\Sms\Parser;
 use App\Services\Sms\Utils\NormalizeMessage;
 
 class SmsController extends Controller
@@ -35,6 +36,10 @@ class SmsController extends Controller
         });
 
         if (in_array($sender, $senderStopList)) {
+            return response()->success();
+        }
+
+        if ((new Parser)->hasStopWord($request->message)) {
             return response()->success();
         }
 
