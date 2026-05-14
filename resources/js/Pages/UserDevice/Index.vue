@@ -18,7 +18,7 @@ const form = useForm({
 });
 
 const smsProcessingModeForm = useForm({
-    sms_auto_close_orders_enabled: !!(usePage().props.auth?.user?.sms_auto_close_orders_enabled ?? true),
+    sms_auto_close_orders_enabled: false,
 });
 
 const submit = () => {
@@ -30,6 +30,10 @@ const submit = () => {
 
 const updateSmsProcessingMode = (isEnabled) => {
     if (smsProcessingModeForm.processing) {
+        return;
+    }
+
+    if (isEnabled) {
         return;
     }
 
@@ -130,104 +134,109 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                         </div>
 
                         <div class="card bg-base-100 shadow-md">
-                            <div class="card-body p-4 sm:p-6 gap-4">
-                                <div>
-                                    <h3 class="card-title">Режим обработки СМС</h3>
-                                    <p class="text-sm text-base-content/70 mt-1">
-                                        В автоматическом режиме СМС привязывается к найденной сделке и закрывает ее.
-                                        В полуавтоматическом режиме СМС также привязывается, но сделку вам нужно закрыть вручную.
-                                    </p>
-                                </div>
+                            <div class="card-body p-4 sm:p-6">
+                                <section>
+                                    <header>
+                                        <h2 class="card-title">
+                                            Создать новый токен для устройства
+                                        </h2>
 
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                    <label class="card bg-base-200 border border-base-300 cursor-pointer">
-                                        <div class="card-body p-3">
-                                            <div class="flex items-center justify-between gap-3">
-                                                <div class="font-medium text-xs">Автоматический</div>
-                                                <input
-                                                    type="radio"
-                                                    name="sms-processing-mode"
-                                                    class="radio radio-xs radio-primary"
-                                                    :checked="smsProcessingModeForm.sms_auto_close_orders_enabled"
-                                                    :disabled="smsProcessingModeForm.processing"
-                                                    @change="updateSmsProcessingMode(true)"
-                                                >
-                                            </div>
+                                        <p class="mt-1 text-sm text-base-content/70">
+                                            Создайте новый токен для подключения устройства. Один токен может быть использован только для одного устройства.
+                                        </p>
+                                    </header>
+
+                                    <form @submit.prevent="submit" class="mt-6 space-y-6">
+                                        <div class="form-control">
+                                            <InputLabel for="name" value="Название устройства" class="label">
+                                                <span class="label-text">Название устройства</span>
+                                            </InputLabel>
+
+                                            <TextInput
+                                                id="name"
+                                                type="text"
+                                                class="input input-bordered w-full"
+                                                v-model="form.name"
+                                                required
+                                                autofocus
+                                                placeholder="Например: Samsung Galaxy S21"
+                                            />
+
+                                            <InputError class="mt-2 text-error" :message="form.errors.name" />
                                         </div>
-                                    </label>
 
-                                    <label class="card bg-base-200 border border-base-300 cursor-pointer">
-                                        <div class="card-body p-3">
-                                            <div class="flex items-center justify-between gap-3">
-                                                <div class="font-medium text-xs">Полуавтоматический</div>
-                                                <input
-                                                    type="radio"
-                                                    name="sms-processing-mode"
-                                                    class="radio radio-xs radio-primary"
-                                                    :checked="!smsProcessingModeForm.sms_auto_close_orders_enabled"
-                                                    :disabled="smsProcessingModeForm.processing"
-                                                    @change="updateSmsProcessingMode(false)"
-                                                >
-                                            </div>
+                                        <div class="sm:flex items-center gap-4 space-y-2 sm:space-y-0">
+                                            <PrimaryButton type="submit" class="btn btn-primary" :disabled="form.processing">
+                                                Создать токен
+                                            </PrimaryButton>
+
+                                            <Transition
+                                                enter-active-class="transition ease-in-out"
+                                                enter-from-class="opacity-0"
+                                                leave-active-class="transition ease-in-out"
+                                                leave-to-class="opacity-0"
+                                            >
+                                                <div v-if="form.recentlySuccessful" class="alert alert-success py-2 px-3 text-sm">
+                                                    <span>Токен создан.</span>
+                                                </div>
+                                            </Transition>
                                         </div>
-                                    </label>
-                                </div>
-
-                                <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
+                                    </form>
+                                </section>
                             </div>
                         </div>
                     </div>
 
                     <div class="card bg-base-100 shadow-md">
-                        <div class="card-body p-4 sm:p-6">
-                            <section>
-                                <header>
-                                    <h2 class="card-title">
-                                        Создать новый токен для устройства
-                                    </h2>
+                        <div class="card-body p-4 sm:p-6 gap-4">
+                            <div>
+                                <h3 class="card-title">Режим обработки СМС</h3>
+                                <p class="text-sm text-base-content/70 mt-1">
+                                    Сейчас доступен только полуавтоматический режим: СМС привязывается к сделке, а закрываете ее вы вручную.
+                                </p>
+                            </div>
 
-                                    <p class="mt-1 text-sm text-base-content/70">
-                                        Создайте новый токен для подключения устройства. Один токен может быть использован только для одного устройства.
-                                    </p>
-                                </header>
-
-                                <form @submit.prevent="submit" class="mt-6 space-y-6">
-                                    <div class="form-control">
-                                        <InputLabel for="name" value="Название устройства" class="label">
-                                            <span class="label-text">Название устройства</span>
-                                        </InputLabel>
-
-                                        <TextInput
-                                            id="name"
-                                            type="text"
-                                            class="input input-bordered w-full"
-                                            v-model="form.name"
-                                            required
-                                            autofocus
-                                            placeholder="Например: Samsung Galaxy S21"
-                                        />
-
-                                        <InputError class="mt-2 text-error" :message="form.errors.name" />
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                <label class="card bg-base-200 border border-base-300 cursor-not-allowed opacity-70">
+                                    <div class="card-body p-3">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div class="font-medium text-xs">Автоматический</div>
+                                            <input
+                                                type="radio"
+                                                name="sms-processing-mode"
+                                                class="radio radio-xs radio-primary"
+                                                :checked="false"
+                                                disabled
+                                                @change="updateSmsProcessingMode(true)"
+                                            >
+                                        </div>
                                     </div>
+                                </label>
 
-                                    <div class="sm:flex items-center gap-4 space-y-2 sm:space-y-0">
-                                        <PrimaryButton type="submit" class="btn btn-primary" :disabled="form.processing">
-                                            Создать токен
-                                        </PrimaryButton>
-
-                                        <Transition
-                                            enter-active-class="transition ease-in-out"
-                                            enter-from-class="opacity-0"
-                                            leave-active-class="transition ease-in-out"
-                                            leave-to-class="opacity-0"
-                                        >
-                                            <div v-if="form.recentlySuccessful" class="alert alert-success py-2 px-3 text-sm">
-                                                <span>Токен создан.</span>
-                                            </div>
-                                        </Transition>
+                                <label class="card bg-base-200 border border-base-300 cursor-pointer">
+                                    <div class="card-body p-3">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div class="font-medium text-xs">Полуавтоматический</div>
+                                            <input
+                                                type="radio"
+                                                name="sms-processing-mode"
+                                                class="radio radio-xs radio-primary"
+                                                :checked="true"
+                                                :disabled="smsProcessingModeForm.processing"
+                                                @change="updateSmsProcessingMode(false)"
+                                            >
+                                        </div>
                                     </div>
-                                </form>
-                            </section>
+                                </label>
+                            </div>
+
+                            <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
+
+                            <div role="alert" class="alert alert-info alert-soft text-sm">
+                                <span>
+                                    Автоматика сейчас в бета-версии. Cообщения пока не закрывают сделки/выплаты автоматически, но если система распознает списание или пополнение, вы получите звуковое уведомление. Если у вас подключен Telegram, то вы получите уведомление и туда. Уведомления можно настроить на странице уведомлений.
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
