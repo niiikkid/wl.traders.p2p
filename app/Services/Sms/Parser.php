@@ -2,6 +2,7 @@
 
 namespace App\Services\Sms;
 
+use App\Contracts\OpenAiServiceContract;
 use App\Models\PaymentGateway;
 use App\Models\SmsStopWord;
 use App\Services\Money\Currency;
@@ -10,17 +11,102 @@ use App\Services\Sms\Profiles\Contracts\SmsAmountParsingProfileContract;
 use App\Services\Sms\Profiles\SmsAmountParsingProfileResolver;
 use App\Services\Sms\Utils\NormalizeMessage;
 use App\Services\Sms\ValueObjects\ParserResultValue;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
+use JsonException;
+use RuntimeException;
 
 class Parser
 {
+    private const OPERATION_CLASSIFICATION_PROMPT = <<<'PROMPT'
+Ты классифицируешь текст SMS или push-уведомления о финансовой операции.
+
+Определи тип операции:
+- "in" — поступление средств;
+- "out" — списание, оплата, перевод или снятие средств;
+- "none" — операция не является платёжной или тип нельзя определить с высокой уверенностью.
+
+Возвращай только валидный JSON без пояснений:
+
+{
+  "value": "in" | "out" | "none"
+}
+
+Правила:
+1. Используй "in" или "out" только при высокой уверенности.
+2. Если нет явного поступления или списания средств, используй "none".
+3. Баланс сам по себе не является операцией.
+4. Не добавляй дополнительных полей.
+PROMPT;
+
+    private const PAYMENT_DETAILS_EXTRACTION_PROMPT = <<<'PROMPT'
+Извлеки из текста SMS или push-уведомления данные финансовой операции.
+
+Возвращай только валидный JSON без пояснений:
+
+{
+  "amount": string | null,
+  "card": string | null,
+  "balance": string | null
+}
+
+Правила:
+1. amount — сумма самой операции, а не баланс.
+2. balance — баланс после операции, если он явно указан. Иначе null.
+3. amount и balance возвращай строкой без валюты, пробелов и разделителей тысяч.
+4. Если есть копейки/центы, используй точку как десятичный разделитель.
+5. Примеры нормализации:
+   - "1 000.00 uah" → "1000.00"
+   - "+1 000.00 ₴" → "1000.00"
+   - "1 000,50 грн" → "1000.50"
+   - "1000" → "1000"
+6. card — только последние 4 цифры карты, счёта или реквизитов, если они явно указаны.
+7. Если указано несколько чисел, не используй баланс как amount или card.
+8. Если сумму, карту или баланс определить нельзя, верни null в соответствующем поле.
+9. Не добавляй дополнительных полей.
+PROMPT;
+
     protected ?PaymentGateway $paymentGateway = null;
 
     public function __construct(
         protected SmsAmountParsingProfileResolver $profileResolver = new SmsAmountParsingProfileResolver,
     ) {}
 
-    public function parse(string $sender, string $message): ?ParserResultValue
+    /**
+     * @return array{operation_type: string, amount: string, card: ?string, balance: ?string}|null
+     */
+    public function parse(string $sender, string $message): ?array
+    {
+        if ($this->containsStopWord($message)) {
+            return null;
+        }
+
+        if (! $this->containsCurrencyMarker($message)) {
+            return null;
+        }
+
+        $operationType = $this->classifyOperation($sender, $message);
+
+        if (! in_array($operationType, ['in', 'out'], true)) {
+            return null;
+        }
+
+        $details = $this->extractPaymentDetails($sender, $message);
+        $amount = $details['amount'] ?? null;
+
+        if (! is_string($amount) || $amount === '') {
+            return null;
+        }
+
+        return [
+            'operation_type' => $operationType,
+            'amount' => $amount,
+            'card' => $this->nullableString($details['card'] ?? null),
+            'balance' => $this->nullableString($details['balance'] ?? null),
+        ];
+    }
+
+    public function parseLegacy(string $sender, string $message): ?ParserResultValue
     {
         $this->paymentGateway = $this->getGatewayBySender($sender);
 
@@ -94,21 +180,12 @@ class Parser
         $triggerPatterns = $profile->triggerPatterns();
         $exceptions = $profile->exceptionPatterns();
 
-        $stopWords = Cache::remember('sms_stop_words', 60, function () {
-            return SmsStopWord::all()->pluck('word')->toArray();
-        });
-
         $message = NormalizeMessage::normalize($message);
 
         $amount = null;
 
-        foreach ($stopWords as $stopWord) {
-            $regex = '/(|^|\s|;)'.$stopWord.'(\s|\.|:)/mi';
-            preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
-
-            if (! empty($matches[0])) {
-                return null;
-            }
+        if ($this->containsStopWord($message)) {
+            return null;
         }
 
         foreach ($exceptions as $exception) {
@@ -186,6 +263,86 @@ class Parser
         }
 
         return $amount;
+    }
+
+    protected function containsStopWord(string $message): bool
+    {
+        $stopWords = Cache::remember('sms_stop_words', 60, function () {
+            return SmsStopWord::all()->pluck('word')->toArray();
+        });
+
+        $message = NormalizeMessage::normalize($message);
+
+        foreach ($stopWords as $stopWord) {
+            $regex = '/(|^|\s|;)'.$stopWord.'(\s|\.|:)/mi';
+            preg_match_all($regex, $message, $matches, PREG_SET_ORDER);
+
+            if (! empty($matches[0])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function containsCurrencyMarker(string $message): bool
+    {
+        $markers = implode('|', array_map(
+            fn (Currency $currency): string => $this->profileResolver->resolve($currency)->amountCurrencyMarkers(),
+            [Currency::RUB(), Currency::KZT(), Currency::UAH()]
+        ));
+
+        $regex = '/(^|[\s+\-.,:;|]|\d)('.$markers.')($|[\s.,:;|]|\d)/iu';
+
+        return preg_match($regex, NormalizeMessage::normalize($message)) === 1;
+    }
+
+    protected function classifyOperation(string $sender, string $message): ?string
+    {
+        $response = $this->askOpenAi(self::OPERATION_CLASSIFICATION_PROMPT, $sender, $message);
+        $value = $response['value'] ?? null;
+
+        return is_string($value) ? $value : null;
+    }
+
+    /**
+     * @return array{amount?: mixed, card?: mixed, balance?: mixed}
+     */
+    protected function extractPaymentDetails(string $sender, string $message): array
+    {
+        return $this->askOpenAi(self::PAYMENT_DETAILS_EXTRACTION_PROMPT, $sender, $message) ?? [];
+    }
+
+    protected function askOpenAi(string $systemPrompt, string $sender, string $message): ?array
+    {
+        try {
+            $openAi = app(OpenAiServiceContract::class);
+            $settings = $openAi->getSettings();
+            $model = $settings->selected_model;
+
+            if (! is_string($model) || $model === '') {
+                return null;
+            }
+
+            $response = $openAi->prompt(
+                prompt: "sender: {$sender}\nmessage: {$message}",
+                systemPrompt: $systemPrompt,
+                model: $model,
+            );
+
+            $decoded = json_decode($response, true, flags: JSON_THROW_ON_ERROR);
+
+            return is_array($decoded) ? $decoded : null;
+        } catch (ConnectionException|JsonException|RuntimeException $exception) {
+            report($exception);
+
+            return null;
+        }
+    }
+
+    protected function nullableString(mixed $value): ?string
+    {
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     public function getGatewayBySender(string $sender): ?PaymentGateway

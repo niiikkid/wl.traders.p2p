@@ -38,7 +38,7 @@ class SmsController extends Controller
             return response()->success();
         }
 
-        HandleSmsJob::dispatch(
+        HandleSmsJob::dispatchSync(
             SmsDTO::fromArray($request->validated() + [
                 'deviceID' => $device->id,
             ])

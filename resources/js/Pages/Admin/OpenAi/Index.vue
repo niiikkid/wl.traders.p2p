@@ -194,7 +194,7 @@ const sendPrompt = () => {
                             <fieldset class="fieldset">
                                 <legend class="fieldset-legend">Ответ модели (JSON)</legend>
                                 <p v-if="!test_model_output && !test_response" class="label">
-                                    После успешного запроса здесь появится распознанный JSON из поля <code class="text-xs">output → message → content → output_text</code>.
+                                    После успешного запроса здесь появится распознанный.
                                 </p>
                                 <div
                                     v-else-if="test_model_output"

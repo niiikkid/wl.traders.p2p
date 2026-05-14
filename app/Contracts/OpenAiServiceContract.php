@@ -15,4 +15,9 @@ interface OpenAiServiceContract
     public function prompt(string $prompt, ?string $systemPrompt = null, ?string $model = null): string;
 
     public function promptRaw(string $prompt, ?string $systemPrompt = null, ?string $model = null): array;
+
+    /**
+     * Extract plain assistant text from OpenAI Responses API JSON payload (`output` → `message` → `output_text` → `text`).
+     */
+    public function assistantOutputTextFromResponse(array $response): string;
 }

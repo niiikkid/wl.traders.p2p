@@ -109,30 +109,17 @@ class OpenAiSettingController extends Controller
      */
     private function formatOpenAiAssistantOutputText(array $response): ?string
     {
-        foreach ($response['output'] ?? [] as $item) {
-            if (($item['type'] ?? '') !== 'message') {
-                continue;
-            }
+        $text = services()->openAi()->assistantOutputTextFromResponse($response);
 
-            foreach ($item['content'] ?? [] as $block) {
-                if (($block['type'] ?? '') !== 'output_text') {
-                    continue;
-                }
-
-                $text = $block['text'] ?? null;
-                if (! is_string($text) || $text === '') {
-                    continue;
-                }
-
-                $decoded = json_decode($text, true);
-                if (json_last_error() === JSON_ERROR_NONE && (is_array($decoded) || is_object($decoded))) {
-                    return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                }
-
-                return $text;
-            }
+        if ($text === '') {
+            return null;
         }
 
-        return null;
+        $decoded = json_decode($text, true);
+        if (json_last_error() === JSON_ERROR_NONE && (is_array($decoded) || is_object($decoded))) {
+            return json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        }
+
+        return $text;
     }
 }

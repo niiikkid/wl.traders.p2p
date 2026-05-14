@@ -70,7 +70,31 @@ class OpenAiService implements OpenAiServiceContract
     {
         $response = $this->promptRaw($prompt, $systemPrompt, $model);
 
-        return (string) ($response['output_text'] ?? '');
+        return $this->assistantOutputTextFromResponse($response);
+    }
+
+    public function assistantOutputTextFromResponse(array $response): string
+    {
+        $parts = [];
+
+        foreach ($response['output'] ?? [] as $item) {
+            if (($item['type'] ?? '') !== 'message') {
+                continue;
+            }
+
+            foreach ($item['content'] ?? [] as $block) {
+                if (($block['type'] ?? '') !== 'output_text') {
+                    continue;
+                }
+
+                $text = $block['text'] ?? null;
+                if (is_string($text) && $text !== '') {
+                    $parts[] = $text;
+                }
+            }
+        }
+
+        return implode("\n", $parts);
     }
 
     public function promptRaw(string $prompt, ?string $systemPrompt = null, ?string $model = null): array
