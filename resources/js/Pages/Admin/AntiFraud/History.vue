@@ -6,7 +6,7 @@ import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
 import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
-import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import ApexCharts from 'apexcharts';
 
 defineOptions({ layout: AuthenticatedLayout });
@@ -16,6 +16,7 @@ const chartData = usePage().props.chart || { labels: [], series: [] };
 
 const chart = ref(null);
 const apexChart = ref(null);
+const historyFiltersPanel = ref(null);
 
 const chartStorageKey = 'display-antifraud-history-chart';
 const chartInitialDisplay = localStorage.getItem(chartStorageKey);
@@ -27,6 +28,11 @@ const toggleChartDisplay = () => {
     displayChart.value = !displayChart.value;
     localStorage.setItem(chartStorageKey, displayChart.value ? 'display' : 'hide');
 };
+const toggleHistoryFilters = () => {
+    historyFiltersPanel.value?.toggleFiltersDisplay();
+};
+const isHistoryFiltersOpen = computed(() => Boolean(historyFiltersPanel.value?.displayFilters));
+const hasActiveHistoryFilters = computed(() => Boolean(historyFiltersPanel.value?.hasActiveFilters));
 
 const colorProbeSpans = {};
 const getThemeColor = (token) => {
@@ -187,25 +193,61 @@ onBeforeUnmount(() => {
             :data="logs"
         >
             <template v-slot:button>
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
                     <button
                         type="button"
-                        class="btn btn-outline"
-                        @click="router.visit(route('admin.anti-fraud.settings.index'), { preserveScroll: true })"
+                        class="btn btn-sm btn-outline"
+                        @click="router.visit(route('admin.anti-fraud.history.index'), { preserveScroll: true })"
                     >
-                        К настройкам
+                        История
                     </button>
                     <button
                         type="button"
-                        class="btn btn-outline"
-                        @click="router.visit(route('admin.anti-fraud.clients.index'), { preserveScroll: true })"
+                        class="btn btn-sm btn-outline"
+                        @click="router.visit(route('admin.anti-fraud.settings.index'), { preserveScroll: true })"
                     >
-                        Клиенты
+                        Настройки
                     </button>
                 </div>
             </template>
             <template v-slot:table-filters>
-                <FiltersPanel name="anti-fraud-history">
+                <div class="flex justify-end mb-3">
+                    <div class="inline-flex items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm">
+                        <div class="relative inline-flex shrink-0">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
+                                :class="{ 'btn-active': isHistoryFiltersOpen }"
+                                :title="isHistoryFiltersOpen ? 'Скрыть фильтры' : 'Показать фильтры'"
+                                aria-label="Показать или скрыть фильтры"
+                                @click.prevent="toggleHistoryFilters"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                                </svg>
+                            </button>
+                            <span
+                                v-if="hasActiveHistoryFilters"
+                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
+                                aria-hidden="true"
+                                title="Есть применённые фильтры"
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-square btn-secondary btn-outline shrink-0 rounded-lg"
+                            :title="displayChart ? 'Скрыть статистику' : 'Показать статистику'"
+                            aria-label="Показать или скрыть статистику"
+                            @click="toggleChartDisplay"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <FiltersPanel ref="historyFiltersPanel" name="anti-fraud-history" :omit-default-toggle-button="true">
                     <InputFilter
                         name="merchant"
                         placeholder="Мерчант (имя или uuid)"
@@ -215,19 +257,6 @@ onBeforeUnmount(() => {
                         placeholder="Client ID"
                     />
                 </FiltersPanel>
-
-                <div class="flex justify-end mb-3">
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-square btn-primary"
-                        :title="displayChart ? 'Скрыть график' : 'Показать график'"
-                        @click="toggleChartDisplay"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-                        </svg>
-                    </button>
-                </div>
 
                 <div v-show="displayChart" class="card bg-base-100 shadow p-6">
                     <div class="flex flex-wrap items-center justify-between gap-3">

@@ -58,24 +58,26 @@ const formatRateLimits = (limits) => {
         <div class="space-y-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Антифрод</h2>
-                <div class="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-outline"
-                        @click="router.visit(route('admin.anti-fraud.history.index'), { preserveScroll: true })"
-                    >
-                        История
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-outline"
-                        @click="router.visit(route('admin.anti-fraud.clients.index'), { preserveScroll: true })"
-                    >
-                        Клиенты
-                    </button>
-                    <button type="button" class="btn btn-primary" @click="createSetting">
+                <div class="flex flex-wrap items-center justify-between gap-2 w-full sm:w-auto sm:justify-end">
+                    <button type="button" class="btn btn-sm btn-primary" @click="createSetting">
                         Создать настройки
                     </button>
+                    <div class="flex flex-wrap items-center justify-end gap-2 sm:ml-2">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline"
+                            @click="router.visit(route('admin.anti-fraud.history.index'), { preserveScroll: true })"
+                        >
+                            История
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline"
+                            @click="router.visit(route('admin.anti-fraud.clients.index'), { preserveScroll: true })"
+                        >
+                            Клиенты
+                        </button>
+                    </div>
                 </div>
             </div>
 
