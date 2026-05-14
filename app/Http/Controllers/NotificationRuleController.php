@@ -30,7 +30,7 @@ class NotificationRuleController extends Controller
             'user_id' => $user->id,
             'event' => $event,
             'message_scope' => $event === NotificationEvent::MESSAGE_RECEIVED
-                ? NotificationMessageScope::from($request->validated('message_scope', NotificationMessageScope::ALL->value))
+                ? NotificationMessageScope::ALL
                 : null,
             'currency' => ! $usesAmountFilters
                 ? null
@@ -63,9 +63,7 @@ class NotificationRuleController extends Controller
         $notificationRule->update([
             'event' => $event,
             'message_scope' => $event === NotificationEvent::MESSAGE_RECEIVED
-                ? NotificationMessageScope::from(
-                    $request->validated('message_scope', $notificationRule->message_scope?->value ?? NotificationMessageScope::ALL->value)
-                )
+                ? NotificationMessageScope::ALL
                 : null,
             'currency' => ! $usesAmountFilters
                 ? null
@@ -86,7 +84,9 @@ class NotificationRuleController extends Controller
     {
         Gate::authorize('access-to-self', $notificationRule->user);
 
-        $notificationRule->delete();
+        NotificationRule::query()
+            ->whereKey($notificationRule->id)
+            ->delete();
 
         return back();
     }

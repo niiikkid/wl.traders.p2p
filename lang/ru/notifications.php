@@ -48,6 +48,11 @@ return [
         'message_received' => [
             'title' => 'SMS/PUSH',
             'body' => '',
+            'operation_types' => [
+                'in' => 'Поступление средств',
+                'out' => 'Списание средств',
+                'none' => 'Не определено',
+            ],
         ],
     ],
     'telegram' => [

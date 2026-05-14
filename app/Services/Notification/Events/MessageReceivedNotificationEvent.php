@@ -53,11 +53,13 @@ class MessageReceivedNotificationEvent implements NotificationEventInterface
         return [
             'has_order' => (bool) $order,
             'message_type' => strtoupper($this->smsLog->type->value),
+            'operation_type' => strtolower((string) ($parsingResult['operation_type'] ?? 'none')),
             'sender' => $this->smsLog->sender,
             'message' => $this->smsLog->message,
             'bank_name' => $this->paymentGateway?->name ?? ($parsingResult['bank'] ?? null),
             'amount' => $parsingResult['amount'] ?? null,
             'card_last_digits' => $parsingResult['card'] ?? null,
+            'balance' => $parsingResult['balance'] ?? null,
             'device_name' => $this->smsLog->device?->name,
             'order_uid' => $order?->uuid,
             'order_created_at' => $order?->created_at?->format('d.m.Y H:i'),
