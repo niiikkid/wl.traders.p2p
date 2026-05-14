@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\MerchantCascadeSettingController;
 use App\Http\Controllers\Admin\MerchantResendCallbackController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
+use App\Http\Controllers\Admin\OpenAiSettingController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\PriceParserController;
 use App\Http\Controllers\Admin\ProfitCalculatorController;
@@ -395,6 +396,9 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/app', [App\Http\Controllers\Admin\ApkController::class, 'store'])->name('app.store');
         Route::get('/integration-api', [IntegrationApiController::class, 'index'])->name('integration-api.index');
         Route::post('/integration-api/regenerate-token', [IntegrationApiController::class, 'regenerateToken'])->name('integration-api.regenerate-token');
+        Route::get('/open-ai', [OpenAiSettingController::class, 'index'])->name('open-ai.index');
+        Route::patch('/open-ai', [OpenAiSettingController::class, 'update'])->name('open-ai.update');
+        Route::post('/open-ai/models', [OpenAiSettingController::class, 'refreshModels'])->name('open-ai.models.refresh');
         Route::get('/anti-fraud/settings', [AntiFraudSettingController::class, 'index'])->name('anti-fraud.settings.index');
         Route::post('/anti-fraud/settings', [AntiFraudSettingController::class, 'store'])->name('anti-fraud.settings.store');
         Route::patch('/anti-fraud/settings/{anti_fraud_setting}', [AntiFraudSettingController::class, 'update'])->name('anti-fraud.settings.update');

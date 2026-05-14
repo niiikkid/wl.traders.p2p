@@ -19,6 +19,7 @@ use App\Contracts\MerchantApiLogServiceContract;
 use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Contracts\MerchantServiceContract;
 use App\Contracts\NotificationServiceContract;
+use App\Contracts\OpenAiServiceContract;
 use App\Contracts\OrderPoolingServiceContract;
 use App\Contracts\OrderServiceContract;
 use App\Contracts\PaymentDetailServiceContract;
@@ -81,6 +82,7 @@ use App\Services\Merchant\MerchantService;
 use App\Services\MoneyHolder\FundsHolderService;
 use App\Services\Notification\NotificationService;
 use App\Services\Notification\Templates\NotificationTemplateResolver;
+use App\Services\OpenAi\OpenAiService;
 use App\Services\Order\OrderService;
 use App\Services\OrderCallback\CallbackService;
 use App\Services\OrderPooling\OrderPoolingService;
@@ -189,6 +191,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(ProfitServiceContract::class, function () {
             return new ProfitService;
+        });
+        $this->app->singleton(OpenAiServiceContract::class, function () {
+            return new OpenAiService;
         });
         $this->app->singleton(AntiFraudSettingServiceContract::class, function () {
             return new AntiFraudSettingService;
