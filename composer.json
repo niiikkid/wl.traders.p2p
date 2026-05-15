@@ -17,6 +17,7 @@
         "laravel-validation-rules/credit-card": "^1.9",
         "laravel/framework": "^11.31.0.0",
         "laravel/horizon": "^5.30",
+        "laravel/nightwatch": "^1.26",
         "laravel/pulse": "^1.4",
         "laravel/sanctum": "^4.0",
         "laravel/telescope": "^5.4",
