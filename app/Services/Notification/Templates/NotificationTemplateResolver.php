@@ -60,25 +60,28 @@ class NotificationTemplateResolver
     {
         $messageType = ($payload['message_type'] ?? '') !== '' ? (string) $payload['message_type'] : 'UNKNOWN';
         $deviceName = ($payload['device_name'] ?? '') !== '' ? (string) $payload['device_name'] : 'Неизвестно';
+        $operationType = strtolower((string) ($payload['operation_type'] ?? 'none'));
+        $operationLabel = trans("notifications.templates.message_received.operation_types.{$operationType}");
+
+        if ($operationLabel === "notifications.templates.message_received.operation_types.{$operationType}") {
+            $operationLabel = trans('notifications.templates.message_received.operation_types.none');
+        }
+
+        $bank = ($payload['bank_name'] ?? '') !== ''
+            ? (string) $payload['bank_name']
+            : (($payload['sender'] ?? '') !== '' ? (string) $payload['sender'] : '-');
+        $amount = ($payload['amount'] ?? '') !== '' ? (string) $payload['amount'] : '-';
+        $card = ($payload['card_last_digits'] ?? '') !== '' ? '•••• '.(string) $payload['card_last_digits'] : '-';
+        $balance = ($payload['balance'] ?? '') !== '' ? (string) $payload['balance'] : '-';
 
         $lines = [];
+        $lines[] = '<b>Операция:</b> '.$this->e($operationLabel);
         $lines[] = '<b>Тип:</b> '.$this->e($messageType);
         $lines[] = '<b>Устройство:</b> '.$this->e($deviceName);
-
-        if (! empty($payload['bank_name'])) {
-            $lines[] = '<b>Банк:</b> '.$this->e((string) $payload['bank_name']);
-        } else {
-            $sender = ($payload['sender'] ?? '') !== '' ? (string) $payload['sender'] : 'Неизвестно';
-            $lines[] = '<b>Отправитель:</b> '.$this->e($sender);
-        }
-
-        if (! empty($payload['amount'])) {
-            $lines[] = '<b>Сумма в сообщении:</b> '.$this->e((string) $payload['amount']);
-        }
-
-        if (! empty($payload['card_last_digits'])) {
-            $lines[] = '<b>Карта:</b> <code>•••• '.$this->e((string) $payload['card_last_digits']).'</code>';
-        }
+        $lines[] = '<b>Банк:</b> '.$this->e($bank);
+        $lines[] = '<b>Сумма:</b> '.$this->e($amount);
+        $lines[] = '<b>Карта:</b> <code>'.$this->e($card).'</code>';
+        $lines[] = '<b>Баланс:</b> '.$this->e($balance);
 
         $rawMessage = ($payload['message'] ?? '') !== '' ? (string) $payload['message'] : '-';
         $lines[] = '<b>Текст</b>';

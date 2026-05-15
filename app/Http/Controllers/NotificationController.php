@@ -142,7 +142,13 @@ class NotificationController extends Controller
         return [
             'order_assigned' => (int) (Order::query()->where('trader_id', $user->id)->max('id') ?? 0),
             'dispute_opened' => (int) (Dispute::query()->where('trader_id', $user->id)->max('id') ?? 0),
-            'message_received' => (int) (SmsLog::query()->where('user_id', $user->id)->max('id') ?? 0),
+            'message_received' => (int) (SmsLog::query()
+                ->where('user_id', $user->id)
+                ->whereNotNull('parsing_result')
+                ->whereRaw(
+                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) IN ('in', 'out')"
+                )
+                ->max('id') ?? 0),
         ];
     }
 

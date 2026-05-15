@@ -41,9 +41,9 @@ const eventLabels = computed(() => {
     return Object.fromEntries((filtersVariants.value.event ?? []).map((item) => [item.value, item.name]));
 });
 
-const messageScopeLabels = computed(() => {
-    return Object.fromEntries((filtersVariants.value.message_scope ?? []).map((item) => [item.value, item.name]));
-});
+const messageScopeLabels = {
+    all: 'Для всех сообщений',
+};
 
 const soundEventLabels = {
     order_assigned: 'Новая сделка',
@@ -154,8 +154,8 @@ const initRuleDefaults = () => {
         ruleForm.event = filtersVariants.value.event[0].value;
     }
 
-    if (!ruleForm.message_scope && (filtersVariants.value.message_scope ?? []).length) {
-        ruleForm.message_scope = filtersVariants.value.message_scope[0].value;
+    if (!ruleForm.message_scope) {
+        ruleForm.message_scope = 'all';
     }
 };
 
@@ -266,10 +266,11 @@ watch(() => ruleForm.event, (value) => {
     }
 
     if (value === 'message.received' && !ruleForm.message_scope) {
-        ruleForm.message_scope = filtersVariants.value.message_scope?.[0]?.value ?? 'all';
+        ruleForm.message_scope = 'all';
     }
 
     if (value === 'message.received') {
+        ruleForm.message_scope = 'all';
         ruleForm.currency = '';
         ruleForm.min_amount = '';
     }
@@ -434,17 +435,6 @@ router.on('success', () => {
                                 </select>
                                 <InputError :message="ruleForm.errors.event" />
                             </div>
-                            <div v-if="isMessageEvent">
-                                <label class="label">
-                                    <span class="label-text">Условие для сообщений</span>
-                                </label>
-                                <select v-model="ruleForm.message_scope" class="select select-bordered w-full">
-                                    <option v-for="scope in filtersVariants.message_scope" :key="scope.value" :value="scope.value">
-                                        {{ scope.name }}
-                                    </option>
-                                </select>
-                                <InputError :message="ruleForm.errors.message_scope" />
-                            </div>
                             <div v-if="showCurrencyFilter">
                                 <label class="label">
                                     <span class="label-text">Валюта (опционально)</span>
@@ -499,9 +489,7 @@ router.on('success', () => {
                                         <span class="badge badge-ghost badge-xs">
                                             Telegram
                                         </span>
-                                        <span v-if="rule.message_scope" class="badge badge-outline badge-xs">
-                                            {{ messageScopeLabels[rule.message_scope] ?? rule.message_scope }}
-                                        </span>
+                            
                                         <span v-if="hasRuleAmount(rule)" class="badge badge-outline badge-xs">
                                             {{ ruleAmountLabel(rule) }}
                                         </span>

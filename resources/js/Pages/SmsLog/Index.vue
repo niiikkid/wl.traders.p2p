@@ -5,14 +5,11 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal.js";
-import Modal from "@/Components/Modals/Modal.vue";
 import {computed, onMounted, ref} from "vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
-import GatewayLogo from "@/Components/GatewayLogo.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 
 const modalStore = useModalStore();
@@ -23,20 +20,10 @@ const smsLogs = computed(() => page.props.smsLogs);
 const smsLogsTotalCount = computed(() => page.props.smsLogsTotalCount);
 const senderStopList = computed(() => page.props.senderStopList);
 const smsStopWords = computed(() => page.props.smsStopWords);
-const paymentGateways = computed(() => page.props.paymentGateways ?? []);
-const recentPaymentGateways = computed(() => page.props.recentPaymentGateways ?? []);
 const expandedCards = ref({});
 const currentTab = ref('logs');
 const newStopWord = ref('');
 const tableFiltersStore = useTableFiltersStore();
-const isAddSenderModalOpen = ref(false);
-const selectedSmsLog = ref(null);
-const selectedPaymentGatewayId = ref(null);
-const gatewaySearch = ref('');
-const pendingConfirmGatewayId = ref(null);
-const addSenderToGatewayForm = useForm({
-    payment_gateway_id: null,
-});
 
 const toggleExpand = (id) => {
     expandedCards.value[id] = !expandedCards.value[id];
@@ -56,80 +43,6 @@ const confirmAddSenderToStopLost = (smsLog) => {
                 },
             });
         }
-    });
-};
-
-const openAddSenderModal = (smsLog) => {
-    selectedSmsLog.value = smsLog;
-    selectedPaymentGatewayId.value = null;
-    gatewaySearch.value = '';
-    pendingConfirmGatewayId.value = null;
-    addSenderToGatewayForm.reset();
-    addSenderToGatewayForm.clearErrors();
-    isAddSenderModalOpen.value = true;
-};
-
-const closeAddSenderModal = () => {
-    isAddSenderModalOpen.value = false;
-    selectedSmsLog.value = null;
-    selectedPaymentGatewayId.value = null;
-    gatewaySearch.value = '';
-    pendingConfirmGatewayId.value = null;
-    addSenderToGatewayForm.reset();
-    addSenderToGatewayForm.clearErrors();
-};
-
-const filteredPaymentGateways = computed(() => {
-    const query = gatewaySearch.value.trim().toLowerCase();
-    if (!query) {
-        return recentPaymentGateways.value;
-    }
-
-    return paymentGateways.value.filter((paymentGateway) => {
-        return paymentGateway.name.toLowerCase().includes(query);
-    });
-});
-
-const selectedPaymentGateway = computed(() => {
-    if (!selectedPaymentGatewayId.value) {
-        return null;
-    }
-
-    return paymentGateways.value.find((paymentGateway) => paymentGateway.id === selectedPaymentGatewayId.value) ?? null;
-});
-
-/** Шаг подтверждения только после «Добавить», не при пустом выборе (null === null давало ложное совпадение). */
-const isAddSenderConfirmStep = computed(() => {
-    return (
-        selectedPaymentGatewayId.value != null
-        && pendingConfirmGatewayId.value != null
-        && pendingConfirmGatewayId.value === selectedPaymentGatewayId.value
-    );
-});
-
-const requestSenderAddingConfirmation = () => {
-    if (!selectedPaymentGatewayId.value) {
-        return;
-    }
-
-    pendingConfirmGatewayId.value = selectedPaymentGatewayId.value;
-};
-
-const addSenderToPaymentGateway = () => {
-    if (!selectedSmsLog.value || !selectedPaymentGatewayId.value) {
-        return;
-    }
-
-    addSenderToGatewayForm.payment_gateway_id = selectedPaymentGatewayId.value;
-    addSenderToGatewayForm.post(route('admin.sender-payment-gateway.store', selectedSmsLog.value.id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            closeAddSenderModal();
-            router.reload({
-                preserveScroll: true,
-                only: ['smsLogs', 'smsLogsTotalCount', 'filters', 'paymentGateways', 'recentPaymentGateways'],
-            });
-        },
     });
 };
 
@@ -179,6 +92,32 @@ const addSmsStopWord = () => {
             })
         },
     });
+}
+
+const paymentDirectionLabel = (smsLog) => {
+    const operationType = smsLog?.parsing_result?.operation_type;
+
+    return operationType === 'in'
+        ? 'Поступление'
+        : (operationType === 'out' ? 'списание' : 'неопределено');
+}
+
+const paymentDirectionBadgeClass = (smsLog) => {
+    const operationType = smsLog?.parsing_result?.operation_type;
+
+    if (operationType === 'in') {
+        return 'badge-success';
+    }
+
+    if (operationType === 'out') {
+        return 'badge-error';
+    }
+
+    return 'badge-neutral';
+}
+
+const messageTypeBadgeClass = (type) => {
+    return type === 'push' ? 'badge-info' : 'badge-accent';
 }
 
 onMounted(() => {
@@ -289,22 +228,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                             ID
                                         </th>
                                         <th scope="col">
-                                            Отправитель
-                                        </th>
-                                        <th scope="col">
                                             Сообщение
                                         </th>
-                                        <th scope="col" v-if="viewStore.isAdminViewMode">
-                                            Парсинг
+                                        <th scope="col">
+                                            Операции
                                         </th>
                                         <th scope="col">
-                                            Тип
-                                        </th>
-                                        <th scope="col" class="text-nowrap">
-                                            UUID сделки
-                                        </th>
-                                        <th scope="col">
-                                            Профиль
+                                            Приложение
                                         </th>
                                         <th scope="col">
                                             Время
@@ -317,73 +247,51 @@ defineOptions({ layout: AuthenticatedLayout })
                                             {{ sms_log.id }}
                                         </th>
                                         <td>
-                                            <div class="flex items-center gap-2">
-                                                <template v-if="!viewStore.isAdminViewMode">
-                                                    <div class="flex items-center gap-3">
-                                                        <GatewayLogo v-if="sms_log.payment_gateway" :img_path="sms_log.payment_gateway.logo_path" class="w-10 h-10"/>
-                                                        <div v-if="sms_log.payment_gateway" class="text-nowrap text-xs">
-                                                            {{ sms_log.payment_gateway.name }}
-                                                        </div>
-                                                        <div v-else>
-                                                            Неизвестный банк
-                                                        </div>
+                                            <div class="space-y-1">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="text-primary text-xs text-nowrap">
+                                                        {{ sms_log.sender }}
                                                     </div>
-                                                </template>
-                                                <template v-else>
-                                                    <div class="flex items-center gap-3">
-                                                        <GatewayLogo v-if="sms_log.payment_gateway" :img_path="sms_log.payment_gateway.logo_path" class="w-10 h-10"/>
-                                                        <div>
-                                                            <div v-if="!sms_log.payment_gateway">
-                                                                {{ sms_log.sender }}
-                                                            </div>
-                                                            <div v-else class="text-nowrap text-xs">
-                                                                {{ sms_log.payment_gateway.name }}
-                                                            </div>
-                                                        </div>
+                                                    <span class="badge badge-outline badge-xs" :class="messageTypeBadgeClass(sms_log.type)">
+                                                        {{ sms_log.type.toUpperCase() }}
+                                                    </span>
+                                                    <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-0.5">
+                                                        <button
+                                                            @click.prevent="confirmAddSenderToStopLost(sms_log)"
+                                                            class="btn btn-ghost btn-xs text-error"
+                                                            aria-label="Добавить в стоп-лист"
+                                                        >
+                                                            <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                                            </svg>
+                                                        </button>
                                                     </div>
-                                                    <div v-if="!sms_log.sender_exists">
-                                                        <div class="flex items-center gap-0.5">
-                                                            <button
-                                                                @click.prevent="openAddSenderModal(sms_log)"
-                                                                class="btn btn-ghost btn-xs text-success"
-                                                                aria-label="Добавить отправителя в банк"
-                                                            >
-                                                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12 4.7 4.5L19 7"/>
-                                                                </svg>
-                                                            </button>
-                                                            <button
-                                                                @click.prevent="confirmAddSenderToStopLost(sms_log)"
-                                                                class="btn btn-ghost btn-xs text-error"
-                                                                aria-label="Добавить в стоп-лист"
-                                                            >
-                                                                <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
-                                                                </svg>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </template>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style="min-width: 100px; max-width: 150px">{{ sms_log.message }}</div>
-                                        </td>
-                                        <td v-if="viewStore.isAdminViewMode">
-                                            <div v-if="sms_log.parsing_result">
-                                                <div v-if="sms_log.parsing_result.amount" class="flex gap-1">
-                                                    <div>{{sms_log.parsing_result.amount}} {{sms_log.payment_gateway?.currency?.toUpperCase()}}</div>
                                                 </div>
-                                                <div v-if="sms_log.parsing_result.card" class="flex gap-1">
-                                                    <div>*{{sms_log.parsing_result.card}}</div>
+                                                <div class="text-base-content" style="min-width: 100px; max-width: 220px">
+                                                    {{ sms_log.message }}
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            {{ sms_log.type }}
-                                        </td>
-                                        <td>
-                                            <DisplayUUID v-if="sms_log.order?.uuid" :uuid="sms_log.order?.uuid"/>
+                                            <div class="space-y-1">
+                                                <span class="badge badge-sm whitespace-nowrap" :class="paymentDirectionBadgeClass(sms_log)">
+                                                    {{ paymentDirectionLabel(sms_log) }}
+                                                </span>
+                                                <div v-if="['in', 'out'].includes(sms_log?.parsing_result?.operation_type)" class="text-xs space-y-0.5">
+                                                    <div v-if="sms_log.parsing_result?.bank">
+                                                        Банк: {{ sms_log.parsing_result.bank }}
+                                                    </div>
+                                                    <div v-if="sms_log.parsing_result?.amount">
+                                                        Сумма: {{ sms_log.parsing_result.amount }}
+                                                    </div>
+                                                    <div v-if="sms_log.parsing_result?.card">
+                                                        Карта: *{{ sms_log.parsing_result.card }}
+                                                    </div>
+                                                    <div v-if="sms_log.parsing_result?.balance">
+                                                        Баланс: {{ sms_log.parsing_result.balance }}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td class="text-nowrap">
                                             <div>
@@ -424,59 +332,30 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </div>
 
                                     <div class="flex items-center justify-between gap-3">
-                                        <div class="flex items-center gap-3">
-                                            <GatewayLogo v-if="sms_log.payment_gateway" :img_path="sms_log.payment_gateway.logo_path" class="w-10 h-10"/>
+                                        <div class="flex min-w-0 flex-1 items-center gap-2">
                                             <div class="min-w-0">
-                                                <!-- Не админ: показываем только банк/логотип или 'Неизвестный банк' -->
-                                                <template v-if="!viewStore.isAdminViewMode">
-                                                    <div v-if="sms_log.payment_gateway" class="text-nowrap text-xs opacity-70">
-                                                        <span class="block sm:hidden truncate w-25">{{ sms_log.payment_gateway.name }}</span>
-                                                        <span class="hidden sm:block">{{ sms_log.payment_gateway.name }}</span>
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <div class="text-primary text-sm font-medium text-nowrap">
+                                                        {{ sms_log.sender }}
                                                     </div>
-                                                    <div v-else class="text-xs opacity-70">
-                                                        Неизвестный банк
+                                                    <span class="badge badge-outline badge-xs shrink-0" :class="messageTypeBadgeClass(sms_log.type)">
+                                                        {{ sms_log.type.toUpperCase() }}
+                                                    </span>
+                                                    <div v-if="viewStore.isAdminViewMode" class="flex items-center gap-0.5">
+                                                        <button
+                                                            @click.prevent="confirmAddSenderToStopLost(sms_log)"
+                                                            class="btn btn-ghost btn-xs text-error"
+                                                            aria-label="Добавить в стоп-лист"
+                                                        >
+                                                            <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                                            </svg>
+                                                        </button>
                                                     </div>
-                                                </template>
-                                                <!-- Админ: если банк не определен, показываем sender; иначе банк -->
-                                                <template v-else>
-                                                    <div v-if="!sms_log.payment_gateway" class="flex items-center">
-                                                        <div class="font-medium">
-                                                            {{ sms_log.sender }}
-                                                        </div>
-                                                        <div v-if="viewStore.isAdminViewMode && !sms_log.sender_exists">
-                                                            <div class="flex items-center gap-0.5">
-                                                                <button
-                                                                    @click.prevent="openAddSenderModal(sms_log)"
-                                                                    class="btn btn-ghost btn-xs text-success"
-                                                                    aria-label="Добавить отправителя в банк"
-                                                                >
-                                                                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m5 12 4.7 4.5L19 7"/>
-                                                                    </svg>
-                                                                </button>
-                                                                <button
-                                                                    @click.prevent="confirmAddSenderToStopLost(sms_log)"
-                                                                    class="btn btn-ghost btn-xs text-error"
-                                                                    aria-label="Добавить в стоп-лист"
-                                                                >
-                                                                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div v-else class="text-nowrap text-xs opacity-70">
-                                                        <span class="block sm:hidden truncate w-25">{{ sms_log.payment_gateway.name }}</span>
-                                                        <span class="hidden sm:block">{{ sms_log.payment_gateway.name }}</span>
-                                                    </div>
-                                                </template>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="text-sm">
-                                            <div class="font-medium">{{ sms_log.type.toUpperCase() }}</div>
-                                        </div>
-                                        <div class="flex items-center gap-1">
+                                        <div class="flex shrink-0 items-center gap-1">
                                             <button
                                                 class="btn btn-primary btn-xs"
                                                 @click.stop="toggleExpand(sms_log.id)"
@@ -506,17 +385,24 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </div>
 
-                                    <div v-if="!!expandedCards[sms_log.id] && sms_log.parsing_result && viewStore.isAdminViewMode" class="bg-base-300/40 rounded-box p-2">
-                                        <div class="flex items-center gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-info">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z" />
-                                            </svg>
-                                            <div v-if="sms_log.parsing_result?.amount">
-                                                Сумма: {{ sms_log.parsing_result.amount }} {{ sms_log.payment_gateway?.currency?.toUpperCase() }}
-                                            </div>
-                                            <div v-if="sms_log.parsing_result?.card">
-                                                Карта: *{{ sms_log.parsing_result.card }}
-                                            </div>
+                                    <div class="flex flex-wrap items-center gap-2 pt-1">
+                                        <span class="badge badge-sm whitespace-nowrap" :class="paymentDirectionBadgeClass(sms_log)">
+                                            {{ paymentDirectionLabel(sms_log) }}
+                                        </span>
+                                    </div>
+
+                                    <div v-if="['in', 'out'].includes(sms_log?.parsing_result?.operation_type)" class="text-xs space-y-0.5 pt-1 text-base-content/90">
+                                        <div v-if="sms_log.parsing_result?.bank">
+                                            Банк: {{ sms_log.parsing_result.bank }}
+                                        </div>
+                                        <div v-if="sms_log.parsing_result?.amount">
+                                            Сумма: {{ sms_log.parsing_result.amount }}
+                                        </div>
+                                        <div v-if="sms_log.parsing_result?.card">
+                                            Карта: *{{ sms_log.parsing_result.card }}
+                                        </div>
+                                        <div v-if="sms_log.parsing_result?.balance">
+                                            Баланс: {{ sms_log.parsing_result.balance }}
                                         </div>
                                     </div>
 
@@ -535,14 +421,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
                                                 </svg>
                                                 <span class="text-base-content truncate">{{ sms_log.device?.name }}</span>
-                                            </div>
-                                        </div>
-                                        <div v-if="sms_log.order?.uuid" class="bg-base-300/40 rounded-box p-2">
-                                            <div class="flex items-center gap-2">
-                                                <svg class="size-4 text-info" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 17.345a4.76 4.76 0 0 0 2.558 1.618c2.274.589 4.512-.446 4.999-2.31.487-1.866-1.273-3.9-3.546-4.49-2.273-.59-4.034-2.623-3.547-4.488.486-1.865 2.724-2.899 4.998-2.31.982.236 1.87.793 2.538 1.592m-3.879 12.171V21m0-18v2.2"/>
-                                                </svg>
-                                                <DisplayUUID v-if="sms_log.order?.uuid" :uuid="sms_log.order?.uuid"/>
                                             </div>
                                         </div>
                                     </div>
@@ -585,115 +463,6 @@ defineOptions({ layout: AuthenticatedLayout })
                 </template>
             </template>
         </MainTableSection>
-
-        <Modal :show="isAddSenderModalOpen" @close="closeAddSenderModal" maxWidth="md">
-            <div class="space-y-4">
-                <div class="flex items-start justify-between gap-3">
-                    <div>
-                        <h3 class="text-lg font-semibold">Добавить отправителя</h3>
-                        <p class="text-sm text-base-content/70">
-                            Отправитель: <span class="font-medium">{{ selectedSmsLog?.sender }}</span>
-                        </p>
-                    </div>
-                    <button class="btn btn-sm btn-ghost" @click="closeAddSenderModal" type="button">✕</button>
-                </div>
-
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">Поиск банка</span>
-                    </label>
-                    <input
-                        v-model="gatewaySearch"
-                        type="text"
-                        class="input input-bordered w-full"
-                        placeholder="Введите название банка"
-                    >
-                </div>
-
-                <div
-                    class="mx-auto w-full h-52 shrink-0 overflow-y-auto overflow-x-hidden border border-base-300 rounded-box"
-                >
-                    <div v-if="filteredPaymentGateways.length === 0" class="flex h-full items-center justify-center p-4 text-sm text-base-content/70">
-                        Банки не найдены.
-                    </div>
-                    <button
-                        v-for="paymentGateway in filteredPaymentGateways"
-                        :key="paymentGateway.id"
-                        type="button"
-                        class="w-full border-b border-base-300 py-2.5 pl-2.5 pr-3 text-left transition last:border-b-0"
-                        :class="selectedPaymentGatewayId === paymentGateway.id
-                            ? 'border-l-[3px] border-l-base-content/20 bg-base-200/60'
-                            : 'border-l-[3px] border-l-transparent hover:bg-base-200/50'"
-                        @click="selectedPaymentGatewayId = paymentGateway.id; pendingConfirmGatewayId = null"
-                    >
-                        <div class="flex min-w-0 items-center gap-3">
-                            <img
-                                v-if="paymentGateway.logo_path"
-                                :src="paymentGateway.logo_path"
-                                class="size-8 shrink-0 rounded opacity-90"
-                                alt="Логотип банка"
-                                loading="lazy"
-                                decoding="async"
-                            >
-                            <div
-                                class="min-w-0 truncate text-sm"
-                                :class="selectedPaymentGatewayId === paymentGateway.id ? 'font-medium text-base-content' : 'text-base-content/80'"
-                            >
-                                {{ paymentGateway.name }}
-                            </div>
-                        </div>
-                    </button>
-                </div>
-
-                <div
-                    v-if="selectedPaymentGateway"
-                    class="rounded-box border border-base-300/80 bg-base-200/30 p-3"
-                >
-                    <div class="text-xs font-medium text-base-content/55">
-                        Выбран банк
-                    </div>
-                    <div class="mt-1.5 flex min-w-0 items-center gap-3">
-                        <img
-                            v-if="selectedPaymentGateway.logo_path"
-                            :src="selectedPaymentGateway.logo_path"
-                            class="size-9 shrink-0 rounded-md opacity-95"
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                        >
-                        <div class="min-w-0 text-base font-semibold text-base-content">
-                            {{ selectedPaymentGateway.name }}
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="addSenderToGatewayForm.errors.payment_gateway_id" class="alert alert-error alert-soft text-sm">
-                    {{ addSenderToGatewayForm.errors.payment_gateway_id }}
-                </div>
-
-                <div class="flex justify-end gap-2">
-                    <button type="button" class="btn btn-sm" @click="closeAddSenderModal">Отмена</button>
-                    <button
-                        v-if="!isAddSenderConfirmStep"
-                        type="button"
-                        class="btn btn-sm btn-success"
-                        :disabled="!selectedPaymentGatewayId || addSenderToGatewayForm.processing"
-                        @click="requestSenderAddingConfirmation"
-                    >
-                        Добавить
-                    </button>
-                    <button
-                        v-if="isAddSenderConfirmStep"
-                        type="button"
-                        class="btn btn-sm btn-warning"
-                        :disabled="addSenderToGatewayForm.processing"
-                        @click="addSenderToPaymentGateway"
-                    >
-                        Вы уверены?
-                    </button>
-                </div>
-            </div>
-        </Modal>
 
         <ConfirmModal/>
     </div>

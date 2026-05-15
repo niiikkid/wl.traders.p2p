@@ -7,19 +7,26 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\API\SMS\StoreRequest;
 use App\Jobs\HandleSmsJob;
 use App\Models\SenderStopList;
+use App\Services\Sms\Parser;
 use App\Services\Sms\Utils\NormalizeMessage;
 
 class SmsController extends Controller
 {
+    private const MAX_INCOMING_SMS_MESSAGE_LENGTH = 200;
+
     public function store(StoreRequest $request)
     {
         $device = services()->device()->get($request->header('Access-Token'));
 
-        if (!$device->android_id) {
+        if (! $device->android_id) {
             return response()->failWithMessage('Устройство не подключено', 401);
         }
 
         services()->device()->ping($device);
+
+        if (mb_strlen($request->message) > self::MAX_INCOMING_SMS_MESSAGE_LENGTH) {
+            return response()->success();
+        }
 
         $sender = NormalizeMessage::normalize($request->sender);
 
@@ -32,10 +39,14 @@ class SmsController extends Controller
             return response()->success();
         }
 
-        HandleSmsJob::dispatch(
+        if ((new Parser)->hasStopWord($request->message)) {
+            return response()->success();
+        }
+
+        HandleSmsJob::dispatchSync(
             SmsDTO::fromArray($request->validated() + [
-                    'deviceID' => $device->id,
-                ])
+                'deviceID' => $device->id,
+            ])
         );
 
         return response()->success();

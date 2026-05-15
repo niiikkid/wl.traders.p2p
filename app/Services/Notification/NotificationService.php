@@ -64,8 +64,14 @@ class NotificationService implements NotificationServiceContract
         }
 
         if ($event->type()->equals(NotificationEvent::MESSAGE_RECEIVED)) {
-            $messageScope = $rule->message_scope ?? NotificationMessageScope::ALL;
             $eventPayload = $event->payload();
+            $operationType = strtolower((string) ($eventPayload['operation_type'] ?? 'none'));
+
+            if (! in_array($operationType, ['in', 'out'], true)) {
+                return false;
+            }
+
+            $messageScope = $rule->message_scope ?? NotificationMessageScope::ALL;
             $hasOrder = (bool) ($eventPayload['has_order'] ?? false);
 
             if ($messageScope === NotificationMessageScope::WITH_ORDER && ! $hasOrder) {

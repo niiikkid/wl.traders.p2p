@@ -2,32 +2,33 @@
 
 namespace App\Services;
 
+use App\Contracts\AntiFraudServiceContract;
+use App\Contracts\AntiFraudSettingServiceContract;
+use App\Contracts\CallbackServiceContract;
+use App\Contracts\CascadeProviderServiceContract;
+use App\Contracts\CascadeServiceContract;
 use App\Contracts\DeviceServiceContract;
 use App\Contracts\DisputeServiceContract;
 use App\Contracts\FundsHolderServiceContract;
 use App\Contracts\InvoiceServiceContract;
 use App\Contracts\LoginHistoryServiceContract;
 use App\Contracts\MarketServiceContract;
-use App\Contracts\CallbackServiceContract;
 use App\Contracts\MerchantApiLogServiceContract;
 use App\Contracts\MerchantApiStatisticsServiceContract;
+use App\Contracts\MerchantServiceContract;
+use App\Contracts\NotificationServiceContract;
+use App\Contracts\OpenAiServiceContract;
+use App\Contracts\OrderPoolingServiceContract;
 use App\Contracts\OrderServiceContract;
+use App\Contracts\PaymentDetailServiceContract;
 use App\Contracts\PayoutServiceContract;
+use App\Contracts\ProfitServiceContract;
 use App\Contracts\ServiceBuilderContract;
 use App\Contracts\SettingsServiceContract;
 use App\Contracts\SmsServiceContract;
-use App\Contracts\WalletServiceContract;
-use App\Contracts\OrderPoolingServiceContract;
-use App\Contracts\UserServiceContract;
-use App\Contracts\PaymentDetailServiceContract;
-use App\Contracts\MerchantServiceContract;
-use App\Contracts\ProfitServiceContract;
-use App\Contracts\AntiFraudSettingServiceContract;
-use App\Contracts\AntiFraudServiceContract;
-use App\Contracts\NotificationServiceContract;
 use App\Contracts\TelegramServiceContract;
-use App\Contracts\CascadeProviderServiceContract;
-use App\Contracts\CascadeServiceContract;
+use App\Contracts\UserServiceContract;
+use App\Contracts\WalletServiceContract;
 
 class ServiceBuilder implements ServiceBuilderContract
 {
@@ -124,6 +125,11 @@ class ServiceBuilder implements ServiceBuilderContract
     public function profit(): ProfitServiceContract
     {
         return make(ProfitServiceContract::class);
+    }
+
+    public function openAi(): OpenAiServiceContract
+    {
+        return app(OpenAiServiceContract::class);
     }
 
     public function antiFraudSetting(): AntiFraudSettingServiceContract
