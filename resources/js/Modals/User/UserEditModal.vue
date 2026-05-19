@@ -35,6 +35,7 @@ const form = ref({
     can_work_without_device: false,
     is_vip: false,
     payouts_enabled: true,
+    priority_payout_access_enabled: false,
     payout_hold_enabled: true,
     payout_hold_minutes: 60,
     payout_active_payouts_limit: 1,
@@ -84,6 +85,7 @@ const resetState = () => {
         can_work_without_device: false,
         is_vip: false,
         payouts_enabled: true,
+        priority_payout_access_enabled: false,
         payout_hold_enabled: true,
         payout_hold_minutes: 60,
         payout_active_payouts_limit: 1,
@@ -137,6 +139,7 @@ const loadUser = () => {
             form.value.can_work_without_device = !!data.can_work_without_device;
             form.value.is_vip = !!data.is_vip;
             form.value.payouts_enabled = data.payouts_enabled ?? true;
+            form.value.priority_payout_access_enabled = !!data.priority_payout_access_enabled;
             form.value.payout_hold_enabled = data.payout_hold_enabled ?? true;
             form.value.payout_hold_minutes = data.payout_hold_minutes ?? 60;
             form.value.payout_active_payouts_limit = data.payout_active_payouts_limit ?? 1;
@@ -406,6 +409,27 @@ watch(
                             >
                             <span class="label-text">Выплаты включены</span>
                         </label>
+                    </div>
+
+                    <div
+                        class="form-control w-fit mt-2"
+                        v-if="form.payouts_enabled && (isTrader(form.role_id) || isAdmin(form.role_id))"
+                    >
+                        <label class="label cursor-pointer gap-3">
+                            <input
+                                type="checkbox"
+                                class="toggle toggle-warning"
+                                v-model="form.priority_payout_access_enabled"
+                                :disabled="processing"
+                            >
+                            <span class="label-text">Приоритетный доступ к выплатам</span>
+                        </label>
+                    </div>
+                    <div
+                        v-if="form.payouts_enabled && (isTrader(form.role_id) || isAdmin(form.role_id))"
+                        class="mt-1 text-xs opacity-70"
+                    >
+                        Пользователь будет видеть подходящие новые выплаты раньше остальных.
                     </div>
 
                     <div

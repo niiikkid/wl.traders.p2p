@@ -1,11 +1,12 @@
 <script setup>
 import {Head, router, usePage} from '@inertiajs/vue3';
-import {computed, ref} from 'vue';
+import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
 import DateFilter from '@/Components/Filters/Pertials/DateFilter.vue';
 import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
+import FilterCheckbox from '@/Components/Filters/Pertials/FilterCheckbox.vue';
 import DropdownFilter from '@/Components/Filters/Pertials/DropdownFilter.vue';
 import SearchableDropdownFilter from '@/Components/Filters/Pertials/SearchableDropdownFilter.vue';
 import RefreshTableData from '@/Components/Table/RefreshTableData.vue';
@@ -28,7 +29,10 @@ const tableFiltersStore = useTableFiltersStore();
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const traders = computed(() => usePage().props.traders ?? []);
+const priorityAccessSettings = computed(() => usePage().props.priorityAccessSettings ?? {});
+const priorityAccessActiveCount = computed(() => usePage().props.priorityAccessActiveCount ?? 0);
 const reloadingTableData = ref(false);
+const releasingPriorityAccess = ref(false);
 const expandedRows = ref({});
 const statusUpdatingId = ref(null);
 const modalStore = useModalStore();
@@ -40,6 +44,7 @@ const traderModal = ref({
     traderId: null,
     error: null,
 });
+const priorityAccessReleaseTimer = ref(null);
 
 const toggleRow = (id) => {
     expandedRows.value[id] = !expandedRows.value[id];
@@ -262,6 +267,74 @@ const openAdminPayoutsExport = () => {
     window.open(url, '_blank');
 };
 
+const releasePriorityAccess = () => {
+    if (releasingPriorityAccess.value) {
+        return;
+    }
+
+    releasingPriorityAccess.value = true;
+
+    axios.post(route('admin.payouts.priority-access.release'), {}, {
+        headers: { 'Accept': 'application/json' },
+    })
+        .then(() => {
+            router.reload({
+                only: ['payouts', 'priorityAccessActiveCount'],
+                preserveScroll: true,
+            });
+        })
+        .finally(() => {
+            releasingPriorityAccess.value = false;
+        });
+};
+
+const reloadPriorityAccessData = () => {
+    router.reload({
+        only: ['payouts', 'priorityAccessActiveCount'],
+        preserveScroll: true,
+    });
+};
+
+const clearPriorityAccessReleaseTimer = () => {
+    if (priorityAccessReleaseTimer.value) {
+        clearTimeout(priorityAccessReleaseTimer.value);
+        priorityAccessReleaseTimer.value = null;
+    }
+};
+
+const schedulePriorityAccessReleaseReload = () => {
+    clearPriorityAccessReleaseTimer();
+
+    const nearestUntil = payoutItems.value
+        .filter((payout) => payout.priority_access?.is_active && payout.priority_access?.until)
+        .map((payout) => new Date(payout.priority_access.until).getTime())
+        .filter((timestamp) => !Number.isNaN(timestamp))
+        .sort((left, right) => left - right)[0];
+
+    if (!nearestUntil) {
+        return;
+    }
+
+    priorityAccessReleaseTimer.value = setTimeout(() => {
+        reloadPriorityAccessData();
+    }, Math.max(nearestUntil - Date.now(), 0) + 1000);
+};
+
+watch(payoutItems, schedulePriorityAccessReleaseReload, {deep: true});
+
+onMounted(schedulePriorityAccessReleaseReload);
+onBeforeUnmount(clearPriorityAccessReleaseTimer);
+
+const confirmReleasePriorityAccess = () => {
+    modalStore.openConfirmModal({
+        title: 'Отправить текущие приоритетные выплаты в общий доступ?',
+        body: 'Все открытые выплаты, которые сейчас видны только трейдерам с приоритетным доступом, сразу станут доступны всем трейдерам.',
+        confirm_button_name: 'Отправить в общий доступ',
+        cancel_button_name: 'Отмена',
+        confirm: releasePriorityAccess,
+    });
+};
+
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -293,6 +366,44 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
             <template #header>
                 <div class="space-y-4">
+                    <div class="card bg-base-100 shadow-sm border border-base-200">
+                        <div class="card-body p-4">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                <div class="space-y-2">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <h2 class="text-base font-semibold">Приоритетный доступ к выплатам</h2>
+                                        <span
+                                            class="badge badge-sm"
+                                            :class="priorityAccessSettings.enabled ? 'badge-success' : 'badge-ghost'"
+                                        >
+                                            {{ priorityAccessSettings.enabled ? 'Включён' : 'Выключен' }}
+                                        </span>
+                                    </div>
+                                    <div class="text-sm text-base-content/70">
+                                        Задержка: {{ priorityAccessSettings.delay_minutes ?? 0 }} мин.
+                                        Сразу в общий доступ без онлайн-трейдеров с приоритетом:
+                                        {{ priorityAccessSettings.release_without_online_traders ? 'включён' : 'выключен' }}.
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="badge badge-warning badge-outline">
+                                        Сейчас в приоритете: {{ priorityAccessActiveCount }}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm btn-warning"
+                                        :disabled="releasingPriorityAccess || priorityAccessActiveCount === 0"
+                                        @click="confirmReleasePriorityAccess"
+                                    >
+                                        <span v-if="releasingPriorityAccess" class="loading loading-spinner loading-xs"></span>
+                                        Отправить текущие в общий доступ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <FiltersPanel name="admin-payouts">
                         <DateFilter name="startDate" title="Создано с" />
                         <DateFilter name="endDate" title="Создано по" />
@@ -315,6 +426,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         <InputFilter name="minAmount" placeholder="Мин. сумма" />
                         <InputFilter name="maxAmount" placeholder="Макс. сумма" />
                         <InputFilter name="currency" placeholder="Валюта (например, RUB)" />
+                        <FilterCheckbox name="priorityAccessOnly" title="Только приоритетные" />
                     </FiltersPanel>
 
                     <div class="flex items-center justify-between">
@@ -409,8 +521,16 @@ defineOptions({ layout: AuthenticatedLayout });
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="badge badge-sm" :class="statusBadge(payout.status)">
-                                                {{ payout.status_label }}
+                                            <div class="space-y-1">
+                                                <div class="badge badge-sm" :class="statusBadge(payout.status)">
+                                                    {{ payout.status_label }}
+                                                </div>
+                                                <div
+                                                    v-if="payout.priority_access?.is_active"
+                                                    class="badge badge-sm badge-warning badge-outline"
+                                                >
+                                                    Приоритет
+                                                </div>
                                             </div>
                                         </td>
                                         <td>
@@ -689,8 +809,16 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <DateTime :data="payout.timings.created_at" simple class="justify-start text-sm font-semibold" />
                                         </div>
                                     <div class="flex flex-col items-end gap-2">
-                                            <div class="badge badge-sm" :class="statusBadge(payout.status)">
-                                                {{ payout.status_label }}
+                                            <div class="flex flex-col items-end gap-1">
+                                                <div class="badge badge-sm" :class="statusBadge(payout.status)">
+                                                    {{ payout.status_label }}
+                                                </div>
+                                                <div
+                                                    v-if="payout.priority_access?.is_active"
+                                                    class="badge badge-sm badge-warning badge-outline"
+                                                >
+                                                    Приоритет
+                                                </div>
                                             </div>
                                             <TableActionsDropdown>
                                                 <TableAction

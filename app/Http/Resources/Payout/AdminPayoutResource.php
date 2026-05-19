@@ -27,6 +27,10 @@ class AdminPayoutResource extends JsonResource
             'external_id' => $this->external_id,
             'status' => $this->status->value,
             'status_label' => $this->statusLabel(),
+            'priority_access' => [
+                'is_active' => services()->payout()->isPriorityAccessActive($this->resource),
+                'until' => $this->priority_access_until?->toIso8601String(),
+            ],
             'payout_method_type' => [
                 'value' => $this->payout_method_type->value,
                 'label' => $this->methodTypeLabel(),
@@ -181,5 +185,3 @@ class AdminPayoutResource extends JsonResource
         ]];
     }
 }
-
-

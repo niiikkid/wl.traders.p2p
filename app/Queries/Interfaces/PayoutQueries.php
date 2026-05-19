@@ -14,10 +14,10 @@ interface PayoutQueries
     /**
      * @return Collection<int, Payout>
      */
-    public function getStackForTrader(): Collection;
+    public function getStackForTrader(User $trader): Collection;
 
     /** Пагинация стакана (query-параметр страницы: stack_page). */
-    public function paginateStackForTrader(int $perPage = 10, ?int $page = null): LengthAwarePaginator;
+    public function paginateStackForTrader(User $trader, int $perPage = 10, ?int $page = null): LengthAwarePaginator;
 
     /**
      * @return Collection<int, Payout>

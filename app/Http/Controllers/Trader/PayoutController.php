@@ -26,7 +26,7 @@ class PayoutController extends Controller
 
         $tab = $request->query('tab') === 'history' ? 'history' : 'stack';
 
-        $orderBook = queries()->payout()->paginateStackForTrader(10, max(1, $request->integer('stack_page', 1)));
+        $orderBook = queries()->payout()->paginateStackForTrader($request->user(), 10, max(1, $request->integer('stack_page', 1)));
         $activePayouts = queries()->payout()->getActiveForTrader($request->user());
         $history = queries()->payout()->paginateHistoryForTrader($request->user());
 

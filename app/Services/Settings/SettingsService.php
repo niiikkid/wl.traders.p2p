@@ -48,6 +48,12 @@ class SettingsService implements SettingsServiceContract
 
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
 
+    const PAYOUT_PRIORITY_ACCESS_ENABLED = 'payout_priority_access_enabled';
+
+    const PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES = 'payout_priority_access_delay_minutes';
+
+    const PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS = 'payout_priority_access_release_without_online_traders';
+
     const TRADER_ANALYTICS_OPERATION_THRESHOLDS = 'trader_analytics_operation_thresholds';
 
     protected $settings = null;
@@ -284,6 +290,28 @@ class SettingsService implements SettingsServiceContract
         );
     }
 
+    public function getPayoutPriorityAccessSettings(): array
+    {
+        return [
+            'enabled' => (bool) (int) $this->getParam(self::PAYOUT_PRIORITY_ACCESS_ENABLED),
+            'delay_minutes' => max(1, (int) $this->getParam(self::PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES)),
+            'release_without_online_traders' => (bool) (int) $this->getParam(self::PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS),
+        ];
+    }
+
+    public function updatePayoutPriorityAccessSettings(
+        bool $enabled,
+        int $delayMinutes,
+        bool $releaseWithoutOnlineTraders
+    ): void {
+        $this->updateParam(self::PAYOUT_PRIORITY_ACCESS_ENABLED, $enabled ? 1 : 0);
+        $this->updateParam(self::PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES, max(1, $delayMinutes));
+        $this->updateParam(
+            self::PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS,
+            $releaseWithoutOnlineTraders ? 1 : 0
+        );
+    }
+
     public function getTraderAnalyticsOperationThresholds(): array
     {
         $value = $this->getParam(self::TRADER_ANALYTICS_OPERATION_THRESHOLDS);
@@ -385,6 +413,21 @@ class SettingsService implements SettingsServiceContract
         ]);
 
         Setting::firstOrCreate([
+            'key' => self::PAYOUT_PRIORITY_ACCESS_ENABLED,
+            'value' => 0,
+        ]);
+
+        Setting::firstOrCreate([
+            'key' => self::PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES,
+            'value' => 10,
+        ]);
+
+        Setting::firstOrCreate([
+            'key' => self::PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS,
+            'value' => 1,
+        ]);
+
+        Setting::firstOrCreate([
             'key' => self::TRADER_ANALYTICS_OPERATION_THRESHOLDS,
             'value' => json_encode($this->normalizeTraderAnalyticsOperationThresholds([])),
         ]);
@@ -434,7 +477,7 @@ class SettingsService implements SettingsServiceContract
 
     protected function updateParam(string $key, mixed $value): bool
     {
-        $res = Setting::where('key', $key)->update(['value' => $value]);
+        $res = Setting::query()->where('key', $key)->update(['value' => $value]);
 
         cache()->put('app-settings', Setting::all());
         $this->settings = null;
@@ -477,6 +520,12 @@ class SettingsService implements SettingsServiceContract
                 'reservation_time_for_payouts' => isset($current['reservation_time_for_payouts'])
                     ? (int) $current['reservation_time_for_payouts']
                     : (int) $defaults['reservation_time_for_payouts'],
+                'priority_access_min_amount' => $this->normalizeNullableAmount(
+                    $current['priority_access_min_amount'] ?? null
+                ),
+                'priority_access_max_amount' => $this->normalizeNullableAmount(
+                    $current['priority_access_max_amount'] ?? null
+                ),
             ];
         });
 
@@ -489,7 +538,20 @@ class SettingsService implements SettingsServiceContract
             'total_commission_rate' => 5,
             'trader_commission_rate' => 4,
             'reservation_time_for_payouts' => 20,
+            'priority_access_min_amount' => null,
+            'priority_access_max_amount' => null,
         ];
+    }
+
+    protected function normalizeNullableAmount(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = str_replace([' ', ','], ['', '.'], trim((string) $value));
+
+        return is_numeric($normalized) ? $normalized : null;
     }
 
     protected function normalizeTraderAnalyticsOperationThresholds(array $thresholds): array

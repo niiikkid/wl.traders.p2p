@@ -42,8 +42,8 @@ class TableFiltersValue implements Arrayable
         public ?string $paymentGateway = null,
         public array $payoutStatuses = [],
         public array $payoutMethodTypes = [],
-    )
-    {}
+        public bool $priorityAccessOnly = false,
+    ) {}
 
     public function toArray(): array
     {
@@ -82,6 +82,7 @@ class TableFiltersValue implements Arrayable
             'paymentGateway' => $this->paymentGateway,
             'payoutStatuses' => implode(',', $this->payoutStatuses),
             'payoutMethodTypes' => implode(',', $this->payoutMethodTypes),
+            'priorityAccessOnly' => $this->priorityAccessOnly,
         ];
     }
 }

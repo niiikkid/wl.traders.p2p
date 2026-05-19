@@ -312,6 +312,13 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path fill-rule="evenodd" d="M10.788 3.103c.495-1.004 1.926-1.004 2.421 0l2.358 4.777 5.273.766c1.107.16 1.55 1.522.748 2.303l-3.816 3.72.9 5.25c.19 1.104-.968 1.945-1.959 1.424l-4.716-2.48-4.715 2.48c-.99.52-2.148-.32-1.96-1.424l.9-5.25-3.815-3.72c-.8-.78-.36-2.142.748-2.303l5.274-.766 2.358-4.777Z" clip-rule="evenodd"/>
                                                 </svg>
                                             </span>
+                                            <span
+                                                v-if="user.priority_payout_access_enabled"
+                                                class="badge badge-warning badge-outline badge-xs"
+                                                title="Приоритетный доступ к выплатам"
+                                            >
+                                                Payout
+                                            </span>
                                             </div>
                                         </UserSummaryPopover>
                                     </td>

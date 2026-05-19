@@ -30,7 +30,7 @@ interface PayoutServiceContract
      * @throws PayoutException
      */
     /**
-     * @param array<int, UploadedFile> $receipts
+     * @param  array<int, UploadedFile>  $receipts
      *
      * @throws PayoutException
      */
@@ -41,6 +41,10 @@ interface PayoutServiceContract
      */
     public function confirmPaid(Payout $payout): Payout;
 
+    public function releaseAllPriorityAccess(): int;
+
+    public function isPriorityAccessActive(Payout $payout): bool;
+
     /**
      * Ручное изменение статуса администратором с учётом побочных эффектов.
      *
@@ -48,4 +52,3 @@ interface PayoutServiceContract
      */
     public function adminChangeStatus(Payout $payout, PayoutStatus $status, ?User $trader = null, ?string $note = null): Payout;
 }
-

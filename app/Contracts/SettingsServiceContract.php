@@ -72,6 +72,14 @@ interface SettingsServiceContract
 
     public function updatePayoutCurrencySettings(array $settings): void;
 
+    public function getPayoutPriorityAccessSettings(): array;
+
+    public function updatePayoutPriorityAccessSettings(
+        bool $enabled,
+        int $delayMinutes,
+        bool $releaseWithoutOnlineTraders
+    ): void;
+
     public function getTraderAnalyticsOperationThresholds(): array;
 
     public function getTraderAnalyticsOperationThresholdForCurrency(Currency $currency): string;

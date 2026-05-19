@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Analyst;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\PaymentDetailResource;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -35,6 +36,22 @@ class UserController extends Controller
         $users = UserResource::collection($users);
 
         return Inertia::render('Analyst/User/Index', compact('users', 'filters'));
+    }
+
+    public function paymentDetails(User $user)
+    {
+        $filters = $this->getTableFilters();
+        $filtersVariants = $this->getFiltersData();
+        $fromArchive = request()->tab === 'archived';
+
+        $paymentDetails = queries()
+            ->paymentDetail()
+            ->paginateForUserReadOnly($user, $filters, $fromArchive);
+
+        $paymentDetails = PaymentDetailResource::collection($paymentDetails);
+        $user = UserResource::make($user->loadMissing(['roles', 'wallet', 'userTeam']))->resolve();
+
+        return Inertia::render('Analyst/User/PaymentDetails', compact('user', 'paymentDetails', 'filters', 'filtersVariants'));
     }
 
     public function toggleTraffic(Request $request, User $user)

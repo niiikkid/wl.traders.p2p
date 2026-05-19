@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\PayoutStatus;
+use App\Exceptions\PayoutException;
 use App\Exports\AdminPayoutsExport;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\Payout\UpdateCurrencySettingsRequest;
@@ -9,8 +11,6 @@ use App\Http\Requests\Admin\Payout\UpdateStatusRequest;
 use App\Http\Resources\Payout\AdminPayoutResource;
 use App\Models\Payout\Payout;
 use App\Models\User;
-use App\Enums\PayoutStatus;
-use App\Exceptions\PayoutException;
 use App\Services\Money\Currency;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -29,7 +29,7 @@ class PayoutController extends Controller
         $payouts = queries()->payout()->paginateForAdmin($filters);
         $payouts = AdminPayoutResource::collection($payouts);
 
-        $traders = \App\Models\User::query()
+        $traders = User::query()
             ->select(['id', 'name', 'email'])
             ->role('Trader')
             ->where('payouts_enabled', true)
@@ -42,6 +42,8 @@ class PayoutController extends Controller
             'filters' => $filters,
             'filtersVariants' => $filtersVariants,
             'traders' => $traders,
+            'priorityAccessSettings' => services()->settings()->getPayoutPriorityAccessSettings(),
+            'priorityAccessActiveCount' => $this->priorityAccessActiveCount(),
         ]);
     }
 
@@ -90,18 +92,47 @@ class PayoutController extends Controller
             'data' => [
                 'currencies' => $currencies,
                 'settings' => services()->settings()->getPayoutCurrencySettings(),
+                'priority_access' => services()->settings()->getPayoutPriorityAccessSettings(),
             ],
         ]);
     }
 
     public function updateSettings(UpdateCurrencySettingsRequest $request): JsonResponse
     {
+        $priorityAccess = $request->validated('priority_access');
+
+        services()->settings()->updatePayoutPriorityAccessSettings(
+            enabled: (bool) $priorityAccess['enabled'],
+            delayMinutes: (int) $priorityAccess['delay_minutes'],
+            releaseWithoutOnlineTraders: (bool) $priorityAccess['release_without_online_traders'],
+        );
         services()->settings()->updatePayoutCurrencySettings($request->validated('settings'));
+
+        if (! (bool) $priorityAccess['enabled']) {
+            services()->payout()->releaseAllPriorityAccess();
+        }
 
         return response()->json([
             'success' => true,
         ]);
     }
+
+    public function releasePriorityAccess(): JsonResponse
+    {
+        $releasedCount = services()->payout()->releaseAllPriorityAccess();
+
+        return response()->json([
+            'success' => true,
+            'released_count' => $releasedCount,
+        ]);
+    }
+
+    private function priorityAccessActiveCount(): int
+    {
+        return Payout::query()
+            ->where('status', PayoutStatus::OPEN->value)
+            ->whereNull('trader_id')
+            ->where('priority_access_until', '>', now())
+            ->count();
+    }
 }
-
-

@@ -87,6 +87,7 @@ const refreshOptions = computed(() => props.refresh?.options ?? []);
 const refreshProgress = ref(0);
 let refreshProgressAnimationId = null;
 const autoRefreshTimer = ref(null);
+const priorityAccessReleaseTimer = ref(null);
 const isRefreshing = ref(false);
 
 const canTakeMore = computed(() => (props.limits?.currentActive ?? 0) < (props.limits?.maxActive ?? 1));
@@ -225,6 +226,31 @@ const reloadData = (replace = true) => {
     });
 };
 
+const clearPriorityAccessReleaseTimer = () => {
+    if (priorityAccessReleaseTimer.value) {
+        clearTimeout(priorityAccessReleaseTimer.value);
+        priorityAccessReleaseTimer.value = null;
+    }
+};
+
+const schedulePriorityAccessReleaseReload = () => {
+    clearPriorityAccessReleaseTimer();
+
+    const nearestUntil = [...orderBookList.value, ...activePayoutsList.value]
+        .filter((payout) => payout.priority_access?.is_active && payout.priority_access?.until)
+        .map((payout) => new Date(payout.priority_access.until).getTime())
+        .filter((timestamp) => !Number.isNaN(timestamp))
+        .sort((left, right) => left - right)[0];
+
+    if (!nearestUntil) {
+        return;
+    }
+
+    priorityAccessReleaseTimer.value = setTimeout(() => {
+        reloadData(false);
+    }, Math.max(nearestUntil - Date.now(), 0) + 1000);
+};
+
 const refreshNow = () => {
     if (isRefreshing.value) {
         return;
@@ -319,11 +345,15 @@ watch(refreshInterval, (value) => {
     }
 });
 
+watch([orderBookList, activePayoutsList], schedulePriorityAccessReleaseReload, {deep: true});
+
 onMounted(() => {
     if (trader_payouts_auto_refresh_allowed) {
         syncRefreshIntervalFromStorage();
         startAutoRefresh();
     }
+
+    schedulePriorityAccessReleaseReload();
 });
 
 let active_payout_copied_clear_timer = null;
@@ -331,6 +361,7 @@ let active_payout_copied_clear_timer = null;
 onBeforeUnmount(() => {
     stopAutoRefresh();
     stopRefreshProgressAnimation();
+    clearPriorityAccessReleaseTimer();
     if (active_payout_copied_clear_timer) {
         clearTimeout(active_payout_copied_clear_timer);
         active_payout_copied_clear_timer = null;
@@ -1069,7 +1100,15 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 class="bg-base-100 border-b last:border-none border-base-200"
                                             >
                                                 <td class="font-mono text-xs">
-                                                    <CopyableOrderUid :uuid="payout.uuid ?? ''" />
+                                                    <div class="flex flex-col gap-1">
+                                                        <CopyableOrderUid :uuid="payout.uuid ?? ''" />
+                                                        <span
+                                                            v-if="payout.priority_access?.is_active"
+                                                            class="badge badge-warning badge-outline badge-xs font-sans"
+                                                        >
+                                                            Ранний доступ
+                                                        </span>
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <div class="flex items-center gap-3">
@@ -1154,6 +1193,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         <div class="inline-flex items-center gap-1 pl-1 min-w-0">
                                                             <span class="text-base-content/70">UUID:</span>
                                                             <CopyableOrderUid :uuid="payout.uuid ?? ''" />
+                                                            <span
+                                                                v-if="payout.priority_access?.is_active"
+                                                                class="badge badge-warning badge-outline badge-xs"
+                                                            >
+                                                                Ранний доступ
+                                                            </span>
                                                         </div>
                                                     </div>
                                                     <div class="shrink-0 text-right leading-tight">

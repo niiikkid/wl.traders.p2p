@@ -53,6 +53,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Carbon|null $hold_until
  * @property Carbon|null $completed_at
  * @property Carbon|null $canceled_at
+ * @property Carbon|null $priority_access_until
  * @property float|null $total_commission_rate
  * @property float|null $trader_commission_rate
  * @property float|null $teamlead_commission_rate
@@ -119,6 +120,7 @@ class Payout extends Model
         'completed_at',
         'canceled_at',
         'expires_at',
+        'priority_access_until',
         'receipt_path',
     ];
 
@@ -147,6 +149,7 @@ class Payout extends Model
         'completed_at' => 'datetime',
         'canceled_at' => 'datetime',
         'expires_at' => 'datetime',
+        'priority_access_until' => 'datetime',
         'receipt_path' => 'string',
         'callback_url' => 'string',
         'external_id' => 'string',

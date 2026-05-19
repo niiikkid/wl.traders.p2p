@@ -308,6 +308,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant-api-logs.index');
 
         Route::get('/users', [AnalystUserController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}/payment-details', [AnalystUserController::class, 'paymentDetails'])->name('users.payment-details.index');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::patch('/users/{user}/toggle-traffic', [AnalystUserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
         Route::get('/enabled-cards', [AnalystEnabledCardsController::class, 'index'])->name('enabled-cards.index');
@@ -464,6 +465,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/payouts/{payout}/status', [App\Http\Controllers\Admin\PayoutController::class, 'updateStatus'])->name('payouts.status.update');
         Route::get('/payouts/settings-data', [App\Http\Controllers\Admin\PayoutController::class, 'settingsData'])->name('payouts.settings-data');
         Route::patch('/payouts/settings', [App\Http\Controllers\Admin\PayoutController::class, 'updateSettings'])->name('payouts.settings.update');
+        Route::post('/payouts/priority-access/release', [App\Http\Controllers\Admin\PayoutController::class, 'releasePriorityAccess'])->name('payouts.priority-access.release');
 
         Route::get('/deposits', [App\Http\Controllers\Admin\DepositController::class, 'index'])->name('deposits.index');
         Route::get('/withdrawals', [WithdrawalController::class, 'index'])->name('withdrawals.index');

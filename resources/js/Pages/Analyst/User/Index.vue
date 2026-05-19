@@ -1,5 +1,5 @@
 <script setup>
-import {Head, usePage, useForm} from '@inertiajs/vue3';
+import {Head, router, usePage, useForm} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
@@ -8,6 +8,7 @@ import {ref} from "vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
+import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 
 const users = ref(usePage().props.users);
 
@@ -84,6 +85,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col">
                                         Трафик
                                     </th>
+                                    <th scope="col">
+                                        <span class="sr-only">Действия</span>
+                                    </th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -139,6 +143,19 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 {{ user.stop_traffic ? 'Выкл.' : 'Вкл.' }}
                                             </span>
                                         </label>
+                                    </td>
+                                    <td class="text-right whitespace-nowrap">
+                                        <TableActionsDropdown>
+                                            <li>
+                                                <button
+                                                    type="button"
+                                                    class="whitespace-nowrap"
+                                                    @click="router.visit(route('analyst.users.payment-details.index', { user: user.id }))"
+                                                >
+                                                    Реквизиты
+                                                </button>
+                                            </li>
+                                        </TableActionsDropdown>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -230,6 +247,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </span>
                                                 </label>
                                             </div>
+                                        </div>
+                                        <div class="flex justify-end border-t border-base-content/10 pt-2 mt-2">
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-outline"
+                                                @click="router.visit(route('analyst.users.payment-details.index', { user: user.id }))"
+                                            >
+                                                Реквизиты
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

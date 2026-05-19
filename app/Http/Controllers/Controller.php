@@ -12,6 +12,7 @@ use App\Models\Merchant;
 use App\ObjectValues\TableFilters\TableFiltersValue;
 use App\Services\Money\Currency;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 
 abstract class Controller
@@ -178,6 +179,7 @@ abstract class Controller
             'paymentGateway' => $paymentGateway,
             'payoutStatuses' => array_values($payoutStatuses),
             'payoutMethodTypes' => array_values($payoutMethodTypes),
+            'priorityAccessOnly' => request()->input('filters.priorityAccessOnly') === 'true',
         ];
 
         return new TableFiltersValue(
@@ -214,6 +216,7 @@ abstract class Controller
             paymentGateway: $currentFilters['paymentGateway'],
             payoutStatuses: $currentFilters['payoutStatuses'],
             payoutMethodTypes: $currentFilters['payoutMethodTypes'],
+            priorityAccessOnly: $currentFilters['priorityAccessOnly'],
         );
     }
 
@@ -275,7 +278,7 @@ abstract class Controller
             ->toArray();
 
         $merchantItems = [];
-        $user = auth()->user();
+        $user = Auth::user();
 
         if ($user) {
             if ($user->hasRole('Super Admin')) {

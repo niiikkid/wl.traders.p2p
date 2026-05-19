@@ -94,6 +94,9 @@ class UserService implements UserServiceContract
                 'can_work_without_device' => $data->can_work_without_device,
                 'is_vip' => $data->is_vip,
                 'payouts_enabled' => $data->payouts_enabled,
+                'priority_payout_access_enabled' => in_array($roleName, ['Trader', 'Super Admin'], true)
+                    ? $data->priority_payout_access_enabled
+                    : false,
                 'payout_hold_enabled' => $data->payout_hold_enabled,
                 'payout_hold_minutes' => $data->payout_hold_minutes ?? $user->payout_hold_minutes,
                 'payout_active_payouts_limit' => $data->payout_active_payouts_limit ?? $user->payout_active_payouts_limit,
