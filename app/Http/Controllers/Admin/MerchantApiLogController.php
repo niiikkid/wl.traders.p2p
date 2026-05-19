@@ -29,7 +29,12 @@ class MerchantApiLogController extends Controller
             abort(404);
         }
 
-        $logs = queries()->merchantApiLog()->paginateForAdmin($filters);
+        $activeApiLogTab = $request->query('tab') === 'payouts' ? 'payouts' : 'orders';
+        $requestType = $activeApiLogTab === 'payouts'
+            ? MerchantApiRequestLog::TYPE_PAYOUT
+            : MerchantApiRequestLog::TYPE_ORDER;
+
+        $logs = queries()->merchantApiLog()->paginateForAdmin($filters, $requestType);
 
         // Получаем статистику из сервиса
         $statistics = $statisticsService->getStatistics();
@@ -101,6 +106,7 @@ class MerchantApiLogController extends Controller
             'requestsChartFilters' => $chartFilters,
             'chartCurrencyOptions' => Currency::getAllCodes(),
             'can_manage_merchant_api_log_deletion' => $can_manage_merchant_api_log_deletion,
+            'activeApiLogTab' => $activeApiLogTab,
         ]);
     }
 
@@ -133,6 +139,11 @@ class MerchantApiLogController extends Controller
 
         // Удаляем логи в указанном диапазоне
         $deletedCount = MerchantApiRequestLog::query()
+            ->where(function ($query): void {
+                $query
+                    ->where('request_type', MerchantApiRequestLog::TYPE_ORDER)
+                    ->orWhereNull('request_type');
+            })
             ->whereDate('created_at', '>=', $startDate)
             ->whereDate('created_at', '<=', $endDate)
             ->delete();

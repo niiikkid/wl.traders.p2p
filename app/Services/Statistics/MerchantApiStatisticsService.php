@@ -33,8 +33,9 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
                 'is_successful',
                 DB::raw('COALESCE(currency, payment_gateway) as currency_key'),
                 DB::raw('COUNT(*) as count'),
-                DB::raw('SUM(amount) as sum_amount')
+                DB::raw('SUM(amount) as sum_amount'),
             ])
+            ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
             ->whereBetween('created_at', [$fromDate->toDateTimeString(), $toDate->toDateTimeString()])
             ->groupBy('date', 'is_successful', 'currency_key')
             ->orderBy('date'); // Явно указываем сортировку
@@ -50,14 +51,14 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             $currency = $currencyKey;
 
             // Если currencyKey — это платёжный шлюз, а не валюта, получаем валюту из маппинга
-            if (!Currency::isCurrency($currencyKey) && isset($paymentGateways[$currencyKey])) {
+            if (! Currency::isCurrency($currencyKey) && isset($paymentGateways[$currencyKey])) {
                 $currency = $paymentGateways[$currencyKey];
             }
 
             // Ключ для группировки: дата + успешность + валюта
-            $groupKey = $row->date . '|' . $row->is_successful . '|' . $currency;
+            $groupKey = $row->date.'|'.$row->is_successful.'|'.$currency;
 
-            if (!isset($grouped[$groupKey])) {
+            if (! isset($grouped[$groupKey])) {
                 $grouped[$groupKey] = [
                     'date' => $row->date,
                     'is_successful' => $row->is_successful,
@@ -117,9 +118,9 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             DB::raw('SUM(count) as total_count'),
             DB::raw('SUM(sum_amount) as total_sum'),
         ])
-        ->groupBy('is_successful', 'currency')
-        ->get()
-        ->groupBy('is_successful');
+            ->groupBy('is_successful', 'currency')
+            ->get()
+            ->groupBy('is_successful');
 
         // Формируем результаты
         $successToday = $todayStats[true] ?? collect();
@@ -157,6 +158,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
         $endDate = $date->copy()->endOfDay();
 
         $baseQuery = MerchantApiRequestLog::query()
+            ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
             ->whereBetween('created_at', [$startDate, $endDate])
             ->when($merchantUser, function (Builder $query, User $user): void {
                 $query->whereRelation('merchant', 'user_id', $user->id);
@@ -179,7 +181,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
         $successful = [];
 
         for ($hour = 0; $hour < 24; $hour++) {
-            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00';
             $total[] = (int) ($totalByHour[$hour] ?? 0);
             $successful[] = (int) ($successfulByHour[$hour] ?? 0);
         }
@@ -205,6 +207,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
         }
 
         $baseQuery = MerchantApiRequestLog::query()
+            ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
             ->when($merchantUser, function (Builder $query, User $user): void {
                 $query->whereRelation('merchant', 'user_id', $user->id);
             });
@@ -236,7 +239,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
         $successful = [];
 
         for ($hour = 0; $hour < 24; $hour++) {
-            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT) . ':00';
+            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00';
             $total[] = round(((int) ($totalByHour[$hour] ?? 0)) / $daysCount, 2);
             $successful[] = round(((int) ($successfulByHour[$hour] ?? 0)) / $daysCount, 2);
         }
@@ -274,12 +277,21 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
         }
 
         if (($filters['amount_from'] ?? null) !== null && $filters['amount_from'] !== '') {
-            $query->whereRaw($this->normalizedAmountExpression() . ' >= ?', [(float) $filters['amount_from']]);
+            $query->whereRaw($this->normalizedAmountExpression().' >= ?', [(float) $filters['amount_from']]);
         }
 
         if (($filters['amount_to'] ?? null) !== null && $filters['amount_to'] !== '') {
-            $query->whereRaw($this->normalizedAmountExpression() . ' <= ?', [(float) $filters['amount_to']]);
+            $query->whereRaw($this->normalizedAmountExpression().' <= ?', [(float) $filters['amount_to']]);
         }
+    }
+
+    private function applyOrderRequestTypeFilter(Builder $query): void
+    {
+        $query->where(function (Builder $query): void {
+            $query
+                ->where('request_type', MerchantApiRequestLog::TYPE_ORDER)
+                ->orWhereNull('request_type');
+        });
     }
 
     private function normalizedAmountExpression(): string

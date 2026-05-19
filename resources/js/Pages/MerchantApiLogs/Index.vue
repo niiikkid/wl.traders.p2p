@@ -22,6 +22,12 @@ const filtersPanelRef = ref(null);
 const hasActiveMerchantApiLogFilters = useHasActiveTableFilters();
 const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
 const isRefreshingPage = ref(false);
+const activeApiLogTab = computed(() => page.props.activeApiLogTab || 'orders');
+const isPayoutLogsTab = computed(() => activeApiLogTab.value === 'payouts');
+const entityColumnLabel = computed(() => isPayoutLogsTab.value ? 'Выплата' : 'Сделка');
+const entityUuidPlaceholder = computed(() => isPayoutLogsTab.value ? 'UUID выплаты' : 'UUID сделки');
+const detailColumnLabel = computed(() => isPayoutLogsTab.value ? 'Метод' : 'Реквизит');
+const detailFieldLabel = computed(() => isPayoutLogsTab.value ? 'Метод выплаты:' : 'Тип реквизита:');
 
 const toggleFiltersFromToolbar = () => {
     filtersPanelRef.value?.toggleFiltersDisplay?.();
@@ -140,6 +146,26 @@ const confirmDelete = () => {
         body: `Вы уверены, что хотите удалить все логи API запросов за период с ${startDate.value} по ${endDate.value}? Это действие нельзя отменить.`,
         confirm_button_name: 'Удалить',
         confirm: deleteLogsByDateRange
+    });
+};
+
+const switchApiLogTab = (tab) => {
+    if (activeApiLogTab.value === tab) {
+        return;
+    }
+
+    expandedRows.value = {};
+    expandedCards.value = {};
+
+    router.visit(page.url?.split('?')[0] || window.location.pathname, {
+        data: {
+            ...route().params,
+            tab,
+            page: 1,
+            per_page: logs.value?.meta?.per_page ?? 10,
+            filters: page.props.filters,
+        },
+        preserveScroll: true,
     });
 };
 
@@ -383,6 +409,7 @@ onBeforeUnmount(() => {
         <MainTableSection
             title="Логи API-запросов"
             :data="logs"
+            :visit-extra-data="{ tab: activeApiLogTab }"
         >
             <template v-if="isAdminMerchantApiLogsPage" #button>
                 <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
@@ -445,9 +472,31 @@ onBeforeUnmount(() => {
             </template>
 
             <template #header>
+                <div role="tablist" class="tabs tabs-border mb-4">
+                    <button
+                        type="button"
+                        role="tab"
+                        class="tab"
+                        :class="{ 'tab-active': activeApiLogTab === 'orders' }"
+                        @click="switchApiLogTab('orders')"
+                    >
+                        Сделки
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        class="tab"
+                        :class="{ 'tab-active': activeApiLogTab === 'payouts' }"
+                        @click="switchApiLogTab('payouts')"
+                    >
+                        Выплаты
+                    </button>
+                </div>
+
                 <FiltersPanel
                     ref="filtersPanelRef"
                     name="merchant-api-logs"
+                    :query="{ tab: activeApiLogTab }"
                     :omit-default-toggle-button="isAdminMerchantApiLogsPage"
                 >
                     <InputFilter
@@ -460,7 +509,7 @@ onBeforeUnmount(() => {
                     />
                     <InputFilter
                         name="uuid"
-                        placeholder="UUID сделки"
+                        :placeholder="entityUuidPlaceholder"
                     />
                     <InputFilter
                         name="minAmount"
@@ -487,7 +536,7 @@ onBeforeUnmount(() => {
 
             <template v-slot:body>
                 <!-- Панель статистики -->
-                <div class="mb-6">
+                <div v-if="!isPayoutLogsTab" class="mb-6">
                     <h2 class="text-xl font-semibold mb-4">Статистика запросов</h2>
 
                     <!-- Карточки статистики -->
@@ -803,7 +852,7 @@ onBeforeUnmount(() => {
                                             Мерчант
                                         </th>
                                         <th scope="col">
-                                            Сделка
+                                            {{ entityColumnLabel }}
                                         </th>
                                         <th scope="col" class="text-nowrap">
                                             Внешний ID
@@ -815,7 +864,7 @@ onBeforeUnmount(() => {
                                     Метод
                                 </th>-->
                                         <th scope="col" class="text-nowrap">
-                                            Реквизит
+                                            {{ detailColumnLabel }}
                                         </th>
                                         <th scope="col" class="text-nowrap">
                                             Время
@@ -841,7 +890,10 @@ onBeforeUnmount(() => {
                                                 {{ log.merchant.name }}
                                             </td>
                                             <td>
-                                                <DisplayUUID v-if="log.order" :uuid="log.order.uuid"/>
+                                                <DisplayUUID
+                                                    v-if="isPayoutLogsTab ? log.payout : log.order"
+                                                    :uuid="isPayoutLogsTab ? log.payout?.uuid : log.order?.uuid"
+                                                />
                                             </td>
                                             <td>
                                                 <DisplayID v-if="log.external_id" :id="log.external_id"/>
@@ -1052,16 +1104,16 @@ onBeforeUnmount(() => {
 
                                     <!-- Раскрываемая часть -->
                                     <div v-show="!!expandedCards[log.id]" class="mt-3 space-y-2 bg-base-300/50 rounded-box p-2">
-                                        <div v-if="log.order" class="flex items-center gap-2 text-sm">
-                                            <span class="text-base-content/80 truncate">Сделка:</span>
-                                            <DisplayUUID :uuid="log.order.uuid"/>
+                                        <div v-if="isPayoutLogsTab ? log.payout : log.order" class="flex items-center gap-2 text-sm">
+                                            <span class="text-base-content/80 truncate">{{ entityColumnLabel }}:</span>
+                                            <DisplayUUID :uuid="isPayoutLogsTab ? log.payout?.uuid : log.order?.uuid"/>
                                         </div>
                                         <div v-if="log.external_id" class="flex items-center gap-2 text-sm">
                                             <span class="text-base-content/80 truncate">Внешний ID:</span>
                                             <DisplayID :id="log.external_id"/>
                                         </div>
                                         <div v-if="log.payment_detail_type" class="flex items-center gap-2 text-sm">
-                                            <span class="text-base-content/80 truncate">Тип реквизита:</span>
+                                            <span class="text-base-content/80 truncate">{{ detailFieldLabel }}</span>
                                             <span class="text-base-content/60">{{ log.payment_detail_type }}</span>
                                         </div>
                                         <div v-if="log.execution_time" class="flex items-center gap-2 text-sm">

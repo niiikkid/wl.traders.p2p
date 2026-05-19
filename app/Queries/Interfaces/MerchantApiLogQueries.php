@@ -8,7 +8,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface MerchantApiLogQueries
 {
-    public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator;
+    public function paginateForAdmin(TableFiltersValue $filters, string $requestType): LengthAwarePaginator;
 
-    public function paginateForMerchant(User $user, TableFiltersValue $filters): LengthAwarePaginator;
+    public function paginateForMerchant(User $user, TableFiltersValue $filters, string $requestType): LengthAwarePaginator;
 }

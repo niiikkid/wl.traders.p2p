@@ -8,8 +8,10 @@ use App\Http\Requests\API\Payout\StoreRequest;
 use App\Http\Resources\API\Payout\PayoutResource;
 use App\Jobs\PayoutPoolingJob;
 use App\Models\Merchant;
+use App\Models\MerchantApiRequestLog;
 use App\Models\Payout\Payout;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Throwable;
@@ -28,49 +30,94 @@ class PayoutController extends Controller
         );
     }
 
-    public function show(Payout $payout): JsonResponse
+    public function show(Request $request, Payout $payout): JsonResponse
     {
         Gate::authorize('api-access-to-merchant', $payout->merchant);
 
-        return response()->success(
+        $requestId = $this->logPayoutRequest($request, $payout->merchant, $this->payoutRequestData($payout, 'show'));
+        $response = response()->success(
             PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway'))
         );
+
+        $this->updatePayoutLog($payout->merchant, $payout->external_id, $requestId, $response, $payout);
+
+        return $response;
     }
 
-    public function cancel(Payout $payout): JsonResponse
+    public function cancel(Request $request, Payout $payout): JsonResponse
     {
         Gate::authorize('api-access-to-merchant', $payout->merchant);
+
+        $requestId = $this->logPayoutRequest($request, $payout->merchant, $this->payoutRequestData($payout, 'cancel'));
 
         try {
             $payout = services()->payout()->cancel($payout);
         } catch (PayoutException $exception) {
-            return response()->failWithMessage($exception->getMessage());
+            $response = response()->failWithMessage($exception->getMessage());
+            $this->updatePayoutLog(
+                $payout->merchant,
+                $payout->external_id,
+                $requestId,
+                $response,
+                $payout,
+                get_class($exception),
+                $exception->getMessage(),
+            );
+
+            return $response;
         }
 
-        return response()->successWithMessage(
+        $response = response()->successWithMessage(
             'Выплата отменена.',
             PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway'))
         );
+
+        $this->updatePayoutLog($payout->merchant, $payout->external_id, $requestId, $response, $payout);
+
+        return $response;
     }
 
-    public function confirmPaid(Payout $payout): JsonResponse
+    public function confirmPaid(Request $request, Payout $payout): JsonResponse
     {
         Gate::authorize('api-access-to-merchant', $payout->merchant);
+
+        $requestId = $this->logPayoutRequest($request, $payout->merchant, $this->payoutRequestData($payout, 'confirm_paid'));
 
         try {
             $payout = services()->payout()->confirmPaid($payout);
         } catch (PayoutException $exception) {
-            return response()->failWithMessage($exception->getMessage());
+            $response = response()->failWithMessage($exception->getMessage());
+            $this->updatePayoutLog(
+                $payout->merchant,
+                $payout->external_id,
+                $requestId,
+                $response,
+                $payout,
+                get_class($exception),
+                $exception->getMessage(),
+            );
+
+            return $response;
         }
 
-        return response()->successWithMessage(
+        $response = response()->successWithMessage(
             'Выплата подтверждена и холд снят.',
             PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway'))
         );
+
+        $this->updatePayoutLog($payout->merchant, $payout->external_id, $requestId, $response, $payout);
+
+        return $response;
     }
 
     private function processPayoutPooling(StoreRequest $request, Merchant $merchant): JsonResponse
     {
+        $validated = $request->validated();
+        $requestId = $this->logPayoutRequest($request, $merchant, [
+            ...$validated,
+            'payment_detail_type' => $validated['payout_method_type'] ?? null,
+            'operation' => 'create',
+        ]);
         $maxWaitMs = $this->resolveMaxWaitMs($request, $merchant);
         $pollIntervalMs = (int) config('order-pooling.poll_interval', 100);
         $createdAtMs = now()->getTimestampMs();
@@ -83,7 +130,7 @@ class PayoutController extends Controller
         PayoutPoolingJob::dispatch(
             $jobID,
             $createdAtMs,
-            $request->validated(),
+            $validated,
             $maxWaitMs,
             $createdAtMs + $this->resolveCreationDeadlineMs($maxWaitMs, $pollIntervalMs),
         );
@@ -109,13 +156,27 @@ class PayoutController extends Controller
                     break;
                 }
 
-                return response()->success(
+                $response = response()->success(
                     PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway'))
                 );
+
+                $this->updatePayoutLog($merchant, $request->external_id, $requestId, $response, $payout);
+
+                return $response;
             }
 
             if ($state['status'] === 'failed') {
-                return $this->failedCreationResponse($state);
+                $response = $this->failedCreationResponse($state);
+                $this->updatePayoutLog(
+                    $merchant,
+                    $request->external_id,
+                    $requestId,
+                    $response,
+                    exceptionClass: $state['exception']['class'] ?? null,
+                    exceptionMessage: $state['exception']['message'] ?? null,
+                );
+
+                return $response;
             }
 
             if ($state['status'] === 'expired') {
@@ -127,10 +188,59 @@ class PayoutController extends Controller
             'status' => 'expired',
         ]), 60);
 
-        return response()->failWithMessage(
+        $response = response()->failWithMessage(
             'Не удалось обработать запрос вовремя. Повторите попытку позже.',
             504,
         );
+        $this->updatePayoutLog($merchant, $request->external_id, $requestId, $response);
+
+        return $response;
+    }
+
+    private function logPayoutRequest(Request $request, Merchant $merchant, array $requestData): string
+    {
+        return services()->merchantApiLog()->logRequest(
+            $request,
+            $merchant,
+            $requestData,
+            MerchantApiRequestLog::TYPE_PAYOUT,
+        );
+    }
+
+    private function updatePayoutLog(
+        Merchant $merchant,
+        ?string $externalId,
+        string $requestId,
+        JsonResponse $response,
+        ?Payout $payout = null,
+        ?string $exceptionClass = null,
+        ?string $exceptionMessage = null,
+    ): void {
+        services()->merchantApiLog()->updateWithResponse(
+            merchant: $merchant,
+            externalID: (string) $externalId,
+            requestID: $requestId,
+            response: $response,
+            exceptionClass: $exceptionClass,
+            exceptionMessage: $exceptionMessage,
+            payout: $payout,
+        );
+    }
+
+    private function payoutRequestData(Payout $payout, string $operation): array
+    {
+        $payout->loadMissing('paymentGateway');
+
+        return [
+            'operation' => $operation,
+            'payout_uuid' => $payout->uuid,
+            'external_id' => $payout->external_id,
+            'amount' => $payout->amount_fiat->toPrecision(),
+            'currency' => strtolower($payout->amount_fiat->getCurrency()->getCode()),
+            'payment_gateway' => $payout->paymentGateway?->code,
+            'payment_detail_type' => $payout->payout_method_type->value,
+            'status' => $payout->status->value,
+        ];
     }
 
     private function resolveMaxWaitMs(StoreRequest $request, Merchant $merchant): int

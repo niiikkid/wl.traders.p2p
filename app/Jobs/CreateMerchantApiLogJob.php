@@ -15,6 +15,7 @@ class CreateMerchantApiLogJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 10;
 
     /**
@@ -26,6 +27,7 @@ class CreateMerchantApiLogJob implements ShouldQueue
         private string $requestId,
         private ?string $ipAddress = null,
         private ?string $userAgent = null,
+        private string $requestType = MerchantApiRequestLog::TYPE_ORDER,
     ) {
         $this->afterCommit();
         $this->onQueue('logging');
@@ -38,6 +40,7 @@ class CreateMerchantApiLogJob implements ShouldQueue
     {
         MerchantApiRequestLog::create([
             'request_id' => $this->requestId,
+            'request_type' => $this->requestType,
             'external_id' => $this->requestData['external_id'] ?? null,
             'amount' => $this->requestData['amount'] ?? null,
             'currency' => $this->requestData['currency'] ?? null,

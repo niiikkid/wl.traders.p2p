@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\MerchantApiRequestLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,6 +17,7 @@ class MerchantApiLogResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'request_type' => $this->request_type ?? MerchantApiRequestLog::TYPE_ORDER,
             'merchant' => [
                 'id' => $this->merchant->id,
                 'name' => $this->merchant->name,
@@ -25,6 +27,12 @@ class MerchantApiLogResource extends JsonResource
                 return [
                     'id' => $this->order->id,
                     'uuid' => $this->order->uuid,
+                ];
+            }),
+            'payout' => $this->when($this->payout, function () {
+                return [
+                    'id' => $this->payout->id,
+                    'uuid' => $this->payout->uuid,
                 ];
             }),
             'external_id' => $this->external_id,

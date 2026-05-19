@@ -9,11 +9,11 @@ use App\Jobs\UpdateMerchantApiLogJob;
 use App\Models\Merchant;
 use App\Models\MerchantApiRequestLog;
 use App\Models\Order;
-use Illuminate\Http\Request;
+use App\Models\Payout\Payout;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Throwable;
 
 class MerchantApiLogService implements MerchantApiLogServiceContract
 {
@@ -25,44 +25,50 @@ class MerchantApiLogService implements MerchantApiLogServiceContract
     private array $requestStartTime = [];
 
     /**
-     * Логирует запрос от мерчанта на создание сделки
+     * Logs a merchant API request.
      *
-     * @param Request $request Объект запроса
-     * @param Merchant $merchant Объект мерчанта
-     * @param array $requestData Данные запроса
-     * @return string Уникальный идентификатор запроса
+     * @param  Request  $request  Request instance
+     * @param  Merchant  $merchant  Merchant instance
+     * @param  array  $requestData  Request payload
+     * @param  string  $requestType  API request type
+     * @return string Unique request identifier
      */
-    public function logRequest(Request $request, Merchant $merchant, array $requestData): string
+    public function logRequest(Request $request, Merchant $merchant, array $requestData, string $requestType = MerchantApiRequestLog::TYPE_ORDER): string
     {
+        $requestType = in_array($requestType, [MerchantApiRequestLog::TYPE_ORDER, MerchantApiRequestLog::TYPE_PAYOUT], true)
+            ? $requestType
+            : MerchantApiRequestLog::TYPE_ORDER;
+
         // Генерируем уникальный идентификатор запроса
         $requestId = (string) Str::uuid();
-        
+
         // Запоминаем время начала запроса для последующего расчета времени выполнения
         $this->requestStartTime[$requestId] = microtime(true);
-        
+
         // Создаем лог-запись асинхронно
         CreateMerchantApiLogJob::dispatch(
             $merchant,
             $requestData,
             $requestId,
             $request->ip(),
-            $request->userAgent()
+            $request->userAgent(),
+            $requestType,
         );
-        
+
         return $requestId;
     }
 
     /**
-     * Обновляет лог после получения ответа
+     * Updates the log after building a response.
      *
-     * @param Merchant $merchant
-     * @param string $externalID
-     * @param string $requestID Уникальный идентификатор запроса
-     * @param JsonResponse $response Объект ответа
-     * @param Order|null $order Созданный заказ (если успешно)
-     * @param Throwable|null $exception Исключение, если оно возникло
+     * @param  string  $requestID  Unique request identifier
+     * @param  JsonResponse  $response  Response instance
+     * @param  Order|null  $order  Created order, if any
+     * @param  string|null  $exceptionClass  Exception class, if any
+     * @param  string|null  $exceptionMessage  Exception message, if any
+     * @param  Payout|null  $payout  Created or affected payout, if any
      */
-    public function updateWithResponse(Merchant $merchant, string $externalID, string $requestID, JsonResponse $response, ?Order $order = null, ?string $exceptionClass = null, ?string $exceptionMessage = null): void
+    public function updateWithResponse(Merchant $merchant, string $externalID, string $requestID, JsonResponse $response, ?Order $order = null, ?string $exceptionClass = null, ?string $exceptionMessage = null, ?Payout $payout = null): void
     {
         $responseData = json_decode($response->getContent(), true);
         $isSuccessful = $response->getStatusCode() === 200 && ($responseData['success'] ?? '') === true;
@@ -74,11 +80,12 @@ class MerchantApiLogService implements MerchantApiLogServiceContract
             $exceptionClass = null;
             $exceptionMessage = null;
         } elseif ($exceptionClass || $exceptionMessage) {
-            Log::error('Unexpected API order create error', [
+            Log::error('Unexpected merchant API request error', [
                 'merchant_id' => $merchant->id,
                 'merchant_uuid' => $merchant->uuid,
                 'external_id' => $externalID,
                 'request_id' => $requestID,
+                'request_type' => $payout ? MerchantApiRequestLog::TYPE_PAYOUT : MerchantApiRequestLog::TYPE_ORDER,
                 'exception_class' => $exceptionClass,
                 'exception_message' => $exceptionMessage,
             ]);
@@ -100,7 +107,8 @@ class MerchantApiLogService implements MerchantApiLogServiceContract
             $order?->id,
             $exceptionClass,
             $exceptionMessage,
-            $executionTime
+            $executionTime,
+            $payout?->id,
         );
     }
 }

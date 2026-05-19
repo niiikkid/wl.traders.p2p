@@ -2,8 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\DetailType;
-use App\Services\Money\Currency;
+use App\Models\Payout\Payout;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property string|null $request_id
+ * @property string $request_type
  * @property string|null $external_id
  * @property string|null $amount
  * @property string|null $currency
@@ -28,14 +28,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $exception_message
  * @property int $merchant_id
  * @property int|null $order_id
+ * @property int|null $payout_id
  * @property Merchant $merchant
  * @property Order|null $order
+ * @property Payout|null $payout
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
 class MerchantApiRequestLog extends Model
 {
     use HasFactory;
+
+    public const TYPE_ORDER = 'order';
+
+    public const TYPE_PAYOUT = 'payout';
 
     /**
      * The attributes that are mass assignable.
@@ -44,6 +50,7 @@ class MerchantApiRequestLog extends Model
      */
     protected $fillable = [
         'request_id',
+        'request_type',
         'external_id',
         'amount',
         'currency',
@@ -60,6 +67,7 @@ class MerchantApiRequestLog extends Model
         'exception_message',
         'merchant_id',
         'order_id',
+        'payout_id',
     ];
 
     /**
@@ -82,5 +90,10 @@ class MerchantApiRequestLog extends Model
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
+    }
+
+    public function payout(): BelongsTo
+    {
+        return $this->belongsTo(Payout::class);
     }
 }
