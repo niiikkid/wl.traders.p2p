@@ -32,7 +32,7 @@ class PayoutPoolingJob implements ShouldQueue
         public int $creationDeadlineAtMs,
     ) {
         $this->timeout = max(5, min(120, (int) ceil($maxWaitMs / 1000) + 5));
-        $this->onQueue('payout');
+        $this->onQueue('payout-pooling');
     }
 
     /**
