@@ -21,8 +21,11 @@ class StoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $merchant = queries()->merchant()->findByUUID($this->merchant_id);
-
+        $merchantUuid = $this->input('merchant_id');
+        $merchant = is_string($merchantUuid) && $merchantUuid !== ''
+            ? queries()->merchant()->findByUUID($merchantUuid)
+            : null;
+            
         return [
             'merchant_id' => ['required', 'exists:merchants,uuid'],
             'external_id' => [
@@ -50,7 +53,13 @@ class StoreRequest extends FormRequest
 
                     if ($exists) {
                         $fail('Выплата с таким external_id уже существует для данного мерчанта.');
+
                         return;
+                    }
+
+                    $pendingKey = "pending_payout_external_id_{$value}_merchant_{$merchant->id}";
+                    if (! Cache::add($pendingKey, true, 60 * 60)) {
+                        $fail('Выплата с таким external_id уже в процессе создания для данного мерчанта.');
                     }
                 },
             ],
@@ -130,16 +139,19 @@ class StoreRequest extends FormRequest
                 if ($geoMarket?->equals(MarketEnum::MERCHANT_API)) {
                     if ($rate === null || $rate === '') {
                         $validator->errors()->add('rate', 'Поле rate обязательно для выбранного источника курсов.');
+
                         return;
                     }
 
                     if (! is_numeric($rate)) {
                         $validator->errors()->add('rate', 'Поле rate должно быть числом.');
+
                         return;
                     }
 
                     if ((float) $rate <= 0) {
                         $validator->errors()->add('rate', 'Поле rate должно быть больше 0.');
+
                         return;
                     }
 
@@ -193,4 +205,3 @@ class StoreRequest extends FormRequest
         return $scale <= $maxScale;
     }
 }
-

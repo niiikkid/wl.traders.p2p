@@ -252,7 +252,7 @@ const tocSections = [
                                 <div>
                                     <h4 class="font-semibold mb-2">Заголовки</h4>
                                     <ul class="list-disc list-inside space-y-1 text-sm text-base-content/80 ml-2">
-                                        <li><strong>X-Max-Wait-Ms: 30000</strong> — необязательно. Указывает, сколько ждать выдачи сделки (минимум 1 секунда). При превышении вернётся HTTP 504 без «зависших» запросов.</li>
+                                        <li><strong>X-Max-Wait-Ms: 30000</strong> — необязательный HTTP-заголовок (не параметр body). Указывает, сколько ждать выдачи сделки (минимум 1 секунда). При превышении вернётся HTTP 504 без «зависших» запросов.</li>
                                         <li>По умолчанию система ждёт полминуты, затем возвращает ошибку ниже.</li>
                                     </ul>
                                     <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm mt-2"><code>{{ formatJSON({ success: false, message: "Не удалось обработать запрос вовремя. Повторите попытку позже." }) }}</code></pre>
@@ -402,7 +402,7 @@ const tocSections = [
                                 <div>
                                     <h4 class="font-semibold mb-2">Заголовки</h4>
                                     <ul class="list-disc list-inside space-y-1 text-sm text-base-content/80 ml-2">
-                                        <li><strong>X-Max-Wait-Ms: 30000</strong> — необязательный таймаут ожидания выдачи сделки.</li>
+                                        <li><strong>X-Max-Wait-Ms: 30000</strong> — необязательный HTTP-заголовок (не параметр body) для таймаута ожидания выдачи сделки.</li>
                                         <li>По умолчанию система ждёт полминуты прежде чем вернуть ошибку ниже.</li>
                                     </ul>
                                     <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm mt-2"><code>{{ formatJSON({ success: false, message: "Не удалось обработать запрос вовремя. Повторите попытку позже." }) }}</code></pre>
@@ -779,6 +779,26 @@ const tocSections = [
                                 <div class="flex flex-wrap items-center gap-3">
                                     <span class="badge badge-secondary badge-lg">POST</span>
                                     <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/payouts</code>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 class="font-semibold mb-2">Заголовки</h4>
+                                <div class="overflow-x-auto">
+                                    <table class="table table-zebra w-full">
+                                        <thead>
+                                            <tr>
+                                                <th>Заголовок</th>
+                                                <th>Описание</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><code class="bg-base-200 px-1 rounded">X-Max-Wait-Ms</code></td>
+                                                <td>Необязательный HTTP-заголовок (не параметр body): сколько миллисекунд API будет ждать создания выплаты. Если не указан, используется настройка мерчанта.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 

@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property array $settings
  * @property array $gateway_settings
  * @property int|null $max_order_wait_time
+ * @property int|null $max_payout_wait_time
  * @property int|null $min_order_amounts
  * @property Carbon $validated_at
  * @property Carbon $banned_at
@@ -56,6 +57,7 @@ class Merchant extends Model
         'settings',
         'gateway_settings',
         'max_order_wait_time',
+        'max_payout_wait_time',
         'min_order_amounts',
         'validated_at',
         'banned_at',

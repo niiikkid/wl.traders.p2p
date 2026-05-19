@@ -59,7 +59,13 @@ class StoreRequest extends FormRequest
 
                     if ($exists) {
                         $fail('Выплата с таким external_id уже существует для данного мерчанта.');
+
                         return;
+                    }
+
+                    $pendingKey = "pending_payout_external_id_{$value}_merchant_{$merchant->id}";
+                    if (! Cache::add($pendingKey, true, 60 * 60)) {
+                        $fail('Выплата с таким external_id уже в процессе создания для данного мерчанта.');
                     }
                 },
             ],
@@ -116,16 +122,19 @@ class StoreRequest extends FormRequest
                 if ($geoMarket?->equals(MarketEnum::MERCHANT_API)) {
                     if ($exchangeRate === null || $exchangeRate === '') {
                         $validator->errors()->add('exchange_rate', 'Поле exchange_rate обязательно для выбранного источника курсов.');
+
                         return;
                     }
 
                     if (! is_numeric($exchangeRate)) {
                         $validator->errors()->add('exchange_rate', 'Поле exchange_rate должно быть числом.');
+
                         return;
                     }
 
                     if ((float) $exchangeRate <= 0) {
                         $validator->errors()->add('exchange_rate', 'Поле exchange_rate должно быть больше 0.');
+
                         return;
                     }
 

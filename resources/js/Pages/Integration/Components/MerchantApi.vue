@@ -24,6 +24,7 @@ const props = defineProps({
 const merchantOptions = computed(() => props.merchants);
 const initialMerchantId = props.merchantId || merchantOptions.value[0]?.uuid || '';
 const makeTestClientId = () => `test-${Math.floor(Math.random() * 1000000)}`;
+const DEFAULT_MAX_WAIT_MS = '30000';
 
 // Merchant API формы
 const merchantOrderForm = ref({
@@ -39,7 +40,6 @@ const merchantOrderForm = ref({
     success_url: '',
     fail_url: '',
     manually: '',
-    'X-Max-Wait-Ms': '30000'
 });
 
 const merchantGetOrderForm = ref({
@@ -202,15 +202,9 @@ const clearMerchantResponse = (key) => {
                                     <option value="1">1 (Да)</option>
                                 </select>
                             </div>
-                            <div class="form-control grid">
-                                <label class="label">
-                                    <span class="label-text">X-Max-Wait-Ms</span>
-                                </label>
-                                <input v-model="merchantOrderForm['X-Max-Wait-Ms']" type="number" class="input input-bordered w-full" placeholder="30000">
-                            </div>
                         </div>
                         <div class="card-actions justify-end mt-4">
-                            <button @click="handleMerchantRequest('createOrder', 'POST', 'merchant/order', Object.fromEntries(Object.entries(merchantOrderForm).filter(([key]) => key !== 'X-Max-Wait-Ms')), { 'X-Max-Wait-Ms': merchantOrderForm['X-Max-Wait-Ms'] })"
+                            <button @click="handleMerchantRequest('createOrder', 'POST', 'merchant/order', merchantOrderForm, { 'X-Max-Wait-Ms': DEFAULT_MAX_WAIT_MS })"
                                     class="btn btn-primary" :disabled="loading">
                                 <span v-if="loading" class="loading loading-spinner loading-sm"></span>
                                 Отправить запрос

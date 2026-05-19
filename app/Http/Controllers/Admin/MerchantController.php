@@ -92,12 +92,14 @@ class MerchantController extends Controller
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'max_order_wait_time' => 'nullable|integer|min:1000',
+            'max_payout_wait_time' => 'nullable|integer|min:1000',
             'min_order_amounts' => 'nullable|array',
             'min_order_amounts.*' => 'numeric|min:0',
         ]);
 
         $merchant->update([
             'max_order_wait_time' => $request->max_order_wait_time,
+            'max_payout_wait_time' => $request->max_payout_wait_time,
             'min_order_amounts' => $request->min_order_amounts,
         ]);
 

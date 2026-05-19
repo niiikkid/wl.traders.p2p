@@ -9,6 +9,7 @@ use App\Enums\MarketEnum;
 use App\Enums\PayoutOperationType;
 use App\Enums\PayoutStatus;
 use App\Enums\TransactionType;
+use App\Exceptions\PayoutCreationTimedOutException;
 use App\Exceptions\PayoutException;
 use App\Jobs\CreditPayoutToTraderJob;
 use App\Jobs\ExpiresPayoutJob;
@@ -35,14 +36,19 @@ class PayoutService implements PayoutServiceContract
 
     /**
      * @throws PayoutException
+     * @throws PayoutCreationTimedOutException
      */
     public function create(PayoutCreateDTO $data): Payout
     {
         return Transaction::run(function () use ($data) {
+            $this->ensureCreationDeadlineNotExceeded($data);
+
             if ($data->paymentGateway) {
                 $this->ensureGatewaySupportsPayouts($data->paymentGateway);
             }
             $this->ensureMerchantCanCreatePayouts($data->merchant);
+
+            $this->ensureCreationDeadlineNotExceeded($data);
 
             $merchantWallet = $this->resolveMerchantWallet($data->merchant);
             $callbackUrl = $data->callbackUrl ?: $data->merchant->payout_callback_url;
@@ -59,6 +65,8 @@ class PayoutService implements PayoutServiceContract
             if (! $conversionPrice->greaterThanZero()) {
                 throw PayoutException::marketPriceUnavailable();
             }
+
+            $this->ensureCreationDeadlineNotExceeded($data);
 
             $payoutSettings = $this->resolvePayoutSettings($data->paymentGateway, $currency);
             $totalRate = $payoutSettings['total_rate'];
@@ -93,6 +101,8 @@ class PayoutService implements PayoutServiceContract
             if ($available->lessThan($merchantDebit)) {
                 throw PayoutException::insufficientMerchantFunds();
             }
+
+            $this->ensureCreationDeadlineNotExceeded($data);
 
             $rateFixedAt = Carbon::now();
 
@@ -144,20 +154,28 @@ class PayoutService implements PayoutServiceContract
                 balanceType: BalanceType::MERCHANT
             );
 
+            $this->ensureCreationDeadlineNotExceeded($data);
+
             $this->logOperation($payout, PayoutOperationType::RESERVE_FROM_MERCHANT, $merchantDebit, [
                 'wallet_id' => $merchantWallet->id,
             ]);
 
+            $this->ensureCreationDeadlineNotExceeded($data);
+
             if ($expiresAt) {
-                ExpiresPayoutJob::dispatch($payout)->delay($expiresAt);
+                ExpiresPayoutJob::dispatch($payout)->delay($expiresAt)->afterCommit();
             }
 
             SendPayoutCallbackJob::dispatch(
                 $payout,
                 $payout->api_version === 2 ? $payout->callback_payload_revision : null,
-            );
+            )->afterCommit();
 
-            return $payout->load('merchant', 'paymentGateway');
+            $payout->load('merchant', 'paymentGateway');
+
+            $this->ensureCreationDeadlineNotExceeded($data);
+
+            return $payout;
         });
     }
 
@@ -634,6 +652,20 @@ class PayoutService implements PayoutServiceContract
 
         if (! $gateway->is_payouts_enabled) {
             throw PayoutException::gatewayPayoutsDisabled();
+        }
+    }
+
+    /**
+     * @throws PayoutCreationTimedOutException
+     */
+    private function ensureCreationDeadlineNotExceeded(PayoutCreateDTO $data): void
+    {
+        if ($data->creationDeadlineAtMs === null) {
+            return;
+        }
+
+        if (now()->getTimestampMs() >= $data->creationDeadlineAtMs) {
+            throw PayoutCreationTimedOutException::make();
         }
     }
 

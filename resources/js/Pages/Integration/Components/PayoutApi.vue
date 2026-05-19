@@ -23,6 +23,7 @@ const props = defineProps({
 
 const merchantOptions = computed(() => props.merchants);
 const resolveDefaultMerchant = () => props.merchantId || merchantOptions.value[0]?.uuid || '';
+const DEFAULT_MAX_WAIT_MS = '30000';
 
 const payoutCreateForm = ref({
     merchant_id: resolveDefaultMerchant(),
@@ -91,11 +92,11 @@ const payoutResponses = reactive({
     receipts: { response: null, error: null },
 });
 
-const handlePayoutRequest = async (key, method, endpoint, payload = {}) => {
+const handlePayoutRequest = async (key, method, endpoint, payload = {}, headers = {}) => {
     payoutResponses[key].response = null;
     payoutResponses[key].error = null;
 
-    const result = await props.executeRequest(method, endpoint, payload);
+    const result = await props.executeRequest(method, endpoint, payload, headers);
 
     if (result.success) {
         payoutResponses[key].response = result.data;
@@ -225,7 +226,7 @@ const clearPayoutResponse = (key) => {
                             <button
                                 class="btn btn-primary"
                                 :disabled="loading || !payoutCreateForm.merchant_id || !payoutCreateForm.external_id || (!payoutCreateForm.payment_gateway && !payoutCreateForm.currency) || !payoutCreateForm.requisites || !payoutCreateForm.initials"
-                                @click="handlePayoutRequest('create', 'POST', 'payouts', payoutCreateForm)"
+                                @click="handlePayoutRequest('create', 'POST', 'payouts', payoutCreateForm, { 'X-Max-Wait-Ms': DEFAULT_MAX_WAIT_MS })"
                             >
                                 <span v-if="loading" class="loading loading-spinner loading-sm"></span>
                                 Отправить запрос

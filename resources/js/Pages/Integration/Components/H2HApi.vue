@@ -28,6 +28,7 @@ const props = defineProps({
 const merchantOptions = computed(() => props.merchants);
 const initialMerchantId = props.merchantId || merchantOptions.value[0]?.uuid || '';
 const makeTestClientId = () => `test-${Math.floor(Math.random() * 1000000)}`;
+const DEFAULT_MAX_WAIT_MS = '30000';
 
 // H2H API формы
 const h2hOrderForm = ref({
@@ -46,7 +47,6 @@ const h2hOrderForm = ref({
     cardholder_name: '',
     merchant_id: initialMerchantId,
     callback_url: '',
-    'X-Max-Wait-Ms': '30000'
 });
 
 const h2hGetOrderForm = ref({
@@ -157,9 +157,7 @@ const handleH2HRequest = async (key, method, endpoint, payload = {}, headers = {
 };
 
 const getCreateOrderPayload = () => {
-    const basePayload = Object.fromEntries(
-        Object.entries(h2hOrderForm.value).filter(([key]) => key !== 'X-Max-Wait-Ms')
-    );
+    const basePayload = {...h2hOrderForm.value};
 
     if (!h2hOrderForm.value.manual_control_acquiring) {
         delete basePayload.card_number;
@@ -347,15 +345,9 @@ const clearH2HResponse = (key) => {
                                 </label>
                                 <input v-model="h2hOrderForm.callback_url" type="url" class="input input-bordered w-full" placeholder="https://example.com/callback">
                             </div>
-                            <div class="form-control grid">
-                                <label class="label">
-                                    <span class="label-text">X-Max-Wait-Ms</span>
-                                </label>
-                                <input v-model="h2hOrderForm['X-Max-Wait-Ms']" type="number" class="input input-bordered w-full" placeholder="30000">
-                            </div>
                         </div>
                         <div class="card-actions justify-end mt-4">
-                            <button @click="handleH2HRequest('createOrder', 'POST', 'h2h/order', getCreateOrderPayload(), { 'X-Max-Wait-Ms': h2hOrderForm['X-Max-Wait-Ms'] })"
+                            <button @click="handleH2HRequest('createOrder', 'POST', 'h2h/order', getCreateOrderPayload(), { 'X-Max-Wait-Ms': DEFAULT_MAX_WAIT_MS })"
                                     class="btn btn-primary" :disabled="loading || !isManualControlCardDataValid">
                                 <span v-if="loading" class="loading loading-spinner loading-sm"></span>
                                 Отправить запрос

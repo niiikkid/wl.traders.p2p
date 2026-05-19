@@ -23,6 +23,7 @@ readonly class PayoutCreateDTO extends BaseDTO
         public ?string $callbackUrl,
         public ?string $bankName,
         public ?Money $merchantRate = null,
+        public ?int $creationDeadlineAtMs = null,
     ) {}
 
     public static function make(
@@ -38,6 +39,7 @@ readonly class PayoutCreateDTO extends BaseDTO
         ?string $bankName,
         ?Money $merchantRate = null,
         int $apiVersion = 1,
+        ?int $creationDeadlineAtMs = null,
     ): self {
         return new self(
             merchant: $merchant,
@@ -52,6 +54,7 @@ readonly class PayoutCreateDTO extends BaseDTO
             callbackUrl: $callbackUrl,
             bankName: $bankName,
             merchantRate: $merchantRate,
+            creationDeadlineAtMs: $creationDeadlineAtMs,
         );
     }
 }

@@ -124,6 +124,7 @@ const geoForm = reactive({
 const formSettings = reactive({
     categories: merchant.value?.categories ?? [],
     max_order_wait_time: merchant.value?.max_order_wait_time ?? null,
+    max_payout_wait_time: merchant.value?.max_payout_wait_time ?? null,
     errors: {},
     processing: false,
     recentlySuccessful: false,
@@ -183,6 +184,7 @@ const resetFormsFromMerchant = (value) => {
     formCallback.payout_callback_url = value.payout_callback_url ?? '';
     formSettings.categories = value.categories ?? [];
     formSettings.max_order_wait_time = value.max_order_wait_time ?? null;
+    formSettings.max_payout_wait_time = value.max_payout_wait_time ?? null;
     minOrderAmounts.value = value.min_order_amounts ? {...value.min_order_amounts} : {};
     geoItems.value = normalizeGeoItems(value.geos ?? []);
 };
@@ -411,6 +413,7 @@ const submitSettings = () => {
     axios.patch(route('admin.merchants.settings.update', merchant.value.id), {
         categories: formSettings.categories,
         max_order_wait_time: formSettings.max_order_wait_time,
+        max_payout_wait_time: formSettings.max_payout_wait_time,
         min_order_amounts: minOrderAmounts.value,
     }, {
         headers: {Accept: 'application/json'},
@@ -1044,6 +1047,29 @@ const merchantStatus = computed(() => {
                                     Примеры: 3000 мс = 3 секунды, 60000 мс = 1 минута
                                 </p>
                                 <InputError :message="formSettings.errors.max_order_wait_time" class="mt-1" />
+                            </div>
+
+                            <div>
+                                <InputLabel
+                                    for="max_payout_wait_time"
+                                    value="Время на создание выплаты (max)"
+                                    :error="!!formSettings.errors.max_payout_wait_time"
+                                    class="mb-0.5"
+                                />
+                                <TextInput
+                                    id="max_payout_wait_time"
+                                    v-model="formSettings.max_payout_wait_time"
+                                    type="number"
+                                    min="1000"
+                                    placeholder="Введите время в миллисекундах (1 сек = 1000 мс)"
+                                    class="input-sm mt-1 block w-full text-xs"
+                                    :error="!!formSettings.errors.max_payout_wait_time"
+                                    @input="clearFormError(formSettings, 'max_payout_wait_time')"
+                                />
+                                <p class="mt-1 text-xs text-base-content/70">
+                                    Если API не успеет создать выплату за это время, запрос вернёт ошибку 504.
+                                </p>
+                                <InputError :message="formSettings.errors.max_payout_wait_time" class="mt-1" />
                             </div>
 
                             <div>

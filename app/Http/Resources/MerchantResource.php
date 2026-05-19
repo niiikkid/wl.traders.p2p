@@ -63,6 +63,7 @@ class MerchantResource extends JsonResource
                 ->values(),
             'commission_settings' => $this->getCommissionSettings(),
             'max_order_wait_time' => $this->max_order_wait_time,
+            'max_payout_wait_time' => $this->max_payout_wait_time,
             'min_order_amounts' => ! empty($this->min_order_amounts) ? $this->min_order_amounts : null,
             'categories' => $this->whenLoaded('categories', function () {
                 return $this->categories?->pluck('id')->toArray();
