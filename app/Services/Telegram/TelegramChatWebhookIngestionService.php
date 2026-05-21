@@ -53,11 +53,11 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
         }
 
         $apiChatId = (string) $chat['id'];
-
+        
         try {
             DB::transaction(function () use ($updateId, $message, $chat, $apiChatId, $telegramMessageId): void {
                 $telegramChat = $this->resolveTelegramChat($apiChatId, $chat);
-
+                
                 if ($this->messageAlreadyExists($telegramChat->id, $telegramMessageId)) {
                     return;
                 }
@@ -66,7 +66,7 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
                 $text = $this->nullableString($message['text'] ?? null);
                 $caption = $this->nullableString($message['caption'] ?? null);
                 $isDisputeRelated = $this->isDisputeRelated($message, $text, $caption);
-
+                
                 if (! $telegramChat->debug_enabled && ! $isDisputeRelated) {
                     return;
                 }
@@ -82,7 +82,7 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
                     'is_dispute_related' => $isDisputeRelated,
                     'raw_payload' => $message,
                 ]);
-
+                
                 ProcessTelegramChatMessageJob::dispatch($telegramChatMessage);
             });
         } catch (QueryException $exception) {
@@ -104,6 +104,7 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
             [
                 'status' => TelegramChatStatus::PENDING_MODERATION,
                 'parser_type' => TelegramChatParserType::STANDARD_DISPUTE,
+                'debug_enabled' => true,
             ],
         );
 
