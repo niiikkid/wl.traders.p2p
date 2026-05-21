@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, ref, useSlots, watch } from 'vue';
+import { releaseSelectionAndFocusBeforeModalOpen } from '@/utils/releaseSelectionAndFocusBeforeModalOpen.js';
 
 const props = defineProps({
     show: {
@@ -27,6 +28,7 @@ watch(
     () => props.show,
     () => {
         if (props.show) {
+            releaseSelectionAndFocusBeforeModalOpen();
             emit('onShow');
             document.body.style.overflow = 'hidden';
         } else {

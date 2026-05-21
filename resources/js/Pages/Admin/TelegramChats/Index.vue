@@ -62,6 +62,8 @@ const localWebhookBaseUrl = ref('');
 
 const messageDetail = ref(null);
 const messageDetailModalOpen = ref(false);
+const attachmentPreview = ref(null);
+const attachmentPreviewModalOpen = ref(false);
 
 const chatList = computed(() => props.chats?.data ?? []);
 const messageList = computed(() => props.messages?.data ?? []);
@@ -303,6 +305,79 @@ const openMessageDetail = (message) => {
 const closeMessageDetail = () => {
     messageDetailModalOpen.value = false;
     messageDetail.value = null;
+};
+
+const attachmentPreviewType = (attachment) => {
+    const mime = attachment?.mime_type?.toLowerCase() ?? '';
+    const extension = attachment?.extension?.toLowerCase() ?? '';
+
+    if (mime.startsWith('image/')) {
+        return 'image';
+    }
+
+    if (mime === 'application/pdf' || extension === 'pdf') {
+        return 'pdf';
+    }
+
+    return null;
+};
+
+const isPreviewableAttachment = (attachment) => attachmentPreviewType(attachment) !== null;
+
+const openAttachmentInNewTab = (attachment) => {
+    if (!attachment?.download_url) {
+        return;
+    }
+
+    window.open(attachment.download_url, '_blank')?.focus();
+};
+
+const openAttachmentPreview = (attachment) => {
+    if (!attachment?.download_url) {
+        return;
+    }
+
+    if (!isPreviewableAttachment(attachment)) {
+        openAttachmentInNewTab(attachment);
+
+        return;
+    }
+
+    attachmentPreview.value = attachment;
+    attachmentPreviewModalOpen.value = true;
+};
+
+const closeAttachmentPreview = () => {
+    attachmentPreviewModalOpen.value = false;
+    attachmentPreview.value = null;
+};
+
+const openMessageFirstAttachment = (message) => {
+    const attachment = message.attachments?.[0];
+
+    if (!attachment) {
+        return;
+    }
+
+    openAttachmentPreview(attachment);
+};
+
+const formatAttachmentSize = (bytes) => {
+    const size = Number(bytes);
+
+    if (!Number.isFinite(size) || size <= 0) {
+        return '—';
+    }
+
+    if (size < 1024) {
+        return `${size} б`;
+    }
+
+    if (size < 1024 * 1024) {
+        return `${(size / 1024).toFixed(1)} КБ`;
+    }
+
+    return `${(size / (1024 * 1024)).toFixed(1)} МБ`;
 };
 
 const statusBadgeClass = (status) => {
@@ -713,7 +788,15 @@ watch(
                                                         <DateTime :data="message.created_at" simple />
                                                     </td>
                                                     <td>
-                                                        <div class="flex justify-end">
+                                                        <div class="flex flex-wrap justify-end gap-1">
+                                                            <button
+                                                                v-if="message.attachments?.length"
+                                                                type="button"
+                                                                class="btn btn-info btn-outline btn-xs"
+                                                                @click="openMessageFirstAttachment(message)"
+                                                            >
+                                                                Файл
+                                                            </button>
                                                             <button
                                                                 type="button"
                                                                 class="btn btn-primary btn-outline btn-xs"
@@ -846,6 +929,53 @@ watch(
             </div>
         </Modal>
 
+        <Modal :show="attachmentPreviewModalOpen" max-width="4xl" @close="closeAttachmentPreview">
+            <div v-if="attachmentPreview" class="space-y-4">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <h3 class="text-lg font-semibold min-w-0 truncate">
+                        {{ attachmentPreview.original_name || attachmentPreview.stored_name }}
+                    </h3>
+                    <span class="text-xs text-base-content/60 shrink-0">
+                        {{ formatAttachmentSize(attachmentPreview.size) }}
+                    </span>
+                </div>
+
+                <img
+                    v-if="attachmentPreviewType(attachmentPreview) === 'image'"
+                    :src="attachmentPreview.download_url"
+                    :alt="attachmentPreview.original_name || attachmentPreview.stored_name"
+                    class="max-h-[70vh] w-full rounded-box object-contain bg-base-200/40"
+                />
+                <iframe
+                    v-else-if="attachmentPreviewType(attachmentPreview) === 'pdf'"
+                    :src="attachmentPreview.download_url"
+                    :title="attachmentPreview.original_name || attachmentPreview.stored_name"
+                    class="h-[70vh] w-full rounded-box border border-base-300 bg-base-100"
+                ></iframe>
+
+                <div class="modal-action">
+                    <button
+                        type="button"
+                        class="btn btn-outline btn-sm"
+                        @click="openAttachmentInNewTab(attachmentPreview)"
+                    >
+                        В новой вкладке
+                    </button>
+                    <a
+                        :href="attachmentPreview.download_url"
+                        class="btn btn-outline btn-sm"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Скачать
+                    </a>
+                    <button type="button" class="btn btn-sm" @click="closeAttachmentPreview">
+                        Закрыть
+                    </button>
+                </div>
+            </div>
+        </Modal>
+
         <Modal :show="messageDetailModalOpen" max-width="2xl" @close="closeMessageDetail">
             <div v-if="messageDetail" class="space-y-4 max-h-[80vh] overflow-y-auto">
                 <h3 class="text-lg font-semibold">Сообщение #{{ messageDetail.id }}</h3>
@@ -879,24 +1009,56 @@ watch(
                     <p v-if="messageDetail.caption"><span class="text-base-content/60">Подпись:</span> {{ messageDetail.caption }}</p>
                 </div>
 
-                <div v-if="messageDetail.attachments?.length" class="space-y-2">
+                <div v-if="messageDetail.attachments?.length" class="space-y-3">
                     <p class="text-sm font-medium">Вложения</p>
                     <div
                         v-for="attachment in messageDetail.attachments"
                         :key="attachment.id"
-                        class="flex flex-wrap items-center gap-2 text-sm"
+                        class="space-y-2 rounded-box border border-base-300 bg-base-200/30 p-3"
                     >
-                        <span>{{ attachment.original_name || attachment.stored_name }}</span>
-                        <span class="text-base-content/60">({{ attachment.mime_type }}, {{ attachment.size }} б)</span>
-                        <a
-                            v-if="attachment.download_url"
-                            :href="attachment.download_url"
-                            class="link link-primary"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            Скачать
-                        </a>
+                        <div class="flex flex-wrap items-start justify-between gap-2 text-sm">
+                            <div class="min-w-0">
+                                <div class="font-medium truncate">
+                                    {{ attachment.original_name || attachment.stored_name }}
+                                </div>
+                                <div class="text-xs text-base-content/60">
+                                    {{ attachment.mime_type || 'Тип неизвестен' }}
+                                    <span class="px-1">·</span>
+                                    {{ formatAttachmentSize(attachment.size) }}
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-1 shrink-0">
+                                <button
+                                    v-if="attachment.download_url"
+                                    type="button"
+                                    class="btn btn-info btn-outline btn-xs"
+                                    @click="openAttachmentPreview(attachment)"
+                                >
+                                    {{ isPreviewableAttachment(attachment) ? 'Просмотр' : 'Открыть' }}
+                                </button>
+                                <a
+                                    v-if="attachment.download_url"
+                                    :href="attachment.download_url"
+                                    class="btn btn-outline btn-xs"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    Скачать
+                                </a>
+                            </div>
+                        </div>
+                        <img
+                            v-if="isPreviewableAttachment(attachment) && attachmentPreviewType(attachment) === 'image'"
+                            :src="attachment.download_url"
+                            :alt="attachment.original_name || attachment.stored_name"
+                            class="max-h-64 w-full rounded-box object-contain bg-base-100"
+                        />
+                        <iframe
+                            v-else-if="isPreviewableAttachment(attachment) && attachmentPreviewType(attachment) === 'pdf'"
+                            :src="attachment.download_url"
+                            :title="attachment.original_name || attachment.stored_name"
+                            class="h-64 w-full rounded-box border border-base-300 bg-base-100"
+                        ></iframe>
                     </div>
                 </div>
 
