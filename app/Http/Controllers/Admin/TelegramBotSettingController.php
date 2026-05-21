@@ -37,6 +37,8 @@ class TelegramBotSettingController extends Controller
             $setting = services()->telegramChatBot()->updateSettings(
                 botToken: $validated['bot_token'] ?? null,
                 regenerateWebhookSecret: (bool) ($validated['regenerate_webhook_secret'] ?? false),
+                localWebhookBaseUrl: $validated['local_webhook_base_url'] ?? null,
+                updateLocalWebhookBaseUrl: is_local() && $request->has('local_webhook_base_url'),
             );
         } catch (TelegramChatBotException $exception) {
             return response()->json([

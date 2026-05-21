@@ -20,10 +20,18 @@ class TelegramChatBotService implements TelegramChatBotServiceContract
         return TelegramBotSetting::query()->firstOrCreate([]);
     }
 
-    public function updateSettings(?string $botToken, bool $regenerateWebhookSecret = false): TelegramBotSetting
-    {
+    public function updateSettings(
+        ?string $botToken,
+        bool $regenerateWebhookSecret = false,
+        ?string $localWebhookBaseUrl = null,
+        bool $updateLocalWebhookBaseUrl = false,
+    ): TelegramBotSetting {
         $setting = $this->getSettings();
         $data = [];
+
+        if ($updateLocalWebhookBaseUrl && is_local()) {
+            $data['local_webhook_base_url'] = $this->normalizeLocalWebhookBaseUrl($localWebhookBaseUrl);
+        }
 
         if (is_string($botToken) && $botToken !== '') {
             $this->assertBotTokenIsValid($botToken);
@@ -103,6 +111,13 @@ class TelegramChatBotService implements TelegramChatBotServiceContract
 
     public function webhookUrl(): string
     {
+        $path = route('telegram.chat-automation.webhook', [], false);
+        $setting = $this->getSettings();
+
+        if (is_local() && is_string($setting->local_webhook_base_url) && $setting->local_webhook_base_url !== '') {
+            return rtrim($setting->local_webhook_base_url, '/').$path;
+        }
+
         return route('telegram.chat-automation.webhook', [], true);
     }
 
@@ -265,5 +280,16 @@ class TelegramChatBotService implements TelegramChatBotServiceContract
     protected function generateWebhookSecret(): string
     {
         return Str::random(32);
+    }
+
+    protected function normalizeLocalWebhookBaseUrl(?string $baseUrl): ?string
+    {
+        if (! is_string($baseUrl)) {
+            return null;
+        }
+
+        $baseUrl = rtrim(trim($baseUrl), '/');
+
+        return $baseUrl !== '' ? $baseUrl : null;
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string|null $bot_token
  * @property string|null $webhook_secret
+ * @property string|null $local_webhook_base_url
  * @property Carbon|null $webhook_set_at
  * @property string|null $webhook_last_error
  * @property array|null $webhook_metadata
@@ -22,6 +23,7 @@ class TelegramBotSetting extends Model
     protected $fillable = [
         'bot_token',
         'webhook_secret',
+        'local_webhook_base_url',
         'webhook_set_at',
         'webhook_last_error',
         'webhook_metadata',

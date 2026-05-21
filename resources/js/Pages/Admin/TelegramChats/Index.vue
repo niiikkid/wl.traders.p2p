@@ -58,6 +58,7 @@ const botSettingsSuccess = ref('');
 
 const botToken = ref('');
 const regenerateWebhookSecret = ref(false);
+const localWebhookBaseUrl = ref('');
 
 const messageDetail = ref(null);
 const messageDetailModalOpen = ref(false);
@@ -217,11 +218,13 @@ const openBotSettingsModal = async () => {
     botSettingsSuccess.value = '';
     botToken.value = '';
     regenerateWebhookSecret.value = false;
+    localWebhookBaseUrl.value = '';
     botSettingsModalOpen.value = true;
 
     try {
         const response = await axios.get(route('admin.telegram-bot.settings.show'));
         botSettingState.value = response.data.setting ?? botSettingState.value;
+        localWebhookBaseUrl.value = botSettingState.value.local_webhook_base_url ?? '';
     } catch (error) {
         botSettingsError.value = error?.response?.data?.message ?? 'Не удалось загрузить настройки бота.';
     }
@@ -237,14 +240,21 @@ const saveBotSettings = async () => {
     botSettingsSuccess.value = '';
 
     try {
-        const response = await axios.patch(route('admin.telegram-bot.settings.update'), {
+        const payload = {
             bot_token: botToken.value || undefined,
             regenerate_webhook_secret: regenerateWebhookSecret.value,
-        });
+        };
+
+        if (botSettingState.value.is_local) {
+            payload.local_webhook_base_url = localWebhookBaseUrl.value.trim() || null;
+        }
+
+        const response = await axios.patch(route('admin.telegram-bot.settings.update'), payload);
         botSettingState.value = response.data.setting ?? botSettingState.value;
         botSettingsSuccess.value = response.data.message ?? 'Настройки сохранены.';
         botToken.value = '';
         regenerateWebhookSecret.value = false;
+        localWebhookBaseUrl.value = botSettingState.value.local_webhook_base_url ?? '';
     } catch (error) {
         botSettingsError.value = error?.response?.data?.message ?? 'Не удалось сохранить настройки.';
     } finally {
@@ -673,6 +683,20 @@ watch(
                     <input v-model="regenerateWebhookSecret" type="checkbox" class="checkbox checkbox-sm">
                     <span class="label-text">Перегенерировать секрет webhook</span>
                 </label>
+
+                <fieldset v-if="botSettingState.is_local" class="fieldset">
+                    <legend class="fieldset-legend">Домен webhook (локальная среда)</legend>
+                    <input
+                        v-model="localWebhookBaseUrl"
+                        type="url"
+                        class="input input-bordered w-full"
+                        autocomplete="off"
+                        placeholder="https://example.com"
+                    >
+                    <p class="label text-wrap">
+                        Публичный URL туннеля (Expose, ngrok и т.п.) без пути. Пустое значение — стандартный домен приложения.
+                    </p>
+                </fieldset>
 
                 <div class="rounded-box border border-base-300 bg-base-200/40 p-3 text-sm space-y-1">
                     <p><span class="text-base-content/60">URL webhook:</span> {{ botSettingState.webhook_url }}</p>

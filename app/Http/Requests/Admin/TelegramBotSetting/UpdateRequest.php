@@ -19,9 +19,15 @@ class UpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'bot_token' => ['nullable', 'string', 'max:500'],
             'regenerate_webhook_secret' => ['sometimes', 'boolean'],
         ];
+
+        if (is_local()) {
+            $rules['local_webhook_base_url'] = ['nullable', 'string', 'max:512', 'url'];
+        }
+
+        return $rules;
     }
 }

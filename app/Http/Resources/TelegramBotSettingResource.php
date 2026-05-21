@@ -22,6 +22,8 @@ class TelegramBotSettingResource extends JsonResource
         return [
             'has_bot_token' => $this->hasBotToken(),
             'has_webhook_secret' => $this->hasWebhookSecret(),
+            'is_local' => is_local(),
+            'local_webhook_base_url' => is_local() ? $this->local_webhook_base_url : null,
             'webhook_set_at' => $this->webhook_set_at?->toDateTimeString(),
             'webhook_last_error' => $this->webhook_last_error,
             'webhook_url' => app(TelegramChatBotServiceContract::class)->webhookUrl(),

@@ -1,7 +1,7 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md)
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md)
 > Updated: 2026-05-21
 
 ## Overview
@@ -45,6 +45,7 @@ Create a database-backed settings model or setting record dedicated to this bot.
 
 - `bot_token`, encrypted.
 - `webhook_secret`, encrypted or securely stored.
+- `local_webhook_base_url`, nullable string (max 512) — **local env only**: public tunnel base URL without path (e.g. `https://p2p-cti.eu-1.sharedwithexpose.com`); used by `webhookUrl()` when `is_local()`; empty = default app host from `route()`.
 - `webhook_set_at`, nullable timestamp.
 - `webhook_last_error`, nullable text.
 - Optional webhook metadata from Telegram, such as current URL or pending update count, if useful for diagnostics. Stored as JSON column `webhook_metadata`.
@@ -179,6 +180,17 @@ Webhook execution should be fast:
 7. Return `204 No Content`.
 
 **Implemented (Phases 3–4):** steps 2–6 in `TelegramChatWebhookIngestionService`; step 1 via `VerifyTelegramChatAutomationSecretToken` middleware; step 6 dispatches `ProcessTelegramChatMessageJob` (file download, parsing, disputes, and Telegram reply — Phase 4).
+
+### Local development webhook URL
+
+When `is_local()` (`app()->environment('local')`), Super Admin can set **`local_webhook_base_url`** in the bot settings modal so `setWebhook` and displayed `webhook_url` use a public tunnel domain instead of the default Herd/Valet host (e.g. `http://p2p.cti.test`).
+
+- Built URL: `rtrim(local_webhook_base_url, '/')` + relative path from `route('telegram.chat-automation.webhook', [], false)` (typically `/telegram/chat-automation/webhook`).
+- Empty field → standard `route(..., absolute: true)`.
+- Field is not saved or shown outside `local`.
+- After changing the domain, re-run **Установить webhook**.
+
+**Implemented (2026-05-21):** migration `2026_05_21_153227_add_local_webhook_base_url_to_telegram_bot_settings_table`; `TelegramChatBotService::webhookUrl()` / `updateSettings()`; `TelegramBotSettingResource` (`is_local`, `local_webhook_base_url`); `Index.vue` modal field «Домен webhook (локальная среда)».
 
 ## Idempotency
 
@@ -330,8 +342,9 @@ Bot settings modal:
 
 - Bot token password field.
 - Webhook secret regeneration or display of configured status.
+- **Local only:** «Домен webhook (локальная среда)» — `local_webhook_base_url` (tunnel base URL, no path).
 - Save button with `processing` disabled state.
-- Webhook status information if available.
+- Webhook status information if available (includes computed `webhook_url`).
 
 Chat list columns:
 
@@ -438,7 +451,7 @@ Reliability rules:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 — Database and domain types | **Done** (2026-05-21) | Migrations applied; models and enums in `app/` |
-| 2 — Bot settings and webhook setup | **Done** (2026-05-21) | Service, admin JSON API, `setWebhook` / `getWebhookInfo`; public webhook route + secret middleware |
+| 2 — Bot settings and webhook setup | **Done** (2026-05-21) | Service, admin JSON API, `setWebhook` / `getWebhookInfo`; public webhook route + secret middleware; local tunnel base URL (`local_webhook_base_url`) |
 | 3 — Webhook ingestion | **Done** (2026-05-21) | Ingestion service, idempotency, chat upsert, conditional message storage, job dispatch |
 | 4 — Message processing | **Done** (2026-05-21) | Parser, file service, dispute creation, success reply |
 | 5 — Admin UI | **Done** (2026-05-21) | Inertia page, chat moderation, bot settings modal (axios), attachment download |
@@ -452,6 +465,7 @@ Reliability rules:
 - `database/migrations/2026_05_21_145151_create_telegram_chats_table.php`
 - `database/migrations/2026_05_21_145152_create_telegram_chat_messages_table.php`
 - `database/migrations/2026_05_21_145153_create_telegram_chat_message_attachments_table.php`
+- `database/migrations/2026_05_21_153227_add_local_webhook_base_url_to_telegram_bot_settings_table.php`
 
 **Enums** (`app/Enums/`):
 
@@ -462,7 +476,7 @@ Reliability rules:
 
 **Models** (`app/Models/`):
 
-- `TelegramBotSetting` — `bot_token` and `webhook_secret` use `encrypted` cast; helpers `hasBotToken()`, `hasWebhookSecret()`
+- `TelegramBotSetting` — `bot_token` and `webhook_secret` use `encrypted` cast; `local_webhook_base_url` plain string; helpers `hasBotToken()`, `hasWebhookSecret()`
 - `TelegramChat` — `messages()` has-many; `latestMessage()` has-one `latestOfMany`
 - `TelegramChatMessage` — `telegramChat()`, `order()`, `dispute()`, `attachments()`
 - `TelegramChatMessageAttachment` — `telegramChatMessage()`
@@ -473,15 +487,15 @@ Reliability rules:
 
 **Service** (`app/Services/Telegram/`):
 
-- `TelegramChatBotService` — `getSettings()`, `updateSettings()`, `setupWebhook()`, `refreshWebhookMetadata()`, `webhookUrl()`, `getFileInfo()`, `downloadFileToPath()`, `sendChatMessage()`; Telegram HTTP API via `Http` client (`setWebhook`, `getMe`, `getWebhookInfo`, `getFile`, `sendMessage`); file download via `https://api.telegram.org/file/bot<token>/<file_path>`; honors `config('telegram.proxy')`
+- `TelegramChatBotService` — `getSettings()`, `updateSettings()` (incl. `local_webhook_base_url` when `is_local()`), `setupWebhook()`, `refreshWebhookMetadata()`, `webhookUrl()` (tunnel base + relative path in local when configured), `getFileInfo()`, `downloadFileToPath()`, `sendChatMessage()`; Telegram HTTP API via `Http` client (`setWebhook`, `getMe`, `getWebhookInfo`, `getFile`, `sendMessage`); file download via `https://api.telegram.org/file/bot<token>/<file_path>`; honors `config('telegram.proxy')`
 - `TelegramChatBotServiceContract` — bound in `AppServiceProvider`, exposed as `services()->telegramChatBot()`
 - `TelegramChatBotException` — validation and webhook setup errors
 
 **Admin API** (JSON responses, secrets never exposed):
 
 - `Admin\TelegramBotSettingController` — `show`, `update`, `setupWebhook`
-- `TelegramBotSettingResource` — `has_bot_token`, `has_webhook_secret`, `webhook_set_at`, `webhook_last_error`, `webhook_url`, sanitized `webhook_metadata`
-- `Admin\TelegramBotSetting\UpdateRequest` — `bot_token` (optional), `regenerate_webhook_secret` (optional boolean)
+- `TelegramBotSettingResource` — `has_bot_token`, `has_webhook_secret`, `is_local`, `local_webhook_base_url`, `webhook_set_at`, `webhook_last_error`, `webhook_url`, sanitized `webhook_metadata`
+- `Admin\TelegramBotSetting\UpdateRequest` — `bot_token` (optional), `regenerate_webhook_secret` (optional boolean), `local_webhook_base_url` (optional url, local only)
 
 **Webhook security and route:**
 
@@ -492,7 +506,7 @@ Reliability rules:
 
 - `bot_token` validated with `getMe` before save; token/secret changes clear `webhook_set_at` and metadata until webhook is set again
 - `webhook_secret` auto-generated on first settings save or when `regenerate_webhook_secret` is true; charset compatible with Telegram `secret_token` rules
-- `setupWebhook()` calls `setWebhook` with `url` from `route('telegram.chat-automation.webhook')`, `secret_token`, `allowed_updates: ['message']`, `drop_pending_updates: true`; stores result in `webhook_set_at`, `webhook_last_error`, `webhook_metadata`
+- `setupWebhook()` calls `setWebhook` with `url` from `webhookUrl()` (local tunnel base when configured), `secret_token`, `allowed_updates: ['message']`, `drop_pending_updates: true`; stores result in `webhook_set_at`, `webhook_last_error`, `webhook_metadata`
 - `show` refreshes `webhook_metadata` via `getWebhookInfo` when token is configured (silent fallback on API errors)
 - Separate from notification bot (`TelegramService`, `config/telegram.php`, `POST /telegram/webhook`)
 
@@ -587,6 +601,7 @@ Reliability rules:
 **UI notes:**
 
 - Bot settings and webhook setup use existing JSON endpoints (`admin.telegram-bot.*`), not Inertia forms
+- Bot settings modal: local-only field «Домен webhook (локальная среда)» for `local_webhook_base_url` (2026-05-21)
 - Disabling debug shows confirmation and dispatches `CleanupTelegramChatDebugMessagesJob` (Phase 6)
 - Restore from archive sets `status` = `pending_moderation`
 

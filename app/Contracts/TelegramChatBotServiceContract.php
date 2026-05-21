@@ -11,7 +11,12 @@ interface TelegramChatBotServiceContract
 {
     public function getSettings(): TelegramBotSetting;
 
-    public function updateSettings(?string $botToken, bool $regenerateWebhookSecret = false): TelegramBotSetting;
+    public function updateSettings(
+        ?string $botToken,
+        bool $regenerateWebhookSecret = false,
+        ?string $localWebhookBaseUrl = null,
+        bool $updateLocalWebhookBaseUrl = false,
+    ): TelegramBotSetting;
 
     public function setupWebhook(): TelegramBotSetting;
 
