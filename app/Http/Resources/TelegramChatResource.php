@@ -16,8 +16,6 @@ class TelegramChatResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $latestMessage = $this->whenLoaded('latestMessage');
-
         return [
             'id' => $this->id,
             'telegram_chat_id' => $this->telegram_chat_id,
@@ -30,8 +28,8 @@ class TelegramChatResource extends JsonResource
             'debug_enabled' => $this->debug_enabled,
             'last_message_at' => $this->last_message_at?->toDateTimeString(),
             'messages_count' => $this->whenCounted('messages', (int) $this->messages_count),
-            'last_message_status' => $latestMessage?->status?->value,
-            'last_failure_reason' => $latestMessage?->failure_reason,
+            'last_message_status' => $this->latestMessage?->status?->value,
+            'last_failure_reason' => $this->latestMessage?->failure_reason,
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
         ];

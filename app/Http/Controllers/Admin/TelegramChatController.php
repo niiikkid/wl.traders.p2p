@@ -70,13 +70,13 @@ class TelegramChatController extends Controller
         }
 
         return Inertia::render('Admin/TelegramChats/Index', [
-            'chats' => TelegramChatResource::collection($chats)->resolve(),
+            'chats' => TelegramChatResource::collection($chats),
             'botSetting' => TelegramBotSettingResource::make($botSetting)->resolve(),
             'selectedChat' => $selectedChat
                 ? TelegramChatResource::make($selectedChat)->resolve()
                 : null,
             'messages' => $messages
-                ? TelegramChatMessageResource::collection($messages)->resolve()
+                ? TelegramChatMessageResource::collection($messages)
                 : null,
             'messagesMeta' => $messages ? [
                 'current_page' => $messages->currentPage(),
