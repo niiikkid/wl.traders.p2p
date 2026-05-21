@@ -98,6 +98,7 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
 
         if ($order->dispute !== null) {
             $this->markMessage($message, TelegramChatMessageStatus::DUPLICATE, orderId: $order->id);
+            $this->sendDuplicateReply($telegramChat->telegram_chat_id, $order->uuid);
 
             return;
         }
@@ -121,6 +122,7 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
         } catch (DisputeException $exception) {
             if (str_contains($exception->getMessage(), 'already exists')) {
                 $this->markMessage($message, TelegramChatMessageStatus::DUPLICATE, orderId: $order->id);
+                $this->sendDuplicateReply($telegramChat->telegram_chat_id, $order->uuid);
 
                 return;
             }
@@ -183,10 +185,22 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
     {
         $text = "Спор открыт.\nUUID сделки: {$orderUuid}";
 
+        $this->sendChatReply($apiChatId, $orderUuid, $text, 'Telegram dispute success reply failed');
+    }
+
+    private function sendDuplicateReply(string $apiChatId, string $orderUuid): void
+    {
+        $text = "Спор по этой сделке уже открыт.\nUUID сделки: {$orderUuid}\nПовторно спор не создан — это дубликат.";
+
+        $this->sendChatReply($apiChatId, $orderUuid, $text, 'Telegram dispute duplicate reply failed');
+    }
+
+    private function sendChatReply(string $apiChatId, string $orderUuid, string $text, string $logMessage): void
+    {
         try {
             services()->telegramChatBot()->sendChatMessage($apiChatId, $text);
         } catch (TelegramChatBotException $exception) {
-            Log::warning('Telegram dispute success reply failed', [
+            Log::warning($logMessage, [
                 'telegram_chat_id' => $apiChatId,
                 'order_uuid' => $orderUuid,
                 'error' => $exception->getMessage(),
