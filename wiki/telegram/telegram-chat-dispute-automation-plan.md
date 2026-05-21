@@ -1,7 +1,8 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21
 > Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md)
+> Updated: 2026-05-21
 
 ## Overview
 
@@ -34,6 +35,8 @@ Use explicit Telegram-oriented names:
 
 This keeps the model understandable while avoiding names such as `DisputeChat`, which would make future chat automation harder to extend.
 
+**Naming note (implemented):** `TelegramChat.telegram_chat_id` is the Telegram API chat identifier (string, unique). `TelegramChatMessage.telegram_chat_id` is a foreign key to `telegram_chats.id` — same column name, different meaning on each model.
+
 ## Data Model
 
 ### Telegram Bot Settings
@@ -44,7 +47,7 @@ Create a database-backed settings model or setting record dedicated to this bot.
 - `webhook_secret`, encrypted or securely stored.
 - `webhook_set_at`, nullable timestamp.
 - `webhook_last_error`, nullable text.
-- Optional webhook metadata from Telegram, such as current URL or pending update count, if useful for diagnostics.
+- Optional webhook metadata from Telegram, such as current URL or pending update count, if useful for diagnostics. Stored as JSON column `webhook_metadata`.
 
 The bot token must not be managed through `.env`.
 
@@ -414,14 +417,50 @@ Reliability rules:
 - External Telegram API calls should have timeouts and clear error handling.
 - If sending the success Telegram reply fails after dispute creation, do not roll back the dispute; store/send failure diagnostics on the message if needed.
 
+## Implementation Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1 — Database and domain types | **Done** (2026-05-21) | Migrations applied; models and enums in `app/` |
+| 2 — Bot settings and webhook setup | Pending | |
+| 3 — Webhook ingestion | Pending | |
+| 4 — Message processing | Pending | |
+| 5 — Admin UI | Pending | |
+| 6 — Cleanup and hardening | Pending | |
+
+### Phase 1 artifacts (implemented)
+
+**Migrations** (2026-05-21):
+
+- `database/migrations/2026_05_21_145149_create_telegram_bot_settings_table.php`
+- `database/migrations/2026_05_21_145151_create_telegram_chats_table.php`
+- `database/migrations/2026_05_21_145152_create_telegram_chat_messages_table.php`
+- `database/migrations/2026_05_21_145153_create_telegram_chat_message_attachments_table.php`
+
+**Enums** (`app/Enums/`):
+
+- `TelegramChatStatus` — `pending_moderation`, `active`, `disabled`, `archived`
+- `TelegramChatParserType` — `standard_dispute`
+- `TelegramChatMessageType` — `text`, `photo`, `document`, `unknown`
+- `TelegramChatMessageStatus` — `received`, `ignored`, `matched`, `processed`, `failed`, `duplicate`
+
+**Models** (`app/Models/`):
+
+- `TelegramBotSetting` — `bot_token` and `webhook_secret` use `encrypted` cast; helpers `hasBotToken()`, `hasWebhookSecret()`
+- `TelegramChat` — `messages()` has-many
+- `TelegramChatMessage` — `telegramChat()`, `order()`, `dispute()`, `attachments()`
+- `TelegramChatMessageAttachment` — `telegramChatMessage()`
+
+**MySQL index naming:** auto-generated unique/FK names exceeded the 64-character limit. Short names used in migrations: `tg_chat_messages_chat_msg_unique` (composite unique on `telegram_chat_id` + `telegram_message_id`), `tg_chat_msg_att_msg_fk` (attachments → messages).
+
 ## Implementation Phases
 
-### Phase 1: Database and Domain Types
+### Phase 1: Database and Domain Types — Done
 
-- Create migrations for bot settings, chats, messages, and attachments.
-- Create models and relationships.
-- Add casts for encrypted bot token and webhook secret.
-- Add enums for chat status, parser type, message type, and message status.
+- [x] Migrations for `telegram_bot_settings`, `telegram_chats`, `telegram_chat_messages`, `telegram_chat_message_attachments`
+- [x] Models and relationships
+- [x] Encrypted casts for `bot_token` and `webhook_secret` on `TelegramBotSetting`
+- [x] Enums for chat status, parser type, message type, and message status
 
 ### Phase 2: Bot Settings and Webhook Setup
 
