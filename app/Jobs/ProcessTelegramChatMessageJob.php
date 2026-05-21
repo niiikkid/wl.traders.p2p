@@ -12,6 +12,8 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ProcessTelegramChatMessageJob implements ShouldQueue
 {
@@ -38,6 +40,17 @@ class ProcessTelegramChatMessageJob implements ShouldQueue
             return;
         }
 
-        $processor->process($message);
+        try {
+            $processor->process($message);
+        } catch (Throwable $exception) {
+            Log::error('Telegram chat message job failed unexpectedly', [
+                'telegram_chat_message_id' => $message->id,
+                'telegram_chat_id' => $message->telegram_chat_id,
+                'error' => $exception->getMessage(),
+                'exception' => $exception::class,
+            ]);
+
+            throw $exception;
+        }
     }
 }

@@ -27,5 +27,10 @@ interface TelegramChatFileServiceContract
 
     public function toUploadedFile(TelegramChatMessageAttachment $attachment): UploadedFile;
 
-    public function deleteStoredFile(TelegramChatMessageAttachment $attachment): void;
+    /**
+     * Deletes the attachment file only when it lives under the Telegram private storage directory.
+     *
+     * @return bool True when a file was deleted from disk.
+     */
+    public function deleteStoredFile(TelegramChatMessageAttachment $attachment): bool;
 }

@@ -12,3 +12,5 @@
 ## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan (Phase 4 status)
 
 ## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan (Phase 5 status)
+
+## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan (Phase 6 status)

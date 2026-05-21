@@ -1,7 +1,7 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md)
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md)
 > Updated: 2026-05-21
 
 ## Overview
@@ -308,6 +308,8 @@ When turning debug mode off:
 5. Restrict deletion to the Telegram private storage folder.
 6. Do not delete dispute-related messages, dispute receipts, or any files outside the Telegram attachment folder.
 
+**Implemented (Phase 6, 2026-05-21):** `CleanupTelegramChatDebugMessagesJob` dispatched from `toggleDebug` on `debug_enabled` true→false; confirm modal and flash message updated in `Index.vue`.
+
 ## Admin UI Plan
 
 **Implemented (Phase 5, 2026-05-21):** `resources/js/Pages/Admin/TelegramChats/Index.vue`, route `admin.telegram-chats.index` (`GET /admin/telegram-chats`), menu item «Telegram-чаты» in `AdminMenu.vue`.
@@ -362,7 +364,7 @@ Suggested classes (implemented in **bold**):
 - **`TelegramChatWebhookIngestionService`**
 - **`Admin\TelegramChatAttachmentController`**
 - **`ProcessTelegramChatMessageJob`**
-- `CleanupTelegramChatDebugMessagesJob`
+- **`CleanupTelegramChatDebugMessagesJob`**
 - **`TelegramChatMessageParserContract`**
 - **`StandardTelegramDisputeParser`** (`app/Services/Telegram/Parsers/`)
 - **`TelegramChatFileService`** (`TelegramChatFileServiceContract`)
@@ -424,6 +426,13 @@ Reliability rules:
 - External Telegram API calls should have timeouts and clear error handling.
 - If sending the success Telegram reply fails after dispute creation, do not roll back the dispute; store/send failure diagnostics on the message if needed.
 
+**Logging (Phase 6):**
+
+- `StandardTelegramDisputeParser` — `Log::warning` on message status `failed` (with `failure_reason`, optional exception metadata).
+- `TelegramChatMessageProcessor` — `Log::warning` when no parser matches `parser_type`.
+- `ProcessTelegramChatMessageJob` — `Log::error` on unexpected exceptions, then rethrow for queue retry.
+- `CleanupTelegramChatDebugMessagesJob` — `Log::info` on skip (debug re-enabled) and on completion with deletion counts.
+
 ## Implementation Status
 
 | Phase | Status | Notes |
@@ -433,7 +442,7 @@ Reliability rules:
 | 3 — Webhook ingestion | **Done** (2026-05-21) | Ingestion service, idempotency, chat upsert, conditional message storage, job dispatch |
 | 4 — Message processing | **Done** (2026-05-21) | Parser, file service, dispute creation, success reply |
 | 5 — Admin UI | **Done** (2026-05-21) | Inertia page, chat moderation, bot settings modal (axios), attachment download |
-| 6 — Cleanup and hardening | Pending | `CleanupTelegramChatDebugMessagesJob` not yet implemented |
+| 6 — Cleanup and hardening | **Done** (2026-05-21) | Debug cleanup job, safe file deletion, processing error logging |
 
 ### Phase 1 artifacts (implemented)
 
@@ -578,8 +587,32 @@ Reliability rules:
 **UI notes:**
 
 - Bot settings and webhook setup use existing JSON endpoints (`admin.telegram-bot.*`), not Inertia forms
-- Disabling debug shows confirmation; **does not** dispatch cleanup job yet (Phase 6)
+- Disabling debug shows confirmation and dispatches `CleanupTelegramChatDebugMessagesJob` (Phase 6)
 - Restore from archive sets `status` = `pending_moderation`
+
+### Phase 6 artifacts (implemented)
+
+**Job** (`app/Jobs/`):
+
+- **`CleanupTelegramChatDebugMessagesJob`** — queue `default`, `afterCommit()`, `tries = 3`, `timeout = 120`; deletes messages where `is_dispute_related = false` for one chat in `chunkById(50)`; skips if `debug_enabled` is true at run time
+
+**Controller:**
+
+- **`TelegramChatController::toggleDebug`** — dispatches cleanup job when transitioning `debug_enabled` from true to false; flash: «Запущена очистка накопленных debug-сообщений.»
+
+**File service** (`TelegramChatFileService` / contract):
+
+- **`deleteStoredFile()`** returns `bool`; only deletes paths under `telegram-chat-attachments/` without `..`; logs warning on invalid path
+
+**Logging:**
+
+- **`StandardTelegramDisputeParser::markMessage()`** — centralized `Log::warning` for `failed` status
+- **`TelegramChatMessageProcessor`** — warning when no parser supports chat `parser_type`
+- **`ProcessTelegramChatMessageJob`** — `Log::error` + rethrow on unexpected failures
+
+**Frontend:**
+
+- **`Index.vue`** — confirm modal body: debug messages and files removed in background
 
 ## Implementation Phases
 
@@ -632,13 +665,14 @@ Reliability rules:
 - [x] Add debug mode toggle with confirmation modal (`toggleDebug`; cleanup job deferred to Phase 6)
 - [x] Admin menu entry «Telegram-чаты»
 
-### Phase 6: Cleanup and Hardening
+### Phase 6: Cleanup and Hardening — Done
 
-- Implement asynchronous cleanup when debug mode is disabled.
-- Ensure cleanup deletes only non-dispute messages for one chat.
-- Ensure file deletion is restricted to Telegram attachment files.
-- Add logging for processing errors.
-- Run formatter for modified PHP files during implementation.
+- [x] Implement asynchronous cleanup when debug mode is disabled (`CleanupTelegramChatDebugMessagesJob`)
+- [x] Dispatch cleanup from `toggleDebug` on debug off
+- [x] Ensure cleanup deletes only non-dispute messages for one chat (`is_dispute_related = false`)
+- [x] Ensure file deletion is restricted to Telegram attachment files (`deleteStoredFile` path guard)
+- [x] Add logging for processing errors (parser, processor, process job, cleanup job)
+- [x] Update admin confirm modal and flash message for debug off
 
 ## Open Follow-Ups
 

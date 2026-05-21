@@ -12,6 +12,7 @@ use App\Http\Requests\Admin\TelegramChat\UpdateRequest;
 use App\Http\Resources\TelegramBotSettingResource;
 use App\Http\Resources\TelegramChatMessageResource;
 use App\Http\Resources\TelegramChatResource;
+use App\Jobs\CleanupTelegramChatDebugMessagesJob;
 use App\Models\TelegramChat;
 use App\Models\TelegramChatMessage;
 use Illuminate\Http\JsonResponse;
@@ -149,14 +150,20 @@ class TelegramChatController extends Controller
     public function toggleDebug(ToggleDebugRequest $request, TelegramChat $telegramChat): RedirectResponse
     {
         $validated = $request->validated();
+        $wasDebugEnabled = $telegramChat->debug_enabled;
+        $debugEnabled = (bool) $validated['debug_enabled'];
 
         $telegramChat->update([
-            'debug_enabled' => (bool) $validated['debug_enabled'],
+            'debug_enabled' => $debugEnabled,
         ]);
 
-        $message = $telegramChat->debug_enabled
+        if ($wasDebugEnabled && ! $debugEnabled) {
+            CleanupTelegramChatDebugMessagesJob::dispatch($telegramChat);
+        }
+
+        $message = $debugEnabled
             ? 'Режим отладки включён для чата.'
-            : 'Режим отладки выключен. Несвязанные со спорами сообщения больше не сохраняются.';
+            : 'Режим отладки выключен. Запущена очистка накопленных debug-сообщений.';
 
         return redirect()
             ->back()

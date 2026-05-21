@@ -6,6 +6,7 @@ namespace App\Services\Telegram;
 
 use App\Contracts\TelegramChatMessageParserContract;
 use App\Models\TelegramChatMessage;
+use Illuminate\Support\Facades\Log;
 
 class TelegramChatMessageProcessor
 {
@@ -37,5 +38,11 @@ class TelegramChatMessageProcessor
                 return;
             }
         }
+
+        Log::warning('Telegram chat message processing skipped: no matching parser', [
+            'telegram_chat_message_id' => $message->id,
+            'telegram_chat_id' => $telegramChat->id,
+            'parser_type' => $telegramChat->parser_type->value,
+        ]);
     }
 }

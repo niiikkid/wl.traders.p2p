@@ -128,12 +128,13 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
         } catch (TelegramChatBotException $exception) {
             $this->markMessage($message, TelegramChatMessageStatus::FAILED, $exception->getMessage(), $order->id);
         } catch (\Throwable $exception) {
-            Log::warning('Telegram chat dispute message processing failed', [
-                'telegram_chat_message_id' => $message->id,
-                'error' => $exception->getMessage(),
-            ]);
-
-            $this->markMessage($message, TelegramChatMessageStatus::FAILED, 'Ошибка обработки сообщения.', $order->id);
+            $this->markMessage(
+                $message,
+                TelegramChatMessageStatus::FAILED,
+                'Ошибка обработки сообщения.',
+                $order->id,
+                exception: $exception,
+            );
         }
     }
 
@@ -197,6 +198,7 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
         TelegramChatMessageStatus $status,
         ?string $failureReason = null,
         ?int $orderId = null,
+        ?\Throwable $exception = null,
     ): void {
         $data = [
             'status' => $status,
@@ -209,5 +211,22 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
         }
 
         $message->update($data);
+
+        if (! $status->equals(TelegramChatMessageStatus::FAILED)) {
+            return;
+        }
+
+        $context = [
+            'telegram_chat_message_id' => $message->id,
+            'telegram_chat_id' => $message->telegram_chat_id,
+            'failure_reason' => $failureReason,
+        ];
+
+        if ($exception !== null) {
+            $context['error'] = $exception->getMessage();
+            $context['exception'] = $exception::class;
+        }
+
+        Log::warning('Telegram chat message processing failed', $context);
     }
 }

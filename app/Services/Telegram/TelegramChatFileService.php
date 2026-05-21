@@ -9,6 +9,7 @@ use App\Exceptions\TelegramChatBotException;
 use App\Models\TelegramChatMessage;
 use App\Models\TelegramChatMessageAttachment;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -104,11 +105,35 @@ class TelegramChatFileService implements TelegramChatFileServiceContract
         );
     }
 
-    public function deleteStoredFile(TelegramChatMessageAttachment $attachment): void
+    public function deleteStoredFile(TelegramChatMessageAttachment $attachment): bool
     {
-        if ($attachment->storage_path !== '') {
-            Storage::disk('local')->delete($attachment->storage_path);
+        $storagePath = $attachment->storage_path;
+
+        if ($storagePath === '' || ! $this->isAllowedStoragePath($storagePath)) {
+            Log::warning('Skipped Telegram attachment file deletion: invalid storage path', [
+                'telegram_chat_message_attachment_id' => $attachment->id,
+                'storage_path' => $storagePath,
+            ]);
+
+            return false;
         }
+
+        if (! Storage::disk('local')->exists($storagePath)) {
+            return false;
+        }
+
+        Storage::disk('local')->delete($storagePath);
+
+        return true;
+    }
+
+    private function isAllowedStoragePath(string $storagePath): bool
+    {
+        if (str_contains($storagePath, '..')) {
+            return false;
+        }
+
+        return str_starts_with($storagePath, self::STORAGE_DIRECTORY.'/');
     }
 
     /**
