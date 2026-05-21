@@ -16,3 +16,5 @@
 ## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan (Phase 6 status)
 
 ## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan (local webhook base URL)
+
+## [2026-05-22] ingest | Merchant Traffic Categories Architecture

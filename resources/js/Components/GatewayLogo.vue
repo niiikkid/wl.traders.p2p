@@ -14,7 +14,7 @@ const props = defineProps({
 
 <template>
     <div>
-        <AppTooltip v-if="name" :tip="name" wrapper-class="inline-block rounded-lg">
+        <AppTooltip v-if="name" :tip="nam1e" wrapper-class="inline-block rounded-lg">
             <div class="rounded-lg overflow-hidden">
                 <img
                     v-if="img_path"
