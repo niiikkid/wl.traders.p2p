@@ -1,7 +1,7 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md)
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md)
 > Updated: 2026-05-21
 
 ## Overview
@@ -177,6 +177,8 @@ Webhook execution should be fast:
 5. Store a minimal message row when appropriate.
 6. Dispatch a job for file download, parsing, dispute creation, and Telegram reply.
 7. Return `204 No Content`.
+
+**Implemented (Phase 3):** steps 2–6 in `TelegramChatWebhookIngestionService`; step 1 via `VerifyTelegramChatAutomationSecretToken` middleware; step 6 dispatches `ProcessTelegramChatMessageJob` (file download, parsing, and disputes — Phase 4).
 
 ## Idempotency
 
@@ -354,9 +356,10 @@ Suggested classes (implemented in **bold**):
 
 - `Admin\TelegramChatController`
 - **`Admin\TelegramBotSettingController`**
-- `TelegramChatWebhookController` (public route uses **`TelegramChatAutomationWebhookController`** placeholder until Phase 3)
+- **`TelegramChatAutomationWebhookController`**
+- **`TelegramChatWebhookIngestionService`**
 - `TelegramChatAttachmentController`
-- `ProcessTelegramChatMessageJob`
+- **`ProcessTelegramChatMessageJob`** (stub until Phase 4)
 - `CleanupTelegramChatDebugMessagesJob`
 - `TelegramChatMessageParser`
 - `StandardTelegramDisputeParser`
@@ -380,7 +383,7 @@ Suggested form requests (implemented in **bold**):
 
 Webhook route outside auth (registered; ingestion logic in Phase 3):
 
-- **`POST /telegram/chat-automation/webhook`** — route name `telegram.chat-automation.webhook`; middleware `telegram.chat-automation.secret` + `backoffice.domain`; CSRF excluded; currently returns `204` from placeholder controller
+- **`POST /telegram/chat-automation/webhook`** — route name `telegram.chat-automation.webhook`; middleware `telegram.chat-automation.secret` + `backoffice.domain`; CSRF excluded; **`TelegramChatAutomationWebhookController`** delegates to **`TelegramChatWebhookIngestionService`**, returns `204`
 
 Admin routes inside `admin` prefix and `role:Super Admin` group:
 
@@ -423,7 +426,7 @@ Reliability rules:
 |-------|--------|-------|
 | 1 — Database and domain types | **Done** (2026-05-21) | Migrations applied; models and enums in `app/` |
 | 2 — Bot settings and webhook setup | **Done** (2026-05-21) | Service, admin JSON API, `setWebhook` / `getWebhookInfo`; public webhook route + secret middleware |
-| 3 — Webhook ingestion | Pending | Route and middleware exist; controller is placeholder only |
+| 3 — Webhook ingestion | **Done** (2026-05-21) | Ingestion service, idempotency, chat upsert, conditional message storage, job dispatch |
 | 4 — Message processing | Pending | |
 | 5 — Admin UI | Pending | |
 | 6 — Cleanup and hardening | Pending | |
@@ -470,7 +473,7 @@ Reliability rules:
 **Webhook security and route:**
 
 - `VerifyTelegramChatAutomationSecretToken` — compares `X-Telegram-Bot-Api-Secret-Token` to encrypted `webhook_secret` from DB (alias `telegram.chat-automation.secret`)
-- `TelegramChatAutomationWebhookController` — placeholder `204 No Content` until Phase 3
+- **`TelegramChatAutomationWebhookController`** — calls ingestion service, returns `204 No Content`
 
 **Behavior notes:**
 
@@ -479,6 +482,29 @@ Reliability rules:
 - `setupWebhook()` calls `setWebhook` with `url` from `route('telegram.chat-automation.webhook')`, `secret_token`, `allowed_updates: ['message']`, `drop_pending_updates: true`; stores result in `webhook_set_at`, `webhook_last_error`, `webhook_metadata`
 - `show` refreshes `webhook_metadata` via `getWebhookInfo` when token is configured (silent fallback on API errors)
 - Separate from notification bot (`TelegramService`, `config/telegram.php`, `POST /telegram/webhook`)
+
+### Phase 3 artifacts (implemented)
+
+**Ingestion** (`app/Services/Telegram/`):
+
+- **`TelegramChatWebhookIngestionService`** — `handle(array $payload)`; processes Telegram `Update` with `message` only
+- **`TelegramChatWebhookIngestionServiceContract`** — singleton in `AppServiceProvider`
+
+**Controller:**
+
+- **`TelegramChatAutomationWebhookController`** — `app(TelegramChatWebhookIngestionServiceContract::class)->handle($request->all())`, `204 No Content`
+
+**Job** (`app/Jobs/`):
+
+- **`ProcessTelegramChatMessageJob`** — queue `default`, `afterCommit()`; reloads message + chat; no-op unless chat `active` (Phase 4 implements file download, parsing, disputes, reply)
+
+**Ingestion behavior:**
+
+- Idempotency: skip if `telegram_update_id` exists; skip if `telegram_chat_id` + `telegram_message_id` pair exists; duplicate DB unique violations swallowed (MySQL `1062`, SQLite `19`, PostgreSQL `23505`)
+- Chat upsert: `firstOrCreate` by API `chat.id`; new chats default to `pending_moderation` / `standard_dispute`; existing chat `status` preserved on subsequent messages
+- Message storage: only when `debug_enabled` OR ingest-time `is_dispute_related` (attachment `photo`/`document` OR UUID regex in `text`/`caption`)
+- Stored messages: `status` = `received`, `message_type` from payload (`photo` / `document` / `text` / `unknown`), full message in `raw_payload`
+- Always updates chat `last_message_at` and metadata when a valid message update is processed (even when the message row is not stored)
 
 ## Implementation Phases
 
@@ -497,15 +523,15 @@ Reliability rules:
 - [x] Store webhook setup result and errors (`webhook_set_at`, `webhook_last_error`, `webhook_metadata`)
 - [x] Public webhook route and DB-backed secret middleware (placeholder controller until Phase 3)
 
-### Phase 3: Webhook Ingestion
+### Phase 3: Webhook Ingestion — Done
 
-- Replace placeholder `TelegramChatAutomationWebhookController` with full ingestion logic (or rename to planned `TelegramChatWebhookController`)
-- Verify `X-Telegram-Bot-Api-Secret-Token` (middleware already implemented in Phase 2)
-- Parse incoming update.
-- Create or update `TelegramChat`.
-- Apply idempotency.
-- Store initial message rows where needed.
-- Dispatch processing jobs.
+- [x] Replace placeholder `TelegramChatAutomationWebhookController` with ingestion via `TelegramChatWebhookIngestionService`
+- [x] Verify `X-Telegram-Bot-Api-Secret-Token` (middleware from Phase 2)
+- [x] Parse incoming `Update` (`message` only)
+- [x] Create or update `TelegramChat` (preserve status on existing chats)
+- [x] Apply idempotency (`telegram_update_id`, chat + message id, duplicate-key handling)
+- [x] Store initial message rows when `debug_enabled` or dispute-related heuristic
+- [x] Dispatch `ProcessTelegramChatMessageJob` (stub; full processing in Phase 4)
 
 ### Phase 4: Message Processing
 

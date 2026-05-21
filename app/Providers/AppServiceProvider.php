@@ -30,6 +30,7 @@ use App\Contracts\ServiceBuilderContract;
 use App\Contracts\SettingsServiceContract;
 use App\Contracts\SmsServiceContract;
 use App\Contracts\TelegramChatBotServiceContract;
+use App\Contracts\TelegramChatWebhookIngestionServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
@@ -95,6 +96,7 @@ use App\Services\Settings\SettingsService;
 use App\Services\Sms\SmsService;
 use App\Services\Statistics\MerchantApiStatisticsService;
 use App\Services\Telegram\TelegramChatBotService;
+use App\Services\Telegram\TelegramChatWebhookIngestionService;
 use App\Services\Telegram\TelegramService;
 use App\Services\User\UserService;
 use App\Services\Wallet\WalletService;
@@ -213,6 +215,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(TelegramChatBotServiceContract::class, function () {
             return new TelegramChatBotService;
+        });
+        $this->app->singleton(TelegramChatWebhookIngestionServiceContract::class, function () {
+            return new TelegramChatWebhookIngestionService;
         });
         $this->app->singleton(MainPageStatsServiceContract::class, function () {
             return new MainPageStatsService;
