@@ -15,10 +15,15 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    stackLevel: {
+        type: Number,
+        default: 0,
+    },
 });
 
 const emit = defineEmits(['close', 'onShow', 'onHide']);
 const slots = useSlots();
+const modalRootRef = ref(null);
 const modalBoxRef = ref(null);
 const asideCoordinates = ref({ top: 0, left: 0 });
 const asideReady = ref(false);
@@ -44,8 +49,37 @@ const close = () => {
     }
 };
 
+const modalStyle = computed(() => {
+    if (props.stackLevel <= 0) {
+        return undefined;
+    }
+
+    return { zIndex: 999 + props.stackLevel * 10 };
+});
+
+const isTopmostOpenModal = () => {
+    if (!modalRootRef.value) {
+        return false;
+    }
+
+    const openModals = [...document.querySelectorAll('.modal.modal-open')];
+
+    if (openModals.length === 0) {
+        return false;
+    }
+
+    const topModal = openModals.reduce((best, element) => {
+        const zIndex = Number.parseInt(window.getComputedStyle(element).zIndex, 10) || 0;
+        const bestZIndex = Number.parseInt(window.getComputedStyle(best).zIndex, 10) || 0;
+
+        return zIndex >= bestZIndex ? element : best;
+    });
+
+    return topModal === modalRootRef.value;
+};
+
 const closeOnEscape = (e) => {
-    if (e.key === 'Escape' && props.show) {
+    if (e.key === 'Escape' && props.show && isTopmostOpenModal()) {
         close();
     }
 };
@@ -142,7 +176,12 @@ watch(
 
 <template>
     <Teleport defer to="body">
-        <div :class="['modal p-1 sm:p-6', show ? 'modal-open' : '']" @keydown.esc.prevent="close">
+        <div
+            ref="modalRootRef"
+            :class="['modal p-1 sm:p-6', show ? 'modal-open' : '']"
+            :style="modalStyle"
+            @keydown.esc.prevent="close"
+        >
             <div ref="modalBoxRef" class="modal-box max-h-[calc(100dvh-3rem)] sm:max-h-[calc(100dvh-4rem)] overflow-auto" :class="maxWidthClass">
                 <slot v-if="show" />
             </div>

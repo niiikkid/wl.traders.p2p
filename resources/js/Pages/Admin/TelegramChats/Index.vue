@@ -362,6 +362,21 @@ const openMessageFirstAttachment = (message) => {
     openAttachmentPreview(attachment);
 };
 
+const messagePreviewText = (message) => {
+    const text = typeof message.text === 'string' ? message.text.trim() : '';
+    const caption = typeof message.caption === 'string' ? message.caption.trim() : '';
+
+    if (text !== '') {
+        return text;
+    }
+
+    if (caption !== '') {
+        return caption;
+    }
+
+    return '—';
+};
+
 const formatAttachmentSize = (bytes) => {
     const size = Number(bytes);
 
@@ -763,50 +778,61 @@ watch(
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                <tr
+                                                <template
                                                     v-for="message in messageList"
                                                     :key="message.id"
-                                                    class="bg-base-100 border-b border-base-200 last:border-none"
                                                 >
-                                                    <th scope="row" class="font-medium whitespace-nowrap text-base-content">
-                                                        {{ message.telegram_message_id }}
-                                                    </th>
-                                                    <td>{{ messageTypeLabels[message.message_type] ?? message.message_type }}</td>
-                                                    <td>
-                                                        <span class="badge badge-xs" :class="statusBadgeClass(message.status)">
-                                                            {{ messageStatusLabels[message.status] ?? message.status }}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <DisplayUUID
-                                                            v-if="message.detected_uuid"
-                                                            :uuid="message.detected_uuid"
-                                                        />
-                                                        <span v-else>—</span>
-                                                    </td>
-                                                    <td>
-                                                        <DateTime :data="message.created_at" simple />
-                                                    </td>
-                                                    <td>
-                                                        <div class="flex flex-wrap justify-end gap-1">
-                                                            <button
-                                                                v-if="message.attachments?.length"
-                                                                type="button"
-                                                                class="btn btn-info btn-outline btn-xs"
-                                                                @click="openMessageFirstAttachment(message)"
-                                                            >
-                                                                Файл
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                class="btn btn-primary btn-outline btn-xs"
-                                                                @click="openMessageDetail(message)"
-                                                            >
-                                                                Подробнее
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
+                                                    <tr class="bg-base-100 border-b-0 [&_th]:!border-b-0 [&_td]:!border-b-0 [&_th]:pb-1 [&_td]:pb-1">
+                                                        <th scope="row" class="font-medium whitespace-nowrap text-base-content align-top">
+                                                            {{ message.telegram_message_id }}
+                                                        </th>
+                                                        <td class="align-top">{{ messageTypeLabels[message.message_type] ?? message.message_type }}</td>
+                                                        <td class="align-top">
+                                                            <span class="badge badge-xs" :class="statusBadgeClass(message.status)">
+                                                                {{ messageStatusLabels[message.status] ?? message.status }}
+                                                            </span>
+                                                        </td>
+                                                        <td class="align-top">
+                                                            <DisplayUUID
+                                                                v-if="message.detected_uuid"
+                                                                :uuid="message.detected_uuid"
+                                                            />
+                                                            <span v-else>—</span>
+                                                        </td>
+                                                        <td class="align-top">
+                                                            <DateTime :data="message.created_at" simple />
+                                                        </td>
+                                                        <td class="align-top">
+                                                            <div class="flex flex-wrap justify-end gap-1">
+                                                                <button
+                                                                    v-if="message.attachments?.length"
+                                                                    type="button"
+                                                                    class="btn btn-info btn-outline btn-xs"
+                                                                    @click="openMessageFirstAttachment(message)"
+                                                                >
+                                                                    Файл
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-primary btn-outline btn-xs"
+                                                                    @click="openMessageDetail(message)"
+                                                                >
+                                                                    Подробнее
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr class="bg-base-100 border-b border-base-200 last:border-none [&_td]:!border-t-0">
+                                                        <td colspan="6" class="py-2 pt-0 align-middle">
+                                                            <div class="flex items-center gap-2 text-xs">
+                                                                <span class="shrink-0 text-base-content/60">Сообщение:</span>
+                                                                <span class="min-w-0 flex-1 text-base-content/70 whitespace-pre-wrap break-words">
+                                                                    {{ messagePreviewText(message) }}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </template>
                                                 <tr v-if="!messageList.length">
                                                     <td colspan="6" class="bg-base-100 py-8 text-center text-base-content/60">
                                                         Сообщений нет.
@@ -929,7 +955,7 @@ watch(
             </div>
         </Modal>
 
-        <Modal :show="attachmentPreviewModalOpen" max-width="4xl" @close="closeAttachmentPreview">
+        <Modal :show="attachmentPreviewModalOpen" max-width="4xl" :stack-level="1" @close="closeAttachmentPreview">
             <div v-if="attachmentPreview" class="space-y-4">
                 <div class="flex flex-wrap items-start justify-between gap-2">
                     <h3 class="text-lg font-semibold min-w-0 truncate">
@@ -1005,8 +1031,8 @@ watch(
                 </div>
 
                 <div v-if="messageDetail.text || messageDetail.caption" class="space-y-2 text-sm">
-                    <p v-if="messageDetail.text"><span class="text-base-content/60">Текст:</span> {{ messageDetail.text }}</p>
-                    <p v-if="messageDetail.caption"><span class="text-base-content/60">Подпись:</span> {{ messageDetail.caption }}</p>
+                    <p v-if="messageDetail.text"><span class="text-base-content/60">Сообщение:</span> {{ messageDetail.text }}</p>
+                    <p v-if="messageDetail.caption"><span class="text-base-content/60">Сообщение:</span> {{ messageDetail.caption }}</p>
                 </div>
 
                 <div v-if="messageDetail.attachments?.length" class="space-y-3">
