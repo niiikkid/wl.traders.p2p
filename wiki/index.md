@@ -23,3 +23,11 @@ Trader-to-trader working balance transfer knowledge for Team Leader scoped walle
 | Article | Summary | Updated |
 |---------|---------|---------|
 | [Trader Balance Transfer Implementation Plan](trader-balance-transfers/trader-balance-transfer-implementation-plan.md) | Detailed specification and implementation plan for atomic `trust_balance` transfers between traders under the same Team Leader. | 2026-05-22 |
+
+## team-leader-insurance-mode
+
+Team Leader shared insurance reserve mode knowledge for trader reserve delegation, admin limits, and wallet debit behavior.
+
+| Article | Summary | Updated |
+|---------|---------|---------|
+| [Team Leader Shared Insurance Mode Specification](team-leader-insurance-mode/team-leader-shared-insurance-mode-spec.md) | Full technical specification and step-by-step implementation plan for the second Team Leader mode where connected traders use Team Leader `reserve_balance`. | 2026-05-22 |
