@@ -8,6 +8,7 @@ use App\Enums\TelegramChatParserType;
 use App\Enums\TelegramChatStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -52,5 +53,10 @@ class TelegramChat extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(TelegramChatMessage::class);
+    }
+
+    public function latestMessage(): HasOne
+    {
+        return $this->hasOne(TelegramChatMessage::class)->latestOfMany();
     }
 }

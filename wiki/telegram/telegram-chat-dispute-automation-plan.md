@@ -1,7 +1,7 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md)
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md)
 > Updated: 2026-05-21
 
 ## Overview
@@ -310,6 +310,8 @@ When turning debug mode off:
 
 ## Admin UI Plan
 
+**Implemented (Phase 5, 2026-05-21):** `resources/js/Pages/Admin/TelegramChats/Index.vue`, route `admin.telegram-chats.index` (`GET /admin/telegram-chats`), menu item «Telegram-чаты» in `AdminMenu.vue`.
+
 Use one Super Admin page, for example:
 
 - `Admin/TelegramChats/Index.vue`
@@ -354,11 +356,11 @@ Chat detail view can be on the same route via selected chat state or a nested ad
 
 Suggested classes (implemented in **bold**):
 
-- `Admin\TelegramChatController`
+- **`Admin\TelegramChatController`**
 - **`Admin\TelegramBotSettingController`**
 - **`TelegramChatAutomationWebhookController`**
 - **`TelegramChatWebhookIngestionService`**
-- `TelegramChatAttachmentController`
+- **`Admin\TelegramChatAttachmentController`**
 - **`ProcessTelegramChatMessageJob`**
 - `CleanupTelegramChatDebugMessagesJob`
 - **`TelegramChatMessageParserContract`**
@@ -378,8 +380,8 @@ Suggested enums:
 Suggested form requests (implemented in **bold**):
 
 - **`Admin\TelegramBotSetting\UpdateRequest`**
-- `Admin\TelegramChat\UpdateRequest`
-- `Admin\TelegramChat\ToggleDebugRequest`
+- **`Admin\TelegramChat\UpdateRequest`**
+- **`Admin\TelegramChat\ToggleDebugRequest`**
 
 ## Routing Plan
 
@@ -389,13 +391,13 @@ Webhook route outside auth (registered; ingestion logic in Phase 3):
 
 Admin routes inside `admin` prefix and `role:Super Admin` group:
 
-- `GET /admin/telegram-chats`
-- `PATCH /admin/telegram-chats/{telegramChat}`
-- `POST /admin/telegram-chats/{telegramChat}/archive`
-- `POST /admin/telegram-chats/{telegramChat}/restore`
-- `PATCH /admin/telegram-chats/{telegramChat}/debug`
-- `GET /admin/telegram-chats/{telegramChat}/messages`
-- `GET /admin/telegram-chats/{telegramChat}/messages/{telegramChatMessage}/attachments/{attachment}`
+- **`GET /admin/telegram-chats`** — `admin.telegram-chats.index` (Inertia; query: `tab`, `chat`, `messages_page`, `per_page`)
+- **`PATCH /admin/telegram-chats/{telegramChat}`** — `admin.telegram-chats.update`
+- **`POST /admin/telegram-chats/{telegramChat}/archive`** — `admin.telegram-chats.archive`
+- **`POST /admin/telegram-chats/{telegramChat}/restore`** — `admin.telegram-chats.restore`
+- **`PATCH /admin/telegram-chats/{telegramChat}/debug`** — `admin.telegram-chats.debug.update`
+- **`GET /admin/telegram-chats/{telegramChat}/messages`** — `admin.telegram-chats.messages.index` (JSON)
+- **`GET /admin/telegram-chats/{telegramChat}/messages/{telegramChatMessage}/attachments/{attachment}`** — `admin.telegram-chats.messages.attachments.show` (private file stream)
 - **`GET /admin/telegram-bot/settings`** — `admin.telegram-bot.settings.show` (JSON)
 - **`PATCH /admin/telegram-bot/settings`** — `admin.telegram-bot.settings.update` (JSON)
 - **`POST /admin/telegram-bot/webhook`** — `admin.telegram-bot.webhook.setup` (JSON)
@@ -430,8 +432,8 @@ Reliability rules:
 | 2 — Bot settings and webhook setup | **Done** (2026-05-21) | Service, admin JSON API, `setWebhook` / `getWebhookInfo`; public webhook route + secret middleware |
 | 3 — Webhook ingestion | **Done** (2026-05-21) | Ingestion service, idempotency, chat upsert, conditional message storage, job dispatch |
 | 4 — Message processing | **Done** (2026-05-21) | Parser, file service, dispute creation, success reply |
-| 5 — Admin UI | Pending | |
-| 6 — Cleanup and hardening | Pending | |
+| 5 — Admin UI | **Done** (2026-05-21) | Inertia page, chat moderation, bot settings modal (axios), attachment download |
+| 6 — Cleanup and hardening | Pending | `CleanupTelegramChatDebugMessagesJob` not yet implemented |
 
 ### Phase 1 artifacts (implemented)
 
@@ -452,7 +454,7 @@ Reliability rules:
 **Models** (`app/Models/`):
 
 - `TelegramBotSetting` — `bot_token` and `webhook_secret` use `encrypted` cast; helpers `hasBotToken()`, `hasWebhookSecret()`
-- `TelegramChat` — `messages()` has-many
+- `TelegramChat` — `messages()` has-many; `latestMessage()` has-one `latestOfMany`
 - `TelegramChatMessage` — `telegramChat()`, `order()`, `dispute()`, `attachments()`
 - `TelegramChatMessageAttachment` — `telegramChatMessage()`
 
@@ -550,6 +552,35 @@ Reliability rules:
 - `StandardTelegramDisputeParser`
 - `TelegramChatMessageProcessor` (iterable: `[StandardTelegramDisputeParser]`)
 
+### Phase 5 artifacts (implemented)
+
+**Controllers** (`app/Http/Controllers/Admin/`):
+
+- **`TelegramChatController`** — Inertia `index` with paginated chats (`tab=active|archived`), optional `chat` + `messages_page` for detail; `messages()` JSON; `update` / `archive` / `restore` / `toggleDebug` (redirect + flash)
+- **`TelegramChatAttachmentController`** — `show()` verifies chat → message → attachment; streams from `Storage::disk('local')`
+
+**Resources** (`app/Http/Resources/`):
+
+- **`TelegramChatResource`** — `display_title`, `messages_count`, `last_message_status`, `last_failure_reason`
+- **`TelegramChatMessageResource`** — `order_uuid`, nested attachments
+- **`TelegramChatMessageAttachmentResource`** — `download_url` (named route)
+
+**Form requests:**
+
+- **`Admin\TelegramChat\UpdateRequest`** — `status`, `parser_type` enums
+- **`Admin\TelegramChat\ToggleDebugRequest`** — `debug_enabled`
+
+**Frontend:**
+
+- **`resources/js/Pages/Admin/TelegramChats/Index.vue`** — bot status + webhook (axios to Phase 2 API); tabs Активные/Архив; `MainTableSection` chat list; detail panel (status, parser, debug toggle with `ConfirmModal` on disable); message table + detail `Modal`; attachment download links
+- **`resources/js/Layouts/Partials/AdminMenu.vue`** — navigation entry
+
+**UI notes:**
+
+- Bot settings and webhook setup use existing JSON endpoints (`admin.telegram-bot.*`), not Inertia forms
+- Disabling debug shows confirmation; **does not** dispatch cleanup job yet (Phase 6)
+- Restore from archive sets `status` = `pending_moderation`
+
 ## Implementation Phases
 
 ### Phase 1: Database and Domain Types — Done
@@ -590,15 +621,16 @@ Reliability rules:
 - [x] Send Telegram success message after dispute creation (failures logged, not rolled back)
 - [x] `TelegramChatMessageProcessor` + parser contract wiring in `AppServiceProvider`
 
-### Phase 5: Admin UI
+### Phase 5: Admin UI — Done
 
-- Build one Super Admin page.
-- Add bot settings modal.
-- Add webhook setup button.
-- Add chat table with status/archive filters.
-- Add chat detail/message list.
-- Add protected attachment links.
-- Add debug mode toggle with confirmation modal.
+- [x] Build one Super Admin page (`Admin/TelegramChats/Index.vue`, `admin.telegram-chats.index`)
+- [x] Add bot settings modal (axios: `admin.telegram-bot.settings.show` / `.update`)
+- [x] Add webhook setup button (axios: `admin.telegram-bot.webhook.setup`)
+- [x] Add chat table with status/archive tabs (`tab=active|archived`)
+- [x] Add chat detail/message list (query `chat`, `messages_page`)
+- [x] Add protected attachment links (`TelegramChatAttachmentController`)
+- [x] Add debug mode toggle with confirmation modal (`toggleDebug`; cleanup job deferred to Phase 6)
+- [x] Admin menu entry «Telegram-чаты»
 
 ### Phase 6: Cleanup and Hardening
 

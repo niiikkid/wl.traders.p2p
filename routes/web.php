@@ -24,6 +24,8 @@ use App\Http\Controllers\Admin\SenderStopListController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SmsStopWordController;
 use App\Http\Controllers\Admin\TelegramBotSettingController;
+use App\Http\Controllers\Admin\TelegramChatAttachmentController;
+use App\Http\Controllers\Admin\TelegramChatController;
 use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
 use App\Http\Controllers\Admin\UserNoteController;
 use App\Http\Controllers\Admin\UserTeamController;
@@ -410,6 +412,14 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/telegram-bot/settings', [TelegramBotSettingController::class, 'show'])->name('telegram-bot.settings.show');
         Route::patch('/telegram-bot/settings', [TelegramBotSettingController::class, 'update'])->name('telegram-bot.settings.update');
         Route::post('/telegram-bot/webhook', [TelegramBotSettingController::class, 'setupWebhook'])->name('telegram-bot.webhook.setup');
+        Route::get('/telegram-chats', [TelegramChatController::class, 'index'])->name('telegram-chats.index');
+        Route::get('/telegram-chats/{telegramChat}/messages', [TelegramChatController::class, 'messages'])->name('telegram-chats.messages.index');
+        Route::patch('/telegram-chats/{telegramChat}', [TelegramChatController::class, 'update'])->name('telegram-chats.update');
+        Route::post('/telegram-chats/{telegramChat}/archive', [TelegramChatController::class, 'archive'])->name('telegram-chats.archive');
+        Route::post('/telegram-chats/{telegramChat}/restore', [TelegramChatController::class, 'restore'])->name('telegram-chats.restore');
+        Route::patch('/telegram-chats/{telegramChat}/debug', [TelegramChatController::class, 'toggleDebug'])->name('telegram-chats.debug.update');
+        Route::get('/telegram-chats/{telegramChat}/messages/{telegramChatMessage}/attachments/{attachment}', [TelegramChatAttachmentController::class, 'show'])
+            ->name('telegram-chats.messages.attachments.show');
         Route::get('/anti-fraud/settings', [AntiFraudSettingController::class, 'index'])->name('anti-fraud.settings.index');
         Route::post('/anti-fraud/settings', [AntiFraudSettingController::class, 'store'])->name('anti-fraud.settings.store');
         Route::patch('/anti-fraud/settings/{anti_fraud_setting}', [AntiFraudSettingController::class, 'update'])->name('anti-fraud.settings.update');
