@@ -65,6 +65,8 @@ const messageDetailModalOpen = ref(false);
 
 const chatList = computed(() => props.chats?.data ?? []);
 const messageList = computed(() => props.messages?.data ?? []);
+const chatsMeta = computed(() => props.chats?.meta ?? null);
+const chatDetailOpen = computed(() => props.selectedChat !== null);
 
 const statusLabels = {
     pending_moderation: 'Ожидает модерации',
@@ -130,6 +132,14 @@ const selectChat = (chat) => {
 
 const clearSelectedChat = () => {
     visitChats({ chat: undefined, messages_page: undefined });
+};
+
+const visitChatListPage = (page) => {
+    visitChats({
+        page,
+        chat: props.selectedChat?.id,
+        messages_page: props.messagesMeta?.current_page,
+    });
 };
 
 const chatUpdateForm = useForm({
@@ -327,86 +337,87 @@ watch(
 
         <ConfirmModal />
 
-        <div class="space-y-4">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-base-content sm:text-3xl">Telegram-чаты</h2>
-                    <p class="text-sm text-base-content/60">
-                        Автоматическое открытие споров по сообщениям мерчантов в Telegram.
-                    </p>
-                </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="badge" :class="botStatusSummary.class">{{ botStatusSummary.text }}</span>
-                    <button type="button" class="btn btn-outline btn-sm" @click="openBotSettingsModal">
+        <MainTableSection
+            title="Telegram-чаты"
+            info="Автоматическое открытие споров по сообщениям мерчантов в Telegram."
+            :data="chats"
+            :paginate="true"
+            :display-pagination="!chatDetailOpen"
+            :visit-extra-data="{
+                tab,
+                chat: selectedChat?.id,
+            }"
+        >
+            <template #button>
+                <div
+                    class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
+                >
+                    <span class="badge badge-sm" :class="botStatusSummary.class">{{ botStatusSummary.text }}</span>
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline shrink-0 rounded-lg"
+                        @click="openBotSettingsModal"
+                    >
                         Настройки бота
                     </button>
                     <button
                         type="button"
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-sm btn-primary shrink-0 rounded-lg"
                         :disabled="webhookSettingUp || !botSettingState.has_bot_token"
                         @click="setupWebhook"
                     >
                         {{ webhookSettingUp ? 'Устанавливаем...' : 'Установить webhook' }}
                     </button>
                 </div>
-            </div>
+            </template>
 
-            <div role="tablist" class="tabs tabs-boxed w-fit">
-                <button
-                    type="button"
-                    role="tab"
-                    class="tab"
-                    :class="{ 'tab-active': tab === 'active' }"
-                    @click="switchTab('active')"
-                >
-                    Активные
-                </button>
-                <button
-                    type="button"
-                    role="tab"
-                    class="tab"
-                    :class="{ 'tab-active': tab === 'archived' }"
-                    @click="switchTab('archived')"
-                >
-                    Архив
-                </button>
-            </div>
+            <template #header>
+                <div role="tablist" class="tabs tabs-boxed w-fit">
+                    <button
+                        type="button"
+                        role="tab"
+                        class="tab"
+                        :class="{ 'tab-active': tab === 'active' }"
+                        @click="switchTab('active')"
+                    >
+                        Активные
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        class="tab"
+                        :class="{ 'tab-active': tab === 'archived' }"
+                        @click="switchTab('archived')"
+                    >
+                        Архив
+                    </button>
+                </div>
+            </template>
 
-            <div class="grid gap-4 xl:grid-cols-2">
-                <MainTableSection
-                    title="Чаты"
-                    :data="chats"
-                    :paginate="true"
-                    :visit-extra-data="{
-                        tab,
-                        chat: selectedChat?.id,
-                    }"
-                >
-                    <template #body>
-                        <div class="overflow-x-auto">
+            <template #body>
+                <div v-if="!chatDetailOpen" class="overflow-x-auto">
+                    <div class="shadow-md rounded-table relative">
+                        <div class="overflow-x-auto card bg-base-100 shadow">
                             <table class="table table-sm">
-                                <thead>
+                                <thead class="text-xs uppercase bg-base-300">
                                     <tr>
-                                        <th>Чат</th>
-                                        <th>Статус</th>
-                                        <th>Debug</th>
-                                        <th>Сообщений</th>
-                                        <th>Последнее</th>
-                                        <th></th>
+                                        <th scope="col">Чат</th>
+                                        <th scope="col">Статус</th>
+                                        <th scope="col">Debug</th>
+                                        <th scope="col">Сообщений</th>
+                                        <th scope="col">Последнее</th>
+                                        <th scope="col"><span class="sr-only">Действия</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr
                                         v-for="chat in chatList"
                                         :key="chat.id"
-                                        class="cursor-pointer hover:bg-base-200"
-                                        :class="{ 'bg-base-200': selectedChat?.id === chat.id }"
-                                        @click="selectChat(chat)"
+                                        class="bg-base-100 border-b border-base-200 last:border-none"
                                     >
-                                        <td>
-                                            <div class="font-medium">{{ chat.display_title }}</div>
-                                            <div class="text-xs text-base-content/60">{{ chat.telegram_chat_id }}</div>
-                                        </td>
+                                        <th scope="row" class="font-medium text-base-content">
+                                            {{ chat.display_title }}
+                                        </th>
                                         <td>
                                             <span class="badge badge-sm" :class="statusBadgeClass(chat.status)">
                                                 {{ statusLabels[chat.status] ?? chat.status }}
@@ -428,8 +439,16 @@ watch(
                                                 {{ messageStatusLabels[chat.last_message_status] ?? chat.last_message_status }}
                                             </div>
                                         </td>
-                                        <td @click.stop>
-                                            <div class="flex flex-wrap gap-1">
+                                        <td>
+                                            <div class="flex flex-wrap justify-end gap-1">
+                                                <button
+                                                    type="button"
+                                                    class="btn btn-xs btn-primary btn-outline"
+                                                    :class="{ 'btn-active': selectedChat?.id === chat.id }"
+                                                    @click="selectChat(chat)"
+                                                >
+                                                    Сообщения
+                                                </button>
                                                 <button
                                                     v-if="tab === 'archived'"
                                                     type="button"
@@ -467,44 +486,129 @@ watch(
                                         </td>
                                     </tr>
                                     <tr v-if="!chatList.length">
-                                        <td colspan="6" class="text-center text-base-content/60">
+                                        <td colspan="6" class="bg-base-100 py-8 text-center text-base-content/60">
                                             Чаты не найдены.
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
-                    </template>
-                </MainTableSection>
+                    </div>
+                </div>
 
-                <div class="card bg-base-100 shadow">
-                    <div class="card-body space-y-4">
-                        <div class="flex items-center justify-between gap-2">
-                            <h3 class="text-lg font-semibold">
-                                {{ selectedChat ? selectedChat.display_title : 'Детали чата' }}
+                <div v-else class="grid items-start gap-4 lg:grid-cols-[minmax(12rem,16rem)_1fr]">
+                <div class="relative w-full min-w-0 self-start shadow-md rounded-table">
+                    <div class="card bg-base-100 shadow">
+                    <div class="flex w-full flex-col items-stretch gap-3 bg-base-200/30 p-3">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-base-content/50">Чаты</p>
+                        <ul class="flex w-full flex-col gap-1 p-0">
+                            <li
+                                v-for="chat in chatList"
+                                :key="chat.id"
+                                class="w-full rounded-lg"
+                                :class="{ 'bg-base-200': selectedChat?.id === chat.id }"
+                            >
+                                <div class="flex w-full flex-col items-stretch gap-2 p-2">
+                                    <span class="font-medium leading-snug text-base-content">
+                                        {{ chat.display_title }}
+                                    </span>
+                                    <div class="flex w-full flex-wrap gap-1">
+                                        <button
+                                            type="button"
+                                            class="btn btn-xs btn-primary btn-outline"
+                                            :class="{ 'btn-active': selectedChat?.id === chat.id }"
+                                            @click="selectChat(chat)"
+                                        >
+                                            Сообщения
+                                        </button>
+                                        <button
+                                            v-if="tab === 'archived'"
+                                            type="button"
+                                            class="btn btn-xs btn-outline"
+                                            @click="restoreChat(chat)"
+                                        >
+                                            Восстановить
+                                        </button>
+                                        <template v-else>
+                                            <button
+                                                v-if="chat.status !== 'active'"
+                                                type="button"
+                                                class="btn btn-xs btn-success btn-outline"
+                                                @click="activateChat(chat)"
+                                            >
+                                                Активировать
+                                            </button>
+                                            <button
+                                                v-if="chat.status === 'active'"
+                                                type="button"
+                                                class="btn btn-xs btn-warning btn-outline"
+                                                @click="disableChat(chat)"
+                                            >
+                                                Отключить
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-outline"
+                                                @click="archiveChat(chat)"
+                                            >
+                                                Архив
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                        <p v-if="!chatList.length" class="text-sm text-base-content/60">
+                            Чаты не найдены.
+                        </p>
+                        <div
+                            v-if="chatsMeta && chatsMeta.last_page > 1"
+                            class="flex items-center justify-between gap-2 border-t border-base-300 pt-2"
+                        >
+                            <button
+                                type="button"
+                                class="btn btn-xs btn-outline"
+                                :disabled="chatsMeta.current_page <= 1"
+                                @click="visitChatListPage(chatsMeta.current_page - 1)"
+                            >
+                                Назад
+                            </button>
+                            <span class="text-xs text-base-content/60">
+                                {{ chatsMeta.current_page }} / {{ chatsMeta.last_page }}
+                            </span>
+                            <button
+                                type="button"
+                                class="btn btn-xs btn-outline"
+                                :disabled="chatsMeta.current_page >= chatsMeta.last_page"
+                                @click="visitChatListPage(chatsMeta.current_page + 1)"
+                            >
+                                Вперёд
+                            </button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <div class="relative w-full min-w-0 shadow-md rounded-table">
+                    <div class="card bg-base-100 shadow">
+                    <div class="flex w-full flex-col gap-4 p-4 sm:p-6">
+                        <div class="flex items-start justify-between gap-2 border-b border-base-200 pb-3">
+                            <h3 class="text-lg font-semibold text-base-content">
+                                {{ selectedChat.display_title }}
                             </h3>
                             <button
-                                v-if="selectedChat"
                                 type="button"
-                                class="btn btn-ghost btn-xs"
+                                class="btn btn-ghost btn-sm btn-square shrink-0"
+                                aria-label="Закрыть"
                                 @click="clearSelectedChat"
                             >
-                                Закрыть
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
                             </button>
                         </div>
 
                         <template v-if="selectedChat">
-                            <div class="grid gap-3 sm:grid-cols-2">
-                                <div>
-                                    <span class="text-xs text-base-content/60">Telegram ID</span>
-                                    <p class="font-mono text-sm">{{ selectedChat.telegram_chat_id }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-xs text-base-content/60">Username</span>
-                                    <p class="text-sm">{{ selectedChat.username ? '@' + selectedChat.username : '—' }}</p>
-                                </div>
-                            </div>
-
                             <div class="flex flex-wrap gap-2">
                                 <span class="badge" :class="statusBadgeClass(selectedChat.status)">
                                     {{ statusLabels[selectedChat.status] ?? selectedChat.status }}
@@ -567,56 +671,68 @@ watch(
                                 </button>
                             </div>
 
-                            <div class="divider my-0">Сообщения</div>
+                            <div class="divider my-0 text-base-content/50">Сообщения</div>
 
-                            <div class="overflow-x-auto max-h-[32rem]">
-                                <table class="table table-xs">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Тип</th>
-                                            <th>Статус</th>
-                                            <th>UUID</th>
-                                            <th>Дата</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr v-for="message in messageList" :key="message.id">
-                                            <td>{{ message.telegram_message_id }}</td>
-                                            <td>{{ messageTypeLabels[message.message_type] ?? message.message_type }}</td>
-                                            <td>
-                                                <span class="badge badge-xs" :class="statusBadgeClass(message.status)">
-                                                    {{ messageStatusLabels[message.status] ?? message.status }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <DisplayUUID
-                                                    v-if="message.detected_uuid"
-                                                    :uuid="message.detected_uuid"
-                                                />
-                                                <span v-else>—</span>
-                                            </td>
-                                            <td>
-                                                <DateTime :data="message.created_at" simple />
-                                            </td>
-                                            <td>
-                                                <button
-                                                    type="button"
-                                                    class="btn btn-ghost btn-xs"
-                                                    @click="openMessageDetail(message)"
+                            <div class="overflow-x-auto">
+                                <div class="shadow-md rounded-table relative">
+                                    <div class="max-h-[32rem] overflow-x-auto overflow-y-auto card bg-base-100 shadow">
+                                        <table class="table table-sm">
+                                            <thead class="sticky top-0 z-[1] text-xs uppercase bg-base-300">
+                                                <tr>
+                                                    <th scope="col">ID</th>
+                                                    <th scope="col">Тип</th>
+                                                    <th scope="col">Статус</th>
+                                                    <th scope="col">UUID</th>
+                                                    <th scope="col">Дата</th>
+                                                    <th scope="col"><span class="sr-only">Действия</span></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="message in messageList"
+                                                    :key="message.id"
+                                                    class="bg-base-100 border-b border-base-200 last:border-none"
                                                 >
-                                                    Подробнее
-                                                </button>
-                                            </td>
-                                        </tr>
-                                        <tr v-if="!messageList.length">
-                                            <td colspan="6" class="text-center text-base-content/60">
-                                                Сообщений нет.
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                                    <th scope="row" class="font-medium whitespace-nowrap text-base-content">
+                                                        {{ message.telegram_message_id }}
+                                                    </th>
+                                                    <td>{{ messageTypeLabels[message.message_type] ?? message.message_type }}</td>
+                                                    <td>
+                                                        <span class="badge badge-xs" :class="statusBadgeClass(message.status)">
+                                                            {{ messageStatusLabels[message.status] ?? message.status }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <DisplayUUID
+                                                            v-if="message.detected_uuid"
+                                                            :uuid="message.detected_uuid"
+                                                        />
+                                                        <span v-else>—</span>
+                                                    </td>
+                                                    <td>
+                                                        <DateTime :data="message.created_at" simple />
+                                                    </td>
+                                                    <td>
+                                                        <div class="flex justify-end">
+                                                            <button
+                                                                type="button"
+                                                                class="btn btn-primary btn-outline btn-xs"
+                                                                @click="openMessageDetail(message)"
+                                                            >
+                                                                Подробнее
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <tr v-if="!messageList.length">
+                                                    <td colspan="6" class="bg-base-100 py-8 text-center text-base-content/60">
+                                                        Сообщений нет.
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
 
                             <div
@@ -644,14 +760,12 @@ watch(
                                 </button>
                             </div>
                         </template>
-
-                        <p v-else class="text-sm text-base-content/60">
-                            Выберите чат в таблице слева, чтобы просмотреть настройки и сообщения.
-                        </p>
+                    </div>
                     </div>
                 </div>
-            </div>
-        </div>
+                </div>
+            </template>
+        </MainTableSection>
 
         <Modal :show="botSettingsModalOpen" max-width="lg" @close="botSettingsModalOpen = false">
             <div class="space-y-4">
