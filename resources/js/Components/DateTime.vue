@@ -1,6 +1,7 @@
 <script setup>
-import {computed} from "vue";
-import {useClipboard} from "@vueuse/core";
+import AppTooltip from '@/Components/AppTooltip.vue';
+import { computed } from 'vue';
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
 
 const props = defineProps({
     data: {
@@ -156,7 +157,7 @@ const formatDateFull = (dateString) => {
 
 const fullDate = computed(() => formatDateFull(props.data));
 
-const { copy, copied } = useClipboard();
+const { copy, copied } = useAppClipboard();
 </script>
 
 <template>
@@ -170,7 +171,7 @@ const { copy, copied } = useClipboard();
             </span>
         </template>
         <template v-else-if="copyable">
-            <div class="tooltip" :data-tip="copied ? 'Скопировано!' : 'Скопировать'">
+            <AppTooltip :tip="copied ? 'Скопировано!' : 'Скопировать'" :open="copied">
                 <div
                     class="btn btn-ghost btn-xs gap-2 inline-flex items-center text-nowrap"
                     role="button"
@@ -182,7 +183,7 @@ const { copy, copied } = useClipboard();
                     </svg>
                     <p class="inline-block align-middle text-base-content">{{ formatedData }}</p>
                 </div>
-            </div>
+            </AppTooltip>
         </template>
         <template v-else>
             <div

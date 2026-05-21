@@ -1,7 +1,7 @@
 <script setup>
 import {Head, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import {useClipboard} from "@vueuse/core";
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
 import {ref, onMounted, onBeforeUnmount, nextTick, unref} from 'vue';
 import axios from 'axios';
 import ApiDocumentation from '@/Pages/Integration/Components/ApiDocumentation.vue';
@@ -20,7 +20,7 @@ const token = ref(pageProps.token ?? '');
 const merchantId = pageProps.merchantId;
 const merchants = pageProps.merchants ?? [];
 
-const { text, copy, copied } = useClipboard();
+const { text, copy, copied } = useAppClipboard();
 const modalStore = useModalStore();
 
 const DEFAULT_TAB = 'merchant';

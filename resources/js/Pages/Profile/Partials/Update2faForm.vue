@@ -1,7 +1,8 @@
 <script setup>
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import {useClipboard} from "@vueuse/core";
+import AppTooltip from '@/Components/AppTooltip.vue';
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
 import {ref} from "vue";
 
 const auth2fa = ref(usePage().props.auth2fa);
@@ -20,7 +21,7 @@ const submit = () => {
     });
 }
 
-const { copy, copied } = useClipboard()
+const { copy, copied } = useAppClipboard()
 
 </script>
 
@@ -43,12 +44,12 @@ const { copy, copied } = useClipboard()
                         </div>
                         <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                             <span class="shrink-0 text-base-content/70">Секретный ключ:</span>
-                            <div class="tooltip tooltip-top min-w-0" :data-tip="copied ? 'Скопировано!' : 'Скопировать'">
+                            <AppTooltip :tip="copied ? 'Скопировано!' : 'Скопировать'" placement="top" :open="copied" wrapper-class="min-w-0 inline-block">
                                 <span
                                     class="break-all text-base-content hover:text-base-content/70 hover:cursor-pointer"
                                     @click.prevent="copy(auth2fa.secret)"
                                 >{{ auth2fa.secret }}</span>
-                            </div>
+                            </AppTooltip>
                         </div>
                     </div>
 

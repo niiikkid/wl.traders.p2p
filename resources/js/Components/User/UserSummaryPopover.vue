@@ -1,7 +1,7 @@
 <script setup>
 import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import DateTime from "@/Components/DateTime.vue";
-import {useClipboard} from "@vueuse/core";
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
 
 const props = defineProps({
     user: {
@@ -16,7 +16,7 @@ const popover = ref(null);
 const position = ref({ top: 0, left: 0 });
 const boolToText = (value) => value ? 'Да' : 'Нет';
 const telegramTag = computed(() => props.user.telegram_tag || null);
-const {copy, copied} = useClipboard();
+const { copy, copied } = useAppClipboard();
 
 const updatePosition = () => {
     if (!trigger.value) {

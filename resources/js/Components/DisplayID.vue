@@ -1,6 +1,7 @@
 <script setup>
-import { useClipboard } from '@vueuse/core'
-import {computed} from "vue";
+import AppTooltip from '@/Components/AppTooltip.vue';
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
+import { computed } from 'vue';
 
 const props = defineProps({
     id: {
@@ -25,7 +26,7 @@ const idShort = computed(() => {
     return props.id;
 });
 
-const { copy, copied } = useClipboard()
+const { copy, copied } = useAppClipboard()
 </script>
 
 <template>
@@ -36,7 +37,7 @@ const { copy, copied } = useClipboard()
             </span>
         </template>
         <template v-else>
-            <div class="tooltip tooltip-top" :data-tip="copied ? 'Скопировано!' : 'Скопировать'">
+            <AppTooltip :tip="copied ? 'Скопировано!' : 'Скопировать'" placement="top" :open="copied">
                 <button
                     type="button"
                     @click.prevent.stop="copy(id)"
@@ -44,7 +45,7 @@ const { copy, copied } = useClipboard()
                 >
                     {{ idShort }}
                 </button>
-            </div>
+            </AppTooltip>
         </template>
     </div>
 </template>

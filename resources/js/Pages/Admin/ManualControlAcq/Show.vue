@@ -6,6 +6,7 @@ import ManualControlConfirmModal from './ManualControlConfirmModal.vue';
 import ManualControlLayout from '@/Layouts/ManualControlLayout.vue';
 import { useModalStore } from '@/store/modal.js';
 import { playNotificationAudio } from '@/utils/notificationAudioPlayer.js';
+import AppTooltip from '@/Components/AppTooltip.vue';
 
 const modal_store = useModalStore();
 
@@ -1511,15 +1512,18 @@ onBeforeUnmount(() => {
                                     @click="copyField('payinId')"
                                 >
                                     <span>{{ selected_item.payin_id.display }}</span>
-                                    <span
-                                        class="tooltip tooltip-top inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
-                                        :data-tip="copiedField === 'payinId' ? 'Скопировано' : ''"
-                                        :class="copiedField === 'payinId' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                    <AppTooltip
+                                        :tip="copiedField === 'payinId' ? 'Скопировано' : ''"
+                                        :open="copiedField === 'payinId'"
+                                        placement="top"
+                                        wrapper-class="inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
                                     >
+                                        <span :class="copiedField === 'payinId' ? 'bg-primary-content/20 text-primary-content' : 'text-primary-content/75'">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                                         </svg>
-                                    </span>
+                                        </span>
+                                    </AppTooltip>
                                 </button>
                             </div>
 
@@ -1533,15 +1537,18 @@ onBeforeUnmount(() => {
                                     @click="copyField('amount')"
                                 >
                                     <span>{{ selected_item.amount.display }}</span>
-                                    <span
-                                        class="tooltip tooltip-top inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
-                                        :data-tip="copiedField === 'amount' ? 'Скопировано' : ''"
-                                        :class="copiedField === 'amount' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                    <AppTooltip
+                                        :tip="copiedField === 'amount' ? 'Скопировано' : ''"
+                                        :open="copiedField === 'amount'"
+                                        placement="top"
+                                        wrapper-class="inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
                                     >
+                                        <span :class="copiedField === 'amount' ? 'bg-primary-content/20 text-primary-content' : 'text-primary-content/75'">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                                         </svg>
-                                    </span>
+                                        </span>
+                                    </AppTooltip>
                                 </button>
                             </div>
                         </div>
@@ -1558,15 +1565,18 @@ onBeforeUnmount(() => {
                                 <span class="break-words text-base font-semibold tracking-[0.16em] sm:text-2xl sm:tracking-[0.22em]">
                                     {{ selected_item.card_number.display }}
                                 </span>
-                                <span
-                                    class="tooltip tooltip-top inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
-                                    :data-tip="copiedField === 'cardNumber' ? 'Скопировано' : ''"
-                                    :class="copiedField === 'cardNumber' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                <AppTooltip
+                                    :tip="copiedField === 'cardNumber' ? 'Скопировано' : ''"
+                                    :open="copiedField === 'cardNumber'"
+                                    placement="top"
+                                    wrapper-class="inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
                                 >
+                                    <span :class="copiedField === 'cardNumber' ? 'bg-primary-content/20 text-primary-content' : 'text-primary-content/75'">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                                     </svg>
-                                </span>
+                                    </span>
+                                </AppTooltip>
                             </button>
                         </div>
 
@@ -1587,15 +1597,18 @@ onBeforeUnmount(() => {
                                         @click="copyField('cardholderName')"
                                     >
                                         <span class="min-w-0 truncate uppercase">{{ selected_item.cardholder_name.display }}</span>
-                                        <span
-                                            class="tooltip tooltip-top inline-flex shrink-0 items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
-                                            :data-tip="copiedField === 'cardholderName' ? 'Скопировано' : ''"
-                                            :class="copiedField === 'cardholderName' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                        <AppTooltip
+                                            :tip="copiedField === 'cardholderName' ? 'Скопировано' : ''"
+                                            :open="copiedField === 'cardholderName'"
+                                            placement="top"
+                                            wrapper-class="inline-flex shrink-0 items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
                                         >
+                                            <span :class="copiedField === 'cardholderName' ? 'bg-primary-content/20 text-primary-content' : 'text-primary-content/75'">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                                             </svg>
-                                        </span>
+                                            </span>
+                                        </AppTooltip>
                                     </button>
                                 </template>
                                 <template v-else>
@@ -1608,15 +1621,18 @@ onBeforeUnmount(() => {
                                         @click="copyField('expiryDate')"
                                     >
                                         <span>{{ selected_item.expiry_date.display }}</span>
-                                        <span
-                                            class="tooltip tooltip-top inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
-                                            :data-tip="copiedField === 'expiryDate' ? 'Скопировано' : ''"
-                                            :class="copiedField === 'expiryDate' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                        <AppTooltip
+                                            :tip="copiedField === 'expiryDate' ? 'Скопировано' : ''"
+                                            :open="copiedField === 'expiryDate'"
+                                            placement="top"
+                                            wrapper-class="inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
                                         >
+                                            <span :class="copiedField === 'expiryDate' ? 'bg-primary-content/20 text-primary-content' : 'text-primary-content/75'">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                                             </svg>
-                                        </span>
+                                            </span>
+                                        </AppTooltip>
                                     </button>
                                 </template>
                             </div>
@@ -1633,15 +1649,18 @@ onBeforeUnmount(() => {
                                     @click="copyField('expiryDate')"
                                 >
                                     <span>{{ selected_item.expiry_date.display }}</span>
-                                    <span
-                                        class="tooltip tooltip-top inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
-                                        :data-tip="copiedField === 'expiryDate' ? 'Скопировано' : ''"
-                                        :class="copiedField === 'expiryDate' ? 'tooltip-open bg-primary-content/20 text-primary-content' : 'text-primary-content/75'"
+                                    <AppTooltip
+                                        :tip="copiedField === 'expiryDate' ? 'Скопировано' : ''"
+                                        :open="copiedField === 'expiryDate'"
+                                        placement="top"
+                                        wrapper-class="inline-flex items-center justify-center rounded-full p-1 transition group-hover:bg-primary-content/10 group-hover:text-primary-content group-active:scale-95"
                                     >
+                                        <span :class="copiedField === 'expiryDate' ? 'bg-primary-content/20 text-primary-content' : 'text-primary-content/75'">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5 shrink-0 sm:size-4">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.976-2.192.373-.03.748-.057 1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18.75v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5A3.375 3.375 0 0 0 6.375 7.5H5.25m11.9-3.664A2.251 2.251 0 0 0 15 2.25h-1.5a2.251 2.251 0 0 0-2.15 1.586m5.8 0c.065.21.1.433.1.664v.75h-6V4.5c0-.231.035-.454.1-.664M6.75 7.5H4.875c-.621 0-1.125.504-1.125 1.125v12c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V16.5a9 9 0 0 0-9-9Z" />
                                         </svg>
-                                    </span>
+                                        </span>
+                                    </AppTooltip>
                                 </button>
                             </div>
                         </div>

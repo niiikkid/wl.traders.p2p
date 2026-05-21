@@ -13,6 +13,7 @@ import DateTime from "@/Components/DateTime.vue";
 import DUUID from "@/Components/DUUID.vue";
 import CopyableExternalId from "@/Components/CopyableExternalId.vue";
 import EditOrderAmountModal from "@/Modals/Order/EditOrderAmountModal.vue";
+import AppTooltip from '@/Components/AppTooltip.vue';
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 
 const viewStore = useViewStore();
@@ -674,7 +675,7 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Коллбек URL</dt>
                                             <dd class="font-medium text-base-content">
                                                 <div v-if="order.callback_url" class="flex gap-2">
-                                                    <div class="tooltip tooltip-right sm:tooltip-left" :data-tip="callbackCopied ? 'Скопировано' : 'Скопировать'">
+                                                    <AppTooltip :tip="callbackCopied ? 'Скопировано' : 'Скопировать'" placement="left" :open="callbackCopied">
                                                         <button
                                                             @click="copyCallbackUrl(order.callback_url)"
                                                             type="button"
@@ -684,14 +685,14 @@ const copyCallbackUrl = async (callback_url) => {
                                                                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2m-6 12h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2Z"/>
                                                             </svg>
                                                         </button>
-                                                    </div>
+                                                    </AppTooltip>
                                                 </div>
                                             </dd>
                                         </dl>
                                         <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode) && ! order.is_h2h" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Страница оплаты</dt>
                                             <dd class="font-medium text-base-content">
-                                                <div class="tooltip tooltip-right sm:tooltip-left" data-tip="Перейти">
+                                                <AppTooltip tip="Перейти" placement="left">
                                                     <button
                                                         @click="orderPaymentLink(order.payment_link)"
                                                         type="button"
@@ -701,7 +702,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 3v4a1 1 0 0 1-1 1H5m8-2h3m-3 3h3m-4 3v6m4-3H8M19 4v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1ZM8 12v6h8v-6H8Z"/>
                                                         </svg>
                                                     </button>
-                                                </div>
+                                                </AppTooltip>
                                             </dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">

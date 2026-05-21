@@ -1,5 +1,6 @@
 <script setup>
-import { useClipboard } from '@vueuse/core'
+import AppTooltip from '@/Components/AppTooltip.vue';
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
 
 const props = defineProps({
     text: {
@@ -9,11 +10,11 @@ const props = defineProps({
         type: String,
     },
 });
-const { copy, copied } = useClipboard()
+const { copy, copied } = useAppClipboard()
 </script>
 
 <template>
-    <div class="tooltip" :data-tip="copied ? 'Скопировано!' : 'Скопировать'">
+    <AppTooltip :tip="copied ? 'Скопировано!' : 'Скопировать'" :open="copied">
         <a
             href="#"
             @click.prevent="copy(copy_text)"
@@ -24,7 +25,7 @@ const { copy, copied } = useClipboard()
                 <path stroke="currentColor" stroke-linejoin="round" stroke-width="2" d="M9 8v3a1 1 0 0 1-1 1H5m11 4h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v1m4 3v10a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7.13a1 1 0 0 1 .24-.65L7.7 8.35A1 1 0 0 1 8.46 8H13a1 1 0 0 1 1 1Z"/>
             </svg>
         </a>
-    </div>
+    </AppTooltip>
 </template>
 
 <style scoped>

@@ -7,6 +7,7 @@ import CascadeSectionNav from '@/Components/Admin/CascadeSectionNav.vue';
 import IsActiveStatus from '@/Components/IsActiveStatus.vue';
 import MerchantSettingsModal from '@/Modals/Merchant/MerchantSettingsModal.vue';
 import {useModalStore} from '@/store/modal.js';
+import AppTooltip from '@/Components/AppTooltip.vue';
 
 const props = defineProps({
     merchants: Array,
@@ -201,7 +202,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </td>
                                 <td class="ps-1 pe-2 py-1 text-end">
                                     <div class="flex items-center justify-end gap-0.5">
-                                        <div class="tooltip tooltip-left" data-tip="Настройки мерчанта">
+                                        <AppTooltip tip="Настройки мерчанта" placement="left">
                                             <button
                                                 type="button"
                                                 class="btn btn-xs btn-square btn-ghost text-blue-600 hover:bg-blue-500/10 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-400/10 dark:hover:text-blue-300"
@@ -212,8 +213,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                                                 </svg>
                                             </button>
-                                        </div>
-                                        <div class="tooltip tooltip-left" data-tip="Настройки каскада">
+                                        </AppTooltip>
+                                        <AppTooltip tip="Настройки каскада" placement="left">
                                             <button
                                                 type="button"
                                                 class="btn btn-xs btn-square btn-ghost text-base-content/70"
@@ -224,7 +225,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                     <path fill-rule="evenodd" d="M8.34 1.804A1 1 0 0 1 9.32 1h1.36a1 1 0 0 1 .98.804l.295 1.473c.497.144.971.342 1.416.587l1.25-.834a1 1 0 0 1 1.262.125l.962.962a1 1 0 0 1 .125 1.262l-.834 1.25c.245.445.443.919.587 1.416l1.473.294a1 1 0 0 1 .804.98v1.361a1 1 0 0 1-.804.98l-1.473.295a6.95 6.95 0 0 1-.587 1.416l.834 1.25a1 1 0 0 1-.125 1.262l-.962.962a1 1 0 0 1-1.262.125l-1.25-.834a6.953 6.953 0 0 1-1.416.587l-.294 1.473a1 1 0 0 1-.98.804H9.32a1 1 0 0 1-.98-.804l-.295-1.473a6.95 6.95 0 0 1-1.416-.587l-1.25.834a1 1 0 0 1-1.262-.125l-.962-.962a1 1 0 0 1-.125-1.262l.834-1.25a6.952 6.952 0 0 1-.587-1.416l-1.473-.294A1 1 0 0 1 1 10.68V9.32a1 1 0 0 1 .804-.98l1.473-.295c.144-.497.342-.971.587-1.416l-.834-1.25a1 1 0 0 1 .125-1.262l.962-.962A1 1 0 0 1 5.38 3.03l1.25.834a6.953 6.953 0 0 1 1.416-.587l.294-1.473ZM13 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" clip-rule="evenodd" />
                                                 </svg>
                                             </button>
-                                        </div>
+                                        </AppTooltip>
                                     </div>
                                 </td>
                             </tr>

@@ -3,7 +3,7 @@ import { Head } from '@inertiajs/vue3';
 import { ref } from 'vue';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { useClipboard } from '@vueuse/core';
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
 
 const props = defineProps({
     token: {
@@ -14,7 +14,7 @@ const props = defineProps({
 
 const token = ref(props.token);
 const regenerating = ref(false);
-const { copy, copied } = useClipboard();
+const { copy, copied } = useAppClipboard();
 
 const regenerateToken = async () => {
     if (regenerating.value) {
