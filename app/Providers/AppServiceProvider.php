@@ -30,6 +30,7 @@ use App\Contracts\ServiceBuilderContract;
 use App\Contracts\SettingsServiceContract;
 use App\Contracts\SmsServiceContract;
 use App\Contracts\TelegramChatBotServiceContract;
+use App\Contracts\TelegramChatFileServiceContract;
 use App\Contracts\TelegramChatWebhookIngestionServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
@@ -95,7 +96,10 @@ use App\Services\ServiceBuilder;
 use App\Services\Settings\SettingsService;
 use App\Services\Sms\SmsService;
 use App\Services\Statistics\MerchantApiStatisticsService;
+use App\Services\Telegram\Parsers\StandardTelegramDisputeParser;
 use App\Services\Telegram\TelegramChatBotService;
+use App\Services\Telegram\TelegramChatFileService;
+use App\Services\Telegram\TelegramChatMessageProcessor;
 use App\Services\Telegram\TelegramChatWebhookIngestionService;
 use App\Services\Telegram\TelegramService;
 use App\Services\User\UserService;
@@ -218,6 +222,19 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(TelegramChatWebhookIngestionServiceContract::class, function () {
             return new TelegramChatWebhookIngestionService;
+        });
+        $this->app->singleton(TelegramChatFileServiceContract::class, function () {
+            return new TelegramChatFileService;
+        });
+        $this->app->singleton(StandardTelegramDisputeParser::class, function ($app) {
+            return new StandardTelegramDisputeParser(
+                fileService: $app->make(TelegramChatFileServiceContract::class),
+            );
+        });
+        $this->app->singleton(TelegramChatMessageProcessor::class, function ($app) {
+            return new TelegramChatMessageProcessor([
+                $app->make(StandardTelegramDisputeParser::class),
+            ]);
         });
         $this->app->singleton(MainPageStatsServiceContract::class, function () {
             return new MainPageStatsService;

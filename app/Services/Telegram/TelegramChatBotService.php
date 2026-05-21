@@ -121,6 +121,97 @@ class TelegramChatBotService implements TelegramChatBotServiceContract
         return $setting->refresh();
     }
 
+    public function getFileInfo(string $fileId): array
+    {
+        $botToken = $this->requireBotToken();
+        $response = $this->client($botToken)->get('getFile', ['file_id' => $fileId]);
+        $body = $response->json();
+
+        if (! $response->successful() || ! ($body['ok'] ?? false)) {
+            $message = is_string($body['description'] ?? null)
+                ? $body['description']
+                : 'Не удалось получить информацию о файле Telegram.';
+
+            throw new TelegramChatBotException($message);
+        }
+
+        $result = $body['result'] ?? null;
+
+        if (! is_array($result)) {
+            throw new TelegramChatBotException('Некорректный ответ Telegram getFile.');
+        }
+
+        $filePath = $result['file_path'] ?? null;
+
+        if (! is_string($filePath) || $filePath === '') {
+            throw new TelegramChatBotException('Telegram не вернул путь к файлу.');
+        }
+
+        $fileSize = $result['file_size'] ?? null;
+
+        return [
+            'file_path' => $filePath,
+            'file_size' => is_int($fileSize) ? $fileSize : null,
+            'file_unique_id' => is_string($result['file_unique_id'] ?? null) ? $result['file_unique_id'] : null,
+        ];
+    }
+
+    public function downloadFileToPath(string $fileId): string
+    {
+        $botToken = $this->requireBotToken();
+        $fileInfo = $this->getFileInfo($fileId);
+        $downloadUrl = 'https://api.telegram.org/file/bot'.$botToken.'/'.$fileInfo['file_path'];
+
+        $request = Http::timeout(60)->acceptJson();
+
+        $proxy = config('telegram.proxy');
+
+        if (is_string($proxy) && $proxy !== '') {
+            $request = $request->withOptions(['proxy' => $proxy]);
+        }
+
+        $response = $request->get($downloadUrl);
+
+        if (! $response->successful()) {
+            throw new TelegramChatBotException('Не удалось скачать файл из Telegram.');
+        }
+
+        $tempPath = sys_get_temp_dir().'/'.Str::uuid()->toString();
+
+        file_put_contents($tempPath, $response->body());
+
+        return $tempPath;
+    }
+
+    public function sendChatMessage(string $chatId, string $text): void
+    {
+        $botToken = $this->requireBotToken();
+        $response = $this->client($botToken)->post('sendMessage', [
+            'chat_id' => $chatId,
+            'text' => $text,
+        ]);
+        $body = $response->json();
+
+        if (! $response->successful() || ! ($body['ok'] ?? false)) {
+            $message = is_string($body['description'] ?? null)
+                ? $body['description']
+                : 'Не удалось отправить сообщение в Telegram.';
+
+            throw new TelegramChatBotException($message);
+        }
+    }
+
+    protected function requireBotToken(): string
+    {
+        $setting = $this->getSettings();
+
+        if (! $setting->hasBotToken()) {
+            throw new TelegramChatBotException('Токен Telegram-бота не задан.');
+        }
+
+        return $setting->bot_token;
+    }
+
     protected function assertBotTokenIsValid(string $botToken): void
     {
         $response = $this->client($botToken)->get('getMe');

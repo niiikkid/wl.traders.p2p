@@ -1,7 +1,7 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md)
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md)
 > Updated: 2026-05-21
 
 ## Overview
@@ -178,7 +178,7 @@ Webhook execution should be fast:
 6. Dispatch a job for file download, parsing, dispute creation, and Telegram reply.
 7. Return `204 No Content`.
 
-**Implemented (Phase 3):** steps 2–6 in `TelegramChatWebhookIngestionService`; step 1 via `VerifyTelegramChatAutomationSecretToken` middleware; step 6 dispatches `ProcessTelegramChatMessageJob` (file download, parsing, and disputes — Phase 4).
+**Implemented (Phases 3–4):** steps 2–6 in `TelegramChatWebhookIngestionService`; step 1 via `VerifyTelegramChatAutomationSecretToken` middleware; step 6 dispatches `ProcessTelegramChatMessageJob` (file download, parsing, disputes, and Telegram reply — Phase 4).
 
 ## Idempotency
 
@@ -359,12 +359,14 @@ Suggested classes (implemented in **bold**):
 - **`TelegramChatAutomationWebhookController`**
 - **`TelegramChatWebhookIngestionService`**
 - `TelegramChatAttachmentController`
-- **`ProcessTelegramChatMessageJob`** (stub until Phase 4)
+- **`ProcessTelegramChatMessageJob`**
 - `CleanupTelegramChatDebugMessagesJob`
-- `TelegramChatMessageParser`
-- `StandardTelegramDisputeParser`
-- `TelegramChatFileService`
-- **`TelegramChatBotService`** (`TelegramChatBotServiceContract`, registered as `services()->telegramChatBot()`)
+- **`TelegramChatMessageParserContract`**
+- **`StandardTelegramDisputeParser`** (`app/Services/Telegram/Parsers/`)
+- **`TelegramChatFileService`** (`TelegramChatFileServiceContract`)
+- **`TelegramChatMessageProcessor`**
+- **`TelegramAttachmentReference`**
+- **`TelegramChatBotService`** (`TelegramChatBotServiceContract`, `services()->telegramChatBot()` — includes `getFileInfo`, `downloadFileToPath`, `sendChatMessage`)
 
 Suggested enums:
 
@@ -427,7 +429,7 @@ Reliability rules:
 | 1 — Database and domain types | **Done** (2026-05-21) | Migrations applied; models and enums in `app/` |
 | 2 — Bot settings and webhook setup | **Done** (2026-05-21) | Service, admin JSON API, `setWebhook` / `getWebhookInfo`; public webhook route + secret middleware |
 | 3 — Webhook ingestion | **Done** (2026-05-21) | Ingestion service, idempotency, chat upsert, conditional message storage, job dispatch |
-| 4 — Message processing | Pending | |
+| 4 — Message processing | **Done** (2026-05-21) | Parser, file service, dispute creation, success reply |
 | 5 — Admin UI | Pending | |
 | 6 — Cleanup and hardening | Pending | |
 
@@ -460,7 +462,7 @@ Reliability rules:
 
 **Service** (`app/Services/Telegram/`):
 
-- `TelegramChatBotService` — `getSettings()`, `updateSettings()`, `setupWebhook()`, `refreshWebhookMetadata()`, `webhookUrl()`; Telegram HTTP API via `Http` client (`setWebhook`, `getMe`, `getWebhookInfo`); honors `config('telegram.proxy')`
+- `TelegramChatBotService` — `getSettings()`, `updateSettings()`, `setupWebhook()`, `refreshWebhookMetadata()`, `webhookUrl()`, `getFileInfo()`, `downloadFileToPath()`, `sendChatMessage()`; Telegram HTTP API via `Http` client (`setWebhook`, `getMe`, `getWebhookInfo`, `getFile`, `sendMessage`); file download via `https://api.telegram.org/file/bot<token>/<file_path>`; honors `config('telegram.proxy')`
 - `TelegramChatBotServiceContract` — bound in `AppServiceProvider`, exposed as `services()->telegramChatBot()`
 - `TelegramChatBotException` — validation and webhook setup errors
 
@@ -496,7 +498,7 @@ Reliability rules:
 
 **Job** (`app/Jobs/`):
 
-- **`ProcessTelegramChatMessageJob`** — queue `default`, `afterCommit()`; reloads message + chat; no-op unless chat `active` (Phase 4 implements file download, parsing, disputes, reply)
+- **`ProcessTelegramChatMessageJob`** — queue `default`, `afterCommit()`; reloads message + chat; no-op unless chat `active`; calls **`TelegramChatMessageProcessor`**
 
 **Ingestion behavior:**
 
@@ -505,6 +507,48 @@ Reliability rules:
 - Message storage: only when `debug_enabled` OR ingest-time `is_dispute_related` (attachment `photo`/`document` OR UUID regex in `text`/`caption`)
 - Stored messages: `status` = `received`, `message_type` from payload (`photo` / `document` / `text` / `unknown`), full message in `raw_payload`
 - Always updates chat `last_message_at` and metadata when a valid message update is processed (even when the message row is not stored)
+
+### Phase 4 artifacts (implemented)
+
+**Bot API extensions** (`TelegramChatBotService` / contract):
+
+- `getFileInfo($fileId)` — Telegram `getFile`
+- `downloadFileToPath($fileId)` — temp file via Bot API file URL
+- `sendChatMessage($chatId, $text)` — Telegram `sendMessage`
+
+**File service** (`app/Services/Telegram/`):
+
+- **`TelegramChatFileService`** / **`TelegramChatFileServiceContract`** — `extractAttachmentReference()`, `downloadAndStore()`, `toUploadedFile()`, `deleteStoredFile()`
+- **`TelegramAttachmentReference`** — `fileId`, `fileUniqueId`, `originalName`, `mimeType`, `fileSize`
+- Storage: `storage/app/telegram-chat-attachments/{stored_name}` on `local` disk
+- Validation: Laravel validator `mimes:jpeg,jpg,png,pdf`, `max:5120`; pre-check Telegram `file_size` ≤ 5 MB
+
+**Parsing** (`app/Services/Telegram/Parsers/`):
+
+- **`StandardTelegramDisputeParser`** — `TelegramChatMessageParserContract`; `supports(standard_dispute)`; full dispute flow (see Processing flow below)
+- **`TelegramChatMessageProcessor`** — dispatches to first matching parser by `parser_type`
+
+**Job** (`app/Jobs/`):
+
+- **`ProcessTelegramChatMessageJob`** — `handle(TelegramChatMessageProcessor)`; processes only `active` chats
+
+**Processing flow** (`StandardTelegramDisputeParser`, idempotent on `received`):
+
+1. UUID from `text` / `caption` (lowercased candidates)
+2. `Order::whereIn('uuid', …)->with('dispute')` — 0 / 1 / many
+3. Attachment from `raw_payload` (`photo` largest size, or `document`)
+4. Status `matched` + `order_id` / `detected_uuid`
+5. Existing dispute → `duplicate` (no bot reply)
+6. Download, validate, store attachment; `services()->dispute()->create()`
+7. Status `processed` + `dispute_id`; success reply `Спор открыт.\nUUID сделки: …`
+8. `DisputeException` «already exists» → `duplicate`; other errors → `failed` with `failure_reason`
+9. Success reply failure → `Log::warning` only (dispute retained)
+
+**Provider bindings** (`AppServiceProvider`):
+
+- `TelegramChatFileServiceContract`
+- `StandardTelegramDisputeParser`
+- `TelegramChatMessageProcessor` (iterable: `[StandardTelegramDisputeParser]`)
 
 ## Implementation Phases
 
@@ -531,19 +575,20 @@ Reliability rules:
 - [x] Create or update `TelegramChat` (preserve status on existing chats)
 - [x] Apply idempotency (`telegram_update_id`, chat + message id, duplicate-key handling)
 - [x] Store initial message rows when `debug_enabled` or dispute-related heuristic
-- [x] Dispatch `ProcessTelegramChatMessageJob` (stub; full processing in Phase 4)
+- [x] Dispatch `ProcessTelegramChatMessageJob`
 
-### Phase 4: Message Processing
+### Phase 4: Message Processing — Done
 
-- Implement file extraction for Telegram `photo` and `document`.
-- Download the selected file.
-- Validate extension, MIME type, and size.
-- Store allowed files privately.
-- Extract UUID candidates from text/caption.
-- Query `Order::whereIn`.
-- Mark failed/duplicate/processed statuses with reasons.
-- Open disputes through the existing dispute service.
-- Send Telegram success message after dispute creation.
+- [x] File extraction for Telegram `photo` (largest size) and `document`
+- [x] Download via `getFile` + Bot API file URL (`TelegramChatBotService::downloadFileToPath`)
+- [x] Validate MIME/extension/size (`TelegramChatFileService`)
+- [x] Store allowed files privately (`telegram-chat-attachments/`)
+- [x] Extract UUID candidates from text/caption (`StandardTelegramDisputeParser`)
+- [x] Query `Order::whereIn` with dispute eager-load
+- [x] Mark `ignored` / `failed` / `matched` / `duplicate` / `processed` with reasons
+- [x] Open disputes through `services()->dispute()->create()`
+- [x] Send Telegram success message after dispute creation (failures logged, not rolled back)
+- [x] `TelegramChatMessageProcessor` + parser contract wiring in `AppServiceProvider`
 
 ### Phase 5: Admin UI
 

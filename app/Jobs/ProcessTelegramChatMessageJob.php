@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Enums\TelegramChatStatus;
 use App\Models\TelegramChatMessage;
+use App\Services\Telegram\TelegramChatMessageProcessor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -23,7 +24,7 @@ class ProcessTelegramChatMessageJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function handle(): void
+    public function handle(TelegramChatMessageProcessor $processor): void
     {
         $message = $this->telegramChatMessage->fresh(['telegramChat']);
 
@@ -37,6 +38,6 @@ class ProcessTelegramChatMessageJob implements ShouldQueue
             return;
         }
 
-        // Phase 4: file download, parsing, dispute creation, Telegram reply.
+        $processor->process($message);
     }
 }
