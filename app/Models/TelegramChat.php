@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\TelegramChatMessageStatus;
 use App\Enums\TelegramChatParserType;
 use App\Enums\TelegramChatStatus;
+use App\Jobs\ProcessTelegramChatMessageJob;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -58,5 +60,20 @@ class TelegramChat extends Model
     public function latestMessage(): HasOne
     {
         return $this->hasOne(TelegramChatMessage::class)->latestOfMany();
+    }
+
+    public function redispatchReceivedMessages(): int
+    {
+        $dispatched = 0;
+
+        $this->messages()
+            ->where('status', TelegramChatMessageStatus::RECEIVED)
+            ->orderBy('id')
+            ->each(function (TelegramChatMessage $message) use (&$dispatched): void {
+                ProcessTelegramChatMessageJob::dispatch($message);
+                $dispatched++;
+            });
+
+        return $dispatched;
     }
 }

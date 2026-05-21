@@ -232,9 +232,12 @@ class AppServiceProvider extends ServiceProvider
             );
         });
         $this->app->singleton(TelegramChatMessageProcessor::class, function ($app) {
-            return new TelegramChatMessageProcessor([
-                $app->make(StandardTelegramDisputeParser::class),
-            ]);
+            return new TelegramChatMessageProcessor(
+                parsers: [
+                    $app->make(StandardTelegramDisputeParser::class),
+                ],
+                fileService: $app->make(TelegramChatFileServiceContract::class),
+            );
         });
         $this->app->singleton(MainPageStatsServiceContract::class, function () {
             return new MainPageStatsService;

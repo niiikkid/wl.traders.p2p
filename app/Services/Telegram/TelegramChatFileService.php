@@ -66,7 +66,15 @@ class TelegramChatFileService implements TelegramChatFileServiceContract
             $storagePath = self::STORAGE_DIRECTORY.'/'.$storedName;
 
             Storage::disk('local')->makeDirectory(self::STORAGE_DIRECTORY);
-            Storage::disk('local')->put($storagePath, (string) file_get_contents($downloadedPath));
+
+            $stored = Storage::disk('local')->put(
+                $storagePath,
+                (string) file_get_contents($downloadedPath),
+            );
+
+            if ($stored === false) {
+                throw new TelegramChatBotException('Не удалось сохранить файл вложения.');
+            }
 
             return TelegramChatMessageAttachment::query()->create([
                 'telegram_chat_message_id' => $message->id,

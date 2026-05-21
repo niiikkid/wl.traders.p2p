@@ -118,11 +118,29 @@ class TelegramChatController extends Controller
 
     public function update(UpdateRequest $request, TelegramChat $telegramChat): RedirectResponse
     {
-        $telegramChat->update($request->validated());
+        $previousStatus = $telegramChat->status;
+        $validated = $request->validated();
+
+        $telegramChat->update($validated);
+        $telegramChat->refresh();
+
+        $message = 'Настройки чата обновлены.';
+
+        if (
+            array_key_exists('status', $validated)
+            && $telegramChat->status->equals(TelegramChatStatus::ACTIVE)
+            && ! $previousStatus->equals(TelegramChatStatus::ACTIVE)
+        ) {
+            $redispatched = $telegramChat->redispatchReceivedMessages();
+
+            if ($redispatched > 0) {
+                $message .= " Повторно поставлено в очередь сообщений: {$redispatched}.";
+            }
+        }
 
         return redirect()
             ->back()
-            ->with('message', 'Настройки чата обновлены.');
+            ->with('message', $message);
     }
 
     public function archive(TelegramChat $telegramChat): RedirectResponse

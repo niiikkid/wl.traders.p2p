@@ -36,6 +36,8 @@ class ProcessTelegramChatMessageJob implements ShouldQueue
 
         $telegramChat = $message->telegramChat;
 
+        $processor->storeDebugAttachmentsIfNeeded($message);
+
         if ($telegramChat === null || ! $telegramChat->status->equals(TelegramChatStatus::ACTIVE)) {
             return;
         }

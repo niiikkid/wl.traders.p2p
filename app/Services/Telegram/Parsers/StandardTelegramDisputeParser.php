@@ -103,7 +103,8 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
         }
 
         try {
-            $attachment = $this->fileService->downloadAndStore($message, $attachmentReference);
+            $attachment = $message->attachments()->first()
+                ?? $this->fileService->downloadAndStore($message, $attachmentReference);
             $uploadedFile = $this->fileService->toUploadedFile($attachment);
             $dispute = services()->dispute()->create($order->id, $uploadedFile);
 
