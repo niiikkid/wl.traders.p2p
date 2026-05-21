@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\ProfitCalculatorController;
 use App\Http\Controllers\Admin\SenderStopListController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SmsStopWordController;
+use App\Http\Controllers\Admin\TelegramBotSettingController;
 use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
 use App\Http\Controllers\Admin\UserNoteController;
 use App\Http\Controllers\Admin\UserTeamController;
@@ -73,6 +74,7 @@ use App\Http\Controllers\TeamLeader\TraderDisputeController;
 use App\Http\Controllers\TeamLeader\TraderFinanceController;
 use App\Http\Controllers\TeamLeader\TraderOrderController;
 use App\Http\Controllers\TeamLeader\TraderPaymentDetailController;
+use App\Http\Controllers\TelegramChatAutomationWebhookController;
 use App\Http\Controllers\TelegramSettingsController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Trader\DepositInvoiceController;
@@ -112,6 +114,10 @@ Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [PaymentLin
 Route::post('/telegram/webhook', TelegramWebhookController::class)
     ->middleware(['telegram.secret', 'backoffice.domain'])
     ->name('telegram.webhook');
+
+Route::post('/telegram/chat-automation/webhook', TelegramChatAutomationWebhookController::class)
+    ->middleware(['telegram.chat-automation.secret', 'backoffice.domain'])
+    ->name('telegram.chat-automation.webhook');
 
 // Выход из режима Impersonate
 Route::post('/impersonate/leave', function () {
@@ -401,6 +407,9 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/open-ai', [OpenAiSettingController::class, 'update'])->name('open-ai.update');
         Route::post('/open-ai/models', [OpenAiSettingController::class, 'refreshModels'])->name('open-ai.models.refresh');
         Route::post('/open-ai/prompt', [OpenAiSettingController::class, 'prompt'])->name('open-ai.prompt');
+        Route::get('/telegram-bot/settings', [TelegramBotSettingController::class, 'show'])->name('telegram-bot.settings.show');
+        Route::patch('/telegram-bot/settings', [TelegramBotSettingController::class, 'update'])->name('telegram-bot.settings.update');
+        Route::post('/telegram-bot/webhook', [TelegramBotSettingController::class, 'setupWebhook'])->name('telegram-bot.webhook.setup');
         Route::get('/anti-fraud/settings', [AntiFraudSettingController::class, 'index'])->name('anti-fraud.settings.index');
         Route::post('/anti-fraud/settings', [AntiFraudSettingController::class, 'store'])->name('anti-fraud.settings.store');
         Route::patch('/anti-fraud/settings/{anti_fraud_setting}', [AntiFraudSettingController::class, 'update'])->name('anti-fraud.settings.update');

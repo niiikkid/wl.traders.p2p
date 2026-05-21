@@ -51,4 +51,6 @@ interface ServiceBuilderContract
     public function notification(): NotificationServiceContract;
 
     public function telegram(): TelegramServiceContract;
+
+    public function telegramChatBot(): TelegramChatBotServiceContract;
 }

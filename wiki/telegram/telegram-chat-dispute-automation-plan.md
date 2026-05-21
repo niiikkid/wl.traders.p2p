@@ -1,6 +1,6 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21
 > Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md)
 > Updated: 2026-05-21
 
@@ -350,18 +350,18 @@ Chat detail view can be on the same route via selected chat state or a nested ad
 
 ## Backend Structure
 
-Suggested classes:
+Suggested classes (implemented in **bold**):
 
 - `Admin\TelegramChatController`
-- `Admin\TelegramBotSettingController`
-- `TelegramChatWebhookController`
+- **`Admin\TelegramBotSettingController`**
+- `TelegramChatWebhookController` (public route uses **`TelegramChatAutomationWebhookController`** placeholder until Phase 3)
 - `TelegramChatAttachmentController`
 - `ProcessTelegramChatMessageJob`
 - `CleanupTelegramChatDebugMessagesJob`
 - `TelegramChatMessageParser`
 - `StandardTelegramDisputeParser`
 - `TelegramChatFileService`
-- `TelegramChatBotService`
+- **`TelegramChatBotService`** (`TelegramChatBotServiceContract`, registered as `services()->telegramChatBot()`)
 
 Suggested enums:
 
@@ -370,17 +370,17 @@ Suggested enums:
 - `TelegramChatMessageStatus`
 - `TelegramChatMessageType`
 
-Suggested form requests:
+Suggested form requests (implemented in **bold**):
 
-- `Admin\TelegramBotSetting\UpdateRequest`
+- **`Admin\TelegramBotSetting\UpdateRequest`**
 - `Admin\TelegramChat\UpdateRequest`
 - `Admin\TelegramChat\ToggleDebugRequest`
 
 ## Routing Plan
 
-Webhook route outside auth:
+Webhook route outside auth (registered; ingestion logic in Phase 3):
 
-- `POST /telegram/chat-automation/webhook`
+- **`POST /telegram/chat-automation/webhook`** — route name `telegram.chat-automation.webhook`; middleware `telegram.chat-automation.secret` + `backoffice.domain`; CSRF excluded; currently returns `204` from placeholder controller
 
 Admin routes inside `admin` prefix and `role:Super Admin` group:
 
@@ -391,9 +391,9 @@ Admin routes inside `admin` prefix and `role:Super Admin` group:
 - `PATCH /admin/telegram-chats/{telegramChat}/debug`
 - `GET /admin/telegram-chats/{telegramChat}/messages`
 - `GET /admin/telegram-chats/{telegramChat}/messages/{telegramChatMessage}/attachments/{attachment}`
-- `GET /admin/telegram-bot/settings`
-- `PATCH /admin/telegram-bot/settings`
-- `POST /admin/telegram-bot/webhook`
+- **`GET /admin/telegram-bot/settings`** — `admin.telegram-bot.settings.show` (JSON)
+- **`PATCH /admin/telegram-bot/settings`** — `admin.telegram-bot.settings.update` (JSON)
+- **`POST /admin/telegram-bot/webhook`** — `admin.telegram-bot.webhook.setup` (JSON)
 
 If routes are changed, run project-required route commands during implementation:
 
@@ -422,8 +422,8 @@ Reliability rules:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 — Database and domain types | **Done** (2026-05-21) | Migrations applied; models and enums in `app/` |
-| 2 — Bot settings and webhook setup | Pending | |
-| 3 — Webhook ingestion | Pending | |
+| 2 — Bot settings and webhook setup | **Done** (2026-05-21) | Service, admin JSON API, `setWebhook` / `getWebhookInfo`; public webhook route + secret middleware |
+| 3 — Webhook ingestion | Pending | Route and middleware exist; controller is placeholder only |
 | 4 — Message processing | Pending | |
 | 5 — Admin UI | Pending | |
 | 6 — Cleanup and hardening | Pending | |
@@ -453,6 +453,33 @@ Reliability rules:
 
 **MySQL index naming:** auto-generated unique/FK names exceeded the 64-character limit. Short names used in migrations: `tg_chat_messages_chat_msg_unique` (composite unique on `telegram_chat_id` + `telegram_message_id`), `tg_chat_msg_att_msg_fk` (attachments → messages).
 
+### Phase 2 artifacts (implemented)
+
+**Service** (`app/Services/Telegram/`):
+
+- `TelegramChatBotService` — `getSettings()`, `updateSettings()`, `setupWebhook()`, `refreshWebhookMetadata()`, `webhookUrl()`; Telegram HTTP API via `Http` client (`setWebhook`, `getMe`, `getWebhookInfo`); honors `config('telegram.proxy')`
+- `TelegramChatBotServiceContract` — bound in `AppServiceProvider`, exposed as `services()->telegramChatBot()`
+- `TelegramChatBotException` — validation and webhook setup errors
+
+**Admin API** (JSON responses, secrets never exposed):
+
+- `Admin\TelegramBotSettingController` — `show`, `update`, `setupWebhook`
+- `TelegramBotSettingResource` — `has_bot_token`, `has_webhook_secret`, `webhook_set_at`, `webhook_last_error`, `webhook_url`, sanitized `webhook_metadata`
+- `Admin\TelegramBotSetting\UpdateRequest` — `bot_token` (optional), `regenerate_webhook_secret` (optional boolean)
+
+**Webhook security and route:**
+
+- `VerifyTelegramChatAutomationSecretToken` — compares `X-Telegram-Bot-Api-Secret-Token` to encrypted `webhook_secret` from DB (alias `telegram.chat-automation.secret`)
+- `TelegramChatAutomationWebhookController` — placeholder `204 No Content` until Phase 3
+
+**Behavior notes:**
+
+- `bot_token` validated with `getMe` before save; token/secret changes clear `webhook_set_at` and metadata until webhook is set again
+- `webhook_secret` auto-generated on first settings save or when `regenerate_webhook_secret` is true; charset compatible with Telegram `secret_token` rules
+- `setupWebhook()` calls `setWebhook` with `url` from `route('telegram.chat-automation.webhook')`, `secret_token`, `allowed_updates: ['message']`, `drop_pending_updates: true`; stores result in `webhook_set_at`, `webhook_last_error`, `webhook_metadata`
+- `show` refreshes `webhook_metadata` via `getWebhookInfo` when token is configured (silent fallback on API errors)
+- Separate from notification bot (`TelegramService`, `config/telegram.php`, `POST /telegram/webhook`)
+
 ## Implementation Phases
 
 ### Phase 1: Database and Domain Types — Done
@@ -462,17 +489,18 @@ Reliability rules:
 - [x] Encrypted casts for `bot_token` and `webhook_secret` on `TelegramBotSetting`
 - [x] Enums for chat status, parser type, message type, and message status
 
-### Phase 2: Bot Settings and Webhook Setup
+### Phase 2: Bot Settings and Webhook Setup — Done
 
-- Build the settings service for the new bot.
-- Add admin endpoints for reading/updating bot settings.
-- Add webhook setup action using Telegram `setWebhook` with `secret_token`.
-- Store webhook setup result and errors.
+- [x] Settings service for the new bot (`TelegramChatBotService`)
+- [x] Admin JSON endpoints for reading/updating bot settings
+- [x] Webhook setup action using Telegram `setWebhook` with `secret_token`
+- [x] Store webhook setup result and errors (`webhook_set_at`, `webhook_last_error`, `webhook_metadata`)
+- [x] Public webhook route and DB-backed secret middleware (placeholder controller until Phase 3)
 
 ### Phase 3: Webhook Ingestion
 
-- Add the dedicated webhook controller.
-- Verify `X-Telegram-Bot-Api-Secret-Token`.
+- Replace placeholder `TelegramChatAutomationWebhookController` with full ingestion logic (or rename to planned `TelegramChatWebhookController`)
+- Verify `X-Telegram-Bot-Api-Secret-Token` (middleware already implemented in Phase 2)
 - Parse incoming update.
 - Create or update `TelegramChat`.
 - Apply idempotency.

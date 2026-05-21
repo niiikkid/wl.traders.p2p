@@ -13,6 +13,7 @@ use App\Http\Middleware\Google2FAMiddleware;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\IdempotencyForAppMiddleware;
 use App\Http\Middleware\IntegrationInfrastructureApiAccessToken;
+use App\Http\Middleware\VerifyTelegramChatAutomationSecretToken;
 use App\Http\Middleware\VerifyTelegramSecretToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -53,10 +54,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'device-access-token' => DeviceAccessToken::class,
             '2fa' => Google2FAMiddleware::class,
             'telegram.secret' => VerifyTelegramSecretToken::class,
+            'telegram.chat-automation.secret' => VerifyTelegramChatAutomationSecretToken::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
             'telegram/webhook',
+            'telegram/chat-automation/webhook',
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

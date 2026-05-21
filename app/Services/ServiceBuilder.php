@@ -26,6 +26,7 @@ use App\Contracts\ProfitServiceContract;
 use App\Contracts\ServiceBuilderContract;
 use App\Contracts\SettingsServiceContract;
 use App\Contracts\SmsServiceContract;
+use App\Contracts\TelegramChatBotServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
@@ -150,6 +151,11 @@ class ServiceBuilder implements ServiceBuilderContract
     public function telegram(): TelegramServiceContract
     {
         return make(TelegramServiceContract::class);
+    }
+
+    public function telegramChatBot(): TelegramChatBotServiceContract
+    {
+        return app(TelegramChatBotServiceContract::class);
     }
 
     public function cascadeProvider(): CascadeProviderServiceContract
