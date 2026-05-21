@@ -26,7 +26,7 @@ class CleanupTelegramChatDebugMessagesJob implements ShouldQueue
         private readonly TelegramChat $telegramChat,
     ) {
         $this->afterCommit();
-        $this->onQueue('default');
+        $this->onQueue('telegram-chat-automation');
     }
 
     public function handle(TelegramChatFileServiceContract $fileService): void

@@ -89,6 +89,7 @@ return [
         'redis:notifications' => 60,
         'redis:cascade-provider-attempts' => 10,
         'redis:cascade-internal-cleanup' => 10,
+        'redis:telegram-chat-automation' => 60,
         'redis:payout-pooling' => 35,
     ],
 
@@ -355,6 +356,18 @@ return [
             'timeout' => 10,
             'nice' => 0,
         ],
+        'supervisor-telegram-chat-automation' => [
+            'connection' => 'redis',
+            'queue' => ['telegram-chat-automation'],
+            'balance' => 'simple',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'timeout' => 120,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -372,6 +385,7 @@ return [
             'supervisor-payout' => [],
             'supervisor-cascade-provider-attempts' => [],
             'supervisor-cascade-internal-cleanup' => [],
+            'supervisor-telegram-chat-automation' => [],
         ],
         'development' => [
             'supervisor-base' => [],
@@ -387,6 +401,7 @@ return [
             'supervisor-payout' => [],
             'supervisor-cascade-provider-attempts' => [],
             'supervisor-cascade-internal-cleanup' => [],
+            'supervisor-telegram-chat-automation' => [],
         ],
         'local' => [
             'supervisor-base' => [],
@@ -402,6 +417,7 @@ return [
             'supervisor-payout' => [],
             'supervisor-cascade-provider-attempts' => [],
             'supervisor-cascade-internal-cleanup' => [],
+            'supervisor-telegram-chat-automation' => [],
         ],
     ],
 ];

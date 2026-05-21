@@ -23,7 +23,7 @@ class ProcessTelegramChatMessageJob implements ShouldQueue
         private readonly TelegramChatMessage $telegramChatMessage,
     ) {
         $this->afterCommit();
-        $this->onQueue('default');
+        $this->onQueue('telegram-chat-automation');
     }
 
     public function handle(TelegramChatMessageProcessor $processor): void
