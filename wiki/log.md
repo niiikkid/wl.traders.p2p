@@ -18,3 +18,5 @@
 ## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan (local webhook base URL)
 
 ## [2026-05-22] ingest | Merchant Traffic Categories Architecture
+
+## [2026-05-22] ingest | Trader Balance Transfer Implementation Plan
