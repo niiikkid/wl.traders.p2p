@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Contracts\TelegramChatFileServiceContract;
+use App\Enums\TelegramChatMessageStatus;
 use App\Models\TelegramChat;
 use App\Models\TelegramChatMessage;
 use Illuminate\Bus\Queueable;
@@ -51,7 +52,11 @@ class CleanupTelegramChatDebugMessagesJob implements ShouldQueue
 
         TelegramChatMessage::query()
             ->where('telegram_chat_id', $telegramChat->id)
-            ->where('is_dispute_related', false)
+            ->where(function ($query): void {
+                $query
+                    ->where('status', '!=', TelegramChatMessageStatus::PROCESSED)
+                    ->orWhereNull('dispute_id');
+            })
             ->with('attachments')
             ->orderBy('id')
             ->chunkById(50, function ($messages) use ($fileService, &$deletedMessages, &$deletedAttachments, &$deletedFiles): void {

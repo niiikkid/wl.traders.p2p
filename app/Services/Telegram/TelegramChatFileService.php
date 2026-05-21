@@ -102,7 +102,16 @@ class TelegramChatFileService implements TelegramChatFileServiceContract
             throw new TelegramChatBotException('Файл вложения не найден в хранилище.');
         }
 
-        $file = new File($absolutePath);
+        $extension = $attachment->extension !== ''
+            ? $attachment->extension
+            : pathinfo($attachment->stored_name, PATHINFO_EXTENSION);
+        $tempPath = sys_get_temp_dir().'/'.Str::lower(Str::random(32)).($extension !== '' ? '.'.$extension : '');
+
+        if (! copy($absolutePath, $tempPath)) {
+            throw new TelegramChatBotException('Не удалось подготовить файл вложения для спора.');
+        }
+
+        $file = new File($tempPath);
 
         return new UploadedFile(
             $file->getPathname(),
