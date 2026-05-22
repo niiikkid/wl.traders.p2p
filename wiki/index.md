@@ -48,3 +48,11 @@ Team Leader shared insurance reserve mode knowledge for trader reserve delegatio
 | Article | Summary | Updated |
 |---------|---------|---------|
 | [Team Leader Shared Insurance Mode Specification](team-leader-insurance-mode/team-leader-shared-insurance-mode-spec.md) | Full technical specification and step-by-step implementation plan for the second Team Leader mode where connected traders use Team Leader `reserve_balance`. | 2026-05-22 |
+
+## user-devices
+
+Trader automation device connect API and admin inspection of raw device snapshots.
+
+| Article | Summary | Updated |
+|---------|---------|---------|
+| [Device Connect Snapshot Implementation Plan](user-devices/device-connect-snapshot-implementation-plan.md) | Plan for required `device_connect_snapshot` on `POST /api/app/device/connect`, `longText` storage (max 1 MiB), admin lazy modal with pretty JSON and raw copy. | 2026-05-23 |

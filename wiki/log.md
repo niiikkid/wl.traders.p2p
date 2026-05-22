@@ -53,3 +53,5 @@
 - Updated: Telegram Dispute Reply and Resolution Notifications Specification
 
 ## [2026-05-22] ingest | Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-23] ingest | Device Connect Snapshot Implementation Plan
