@@ -836,7 +836,11 @@ class GenerateTestDataCommand extends Command
                                             ];
                                             $reason = $reasons[array_rand($reasons)];
                                             try {
-                                                services()->dispute()->cancel($dispute->id, $reason);
+                                                services()->dispute()->cancel(
+                                                    $dispute->id,
+                                                    $reason,
+                                                    $this->makeTestBankStatementFile(),
+                                                );
                                             } catch (DisputeException $e) {
                                                 // ignore
                                             }
@@ -1045,5 +1049,16 @@ class GenerateTestDataCommand extends Command
                 // игнорируем ошибки отдельных сообщений
             }
         }
+    }
+
+    private function makeTestBankStatementFile(): UploadedFile
+    {
+        $path = sys_get_temp_dir().'/'.strtolower(Str::random(32)).'.png';
+        file_put_contents(
+            $path,
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+        );
+
+        return new UploadedFile($path, 'bank_statement.png', 'image/png', null, true);
     }
 }

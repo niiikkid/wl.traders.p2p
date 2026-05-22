@@ -57,7 +57,11 @@ class DisputeController extends Controller
     {
         Gate::authorize('access-to-dispute', $dispute);
 
-        services()->dispute()->cancel($dispute->id, $request->reason);
+        services()->dispute()->cancel(
+            $dispute->id,
+            $request->validated('reason'),
+            $request->file('bank_statement'),
+        );
     }
 
     public function rollback(Dispute $dispute)

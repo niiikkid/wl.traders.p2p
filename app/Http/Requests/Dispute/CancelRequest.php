@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Dispute;
 
+use App\Rules\ReceiptFileRule;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CancelRequest extends FormRequest
@@ -17,12 +19,29 @@ class CancelRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'reason' => ['required', 'string', 'max:255'],
+            'reason' => ['required', 'string', 'max:120'],
+            'bank_statement' => [
+                'required',
+                'file',
+                'max:5120',
+                new ReceiptFileRule,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'reason' => 'причина отклонения',
+            'bank_statement' => 'выписка по карте',
         ];
     }
 }

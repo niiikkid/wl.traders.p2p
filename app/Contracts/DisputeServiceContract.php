@@ -21,7 +21,7 @@ interface DisputeServiceContract
     /**
      * @throws DisputeException
      */
-    public function cancel(int $disputeID, string $reason): bool;
+    public function cancel(int $disputeID, string $reason, UploadedFile $bankStatement): bool;
 
     /**
      * @throws DisputeException

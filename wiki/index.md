@@ -30,7 +30,7 @@ Dispute rejection evidence requirements for bank/card statement uploads in class
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Specification and phased plan for dispute rejection with bank/card statement; Phase 1 done (migration, storage helpers, `disputes.bank-statement` route and gate). | 2026-05-22 |
+| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Specification and phased plan for dispute rejection with bank/card statement; Phases 1–2 done (storage, validation, `cancel()` persists statement); Phases 3–4 pending (Vue modals, `DisputeResource`). | 2026-05-22 |
 
 ## team-leader-insurance-mode
 

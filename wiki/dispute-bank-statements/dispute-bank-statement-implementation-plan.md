@@ -1,7 +1,7 @@
 # Dispute Bank Statement Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22
-> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md)
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22; Phase 2 implementation, 2026-05-22
+> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md)
 > Updated: 2026-05-22
 
 ## Overview
@@ -84,16 +84,20 @@ The implementation stays close to the current dispute flow:
 - `app/Providers/AppServiceProvider.php` — gate `access-to-dispute-bank-statement` mirrors `access-to-dispute-receipt`.
 - `storage/dispute-bank-statements/.gitignore` — same ignore pattern as `storage/receipts`.
 
-**Pending (Phases 2–4):**
+**Implemented (Phase 2):**
 
-- `app/Services/Dispute/DisputeService.php::cancel()` — still saves only `reason`; must accept `UploadedFile` and persist `bank_statement` (Phase 2).
-- `app/Http/Requests/Dispute/CancelRequest.php` — validates only `reason` today.
-- `app/Http/Controllers/DisputeController.php::cancel()` and Support/Analyst cancel endpoints — unchanged service call.
-- `app/Http/Controllers/Admin/DisputeController.php` — index/store only; admin UI can keep using the shared rejection route.
+- `app/Http/Requests/Dispute/CancelRequest.php` — `reason` max 120, required `bank_statement` with `ReceiptFileRule` and 5 MB limit; localized attributes.
+- `app/Contracts/DisputeServiceContract.php` — `cancel(..., UploadedFile $bankStatement)`.
+- `app/Services/Dispute/DisputeService.php::cancel()` — `replaceBankStatement()` + persists `reason`, `bank_statement`, `status = canceled`; preserves `checkRejectedDisputesLimit()`.
+- `app/Http/Controllers/DisputeController.php::cancel()`, `Support/DisputeController::cancel()`, `Analyst/DisputeController::cancel()` — pass validated reason and uploaded file.
+- `app/Console/Commands/GenerateTestDataCommand.php` — `makeTestBankStatementFile()` for test-data dispute cancellations.
+
+**Pending (Phases 3–4):**
+
+- `app/Http/Controllers/Admin/DisputeController.php` — index/store only; admin UI keeps using the shared rejection route (needs Phase 3 modal).
 - `app/Http/Resources/DisputeResource.php` — needs `bank_statement_url` for UI (Phase 4).
 - `resources/js/Modals/CancelDisputeModal.vue` — rejection form with presets + file (Phase 3).
 - `resources/js/Modals/DisputeModal.vue` — `Выписка` row for canceled disputes (Phase 4).
-- `App\Rules\ReceiptFileRule` — to be wired in `CancelRequest` (Phase 2).
 
 ## Data Model
 
@@ -123,7 +127,7 @@ Prefer the storage style used by payout receipts for safer filenames:
 - preserve a sanitized extension from `getClientOriginalExtension()` / `extension()`;
 - store only the relative filename/path in `disputes.bank_statement`.
 
-**Pending (Phase 2):** when a dispute is rejected again after rollback, `replaceBankStatement()` should run inside `cancel()` together with `reason` and status update in one transaction.
+**Implemented (Phase 2):** when a dispute is rejected (including after rollback), `replaceBankStatement()` runs inside `cancel()` together with `reason` and status update in one transaction.
 
 ## Authorization
 
@@ -142,30 +146,23 @@ The UI should not expose a statement URL to users outside this access model unti
 
 ### Request Validation
 
-Extend `CancelRequest`:
+**Implemented (Phase 2):** `CancelRequest` validates:
 
 - `reason`: `required`, `string`, `max:120`;
-- `bank_statement`: `required`, `file`, `max:5120`, `new ReceiptFileRule()`.
+- `bank_statement`: `required`, `file`, `max:5120`, `ReceiptFileRule`;
+- attributes: `причина отклонения`, `выписка по карте`.
 
-Add localized attributes:
-
-- `reason` => `причина отклонения`;
-- `bank_statement` => `выписка по карте`.
-
-If the request method remains `PATCH`, ensure the Inertia form sends multipart data correctly. If the current stack has trouble with multipart `PATCH`, use the established Inertia/Laravel workaround for method spoofing (`POST` with `_method: 'patch'`) while preserving the route semantics.
+**Pending (Phase 3):** the Inertia rejection modal must send multipart data with `bank_statement`. If multipart `PATCH` is unreliable, use `POST` with `_method: 'patch'` while preserving route semantics.
 
 ### Service Contract
 
-Update the dispute service contract and implementation:
+**Implemented (Phase 2):**
 
-- change `cancel(int $disputeID, string $reason): bool` to accept the uploaded statement;
-- suggested signature: `cancel(int $disputeID, string $reason, UploadedFile $bankStatement): bool`;
-- store the file before or inside the transactional update according to the project's safest existing pattern;
-- update `status`, `reason`, and `bank_statement` together;
-- preserve existing pending-status guard;
-- preserve existing order failure behavior and rejected-dispute limit check.
+- `DisputeServiceContract::cancel(int $disputeID, string $reason, UploadedFile $bankStatement): bool`;
+- `DisputeService::cancel()` stores the file via `replaceBankStatement()`, updates `status`, `reason`, and `bank_statement` in one transaction;
+- preserves pending-status guard, order failure behavior, and `checkRejectedDisputesLimit()`.
 
-Because the API is explicitly out of scope, do not alter API controllers or resources unless they compile against the changed service signature. If an API path still calls `cancel()`, it must either be out of reach or receive a separate compatibility path after product approval. The current implementation review should verify all `cancel()` call sites before coding.
+All web/UI `cancel()` call sites updated (Trader, Support, Analyst). `GenerateTestDataCommand` passes a test PNG via `makeTestBankStatementFile()`. No API controllers call `cancel()`.
 
 ### File Route
 
@@ -275,9 +272,11 @@ Acceptance criteria:
 - a stored statement can be opened only by users who can open the dispute receipt;
 - no API routes are changed.
 
-**Note:** rejection still does not upload statements until Phase 2; the file route returns `404` until `bank_statement` is populated.
+**Note:** the file route returns `404` until `bank_statement` is populated on the dispute record.
 
 ### Phase 2 — Validation and Service Contract
+
+**Status: Done (2026-05-22).**
 
 Deliverables:
 
@@ -368,7 +367,7 @@ Suggested focused checks:
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 — Backend data and storage | **Done** (2026-05-22) | Migration, model, storage helpers, file route, gate |
-| 2 — Validation and service contract | Pending | `CancelRequest`, `cancel()` signature, all UI cancel call sites |
+| 2 — Validation and service contract | **Done** (2026-05-22) | `CancelRequest`, `cancel()` + `replaceBankStatement()`, Trader/Support/Analyst controllers |
 | 3 — Inertia rejection modal | Pending | `CancelDisputeModal.vue` presets + multipart upload |
 | 4 — Dispute details UI | Pending | `DisputeResource`, `DisputeModal.vue` выписка row |
 | 5 — Role regression pass | Pending | Trader, Support, Analyst, Admin reject flows |
@@ -411,6 +410,33 @@ Suggested focused checks:
 - `DisputeService::cancel()` signature and body
 - `CancelRequest`, `DisputeResource`, Vue modals
 - API routes and H2H dispute endpoints
+
+### Phase 2 artifacts (implemented)
+
+**Request** (`app/Http/Requests/Dispute/CancelRequest.php`):
+
+- `reason` max 120; `bank_statement` required file max 5120 + `ReceiptFileRule`
+- `attributes()` for Russian validation labels
+
+**Contract and service:**
+
+- `app/Contracts/DisputeServiceContract.php` — `cancel(..., UploadedFile $bankStatement)`
+- `app/Services/Dispute/DisputeService.php::cancel()` — calls `replaceBankStatement()`, updates `bank_statement` column
+
+**Controllers:**
+
+- `DisputeController::cancel()`, `Support/DisputeController::cancel()`, `Analyst/DisputeController::cancel()` — `validated('reason')` + `file('bank_statement')`
+
+**Test data:**
+
+- `GenerateTestDataCommand::makeTestBankStatementFile()` — minimal PNG for generated canceled disputes
+
+**Not changed in Phase 2:**
+
+- `CancelDisputeModal.vue`, `DisputeModal.vue`, `DisputeResource`
+- API routes and H2H dispute endpoints
+
+**Current gap:** web UI rejection from the modal still fails validation until Phase 3 adds `bank_statement` to the Inertia form.
 
 ## Edge Cases
 

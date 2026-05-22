@@ -78,9 +78,9 @@ class DisputeService implements DisputeServiceContract
         });
     }
 
-    public function cancel(int $disputeID, string $reason): bool
+    public function cancel(int $disputeID, string $reason, UploadedFile $bankStatement): bool
     {
-        return Transaction::run(function () use ($disputeID, $reason) {
+        return Transaction::run(function () use ($disputeID, $reason, $bankStatement) {
             $dispute = Dispute::where('id', $disputeID)->lockForUpdate()->first();
 
             if ($dispute->status->notEquals(DisputeStatus::PENDING)) {
@@ -89,9 +89,12 @@ class DisputeService implements DisputeServiceContract
 
             services()->order()->finishOrderAsFailed($dispute->order_id, OrderSubStatus::CANCELED_BY_DISPUTE);
 
+            $bankStatementFilename = $this->replaceBankStatement($dispute->bank_statement, $bankStatement);
+
             $updated = $dispute->update([
                 'status' => DisputeStatus::CANCELED,
                 'reason' => $reason,
+                'bank_statement' => $bankStatementFilename,
             ]);
 
             // Проверяем количество отклоненных споров и отключаем трафик если нужно
