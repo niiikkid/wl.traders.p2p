@@ -1,7 +1,7 @@
 # Dispute Bank Statement Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22; Phase 2 implementation, 2026-05-22; Phase 3 implementation, 2026-05-22; Phase 4 implementation, 2026-05-22
-> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md); [Phase 4 Dispute Details UI Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-4-dispute-details-ui-implementation.md)
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1–4 implementation, 2026-05-22; Phase 5 role regression pass, 2026-05-22
+> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md); [Phase 4 Dispute Details UI Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-4-dispute-details-ui-implementation.md); [Phase 5 Role Regression Pass](../../raw/dispute-bank-statements/2026-05-22-phase-5-role-regression-pass.md)
 > Updated: 2026-05-22
 
 ## Overview
@@ -334,6 +334,8 @@ Acceptance criteria:
 
 ### Phase 5 — Role Regression Pass
 
+**Status: Done (2026-05-22).**
+
 Deliverables:
 
 - verify the rejection flow from Trader, Support, Analyst, and Admin UI surfaces that expose dispute rejection;
@@ -345,6 +347,19 @@ Acceptance criteria:
 - every UI role with reject action must provide reason + file;
 - every role sees the statement in the same visibility scope as the receipt;
 - no cascade UI was changed.
+
+**Verified surfaces:**
+
+| Role | Cancel route | UI pages with `CancelDisputeModal` |
+|------|--------------|-----------------------------------|
+| Trader | `disputes.cancel` | `Dispute/Index`, `Order/Index` |
+| Super Admin | `disputes.cancel` (shared; no `admin.disputes.cancel`) | `Dispute/Index`, `Order/Index` via `Admin\DisputeController` / `Admin\OrderController` |
+| Support | `support.disputes.cancel` | `Support/Dispute/Index`, `Support/Order/Index` |
+| Analyst | `analyst.disputes.cancel` | `Analyst/Dispute/Index`, `Analyst/Order/Index` |
+
+`CancelDisputeModal` selects the cancel route from `useViewStore` (analyst → support → default `disputes.cancel` for trader and admin). Bank statement download uses single route `disputes.bank-statement` with gate parity to `disputes.receipt`.
+
+**Unchanged (out of scope):** cascade deals, API/H2H resources, Team Leader trader disputes (read-only).
 
 ### Phase 6 — Formatting and Focused Verification
 
@@ -373,7 +388,7 @@ Suggested focused checks:
 | 2 — Validation and service contract | **Done** (2026-05-22) | `CancelRequest`, `cancel()` + `replaceBankStatement()`, Trader/Support/Analyst controllers |
 | 3 — Inertia rejection modal | **Done** (2026-05-22) | `CancelDisputeModal.vue` presets, file upload, `forceFormData` patch |
 | 4 — Dispute details UI | **Done** (2026-05-22) | `DisputeResource`, `TableOrderResource`, `DisputeModal.vue` выписка row |
-| 5 — Role regression pass | Pending | Trader, Support, Analyst, Admin reject flows |
+| 5 — Role regression pass | **Done** (2026-05-22) | All four roles: correct cancel routes, modals on all reject surfaces, receipt/statement gate parity |
 | 6 — Formatting and verification | Pending | Pint, manual checks; tests only if requested |
 
 ### Phase 1 artifacts (implemented)
@@ -447,7 +462,7 @@ Suggested focused checks:
 - Presets: `wrong_details`, `fake_receipt`, `payment_return`, `other` (`Другая причина`)
 - Custom reason: TextInput + «Осталось символов: N»; max 120 enforced in UI (`watch` on `form.reason`)
 - File: hidden input, `accept` JPG/JPEG/PNG/PDF, «Выбрать файл», selected filename display
-- Submit: `form.patch` + `forceFormData: true`; routes via `cancelDisputeRouteName()` (Trader / Support / Analyst)
+- Submit: `form.patch` + `forceFormData: true`; route via `cancelDisputeRouteName` computed (`useViewStore`: analyst / support / default `disputes.cancel` for trader and Super Admin admin UI)
 - `isSubmitDisabled` until preset, reason, and file present; reset on close and success
 
 **Consumed on pages (unchanged wiring):**
@@ -459,7 +474,7 @@ Suggested focused checks:
 - `DisputeResource`, `DisputeModal.vue`
 - API routes and H2H dispute endpoints
 
-**End-to-end UI (Phases 1–4):** reject with reason + statement via `CancelDisputeModal`; view statement in `DisputeModal` for canceled disputes. Phases 5–6 remain (role regression, verification).
+**End-to-end UI (Phases 1–5):** reject with reason + statement via `CancelDisputeModal` on all role surfaces; view statement in `DisputeModal` for canceled disputes. Phase 6 remains (Pint, focused manual verification).
 
 ### Phase 4 artifacts (implemented)
 
@@ -480,6 +495,38 @@ Suggested focused checks:
 - API/H2H resources and routes
 - Cascade dispute UI
 
+### Phase 5 artifacts (verified)
+
+**Route resolution** (`CancelDisputeModal.vue`):
+
+- `cancelDisputeRouteName` — `computed` from `useViewStore`;
+- analyst → `analyst.disputes.cancel`;
+- support → `support.disputes.cancel`;
+- trader and Super Admin (admin UI) → `disputes.cancel` (no `admin.disputes.cancel`; shared `DisputeController::cancel`).
+
+**Controllers** (all use `CancelRequest` + `UploadedFile $bankStatement`):
+
+- `DisputeController::cancel` — Trader + Super Admin;
+- `Support\DisputeController::cancel`;
+- `Analyst\DisputeController::cancel`.
+
+**File access** (single route for all roles with receipt access):
+
+- `GET disputes/{dispute}/bank-statement` — `DisputeController::bankStatement`;
+- gates `access-to-dispute-receipt` and `access-to-dispute-bank-statement` — identical rules.
+
+**UI mount points** (each page: `DisputeModal` + `CancelDisputeModal`):
+
+- Trader: `Dispute/Index`, `Order/Index`;
+- Admin: same components, routes `admin.disputes.index`, `admin.orders.index`;
+- Support: `Support/Dispute/Index`, `Support/Order/Index`;
+- Analyst: `Analyst/Dispute/Index`, `Analyst/Order/Index`.
+
+**Explicitly unchanged:**
+
+- `Admin\DisputeController` — index + store only (no cancel route);
+- cascade deals, H2H/API resources, Team Leader `Leader/Trader/Disputes` (read-only).
+
 ## Edge Cases
 
 - A user selects a fixed preset, then switches to `Другая причина`: clear fixed reason and require custom text.
@@ -492,5 +539,6 @@ Suggested focused checks:
 ## Open Implementation Notes
 
 - Phase 3 uses `form.patch` with `forceFormData: true` for file upload; no `_method` POST workaround was needed.
+- Phase 5 confirmed Super Admin rejects via `disputes.cancel`, not a prefixed admin route; `resolveViewMode()` on `admin.*` pages keeps `isAdminViewMode`, but cancel URL stays on the trader dispute group by design.
 - Consider extracting shared file storage logic only if dispute receipts and bank statements start duplicating enough behavior; do not introduce a large abstraction for this single feature.
 - If `DisputeResource` is later reused by public APIs, separate panel-only statement URL exposure from API resources to preserve the "API untouched" requirement.

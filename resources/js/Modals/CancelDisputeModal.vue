@@ -89,7 +89,8 @@ const close = () => {
     modalStore.closeModal('disputeCancel');
 };
 
-const cancelDisputeRouteName = () => {
+/** Trader and Super Admin (admin UI) share PATCH disputes/{dispute}/cancel — no admin.disputes.cancel route. */
+const cancelDisputeRouteName = computed(() => {
     if (viewStore.isAnalystViewMode) {
         return 'analyst.disputes.cancel';
     }
@@ -99,7 +100,7 @@ const cancelDisputeRouteName = () => {
     }
 
     return 'disputes.cancel';
-};
+});
 
 const onReasonPresetChange = () => {
     form.clearErrors('reason');
@@ -139,7 +140,7 @@ const onBankStatementChange = (event) => {
 };
 
 const cancel = (dispute) => {
-    form.patch(route(cancelDisputeRouteName(), dispute.id), {
+    form.patch(route(cancelDisputeRouteName.value, dispute.id), {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
