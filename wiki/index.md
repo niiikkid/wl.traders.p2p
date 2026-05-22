@@ -30,7 +30,7 @@ Dispute rejection evidence requirements for bank/card statement uploads in class
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Specification and phased plan for dispute rejection with bank/card statement; Phases 1–5 done (all roles: Trader/Support/Analyst/Admin); Phase 6 pending (Pint, manual verification). | 2026-05-22 |
+| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Specification and phased plan for dispute rejection with bank/card statement; Phases 1–6 complete (Pint, lints, static checks); manual UI checklist documented. | 2026-05-22 |
 
 ## team-leader-insurance-mode
 

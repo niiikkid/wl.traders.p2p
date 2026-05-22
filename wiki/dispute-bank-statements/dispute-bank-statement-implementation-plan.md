@@ -1,7 +1,7 @@
 # Dispute Bank Statement Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1–4 implementation, 2026-05-22; Phase 5 role regression pass, 2026-05-22
-> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md); [Phase 4 Dispute Details UI Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-4-dispute-details-ui-implementation.md); [Phase 5 Role Regression Pass](../../raw/dispute-bank-statements/2026-05-22-phase-5-role-regression-pass.md)
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1–4 implementation, 2026-05-22; Phase 5 role regression pass, 2026-05-22; Phase 6 formatting and verification, 2026-05-22
+> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md); [Phase 4 Dispute Details UI Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-4-dispute-details-ui-implementation.md); [Phase 5 Role Regression Pass](../../raw/dispute-bank-statements/2026-05-22-phase-5-role-regression-pass.md); [Phase 6 Formatting and Verification](../../raw/dispute-bank-statements/2026-05-22-phase-6-formatting-verification.md)
 > Updated: 2026-05-22
 
 ## Overview
@@ -363,6 +363,8 @@ Acceptance criteria:
 
 ### Phase 6 — Formatting and Focused Verification
 
+**Status: Done (2026-05-22).**
+
 Deliverables:
 
 - run Pint on dirty PHP files;
@@ -370,7 +372,15 @@ Deliverables:
 - perform focused manual/browser verification if requested;
 - do not run automated test suites unless explicitly requested by the user.
 
-Suggested focused checks:
+**Completed:**
+
+- Pint on all dispute-bank-statement PHP files — pass, no changes;
+- IDE lints on `CancelDisputeModal.vue`, `DisputeModal.vue` — clean;
+- migration `add_bank_statement_to_disputes_table` confirmed **Ran**;
+- `php artisan route:list --name=disputes` — cancel and `disputes.bank-statement` routes present for Trader/Support/Analyst;
+- static code-path verification per checklist below (no defects found).
+
+**Manual UI checklist** (operator, per role — not run in automated pass):
 
 - reject pending dispute with preset + PNG under 5 MB;
 - reject pending dispute with custom reason + PDF under 5 MB;
@@ -389,7 +399,7 @@ Suggested focused checks:
 | 3 — Inertia rejection modal | **Done** (2026-05-22) | `CancelDisputeModal.vue` presets, file upload, `forceFormData` patch |
 | 4 — Dispute details UI | **Done** (2026-05-22) | `DisputeResource`, `TableOrderResource`, `DisputeModal.vue` выписка row |
 | 5 — Role regression pass | **Done** (2026-05-22) | All four roles: correct cancel routes, modals on all reject surfaces, receipt/statement gate parity |
-| 6 — Formatting and verification | Pending | Pint, manual checks; tests only if requested |
+| 6 — Formatting and verification | **Done** (2026-05-22) | Pint pass; Vue lints clean; migration/routes/static checks; manual UI checklist documented |
 
 ### Phase 1 artifacts (implemented)
 
@@ -474,7 +484,7 @@ Suggested focused checks:
 - `DisputeResource`, `DisputeModal.vue`
 - API routes and H2H dispute endpoints
 
-**End-to-end UI (Phases 1–5):** reject with reason + statement via `CancelDisputeModal` on all role surfaces; view statement in `DisputeModal` for canceled disputes. Phase 6 remains (Pint, focused manual verification).
+**End-to-end UI (Phases 1–6):** reject with reason + statement via `CancelDisputeModal` on all role surfaces; view statement in `DisputeModal` for canceled disputes. Phase 6 complete (Pint, lints, static/route checks; manual UI checklist in raw Phase 6 note).
 
 ### Phase 4 artifacts (implemented)
 
@@ -526,6 +536,28 @@ Suggested focused checks:
 
 - `Admin\DisputeController` — index + store only (no cancel route);
 - cascade deals, H2H/API resources, Team Leader `Leader/Trader/Disputes` (read-only).
+
+### Phase 6 artifacts (completed)
+
+**Formatting:**
+
+- `vendor/bin/pint` on 11 PHP files listed in raw Phase 6 note — result `pass`, no diffs.
+
+**Frontend:**
+
+- `CancelDisputeModal.vue`, `DisputeModal.vue` — IDE linter clean.
+
+**Infrastructure:**
+
+- Migration `2026_05_22_151044_add_bank_statement_to_disputes_table` — Ran (batch 84).
+- Routes verified: `disputes.cancel`, `support.disputes.cancel`, `analyst.disputes.cancel`, `disputes.bank-statement`.
+
+**Not run (per plan):**
+
+- PHPUnit / Pest suite;
+- Browser regression across roles (checklist documented in raw Phase 6 note for manual execution).
+
+**Feature status:** Phases 1–6 complete. Optional follow-ups: manual UI pass per role; automated tests only if explicitly requested.
 
 ## Edge Cases
 
