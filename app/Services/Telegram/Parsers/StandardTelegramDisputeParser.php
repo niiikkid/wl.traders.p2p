@@ -6,6 +6,7 @@ namespace App\Services\Telegram\Parsers;
 
 use App\Contracts\TelegramChatFileServiceContract;
 use App\Contracts\TelegramChatMessageParserContract;
+use App\Enums\OrderStatus;
 use App\Enums\TelegramChatMessageStatus;
 use App\Enums\TelegramChatParserType;
 use App\Exceptions\DisputeException;
@@ -103,6 +104,44 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
                 $message->telegram_message_id,
                 $order->uuid,
             );
+
+            return;
+        }
+
+        if ($order->status->equals(OrderStatus::SUCCESS)) {
+            $this->markMessage(
+                $message,
+                TelegramChatMessageStatus::FAILED,
+                'По сделке нельзя открыть спор: сделка успешно завершена.',
+                $order->id,
+            );
+            $this->sendSuccessOrderDisputeNotAllowedReply(
+                $telegramChat->telegram_chat_id,
+                $message->telegram_message_id,
+                $order->uuid,
+            );
+
+            return;
+        }
+
+        if ($order->status->equals(OrderStatus::PENDING)) {
+            $this->markMessage(
+                $message,
+                TelegramChatMessageStatus::FAILED,
+                'По сделке нельзя открыть спор: сделка ещё обрабатывается.',
+                $order->id,
+            );
+            $this->sendPendingOrderDisputeNotAllowedReply(
+                $telegramChat->telegram_chat_id,
+                $message->telegram_message_id,
+                $order->uuid,
+            );
+
+            return;
+        }
+
+        if (! $order->status->equals(OrderStatus::FAIL)) {
+            $this->markMessage($message, TelegramChatMessageStatus::FAILED, 'Спор можно открыть только по отклонённой сделке.', $order->id);
 
             return;
         }
@@ -216,6 +255,32 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
             $orderUuid,
             $text,
             'Telegram dispute duplicate reply failed',
+        );
+    }
+
+    private function sendSuccessOrderDisputeNotAllowedReply(string $apiChatId, string $sourceMessageId, string $orderUuid): void
+    {
+        $text = "По сделке нельзя открыть спор.\nСделка успешно завершена.\nUUID сделки: {$orderUuid}";
+
+        $this->sendChatReply(
+            $apiChatId,
+            $sourceMessageId,
+            $orderUuid,
+            $text,
+            'Telegram dispute success order reply failed',
+        );
+    }
+
+    private function sendPendingOrderDisputeNotAllowedReply(string $apiChatId, string $sourceMessageId, string $orderUuid): void
+    {
+        $text = "По сделке нельзя открыть спор.\nСделка ещё обрабатывается.\nUUID сделки: {$orderUuid}";
+
+        $this->sendChatReply(
+            $apiChatId,
+            $sourceMessageId,
+            $orderUuid,
+            $text,
+            'Telegram dispute pending order reply failed',
         );
     }
 

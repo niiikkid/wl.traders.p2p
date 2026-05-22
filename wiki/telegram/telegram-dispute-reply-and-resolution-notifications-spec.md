@@ -1,8 +1,8 @@
 # Telegram Dispute Reply and Resolution Notifications Specification
 
-> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22; immediate reply implementation, 2026-05-22; resolution notifications implementation, 2026-05-22
-> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Resolution Notifications Implementation](../../raw/telegram/2026-05-22-telegram-dispute-resolution-notifications-implementation.md)
-> Updated: 2026-05-22
+> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22; immediate reply implementation, 2026-05-22; resolution notifications implementation, 2026-05-22; fail-only order status gate (opening replies), 2026-05-23
+> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Resolution Notifications Implementation](../../raw/telegram/2026-05-22-telegram-dispute-resolution-notifications-implementation.md); [Telegram Dispute Fail-Only Order Status Requirements](../../raw/telegram/2026-05-23-telegram-dispute-fail-only-order-status-requirements.md)
+> Updated: 2026-05-23
 
 ## Overview
 
@@ -15,8 +15,9 @@ This specification extends the existing Telegram chat dispute automation in two 
 The feature applies only to classic `Order` disputes created through Telegram chat automation:
 
 - a Telegram message contains an `Order` UUID and receipt attachment;
-- `StandardTelegramDisputeParser` opens the dispute through `services()->dispute()->create()`;
-- `telegram_chat_messages.dispute_id` links the source Telegram message to the created `disputes.id`;
+- `StandardTelegramDisputeParser` opens the dispute only when the matched order is in status `fail` and has no existing dispute (see [Telegram Chat Dispute Automation Plan](telegram-chat-dispute-automation-plan.md));
+- on success/pending orders the parser sends a rejection reply and does not call `services()->dispute()->create()`;
+- when opened, the parser calls `services()->dispute()->create()` and `telegram_chat_messages.dispute_id` links the source Telegram message to the created `disputes.id`;
 - later, a web user accepts or rejects that same dispute through the existing UI routes.
 
 The feature does not apply to:
@@ -33,10 +34,12 @@ The feature does not apply to:
 
 The existing immediate bot responses must become replies to the original Telegram message:
 
-- successful opening: `Спор открыт.\nUUID сделки: <uuid>`;
-- duplicate: `Спор по этой сделке уже открыт.\nUUID сделки: <uuid>\nПовторно спор не создан — это дубликат.`
+- successful opening (`fail` order): `Спор открыт.\nUUID сделки: <uuid>`;
+- duplicate: `Спор по этой сделке уже открыт.\nUUID сделки: <uuid>\nПовторно спор не создан — это дубликат.`;
+- order `success`: `По сделке нельзя открыть спор.\nСделка успешно завершена.\nUUID сделки: <uuid>` (implemented 2026-05-23);
+- order `pending`: `По сделке нельзя открыть спор.\nСделка ещё обрабатывается.\nUUID сделки: <uuid>` (implemented 2026-05-23).
 
-Both responses must target the same Telegram chat and reply to the same `telegram_message_id` stored on the source `TelegramChatMessage`.
+All responses must target the same Telegram chat and reply to the same `telegram_message_id` stored on the source `TelegramChatMessage`.
 
 If Telegram cannot find the original message, the bot should still be allowed to send the status message without breaking processing. Telegram Bot API supports this through `reply_parameters.allow_sending_without_reply = true`.
 

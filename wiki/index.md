@@ -6,8 +6,8 @@ Telegram bot and chat automation knowledge for the project.
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Telegram chat dispute bot; Phases 1–6 complete; Features 1–2 (reply + resolution notifications) implemented; live Telegram verification pending. | 2026-05-22 |
-| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Reply/resolution spec; Features 1–2 implemented (`sendChatMessage`, `sendChatDocument`, resolution job, `DisputeService` dispatch); includes `wrong_details` text-only rejection path without statement; Phase 5 manual checks pending. | 2026-05-22 |
+| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Telegram chat dispute bot; Phases 1–6 complete; opening only for `fail` orders (replies for `success`/`pending`); Features 1–2 (reply + resolution notifications) implemented; live Telegram verification pending. | 2026-05-23 |
+| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Reply/resolution spec; Features 1–2 implemented; opening rejection replies for non-`fail` orders; `wrong_details` text-only rejection path; Phase 5 manual checks pending. | 2026-05-23 |
 
 ## traffic-categories
 

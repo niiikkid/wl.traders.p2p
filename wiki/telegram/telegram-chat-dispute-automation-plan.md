@@ -1,18 +1,18 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21; immediate reply implementation, 2026-05-22
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md)
-> Updated: 2026-05-22
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21; immediate reply implementation, 2026-05-22; fail-only order status gate, 2026-05-23
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Fail-Only Order Status Requirements](../../raw/telegram/2026-05-23-telegram-dispute-fail-only-order-status-requirements.md)
+> Updated: 2026-05-23
 
 ## Overview
 
-The feature adds a separate admin-managed Telegram bot for processing merchant chat messages and automatically opening disputes for `Order` records when a message contains a valid receipt file and a matching order UUID. The design uses universal but explicit Telegram chat models, stores chat/message history safely, keeps files private, processes webhook updates asynchronously, and isolates this flow from Cascade completely.
+The feature adds a separate admin-managed Telegram bot for processing merchant chat messages and automatically opening disputes for `Order` records when a message contains a valid receipt file, a matching order UUID, and the order is in status `fail` without an existing dispute. The design uses universal but explicit Telegram chat models, stores chat/message history safely, keeps files private, processes webhook updates asynchronously, and isolates this flow from Cascade completely. Order-status gating applies only in `StandardTelegramDisputeParser`; other dispute entry points are unchanged.
 
 ## Goals
 
 - Create a separate Telegram bot integration for chat automation, independent from the existing notification bot.
 - Detect dispute messages in Telegram chats using a receipt attachment plus an `Order` UUID.
-- Open disputes automatically through the existing dispute service flow.
+- Open disputes automatically through the existing dispute service flow, but only for matched orders in status `fail` with no existing dispute.
 - Store all dispute-related messages and files for admin review.
 - Optionally store all chat messages per chat when debug mode is enabled.
 - Provide a Super Admin UI for bot settings, webhook setup, chat moderation, chat configuration, and message viewing.
@@ -23,7 +23,7 @@ The feature adds a separate admin-managed Telegram bot for processing merchant c
 - Do not support Cascade deals or Cascade disputes.
 - Do not bind chats to merchants in the first version.
 - Do not parse UUIDs from replies, forwarded messages, threads, or nested Telegram entities yet.
-- Do not implement broad Telegram bot replies except the success message after dispute creation.
+- Do not implement broad Telegram bot replies beyond dispute lifecycle messages (open success, duplicate, order-status rejection, resolution notifications per reply spec).
 - Do not write or run tests unless explicitly requested later.
 
 ## Proposed Naming
@@ -274,27 +274,59 @@ When a dispute is opened, the existing dispute service expects an uploaded file-
 
 ## Dispute Creation Flow
 
-For an active chat and a valid parser result:
+For an active chat and a valid parser result (UUID + receipt matched to exactly one `Order`):
 
-1. Lock or safely load the matched `Order`.
-2. If the order already has a dispute:
+1. If the order already has a dispute:
    - Mark the Telegram message as `duplicate`.
    - Link `order_id`.
    - Send a duplicate reply (reply to source `telegram_message_id`; see reply spec).
-3. If there is no existing dispute:
-   - Call the existing dispute service with the receipt file.
-   - Mark the Telegram message as `processed`.
-   - Link `dispute_id`.
+2. If `order.status` is `success`:
+   - Mark the message as `failed` (reason: по сделке нельзя открыть спор — успешно завершена).
+   - Send a Telegram reply; do not download the receipt or call `dispute()->create()`.
+3. If `order.status` is `pending`:
+   - Mark the message as `failed` (reason: по сделке нельзя открыть спор — ещё обрабатывается).
+   - Send a Telegram reply; do not download the receipt or call `dispute()->create()`.
+4. If `order.status` is `fail` and there is no dispute:
+   - Download and validate the receipt, call `services()->dispute()->create()` (reopens the order via existing service logic).
+   - Mark the Telegram message as `processed`, link `dispute_id`.
    - Send a Telegram success reply (reply to source message).
 
-Suggested success text:
+**Implemented (2026-05-23):** order-status checks in `StandardTelegramDisputeParser` only; `DisputeService::create()` behavior for H2H/UI/API unchanged.
+
+### Telegram bot reply texts (opening path)
+
+Success (fail order, dispute created):
 
 ```text
 Спор открыт.
 UUID сделки: <uuid>
 ```
 
-The bot should not send replies for failed, ignored, disabled, or archived messages. Duplicate messages receive a dedicated duplicate reply (implemented 2026-05-22).
+Duplicate (any order status, dispute already exists):
+
+```text
+Спор по этой сделке уже открыт.
+UUID сделки: <uuid>
+Повторно спор не создан — это дубликат.
+```
+
+Order `success` — dispute not allowed:
+
+```text
+По сделке нельзя открыть спор.
+Сделка успешно завершена.
+UUID сделки: <uuid>
+```
+
+Order `pending` — dispute not allowed:
+
+```text
+По сделке нельзя открыть спор.
+Сделка ещё обрабатывается.
+UUID сделки: <uuid>
+```
+
+The bot should not send replies for most other `failed` cases (missing UUID, missing receipt, ambiguous UUID, etc.). Duplicate and order-status rejection messages are replies to the source `telegram_message_id` (implemented 2026-05-22; order-status replies 2026-05-23).
 
 ## Debug Mode
 
@@ -564,10 +596,12 @@ Reliability rules:
 3. Attachment from `raw_payload` (`photo` largest size, or `document`)
 4. Status `matched` + `order_id` / `detected_uuid`
 5. Existing dispute → `duplicate` + duplicate reply (reply to source `telegram_message_id`)
-6. Download, validate, store attachment; `services()->dispute()->create()`
-7. Status `processed` + `dispute_id`; success reply `Спор открыт.\nUUID сделки: …` (reply to source message)
-8. `DisputeException` «already exists» → `duplicate` + duplicate reply; other errors → `failed` with `failure_reason`
-9. Reply send failure → `Log::warning` only (dispute retained when already created)
+6. `order.status === success` → `failed` + «По сделке нельзя открыть спор…» reply (no file download)
+7. `order.status === pending` → `failed` + «По сделке нельзя открыть спор…» reply (no file download)
+8. `order.status === fail` → download, validate, store attachment; `services()->dispute()->create()`
+9. Status `processed` + `dispute_id`; success reply `Спор открыт.\nUUID сделки: …` (reply to source message)
+10. `DisputeException` «already exists» → `duplicate` + duplicate reply; other errors → `failed` with `failure_reason`
+11. Reply send failure → `Log::warning` only (dispute retained when already created)
 
 **Provider bindings** (`AppServiceProvider`):
 
@@ -700,6 +734,6 @@ Telegram reply and resolution notifications per [Telegram Dispute Reply and Reso
 
 - Manually verify Features 1–2 in a live Telegram chat (Phase 5 checklist in the resolution notifications spec).
 - Decide later whether to parse replies, forwarded messages, media groups, and thread-specific messages.
-- Decide later whether failed messages should trigger Telegram replies.
+- Decide later whether other `failed` cases (missing UUID, invalid file, etc.) should trigger Telegram replies (order-status rejections for `success`/`pending` already reply as of 2026-05-23).
 - Decide later whether chats should be bindable to merchants for extra validation.
 - Decide later whether to add more parser types beyond `standard_dispute`.
