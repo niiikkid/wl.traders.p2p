@@ -29,8 +29,8 @@ const reasonPresets = [
     },
     {
         value: 'payment_return',
-        label: 'Возврат платежа',
-        reason: 'Возврат платежа (карта заблокирована или достигнут лимит по карте)',
+        label: 'Нет оплаты(лимит/возврат)',
+        reason: 'Нет оплаты(лимит/возврат)',
     },
     {
         value: REASON_PRESET_OTHER,
