@@ -36,3 +36,6 @@
 ## [2026-05-22] ingest | Dispute Bank Statement Implementation Plan (Phase 5 status)
 
 ## [2026-05-22] ingest | Dispute Bank Statement Implementation Plan (Phase 6 status)
+
+## [2026-05-22] ingest | Telegram Dispute Reply and Resolution Notifications Specification
+- Updated: Telegram Chat Dispute Automation Plan

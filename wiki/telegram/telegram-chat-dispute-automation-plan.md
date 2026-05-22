@@ -2,7 +2,7 @@
 
 > Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21
 > Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md)
-> Updated: 2026-05-21
+> Updated: 2026-05-22
 
 ## Overview
 
@@ -691,6 +691,7 @@ Reliability rules:
 
 ## Open Follow-Ups
 
+- Implement reply-to-source-message behavior and dispute resolution notifications described in [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md).
 - Decide later whether to parse replies, forwarded messages, media groups, and thread-specific messages.
 - Decide later whether failed messages should trigger Telegram replies.
 - Decide later whether chats should be bindable to merchants for extra validation.

@@ -6,7 +6,8 @@ Telegram bot and chat automation knowledge for the project.
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Implementation plan for the Telegram chat dispute bot; Phases 1–6 complete; local dev tunnel URL for webhook (`local_webhook_base_url`) in bot settings modal. | 2026-05-21 |
+| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Implementation plan for the Telegram chat dispute bot; Phases 1–6 complete; now cross-references reply-to-source-message and resolution notification follow-up work. | 2026-05-22 |
+| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Technical specification for Telegram reply-to-source-message behavior and asynchronous accepted/rejected dispute resolution notifications with bank statement attachment fallback. | 2026-05-22 |
 
 ## traffic-categories
 
