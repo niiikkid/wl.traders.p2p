@@ -1,6 +1,7 @@
 <script setup>
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AutomationNavButtons from "@/Components/Automation/AutomationNavButtons.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -141,22 +142,7 @@ defineOptions({ layout: AuthenticatedLayout })
             :display-pagination="currentTab === 'logs'"
         >
             <template #button>
-                <div v-if="viewStore.isAdminViewMode" class="ml-auto flex flex-wrap justify-end gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.app.index'), { preserveScroll: true })"
-                    >
-                        Приложение
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.devices.index'), { preserveScroll: true })"
-                    >
-                        Устройства
-                    </button>
-                </div>
+                <AutomationNavButtons v-if="viewStore.isAdminViewMode" current="messages" />
                 <button
                     v-else
                     type="button"

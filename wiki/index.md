@@ -55,7 +55,7 @@ SMS/push automation ingress, filtering, and admin inspection outside the main `s
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Shadow SMS Log Implementation Plan](sms-automation/shadow-sms-log-implementation-plan.md) | Plan for `shadow_sms_logs`: async logging of filtered SMS at `SmsController`, admin page in Автоматика, global enable toggle via `settings`, search, hard delete all. | 2026-05-23 |
+| [Shadow SMS Log Implementation Plan](sms-automation/shadow-sms-log-implementation-plan.md) | **Shipped in code:** `shadow_sms_logs` async logging for filtered SMS, admin Автоматика page, global enable toggle via `settings`, search, hard delete all; DB migration pending explicit run. | 2026-05-23 |
 
 ## user-devices
 

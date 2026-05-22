@@ -1,14 +1,32 @@
 # Shadow SMS Log (Теневой лог) — Implementation Plan
 
-> Sources: User conversation, 2026-05-23; repository exploration, 2026-05-23
-> Raw: [Shadow SMS Log Requirements](../../raw/sms-automation/2026-05-23-shadow-sms-log-requirements.md); [Shadow SMS Log Enable Toggle](../../raw/sms-automation/2026-05-23-shadow-sms-log-enabled-toggle-requirements.md)
+> Sources: User conversation, 2026-05-23; repository exploration, 2026-05-23; implementation status, 2026-05-23
+> Raw: [Shadow SMS Log Requirements](../../raw/sms-automation/2026-05-23-shadow-sms-log-requirements.md); [Shadow SMS Log Enable Toggle](../../raw/sms-automation/2026-05-23-shadow-sms-log-enabled-toggle-requirements.md); [Shadow SMS Log Implementation Status](../../raw/sms-automation/2026-05-23-shadow-sms-log-implementation-status.md)
 > Updated: 2026-05-23
 
 ## Overview
 
-Теневой лог сохраняет SMS/push, которые **отсекаются на входе** API приложения и **никогда не попадают** в `sms_logs`. Это отдельная сущность `ShadowSmsLog` с явной причиной фильтрации и деталями (какое стоп-слово, какой нормализованный отправитель, длина сообщения). Запись асинхронная (очередь `sms`), сбой записи не влияет на ответ приложению и на основной pipeline. Админ видит отдельную страницу в группе «Автоматика», может искать и полностью очистить таблицу вручную.
+Теневой лог сохраняет SMS/push, которые **отсекаются на входе** API приложения и **никогда не попадают** в `sms_logs`. Это отдельная сущность `ShadowSmsLog` с явной причиной фильтрации и деталями (какое стоп-слово, какой нормализованный отправитель, длина сообщения). Запись асинхронная (очередь `sms`), сбой записи не влияет на ответ приложению и на основной pipeline. Админ видит отдельную страницу в группе «Автоматика», может искать и полностью очистить таблицу вручную. **Фича реализована в коде; миграция БД оставлена к запуску отдельным `php artisan migrate`.**
 
 **Глобальный переключатель** на странице «Теневой лог» включает или выключает запись: при выключении фильтрация на API не меняется, но job в `shadow_sms_logs` не ставится. Настройка хранится в `settings` через `SettingsService`.
+
+## Implementation Status
+
+| Area | Status |
+|------|--------|
+| Backend entity | Implemented: `ShadowSmsLog`, migration `2026_05_23_013100_create_shadow_sms_logs_table.php` |
+| Reason details | Implemented: `ShadowSmsLogFilterReason`, `matched_sender`, `matched_stop_word`, `message_length` |
+| Queue write | Implemented: `RecordShadowSmsLogJob` on existing `sms` queue |
+| Toggle setting | Implemented: `shadow_sms_log_enabled` in `SettingsService`, default enabled |
+| API hook | Implemented in `SmsController::store()` for stop list, stop word, and max length |
+| Parser detail | Implemented: `Parser::findMatchedStopWord()` while preserving `hasStopWord()` |
+| Admin page | Implemented: `Admin/ShadowSmsLog/Index.vue` |
+| Automation navigation | Implemented: shared `AutomationNavButtons` across the automation page group |
+| Route/Ziggy refresh | Completed: `php artisan optimize`, `php artisan ziggy:generate ...` |
+| Settings install | Completed: `php artisan app:install-settings --no-interaction` |
+| Code formatting | Completed: `vendor/bin/pint --dirty --format agent` |
+| Tests | Not run; project rule requires explicit request |
+| Migration apply | Not run; requires explicit `php artisan migrate` |
 
 ## Product Decisions (Locked)
 

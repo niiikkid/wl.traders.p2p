@@ -43,6 +43,10 @@ class TableFiltersValue implements Arrayable
         public array $payoutStatuses = [],
         public array $payoutMethodTypes = [],
         public bool $priorityAccessOnly = false,
+        public ?string $login = null,
+        public ?string $deviceName = null,
+        public ?string $searchSender = null,
+        public ?string $searchMessage = null,
     ) {}
 
     public function toArray(): array
@@ -83,6 +87,10 @@ class TableFiltersValue implements Arrayable
             'payoutStatuses' => implode(',', $this->payoutStatuses),
             'payoutMethodTypes' => implode(',', $this->payoutMethodTypes),
             'priorityAccessOnly' => $this->priorityAccessOnly,
+            'login' => $this->login,
+            'deviceName' => $this->deviceName,
+            'searchSender' => $this->searchSender,
+            'searchMessage' => $this->searchMessage,
         ];
     }
 }

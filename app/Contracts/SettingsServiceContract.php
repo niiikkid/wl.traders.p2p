@@ -35,6 +35,10 @@ interface SettingsServiceContract
 
     public function updateTrafficPaused(bool $paused): void;
 
+    public function isShadowSmsLogEnabled(): bool;
+
+    public function updateShadowSmsLogEnabled(bool $enabled): void;
+
     public function getMarketPriceParser(
         Currency $currency,
         MarketEnum $market

@@ -1,7 +1,8 @@
 <script setup>
-import {Head, router, useForm} from '@inertiajs/vue3';
+import {Head, useForm} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AutomationNavButtons from '@/Components/Automation/AutomationNavButtons.vue';
 import DateTime from '@/Components/DateTime.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 
@@ -71,22 +72,7 @@ const submit = () => {
             :display-pagination="false"
         >
             <template #button>
-                <div class="ml-auto flex flex-wrap justify-end gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"
-                    >
-                        Сообщения
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.devices.index'), { preserveScroll: true })"
-                    >
-                        Устройства
-                    </button>
-                </div>
+                <AutomationNavButtons current="app" />
             </template>
             <template #header>
                 <div class="flex flex-wrap items-center justify-between gap-3">

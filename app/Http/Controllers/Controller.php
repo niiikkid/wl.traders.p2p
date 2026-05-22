@@ -180,6 +180,10 @@ abstract class Controller
             'payoutStatuses' => array_values($payoutStatuses),
             'payoutMethodTypes' => array_values($payoutMethodTypes),
             'priorityAccessOnly' => request()->input('filters.priorityAccessOnly') === 'true',
+            'login' => request()->input('filters.login'),
+            'deviceName' => request()->input('filters.deviceName'),
+            'searchSender' => request()->input('filters.searchSender'),
+            'searchMessage' => request()->input('filters.searchMessage'),
         ];
 
         return new TableFiltersValue(
@@ -217,6 +221,10 @@ abstract class Controller
             payoutStatuses: $currentFilters['payoutStatuses'],
             payoutMethodTypes: $currentFilters['payoutMethodTypes'],
             priorityAccessOnly: $currentFilters['priorityAccessOnly'],
+            login: $currentFilters['login'],
+            deviceName: $currentFilters['deviceName'],
+            searchSender: $currentFilters['searchSender'],
+            searchMessage: $currentFilters['searchMessage'],
         );
     }
 

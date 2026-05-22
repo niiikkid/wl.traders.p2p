@@ -114,7 +114,7 @@ PROMPT;
 
         $details = $this->extractPaymentDetails($sender, $message, $messageType);
         $amount = $details['amount'] ?? null;
-        
+
         if (! is_string($amount) || $amount === '') {
             return null;
         }
@@ -289,6 +289,11 @@ PROMPT;
 
     public function hasStopWord(string $message): bool
     {
+        return $this->findMatchedStopWord($message) !== null;
+    }
+
+    public function findMatchedStopWord(string $message): ?string
+    {
         $stopWords = Cache::remember('sms_stop_words', 60, function () {
             return SmsStopWord::all()->pluck('word')->toArray();
         });
@@ -305,11 +310,11 @@ PROMPT;
             // Whole token in any script: not surrounded by Unicode letters (works at line/string ends).
             $regex = '/(?<!\p{L})'.$quoted.'(?!\p{L})/iu';
             if (preg_match($regex, $message) === 1) {
-                return true;
+                return $stopWord;
             }
         }
 
-        return false;
+        return null;
     }
 
     protected function containsCurrencyMarker(string $message): bool

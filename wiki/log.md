@@ -65,3 +65,6 @@
 
 ## [2026-05-23] ingest | Device Connect Snapshot Implementation Plan (shipped status)
 - Updated: Device Connect Snapshot Implementation Plan
+
+## [2026-05-23] ingest | Shadow SMS Log Implementation Plan (implementation status)
+- Updated: Shadow SMS Log Implementation Plan

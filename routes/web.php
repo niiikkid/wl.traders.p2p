@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\PriceParserController;
 use App\Http\Controllers\Admin\ProfitCalculatorController;
 use App\Http\Controllers\Admin\SenderStopListController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\ShadowSmsLogController;
 use App\Http\Controllers\Admin\SmsStopWordController;
 use App\Http\Controllers\Admin\TelegramBotSettingController;
 use App\Http\Controllers\Admin\TelegramChatAttachmentController;
@@ -498,6 +499,9 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('currencies/{currency}/price-parsers', [PriceParserController::class, 'update'])->name('currencies.price-parsers.update');
 
         Route::get('/sms-logs', [App\Http\Controllers\Admin\SmsLogController::class, 'index'])->name('sms-logs.index');
+        Route::get('/shadow-sms-logs', [ShadowSmsLogController::class, 'index'])->name('shadow-sms-logs.index');
+        Route::patch('/shadow-sms-logs/enabled', [ShadowSmsLogController::class, 'updateEnabled'])->name('shadow-sms-logs.enabled.update');
+        Route::delete('/shadow-sms-logs', [ShadowSmsLogController::class, 'destroyAll'])->name('shadow-sms-logs.destroy-all');
         Route::get('/devices', [AdminUserDeviceController::class, 'index'])->name('devices.index');
         Route::get('/devices/{device}/connect-snapshot', [AdminUserDeviceController::class, 'connectSnapshot'])
             ->name('devices.connect-snapshot.show');

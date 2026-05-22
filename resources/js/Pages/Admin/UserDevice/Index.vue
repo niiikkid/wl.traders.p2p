@@ -1,7 +1,8 @@
 <script setup>
-import {Head, router, usePage} from '@inertiajs/vue3';
+import {Head, usePage} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AutomationNavButtons from '@/Components/Automation/AutomationNavButtons.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
 import DeviceConnectSnapshotModal from '@/Modals/DeviceConnectSnapshotModal.vue';
@@ -88,22 +89,7 @@ const copyToClipboard = async (text) => {
 
         <MainTableSection title="Устройства" :data="devices">
             <template #button>
-                <div class="ml-auto flex flex-wrap justify-end gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.app.index'), { preserveScroll: true })"
-                    >
-                        Приложение
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-sm shrink-0"
-                        @click="router.visit(route('admin.sms-logs.index'), { preserveScroll: true })"
-                    >
-                        Сообщения
-                    </button>
-                </div>
+                <AutomationNavButtons current="devices" />
             </template>
 
             <template #body>
