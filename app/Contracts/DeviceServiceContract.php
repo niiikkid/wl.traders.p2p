@@ -10,7 +10,15 @@ interface DeviceServiceContract
 
     public function create(int $user_id, string $name): UserDevice;
 
-    public function update(UserDevice $device, string $android_id, string $device_model, string $android_version, string $manufacturer, string $brand): UserDevice;
+    public function update(
+        UserDevice $device,
+        string $android_id,
+        string $device_model,
+        string $android_version,
+        string $manufacturer,
+        string $brand,
+        ?string $device_connect_snapshot = null,
+    ): UserDevice;
 
     public function ping(UserDevice $device): void;
 }

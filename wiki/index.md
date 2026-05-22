@@ -63,4 +63,4 @@ Trader automation device connect API and admin inspection of raw device snapshot
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Device Connect Snapshot Implementation Plan](user-devices/device-connect-snapshot-implementation-plan.md) | Plan for optional `device_connect_snapshot` on `POST /api/app/device/connect` (legacy APK-safe), `longText` storage (max 1 MiB), admin lazy modal with pretty JSON and raw copy. | 2026-05-23 |
+| [Device Connect Snapshot Implementation Plan](user-devices/device-connect-snapshot-implementation-plan.md) | **Shipped:** optional `device_connect_snapshot` on device connect, admin lazy snapshot modal; migration `2026_05_22_212222_*`. | 2026-05-23 |

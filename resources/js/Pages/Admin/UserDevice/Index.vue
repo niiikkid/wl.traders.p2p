@@ -1,14 +1,19 @@
 <script setup>
 import {Head, router, usePage} from '@inertiajs/vue3';
-import {computed} from 'vue';
+import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
+import DeviceConnectSnapshotModal from '@/Modals/DeviceConnectSnapshotModal.vue';
 
 defineOptions({ layout: AuthenticatedLayout })
 
 const page = usePage();
 const devices = computed(() => page.props.devices);
+
+const snapshotModalOpen = ref(false);
+const snapshotDeviceId = ref(null);
+const snapshotDeviceName = ref('');
 
 const processingModeTitle = (device) => {
     return device.user?.sms_auto_close_orders_enabled ? 'Автоматический' : 'Полуавтоматический';
@@ -28,6 +33,18 @@ const shortToken = (token) => {
     }
 
     return `${token.slice(0, 8)}...${token.slice(-6)}`;
+};
+
+const openSnapshotModal = (device) => {
+    snapshotDeviceId.value = device.id;
+    snapshotDeviceName.value = device.name ?? '';
+    snapshotModalOpen.value = true;
+};
+
+const closeSnapshotModal = () => {
+    snapshotModalOpen.value = false;
+    snapshotDeviceId.value = null;
+    snapshotDeviceName.value = '';
 };
 
 const copyToClipboard = async (text) => {
@@ -104,6 +121,7 @@ const copyToClipboard = async (text) => {
                                     <th scope="col" class="px-3 py-2">Режим</th>
                                     <th scope="col" class="px-3 py-2">Последний пинг</th>
                                     <th scope="col" class="px-3 py-2">Подключен</th>
+                                    <th scope="col" class="px-3 py-2 text-right">Снимок</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -140,6 +158,16 @@ const copyToClipboard = async (text) => {
                                     <td class="px-3 py-2">
                                         <DateTime v-if="device.connected_at" :data="device.connected_at" />
                                         <span v-else>нет данных</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-right">
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline btn-xs"
+                                            :disabled="! device.has_connect_snapshot"
+                                            @click="openSnapshotModal(device)"
+                                        >
+                                            Просмотр
+                                        </button>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -189,11 +217,29 @@ const copyToClipboard = async (text) => {
                                         <span v-else>нет данных</span>
                                     </div>
                                 </div>
+
+                                <div class="flex justify-end pt-1">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline btn-xs"
+                                        :disabled="! device.has_connect_snapshot"
+                                        @click="openSnapshotModal(device)"
+                                    >
+                                        Снимок устройства
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </template>
         </MainTableSection>
+
+        <DeviceConnectSnapshotModal
+            :open="snapshotModalOpen"
+            :device-id="snapshotDeviceId"
+            :device-name="snapshotDeviceName"
+            @close="closeSnapshotModal"
+        />
     </div>
 </template>

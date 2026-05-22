@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
  * @property string|null $android_version
  * @property string|null $manufacturer
  * @property string|null $brand
+ * @property string|null $device_connect_snapshot
  * @property Carbon|null $connected_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -41,6 +42,7 @@ class UserDevice extends Model
         'android_version',
         'manufacturer',
         'brand',
+        'device_connect_snapshot',
         'connected_at',
     ];
 
@@ -55,8 +57,6 @@ class UserDevice extends Model
 
     /**
      * Генерирует уникальный токен для устройства
-     *
-     * @return string
      */
     public static function generateToken(): string
     {
@@ -65,8 +65,6 @@ class UserDevice extends Model
 
     /**
      * Получить пользователя, которому принадлежит устройство
-     *
-     * @return BelongsTo
      */
     public function user(): BelongsTo
     {

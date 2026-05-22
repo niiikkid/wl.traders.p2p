@@ -987,6 +987,7 @@ class GenerateTestDataCommand extends Command
                 'android_version' => (string) random_int(10, 14),
                 'manufacturer' => 'TestVendor',
                 'brand' => 'TestBrand',
+                'device_connect_snapshot' => json_encode(['source' => 'test'], JSON_UNESCAPED_UNICODE),
             ];
 
             try {

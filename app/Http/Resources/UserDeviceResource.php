@@ -33,6 +33,7 @@ class UserDeviceResource extends JsonResource
             'android_version' => $this->android_version,
             'manufacturer' => $this->manufacturer,
             'brand' => $this->brand,
+            'has_connect_snapshot' => (bool) ($this->getAttributes()['has_connect_snapshot'] ?? filled($this->device_connect_snapshot)),
             'connected_at' => $this->connected_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'latest_ping_at' => $this->normalizeCachedDate(cache()->get('user-device-latest-ping-at-'.$this->id)),
