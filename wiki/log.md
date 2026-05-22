@@ -22,3 +22,5 @@
 ## [2026-05-22] ingest | Trader Balance Transfer Implementation Plan
 
 ## [2026-05-22] ingest | Team Leader Shared Insurance Mode Specification
+
+## [2026-05-22] ingest | Dispute Bank Statement Implementation Plan

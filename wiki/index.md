@@ -24,6 +24,14 @@ Trader-to-trader working balance transfer knowledge for Team Leader scoped walle
 |---------|---------|---------|
 | [Trader Balance Transfer Implementation Plan](trader-balance-transfers/trader-balance-transfer-implementation-plan.md) | Detailed specification and implementation plan for atomic `trust_balance` transfers between traders under the same Team Leader. | 2026-05-22 |
 
+## dispute-bank-statements
+
+Dispute rejection evidence requirements for bank/card statement uploads in classic Order dispute flows.
+
+| Article | Summary | Updated |
+|---------|---------|---------|
+| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Detailed specification and phased implementation plan for requiring a rejection reason and bank/card statement file when rejecting Order disputes through the UI. | 2026-05-22 |
+
 ## team-leader-insurance-mode
 
 Team Leader shared insurance reserve mode knowledge for trader reserve delegation, admin limits, and wallet debit behavior.
