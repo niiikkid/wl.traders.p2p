@@ -29,7 +29,7 @@ const reasonPresets = [
     },
     {
         value: 'payment_return',
-        label: 'Возврат платежа (карта заблокирована или достигнут лимит по карте)',
+        label: 'Возврат платежа',
         reason: 'Возврат платежа (карта заблокирована или достигнут лимит по карте)',
     },
     {
@@ -153,7 +153,7 @@ const cancel = (dispute) => {
 </script>
 
 <template>
-    <Modal :show="disputeCancelModal.showed" @close="close" maxWidth="sm">
+    <Modal :show="disputeCancelModal.showed" @close="close" maxWidth="md">
         <ModalHeader
             :title="'Отклонение спора #' + disputeCancelModal.params.dispute.id"
             @close="close"
