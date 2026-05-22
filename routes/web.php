@@ -195,6 +195,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Super Admin']], function () {
         Route::resource('/orders', OrderController::class)->only(['show']);
         Route::get('/disputes/{dispute}/receipt', [DisputeController::class, 'receipt'])->name('disputes.receipt');
+        Route::get('/disputes/{dispute}/bank-statement', [DisputeController::class, 'bankStatement'])->name('disputes.bank-statement');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Team Leader|Agent|Super Admin']], function () {

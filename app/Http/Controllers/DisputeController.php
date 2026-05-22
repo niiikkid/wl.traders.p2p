@@ -51,4 +51,21 @@ class DisputeController extends Controller
 
         return response()->file($file_path);
     }
+
+    public function bankStatement(Dispute $dispute)
+    {
+        Gate::authorize('access-to-dispute-bank-statement', $dispute);
+
+        if (! $dispute->bank_statement) {
+            abort(404);
+        }
+
+        $file_path = storage_path('dispute-bank-statements/'.$dispute->bank_statement);
+
+        if (! is_file($file_path)) {
+            abort(404);
+        }
+
+        return response()->file($file_path);
+    }
 }

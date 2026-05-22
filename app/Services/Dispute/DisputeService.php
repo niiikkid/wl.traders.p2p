@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
 
 class DisputeService implements DisputeServiceContract
 {
+    private const BANK_STATEMENT_DIRECTORY = 'dispute-bank-statements';
+
     /**
      * @throws DisputeException
      */
@@ -71,7 +73,7 @@ class DisputeService implements DisputeServiceContract
             services()->order()->finishOrderAsSuccessful($dispute->order_id, OrderSubStatus::SUCCESSFULLY_PAID_BY_RESOLVED_DISPUTE);
 
             return $dispute->update([
-                'status' => DisputeStatus::ACCEPTED
+                'status' => DisputeStatus::ACCEPTED,
             ]);
         });
     }
@@ -89,7 +91,7 @@ class DisputeService implements DisputeServiceContract
 
             $updated = $dispute->update([
                 'status' => DisputeStatus::CANCELED,
-                'reason' => $reason
+                'reason' => $reason,
             ]);
 
             // Проверяем количество отклоненных споров и отключаем трафик если нужно
@@ -107,34 +109,34 @@ class DisputeService implements DisputeServiceContract
     {
         $trader = User::findOrFail($traderId);
         $maxRejectedDisputes = services()->settings()->getMaxRejectedDisputes();
-        
+
         // Если лимит не установлен (count = 0), то не проверяем
         if ($maxRejectedDisputes['count'] <= 0 || $maxRejectedDisputes['period'] <= 0) {
             return;
         }
-        
+
         $periodMinutes = $maxRejectedDisputes['period'];
         $maxCount = $maxRejectedDisputes['count'];
-        
+
         // Определяем, с какой даты считаем споры
-        // Используем более позднюю из двух дат: 
+        // Используем более позднюю из двух дат:
         // 1. Дата последнего включения трафика
         // 2. Текущее время минус период настройки
         $periodDate = Carbon::now()->subMinutes($periodMinutes);
-        $sinceDate = $trader->traffic_enabled_at && $trader->traffic_enabled_at->isAfter($periodDate) 
-            ? $trader->traffic_enabled_at 
+        $sinceDate = $trader->traffic_enabled_at && $trader->traffic_enabled_at->isAfter($periodDate)
+            ? $trader->traffic_enabled_at
             : $periodDate;
-        
+
         // Считаем количество отклоненных споров за указанный период
         $count = Dispute::where('trader_id', $traderId)
             ->where('status', DisputeStatus::CANCELED)
             ->where('created_at', '>=', $sinceDate)
             ->count();
-        
+
         // Если количество отклоненных споров превышает лимит, отключаем трафик
         if ($count >= $maxCount) {
             $trader->update([
-                'stop_traffic' => true
+                'stop_traffic' => true,
             ]);
         }
     }
@@ -152,8 +154,52 @@ class DisputeService implements DisputeServiceContract
 
             return $dispute->update([
                 'status' => DisputeStatus::PENDING,
-                'reason' => null
+                'reason' => null,
             ]);
         });
+    }
+
+    public function storeBankStatement(UploadedFile $bankStatement): string
+    {
+        $this->ensureBankStatementDirectoryExists();
+
+        $extension = strtolower($bankStatement->getClientOriginalExtension() ?: $bankStatement->extension() ?: 'bin');
+        $filename = 'bank_statement_'.strtolower(Str::random(32));
+        if ($extension !== '') {
+            $filename .= '.'.$extension;
+        }
+
+        $bankStatement->move(storage_path(self::BANK_STATEMENT_DIRECTORY), $filename);
+
+        return $filename;
+    }
+
+    public function deleteBankStatement(?string $filename): void
+    {
+        if (! $filename) {
+            return;
+        }
+
+        $path = storage_path(self::BANK_STATEMENT_DIRECTORY.'/'.$filename);
+
+        if (is_file($path)) {
+            unlink($path);
+        }
+    }
+
+    public function replaceBankStatement(?string $existingFilename, UploadedFile $bankStatement): string
+    {
+        $this->deleteBankStatement($existingFilename);
+
+        return $this->storeBankStatement($bankStatement);
+    }
+
+    private function ensureBankStatementDirectoryExists(): void
+    {
+        $directory = storage_path(self::BANK_STATEMENT_DIRECTORY);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
     }
 }

@@ -1,6 +1,6 @@
 # Dispute Bank Statement Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22
 > Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md)
 > Updated: 2026-05-22
 
@@ -73,23 +73,31 @@ The statement must be visible to the same users who can currently see the disput
 
 ## Existing Code Anchors
 
-The implementation should stay close to the current dispute flow:
+The implementation stays close to the current dispute flow:
 
-- `app/Models/Dispute.php` stores `receipt`, `order_id`, `trader_id`, `status`, and `reason`.
-- `app/Services/Dispute/DisputeService.php::cancel()` changes a pending dispute to `canceled`, saves `reason`, and finishes the related order as failed.
-- `app/Http/Requests/Dispute/CancelRequest.php` currently validates only `reason`.
-- `app/Http/Controllers/DisputeController.php::cancel()` is the trader/common UI rejection endpoint.
-- `app/Http/Controllers/Support/DisputeController.php::cancel()` and `app/Http/Controllers/Analyst/DisputeController.php::cancel()` follow the same service call pattern.
-- `app/Http/Controllers/Admin/DisputeController.php` currently has index/store only; admin UI can continue using the shared rejection route if that is how the interface is wired.
-- `routes/web.php` has `disputes.receipt` for opening merchant dispute receipts.
-- `app/Http/Resources/DisputeResource.php` exposes `receipt_url` and should expose `bank_statement_url` for UI only.
-- `resources/js/Modals/CancelDisputeModal.vue` is the rejection form that must collect reason preset/custom reason and the file.
-- `resources/js/Modals/DisputeModal.vue` displays the receipt row and canceled reason.
-- `App\Rules\ReceiptFileRule` is the preferred file-type validator based on the payout receipt flow.
+**Implemented (Phase 1):**
+
+- `app/Models/Dispute.php` — `bank_statement` in `$fillable` and PHPDoc.
+- `app/Services/Dispute/DisputeService.php` — `storeBankStatement()`, `deleteBankStatement()`, `replaceBankStatement()`; directory constant `dispute-bank-statements`.
+- `app/Http/Controllers/DisputeController.php::bankStatement()` — opens stored statement file.
+- `routes/web.php` — `GET disputes/{dispute}/bank-statement` named `disputes.bank-statement` (same middleware group as `disputes.receipt`).
+- `app/Providers/AppServiceProvider.php` — gate `access-to-dispute-bank-statement` mirrors `access-to-dispute-receipt`.
+- `storage/dispute-bank-statements/.gitignore` — same ignore pattern as `storage/receipts`.
+
+**Pending (Phases 2–4):**
+
+- `app/Services/Dispute/DisputeService.php::cancel()` — still saves only `reason`; must accept `UploadedFile` and persist `bank_statement` (Phase 2).
+- `app/Http/Requests/Dispute/CancelRequest.php` — validates only `reason` today.
+- `app/Http/Controllers/DisputeController.php::cancel()` and Support/Analyst cancel endpoints — unchanged service call.
+- `app/Http/Controllers/Admin/DisputeController.php` — index/store only; admin UI can keep using the shared rejection route.
+- `app/Http/Resources/DisputeResource.php` — needs `bank_statement_url` for UI (Phase 4).
+- `resources/js/Modals/CancelDisputeModal.vue` — rejection form with presets + file (Phase 3).
+- `resources/js/Modals/DisputeModal.vue` — `Выписка` row for canceled disputes (Phase 4).
+- `App\Rules\ReceiptFileRule` — to be wired in `CancelRequest` (Phase 2).
 
 ## Data Model
 
-Add a nullable column to `disputes`:
+**Implemented (Phase 1):** nullable column on `disputes`:
 
 - `bank_statement`, nullable string, after `reason` or after `receipt`.
 
@@ -104,10 +112,10 @@ Do not add a separate `reason_type` column. Presets are a frontend convenience o
 
 ## File Storage
 
-Store bank statement files separately from merchant receipts:
+**Implemented (Phase 1):** store bank statement files separately from merchant receipts:
 
-- suggested directory: `storage/dispute-bank-statements`;
-- suggested filename pattern: `bank_statement_<random-or-uuid>.<extension>`.
+- directory: `storage/dispute-bank-statements` (created on first upload if missing);
+- filename pattern: `bank_statement_<random32>.<extension>` via `DisputeService::storeBankStatement()`.
 
 Prefer the storage style used by payout receipts for safer filenames:
 
@@ -115,29 +123,20 @@ Prefer the storage style used by payout receipts for safer filenames:
 - preserve a sanitized extension from `getClientOriginalExtension()` / `extension()`;
 - store only the relative filename/path in `disputes.bank_statement`.
 
-When a dispute is rejected again after rollback, the new file replaces the old one:
-
-- delete the previous bank statement if it exists;
-- store the new file;
-- update `reason` and `bank_statement` in the same transaction as the dispute status change.
-
-If deletion fails unexpectedly, it should not leave the dispute half-updated. Use existing project patterns for storage errors where possible; otherwise keep the operation transactionally simple and log only if the project already logs comparable storage failures.
+**Pending (Phase 2):** when a dispute is rejected again after rollback, `replaceBankStatement()` should run inside `cancel()` together with `reason` and status update in one transaction.
 
 ## Authorization
 
-Opening a bank statement should be protected by the same access rules as dispute receipts:
+**Implemented (Phase 1):** opening a bank statement is protected by the same access rules as dispute receipts:
 
 - trader who owns the payment detail for the order;
 - Super Admin;
 - Support;
 - Analyst.
 
-Implementation options:
+- gate `access-to-dispute-bank-statement` in `AppServiceProvider` (duplicate of receipt gate logic).
 
-- add `access-to-dispute-bank-statement` gate that mirrors `access-to-dispute-receipt`;
-- or reuse a shared helper/gate logic to avoid divergence.
-
-The UI should not expose a statement URL to users outside this access model. The route must still authorize server-side.
+The UI should not expose a statement URL to users outside this access model until Phase 4; the route already authorizes server-side.
 
 ## Backend Contract
 
@@ -170,13 +169,13 @@ Because the API is explicitly out of scope, do not alter API controllers or reso
 
 ### File Route
 
-Add a web route analogous to `disputes.receipt`:
+**Implemented (Phase 1):** web route analogous to `disputes.receipt`:
 
-- suggested name: `disputes.bank-statement`;
-- suggested URL: `/disputes/{dispute}/bank-statement`;
-- controller method authorizes access and returns `response()->file(...)`.
+- name: `disputes.bank-statement`;
+- URL: `GET /disputes/{dispute}/bank-statement`;
+- `DisputeController::bankStatement()` — gate + `response()->file()`; `404` when `bank_statement` is null or file missing on disk.
 
-The route is UI-facing only. It is not added to API route files and should not be included in API resources.
+The route is UI-facing only. It is not in API route files and is not exposed in API resources yet.
 
 ### Resource
 
@@ -259,6 +258,8 @@ Do not include these in the first implementation:
 
 ### Phase 1 — Backend Data and Storage Foundation
 
+**Status: Done (2026-05-22).**
+
 Deliverables:
 
 - create migration adding nullable `disputes.bank_statement`;
@@ -273,6 +274,8 @@ Acceptance criteria:
 - existing disputes still load with `bank_statement = null`;
 - a stored statement can be opened only by users who can open the dispute receipt;
 - no API routes are changed.
+
+**Note:** rejection still does not upload statements until Phase 2; the file route returns `404` until `bank_statement` is populated.
 
 ### Phase 2 — Validation and Service Contract
 
@@ -359,6 +362,55 @@ Suggested focused checks:
 - attempt file over 5 MB;
 - rollback canceled dispute and reject again with a new file;
 - open historical canceled dispute without statement.
+
+## Implementation Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1 — Backend data and storage | **Done** (2026-05-22) | Migration, model, storage helpers, file route, gate |
+| 2 — Validation and service contract | Pending | `CancelRequest`, `cancel()` signature, all UI cancel call sites |
+| 3 — Inertia rejection modal | Pending | `CancelDisputeModal.vue` presets + multipart upload |
+| 4 — Dispute details UI | Pending | `DisputeResource`, `DisputeModal.vue` выписка row |
+| 5 — Role regression pass | Pending | Trader, Support, Analyst, Admin reject flows |
+| 6 — Formatting and verification | Pending | Pint, manual checks; tests only if requested |
+
+### Phase 1 artifacts (implemented)
+
+**Migration** (2026-05-22):
+
+- `database/migrations/2026_05_22_151044_add_bank_statement_to_disputes_table.php` — nullable `bank_statement` after `reason`
+
+**Model** (`app/Models/Dispute.php`):
+
+- `$fillable` includes `bank_statement`
+- PHPDoc `@property string|null $bank_statement`
+
+**Service** (`app/Services/Dispute/DisputeService.php`):
+
+- `BANK_STATEMENT_DIRECTORY = 'dispute-bank-statements'`
+- `storeBankStatement(UploadedFile): string`
+- `deleteBankStatement(?string): void`
+- `replaceBankStatement(?string, UploadedFile): string` — ready for Phase 2 `cancel()`
+- `ensureBankStatementDirectoryExists()` — private
+
+**Controller and route:**
+
+- `DisputeController::bankStatement()`
+- `routes/web.php` — `disputes.bank-statement` in `role:Trader|Support|Analyst|Super Admin` group (with `disputes.receipt`)
+
+**Authorization:**
+
+- `Gate::define('access-to-dispute-bank-statement', ...)` in `AppServiceProvider`
+
+**Storage:**
+
+- `storage/dispute-bank-statements/.gitignore` (`*` ignored, `!.gitignore`)
+
+**Not changed in Phase 1:**
+
+- `DisputeService::cancel()` signature and body
+- `CancelRequest`, `DisputeResource`, Vue modals
+- API routes and H2H dispute endpoints
 
 ## Edge Cases
 

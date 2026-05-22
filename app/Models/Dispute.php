@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property string $receipt
+ * @property string|null $bank_statement
  * @property int $order_id
  * @property int $trader_id
  * @property DisputeStatus $status
@@ -31,6 +32,7 @@ class Dispute extends Model
         'trader_id',
         'status',
         'reason',
+        'bank_statement',
     ];
 
     protected $casts = [
