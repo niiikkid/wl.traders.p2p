@@ -227,6 +227,45 @@ class TelegramChatBotService implements TelegramChatBotServiceContract
         }
     }
 
+    public function sendChatDocument(
+        string $chatId,
+        string $documentPath,
+        ?string $caption = null,
+        ?int $replyToMessageId = null,
+    ): void {
+        if (! is_readable($documentPath)) {
+            throw new TelegramChatBotException('Документ недоступен для отправки в Telegram.');
+        }
+
+        $botToken = $this->requireBotToken();
+        $payload = [
+            'chat_id' => $chatId,
+        ];
+
+        if (is_string($caption) && $caption !== '') {
+            $payload['caption'] = $caption;
+        }
+
+        $replyParameters = $this->buildReplyParameters($replyToMessageId);
+
+        if ($replyParameters !== null) {
+            $payload['reply_parameters'] = json_encode($replyParameters, JSON_THROW_ON_ERROR);
+        }
+
+        $response = $this->client($botToken)
+            ->attach('document', file_get_contents($documentPath), basename($documentPath))
+            ->post('sendDocument', $payload);
+        $body = $response->json();
+
+        if (! $response->successful() || ! ($body['ok'] ?? false)) {
+            $message = is_string($body['description'] ?? null)
+                ? $body['description']
+                : 'Не удалось отправить документ в Telegram.';
+
+            throw new TelegramChatBotException($message);
+        }
+    }
+
     /**
      * @return array{message_id: int, allow_sending_without_reply: true}|null
      */

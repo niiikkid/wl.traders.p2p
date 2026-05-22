@@ -44,4 +44,14 @@ interface TelegramChatBotServiceContract
         string $text,
         ?int $replyToMessageId = null,
     ): void;
+
+    /**
+     * @throws TelegramChatBotException
+     */
+    public function sendChatDocument(
+        string $chatId,
+        string $documentPath,
+        ?string $caption = null,
+        ?int $replyToMessageId = null,
+    ): void;
 }

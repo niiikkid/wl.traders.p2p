@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Events\DisputeOpenedEvent;
 use App\Exceptions\DisputeException;
+use App\Jobs\SendTelegramDisputeResolutionNotificationJob;
 use App\Models\Dispute;
 use App\Models\Order;
 use App\Models\User;
@@ -72,9 +73,15 @@ class DisputeService implements DisputeServiceContract
 
             services()->order()->finishOrderAsSuccessful($dispute->order_id, OrderSubStatus::SUCCESSFULLY_PAID_BY_RESOLVED_DISPUTE);
 
-            return $dispute->update([
+            $updated = $dispute->update([
                 'status' => DisputeStatus::ACCEPTED,
             ]);
+
+            if ($updated) {
+                SendTelegramDisputeResolutionNotificationJob::dispatch($dispute->id, DisputeStatus::ACCEPTED);
+            }
+
+            return $updated;
         });
     }
 
@@ -99,6 +106,10 @@ class DisputeService implements DisputeServiceContract
 
             // Проверяем количество отклоненных споров и отключаем трафик если нужно
             $this->checkRejectedDisputesLimit($dispute->trader_id);
+
+            if ($updated) {
+                SendTelegramDisputeResolutionNotificationJob::dispatch($dispute->id, DisputeStatus::CANCELED);
+            }
 
             return $updated;
         });
