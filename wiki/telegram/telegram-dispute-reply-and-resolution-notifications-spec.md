@@ -1,14 +1,14 @@
 # Telegram Dispute Reply and Resolution Notifications Specification
 
-> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22; immediate reply implementation, 2026-05-22
-> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md)
+> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22; immediate reply implementation, 2026-05-22; resolution notifications implementation, 2026-05-22
+> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Resolution Notifications Implementation](../../raw/telegram/2026-05-22-telegram-dispute-resolution-notifications-implementation.md)
 > Updated: 2026-05-22
 
 ## Overview
 
 This specification extends the existing Telegram chat dispute automation in two areas: immediate bot responses must be sent as replies to the source Telegram message, and disputes opened from Telegram must send asynchronous resolution notifications back to that same source message after the dispute is accepted or rejected. Rejected-dispute notifications should attach the bank/card statement in the same Telegram reply message when possible, with a text-only fallback when the file cannot be sent.
 
-**Feature 1 (immediate opening/duplicate replies) is implemented** in the codebase as of 2026-05-22. **Feature 2 (accept/reject resolution notifications)** remains planned (Phases 3–4 below).
+**Feature 1 (immediate opening/duplicate replies) is implemented** in the codebase as of 2026-05-22. **Feature 2 (accept/reject resolution notifications) is implemented** as of 2026-05-22 (Phases 1, 3–4 complete; Phase 5 manual verification pending).
 
 ## Product Scope
 
@@ -292,11 +292,11 @@ This inherits the existing operational assumption that the Telegram chat is an a
 | Phase | Scope | Status |
 |-------|--------|--------|
 | 1 | Bot service reply support (`sendChatMessage` + `reply_parameters`) | **Done** (2026-05-22) |
-| 1 | `sendChatDocument()` for resolution notifications | **Pending** |
+| 1 | `sendChatDocument()` for resolution notifications | **Done** (2026-05-22) |
 | 2 | Immediate success and duplicate replies | **Done** (2026-05-22) |
-| 3 | Resolution notification job | Pending |
-| 4 | Dispatch from `DisputeService` | Pending |
-| 5 | Manual / programmatic verification | Partial (Feature 1 manual checklist pending) |
+| 3 | Resolution notification job | **Done** (2026-05-22) |
+| 4 | Dispatch from `DisputeService` | **Done** (2026-05-22) |
+| 5 | Manual / programmatic verification | **Partial** — code complete; live Telegram checklist pending |
 
 ### Implemented artifacts (Feature 1)
 
@@ -305,22 +305,28 @@ This inherits the existing operational assumption that the Telegram chat is an a
 - `StandardTelegramDisputeParser::resolveReplyToMessageId()` — digit-only string → int; otherwise no reply target
 - Success and both duplicate paths pass `$message->telegram_message_id` into reply helpers
 
+### Implemented artifacts (Feature 2)
+
+- `TelegramChatBotServiceContract::sendChatDocument(string $chatId, string $documentPath, ?string $caption, ?int $replyToMessageId)` — multipart `sendDocument`, `reply_parameters` JSON-encoded for multipart
+- `SendTelegramDisputeResolutionNotificationJob` — queue `telegram-chat-automation`, `afterCommit()`, accepted text / canceled document with bank-statement path guard and text fallback
+- `DisputeService::accept()` / `cancel()` — dispatch job after successful update; controllers unchanged
+
 ## Implementation Phases
 
-### Phase 1 — Bot Service Reply Support — Partially done
+### Phase 1 — Bot Service Reply Support — Done
 
 Deliverables:
 
 - [x] extend `TelegramChatBotServiceContract::sendChatMessage()` with optional reply message id;
 - [x] implement `reply_parameters` in `TelegramChatBotService::sendChatMessage()`;
-- [ ] add `sendChatDocument()` to contract and service;
+- [x] add `sendChatDocument()` to contract and service;
 - [x] keep existing call sites working by making the new reply parameter optional.
 
 Acceptance criteria:
 
 - [x] existing plain text sends still work;
 - [x] text sends can reply to a Telegram message id;
-- [ ] document sends can include a caption and reply to a Telegram message id;
+- [x] document sends can include a caption and reply to a Telegram message id;
 - [x] Telegram API failures still throw `TelegramChatBotException`.
 
 ### Phase 2 — Immediate Success and Duplicate Replies — Done
@@ -338,40 +344,40 @@ Acceptance criteria:
 - [x] duplicate bot response is sent with `reply_parameters` in both duplicate branches;
 - [x] dispute processing still succeeds even if the reply cannot be sent.
 
-### Phase 3 — Resolution Notification Job
+### Phase 3 — Resolution Notification Job — Done
 
 Deliverables:
 
-- create `SendTelegramDisputeResolutionNotificationJob`;
-- use queue `telegram-chat-automation`;
-- use `afterCommit()`;
-- load linked `TelegramChatMessage` by `dispute_id`;
-- send accepted text reply;
-- send canceled document reply with bank statement and caption;
-- send fallback text reply when the statement cannot be attached;
-- log all failures without breaking dispute state.
+- [x] create `SendTelegramDisputeResolutionNotificationJob`;
+- [x] use queue `telegram-chat-automation`;
+- [x] use `afterCommit()`;
+- [x] load linked `TelegramChatMessage` by `dispute_id`;
+- [x] send accepted text reply;
+- [x] send canceled document reply with bank statement and caption;
+- [x] send fallback text reply when the statement cannot be attached;
+- [x] log all failures without breaking dispute state.
 
 Acceptance criteria:
 
-- only Telegram-originated disputes produce resolution notifications;
-- accepted dispute sends `Спор принят` reply with UUID;
-- rejected dispute sends one document reply with caption and statement when possible;
-- rejected dispute sends text fallback when statement upload is unavailable;
-- rollback sends nothing.
+- [x] only Telegram-originated disputes produce resolution notifications (code path; live chat confirmation pending);
+- [x] accepted dispute sends `Спор принят` reply with UUID (code path; live chat confirmation pending);
+- [x] rejected dispute sends one document reply with caption and statement when possible (code path; live chat confirmation pending);
+- [x] rejected dispute sends text fallback when statement upload is unavailable (code path; live chat confirmation pending);
+- [x] rollback sends nothing.
 
-### Phase 4 — Dispatch from Dispute Service
+### Phase 4 — Dispatch from Dispute Service — Done
 
 Deliverables:
 
-- dispatch resolution job from `DisputeService::accept()` after status update;
-- dispatch resolution job from `DisputeService::cancel()` after status/bank statement update;
-- keep controllers unchanged.
+- [x] dispatch resolution job from `DisputeService::accept()` after status update;
+- [x] dispatch resolution job from `DisputeService::cancel()` after status/bank statement update;
+- [x] keep controllers unchanged.
 
 Acceptance criteria:
 
-- all role surfaces that call the same service methods trigger notification for Telegram-originated disputes;
-- manually created disputes do not send Telegram notifications because no linked source message exists;
-- accept/cancel HTTP actions do not fail because of Telegram notification errors.
+- [x] all role surfaces that call the same service methods trigger notification for Telegram-originated disputes;
+- [x] manually created disputes do not send Telegram notifications because no linked source message exists;
+- [x] accept/cancel HTTP actions do not fail because of Telegram notification errors.
 
 ### Phase 5 — Verification
 

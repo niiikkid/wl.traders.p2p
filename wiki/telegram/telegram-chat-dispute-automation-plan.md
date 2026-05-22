@@ -691,12 +691,14 @@ Reliability rules:
 
 ## Reply and Resolution Follow-Up (2026-05-22)
 
-Immediate reply-to-source-message behavior for success and duplicate bot messages is **implemented** — see [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md) (Feature 1, Phases 1–2 done; `sendChatDocument` pending).
+Telegram reply and resolution notifications per [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md):
+
+- **Feature 1** (immediate success/duplicate replies) — **implemented** (Phases 1–2).
+- **Feature 2** (accept/reject resolution notifications + `sendChatDocument`) — **implemented** (Phases 1, 3–4).
 
 ## Open Follow-Ups
 
-- Implement dispute resolution notifications (accept/reject + bank statement document) described in [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md) — Feature 2, Phases 3–4.
-- Manually verify Feature 1: success and duplicate bot messages appear as Telegram replies in a real chat.
+- Manually verify Features 1–2 in a live Telegram chat (Phase 5 checklist in the resolution notifications spec).
 - Decide later whether to parse replies, forwarded messages, media groups, and thread-specific messages.
 - Decide later whether failed messages should trigger Telegram replies.
 - Decide later whether chats should be bindable to merchants for extra validation.
