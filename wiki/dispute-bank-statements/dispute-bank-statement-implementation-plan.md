@@ -6,7 +6,7 @@
 
 ## Overview
 
-Dispute rejection in the application must require two pieces of evidence from any UI user who can reject an `Order` dispute: a rejection reason and a bank card statement file. The reason remains plain text in the existing `disputes.reason` column, while the file is stored separately as `bank_statement`. The feature affects only classic `Order`/`Dispute` flows and intentionally does not change API contracts or cascade dispute behavior.
+Dispute rejection in the application requires a rejection reason from any UI user who can reject an `Order` dispute. Bank card statement handling is reason-dependent: it is optional for `Неверные реквизиты` and required for other reasons. The reason text is stored in `disputes.reason`, while the reason code is stored in `disputes.reason_code`, and the file is stored separately as `bank_statement`. The feature affects only classic `Order`/`Dispute` flows and intentionally does not change API contracts or cascade dispute behavior.
 
 ## Product Scope
 
@@ -24,7 +24,7 @@ The feature does not apply to:
 - H2H/API/V2 payloads or responses;
 - already rejected historical disputes unless they are reopened and rejected again.
 
-The rejection form must always require a reason and a bank statement for currently pending disputes. Historical canceled disputes without a statement remain viewable and display `Нет файла` in the statement row.
+The rejection form always requires a reason. A bank statement is required unless reason code is `wrong_details` (`Неверные реквизиты`). Historical canceled disputes without a statement remain viewable and display `Нет файла` in the statement row.
 
 ## User-Facing Behavior
 
@@ -42,9 +42,10 @@ The dispute rejection modal must replace the current free-text-only flow with a 
 - when `Другая причина` is selected, a text input appears and the user enters a custom reason;
 - the final reason is limited to 120 characters;
 - the UI shows remaining characters while the user types a custom reason;
-- the submit button is disabled while the form is processing and should not be submittable until both required fields are present.
+- the submit button is disabled while the form is processing and should not be submittable until reason and other required fields are present;
+- when reason `Неверные реквизиты` is selected, the UI shows helper text that bank statement is optional for this case.
 
-The backend remains authoritative: it must validate both fields even if the frontend disables the submit button.
+The backend remains authoritative: it validates reason code, reason text (for custom reason), and conditional statement requirements even if the frontend disables submit.
 
 ### Bank Statement Upload
 
@@ -52,8 +53,8 @@ The bank statement is a single file attached during rejection:
 
 - accepted file types: JPG, JPEG, PNG, PDF;
 - maximum size: 5 MB (`5120` KB);
-- validation should reuse the payout receipt validation approach, especially `App\Rules\ReceiptFileRule`, because it handles the project’s reliable image/PDF checks and PDF fallback;
-- the upload field label should clearly communicate that this is a bank/card statement for rejecting the dispute.
+- validation reuses `App\Rules\ReceiptFileRule`;
+- `bank_statement` is optional only when `reason_code = wrong_details`.
 
 Although payout receipt uploads currently allow a larger size, this feature must keep the 5 MB limit from the requirements.
 
@@ -115,7 +116,14 @@ Update `Dispute` model metadata:
 - add `bank_statement` to `$fillable`;
 - add PHPDoc property `?string $bank_statement`.
 
-Do not add a separate `reason_type` column. Presets are a frontend convenience only; the backend stores the final selected/custom reason as text in `reason`.
+**Implemented (2026-05-22 late update):** `disputes.reason_code` stores backend reason code via enum `DisputeCancelReasonCode`:
+
+- `wrong_details`
+- `fake_receipt`
+- `payment_return`
+- `other`
+
+`disputes.reason` continues storing final text shown to operators.
 
 ## File Storage
 
@@ -149,20 +157,21 @@ The UI exposes `bank_statement_url` only through panel resources (`DisputeResour
 
 ### Request Validation
 
-**Implemented (Phase 2):** `CancelRequest` validates:
+**Implemented (Phase 2 + late update):** `CancelRequest` validates:
 
-- `reason`: `required`, `string`, `max:120`;
-- `bank_statement`: `required`, `file`, `max:5120`, `ReceiptFileRule`;
-- attributes: `причина отклонения`, `выписка по карте`.
+- `reason_code`: required; in enum values;
+- `reason`: required only for `reason_code = other`; max 120;
+- `bank_statement`: required unless `reason_code = wrong_details`; `file`, `max:5120`, `ReceiptFileRule`;
+- attributes include reason code label for localized errors.
 
-**Implemented (Phase 3):** `CancelDisputeModal.vue` sends `reason` and `bank_statement` via `form.patch(..., { forceFormData: true })` to existing `disputes.cancel` / `support.disputes.cancel` / `analyst.disputes.cancel` routes. Client-only `reasonPreset` is not submitted to the backend.
+**Implemented (Phase 3 + late update):** `CancelDisputeModal.vue` sends `reason_code`, optional `reason`, and optional `bank_statement` via `form.patch(..., { forceFormData: true })` to existing `disputes.cancel` / `support.disputes.cancel` / `analyst.disputes.cancel` routes.
 
 ### Service Contract
 
-**Implemented (Phase 2):**
+**Implemented (Phase 2 + late update):**
 
-- `DisputeServiceContract::cancel(int $disputeID, string $reason, UploadedFile $bankStatement): bool`;
-- `DisputeService::cancel()` stores the file via `replaceBankStatement()`, updates `status`, `reason`, and `bank_statement` in one transaction;
+- `DisputeServiceContract::cancel(int $disputeID, DisputeCancelReasonCode $reasonCode, ?string $customReason = null, ?UploadedFile $bankStatement = null): bool`;
+- `DisputeService::cancel()` resolves reason text from reason code, stores `reason_code`, and conditionally stores/removes `bank_statement`;
 - preserves pending-status guard, order failure behavior, and `checkRejectedDisputesLimit()`.
 
 All web/UI `cancel()` call sites updated (Trader, Support, Analyst). `GenerateTestDataCommand` passes a test PNG via `makeTestBankStatementFile()`. No API controllers call `cancel()`.
@@ -190,20 +199,20 @@ Panel UI only. Do not add statement URLs to H2H/V2 order/dispute API resources.
 
 ### `CancelDisputeModal.vue`
 
-**Implemented (Phase 3).** The form is multipart and includes:
+**Implemented (Phase 3 + late update).** The form is multipart and includes:
 
-- `reasonPreset`;
+- `reason_code`;
 - `reason`;
 - `bank_statement`.
 
 Frontend logic:
 
-- if a fixed preset is selected, assign `form.reason` to that preset string;
-- if `Другая причина` is selected, clear `form.reason` and show the text input;
+- if a fixed preset is selected, backend resolves final reason text by `reason_code`;
+- if `Другая причина` is selected, show text input and require custom text;
 - show remaining characters for custom input: `120 - form.reason.length`;
 - prevent custom input beyond 120 characters at UI level;
 - clear validation errors when the user changes the reason or file;
-- send the file as `bank_statement`;
+- for `Неверные реквизиты`, allow submission without `bank_statement` and show helper that statement is optional;
 - close all modals and refresh current route after success, matching the current behavior.
 
 The fixed preset `Возврат платежа` should include a short explanatory phrase in the UI, for example:
@@ -232,9 +241,14 @@ Historical disputes can have:
 
 The UI must render these safely. It should not attempt to require a statement retroactively.
 
-If a historical accepted or canceled dispute is rolled back to pending and later rejected again, the new rejection request must require `bank_statement` and overwrite any previous value.
+If a historical accepted or canceled dispute is rolled back to pending and later rejected again, validation runs again from reason code:
+
+- `wrong_details` can be rejected without statement;
+- other reason codes require statement.
 
 The nullable database column and UI `Нет файла` fallback are the compatibility boundary.
+
+**Implemented (late update):** rollback now clears `reason`, `reason_code`, and `bank_statement`, and deletes any old statement file so re-rejection starts from clean state.
 
 ## Non-Goals
 
@@ -558,6 +572,25 @@ Deliverables:
 - Browser regression across roles (checklist documented in raw Phase 6 note for manual execution).
 
 **Feature status:** Phases 1–6 complete. Optional follow-ups: manual UI pass per role; automated tests only if explicitly requested.
+
+### Phase 7 — Reason Code and Optional Statement for Wrong Details
+
+**Status: Done (2026-05-22).**
+
+Deliverables:
+
+- add enum-backed reason code (`DisputeCancelReasonCode`);
+- add nullable `disputes.reason_code` migration and model cast;
+- update `CancelRequest` for conditional reason/file validation by reason code;
+- update `DisputeService::cancel()` contract/implementation for optional statement on `wrong_details`;
+- clear `reason_code` and old statement on rollback;
+- update `CancelDisputeModal.vue` to send `reason_code` and show optional-statement helper only for `Неверные реквизиты`.
+
+Acceptance criteria:
+
+- `wrong_details` can be canceled without statement;
+- non-`wrong_details` codes require statement;
+- re-rejection after rollback starts clean with no stale statement reuse.
 
 ## Edge Cases
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Contracts\TelegramChatBotServiceContract;
+use App\Enums\DisputeCancelReasonCode;
 use App\Enums\DisputeStatus;
 use App\Exceptions\TelegramChatBotException;
 use App\Models\Dispute;
@@ -113,6 +114,7 @@ class SendTelegramDisputeResolutionNotificationJob implements ShouldQueue
     ): void {
         $caption = "Спор отклонён.\nUUID сделки: {$orderUuid}";
         $documentPath = $this->resolveBankStatementPath($dispute->bank_statement);
+        $reasonCode = $dispute->reason_code;
 
         if ($documentPath !== null) {
             try {
@@ -127,6 +129,19 @@ class SendTelegramDisputeResolutionNotificationJob implements ShouldQueue
             } catch (TelegramChatBotException $exception) {
                 $this->logDocumentSendFailure($dispute, $sourceMessage, $exception);
             }
+        }
+
+        if (
+            $reasonCode?->equals(DisputeCancelReasonCode::WRONG_DETAILS)
+            && empty($dispute->bank_statement)
+        ) {
+            $telegramChatBot->sendChatMessage(
+                $apiChatId,
+                "{$caption}\nПричина: Неверные реквизиты\nВыписка не требуется.",
+                $replyToMessageId,
+            );
+
+            return;
         }
 
         $telegramChatBot->sendChatMessage(

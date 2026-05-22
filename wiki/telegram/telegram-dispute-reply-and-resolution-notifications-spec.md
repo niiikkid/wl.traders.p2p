@@ -76,6 +76,15 @@ UUID сделки: <uuid>
 
 The fallback should be best-effort. If the fallback also fails, log the failure and do not change dispute state.
 
+Special case for reason code `wrong_details` (`Неверные реквизиты`): if no statement is attached by design, send a text-only reply:
+
+```text
+Спор отклонён.
+UUID сделки: <uuid>
+Причина: Неверные реквизиты
+Выписка не требуется.
+```
+
 ## Existing Code Anchors
 
 Current Telegram automation already has most of the identity data needed:
@@ -96,7 +105,7 @@ Current immediate responses are sent by:
 Current dispute resolution points are:
 
 - `DisputeService::accept(int $disputeID)`;
-- `DisputeService::cancel(int $disputeID, string $reason, UploadedFile $bankStatement)`.
+- `DisputeService::cancel(int $disputeID, DisputeCancelReasonCode $reasonCode, ?string $customReason = null, ?UploadedFile $bankStatement = null)`.
 
 The resolution notification should be dispatched after the transaction commits, not before the dispute status and bank statement are durably stored.
 
@@ -197,7 +206,8 @@ The job should:
 6. Build the text using `order.uuid`.
 7. For accepted disputes, send a text reply.
 8. For canceled disputes, try to send a document reply with the bank statement and caption.
-9. If the statement cannot be sent, send the text fallback with `Не удалось загрузить выписку.`
+9. If reason code is `wrong_details` and there is no statement by design, send text with reason and `Выписка не требуется.`
+10. Otherwise, if statement cannot be sent, send the fallback text with `Не удалось загрузить выписку.`
 10. Log failures without throwing if the notification failure should not be retried.
 
 Retry policy depends on operational preference:
@@ -309,6 +319,7 @@ This inherits the existing operational assumption that the Telegram chat is an a
 
 - `TelegramChatBotServiceContract::sendChatDocument(string $chatId, string $documentPath, ?string $caption, ?int $replyToMessageId)` — multipart `sendDocument`, `reply_parameters` JSON-encoded for multipart
 - `SendTelegramDisputeResolutionNotificationJob` — queue `telegram-chat-automation`, `afterCommit()`, accepted text / canceled document with bank-statement path guard and text fallback
+- `SendTelegramDisputeResolutionNotificationJob` late update — `wrong_details` + empty statement sends text-only notification: `Причина: Неверные реквизиты` + `Выписка не требуется.`
 - `DisputeService::accept()` / `cancel()` — dispatch job after successful update; controllers unchanged
 
 ## Implementation Phases
@@ -387,6 +398,7 @@ Manual verification checklist:
 - send the same Telegram message scenario for an order that already has a dispute and confirm duplicate response is a reply;
 - accept a Telegram-originated dispute and confirm `Спор принят` is sent as a reply to the original Telegram message;
 - reject a Telegram-originated dispute with a valid bank statement and confirm a single document message is sent as a reply with caption;
+- reject with `wrong_details` and no statement, confirm text-only reply includes `Причина: Неверные реквизиты` and `Выписка не требуется.`;
 - simulate missing statement file and confirm fallback text includes `Не удалось загрузить выписку.`;
 - accept/reject a manually created dispute and confirm no Telegram message is sent;
 - rollback a dispute and confirm no Telegram message is sent.

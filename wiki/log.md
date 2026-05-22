@@ -45,3 +45,6 @@
 
 ## [2026-05-22] ingest | Telegram Dispute Reply and Resolution Notifications Specification (Feature 2 implemented)
 - Updated: Telegram Chat Dispute Automation Plan
+
+## [2026-05-22] ingest | Dispute Bank Statement Implementation Plan (reason code + optional statement for wrong_details)
+- Updated: Telegram Dispute Reply and Resolution Notifications Specification

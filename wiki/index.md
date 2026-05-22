@@ -7,7 +7,7 @@ Telegram bot and chat automation knowledge for the project.
 | Article | Summary | Updated |
 |---------|---------|---------|
 | [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Telegram chat dispute bot; Phases 1–6 complete; Features 1–2 (reply + resolution notifications) implemented; live Telegram verification pending. | 2026-05-22 |
-| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Reply/resolution spec; Features 1–2 implemented (`sendChatMessage`, `sendChatDocument`, resolution job, `DisputeService` dispatch); Phase 5 manual checks pending. | 2026-05-22 |
+| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Reply/resolution spec; Features 1–2 implemented (`sendChatMessage`, `sendChatDocument`, resolution job, `DisputeService` dispatch); includes `wrong_details` text-only rejection path without statement; Phase 5 manual checks pending. | 2026-05-22 |
 
 ## traffic-categories
 
@@ -31,7 +31,7 @@ Dispute rejection evidence requirements for bank/card statement uploads in class
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Specification and phased plan for dispute rejection with bank/card statement; Phases 1–6 complete (Pint, lints, static checks); manual UI checklist documented. | 2026-05-22 |
+| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Specification and phased plan for dispute rejection with bank/card statement; late update adds enum reason code and optional statement for `wrong_details`; rollback now clears old statement artifacts. | 2026-05-22 |
 
 ## team-leader-insurance-mode
 

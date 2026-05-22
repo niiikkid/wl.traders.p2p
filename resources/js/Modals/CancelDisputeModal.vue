@@ -14,6 +14,7 @@ import {useViewStore} from "@/store/view.js";
 import {computed, ref, watch} from "vue";
 
 const REASON_PRESET_OTHER = 'other';
+const REASON_PRESET_WRONG_DETAILS = 'wrong_details';
 const REASON_MAX_LENGTH = 120;
 
 const reasonPresets = [
@@ -46,12 +47,13 @@ const { disputeCancelModal } = storeToRefs(modalStore);
 const bankStatementInputRef = ref(null);
 
 const form = useForm({
-    reasonPreset: '',
+    reason_code: '',
     reason: '',
     bank_statement: null,
 });
 
-const isCustomReason = computed(() => form.reasonPreset === REASON_PRESET_OTHER);
+const isCustomReason = computed(() => form.reason_code === REASON_PRESET_OTHER);
+const isBankStatementOptional = computed(() => form.reason_code === REASON_PRESET_WRONG_DETAILS);
 
 const remainingReasonChars = computed(() => {
     return Math.max(0, REASON_MAX_LENGTH - (form.reason?.length ?? 0));
@@ -64,15 +66,15 @@ const isSubmitDisabled = computed(() => {
         return true;
     }
 
-    if (!form.reasonPreset) {
+    if (!form.reason_code) {
         return true;
     }
 
-    if (!form.reason?.trim()) {
+    if (isCustomReason.value && !form.reason?.trim()) {
         return true;
     }
 
-    return !form.bank_statement;
+    return !isBankStatementOptional.value && !form.bank_statement;
 });
 
 const resetForm = () => {
@@ -105,13 +107,11 @@ const cancelDisputeRouteName = computed(() => {
 const onReasonPresetChange = () => {
     form.clearErrors('reason');
 
-    if (isCustomReason.value) {
-        form.reason = '';
-        return;
-    }
+    form.clearErrors('bank_statement');
 
-    const preset = reasonPresets.find((item) => item.value === form.reasonPreset);
-    form.reason = preset?.reason ?? '';
+    if (!isCustomReason.value) {
+        form.reason = '';
+    }
 };
 
 watch(
@@ -169,9 +169,9 @@ const cancel = (dispute) => {
 
                     <select
                         id="reason_preset"
-                        v-model="form.reasonPreset"
+                        v-model="form.reason_code"
                         class="select select-bordered w-full mt-1"
-                        :class="{ 'select-error': !!form.errors.reason && !form.reasonPreset }"
+                        :class="{ 'select-error': (!!form.errors.reason || !!form.errors.reason_code) && !form.reason_code }"
                         :disabled="form.processing"
                         @change="onReasonPresetChange"
                     >
@@ -185,7 +185,7 @@ const cancel = (dispute) => {
                         </option>
                     </select>
 
-                    <InputError :message="form.errors.reason" class="mt-2" />
+                    <InputError :message="form.errors.reason_code || form.errors.reason" class="mt-2" />
                 </div>
 
                 <div v-if="isCustomReason">
@@ -243,7 +243,7 @@ const cancel = (dispute) => {
                     <InputError :message="form.errors.bank_statement" class="mt-2" />
                     <InputHelper
                         v-if="!form.errors.bank_statement"
-                        model-value="JPG, PNG или PDF, не более 5 МБ"
+                        :model-value="isBankStatementOptional ? 'Для причины «Неверные реквизиты» выписка не обязательна. JPG, PNG или PDF, не более 5 МБ' : 'JPG, PNG или PDF, не более 5 МБ'"
                     />
                 </div>
             </form>

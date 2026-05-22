@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests\Dispute;
 
+use App\Enums\DisputeCancelReasonCode;
 use App\Rules\ReceiptFileRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CancelRequest extends FormRequest
 {
@@ -23,10 +25,19 @@ class CancelRequest extends FormRequest
      */
     public function rules(): array
     {
+        $reasonCode = $this->reasonCode();
+
         return [
-            'reason' => ['required', 'string', 'max:120'],
+            'reason_code' => ['required', 'string', Rule::in(DisputeCancelReasonCode::values())],
+            'reason' => [
+                'nullable',
+                'string',
+                'max:120',
+                Rule::requiredIf($reasonCode?->equals(DisputeCancelReasonCode::OTHER)),
+            ],
             'bank_statement' => [
-                'required',
+                'nullable',
+                Rule::requiredIf($reasonCode?->isBankStatementRequired() ?? true),
                 'file',
                 'max:5120',
                 new ReceiptFileRule,
@@ -40,8 +51,24 @@ class CancelRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'reason_code' => 'код причины отклонения',
             'reason' => 'причина отклонения',
             'bank_statement' => 'выписка по карте',
         ];
+    }
+
+    public function reasonCode(): ?DisputeCancelReasonCode
+    {
+        $value = $this->input('reason_code');
+        if (! is_string($value)) {
+            return null;
+        }
+
+        return DisputeCancelReasonCode::tryFrom($value);
+    }
+
+    public function validatedReasonCode(): DisputeCancelReasonCode
+    {
+        return DisputeCancelReasonCode::from($this->validated('reason_code'));
     }
 }

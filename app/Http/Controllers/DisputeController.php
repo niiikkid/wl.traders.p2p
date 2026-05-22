@@ -35,6 +35,7 @@ class DisputeController extends Controller
 
         services()->dispute()->cancel(
             $dispute->id,
+            $request->validatedReasonCode(),
             $request->validated('reason'),
             $request->file('bank_statement'),
         );

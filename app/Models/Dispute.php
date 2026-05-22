@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DisputeCancelReasonCode;
 use App\Enums\DisputeStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $order_id
  * @property int $trader_id
  * @property DisputeStatus $status
- * @property string $reason
+ * @property string|null $reason
+ * @property DisputeCancelReasonCode|null $reason_code
  * @property Order $order
  * @property User $trader
  * @property Carbon $created_at
@@ -32,11 +34,13 @@ class Dispute extends Model
         'trader_id',
         'status',
         'reason',
+        'reason_code',
         'bank_statement',
     ];
 
     protected $casts = [
         'status' => DisputeStatus::class,
+        'reason_code' => DisputeCancelReasonCode::class,
     ];
 
     /**

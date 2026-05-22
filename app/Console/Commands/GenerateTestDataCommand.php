@@ -7,6 +7,7 @@ use App\DTO\PaymentDetail\PaymentDetailCreateDTO;
 use App\DTO\User\UserCreateDTO;
 use App\Enums\BalanceType;
 use App\Enums\DetailType;
+use App\Enums\DisputeCancelReasonCode;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Exceptions\DisputeException;
@@ -838,6 +839,7 @@ class GenerateTestDataCommand extends Command
                                             try {
                                                 services()->dispute()->cancel(
                                                     $dispute->id,
+                                                    DisputeCancelReasonCode::OTHER,
                                                     $reason,
                                                     $this->makeTestBankStatementFile(),
                                                 );

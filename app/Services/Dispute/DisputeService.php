@@ -3,6 +3,7 @@
 namespace App\Services\Dispute;
 
 use App\Contracts\DisputeServiceContract;
+use App\Enums\DisputeCancelReasonCode;
 use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
@@ -85,9 +86,13 @@ class DisputeService implements DisputeServiceContract
         });
     }
 
-    public function cancel(int $disputeID, string $reason, UploadedFile $bankStatement): bool
-    {
-        return Transaction::run(function () use ($disputeID, $reason, $bankStatement) {
+    public function cancel(
+        int $disputeID,
+        DisputeCancelReasonCode $reasonCode,
+        ?string $customReason = null,
+        ?UploadedFile $bankStatement = null,
+    ): bool {
+        return Transaction::run(function () use ($disputeID, $reasonCode, $customReason, $bankStatement) {
             $dispute = Dispute::where('id', $disputeID)->lockForUpdate()->first();
 
             if ($dispute->status->notEquals(DisputeStatus::PENDING)) {
@@ -96,11 +101,21 @@ class DisputeService implements DisputeServiceContract
 
             services()->order()->finishOrderAsFailed($dispute->order_id, OrderSubStatus::CANCELED_BY_DISPUTE);
 
-            $bankStatementFilename = $this->replaceBankStatement($dispute->bank_statement, $bankStatement);
+            if ($reasonCode->isBankStatementRequired() && $bankStatement === null) {
+                throw new DisputeException('Bank statement is required for selected reason.');
+            }
+
+            $reason = $reasonCode->resolveReasonText($customReason);
+            $bankStatementFilename = $this->resolveBankStatementFilename(
+                $dispute->bank_statement,
+                $reasonCode,
+                $bankStatement,
+            );
 
             $updated = $dispute->update([
                 'status' => DisputeStatus::CANCELED,
                 'reason' => $reason,
+                'reason_code' => $reasonCode,
                 'bank_statement' => $bankStatementFilename,
             ]);
 
@@ -166,11 +181,33 @@ class DisputeService implements DisputeServiceContract
 
             services()->order()->reopenFinishedOrder($dispute->order_id, OrderSubStatus::WAITING_FOR_DISPUTE_TO_BE_RESOLVED);
 
+            $this->deleteBankStatement($dispute->bank_statement);
+
             return $dispute->update([
                 'status' => DisputeStatus::PENDING,
                 'reason' => null,
+                'reason_code' => null,
+                'bank_statement' => null,
             ]);
         });
+    }
+
+    private function resolveBankStatementFilename(
+        ?string $existingFilename,
+        DisputeCancelReasonCode $reasonCode,
+        ?UploadedFile $bankStatement,
+    ): ?string {
+        if ($bankStatement !== null) {
+            return $this->replaceBankStatement($existingFilename, $bankStatement);
+        }
+
+        if ($reasonCode->isBankStatementRequired()) {
+            return $existingFilename;
+        }
+
+        $this->deleteBankStatement($existingFilename);
+
+        return null;
     }
 
     public function storeBankStatement(UploadedFile $bankStatement): string
