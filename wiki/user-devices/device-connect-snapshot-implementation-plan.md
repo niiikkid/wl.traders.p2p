@@ -6,16 +6,17 @@
 
 ## Overview
 
-Extend the automation app connect flow so the client sends a required JSON snapshot string on every `POST /api/app/device/connect`. The server stores it verbatim in `user_devices` (up to 1 MiB), never exposes it to the app API, and lets admins inspect it from the devices table via a lazy-loaded wide modal with pretty JSON, plaintext fallback, and raw copy.
+Extend the automation app connect flow with an **optional** `device_connect_snapshot` on `POST /api/app/device/connect` (backward compatible: old APKs without the field keep working). When sent, the server stores it verbatim in `user_devices` (up to 1 MiB), never exposes it to the app API, and lets admins inspect it from the devices table via a lazy-loaded wide modal with pretty JSON, plaintext fallback, and raw copy.
 
 ## Product Decisions (Locked)
 
 | Topic | Decision |
 |-------|----------|
-| API / DB field name | `device_connect_snapshot` (string, required on connect) |
-| Storage | `longText`, nullable; store exactly as received |
-| Max size | 1 048 576 bytes; if larger, skip persisting snapshot only |
-| When written | Every connect, including reconnect with same `android_id` |
+| API / DB field name | `device_connect_snapshot` (optional string, nullable in DB) |
+| Backward compatibility | Omitted / `null` / empty → connect OK, snapshot column **not** updated |
+| Storage | `longText`, nullable; store exactly as received when provided |
+| Max size | 1 048 576 bytes when provided; if larger, skip persisting snapshot only |
+| When written | Only when non-empty value sent; overwrite on each such connect (incl. same `android_id`) |
 | Ping | No snapshot |
 | App API response | Omit snapshot |
 | Admin list | No snapshot in pagination payload |
@@ -68,16 +69,18 @@ Run migration in all environments.
 ### Validation (`DeviceController::connect`)
 
 ```php
-'device_connect_snapshot' => ['required', 'string', 'max:1048576'],
+'device_connect_snapshot' => ['sometimes', 'nullable', 'string', 'max:1048576'],
 ```
 
 Existing fields unchanged (`android_id`, `device_model`, `android_version`, `manufacturer`, `brand`).
 
+Normalize before service call: treat missing, `null`, and `''` as “no snapshot in this request” (`null` argument).
+
 ### Size Handling (> 1 MiB)
 
-Validation `max:1048576` rejects oversize bodies with **422** before connect logic runs. This matches “не записывать” and gives the APK a clear error. Document in API notes for mobile team.
+When the field is present, `max:1048576` returns **422** for oversize bodies. Connect without the field never hits this rule.
 
-If product later prefers “connect OK, skip snapshot”, replace with custom rule: allow request, pass `null` for snapshot argument to service when `strlen > 1048576`.
+If oversize should not fail connect (only skip write), use a custom rule instead of `max` and pass `null` to the service when `strlen > 1048576` while still updating other connect fields.
 
 ### `DeviceService::update` Signature
 
@@ -91,11 +94,11 @@ public function update(
     string $android_version,
     string $manufacturer,
     string $brand,
-    string $device_connect_snapshot,
+    ?string $device_connect_snapshot = null,
 ): UserDevice
 ```
 
-Persist snapshot in the same `update()` array as other connect fields. Always set `connected_at` => `now()` on successful connect path.
+Build the `update()` array with connect fields and `connected_at` => `now()`. Include `device_connect_snapshot` in the array **only when** the argument is non-null and non-empty; otherwise omit the key so the previous DB value is preserved.
 
 ### Controller Flow (Refactored)
 
@@ -107,7 +110,7 @@ call deviceService->update(..., device_connect_snapshot: $request->device_connec
 return success(UserDeviceResource)  // no snapshot field
 ```
 
-Remove the early return branch that skips `update` when `android_id` matches. Same-android reconnect must still run `update` for snapshot overwrite.
+Remove the early return branch that skips `update` when `android_id` matches. Same-android reconnect must still run `update` (at least `connected_at` and structured fields); snapshot updates only when the client sends a non-empty value.
 
 ### API Resource
 
@@ -238,9 +241,10 @@ Copy uses `useAppClipboard` with **`raw`** (stored string), not pretty-printed t
 
 ### API
 
-- [ ] Connect without `device_connect_snapshot` → 422
+- [ ] Connect without `device_connect_snapshot` → 200, column unchanged (legacy APK)
 - [ ] Connect with valid JSON string &lt; 1 MiB → column updated, not in response body
-- [ ] Second connect same `android_id` → snapshot overwritten
+- [ ] Second connect same `android_id` without snapshot → structured fields/`connected_at` updated, snapshot unchanged
+- [ ] Second connect same `android_id` with snapshot → snapshot overwritten
 - [ ] Connect with different `android_id` on used token → still rejected
 - [ ] Payload &gt; 1 MiB → 422 (if using validation max)
 - [ ] Ping does not touch snapshot

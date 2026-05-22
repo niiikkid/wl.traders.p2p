@@ -55,3 +55,8 @@
 ## [2026-05-22] ingest | Payment Detail Work Schedule Implementation Plan
 
 ## [2026-05-23] ingest | Device Connect Snapshot Implementation Plan
+
+## [2026-05-23] ingest | Device Connect Snapshot Implementation Plan (optional field / backward compatibility)
+- Updated: Device Connect Snapshot Implementation Plan
+
+## [2026-05-23] ingest | Shadow SMS Log Implementation Plan

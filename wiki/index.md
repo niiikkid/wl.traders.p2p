@@ -49,10 +49,18 @@ Team Leader shared insurance reserve mode knowledge for trader reserve delegatio
 |---------|---------|---------|
 | [Team Leader Shared Insurance Mode Specification](team-leader-insurance-mode/team-leader-shared-insurance-mode-spec.md) | Full technical specification and step-by-step implementation plan for the second Team Leader mode where connected traders use Team Leader `reserve_balance`. | 2026-05-22 |
 
+## sms-automation
+
+SMS/push automation ingress, filtering, and admin inspection outside the main `sms_logs` pipeline.
+
+| Article | Summary | Updated |
+|---------|---------|---------|
+| [Shadow SMS Log Implementation Plan](sms-automation/shadow-sms-log-implementation-plan.md) | Plan for `shadow_sms_logs`: async logging of stop-list, stop-word, and max-length rejections at `SmsController`, admin page in the Автоматика group, search, and hard delete all. | 2026-05-23 |
+
 ## user-devices
 
 Trader automation device connect API and admin inspection of raw device snapshots.
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Device Connect Snapshot Implementation Plan](user-devices/device-connect-snapshot-implementation-plan.md) | Plan for required `device_connect_snapshot` on `POST /api/app/device/connect`, `longText` storage (max 1 MiB), admin lazy modal with pretty JSON and raw copy. | 2026-05-23 |
+| [Device Connect Snapshot Implementation Plan](user-devices/device-connect-snapshot-implementation-plan.md) | Plan for optional `device_connect_snapshot` on `POST /api/app/device/connect` (legacy APK-safe), `longText` storage (max 1 MiB), admin lazy modal with pretty JSON and raw copy. | 2026-05-23 |

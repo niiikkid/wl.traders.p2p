@@ -10,10 +10,11 @@ The mobile automation app calls `POST /api/app/device/connect` with structured d
 
 ## API (`POST /api/app/device/connect`)
 
-- Add a new **required** body field with a professional name chosen in implementation (plan: `device_connect_snapshot`).
-- Value is a **string** containing JSON exactly as produced by the client (store verbatim in the database; no server-side reshaping).
+- Add a new **optional** body field (plan name: `device_connect_snapshot`) so existing APK builds without this field keep working.
+- May be omitted, `null`, or empty — connect must still succeed; other connect fields update as today.
+- When the field is **present and non-empty**, value is a **string** containing JSON exactly as produced by the client (store verbatim; no server-side reshaping).
 - Snapshot is sent **only on connect**, not on `device/ping`.
-- On **every** successful connect (including reconnect with the same `android_id`), **overwrite** the stored snapshot with the new payload.
+- On every successful connect where a non-empty snapshot is sent (including reconnect with the same `android_id`), **overwrite** the stored snapshot. If the field is omitted/null/empty, **leave the existing DB value unchanged**.
 - If payload size is **greater than 1 MiB** (1 048 576 bytes), **do not persist** the snapshot (other connect fields may still update per existing rules).
 - Do **not** return the snapshot in the app API response (`UserDeviceResource` for `/api/app/*`).
 
