@@ -17,6 +17,14 @@ Merchant traffic category knowledge for admin-managed category setup, trader opt
 |---------|---------|---------|
 | [Merchant Traffic Categories Architecture](traffic-categories/merchant-traffic-categories-architecture.md) | Architecture and implementation plan for optional merchant traffic categories with admin setup, trader toggles, and payment-detail filtering. | 2026-05-22 |
 
+## payment-detail-schedules
+
+Payment detail work schedule knowledge for trader-owned reusable server-time schedules and schedule-aware availability filtering.
+
+| Article | Summary | Updated |
+|---------|---------|---------|
+| [Payment Detail Work Schedule Implementation Plan](payment-detail-schedules/payment-detail-work-schedule-implementation-plan.md) | Detailed technical specification and phased implementation plan for reusable trader-owned payment detail work schedules, server-time interval handling, schedule-aware traffic filtering, UI management, and role read access. | 2026-05-22 |
+
 ## trader-balance-transfers
 
 Trader-to-trader working balance transfer knowledge for Team Leader scoped wallet movement.

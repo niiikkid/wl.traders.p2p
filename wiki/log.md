@@ -48,3 +48,5 @@
 
 ## [2026-05-22] ingest | Dispute Bank Statement Implementation Plan (reason code + optional statement for wrong_details)
 - Updated: Telegram Dispute Reply and Resolution Notifications Specification
+
+## [2026-05-22] ingest | Payment Detail Work Schedule Implementation Plan
