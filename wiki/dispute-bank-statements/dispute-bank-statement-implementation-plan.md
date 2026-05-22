@@ -1,7 +1,7 @@
 # Dispute Bank Statement Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22; Phase 2 implementation, 2026-05-22
-> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md)
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22; Phase 2 implementation, 2026-05-22; Phase 3 implementation, 2026-05-22
+> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md)
 > Updated: 2026-05-22
 
 ## Overview
@@ -92,12 +92,14 @@ The implementation stays close to the current dispute flow:
 - `app/Http/Controllers/DisputeController.php::cancel()`, `Support/DisputeController::cancel()`, `Analyst/DisputeController::cancel()` — pass validated reason and uploaded file.
 - `app/Console/Commands/GenerateTestDataCommand.php` — `makeTestBankStatementFile()` for test-data dispute cancellations.
 
-**Pending (Phases 3–4):**
+**Implemented (Phase 3):**
 
-- `app/Http/Controllers/Admin/DisputeController.php` — index/store only; admin UI keeps using the shared rejection route (needs Phase 3 modal).
-- `app/Http/Resources/DisputeResource.php` — needs `bank_statement_url` for UI (Phase 4).
-- `resources/js/Modals/CancelDisputeModal.vue` — rejection form with presets + file (Phase 3).
-- `resources/js/Modals/DisputeModal.vue` — `Выписка` row for canceled disputes (Phase 4).
+- `resources/js/Modals/CancelDisputeModal.vue` — reason preset dropdown, custom reason (max 120 + counter), `bank_statement` file upload, `form.patch` with `forceFormData: true`; used on Dispute/Order index pages for Trader, Support, Analyst (admin uses shared modal via Order/Dispute UI).
+
+**Pending (Phase 4):**
+
+- `app/Http/Resources/DisputeResource.php` — needs `bank_statement_url` for UI.
+- `resources/js/Modals/DisputeModal.vue` — `Выписка` row for canceled disputes.
 
 ## Data Model
 
@@ -152,7 +154,7 @@ The UI should not expose a statement URL to users outside this access model unti
 - `bank_statement`: `required`, `file`, `max:5120`, `ReceiptFileRule`;
 - attributes: `причина отклонения`, `выписка по карте`.
 
-**Pending (Phase 3):** the Inertia rejection modal must send multipart data with `bank_statement`. If multipart `PATCH` is unreliable, use `POST` with `_method: 'patch'` while preserving route semantics.
+**Implemented (Phase 3):** `CancelDisputeModal.vue` sends `reason` and `bank_statement` via `form.patch(..., { forceFormData: true })` to existing `disputes.cancel` / `support.disputes.cancel` / `analyst.disputes.cancel` routes. Client-only `reasonPreset` is not submitted to the backend.
 
 ### Service Contract
 
@@ -187,7 +189,7 @@ This is acceptable because `DisputeResource` is used for panel UI data. Do not a
 
 ### `CancelDisputeModal.vue`
 
-The form should become multipart and include:
+**Implemented (Phase 3).** The form is multipart and includes:
 
 - `reasonPreset`;
 - `reason`;
@@ -297,6 +299,8 @@ Acceptance criteria:
 
 ### Phase 3 — Inertia Rejection Modal
 
+**Status: Done (2026-05-22).**
+
 Deliverables:
 
 - replace free-text-only reason input with dropdown presets;
@@ -368,7 +372,7 @@ Suggested focused checks:
 |-------|--------|-------|
 | 1 — Backend data and storage | **Done** (2026-05-22) | Migration, model, storage helpers, file route, gate |
 | 2 — Validation and service contract | **Done** (2026-05-22) | `CancelRequest`, `cancel()` + `replaceBankStatement()`, Trader/Support/Analyst controllers |
-| 3 — Inertia rejection modal | Pending | `CancelDisputeModal.vue` presets + multipart upload |
+| 3 — Inertia rejection modal | **Done** (2026-05-22) | `CancelDisputeModal.vue` presets, file upload, `forceFormData` patch |
 | 4 — Dispute details UI | Pending | `DisputeResource`, `DisputeModal.vue` выписка row |
 | 5 — Role regression pass | Pending | Trader, Support, Analyst, Admin reject flows |
 | 6 — Formatting and verification | Pending | Pint, manual checks; tests only if requested |
@@ -436,7 +440,27 @@ Suggested focused checks:
 - `CancelDisputeModal.vue`, `DisputeModal.vue`, `DisputeResource`
 - API routes and H2H dispute endpoints
 
-**Current gap:** web UI rejection from the modal still fails validation until Phase 3 adds `bank_statement` to the Inertia form.
+### Phase 3 artifacts (implemented)
+
+**Modal** (`resources/js/Modals/CancelDisputeModal.vue`):
+
+- `useForm({ reasonPreset, reason, bank_statement })`
+- Presets: `wrong_details`, `fake_receipt`, `payment_return`, `other` (`Другая причина`)
+- Custom reason: TextInput + «Осталось символов: N»; max 120 enforced in UI (`watch` on `form.reason`)
+- File: hidden input, `accept` JPG/JPEG/PNG/PDF, «Выбрать файл», selected filename display
+- Submit: `form.patch` + `forceFormData: true`; routes via `cancelDisputeRouteName()` (Trader / Support / Analyst)
+- `isSubmitDisabled` until preset, reason, and file present; reset on close and success
+
+**Consumed on pages (unchanged wiring):**
+
+- `Dispute/Index`, `Order/Index`, `Support/Dispute/Index`, `Support/Order/Index`, `Analyst/Dispute/Index`, `Analyst/Order/Index`
+
+**Not changed in Phase 3:**
+
+- `DisputeResource`, `DisputeModal.vue`
+- API routes and H2H dispute endpoints
+
+**Current gap:** viewing a canceled dispute’s statement in the details modal requires Phase 4 (`bank_statement_url` in `DisputeResource` + «Выписка» row in `DisputeModal.vue`). Rejection from UI is fully wired.
 
 ## Edge Cases
 
@@ -449,6 +473,6 @@ Suggested focused checks:
 
 ## Open Implementation Notes
 
-- Verify whether Inertia multipart `patch` works reliably in this project before finalizing the modal submit method.
+- Phase 3 uses `form.patch` with `forceFormData: true` for file upload; no `_method` POST workaround was needed.
 - Consider extracting shared file storage logic only if dispute receipts and bank statements start duplicating enough behavior; do not introduce a large abstraction for this single feature.
 - If `DisputeResource` is later reused by public APIs, separate panel-only statement URL exposure from API resources to preserve the "API untouched" requirement.
