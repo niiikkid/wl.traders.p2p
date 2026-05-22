@@ -61,5 +61,7 @@
 
 ## [2026-05-23] ingest | Shadow SMS Log Implementation Plan
 
+## [2026-05-23] ingest | Shadow SMS Log Implementation Plan (global enable toggle on admin page)
+
 ## [2026-05-23] ingest | Device Connect Snapshot Implementation Plan (shipped status)
 - Updated: Device Connect Snapshot Implementation Plan

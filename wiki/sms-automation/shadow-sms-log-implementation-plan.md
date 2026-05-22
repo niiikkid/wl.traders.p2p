@@ -1,12 +1,14 @@
 # Shadow SMS Log (Теневой лог) — Implementation Plan
 
 > Sources: User conversation, 2026-05-23; repository exploration, 2026-05-23
-> Raw: [Shadow SMS Log Requirements](../../raw/sms-automation/2026-05-23-shadow-sms-log-requirements.md)
+> Raw: [Shadow SMS Log Requirements](../../raw/sms-automation/2026-05-23-shadow-sms-log-requirements.md); [Shadow SMS Log Enable Toggle](../../raw/sms-automation/2026-05-23-shadow-sms-log-enabled-toggle-requirements.md)
 > Updated: 2026-05-23
 
 ## Overview
 
 Теневой лог сохраняет SMS/push, которые **отсекаются на входе** API приложения и **никогда не попадают** в `sms_logs`. Это отдельная сущность `ShadowSmsLog` с явной причиной фильтрации и деталями (какое стоп-слово, какой нормализованный отправитель, длина сообщения). Запись асинхронная (очередь `sms`), сбой записи не влияет на ответ приложению и на основной pipeline. Админ видит отдельную страницу в группе «Автоматика», может искать и полностью очистить таблицу вручную.
+
+**Глобальный переключатель** на странице «Теневой лог» включает или выключает запись: при выключении фильтрация на API не меняется, но job в `shadow_sms_logs` не ставится. Настройка хранится в `settings` через `SettingsService`.
 
 ## Product Decisions (Locked)
 
@@ -25,22 +27,29 @@
 | Поиск устройство | `user_devices.name` LIKE |
 | Поиск sender/message | `shadow_sms_logs.sender` / `message` LIKE |
 | Модель / таблица | `ShadowSmsLog` / `shadow_sms_logs` |
+| Запись вкл/выкл | Глобальная настройка `shadow_sms_log_enabled` в `settings` |
+| UI переключатель | Только страница «Теневой лог» (DaisyUI `toggle`) |
+| Default при install | Включено (`1`) |
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     APP[POST /api/app/sms] --> CTRL[SmsController::store]
-    CTRL -->|stop list / stop word / len>200| JOB[RecordShadowSmsLogJob]
+    CTRL -->|filtered| GATE{shadow_sms_log_enabled?}
+    GATE -->|yes| JOB[RecordShadowSmsLogJob]
+    GATE -->|no| RET[success без shadow]
     CTRL -->|passed filters| MAIN[HandleSmsJob]
     JOB --> Q[sms queue]
     Q --> SVC[ShadowSmsLogService]
     SVC --> DB[(shadow_sms_logs)]
     MAIN --> Q2[sms queue]
     Q2 --> SMS[SmsService → sms_logs]
+    ADMIN[Admin ShadowSmsLog page] -->|PATCH toggle| SET[(settings)]
+    SET --> GATE
 ```
 
-Основной поток **не читает** `shadow_sms_logs`. Парсер, OpenAI, уведомления и привязка к ордерам не меняются.
+Основной поток **не читает** `shadow_sms_logs`. Парсер, OpenAI, уведомления и привязка к ордерам не меняются. Стоп-лист и стоп-слова **всегда** отсекают сообщение до `HandleSmsJob` — переключатель влияет **только** на запись в теневую таблицу.
 
 ## Existing Code Anchors
 
@@ -61,6 +70,8 @@ flowchart LR
 | Filters pattern | `Controller::getTableFilters()`, `TableFiltersValue`, `FiltersPanel` |
 | Confirm delete | `ConfirmModal` + `useModalStore` (как стоп-лист на `SmsLog/Index.vue`) |
 | Resource example | `app/Http/Resources/SmsLogResource.php` |
+| Global settings | `app/Services/Settings/SettingsService.php`, `app:install-settings`, паттерн `traffic_paused` |
+| Settings contract | `app/Contracts/SettingsServiceContract.php` |
 
 ### Current Filter Order in `SmsController` (must preserve)
 
@@ -127,6 +138,58 @@ enum ShadowSmsLogFilterReason: string
 
 Так `parse()` / `parseAmountFromMessage()` ведут себя как раньше; контроллер вызывает `findMatchedStopWord` только для теневого лога.
 
+## Phase 2b — Global Enable Setting
+
+### Setting key
+
+| Key | Type | Default (`createAll`) | Cache |
+|-----|------|----------------------|-------|
+| `shadow_sms_log_enabled` | `0` / `1` | `1` (включено) | `settings_shadow_sms_log_enabled`, TTL ~1 min (как `traffic_paused`) |
+
+### `SettingsService`
+
+Добавить по образцу `isTrafficPaused()` / `updateTrafficPaused()`:
+
+```php
+const SHADOW_SMS_LOG_ENABLED = 'shadow_sms_log_enabled';
+const SHADOW_SMS_LOG_ENABLED_CACHE_KEY = 'settings_shadow_sms_log_enabled';
+
+public function isShadowSmsLogEnabled(): bool
+public function updateShadowSmsLogEnabled(bool $enabled): void
+```
+
+- `createAll()`: `Setting::firstOrCreate(['key' => ..., 'value' => 1])`.
+- После деплоя: `php artisan app:install-settings`.
+- Расширить `SettingsServiceContract`.
+
+### Hot path (`SmsController`)
+
+Перед `RecordShadowSmsLogJob::dispatch` в каждой из трёх веток:
+
+```php
+if (! services()->settings()->isShadowSmsLogEnabled()) {
+    return response()->success();
+}
+// dispatch shadow job...
+```
+
+Фильтрация и `return success()` без job — поведение API для приложения **идентично** включённому режиму.
+
+### Admin API для toggle
+
+```php
+Route::patch('/shadow-sms-logs/enabled', [ShadowSmsLogController::class, 'updateEnabled'])
+    ->name('shadow-sms-logs.enabled.update');
+```
+
+**`updateEnabled(Request $request)`:**
+
+- Validate: `enabled` => `required`, `boolean`.
+- `services()->settings()->updateShadowSmsLogEnabled($validated['enabled'])`.
+- `return back()` (Inertia).
+
+**`index`:** передать prop `shadowSmsLogEnabled: bool` из `isShadowSmsLogEnabled()`.
+
 ## Phase 3 — Write Path (Queue)
 
 ### DTO `ShadowSmsLogData` (или массив в job)
@@ -153,12 +216,14 @@ public function create(ShadowSmsLogData $data): ShadowSmsLog
 
 ### `SmsController` changes
 
-Перед каждым `return response()->success()` в трёх ветках:
+Перед каждым `return response()->success()` в трёх ветках (только если `isShadowSmsLogEnabled()`):
 
 ```php
 RecordShadowSmsLogJob::dispatch(...);
 return response()->success();
 ```
+
+Если настройка выключена — сразу `return response()->success()` без dispatch.
 
 **Stop list:** `matched_sender` = normalized `$sender`.
 
@@ -176,6 +241,7 @@ return response()->success();
 
 ```php
 Route::get('/shadow-sms-logs', [ShadowSmsLogController::class, 'index'])->name('shadow-sms-logs.index');
+Route::patch('/shadow-sms-logs/enabled', [ShadowSmsLogController::class, 'updateEnabled'])->name('shadow-sms-logs.enabled.update');
 Route::delete('/shadow-sms-logs', [ShadowSmsLogController::class, 'destroyAll'])->name('shadow-sms-logs.destroy-all');
 ```
 
@@ -256,6 +322,12 @@ ShadowSmsLog::query()
 
 - `MainTableSection`, title «Теневой лог».
 - `AutomationNavButtons current="shadow"`.
+- **Переключатель записи** (в `#header` или рядом с `#button`, до фильтров):
+  - DaisyUI `toggle toggle-primary` + подпись «Запись в теневой лог».
+  - `const enabled = ref(page.props.shadowSmsLogEnabled)`.
+  - `@change` → `useForm({ enabled: boolean }).patch(route('admin.shadow-sms-logs.enabled.update'), { preserveScroll: true, onFinish: sync from props })`.
+  - `:disabled="form.processing"` на toggle.
+  - Опционально короткий hint: «При выключении отфильтрованные SMS не сохраняются в теневой лог».
 - `FiltersPanel` name `shadow-sms-logs`:
   - `InputFilter` login (placeholder «Логин»)
   - `InputFilter` deviceName («Устройство»)
@@ -292,17 +364,20 @@ route().current('admin.sms-logs.*')
 
 ### API / write path
 
-- [ ] Sender в стоп-листе → `success`, нет записи в `sms_logs`, есть в `shadow_sms_logs` с `matched_sender`.
+- [ ] Sender в стоп-листе → `success`, нет записи в `sms_logs`, есть в `shadow_sms_logs` с `matched_sender` (**при включённой настройке**).
 - [ ] Сообщение со стоп-словом → то же, `matched_stop_word` заполнено.
 - [ ] Сообщение > 200 символов → `message_length` > 200, reason `max_message_length`.
 - [ ] Валидное сообщение → только `sms_logs`, shadow пустой для этого payload.
+- [ ] **Настройка выключена** → те же три кейса фильтрации, `success`, **нет** новых строк в `shadow_sms_logs`, `sms_logs` по-прежнему пуст для отфильтрованных.
+- [ ] **Настройка включена снова** → новые отфильтрованные снова пишутся; старые строки не удаляются.
 - [ ] Остановка worker `sms` → API всё равно `success`; shadow появится после поднятия worker (ожидаемо для queue).
 
 ### Admin UI
 
 - [ ] Пагинация и фильтры сохраняются через session (GET reload).
 - [ ] Поиск по логину / устройству / sender / message.
-- [ ] «Удалить всё» очищает только `shadow_sms_logs`.
+- [ ] Toggle «Запись в теневой лог» сохраняет состояние в `settings`, переживает reload.
+- [ ] «Удалить всё» очищает только `shadow_sms_logs` (настройка enabled не сбрасывается).
 - [ ] Переходы между 4 страницами автоматики.
 - [ ] Трейдер не видит роут (403/404 по middleware admin).
 
@@ -325,6 +400,8 @@ route().current('admin.sms-logs.*')
 | Create | `app/Http/Controllers/Admin/ShadowSmsLogController.php` |
 | Create | `app/Http/Resources/ShadowSmsLogResource.php` |
 | Modify | `app/Http/Controllers/API/APP/SmsController.php` |
+| Modify | `app/Services/Settings/SettingsService.php` |
+| Modify | `app/Contracts/SettingsServiceContract.php` |
 | Modify | `app/Services/Sms/Parser.php` |
 | Modify | `app/ObjectValues/TableFilters/TableFiltersValue.php` |
 | Modify | `app/Http/Controllers/Controller.php` (`getTableFilters`) |
@@ -344,6 +421,7 @@ route().current('admin.sms-logs.*')
 | LIKE-поиск по `message` на больших объёмах | Приемлемо для v1; позже FULLTEXT |
 | Двойная проверка stop word (controller + parse) | Только controller пишет shadow; parse не трогаем |
 | Очередь `sms` перегружена | Job лёгкий INSERT; тот же supervisor что и парсинг |
+| Чтение settings на каждый отфильтрованный SMS | Кеш 1 мин на `isShadowSmsLogEnabled()` |
 
 ## See Also
 
