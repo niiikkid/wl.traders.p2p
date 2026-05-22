@@ -198,13 +198,24 @@ class TelegramChatBotService implements TelegramChatBotServiceContract
         return $tempPath;
     }
 
-    public function sendChatMessage(string $chatId, string $text): void
-    {
+    public function sendChatMessage(
+        string $chatId,
+        string $text,
+        ?int $replyToMessageId = null,
+    ): void {
         $botToken = $this->requireBotToken();
-        $response = $this->client($botToken)->post('sendMessage', [
+        $payload = [
             'chat_id' => $chatId,
             'text' => $text,
-        ]);
+        ];
+
+        $replyParameters = $this->buildReplyParameters($replyToMessageId);
+
+        if ($replyParameters !== null) {
+            $payload['reply_parameters'] = $replyParameters;
+        }
+
+        $response = $this->client($botToken)->post('sendMessage', $payload);
         $body = $response->json();
 
         if (! $response->successful() || ! ($body['ok'] ?? false)) {
@@ -214,6 +225,21 @@ class TelegramChatBotService implements TelegramChatBotServiceContract
 
             throw new TelegramChatBotException($message);
         }
+    }
+
+    /**
+     * @return array{message_id: int, allow_sending_without_reply: true}|null
+     */
+    protected function buildReplyParameters(?int $replyToMessageId): ?array
+    {
+        if ($replyToMessageId === null) {
+            return null;
+        }
+
+        return [
+            'message_id' => $replyToMessageId,
+            'allow_sending_without_reply' => true,
+        ];
     }
 
     protected function requireBotToken(): string

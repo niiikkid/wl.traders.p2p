@@ -39,5 +39,9 @@ interface TelegramChatBotServiceContract
     /**
      * @throws TelegramChatBotException
      */
-    public function sendChatMessage(string $chatId, string $text): void;
+    public function sendChatMessage(
+        string $chatId,
+        string $text,
+        ?int $replyToMessageId = null,
+    ): void;
 }

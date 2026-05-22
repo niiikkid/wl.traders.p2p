@@ -1,12 +1,14 @@
 # Telegram Dispute Reply and Resolution Notifications Specification
 
-> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22
-> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md)
+> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22; immediate reply implementation, 2026-05-22
+> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md)
 > Updated: 2026-05-22
 
 ## Overview
 
 This specification extends the existing Telegram chat dispute automation in two areas: immediate bot responses must be sent as replies to the source Telegram message, and disputes opened from Telegram must send asynchronous resolution notifications back to that same source message after the dispute is accepted or rejected. Rejected-dispute notifications should attach the bank/card statement in the same Telegram reply message when possible, with a text-only fallback when the file cannot be sent.
+
+**Feature 1 (immediate opening/duplicate replies) is implemented** in the codebase as of 2026-05-22. **Feature 2 (accept/reject resolution notifications)** remains planned (Phases 3–4 below).
 
 ## Product Scope
 
@@ -285,38 +287,56 @@ Security boundary:
 
 This inherits the existing operational assumption that the Telegram chat is an allowed merchant/support dispute channel once activated in the admin UI.
 
+## Implementation Status
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| 1 | Bot service reply support (`sendChatMessage` + `reply_parameters`) | **Done** (2026-05-22) |
+| 1 | `sendChatDocument()` for resolution notifications | **Pending** |
+| 2 | Immediate success and duplicate replies | **Done** (2026-05-22) |
+| 3 | Resolution notification job | Pending |
+| 4 | Dispatch from `DisputeService` | Pending |
+| 5 | Manual / programmatic verification | Partial (Feature 1 manual checklist pending) |
+
+### Implemented artifacts (Feature 1)
+
+- `TelegramChatBotServiceContract::sendChatMessage(string $chatId, string $text, ?int $replyToMessageId = null)`
+- `TelegramChatBotService::buildReplyParameters()` — `message_id` + `allow_sending_without_reply: true`
+- `StandardTelegramDisputeParser::resolveReplyToMessageId()` — digit-only string → int; otherwise no reply target
+- Success and both duplicate paths pass `$message->telegram_message_id` into reply helpers
+
 ## Implementation Phases
 
-### Phase 1 — Bot Service Reply Support
+### Phase 1 — Bot Service Reply Support — Partially done
 
 Deliverables:
 
-- extend `TelegramChatBotServiceContract::sendChatMessage()` with optional reply message id;
-- implement `reply_parameters` in `TelegramChatBotService::sendChatMessage()`;
-- add `sendChatDocument()` to contract and service;
-- keep existing call sites working by making the new reply parameter optional.
+- [x] extend `TelegramChatBotServiceContract::sendChatMessage()` with optional reply message id;
+- [x] implement `reply_parameters` in `TelegramChatBotService::sendChatMessage()`;
+- [ ] add `sendChatDocument()` to contract and service;
+- [x] keep existing call sites working by making the new reply parameter optional.
 
 Acceptance criteria:
 
-- existing plain text sends still work;
-- text sends can reply to a Telegram message id;
-- document sends can include a caption and reply to a Telegram message id;
-- Telegram API failures still throw `TelegramChatBotException`.
+- [x] existing plain text sends still work;
+- [x] text sends can reply to a Telegram message id;
+- [ ] document sends can include a caption and reply to a Telegram message id;
+- [x] Telegram API failures still throw `TelegramChatBotException`.
 
-### Phase 2 — Immediate Success and Duplicate Replies
+### Phase 2 — Immediate Success and Duplicate Replies — Done
 
 Deliverables:
 
-- update `StandardTelegramDisputeParser` to pass source `telegram_message_id` to success replies;
-- update duplicate replies in both duplicate branches;
-- preserve current text contents;
-- keep Telegram send failures as warnings only.
+- [x] update `StandardTelegramDisputeParser` to pass source `telegram_message_id` to success replies;
+- [x] update duplicate replies in both duplicate branches;
+- [x] preserve current text contents;
+- [x] keep Telegram send failures as warnings only.
 
 Acceptance criteria:
 
-- successful dispute-open bot response appears as a Telegram reply to the triggering message;
-- duplicate bot response appears as a Telegram reply to the triggering message;
-- dispute processing still succeeds even if the reply cannot be sent.
+- [x] successful dispute-open bot response is sent with `reply_parameters` to the triggering message (manual UI confirmation recommended);
+- [x] duplicate bot response is sent with `reply_parameters` in both duplicate branches;
+- [x] dispute processing still succeeds even if the reply cannot be sent.
 
 ### Phase 3 — Resolution Notification Job
 

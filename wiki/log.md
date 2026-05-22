@@ -39,3 +39,6 @@
 
 ## [2026-05-22] ingest | Telegram Dispute Reply and Resolution Notifications Specification
 - Updated: Telegram Chat Dispute Automation Plan
+
+## [2026-05-22] ingest | Telegram Dispute Reply and Resolution Notifications Specification (Feature 1 implemented)
+- Updated: Telegram Chat Dispute Automation Plan

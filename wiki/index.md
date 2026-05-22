@@ -6,8 +6,8 @@ Telegram bot and chat automation knowledge for the project.
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Implementation plan for the Telegram chat dispute bot; Phases 1–6 complete; now cross-references reply-to-source-message and resolution notification follow-up work. | 2026-05-22 |
-| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Technical specification for Telegram reply-to-source-message behavior and asynchronous accepted/rejected dispute resolution notifications with bank statement attachment fallback. | 2026-05-22 |
+| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Telegram chat dispute bot; Phases 1–6 complete; immediate reply-to-source (Feature 1) implemented; resolution notifications (Feature 2) still pending. | 2026-05-22 |
+| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Reply/resolution spec; Feature 1 (opening + duplicate replies) implemented; Feature 2 (accept/reject notifications + `sendChatDocument`) pending. | 2026-05-22 |
 
 ## traffic-categories
 

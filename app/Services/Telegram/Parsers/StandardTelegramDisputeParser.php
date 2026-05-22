@@ -98,7 +98,11 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
 
         if ($order->dispute !== null) {
             $this->markMessage($message, TelegramChatMessageStatus::DUPLICATE, orderId: $order->id);
-            $this->sendDuplicateReply($telegramChat->telegram_chat_id, $order->uuid);
+            $this->sendDuplicateReply(
+                $telegramChat->telegram_chat_id,
+                $message->telegram_message_id,
+                $order->uuid,
+            );
 
             return;
         }
@@ -118,11 +122,19 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
                 'processed_at' => now(),
             ]);
 
-            $this->sendSuccessReply($telegramChat->telegram_chat_id, $order->uuid);
+            $this->sendSuccessReply(
+                $telegramChat->telegram_chat_id,
+                $message->telegram_message_id,
+                $order->uuid,
+            );
         } catch (DisputeException $exception) {
             if (str_contains($exception->getMessage(), 'already exists')) {
                 $this->markMessage($message, TelegramChatMessageStatus::DUPLICATE, orderId: $order->id);
-                $this->sendDuplicateReply($telegramChat->telegram_chat_id, $order->uuid);
+                $this->sendDuplicateReply(
+                    $telegramChat->telegram_chat_id,
+                    $message->telegram_message_id,
+                    $order->uuid,
+                );
 
                 return;
             }
@@ -181,24 +193,45 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
         return null;
     }
 
-    private function sendSuccessReply(string $apiChatId, string $orderUuid): void
+    private function sendSuccessReply(string $apiChatId, string $sourceMessageId, string $orderUuid): void
     {
         $text = "Спор открыт.\nUUID сделки: {$orderUuid}";
 
-        $this->sendChatReply($apiChatId, $orderUuid, $text, 'Telegram dispute success reply failed');
+        $this->sendChatReply(
+            $apiChatId,
+            $sourceMessageId,
+            $orderUuid,
+            $text,
+            'Telegram dispute success reply failed',
+        );
     }
 
-    private function sendDuplicateReply(string $apiChatId, string $orderUuid): void
+    private function sendDuplicateReply(string $apiChatId, string $sourceMessageId, string $orderUuid): void
     {
         $text = "Спор по этой сделке уже открыт.\nUUID сделки: {$orderUuid}\nПовторно спор не создан — это дубликат.";
 
-        $this->sendChatReply($apiChatId, $orderUuid, $text, 'Telegram dispute duplicate reply failed');
+        $this->sendChatReply(
+            $apiChatId,
+            $sourceMessageId,
+            $orderUuid,
+            $text,
+            'Telegram dispute duplicate reply failed',
+        );
     }
 
-    private function sendChatReply(string $apiChatId, string $orderUuid, string $text, string $logMessage): void
-    {
+    private function sendChatReply(
+        string $apiChatId,
+        string $sourceMessageId,
+        string $orderUuid,
+        string $text,
+        string $logMessage,
+    ): void {
         try {
-            services()->telegramChatBot()->sendChatMessage($apiChatId, $text);
+            services()->telegramChatBot()->sendChatMessage(
+                $apiChatId,
+                $text,
+                $this->resolveReplyToMessageId($sourceMessageId),
+            );
         } catch (TelegramChatBotException $exception) {
             Log::warning($logMessage, [
                 'telegram_chat_id' => $apiChatId,
@@ -206,6 +239,15 @@ class StandardTelegramDisputeParser implements TelegramChatMessageParserContract
                 'error' => $exception->getMessage(),
             ]);
         }
+    }
+
+    private function resolveReplyToMessageId(string $telegramMessageId): ?int
+    {
+        if ($telegramMessageId === '' || ! ctype_digit($telegramMessageId)) {
+            return null;
+        }
+
+        return (int) $telegramMessageId;
     }
 
     private function markMessage(

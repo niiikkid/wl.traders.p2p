@@ -1,7 +1,7 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md)
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21; immediate reply implementation, 2026-05-22
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md)
 > Updated: 2026-05-22
 
 ## Overview
@@ -280,12 +280,12 @@ For an active chat and a valid parser result:
 2. If the order already has a dispute:
    - Mark the Telegram message as `duplicate`.
    - Link `order_id`.
-   - Do not send a Telegram success message.
+   - Send a duplicate reply (reply to source `telegram_message_id`; see reply spec).
 3. If there is no existing dispute:
    - Call the existing dispute service with the receipt file.
    - Mark the Telegram message as `processed`.
    - Link `dispute_id`.
-   - Send a Telegram success reply.
+   - Send a Telegram success reply (reply to source message).
 
 Suggested success text:
 
@@ -294,7 +294,7 @@ Suggested success text:
 UUID сделки: <uuid>
 ```
 
-The bot should not send replies for failed, ignored, disabled, archived, or duplicate messages in the first version.
+The bot should not send replies for failed, ignored, disabled, or archived messages. Duplicate messages receive a dedicated duplicate reply (implemented 2026-05-22).
 
 ## Debug Mode
 
@@ -539,7 +539,7 @@ Reliability rules:
 
 - `getFileInfo($fileId)` — Telegram `getFile`
 - `downloadFileToPath($fileId)` — temp file via Bot API file URL
-- `sendChatMessage($chatId, $text)` — Telegram `sendMessage`
+- `sendChatMessage($chatId, $text, $replyToMessageId = null)` — Telegram `sendMessage` with optional `reply_parameters` (2026-05-22)
 
 **File service** (`app/Services/Telegram/`):
 
@@ -563,11 +563,11 @@ Reliability rules:
 2. `Order::whereIn('uuid', …)->with('dispute')` — 0 / 1 / many
 3. Attachment from `raw_payload` (`photo` largest size, or `document`)
 4. Status `matched` + `order_id` / `detected_uuid`
-5. Existing dispute → `duplicate` (no bot reply)
+5. Existing dispute → `duplicate` + duplicate reply (reply to source `telegram_message_id`)
 6. Download, validate, store attachment; `services()->dispute()->create()`
-7. Status `processed` + `dispute_id`; success reply `Спор открыт.\nUUID сделки: …`
-8. `DisputeException` «already exists» → `duplicate`; other errors → `failed` with `failure_reason`
-9. Success reply failure → `Log::warning` only (dispute retained)
+7. Status `processed` + `dispute_id`; success reply `Спор открыт.\nUUID сделки: …` (reply to source message)
+8. `DisputeException` «already exists» → `duplicate` + duplicate reply; other errors → `failed` with `failure_reason`
+9. Reply send failure → `Log::warning` only (dispute retained when already created)
 
 **Provider bindings** (`AppServiceProvider`):
 
@@ -689,9 +689,14 @@ Reliability rules:
 - [x] Add logging for processing errors (parser, processor, process job, cleanup job)
 - [x] Update admin confirm modal and flash message for debug off
 
+## Reply and Resolution Follow-Up (2026-05-22)
+
+Immediate reply-to-source-message behavior for success and duplicate bot messages is **implemented** — see [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md) (Feature 1, Phases 1–2 done; `sendChatDocument` pending).
+
 ## Open Follow-Ups
 
-- Implement reply-to-source-message behavior and dispute resolution notifications described in [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md).
+- Implement dispute resolution notifications (accept/reject + bank statement document) described in [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md) — Feature 2, Phases 3–4.
+- Manually verify Feature 1: success and duplicate bot messages appear as Telegram replies in a real chat.
 - Decide later whether to parse replies, forwarded messages, media groups, and thread-specific messages.
 - Decide later whether failed messages should trigger Telegram replies.
 - Decide later whether chats should be bindable to merchants for extra validation.
