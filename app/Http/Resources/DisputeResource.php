@@ -23,6 +23,8 @@ class DisputeResource extends JsonResource
             'id' => $this->id,
             'receipt' => $this->receipt,
             'receipt_url' => $this->receipt ? route('disputes.receipt', $this->id) : null,
+            'bank_statement' => $this->bank_statement,
+            'bank_statement_url' => $this->bank_statement ? route('disputes.bank-statement', $this->id) : null,
             'order' => [
                 'id' => $this->order->id,
                 'uuid' => $this->order->uuid,

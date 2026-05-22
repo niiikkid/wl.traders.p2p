@@ -72,6 +72,10 @@ const showReceipt = () => {
     window.open(dispute.value.receipt_url, '_blank').focus();
 };
 
+const showBankStatement = () => {
+    window.open(dispute.value.bank_statement_url, '_blank').focus();
+};
+
 const dispute_footer_actions_visible = computed(
     () =>
         viewStore.isAdminViewMode
@@ -259,6 +263,42 @@ const dispute_footer_actions_visible = computed(
                                     @click.prevent="showReceipt"
                                 >
                                     Открыть
+                                    <svg
+                                        class="ms-1 size-3 shrink-0 sm:size-3.5"
+                                        aria-hidden="true"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke="currentColor"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M19 12H5m14 0-4 4m4-4-4-4"
+                                        />
+                                    </svg>
+                                </button>
+                                <span v-else class="text-xs text-base-content/55 sm:text-sm">Нет файла</span>
+                            </dd>
+                        </div>
+                        <div
+                            v-if="dispute.status === 'canceled'"
+                            class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2"
+                        >
+                            <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
+                                Выписка
+                            </dt>
+                            <dd class="flex shrink-0 justify-end">
+                                <button
+                                    v-if="dispute.bank_statement_url"
+                                    type="button"
+                                    class="btn btn-xs btn-outline btn-accent touch-manipulation"
+                                    @click.prevent="showBankStatement"
+                                >
+                                    Выписка
                                     <svg
                                         class="ms-1 size-3 shrink-0 sm:size-3.5"
                                         aria-hidden="true"

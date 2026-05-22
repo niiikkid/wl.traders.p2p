@@ -1,7 +1,7 @@
 # Dispute Bank Statement Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22; Phase 2 implementation, 2026-05-22; Phase 3 implementation, 2026-05-22
-> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md)
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-22; Phase 2 implementation, 2026-05-22; Phase 3 implementation, 2026-05-22; Phase 4 implementation, 2026-05-22
+> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md); [Phase 4 Dispute Details UI Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-4-dispute-details-ui-implementation.md)
 > Updated: 2026-05-22
 
 ## Overview
@@ -96,10 +96,11 @@ The implementation stays close to the current dispute flow:
 
 - `resources/js/Modals/CancelDisputeModal.vue` — reason preset dropdown, custom reason (max 120 + counter), `bank_statement` file upload, `form.patch` with `forceFormData: true`; used on Dispute/Order index pages for Trader, Support, Analyst (admin uses shared modal via Order/Dispute UI).
 
-**Pending (Phase 4):**
+**Implemented (Phase 4):**
 
-- `app/Http/Resources/DisputeResource.php` — needs `bank_statement_url` for UI.
-- `resources/js/Modals/DisputeModal.vue` — `Выписка` row for canceled disputes.
+- `app/Http/Resources/DisputeResource.php` — `bank_statement`, `bank_statement_url` for panel UI.
+- `app/Http/Resources/TableOrderResource.php` — same fields on embedded `dispute` for Order Index modals.
+- `resources/js/Modals/DisputeModal.vue` — `showBankStatement()`, «Выписка» row for canceled disputes (`btn-accent`, «Нет файла» fallback).
 
 ## Data Model
 
@@ -142,7 +143,7 @@ Prefer the storage style used by payout receipts for safer filenames:
 
 - gate `access-to-dispute-bank-statement` in `AppServiceProvider` (duplicate of receipt gate logic).
 
-The UI should not expose a statement URL to users outside this access model until Phase 4; the route already authorizes server-side.
+The UI exposes `bank_statement_url` only through panel resources (`DisputeResource`, `TableOrderResource` embedded dispute); the file route authorizes server-side with the same gate as receipts.
 
 ## Backend Contract
 
@@ -174,16 +175,16 @@ All web/UI `cancel()` call sites updated (Trader, Support, Analyst). `GenerateTe
 - URL: `GET /disputes/{dispute}/bank-statement`;
 - `DisputeController::bankStatement()` — gate + `response()->file()`; `404` when `bank_statement` is null or file missing on disk.
 
-The route is UI-facing only. It is not in API route files and is not exposed in API resources yet.
+The route is UI-facing only. It is not in API route files.
 
 ### Resource
 
-Extend `DisputeResource` for web/Inertia:
+**Implemented (Phase 4):** `DisputeResource` and embedded dispute in `TableOrderResource` for web/Inertia:
 
 - `bank_statement` => stored filename/path or `null`;
-- `bank_statement_url` => route URL when a file exists, otherwise `null`.
+- `bank_statement_url` => `route('disputes.bank-statement', $id)` when a file exists, otherwise `null`.
 
-This is acceptable because `DisputeResource` is used for panel UI data. Do not add statement URLs to H2H/V2 order/dispute API resources.
+Panel UI only. Do not add statement URLs to H2H/V2 order/dispute API resources.
 
 ## Frontend Design
 
@@ -212,18 +213,14 @@ The fixed preset `Возврат платежа` should include a short explanat
 
 ### `DisputeModal.vue`
 
-Add a helper similar to `showReceipt()`:
+**Implemented (Phase 4).**
 
-- `showBankStatement()`;
-- open `dispute.bank_statement_url`.
+- `showBankStatement()` opens `dispute.bank_statement_url` in a new tab (mirrors `showReceipt()`).
+- Row «Выписка» directly below «Квитанция», only when `dispute.status === 'canceled'`.
+- Button `btn btn-xs btn-outline btn-accent`, label text «Выписка»; otherwise muted «Нет файла».
+- Pending and accepted disputes do not show the statement row.
 
-In the details list, directly below the receipt row, add a conditional statement row for canceled disputes:
-
-- label: `Выписка`;
-- if `bank_statement_url` exists: button `btn btn-xs btn-outline btn-accent`;
-- else: muted `Нет файла`.
-
-The existing canceled reason block remains unchanged except that reason text is now max 120 characters for new rejections.
+The canceled reason block is unchanged; new rejections store reason text up to 120 characters.
 
 ## Backward Compatibility
 
@@ -319,6 +316,8 @@ Acceptance criteria:
 
 ### Phase 4 — Dispute Details UI
 
+**Status: Done (2026-05-22).**
+
 Deliverables:
 
 - expose `bank_statement_url` in `DisputeResource`;
@@ -373,7 +372,7 @@ Suggested focused checks:
 | 1 — Backend data and storage | **Done** (2026-05-22) | Migration, model, storage helpers, file route, gate |
 | 2 — Validation and service contract | **Done** (2026-05-22) | `CancelRequest`, `cancel()` + `replaceBankStatement()`, Trader/Support/Analyst controllers |
 | 3 — Inertia rejection modal | **Done** (2026-05-22) | `CancelDisputeModal.vue` presets, file upload, `forceFormData` patch |
-| 4 — Dispute details UI | Pending | `DisputeResource`, `DisputeModal.vue` выписка row |
+| 4 — Dispute details UI | **Done** (2026-05-22) | `DisputeResource`, `TableOrderResource`, `DisputeModal.vue` выписка row |
 | 5 — Role regression pass | Pending | Trader, Support, Analyst, Admin reject flows |
 | 6 — Formatting and verification | Pending | Pint, manual checks; tests only if requested |
 
@@ -460,7 +459,26 @@ Suggested focused checks:
 - `DisputeResource`, `DisputeModal.vue`
 - API routes and H2H dispute endpoints
 
-**Current gap:** viewing a canceled dispute’s statement in the details modal requires Phase 4 (`bank_statement_url` in `DisputeResource` + «Выписка» row in `DisputeModal.vue`). Rejection from UI is fully wired.
+**End-to-end UI (Phases 1–4):** reject with reason + statement via `CancelDisputeModal`; view statement in `DisputeModal` for canceled disputes. Phases 5–6 remain (role regression, verification).
+
+### Phase 4 artifacts (implemented)
+
+**Resources:**
+
+- `app/Http/Resources/DisputeResource.php` — `bank_statement`, `bank_statement_url`
+- `app/Http/Resources/TableOrderResource.php` — same fields on nested `dispute` for Order Index surfaces
+
+**Modal** (`resources/js/Modals/DisputeModal.vue`):
+
+- `showBankStatement()` — new tab via `bank_statement_url`
+- «Выписка» row under «Квитанция» when `status === 'canceled'`
+- `btn-accent` button or «Нет файла»
+
+**Not changed in Phase 4:**
+
+- `CancelDisputeModal.vue`
+- API/H2H resources and routes
+- Cascade dispute UI
 
 ## Edge Cases
 

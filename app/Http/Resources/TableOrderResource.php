@@ -33,6 +33,8 @@ class TableOrderResource extends JsonResource
                 'id' => $this->dispute->id,
                 'receipt' => $this->dispute->receipt,
                 'receipt_url' => $this->dispute->receipt ? route('disputes.receipt', $this->dispute->id) : null,
+                'bank_statement' => $this->dispute->bank_statement,
+                'bank_statement_url' => $this->dispute->bank_statement ? route('disputes.bank-statement', $this->dispute->id) : null,
                 'order' => [
                     'id' => $this->id,
                     'uuid' => $this->uuid,
