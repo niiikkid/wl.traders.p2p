@@ -4,6 +4,7 @@ import {
     PAYMENT_DETAIL_SCHEDULE_TICK_KEY,
 } from '@/composables/usePaymentDetailScheduleTableTick.js';
 import {
+    computeServerOffsetFromSchedule,
     resolvePaymentDetailScheduleDisplay,
     scheduleStatusBadgeClass,
     SCHEDULE_STATUS,
@@ -19,15 +20,42 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    /**
+     * null = auto: live when table tick is injected, api otherwise.
+     */
+    live: {
+        type: Boolean,
+        default: null,
+    },
 });
 
 const tick = inject(PAYMENT_DETAIL_SCHEDULE_TICK_KEY, null);
-const offsetMs = inject(PAYMENT_DETAIL_SCHEDULE_OFFSET_KEY, ref(0));
+const injectedOffsetMs = inject(PAYMENT_DETAIL_SCHEDULE_OFFSET_KEY, ref(0));
+
+const useLiveMode = computed(() => {
+    if (props.live !== null) {
+        return props.live;
+    }
+
+    return tick !== null;
+});
+
+const effectiveOffsetMs = computed(() => {
+    if (useLiveMode.value) {
+        return unref(injectedOffsetMs);
+    }
+
+    return computeServerOffsetFromSchedule(props.schedule);
+});
+
+const displayMode = computed(() => (useLiveMode.value ? 'live' : 'api'));
 
 const display = computed(() => {
     unref(tick);
 
-    return resolvePaymentDetailScheduleDisplay(props.schedule, unref(offsetMs));
+    return resolvePaymentDetailScheduleDisplay(props.schedule, effectiveOffsetMs.value, {
+        mode: displayMode.value,
+    });
 });
 
 const badgeClass = computed(() => scheduleStatusBadgeClass(display.value.status));

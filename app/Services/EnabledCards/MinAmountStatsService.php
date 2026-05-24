@@ -155,6 +155,7 @@ class MinAmountStatsService
             ->whereNull('archived_at')
             ->where('is_active', true)
             ->whereRelation('user', 'is_online', true)
+            ->whereRelation('user', 'stop_traffic', false)
             ->availableBySchedule()
             ->where('currency', $currencyCode);
     }

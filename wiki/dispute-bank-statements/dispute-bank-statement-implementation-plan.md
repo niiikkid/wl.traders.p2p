@@ -1,12 +1,14 @@
 # Dispute Bank Statement Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1–4 implementation, 2026-05-22; Phase 5 role regression pass, 2026-05-22; Phase 6 formatting and verification, 2026-05-22
-> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md); [Phase 4 Dispute Details UI Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-4-dispute-details-ui-implementation.md); [Phase 5 Role Regression Pass](../../raw/dispute-bank-statements/2026-05-22-phase-5-role-regression-pass.md); [Phase 6 Formatting and Verification](../../raw/dispute-bank-statements/2026-05-22-phase-6-formatting-verification.md)
-> Updated: 2026-05-22
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1–4 implementation, 2026-05-22; Phase 5 role regression pass, 2026-05-22; Phase 6 formatting and verification, 2026-05-22; Phase 7 reason code update, 2026-05-22; feature shipped confirmation, 2026-05-24
+> Raw: [Dispute Bank Statement Requirements](../../raw/dispute-bank-statements/2026-05-22-dispute-bank-statement-requirements.md); [Phase 2 Validation and Service Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-2-validation-service-implementation.md); [Phase 3 Inertia Rejection Modal Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-3-inertia-rejection-modal-implementation.md); [Phase 4 Dispute Details UI Implementation](../../raw/dispute-bank-statements/2026-05-22-phase-4-dispute-details-ui-implementation.md); [Phase 5 Role Regression Pass](../../raw/dispute-bank-statements/2026-05-22-phase-5-role-regression-pass.md); [Phase 6 Formatting and Verification](../../raw/dispute-bank-statements/2026-05-22-phase-6-formatting-verification.md); [Feature Shipped Status](../../raw/dispute-bank-statements/2026-05-24-feature-shipped-status.md)
+> Updated: 2026-05-24
 
 ## Overview
 
 Dispute rejection in the application requires a rejection reason from any UI user who can reject an `Order` dispute. Bank card statement handling is reason-dependent: it is optional for `Неверные реквизиты` and required for other reasons. The reason text is stored in `disputes.reason`, while the reason code is stored in `disputes.reason_code`, and the file is stored separately as `bank_statement`. The feature affects only classic `Order`/`Dispute` flows and intentionally does not change API contracts or cascade dispute behavior.
+
+**Status: shipped** (2026-05-24). Phases **1–7 complete**; manual UI pass per role (Trader, Admin, Support, Analyst) completed. No pending implementation phases remain for v1.
 
 ## Product Scope
 
@@ -394,7 +396,7 @@ Deliverables:
 - `php artisan route:list --name=disputes` — cancel and `disputes.bank-statement` routes present for Trader/Support/Analyst;
 - static code-path verification per checklist below (no defects found).
 
-**Manual UI checklist** (operator, per role — not run in automated pass):
+**Manual UI checklist** (operator, per role — completed 2026-05-24):
 
 - reject pending dispute with preset + PNG under 5 MB;
 - reject pending dispute with custom reason + PDF under 5 MB;

@@ -718,7 +718,7 @@ watch(
 
                 <div v-else-if="payment_detail?.schedule" class="space-y-2">
                     <InputLabel value="Рабочее расписание" />
-                    <PaymentDetailScheduleStatus :schedule="payment_detail.schedule" />
+                    <PaymentDetailScheduleStatus :schedule="payment_detail.schedule" :live="false" />
                     <p class="text-xs text-base-content/60">
                         Только просмотр. Расписание настраивает трейдер.
                     </p>

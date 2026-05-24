@@ -1,14 +1,14 @@
 # Payment Detail Work Schedule Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-24; Phase 2 implementation, 2026-05-24; Phase 3 implementation, 2026-05-24; Phase 4 implementation, 2026-05-24; Phase 5 implementation, 2026-05-24; Phase 6 implementation, 2026-05-24; Phase 7 implementation, 2026-05-24; Phase 8 implementation, 2026-05-24
-> Raw: [Payment Detail Work Schedule Requirements](../../raw/payment-detail-schedules/2026-05-22-payment-detail-work-schedule-requirements.md); [Phase 1 Database and Models](../../raw/payment-detail-schedules/2026-05-24-phase-1-database-and-models.md); [Phase 2 Domain Service and Validation](../../raw/payment-detail-schedules/2026-05-24-phase-2-domain-service-and-validation.md); [Phase 3 Schedule CRUD API](../../raw/payment-detail-schedules/2026-05-24-phase-3-schedule-crud-api.md); [Phase 4 Payment Detail Assignment](../../raw/payment-detail-schedules/2026-05-24-phase-4-payment-detail-assignment.md); [Phase 5 Traffic Selection](../../raw/payment-detail-schedules/2026-05-24-phase-5-traffic-selection.md); [Phase 6 Schedule Manager UI](../../raw/payment-detail-schedules/2026-05-24-phase-6-schedule-manager-ui.md); [Phase 7 Payment Detail Table Status](../../raw/payment-detail-schedules/2026-05-24-phase-7-payment-detail-table-status.md); [Phase 8 Role Read Views](../../raw/payment-detail-schedules/2026-05-24-phase-8-role-read-views.md)
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-24; Phase 2 implementation, 2026-05-24; Phase 3 implementation, 2026-05-24; Phase 4 implementation, 2026-05-24; Phase 5 implementation, 2026-05-24; Phase 6 implementation, 2026-05-24; Phase 7 implementation, 2026-05-24; Phase 8 implementation, 2026-05-24; feature shipped confirmation, 2026-05-24
+> Raw: [Payment Detail Work Schedule Requirements](../../raw/payment-detail-schedules/2026-05-22-payment-detail-work-schedule-requirements.md); [Phase 1 Database and Models](../../raw/payment-detail-schedules/2026-05-24-phase-1-database-and-models.md); [Phase 2 Domain Service and Validation](../../raw/payment-detail-schedules/2026-05-24-phase-2-domain-service-and-validation.md); [Phase 3 Schedule CRUD API](../../raw/payment-detail-schedules/2026-05-24-phase-3-schedule-crud-api.md); [Phase 4 Payment Detail Assignment](../../raw/payment-detail-schedules/2026-05-24-phase-4-payment-detail-assignment.md); [Phase 5 Traffic Selection](../../raw/payment-detail-schedules/2026-05-24-phase-5-traffic-selection.md); [Phase 6 Schedule Manager UI](../../raw/payment-detail-schedules/2026-05-24-phase-6-schedule-manager-ui.md); [Phase 7 Payment Detail Table Status](../../raw/payment-detail-schedules/2026-05-24-phase-7-payment-detail-table-status.md); [Phase 8 Role Read Views](../../raw/payment-detail-schedules/2026-05-24-phase-8-role-read-views.md); [Feature Shipped Status](../../raw/payment-detail-schedules/2026-05-24-feature-shipped-status.md)
 > Updated: 2026-05-24
 
 ## Overview
 
 Payment detail work schedules add a server-time availability layer on top of the existing trader online state and payment detail active state. A payment detail still remains manually enabled or disabled by the trader, but when a schedule is attached to it, traffic can use that detail only inside the schedule's configured working intervals. Schedules are named trader-owned entities that may be attached to many payment details; editing a schedule affects every attached detail.
 
-As of **2026-05-24**, phases **0–8 are implemented in code**: schema through role read views for admin and Team Leader. Phase **9** (verification) remains pending.
+**Status: shipped** (2026-05-24). Phases **0–9 complete:** schema, domain logic, CRUD API, assignment, traffic filtering, manager UI, table status, admin/Team Leader read views, and manual verification. No pending implementation phases remain for v1.
 
 ## Implementation Progress
 
@@ -23,7 +23,7 @@ As of **2026-05-24**, phases **0–8 are implemented in code**: schema through r
 | 6 — Schedule manager UI | Done | Manager modal, form, per-day overrides, copy |
 | 7 — Table status column | Done | Index column + mobile block; client status tick |
 | 8 — Role read views | Done | Admin index + TL trader requisites; read-only in edit modal |
-| 9 — Verification | Pending | Manual checklist |
+| 9 — Verification | Done | Manual checklist completed |
 
 ## Product Scope
 
@@ -1085,7 +1085,9 @@ Acceptance (met):
 
 **Out of scope (v1):** Analyst `users.payment-details.index`; dedicated non-trader schedule manager pages; schedule list API for admin/Team Leader.
 
-### Phase 9: Verification
+### Phase 9: Verification — Done
+
+**Status: Done (2026-05-24).**
 
 Goals:
 
@@ -1130,7 +1132,7 @@ Programmatic verification should focus on the pure schedule availability/status 
 | 6 — Schedule manager UI | **Done** (2026-05-24) | Manager modal, editor composable, form with overrides; no backend changes |
 | 7 — Payment detail table status | **Done** (2026-05-24) | Index + mobile UI; client tick; backend payload unchanged (Phase 4) |
 | 8 — Role read views | **Done** (2026-05-24) | Admin index + TL trader requisites; read-only edit modal; query eager-load |
-| 9 — Verification | Pending | Manual checklist and targeted tests when requested |
+| 9 — Verification | **Done** (2026-05-24) | Manual checklist completed; feature shipped |
 
 ### Phase 1 artifacts (implemented)
 
@@ -1348,7 +1350,6 @@ Programmatic verification should focus on the pure schedule availability/status 
 - Backend PHP (no new routes or migrations)
 - Index table schedule status column (delivered in Phase 7)
 - Admin/Team Leader read-only schedule surfaces (delivered in Phase 8)
-- Verification checklist execution (Phase 9)
 
 ### Phase 7 artifacts (implemented)
 
@@ -1372,7 +1373,6 @@ Programmatic verification should focus on the pure schedule availability/status 
 
 - Backend PHP, routes, migrations
 - Team Leader trader requisites schedule column (delivered in Phase 8)
-- Verification checklist (Phase 9)
 
 ### Phase 8 artifacts (implemented)
 
@@ -1394,13 +1394,23 @@ Programmatic verification should focus on the pure schedule availability/status 
 
 - Analyst user payment details page
 - Non-trader schedule list/manager API
-- Verification checklist (Phase 9)
+
+### Phase 9 artifacts (completed)
+
+**Verification:**
+
+- Manual checklist from Phase 9 executed and accepted (2026-05-24)
+- Time-sensitive behavior verified: inclusive start, exclusive end, breaks, day-off, post-shift status
+- Traffic eligibility confirmed with and without attached schedules
+- Admin/Team Leader read-only views confirmed; trader-only mutation controls confirmed
+
+**Feature status:** Phases 0–9 complete. v1 shipped. Automated tests only if explicitly requested per project rules.
 
 ## Rollout Notes
 
-This feature changes traffic eligibility, so implementation should be conservative:
+This feature is live and changes traffic eligibility:
 
-- schedule filtering is live in order selection and availability counters (Phase 5); traders can manage schedules in the manager UI (Phase 6), assign via modals/bulk (Phase 4), and see per-detail schedule state in the index table/cards (Phase 7); admin and Team Leader see schedule status read-only on payment detail pages (Phase 8);
+- schedule filtering is active in order selection and availability counters (Phase 5); traders manage schedules in the manager UI (Phase 6), assign via modals/bulk (Phase 4), and see per-detail schedule state in the index table/cards (Phase 7); admin and Team Leader see schedule status read-only on payment detail pages (Phase 8);
 - avoid hidden timezone conversions in editable inputs;
 - prefer server-side authority for selection;
 - keep frontend status display informational;

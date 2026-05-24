@@ -1,14 +1,14 @@
 # Telegram Dispute Reply and Resolution Notifications Specification
 
-> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22; immediate reply implementation, 2026-05-22; resolution notifications implementation, 2026-05-22; fail-only order status gate (opening replies), 2026-05-23
-> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Resolution Notifications Implementation](../../raw/telegram/2026-05-22-telegram-dispute-resolution-notifications-implementation.md); [Telegram Dispute Fail-Only Order Status Requirements](../../raw/telegram/2026-05-23-telegram-dispute-fail-only-order-status-requirements.md)
-> Updated: 2026-05-23
+> Sources: User conversation, 2026-05-22; Telegram Bot API documentation, 2026-05-22; repository exploration, 2026-05-22; immediate reply implementation, 2026-05-22; resolution notifications implementation, 2026-05-22; fail-only order status gate (opening replies), 2026-05-23; feature shipped confirmation, 2026-05-24
+> Raw: [Telegram Dispute Reply and Resolution Notifications Requirements](../../raw/telegram/2026-05-22-telegram-dispute-reply-and-resolution-notifications-requirements.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Resolution Notifications Implementation](../../raw/telegram/2026-05-22-telegram-dispute-resolution-notifications-implementation.md); [Telegram Dispute Fail-Only Order Status Requirements](../../raw/telegram/2026-05-23-telegram-dispute-fail-only-order-status-requirements.md); [Feature Shipped Status](../../raw/telegram/2026-05-24-feature-shipped-status.md)
+> Updated: 2026-05-24
 
 ## Overview
 
 This specification extends the existing Telegram chat dispute automation in two areas: immediate bot responses must be sent as replies to the source Telegram message, and disputes opened from Telegram must send asynchronous resolution notifications back to that same source message after the dispute is accepted or rejected. Rejected-dispute notifications should attach the bank/card statement in the same Telegram reply message when possible, with a text-only fallback when the file cannot be sent.
 
-**Feature 1 (immediate opening/duplicate replies) is implemented** in the codebase as of 2026-05-22. **Feature 2 (accept/reject resolution notifications) is implemented** as of 2026-05-22 (Phases 1, 3–4 complete; Phase 5 manual verification pending).
+**Status: shipped** (2026-05-24). **Feature 1** (immediate opening/duplicate/order-status rejection replies) and **Feature 2** (accept/reject resolution notifications) are implemented and verified in live Telegram (Phase 5 complete).
 
 ## Product Scope
 
@@ -309,7 +309,7 @@ This inherits the existing operational assumption that the Telegram chat is an a
 | 2 | Immediate success and duplicate replies | **Done** (2026-05-22) |
 | 3 | Resolution notification job | **Done** (2026-05-22) |
 | 4 | Dispatch from `DisputeService` | **Done** (2026-05-22) |
-| 5 | Manual / programmatic verification | **Partial** — code complete; live Telegram checklist pending |
+| 5 | Manual / programmatic verification | **Done** (2026-05-24) — live Telegram checklist completed |
 
 ### Implemented artifacts (Feature 1)
 
@@ -373,10 +373,10 @@ Deliverables:
 
 Acceptance criteria:
 
-- [x] only Telegram-originated disputes produce resolution notifications (code path; live chat confirmation pending);
-- [x] accepted dispute sends `Спор принят` reply with UUID (code path; live chat confirmation pending);
-- [x] rejected dispute sends one document reply with caption and statement when possible (code path; live chat confirmation pending);
-- [x] rejected dispute sends text fallback when statement upload is unavailable (code path; live chat confirmation pending);
+- [x] only Telegram-originated disputes produce resolution notifications;
+- [x] accepted dispute sends `Спор принят` reply with UUID;
+- [x] rejected dispute sends one document reply with caption and statement when possible;
+- [x] rejected dispute sends text fallback when statement upload is unavailable;
 - [x] rollback sends nothing.
 
 ### Phase 4 — Dispatch from Dispute Service — Done
@@ -393,7 +393,9 @@ Acceptance criteria:
 - [x] manually created disputes do not send Telegram notifications because no linked source message exists;
 - [x] accept/cancel HTTP actions do not fail because of Telegram notification errors.
 
-### Phase 5 — Verification
+### Phase 5 — Verification — Done
+
+**Status: Done (2026-05-24).**
 
 Manual verification checklist:
 

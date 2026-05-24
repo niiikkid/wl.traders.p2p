@@ -152,20 +152,76 @@ function buildIntervalItems(intervals) {
     return intervals.map((interval) => `${interval.starts_at}-${interval.ends_at}`);
 }
 
+function emptyScheduleDisplay() {
+    return {
+        status: SCHEDULE_STATUS.NOT_CONFIGURED,
+        statusLabel: STATUS_LABELS[SCHEDULE_STATUS.NOT_CONFIGURED],
+        scheduleName: null,
+        intervalText: null,
+        intervalItems: [],
+    };
+}
+
+function sortTodayIntervals(todayIntervals) {
+    return [...todayIntervals].sort(
+        (left, right) => normalizeTime(left.starts_at).localeCompare(normalizeTime(right.starts_at)),
+    );
+}
+
+function buildIntervalDisplay(todayIntervals) {
+    const sortedIntervals = sortTodayIntervals(todayIntervals);
+
+    return {
+        intervalItems: buildIntervalItems(sortedIntervals),
+        intervalText: formatIntervalList(sortedIntervals),
+    };
+}
+
+/**
+ * @param {object|null} schedule
+ * @returns {number}
+ */
+export function computeServerOffsetFromSchedule(schedule) {
+    if (!schedule?.server_now) {
+        return 0;
+    }
+
+    return new Date(schedule.server_now).getTime() - Date.now();
+}
+
+/**
+ * @param {object|null} schedule
+ * @returns {{ status: string, statusLabel: string, scheduleName: string|null, intervalText: string|null, intervalItems: string[] }}
+ */
+export function resolvePaymentDetailScheduleDisplayFromApi(schedule) {
+    if (!schedule) {
+        return emptyScheduleDisplay();
+    }
+
+    const todayIntervals = Array.isArray(schedule.today_intervals) ? schedule.today_intervals : [];
+    const { intervalItems, intervalText } = buildIntervalDisplay(todayIntervals);
+    const status = schedule.status || SCHEDULE_STATUS.NOT_CONFIGURED;
+    const statusLabel = schedule.status_label
+        || STATUS_LABELS[status]
+        || STATUS_LABELS[SCHEDULE_STATUS.NOT_CONFIGURED];
+
+    return {
+        status,
+        statusLabel,
+        scheduleName: schedule.name ?? null,
+        intervalText,
+        intervalItems,
+    };
+}
+
 /**
  * @param {object|null} schedule
  * @param {number} offsetMs
  * @returns {{ status: string, statusLabel: string, scheduleName: string|null, intervalText: string|null, intervalItems: string[] }}
  */
-export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
+export function resolvePaymentDetailScheduleDisplayLive(schedule, offsetMs = 0) {
     if (!schedule) {
-        return {
-            status: SCHEDULE_STATUS.NOT_CONFIGURED,
-            statusLabel: STATUS_LABELS[SCHEDULE_STATUS.NOT_CONFIGURED],
-            scheduleName: null,
-            intervalText: null,
-            intervalItems: [],
-        };
+        return emptyScheduleDisplay();
     }
 
     const timezone = schedule.server_timezone || 'UTC';
@@ -193,9 +249,7 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
         };
     }
 
-    const sortedIntervals = [...todayIntervals].sort(
-        (left, right) => normalizeTime(left.starts_at).localeCompare(normalizeTime(right.starts_at)),
-    );
+    const sortedIntervals = sortTodayIntervals(todayIntervals);
     const intervalItems = buildIntervalItems(sortedIntervals);
     const intervalText = formatIntervalList(sortedIntervals);
     const currentInterval = findCurrentInterval(sortedIntervals, time);
@@ -245,6 +299,30 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
         intervalText,
         intervalItems,
     };
+}
+
+/**
+ * @param {object|null} schedule
+ * @param {number} offsetMs
+ * @param {{ mode?: 'api'|'live'|'auto' }} [options]
+ * @returns {{ status: string, statusLabel: string, scheduleName: string|null, intervalText: string|null, intervalItems: string[] }}
+ */
+export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0, options = {}) {
+    const mode = options.mode ?? 'api';
+
+    if (mode === 'live') {
+        return resolvePaymentDetailScheduleDisplayLive(schedule, offsetMs);
+    }
+
+    if (mode === 'api') {
+        if (schedule?.status) {
+            return resolvePaymentDetailScheduleDisplayFromApi(schedule);
+        }
+
+        return resolvePaymentDetailScheduleDisplayLive(schedule, offsetMs);
+    }
+
+    return resolvePaymentDetailScheduleDisplayLive(schedule, offsetMs);
 }
 
 export function scheduleStatusBadgeClass(status) {
@@ -385,14 +463,15 @@ export function buildScheduleSummaryDisplay(summaryPayload) {
  * @param {number} offsetMs
  * @returns {{ total: number, withSchedule: number, counts: Record<string, number>, items: Array<{ status: string, count: number, shortLabel: string, countLabel: string, badgeClass: string }> }}
  */
-export function computePaymentDetailScheduleSummary(paymentDetails, offsetMs = 0) {
+export function computePaymentDetailScheduleSummary(paymentDetails, offsetMs = 0, options = {}) {
     const rows = normalizePaymentDetailRows(paymentDetails);
     const counts = Object.fromEntries(
         Object.values(SCHEDULE_STATUS).map((status) => [status, 0]),
     );
+    const mode = options.mode ?? 'live';
 
     for (const detail of rows) {
-        const display = resolvePaymentDetailScheduleDisplay(detail?.schedule ?? null, offsetMs);
+        const display = resolvePaymentDetailScheduleDisplay(detail?.schedule ?? null, offsetMs, { mode });
         counts[display.status] += 1;
     }
 

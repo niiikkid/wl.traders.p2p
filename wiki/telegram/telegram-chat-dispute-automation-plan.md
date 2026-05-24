@@ -1,12 +1,14 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21; immediate reply implementation, 2026-05-22; fail-only order status gate, 2026-05-23
-> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Fail-Only Order Status Requirements](../../raw/telegram/2026-05-23-telegram-dispute-fail-only-order-status-requirements.md)
-> Updated: 2026-05-23
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21; immediate reply implementation, 2026-05-22; fail-only order status gate, 2026-05-23; feature shipped confirmation, 2026-05-24
+> Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Fail-Only Order Status Requirements](../../raw/telegram/2026-05-23-telegram-dispute-fail-only-order-status-requirements.md); [Feature Shipped Status](../../raw/telegram/2026-05-24-feature-shipped-status.md)
+> Updated: 2026-05-24
 
 ## Overview
 
 The feature adds a separate admin-managed Telegram bot for processing merchant chat messages and automatically opening disputes for `Order` records when a message contains a valid receipt file, a matching order UUID, and the order is in status `fail` without an existing dispute. The design uses universal but explicit Telegram chat models, stores chat/message history safely, keeps files private, processes webhook updates asynchronously, and isolates this flow from Cascade completely. Order-status gating applies only in `StandardTelegramDisputeParser`; other dispute entry points are unchanged.
+
+**Status: shipped** (2026-05-24). Phases **1–6 complete**; Features **1–2** (reply + resolution notifications) verified in live Telegram. No pending implementation phases remain for v1.
 
 ## Goals
 
@@ -727,12 +729,10 @@ Reliability rules:
 
 Telegram reply and resolution notifications per [Telegram Dispute Reply and Resolution Notifications Specification](telegram-dispute-reply-and-resolution-notifications-spec.md):
 
-- **Feature 1** (immediate success/duplicate replies) — **implemented** (Phases 1–2).
-- **Feature 2** (accept/reject resolution notifications + `sendChatDocument`) — **implemented** (Phases 1, 3–4).
+- **Feature 1** (immediate success/duplicate replies) — **shipped** (Phases 1–2).
+- **Feature 2** (accept/reject resolution notifications + `sendChatDocument`) — **shipped** (Phases 1, 3–5).
 
-## Open Follow-Ups
-
-- Manually verify Features 1–2 in a live Telegram chat (Phase 5 checklist in the resolution notifications spec).
+## Future Enhancements (not v1)
 - Decide later whether to parse replies, forwarded messages, media groups, and thread-specific messages.
 - Decide later whether other `failed` cases (missing UUID, invalid file, etc.) should trigger Telegram replies (order-status rejections for `success`/`pending` already reply as of 2026-05-23).
 - Decide later whether chats should be bindable to merchants for extra validation.
