@@ -42,9 +42,15 @@ class SettingController extends Controller
             'allowed_categories.*' => ['required', 'integer', 'exists:categories,id'],
         ]);
 
-        auth()->user()->meta->update([
+        $user = auth()->user();
+
+        $user->meta->update([
             'allowed_markets' => $request->allowed_markets,
-            'allowed_categories' => $request->allowed_categories,
         ]);
+
+        services()->merchantTrafficCategory()->syncTraderAllowedCategoryIds(
+            $user,
+            $request->allowed_categories ?? [],
+        );
     }
 }

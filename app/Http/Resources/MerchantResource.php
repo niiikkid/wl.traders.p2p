@@ -68,6 +68,12 @@ class MerchantResource extends JsonResource
             'categories' => $this->whenLoaded('categories', function () {
                 return $this->categories?->pluck('id')->toArray();
             }),
+            'traffic_categories' => $this->whenLoaded('categories', function () {
+                return $this->categories?->map(fn ($category) => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                ])->values();
+            }),
             'validated_at' => $this->validated_at?->toDateTimeString(),
             'banned_at' => $this->banned_at?->toDateTimeString(),
             'created_at' => $this->created_at->toDateTimeString(),

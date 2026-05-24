@@ -274,6 +274,16 @@ class User extends Authenticatable
         return $this->hasOne(UserMeta::class);
     }
 
+    /**
+     * Категории трафика мерчантов: явный выбор трейдера (enabled в pivot).
+     */
+    public function trafficCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'category_user')
+            ->withPivot('enabled')
+            ->withTimestamps();
+    }
+
     public function telegramAccount(): HasOne
     {
         return $this->hasOne(TelegramAccount::class);

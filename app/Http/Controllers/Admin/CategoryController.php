@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\DTO\TrafficCategory\TrafficCategoryUpsertDTO;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class CategoryController extends Controller
@@ -40,12 +40,15 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'required|string',
+            'enabled_by_default' => 'boolean',
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
-
-        Category::create($validated);
+        services()->merchantTrafficCategory()->create(new TrafficCategoryUpsertDTO(
+            name: $validated['name'],
+            description: $validated['description'],
+            enabled_by_default: $request->boolean('enabled_by_default'),
+        ));
 
         return redirect()->route('admin.categories.index')
             ->with('success', 'Категория успешно создана.');
@@ -68,12 +71,15 @@ class CategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'description' => 'required|string',
+            'enabled_by_default' => 'boolean',
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
-
-        $category->update($validated);
+        services()->merchantTrafficCategory()->update($category, new TrafficCategoryUpsertDTO(
+            name: $validated['name'],
+            description: $validated['description'],
+            enabled_by_default: $request->boolean('enabled_by_default'),
+        ));
 
         return redirect()->route('admin.categories.index')
             ->with('success', 'Категория успешно обновлена.');
@@ -84,7 +90,7 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        $category->delete();
+        services()->merchantTrafficCategory()->delete($category);
 
         return redirect()->route('admin.categories.index')
             ->with('success', 'Категория успешно удалена.');

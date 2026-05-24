@@ -26,6 +26,7 @@ import MoneyValue from "@/Components/MoneyValue.vue";
 import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
 import PaymentDetailInfoDropdown from "@/Components/PaymentDetailInfoDropdown.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
+import TraderTrafficCategoriesRow from "@/Components/Order/TraderTrafficCategoriesRow.vue";
 //import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
 
 const viewStore = useViewStore();
@@ -306,6 +307,8 @@ defineOptions({ layout: AuthenticatedLayout })
 <!--                    <div class="w-full max-w-md">
                         <MoneyTreeGame />
                     </div>-->
+
+                    <TraderTrafficCategoriesRow v-if="viewStore.isTraderViewMode" />
 
                     <FiltersPanel
                         ref="filtersPanelRef"

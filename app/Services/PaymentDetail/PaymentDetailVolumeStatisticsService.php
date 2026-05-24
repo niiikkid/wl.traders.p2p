@@ -598,15 +598,14 @@ class PaymentDetailVolumeStatisticsService
             return [$customStartAt, $customEndAt];
         }
 
-        $periodStartAt = match ($period) {
-            '1d' => now()->subDay(),
-            '7d' => now()->subDays(7),
-            '14d' => now()->subDays(14),
-            '30d' => now()->subDays(30),
-            default => null,
+        return match ($period) {
+            '1d' => [now()->subDay(), null],
+            '7d' => [now()->subDays(7), null],
+            '14d' => [now()->subDays(14), null],
+            '30d' => [now()->subDays(30), null],
+            'current_month' => [now()->startOfMonth(), now()->endOfMonth()],
+            default => [null, null],
         };
-
-        return [$periodStartAt, null];
     }
 
     /**

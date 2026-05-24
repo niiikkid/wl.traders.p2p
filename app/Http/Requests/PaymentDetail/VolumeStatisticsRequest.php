@@ -20,7 +20,7 @@ class VolumeStatisticsRequest extends FormRequest
     public function rules(): array
     {
         $rules = [
-            'period' => ['nullable', 'string', Rule::in(['1d', '7d', '14d', '30d', 'all'])],
+            'period' => ['nullable', 'string', Rule::in(['1d', '7d', '14d', '30d', 'current_month', 'all'])],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
             'bars_limit' => ['nullable', 'string', Rule::in(['25', '50', '75', '100', '200'])],

@@ -97,6 +97,14 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
+                merchantTrafficCategoryManager: {
+                    showed: false,
+                    params: {},
+                },
+                merchantTrafficCategoriesAssign: {
+                    showed: false,
+                    params: {},
+                },
                 paymentGatewayCreate: {
                     showed: false,
                     params: {},
@@ -152,6 +160,8 @@ export const useModalStore = defineStore('modal', {
         paymentDetailScheduleManagerModal: (state) => state.modals.paymentDetailScheduleManager,
         merchantCreateModal: (state) => state.modals.merchantCreate,
         merchantSettingsModal: (state) => state.modals.merchantSettings,
+        merchantTrafficCategoryManagerModal: (state) => state.modals.merchantTrafficCategoryManager,
+        merchantTrafficCategoriesAssignModal: (state) => state.modals.merchantTrafficCategoriesAssign,
         payoutSettingsModal: (state) => state.modals.payoutSettings,
         paymentGatewayCreateModal: (state) => state.modals.paymentGatewayCreate,
         paymentGatewayEditModal: (state) => state.modals.paymentGatewayEdit,
@@ -252,6 +262,12 @@ export const useModalStore = defineStore('modal', {
         },
         openMerchantSettingsModal(props) {
             this.openModal('merchantSettings', props);
+        },
+        openMerchantTrafficCategoryManagerModal(props) {
+            this.openModal('merchantTrafficCategoryManager', props);
+        },
+        openMerchantTrafficCategoriesAssignModal(props) {
+            this.openModal('merchantTrafficCategoriesAssign', props);
         },
         openPayoutSettingsModal(props) {
             this.openModal('payoutSettings', props);

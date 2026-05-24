@@ -15,7 +15,7 @@ Merchant traffic category knowledge for admin-managed category setup, trader opt
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Merchant Traffic Categories Architecture](traffic-categories/merchant-traffic-categories-architecture.md) | Architecture and implementation plan for optional merchant traffic categories with admin setup, trader toggles, and payment-detail filtering. | 2026-05-22 |
+| [Merchant Traffic Categories Architecture](traffic-categories/merchant-traffic-categories-architecture.md) | Not shipped; steps 1–9 done (admin + trader UI + backend filter). Next: copy polish and browser verification (10–11). | 2026-05-24 |
 
 ## payment-detail-schedules
 

@@ -48,6 +48,10 @@ class SettingsService implements SettingsServiceContract
 
     const SHADOW_SMS_LOG_ENABLED_CACHE_KEY = 'settings_shadow_sms_log_enabled';
 
+    const MERCHANT_TRAFFIC_CATEGORIES_ENABLED = 'merchant_traffic_categories_enabled';
+
+    const MERCHANT_TRAFFIC_CATEGORIES_ENABLED_CACHE_KEY = 'settings_merchant_traffic_categories_enabled';
+
     const DEFAULT_RESERVE_BALANCE_LIMIT = 'default_reserve_balance_limit';
 
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
@@ -278,6 +282,21 @@ class SettingsService implements SettingsServiceContract
         $this->settings = null;
     }
 
+    public function isMerchantTrafficCategoriesEnabled(): bool
+    {
+        return (bool) cache()->remember(self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED_CACHE_KEY, now()->addMinute(), function () {
+            return (int) Setting::query()
+                ->where('key', self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED)
+                ->value('value') === 1;
+        });
+    }
+
+    public function updateMerchantTrafficCategoriesEnabled(bool $enabled): void
+    {
+        $this->updateParam(self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED, $enabled ? 1 : 0);
+        cache()->put(self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED_CACHE_KEY, $enabled, now()->addMinute());
+    }
+
     public function getDefaultReserveBalanceLimit(): int
     {
         return (int) $this->getParam(self::DEFAULT_RESERVE_BALANCE_LIMIT);
@@ -430,6 +449,11 @@ class SettingsService implements SettingsServiceContract
         Setting::firstOrCreate([
             'key' => self::SHADOW_SMS_LOG_ENABLED,
             'value' => 1,
+        ]);
+
+        Setting::firstOrCreate([
+            'key' => self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED,
+            'value' => 0,
         ]);
 
         Setting::firstOrCreate([

@@ -18,7 +18,7 @@ class MerchantController extends Controller
     public function index()
     {
         $merchants = Merchant::query()
-            ->with('user')
+            ->with(['user', 'categories'])
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
 
@@ -30,7 +30,7 @@ class MerchantController extends Controller
     public function indexData(Request $request): JsonResponse
     {
         $merchants = Merchant::query()
-            ->with('user')
+            ->with(['user', 'categories'])
             ->orderByDesc('id')
             ->paginate($request->get('per_page', 10));
 
@@ -104,7 +104,10 @@ class MerchantController extends Controller
         ]);
 
         if ($request->has('categories')) {
-            $merchant->categories()->sync($request->categories);
+            services()->merchantTrafficCategory()->syncMerchantCategories(
+                $merchant,
+                $request->categories ?? [],
+            );
         }
 
         if ($request->expectsJson()) {

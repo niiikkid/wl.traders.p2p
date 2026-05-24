@@ -158,6 +158,7 @@ class FindAvailablePaymentDetail
             ->where('stop_traffic', false)
             ->whereNull('banned_at')
             ->whereNull('archived_at')
+            ->tap(fn (Builder $query) => services()->merchantTrafficCategory()->constrainEligibleTradersForMerchant($query, $this->merchant))
             ->whereHas('wallet', function ($q) {
                 $q->where('trust_balance', '>=', $this->approximateTotalProfit->toUnitsInt());
             })

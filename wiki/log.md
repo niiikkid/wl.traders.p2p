@@ -114,3 +114,32 @@
 
 ## [2026-05-24] ingest | Shadow SMS Log Implementation Plan (feature shipped)
 - Updated: Shadow SMS Log Implementation Plan
+
+## [2026-05-24] implement | Merchant Traffic Categories Architecture (implementation plan step 1)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] ingest | Merchant Traffic Categories Architecture (step 1 schema audit raw + wiki sync)
+
+## [2026-05-24] implement | Merchant Traffic Categories Architecture (implementation plan step 2)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] implement | Merchant Traffic Categories Architecture (implementation plan step 3)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] implement | Merchant Traffic Categories Architecture (implementation plan step 4)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] ingest | Merchant Traffic Categories Architecture (step 5 admin API endpoints)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] ingest | Merchant Traffic Categories Architecture (step 6 trader API endpoints)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] ingest | Merchant Traffic Categories Architecture (step 7 FindAvailablePaymentDetail filter)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] ingest | Merchant Traffic Categories Architecture (step 8 admin UI)
+- Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-24] ingest | Merchant Traffic Categories Architecture (step 9 trader UI)
+- Updated: Merchant Traffic Categories Architecture

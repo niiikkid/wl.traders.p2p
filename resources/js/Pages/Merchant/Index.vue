@@ -6,6 +6,9 @@ import {useViewStore} from "@/store/view.js";
 import {useModalStore} from "@/store/modal.js";
 import MerchantCreateModal from "@/Modals/Merchant/MerchantCreateModal.vue";
 import MerchantSettingsModal from "@/Modals/Merchant/MerchantSettingsModal.vue";
+import MerchantTrafficCategoryManagerModal from "@/Modals/MerchantTrafficCategory/MerchantTrafficCategoryManagerModal.vue";
+import MerchantTrafficCategoriesAssignModal from "@/Modals/MerchantTrafficCategory/MerchantTrafficCategoriesAssignModal.vue";
+import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
@@ -61,6 +64,23 @@ const openSettings = (merchant) => {
     });
 };
 
+const openTrafficCategoryManager = () => {
+    modalStore.openMerchantTrafficCategoryManagerModal({
+        onCategoriesChanged: fetchMerchants,
+    });
+};
+
+const openMerchantCategories = (merchant) => {
+    modalStore.openMerchantTrafficCategoriesAssignModal({
+        merchant,
+        onUpdated: () => fetchMerchants(),
+    });
+};
+
+const merchantCategoryBadges = (merchant) => merchant.traffic_categories ?? [];
+
+const hasMerchantCategories = (merchant) => merchantCategoryBadges(merchant).length > 0;
+
 const merchantStatusIconWrapClass = (merchant) => {
     if (!merchant.validated_at) {
         return 'bg-warning/15 text-warning ring-warning/30';
@@ -91,6 +111,18 @@ defineOptions({ layout: AuthenticatedLayout })
             :paginate="viewStore.isAdminViewMode"
         >
             <template v-slot:button>
+                <div
+                    v-if="viewStore.isAdminViewMode"
+                    class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2"
+                >
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-outline shrink-0 rounded-lg px-3 min-h-8 h-8 font-semibold tracking-tight"
+                        @click="openTrafficCategoryManager"
+                    >
+                        Категории
+                    </button>
+                </div>
                 <div
                     v-if="viewStore.isMerchantViewMode"
                     class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2"
@@ -134,6 +166,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th>Название</th>
                                         <th>Владелец</th>
                                         <th>Статус</th>
+                                        <th>Категории</th>
                                         <th class="text-center">
                                             <span class="sr-only">Действия</span>
                                         </th>
@@ -165,8 +198,25 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </template>
                                             </div>
                                         </td>
+                                        <td>
+                                            <div v-if="hasMerchantCategories(merchant)" class="flex flex-wrap gap-1 max-w-56">
+                                                <span
+                                                    v-for="category in merchantCategoryBadges(merchant)"
+                                                    :key="category.id"
+                                                    class="badge badge-sm badge-outline font-normal"
+                                                >
+                                                    {{ category.name }}
+                                                </span>
+                                            </div>
+                                            <span v-else class="badge badge-sm badge-ghost font-normal">
+                                                Без категорий
+                                            </span>
+                                        </td>
                                         <td class="text-right">
                                             <TableActionsDropdown>
+                                                <TableAction @click="openMerchantCategories(merchant)">
+                                                    Категории
+                                                </TableAction>
                                                 <TableAction @click="openSettings(merchant)">
                                                     Настройки
                                                 </TableAction>
@@ -227,7 +277,22 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <span class="text-base-content truncate">{{ merchant.owner.email }}</span>
                                             </div>
                                         </div>
+                                        <div v-if="hasMerchantCategories(merchant)" class="flex flex-wrap gap-1 justify-end max-w-[12rem]">
+                                            <span
+                                                v-for="category in merchantCategoryBadges(merchant)"
+                                                :key="category.id"
+                                                class="badge badge-sm badge-outline font-normal"
+                                            >
+                                                {{ category.name }}
+                                            </span>
+                                        </div>
+                                        <span v-else class="badge badge-sm badge-ghost font-normal">
+                                            Без категорий
+                                        </span>
                                         <TableActionsDropdown>
+                                            <TableAction @click="openMerchantCategories(merchant)">
+                                                Категории
+                                            </TableAction>
                                             <TableAction @click="openSettings(merchant)">
                                                 Настройки
                                             </TableAction>
@@ -375,5 +440,10 @@ defineOptions({ layout: AuthenticatedLayout })
         </MainTableSection>
         <MerchantCreateModal />
         <MerchantSettingsModal />
+        <template v-if="isAdminView">
+            <MerchantTrafficCategoryManagerModal />
+            <MerchantTrafficCategoriesAssignModal />
+            <ConfirmModal />
+        </template>
     </div>
 </template>

@@ -16,6 +16,7 @@ use App\Contracts\MarketServiceContract;
 use App\Contracts\MerchantApiLogServiceContract;
 use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Contracts\MerchantServiceContract;
+use App\Contracts\MerchantTrafficCategoryServiceContract;
 use App\Contracts\NotificationServiceContract;
 use App\Contracts\OpenAiServiceContract;
 use App\Contracts\OrderPoolingServiceContract;
@@ -116,6 +117,11 @@ class ServiceBuilder implements ServiceBuilderContract
     public function merchant(): MerchantServiceContract
     {
         return make(MerchantServiceContract::class);
+    }
+
+    public function merchantTrafficCategory(): MerchantTrafficCategoryServiceContract
+    {
+        return make(MerchantTrafficCategoryServiceContract::class);
     }
 
     public function payout(): PayoutServiceContract

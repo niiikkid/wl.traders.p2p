@@ -39,6 +39,10 @@ interface SettingsServiceContract
 
     public function updateShadowSmsLogEnabled(bool $enabled): void;
 
+    public function isMerchantTrafficCategoriesEnabled(): bool;
+
+    public function updateMerchantTrafficCategoriesEnabled(bool $enabled): void;
+
     public function getMarketPriceParser(
         Currency $currency,
         MarketEnum $market

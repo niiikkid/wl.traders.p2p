@@ -112,7 +112,7 @@ class PaymentDetailController extends Controller
             ['value' => 'all', 'label' => 'За всё время'],
             ['value' => '7d', 'label' => 'За 7 дней'],
             ['value' => '14d', 'label' => 'За 2 недели'],
-            ['value' => '30d', 'label' => 'За месяц'],
+            ['value' => '30d', 'label' => 'За 30 дней'],
         ];
 
         return Inertia::render('PaymentDetail/Statistics', compact('paymentDetailBankStats', 'filters', 'filtersVariants', 'period', 'periodOptions'));

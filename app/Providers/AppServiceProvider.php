@@ -18,6 +18,7 @@ use App\Contracts\MarketServiceContract;
 use App\Contracts\MerchantApiLogServiceContract;
 use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Contracts\MerchantServiceContract;
+use App\Contracts\MerchantTrafficCategoryServiceContract;
 use App\Contracts\NotificationServiceContract;
 use App\Contracts\OpenAiServiceContract;
 use App\Contracts\OrderPoolingServiceContract;
@@ -102,6 +103,7 @@ use App\Services\Telegram\TelegramChatFileService;
 use App\Services\Telegram\TelegramChatMessageProcessor;
 use App\Services\Telegram\TelegramChatWebhookIngestionService;
 use App\Services\Telegram\TelegramService;
+use App\Services\TrafficCategory\MerchantTrafficCategoryService;
 use App\Services\User\UserService;
 use App\Services\Wallet\WalletService;
 use App\Support\LoginLogger;
@@ -193,6 +195,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(MerchantServiceContract::class, function () {
             return new MerchantService;
+        });
+        $this->app->singleton(MerchantTrafficCategoryServiceContract::class, function () {
+            return new MerchantTrafficCategoryService;
         });
         $this->app->singleton(PayoutServiceContract::class, function () {
             return new PayoutService;

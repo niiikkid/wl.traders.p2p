@@ -60,6 +60,9 @@ defineOptions({ layout: AuthenticatedLayout })
                             <th scope="col" class="px-6 py-3">
                                 Описание
                             </th>
+                            <th scope="col" class="px-6 py-3">
+                                По умолчанию
+                            </th>
                             <th scope="col" class="px-6 py-3 text-right">
                                 <span class="sr-only">Действия</span>
                             </th>
@@ -75,6 +78,14 @@ defineOptions({ layout: AuthenticatedLayout })
                             </td>
                             <td class="px-6 py-4">
                                 {{ category.description }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span
+                                    class="badge badge-sm"
+                                    :class="category.enabled_by_default ? 'badge-success' : 'badge-ghost'"
+                                >
+                                    {{ category.enabled_by_default ? 'Да' : 'Нет' }}
+                                </span>
                             </td>
                             <td class="px-6 py-4 text-right relative">
                                 <TableActionsDropdown>

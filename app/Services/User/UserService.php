@@ -58,6 +58,8 @@ class UserService implements UserServiceContract
 
             services()->wallet()->create($user);
 
+            services()->merchantTrafficCategory()->initializeDefaultsForTrader($user);
+
             return $user;
         });
     }

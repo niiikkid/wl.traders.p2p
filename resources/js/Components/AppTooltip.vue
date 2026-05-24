@@ -28,6 +28,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    showDelayMs: {
+        type: Number,
+        default: 0,
+    },
 });
 
 const trigger_ref = ref(null);
@@ -73,6 +77,14 @@ watch(
 );
 
 let xl_media_query = null;
+let show_delay_timer = null;
+
+const clear_show_delay_timer = () => {
+    if (show_delay_timer !== null) {
+        clearTimeout(show_delay_timer);
+        show_delay_timer = null;
+    }
+};
 
 const sync_xl_enabled = () => {
     xl_enabled.value = !props.onlyXl || (xl_media_query?.matches ?? true);
@@ -90,13 +102,26 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     xl_media_query?.removeEventListener('change', sync_xl_enabled);
+    clear_show_delay_timer();
 });
 
 const on_pointer_enter = () => {
+    clear_show_delay_timer();
+
+    if (props.showDelayMs > 0) {
+        show_delay_timer = window.setTimeout(() => {
+            hovered.value = true;
+            show_delay_timer = null;
+        }, props.showDelayMs);
+
+        return;
+    }
+
     hovered.value = true;
 };
 
 const on_pointer_leave = () => {
+    clear_show_delay_timer();
     hovered.value = false;
 };
 

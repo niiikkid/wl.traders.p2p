@@ -15,6 +15,7 @@ const props = defineProps({
 const form = useForm({
     name: props.category?.name || '',
     description: props.category?.description || '',
+    enabled_by_default: props.category?.enabled_by_default ?? false,
 });
 
 const submit = () => {
@@ -51,6 +52,24 @@ defineOptions({ layout: AuthenticatedLayout })
                     label="Описание"
                     placeholder="Введите описание категории"
                 />
+
+                <div class="flex items-start gap-3">
+                    <input
+                        id="enabled_by_default"
+                        v-model="form.enabled_by_default"
+                        type="checkbox"
+                        class="checkbox mt-1"
+                    />
+                    <div>
+                        <label for="enabled_by_default" class="label cursor-pointer justify-start p-0">
+                            <span class="label-text font-medium">Включать новым трейдерам по умолчанию</span>
+                        </label>
+                        <p class="text-sm text-base-content/70 mt-1">
+                            Влияет только на новых трейдеров. Уже выбранные настройки трейдеров не меняются.
+                        </p>
+                        <InputError :message="form.errors.enabled_by_default" class="mt-2" />
+                    </div>
+                </div>
 
                 <SaveButton :disabled="form.processing" :saved="form.recentlySuccessful"/>
             </form>

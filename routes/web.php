@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\MerchantCascadeSettingController;
 use App\Http\Controllers\Admin\MerchantResendCallbackController;
+use App\Http\Controllers\Admin\MerchantTrafficCategoryController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\OpenAiSettingController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
@@ -89,6 +90,7 @@ use App\Http\Controllers\Trader\NotificationController as TraderNotificationCont
 use App\Http\Controllers\Trader\PayoutController;
 use App\Http\Controllers\Trader\TempVipController;
 use App\Http\Controllers\Trader\TraderLeaderboardController;
+use App\Http\Controllers\Trader\TrafficCategoryController;
 use App\Http\Controllers\UserDeviceController;
 use App\Http\Controllers\UserDevicePingController;
 use App\Http\Controllers\UserOnlineController;
@@ -247,6 +249,11 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'store'])->name('payment-detail-schedules.store');
         Route::patch('/payment-detail-schedules/{paymentDetailSchedule}', [PaymentDetailScheduleController::class, 'update'])->name('payment-detail-schedules.update');
         Route::post('/payment-detail-schedules/{paymentDetailSchedule}/copy', [PaymentDetailScheduleController::class, 'copy'])->name('payment-detail-schedules.copy');
+
+        Route::prefix('traffic-categories')->name('traffic-categories.')->group(function () {
+            Route::get('/', [TrafficCategoryController::class, 'index'])->name('index');
+            Route::patch('/{category}/enabled', [TrafficCategoryController::class, 'updateEnabled'])->name('enabled.update');
+        });
 
         Route::post('/payment-detail-tags', [PaymentDetailTagController::class, 'store'])->name('payment-detail-tags.store');
         Route::patch('/payment-detail-tags/{paymentDetailTag}', [PaymentDetailTagController::class, 'update'])->name('payment-detail-tags.update');
@@ -554,6 +561,19 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/merchants/{merchant}/geo', [App\Http\Controllers\Admin\MerchantController::class, 'updateGeo'])->name('merchants.geo.update');
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
         Route::post('/merchants/{merchant}/resend-callback', [MerchantResendCallbackController::class, 'resendByDateRange'])->name('merchants.resend-callback');
+        Route::patch('/merchants/{merchant}/categories', [MerchantTrafficCategoryController::class, 'syncMerchantCategories'])
+            ->name('merchants.categories.update');
+
+        Route::prefix('traffic-categories')->name('traffic-categories.')->group(function () {
+            Route::get('/', [MerchantTrafficCategoryController::class, 'index'])->name('index');
+            Route::post('/', [MerchantTrafficCategoryController::class, 'store'])->name('store');
+            Route::patch('/settings/enabled', [MerchantTrafficCategoryController::class, 'updateEnabled'])
+                ->name('settings.enabled.update');
+            Route::patch('/{category}', [MerchantTrafficCategoryController::class, 'update'])->name('update');
+            Route::delete('/{category}', [MerchantTrafficCategoryController::class, 'destroy'])->name('destroy');
+            Route::post('/{category}/apply-to-all-traders', [MerchantTrafficCategoryController::class, 'applyToAllTraders'])
+                ->name('apply-to-all-traders');
+        });
 
         // Route::resource('/categories', \App\Http\Controllers\Admin\CategoryController::class);
 
