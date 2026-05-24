@@ -60,6 +60,11 @@ const currentTab = ref('active');
 const tableFiltersStore = useTableFiltersStore();
 const toggleBlocked = ref(false);
 const isTraderView = computed(() => viewStore.isTraderViewMode);
+const volumeStatisticsRouteName = computed(() => (
+    viewStore.isAdminViewMode
+        ? 'admin.payment-details.volume-statistics'
+        : 'payment-details.volume-statistics'
+));
 const selectionModeEnabled = ref(false);
 const selectedDetailIds = ref([]);
 
@@ -457,6 +462,22 @@ defineOptions({ layout: AuthenticatedLayout })
                                     title="Есть применённые фильтры"
                                 />
                             </div>
+
+                            <button
+                                v-if="viewStore.isAdminViewMode || viewStore.isTraderViewMode"
+                                type="button"
+                                class="btn btn-sm btn-square btn-accent btn-outline shrink-0 rounded-lg"
+                                title="Объём по реквизитам"
+                                aria-label="Объём по реквизитам"
+                                @click="router.visit(route(volumeStatisticsRouteName), { preserveScroll: true })"
+                            >
+                                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                    <rect x="3" y="14" width="3.5" height="6" rx="1.75" stroke="currentColor" stroke-width="1.3" />
+                                    <rect x="8.25" y="10" width="3.5" height="10" rx="1.75" stroke="currentColor" stroke-width="1.3" />
+                                    <rect x="13.5" y="6" width="3.5" height="14" rx="1.75" stroke="currentColor" stroke-width="1.3" />
+                                    <rect x="18.75" y="2" width="3.5" height="18" rx="1.75" stroke="currentColor" stroke-width="1.3" />
+                                </svg>
+                            </button>
 
                             <button
                                 v-if="viewStore.isAdminViewMode"
