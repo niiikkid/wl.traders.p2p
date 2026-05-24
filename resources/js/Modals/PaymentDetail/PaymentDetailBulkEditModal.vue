@@ -12,6 +12,7 @@ import { useViewStore } from "@/store/view.js";
 import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
+import { usePaymentDetailSchedules } from "@/composables/usePaymentDetailSchedules.js";
 
 const props = defineProps({
     tags: {
@@ -23,6 +24,7 @@ const props = defineProps({
 const modalStore = useModalStore();
 const { paymentDetailBulkEditModal } = storeToRefs(modalStore);
 const viewStore = useViewStore();
+const { fetchSchedules, scheduleOptions, loading: schedulesLoading } = usePaymentDetailSchedules();
 
 const processing = ref(false);
 const errors = ref({});
@@ -54,6 +56,7 @@ const form = ref({
     min_order_amount: '',
     max_order_amount: '',
     order_interval_minutes: '',
+    payment_detail_schedule_id: null,
 });
 
 const scopeOptions = computed(() => [
@@ -85,6 +88,9 @@ const fieldsDisabled = computed(() => processing.value || !canEdit.value);
 const isSelectedMode = computed(() => scope.value === 'selected');
 
 const hasField = (field) => selectedFields.value.includes(field);
+const scheduleItems = computed(() => scheduleOptions());
+const hasScheduleApply = computed(() => hasField('schedule_apply'));
+const hasScheduleRemove = computed(() => hasField('schedule_remove'));
 const hasMonthlyLimitsSelected = computed(() => {
     return hasField('monthly_limit') || hasField('monthly_successful_orders_limit');
 });
@@ -108,6 +114,7 @@ const resetState = () => {
         min_order_amount: '',
         max_order_amount: '',
         order_interval_minutes: '',
+        payment_detail_schedule_id: null,
     };
 };
 const close = () => {
@@ -146,6 +153,7 @@ const buildPayload = () => {
     if (hasField('min_order_amount')) payload.min_order_amount = form.value.min_order_amount;
     if (hasField('max_order_amount')) payload.max_order_amount = form.value.max_order_amount;
     if (hasField('order_interval_minutes')) payload.order_interval_minutes = form.value.order_interval_minutes;
+    if (hasField('schedule_apply')) payload.payment_detail_schedule_id = form.value.payment_detail_schedule_id;
 
     return payload;
 };
@@ -185,6 +193,16 @@ const submit = () => {
         return;
     }
 
+    if (hasField('schedule_apply') && hasField('schedule_remove')) {
+        errors.value = { _error: ['Нельзя одновременно применить и убрать расписание'] };
+        return;
+    }
+
+    if (hasField('schedule_apply') && !form.value.payment_detail_schedule_id) {
+        errors.value = { payment_detail_schedule_id: ['Выберите расписание'] };
+        return;
+    }
+
     processing.value = true;
 
     axios.patch(route('payment-details.bulk-update'), buildPayload(), {
@@ -214,6 +232,7 @@ watch(
     async (state) => {
         if (state) {
             resetState();
+            fetchSchedules();
 
             if (paymentDetailBulkEditModal.value.params?.scope === 'selected') {
                 scope.value = 'selected';
@@ -479,6 +498,51 @@ watch(
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
                             Оставьте пустым для отключения лимита
+                        </div>
+                    </div>
+
+                    <div class="rounded-box border border-base-300 p-4 space-y-4">
+                        <div class="text-sm font-medium">
+                            Рабочее расписание
+                        </div>
+                        <div class="space-y-3">
+                            <label class="label cursor-pointer justify-start gap-3 items-start w-full">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm"
+                                    value="schedule_apply"
+                                    v-model="selectedFields"
+                                    :disabled="fieldsDisabled"
+                                />
+                                <span class="label-text">Применить расписание</span>
+                            </label>
+                            <div v-if="hasScheduleApply" class="grid gap-2">
+                                <Select
+                                    id="bulk_payment_detail_schedule_id"
+                                    v-model="form.payment_detail_schedule_id"
+                                    :items="scheduleItems"
+                                    value="id"
+                                    name="name"
+                                    default_title="Выберите расписание"
+                                    :error="!!errors.payment_detail_schedule_id?.[0]"
+                                    :disabled="processing || schedulesLoading"
+                                    @change="errors.payment_detail_schedule_id = null"
+                                />
+                                <InputError :message="errors.payment_detail_schedule_id?.[0]" />
+                            </div>
+                            <label class="label cursor-pointer justify-start gap-3 items-start w-full">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox checkbox-sm"
+                                    value="schedule_remove"
+                                    v-model="selectedFields"
+                                    :disabled="fieldsDisabled"
+                                />
+                                <span class="label-text">Убрать расписание</span>
+                            </label>
+                            <div v-if="hasScheduleRemove" class="text-xs text-base-content/70">
+                                У выбранных реквизитов будет снято расписание. Активность не изменится.
+                            </div>
                         </div>
                     </div>
 

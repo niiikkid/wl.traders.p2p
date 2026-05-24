@@ -12,7 +12,9 @@ import Multiselect from "@/Components/Form/Multiselect.vue";
 import NumberInputBlock from "@/Components/Form/NumberInputBlock.vue";
 import FieldHint from "@/Components/Form/FieldHint.vue";
 import TraderCommissionRangePreview from "@/Components/PaymentGateway/TraderCommissionRangePreview.vue";
+import PaymentDetailScheduleField from "@/Components/PaymentDetail/PaymentDetailScheduleField.vue";
 import { useModalStore } from "@/store/modal.js";
+import { useViewStore } from "@/store/view.js";
 import {
     paymentDetailFieldHints,
     paymentDetailSectionHints,
@@ -23,7 +25,10 @@ import { ref, computed, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 
 const modalStore = useModalStore();
+const viewStore = useViewStore();
 const { paymentDetailCreateModal } = storeToRefs(modalStore);
+
+const isTraderView = computed(() => viewStore.isTraderViewMode);
 
 const loading = ref(false);
 const processing = ref(false);
@@ -55,6 +60,7 @@ const form = ref({
     currency: null,
     min_order_amount: '',
     max_order_amount: '',
+    payment_detail_schedule_id: null,
 });
 
 const details = ref({
@@ -310,6 +316,7 @@ const resetState = () => {
         currency: null,
         min_order_amount: '',
         max_order_amount: '',
+        payment_detail_schedule_id: null,
     };
     details.value = {
         'card': '',
@@ -367,6 +374,9 @@ const submit = () => {
     payload.detail_type = selectedDetailType.value;
     payload.detail = details.value[payload.detail_type];
     payload.additional_info = payload.additional_info || null;
+    if (!payload.payment_detail_schedule_id) {
+        payload.payment_detail_schedule_id = null;
+    }
 
     axios.post(route('payment-details.store'), payload, {
         headers: { 'Accept': 'application/json' }
@@ -964,6 +974,14 @@ watch(
                             Оставьте пустым для отключения лимита
                         </div>
                     </div>
+
+                    <PaymentDetailScheduleField
+                        v-if="isTraderView"
+                        v-model="form.payment_detail_schedule_id"
+                        :errors="errors"
+                        :disabled="processing"
+                        @clear-error="(field) => (errors[field] = null)"
+                    />
 
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">

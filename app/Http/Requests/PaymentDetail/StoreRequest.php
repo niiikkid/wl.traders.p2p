@@ -4,6 +4,7 @@ namespace App\Http\Requests\PaymentDetail;
 
 use App\Enums\DetailType;
 use App\Models\PaymentGateway;
+use App\Rules\OwnedPaymentDetailSchedule;
 use App\Rules\UniquePaymentDetail;
 use App\Rules\UniquePhonePaymentDetail;
 use App\Services\Money\Currency;
@@ -190,6 +191,11 @@ class StoreRequest extends FormRequest
                 'nullable',
                 'exists:user_devices,id',
             ],
+            'payment_detail_schedule_id' => [
+                'nullable',
+                'integer',
+                new OwnedPaymentDetailSchedule($this->user()?->id),
+            ],
         ];
     }
 
@@ -210,6 +216,7 @@ class StoreRequest extends FormRequest
             'order_interval_minutes' => __('интервал между сделками'),
             'payment_gateway_ids' => __('платежные методы'),
             'payment_gateway_ids.*' => __('платежный метод'),
+            'payment_detail_schedule_id' => __('рабочее расписание'),
         ];
     }
 
@@ -223,6 +230,11 @@ class StoreRequest extends FormRequest
         $monthlySuccessfulOrdersLimit = $this->monthly_successful_orders_limit;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
+        $paymentDetailScheduleId = $this->payment_detail_schedule_id;
+
+        if ($paymentDetailScheduleId === '' || $paymentDetailScheduleId === null) {
+            $paymentDetailScheduleId = null;
+        }
 
         if ($this->detail_type === DetailType::IBAN_UAH->value) {
             $detail = strtoupper(trim((string) $detail));
@@ -262,6 +274,7 @@ class StoreRequest extends FormRequest
             'monthly_successful_orders_limit' => $monthlySuccessfulOrdersLimit,
             'min_order_amount' => $minOrderAmount,
             'max_order_amount' => $maxOrderAmount,
+            'payment_detail_schedule_id' => $paymentDetailScheduleId,
         ]);
     }
 

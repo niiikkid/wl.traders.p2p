@@ -3,7 +3,9 @@
 namespace App\Http\Requests\PaymentDetail;
 
 use App\Enums\DetailType;
+use App\Models\PaymentDetail;
 use App\Models\PaymentGateway;
+use App\Rules\OwnedPaymentDetailSchedule;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
@@ -26,7 +28,7 @@ class UpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'min:3', 'max:30'],
             'initials' => ['required', 'string', 'min:3', 'max:80'],
             'additional_info' => [
@@ -121,6 +123,16 @@ class UpdateRequest extends FormRequest
             'payment_gateway_ids' => ['required', 'array', 'min:1'],
             'payment_gateway_ids.*' => ['required', 'exists:payment_gateways,id'],
         ];
+
+        if ($this->canUpdateSchedule()) {
+            $rules['payment_detail_schedule_id'] = [
+                'nullable',
+                'integer',
+                new OwnedPaymentDetailSchedule($this->scheduleOwnerId()),
+            ];
+        }
+
+        return $rules;
     }
 
     public function attributes()
@@ -139,6 +151,7 @@ class UpdateRequest extends FormRequest
             'order_interval_minutes' => __('интервал между сделками'),
             'payment_gateway_ids' => __('платежные методы'),
             'payment_gateway_ids.*' => __('платежный метод'),
+            'payment_detail_schedule_id' => __('рабочее расписание'),
         ];
     }
 
@@ -159,6 +172,11 @@ class UpdateRequest extends FormRequest
         $additionalInfo = $this->additional_info;
         $minOrderAmount = $this->min_order_amount;
         $maxOrderAmount = $this->max_order_amount;
+        $paymentDetailScheduleId = $this->payment_detail_schedule_id;
+
+        if ($paymentDetailScheduleId === '' || $paymentDetailScheduleId === null) {
+            $paymentDetailScheduleId = null;
+        }
 
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
             $dailySuccessfulOrdersLimit = null;
@@ -190,7 +208,30 @@ class UpdateRequest extends FormRequest
             'additional_info' => $additionalInfo,
             'min_order_amount' => $minOrderAmount,
             'max_order_amount' => $maxOrderAmount,
+            'payment_detail_schedule_id' => $paymentDetailScheduleId,
         ]);
+    }
+
+    private function canUpdateSchedule(): bool
+    {
+        $paymentDetail = $this->route('paymentDetail');
+
+        if (! $paymentDetail instanceof PaymentDetail) {
+            return false;
+        }
+
+        return $this->user()?->id === $paymentDetail->user_id;
+    }
+
+    private function scheduleOwnerId(): ?int
+    {
+        $paymentDetail = $this->route('paymentDetail');
+
+        if (! $paymentDetail instanceof PaymentDetail) {
+            return $this->user()?->id;
+        }
+
+        return $paymentDetail->user_id;
     }
 
     private function additionalInfoIsRequired(): bool

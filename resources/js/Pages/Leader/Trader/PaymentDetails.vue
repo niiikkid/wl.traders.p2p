@@ -14,12 +14,15 @@ import PaymentDetailLimit from "@/Components/PaymentDetailLimit.vue";
 import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue";
 import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
 import TableInfoDropdown from "@/Components/Table/TableInfoDropdown.vue";
+import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
+import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailScheduleTableTick.js";
 
 const page = usePage();
 const tableFiltersStore = useTableFiltersStore();
 
 const trader = ref(page.props.trader);
 const paymentDetails = ref(page.props.paymentDetails);
+usePaymentDetailScheduleTableTick(paymentDetails);
 const currentTab = ref('active');
 
 const normalizeNumber = (value) => {
@@ -202,6 +205,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <th>Реквизит</th>
                                         <th>Тип</th>
                                         <th>Лимиты</th>
+                                        <th class="text-nowrap">Расписание</th>
                                         <th>Статус</th>
                                         <th><span class="sr-only">Настройки</span></th>
                                     </tr>
@@ -333,6 +337,12 @@ defineOptions({layout: AuthenticatedLayout});
                                                 </div>
                                             </TableCellPopover>
                                         </td>
+                                        <td class="min-w-[9rem]">
+                                            <PaymentDetailScheduleStatus
+                                                :schedule="detail.schedule"
+                                                compact
+                                            />
+                                        </td>
                                         <td class="whitespace-nowrap">
                                             <span class="badge badge-success badge-sm" v-if="detail.is_active">Активен</span>
                                             <span class="badge badge-ghost badge-sm" v-else>Выключен</span>
@@ -410,6 +420,15 @@ defineOptions({layout: AuthenticatedLayout});
                                         <PaymentDetailLimit
                                             :current_daily_limit="detail.current_daily_limit"
                                             :daily_limit="detail.daily_limit"
+                                        />
+                                    </div>
+                                    <div class="text-xs">
+                                        <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
+                                            Расписание
+                                        </div>
+                                        <PaymentDetailScheduleStatus
+                                            :schedule="detail.schedule"
+                                            compact
                                         />
                                     </div>
                                     <div class="flex items-center justify-between gap-2">

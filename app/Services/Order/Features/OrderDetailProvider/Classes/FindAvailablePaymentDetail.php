@@ -267,6 +267,7 @@ class FindAvailablePaymentDetail
                 });
             })
             ->active()
+            ->availableBySchedule()
             ->orderBy('last_used_at')
             ->when(! is_local(), function (Builder $query) {
                 $query->lock('FOR UPDATE SKIP LOCKED');

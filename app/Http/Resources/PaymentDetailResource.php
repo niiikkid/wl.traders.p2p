@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\PaymentDetail;
+use App\Services\PaymentDetail\PaymentDetailScheduleAvailabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -43,6 +44,9 @@ class PaymentDetailResource extends JsonResource
             'order_interval_minutes' => $this->order_interval_minutes,
             'currency' => $this->currency->getCode(),
             'user_device_id' => $this->user_device_id,
+            'payment_detail_schedule_id' => $this->payment_detail_schedule_id,
+            'schedule' => app(PaymentDetailScheduleAvailabilityService::class)
+                ->resolveStatusForPaymentDetail($this->resource),
             'created_at' => $this->created_at->toDateString(),
             'payment_gateway_ids' => $this->payment_gateway_ids ?? [],
             'successful_orders_total_count' => $this->resource->successful_orders_total_count ?? 0,

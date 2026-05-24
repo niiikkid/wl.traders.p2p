@@ -25,8 +25,12 @@ import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModa
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
+import PaymentDetailScheduleQuickCreateModal from "@/Modals/PaymentDetailSchedule/PaymentDetailScheduleQuickCreateModal.vue";
+import PaymentDetailScheduleManagerModal from "@/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue";
+import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
+import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailScheduleTableTick.js";
 
 const modalStore = useModalStore();
 const openCreateModal = () => {
@@ -54,6 +58,7 @@ const openBulkEditModal = () => {
 };
 const viewStore = useViewStore();
 const paymentDetails = ref(usePage().props.paymentDetails)
+usePaymentDetailScheduleTableTick(paymentDetails);
 const paymentDetailTags = ref(usePage().props.paymentDetailTags || [])
 const detailActiveToggleForm = useForm({});
 const currentTab = ref('active');
@@ -261,6 +266,10 @@ const openTagCreateModal = () => {
 
 const openTagManageModal = () => {
     modalStore.openPaymentDetailTagManageModal();
+};
+
+const openScheduleManagerModal = () => {
+    modalStore.openPaymentDetailScheduleManagerModal();
 };
 
 const toggleDisplayDetailTags = () => {
@@ -648,6 +657,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                             Лимиты
                                         </th>
                                         <th scope="col" class="text-nowrap">
+                                            Расписание
+                                        </th>
+                                        <th scope="col" class="text-nowrap">
                                             Статус
                                         </th>
                                         <th v-if="isTraderView" scope="col" class="text-nowrap">
@@ -682,6 +694,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </TableAction>
                                                         <TableAction @click="openTagManageModal">
                                                             Редактировать теги
+                                                        </TableAction>
+                                                        <TableAction
+                                                            v-if="isTraderView"
+                                                            @click="openScheduleManagerModal"
+                                                        >
+                                                            Расписания работы
                                                         </TableAction>
                                                         <TableAction @click="openBulkEditModal">
                                                             Массовая настройка
@@ -908,6 +926,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </div>
                                                 </TableCellPopover>
                                             </td>
+                                            <td class="min-w-[9rem]">
+                                                <PaymentDetailScheduleStatus
+                                                    :schedule="payment_detail.schedule"
+                                                    compact
+                                                />
+                                            </td>
                                             <td>
                                                 <div class="flex items-center">
                                                     <label class="label cursor-pointer justify-start gap-2 py-0 min-h-0">
@@ -1044,6 +1068,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                             :name="payment_detail.name"
                                             :show-processing-indicator="shouldShowProcessingIndicator(payment_detail)"
                                             :uses-manual-processing="detailUsesManualProcessing(payment_detail)"
+                                        />
+                                    </div>
+
+                                    <div class="border-b border-base-content/10"></div>
+
+                                    <div class="text-xs">
+                                        <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
+                                            Расписание
+                                        </div>
+                                        <PaymentDetailScheduleStatus
+                                            :schedule="payment_detail.schedule"
+                                            compact
                                         />
                                     </div>
 
@@ -1206,6 +1242,8 @@ defineOptions({ layout: AuthenticatedLayout })
         <PaymentDetailBulkEditModal :tags="paymentDetailTags" />
         <PaymentDetailTagCreateModal />
         <PaymentDetailTagManageModal :tags="paymentDetailTags" />
+        <PaymentDetailScheduleQuickCreateModal v-if="isTraderView" />
+        <PaymentDetailScheduleManagerModal v-if="isTraderView" />
         <ConfirmModal/>
     </div>
 </template>

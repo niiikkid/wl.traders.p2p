@@ -15,7 +15,7 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
     public function paginateForAdmin(TableFiltersValue $filters, bool $fromArchive = false): LengthAwarePaginator
     {
         return PaymentDetail::query()
-            ->with(['user', 'userDevice', 'paymentGateways'])
+            ->with(['user', 'userDevice', 'paymentGateways', 'schedule.intervals'])
             ->withCount(['orders as pending_orders_count' => function ($query) {
                 $query->where('status', OrderStatus::PENDING);
             }])
@@ -66,7 +66,7 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
     {
         return PaymentDetail::query()
             ->where('user_id', $user->id)
-            ->with(['user', 'userDevice', 'paymentGateways'])
+            ->with(['user', 'userDevice', 'paymentGateways', 'schedule.intervals'])
             ->withCount(['orders as pending_orders_count' => function ($query) {
                 $query->where('status', OrderStatus::PENDING);
             }])
@@ -151,7 +151,7 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
         return PaymentDetail::query()
             ->where('user_id', $trader->id)
             ->whereRelation('user', 'team_leader_id', $teamLeader->id)
-            ->with(['user', 'userDevice', 'paymentGateways'])
+            ->with(['user', 'userDevice', 'paymentGateways', 'schedule.intervals'])
             ->withCount(['orders as pending_orders_count' => function ($query) {
                 $query->where('status', OrderStatus::PENDING);
             }])

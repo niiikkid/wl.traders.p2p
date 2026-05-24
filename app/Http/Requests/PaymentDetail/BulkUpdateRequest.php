@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\PaymentDetail;
 
+use App\Rules\OwnedPaymentDetailSchedule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,6 +10,16 @@ class BulkUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        $fields = $this->input('fields', []);
+        $fields = is_array($fields) ? $fields : [];
+
+        if (
+            ! isRouteFor('Trader')
+            && (in_array('schedule_apply', $fields, true) || in_array('schedule_remove', $fields, true))
+        ) {
+            return false;
+        }
+
         return true;
     }
 
@@ -28,6 +39,8 @@ class BulkUpdateRequest extends FormRequest
             'min_order_amount',
             'max_order_amount',
             'order_interval_minutes',
+            'schedule_apply',
+            'schedule_remove',
         ];
 
         return [
@@ -82,6 +95,12 @@ class BulkUpdateRequest extends FormRequest
             'min_order_amount' => ['nullable', 'integer', 'min:0'],
             'max_order_amount' => ['nullable', 'integer', 'min:0', 'gte:min_order_amount'],
             'order_interval_minutes' => ['nullable', 'integer', 'min:1'],
+            'payment_detail_schedule_id' => [
+                Rule::requiredIf(in_array('schedule_apply', $fields, true)),
+                'nullable',
+                'integer',
+                new OwnedPaymentDetailSchedule($this->user()?->id),
+            ],
         ];
     }
 
@@ -101,6 +120,7 @@ class BulkUpdateRequest extends FormRequest
             'min_order_amount' => __('минимальная сумма сделки'),
             'max_order_amount' => __('максимальная сумма сделки'),
             'order_interval_minutes' => __('интервал между сделками'),
+            'payment_detail_schedule_id' => __('рабочее расписание'),
         ];
     }
 

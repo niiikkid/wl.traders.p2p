@@ -59,6 +59,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentDemoController;
 use App\Http\Controllers\PaymentDetailArchiveController;
 use App\Http\Controllers\PaymentDetailController;
+use App\Http\Controllers\PaymentDetailScheduleController;
 use App\Http\Controllers\PaymentDetailTagAssignmentController;
 use App\Http\Controllers\PaymentDetailTagController;
 use App\Http\Controllers\PaymentDetailVolumeStatisticsController;
@@ -242,6 +243,11 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/payment-details/create-data', [PaymentDetailController::class, 'createData'])->name('payment-details.create-data');
         Route::get('/payment-details/{paymentDetail}', [PaymentDetailController::class, 'show'])->name('payment-details.show');
         Route::patch('/payment-details/{paymentDetail}/tags', [PaymentDetailTagAssignmentController::class, 'update'])->name('payment-details.tags.update');
+        Route::get('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'index'])->name('payment-detail-schedules.index');
+        Route::post('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'store'])->name('payment-detail-schedules.store');
+        Route::patch('/payment-detail-schedules/{paymentDetailSchedule}', [PaymentDetailScheduleController::class, 'update'])->name('payment-detail-schedules.update');
+        Route::post('/payment-detail-schedules/{paymentDetailSchedule}/copy', [PaymentDetailScheduleController::class, 'copy'])->name('payment-detail-schedules.copy');
+
         Route::post('/payment-detail-tags', [PaymentDetailTagController::class, 'store'])->name('payment-detail-tags.store');
         Route::patch('/payment-detail-tags/{paymentDetailTag}', [PaymentDetailTagController::class, 'update'])->name('payment-detail-tags.update');
         Route::delete('/payment-detail-tags/{paymentDetailTag}', [PaymentDetailTagController::class, 'destroy'])->name('payment-detail-tags.destroy');

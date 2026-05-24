@@ -43,6 +43,7 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 'currency' => Currency::make($data->currency),
                 'user_id' => $data->user_id,
                 'user_device_id' => $data->user_device_id,
+                'payment_detail_schedule_id' => $data->payment_detail_schedule_id,
                 'last_used_at' => now(),
             ]);
 
@@ -61,7 +62,7 @@ class PaymentDetailService implements PaymentDetailServiceContract
         return $this->transaction(function () use ($data, $paymentDetail) {
             $paymentDetail = PaymentDetail::where('id', $paymentDetail->id)->lockForUpdate()->first();
 
-            $paymentDetail->update([
+            $updatePayload = [
                 'name' => $data->name,
                 'initials' => $data->initials,
                 'additional_info' => $data->additional_info,
@@ -80,7 +81,13 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 'order_interval_minutes' => $data->order_interval_minutes,
                 'max_pending_orders_quantity' => $data->max_pending_orders_quantity,
                 'user_device_id' => $data->user_device_id,
-            ]);
+            ];
+
+            if ($data->updates_schedule) {
+                $updatePayload['payment_detail_schedule_id'] = $data->payment_detail_schedule_id;
+            }
+
+            $paymentDetail->update($updatePayload);
 
             $syncData = collect($data->payment_gateway_ids)->mapWithKeys(function ($id) {
                 return [$id => ['created_at' => now(), 'updated_at' => now()]];

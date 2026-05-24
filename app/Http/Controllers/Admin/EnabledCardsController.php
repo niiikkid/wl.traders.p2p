@@ -7,13 +7,14 @@ use App\Http\Controllers\Controller;
 use App\Models\EnabledCardMinAmountLevel;
 use App\Models\Order;
 use App\Models\PaymentDetail;
+use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use App\Models\Wallet;
 
 class EnabledCardsController extends Controller
 {
@@ -66,73 +67,15 @@ class EnabledCardsController extends Controller
         $userId = $request->input('user_id');
 
         // Получение общего количества включенных реквизитов
-        $query = PaymentDetail::query()
-            ->whereNull('archived_at')
-            ->where('is_active', true)
-            ->whereRelation('user', 'is_online', true);
-            
-        // Применяем фильтры
-        if ($detailType) {
-            $query->where('detail_type', $detailType);
-        }
-        
-        if ($paymentGatewayId) {
-            $query->whereHas('paymentGateways', function ($q) use ($paymentGatewayId) {
-                $q->where('payment_gateways.id', $paymentGatewayId);
-            });
-        }
-        
-        if ($userId) {
-            $query->where('user_id', $userId);
-        }
-        
-        $enabledPaymentDetailsCount = $query->count();
+        $enabledPaymentDetailsCount = $this->trafficAvailablePaymentDetailsQuery($detailType, $paymentGatewayId, $userId)
+            ->count();
 
         // Получение идентификаторов активных реквизитов для использования в запросах
-        $activePaymentDetailIdsQuery = PaymentDetail::query()
-            ->whereNull('archived_at')
-            ->where('is_active', true)
-            ->whereRelation('user', 'is_online', true);
-            
-        // Применяем фильтры
-        if ($detailType) {
-            $activePaymentDetailIdsQuery->where('detail_type', $detailType);
-        }
-        
-        if ($paymentGatewayId) {
-            $activePaymentDetailIdsQuery->whereHas('paymentGateways', function ($q) use ($paymentGatewayId) {
-                $q->where('payment_gateways.id', $paymentGatewayId);
-            });
-        }
-        
-        if ($userId) {
-            $activePaymentDetailIdsQuery->where('user_id', $userId);
-        }
-        
-        $activePaymentDetailIds = $activePaymentDetailIdsQuery->pluck('id');
+        $activePaymentDetailIds = $this->trafficAvailablePaymentDetailsQuery($detailType, $paymentGatewayId, $userId)
+            ->pluck('id');
 
         // Получение свободного лимита по каждой валюте
-        $currencyLimitsQuery = PaymentDetail::query()
-            ->whereNull('archived_at')
-            ->where('is_active', true)
-            ->whereRelation('user', 'is_online', true);
-            
-        // Применяем фильтры
-        if ($detailType) {
-            $currencyLimitsQuery->where('detail_type', $detailType);
-        }
-        
-        if ($paymentGatewayId) {
-            $currencyLimitsQuery->whereHas('paymentGateways', function ($q) use ($paymentGatewayId) {
-                $q->where('payment_gateways.id', $paymentGatewayId);
-            });
-        }
-        
-        if ($userId) {
-            $currencyLimitsQuery->where('user_id', $userId);
-        }
-        
-        $currencyLimits = $currencyLimitsQuery
+        $currencyLimits = $this->trafficAvailablePaymentDetailsQuery($detailType, $paymentGatewayId, $userId)
             ->select(
                 'currency',
                 DB::raw('COALESCE(SUM(CAST(daily_limit AS SIGNED) - CAST(current_daily_limit AS SIGNED)), 0) as total_free_limit')
@@ -164,27 +107,7 @@ class EnabledCardsController extends Controller
             });
 
         // Расчет потенциального лимита (свободный лимит - сумма активных заказов)
-        $potentialLimitsQuery = PaymentDetail::query()
-            ->whereNull('archived_at')
-            ->where('is_active', true)
-            ->whereRelation('user', 'is_online', true);
-            
-        // Применяем фильтры
-        if ($detailType) {
-            $potentialLimitsQuery->where('detail_type', $detailType);
-        }
-        
-        if ($paymentGatewayId) {
-            $potentialLimitsQuery->whereHas('paymentGateways', function ($q) use ($paymentGatewayId) {
-                $q->where('payment_gateways.id', $paymentGatewayId);
-            });
-        }
-        
-        if ($userId) {
-            $potentialLimitsQuery->where('user_id', $userId);
-        }
-        
-        $potentialLimits = $potentialLimitsQuery
+        $potentialLimits = $this->trafficAvailablePaymentDetailsQuery($detailType, $paymentGatewayId, $userId)
             ->select(
                 'currency',
                 DB::raw('COALESCE(SUM(CAST(daily_limit AS SIGNED) - CAST(current_daily_limit AS SIGNED)), 0) as total_free_limit')
@@ -211,30 +134,30 @@ class EnabledCardsController extends Controller
 
         // Общий баланс всех трейдеров с применением фильтра по пользователю, если указан
         $totalTradersBalanceQuery = Wallet::query();
-        
+
         if ($userId) {
             $totalTradersBalanceQuery->where('user_id', $userId);
         } else {
             $totalTradersBalanceQuery->whereHas('user', function ($query) {
-                //$query->role('Trader');
+                // $query->role('Trader');
             });
         }
-        
+
         $totalTradersBalance = $totalTradersBalanceQuery->sum('trust_balance');
 
         // Общий баланс всех онлайн-трейдеров с применением фильтра по пользователю, если указан
         $onlineTradersBalanceQuery = Wallet::query();
-        
+
         if ($userId) {
             $onlineTradersBalanceQuery->where('user_id', $userId)
                 ->whereRelation('user', 'is_online', true);
         } else {
             $onlineTradersBalanceQuery->whereHas('user', function ($query) {
-                //$query->role('Trader');
+                // $query->role('Trader');
                 $query->where('is_online', true);
             });
         }
-        
+
         $onlineTradersBalance = $onlineTradersBalanceQuery->sum('trust_balance');
 
         // Список всех валют для селекта
@@ -243,7 +166,7 @@ class EnabledCardsController extends Controller
                 return [
                     'code' => $currency->getCode(),
                     'name' => $currency->getName(),
-                    'symbol' => $currency->getSymbol()
+                    'symbol' => $currency->getSymbol(),
                 ];
             })
             ->values()
@@ -287,26 +210,8 @@ class EnabledCardsController extends Controller
 
             foreach ($groups as $group) {
                 // Базовый запрос для активных реквизитов выбранной валюты
-                $query = PaymentDetail::query()
-                    ->whereNull('archived_at')
-                    ->where('is_active', true)
-                    ->whereRelation('user', 'is_online', true)
+                $query = $this->trafficAvailablePaymentDetailsQuery($detailType, $paymentGatewayId, $userId)
                     ->where('currency', $currencyCode);
-
-                // Применяем фильтры
-                if ($detailType) {
-                    $query->where('detail_type', $detailType);
-                }
-                
-                if ($paymentGatewayId) {
-                    $query->whereHas('paymentGateways', function ($q) use ($paymentGatewayId) {
-                        $q->where('payment_gateways.id', $paymentGatewayId);
-                    });
-                }
-                
-                if ($userId) {
-                    $query->where('user_id', $userId);
-                }
 
                 if ($group['min_amount'] === null) {
                     // Группа "Минимальный лимит не указан"
@@ -378,14 +283,42 @@ class EnabledCardsController extends Controller
                     'total' => $formattedTotalBalance,
                     'online' => $formattedOnlineBalance,
                     'currency' => Currency::USDT()->getCode(),
-                    'symbol' => Currency::USDT()->getSymbol()
-                ]
+                    'symbol' => Currency::USDT()->getSymbol(),
+                ],
             ],
             'filters' => [
                 'detail_type' => $detailType,
                 'payment_gateway_id' => $paymentGatewayId,
-                'user_id' => $userId
-            ]
+                'user_id' => $userId,
+            ],
         ]);
+    }
+
+    private function trafficAvailablePaymentDetailsQuery(
+        ?string $detailType,
+        mixed $paymentGatewayId,
+        mixed $userId,
+    ): Builder {
+        $query = PaymentDetail::query()
+            ->whereNull('archived_at')
+            ->where('is_active', true)
+            ->whereRelation('user', 'is_online', true)
+            ->availableBySchedule();
+
+        if ($detailType) {
+            $query->where('detail_type', $detailType);
+        }
+
+        if ($paymentGatewayId) {
+            $query->whereHas('paymentGateways', function ($q) use ($paymentGatewayId) {
+                $q->where('payment_gateways.id', $paymentGatewayId);
+            });
+        }
+
+        if ($userId) {
+            $query->where('user_id', $userId);
+        }
+
+        return $query;
     }
 }

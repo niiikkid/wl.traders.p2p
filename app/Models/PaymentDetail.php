@@ -8,7 +8,9 @@ use App\Enums\DetailType;
 use App\Observers\PaymentDetailObserver;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\PaymentDetail\PaymentDetailScheduleAvailabilityService;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -41,8 +43,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $order_interval_minutes
  * @property Currency $currency
  * @property int $user_id
+ * @property int|null $payment_detail_schedule_id
  * @property int $user_device_id
  * @property User $user
+ * @property PaymentDetailSchedule|null $schedule
  * @property UserDevice $userDevice
  * @property Collection<int, PaymentGateway> $paymentGateways
  * @property Collection<int, PaymentDetailTag> $tags
@@ -81,6 +85,7 @@ class PaymentDetail extends Model
         'order_interval_minutes',
         'currency',
         'user_id',
+        'payment_detail_schedule_id',
         'user_device_id',
         'archived_at',
         'last_used_at',
@@ -116,6 +121,11 @@ class PaymentDetail extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function schedule(): BelongsTo
+    {
+        return $this->belongsTo(PaymentDetailSchedule::class, 'payment_detail_schedule_id');
+    }
+
     public function userDevice(): BelongsTo
     {
         return $this->belongsTo(UserDevice::class);
@@ -135,5 +145,10 @@ class PaymentDetail extends Model
     public function scopeActive(Builder $query): void
     {
         $query->where('is_active', true);
+    }
+
+    public function scopeAvailableBySchedule(Builder $query, ?CarbonInterface $at = null): void
+    {
+        app(PaymentDetailScheduleAvailabilityService::class)->applyAvailableBySchedule($query, $at);
     }
 }

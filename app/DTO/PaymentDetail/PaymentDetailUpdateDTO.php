@@ -23,9 +23,11 @@ readonly class PaymentDetailUpdateDTO extends BaseDTO
         public ?int $user_device_id,
         public ?int $min_order_amount = null,
         public ?int $max_order_amount = null,
+        public ?int $payment_detail_schedule_id = null,
+        public bool $updates_schedule = false,
     ) {}
 
-    public static function makeFromRequest(array $data): static
+    public static function makeFromRequest(array $data, bool $updates_schedule = false): static
     {
         return new static(
             name: $data['name'],
@@ -47,6 +49,10 @@ readonly class PaymentDetailUpdateDTO extends BaseDTO
             user_device_id: isset($data['user_device_id']) ? (int) $data['user_device_id'] : null,
             min_order_amount: isset($data['min_order_amount']) ? (int) $data['min_order_amount'] : null,
             max_order_amount: isset($data['max_order_amount']) ? (int) $data['max_order_amount'] : null,
+            payment_detail_schedule_id: $updates_schedule && array_key_exists('payment_detail_schedule_id', $data)
+                ? ($data['payment_detail_schedule_id'] !== null ? (int) $data['payment_detail_schedule_id'] : null)
+                : null,
+            updates_schedule: $updates_schedule,
         );
     }
 }

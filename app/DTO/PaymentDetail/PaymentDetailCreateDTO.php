@@ -28,6 +28,7 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
         public int $user_id,
         public ?int $min_order_amount = null,
         public ?int $max_order_amount = null,
+        public ?int $payment_detail_schedule_id = null,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -56,6 +57,9 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
             user_id: (int) $data['user_id'],
             min_order_amount: isset($data['min_order_amount']) ? (int) $data['min_order_amount'] : null,
             max_order_amount: isset($data['max_order_amount']) ? (int) $data['max_order_amount'] : null,
+            payment_detail_schedule_id: isset($data['payment_detail_schedule_id']) && $data['payment_detail_schedule_id'] !== null
+                ? (int) $data['payment_detail_schedule_id']
+                : null,
         );
     }
 }

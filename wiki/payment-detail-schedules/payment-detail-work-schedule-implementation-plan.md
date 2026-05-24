@@ -1,12 +1,29 @@
 # Payment Detail Work Schedule Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22
-> Raw: [Payment Detail Work Schedule Requirements](../../raw/payment-detail-schedules/2026-05-22-payment-detail-work-schedule-requirements.md)
-> Updated: 2026-05-22
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; Phase 1 implementation, 2026-05-24; Phase 2 implementation, 2026-05-24; Phase 3 implementation, 2026-05-24; Phase 4 implementation, 2026-05-24; Phase 5 implementation, 2026-05-24; Phase 6 implementation, 2026-05-24; Phase 7 implementation, 2026-05-24; Phase 8 implementation, 2026-05-24
+> Raw: [Payment Detail Work Schedule Requirements](../../raw/payment-detail-schedules/2026-05-22-payment-detail-work-schedule-requirements.md); [Phase 1 Database and Models](../../raw/payment-detail-schedules/2026-05-24-phase-1-database-and-models.md); [Phase 2 Domain Service and Validation](../../raw/payment-detail-schedules/2026-05-24-phase-2-domain-service-and-validation.md); [Phase 3 Schedule CRUD API](../../raw/payment-detail-schedules/2026-05-24-phase-3-schedule-crud-api.md); [Phase 4 Payment Detail Assignment](../../raw/payment-detail-schedules/2026-05-24-phase-4-payment-detail-assignment.md); [Phase 5 Traffic Selection](../../raw/payment-detail-schedules/2026-05-24-phase-5-traffic-selection.md); [Phase 6 Schedule Manager UI](../../raw/payment-detail-schedules/2026-05-24-phase-6-schedule-manager-ui.md); [Phase 7 Payment Detail Table Status](../../raw/payment-detail-schedules/2026-05-24-phase-7-payment-detail-table-status.md); [Phase 8 Role Read Views](../../raw/payment-detail-schedules/2026-05-24-phase-8-role-read-views.md)
+> Updated: 2026-05-24
 
 ## Overview
 
 Payment detail work schedules add a server-time availability layer on top of the existing trader online state and payment detail active state. A payment detail still remains manually enabled or disabled by the trader, but when a schedule is attached to it, traffic can use that detail only inside the schedule's configured working intervals. Schedules are named trader-owned entities that may be attached to many payment details; editing a schedule affects every attached detail.
+
+As of **2026-05-24**, phases **0–8 are implemented in code**: schema through role read views for admin and Team Leader. Phase **9** (verification) remains pending.
+
+## Implementation Progress
+
+| Phase | Status | Summary |
+|-------|--------|---------|
+| 0 — Discovery | Done | Spec and integration anchors |
+| 1 — Database/models | Done | `payment_detail_schedules`, intervals, FK on `payment_details` |
+| 2 — Domain/validation | Done | Normalizer, CRUD service, `availableBySchedule`, status resolver |
+| 3 — Schedule CRUD API | Done | Trader JSON routes and resources |
+| 4 — Detail assignment | Done | Create/edit/bulk attach; quick-create modal |
+| 5 — Traffic selection | Done | `FindAvailablePaymentDetail`, enabled cards, sidebar counts |
+| 6 — Schedule manager UI | Done | Manager modal, form, per-day overrides, copy |
+| 7 — Table status column | Done | Index column + mobile block; client status tick |
+| 8 — Role read views | Done | Admin index + TL trader requisites; read-only in edit modal |
+| 9 — Verification | Pending | Manual checklist |
 
 ## Product Scope
 
@@ -35,17 +52,40 @@ The feature must not auto-toggle `payment_details.is_active`. Manual active stat
 
 The implementation should integrate with these existing areas:
 
-- `app/Models/PaymentDetail.php` stores the manual payment detail state and should receive the schedule relationship.
-- `app/Services/Order/Features/OrderDetailProvider/Classes/FindAvailablePaymentDetail.php` is the critical traffic selection query for incoming orders.
-- `app/Http/Resources/PaymentDetailResource.php` feeds `resources/js/Pages/PaymentDetail/Index.vue` and the create/edit modals.
-- `app/Http/Requests/PaymentDetail/StoreRequest.php` and `app/Http/Requests/PaymentDetail/UpdateRequest.php` validate payment detail form payloads.
-- `app/Http/Requests/PaymentDetail/BulkUpdateRequest.php` controls existing bulk edit fields.
-- `resources/js/Modals/PaymentDetail/PaymentDetailCreateModal.vue` and `resources/js/Modals/PaymentDetail/PaymentDetailEditModal.vue` need schedule selection UI.
-- `resources/js/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue` needs attach/remove schedule actions.
-- `resources/js/Pages/PaymentDetail/Index.vue` needs the schedule column.
-- `app/Http/Middleware/HandleInertiaRequests.php` currently counts active details for the sidebar with 15-second cache.
-- `app/Http/Controllers/Admin/EnabledCardsController.php` and `app/Services/EnabledCards/MinAmountStatsService.php` count available cards/details for admin and merchant-facing availability widgets.
+- `app/Models/PaymentDetail.php` stores the manual payment detail state; **`schedule()` relation (Phase 1)**; **`scopeAvailableBySchedule()` (Phase 2)**.
+- `app/Services/PaymentDetail/PaymentDetailScheduleService.php` — create/update/copy schedules with atomic interval replace **(Phase 2)**.
+- `app/Services/PaymentDetail/PaymentDetailScheduleIntervalNormalizer.php` — parse, validate, and normalize interval payloads **(Phase 2)**.
+- `app/Services/PaymentDetail/PaymentDetailScheduleAvailabilityService.php` — shared SQL availability filter and status payload resolver **(Phase 2)**.
+- `app/Enums/PaymentDetailScheduleStatus.php` — status keys and Russian labels **(Phase 2)**.
+- `app/Http/Requests/PaymentDetailSchedule/` — `StoreRequest`, `UpdateRequest`, `CopyRequest` **(Phase 2)**.
+- `app/Http/Controllers/PaymentDetailScheduleController.php` — trader JSON CRUD **(Phase 3)**.
+- `app/Http/Resources/PaymentDetailScheduleResource.php` and `PaymentDetailScheduleIntervalResource.php` **(Phase 3)**.
+- Routes `payment-detail-schedules.*` in `routes/web.php` (Trader middleware group) **(Phase 3)**.
+- `app/Services/Order/Features/OrderDetailProvider/Classes/FindAvailablePaymentDetail.php` — **`->availableBySchedule()` after `->active()` (Phase 5)**.
+- `app/Http/Resources/PaymentDetailResource.php` — **`payment_detail_schedule_id` + `schedule` status payload (Phase 4)**; feeds index and create/edit modals.
+- `app/Http/Requests/PaymentDetail/StoreRequest.php` and `app/Http/Requests/PaymentDetail/UpdateRequest.php` — **nullable `payment_detail_schedule_id` with `OwnedPaymentDetailSchedule` (Phase 4)**; update allows schedule only when auth user owns the detail.
+- `app/Http/Requests/PaymentDetail/BulkUpdateRequest.php` — **bulk fields `schedule_apply` / `schedule_remove` (Phase 4)**.
+- `app/Rules/OwnedPaymentDetailSchedule.php` — shared ownership validation **(Phase 4)**.
+- `resources/js/Modals/PaymentDetail/PaymentDetailCreateModal.vue` and `PaymentDetailEditModal.vue` — **`PaymentDetailScheduleField` + quick create (Phase 4)**.
+- `resources/js/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue` — **apply/remove schedule actions (Phase 4)**.
+- `resources/js/composables/usePaymentDetailSchedules.js`, `PaymentDetailScheduleField.vue`, `PaymentDetailScheduleQuickCreateModal.vue` **(Phase 4)**.
+- `resources/js/composables/usePaymentDetailScheduleEditor.js` — intervals ↔ editor state, local validation **(Phase 6)**.
+- `resources/js/Components/PaymentDetail/PaymentDetailScheduleForm.vue` — default days/times + per-day overrides **(Phase 6)**.
+- `resources/js/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue` — list/create/edit/copy **(Phase 6)**.
+- `resources/js/store/modal.js` — `paymentDetailScheduleManager` + `openPaymentDetailScheduleManagerModal()` **(Phase 6)**.
+- `resources/js/Pages/PaymentDetail/Index.vue` — quick-create + manager modals; trader action «Расписания работы»; **«Расписание» column + mobile block (Phase 7)**; `usePaymentDetailScheduleTableTick()` **(Phase 7)**.
+- `resources/js/utils/paymentDetailScheduleStatus.js` — client status resolver for table display **(Phase 7)**.
+- `resources/js/composables/usePaymentDetailScheduleTableTick.js` — single page timer + server offset **(Phase 7)**.
+- `resources/js/Components/PaymentDetail/PaymentDetailScheduleStatus.vue` — table/card status cell **(Phase 7)**.
+- `app/Http/Middleware/HandleInertiaRequests.php` — sidebar active detail counts with 15-second cache; **`->availableBySchedule()` (Phase 5)**.
+- `app/Http/Controllers/Admin/EnabledCardsController.php` — **`trafficAvailablePaymentDetailsQuery()`** applies schedule filter to all enabled-card statistics **(Phase 5)**.
+- `app/Services/EnabledCards/MinAmountStatsService.php` — **`activePaymentDetailsQuery()` includes `->availableBySchedule()` (Phase 5)**.
 - `app/Models/PaymentDetailEnabledPeriod.php` and `app/Services/PaymentDetail/PaymentDetailEnabledPeriodService.php` track historical effective enabled periods and must not be reused as schedule storage.
+- `app/Queries/Eloquent/PaymentDetailQueriesEloquent.php` — **`paginateForAdmin()` / `paginateForTeamLeader()` eager-load `schedule.intervals` (Phase 8)**.
+- `app/Http/Requests/PaymentDetail/BulkUpdateRequest.php` — **`authorize()` blocks schedule bulk fields outside Trader routes (Phase 8)**.
+- `resources/js/Pages/Leader/Trader/PaymentDetails.vue` — **read-only «Расписание» column + mobile block (Phase 8)**.
+- `resources/js/Pages/PaymentDetail/Index.vue` — **schedule modals only when `isTraderView` (Phase 8)**; admin shares index table schedule column (Phase 7).
+- `resources/js/Modals/PaymentDetail/PaymentDetailEditModal.vue` — **read-only `PaymentDetailScheduleStatus` when viewer cannot edit schedule (Phase 8)**.
 
 ## Domain Model
 
@@ -239,28 +279,28 @@ A payment detail is available for traffic only when all conditions pass:
 - if no schedule is attached, schedule availability passes;
 - if a schedule is attached, current server time is inside one effective interval for the current server day.
 
-This logic should be centralized so all relevant queries use the same definition.
+This logic is centralized in Phase 2. All relevant queries should use the same definition via the shared helper below.
 
-### Recommended Query Abstraction
+### Query Abstraction — **implemented (Phase 2)**
 
-Add a reusable local scope or query helper for schedule availability, for example:
+Reusable entry points:
 
 - `PaymentDetail::scopeAvailableBySchedule(Builder $query, ?CarbonInterface $at = null)`;
-- or `PaymentDetailScheduleAvailabilityService::applyAvailableBySchedule(Builder $query, CarbonInterface $at)`.
+- `PaymentDetailScheduleAvailabilityService::applyAvailableBySchedule(Builder $query, ?CarbonInterface $at = null)`.
 
-The helper should apply this logic:
+The helper applies this logic:
 
 - include payment details where `payment_detail_schedule_id` is null;
-- or include payment details whose schedule has an interval for current ISO weekday where `starts_at <= current HH:mm` and `ends_at > current HH:mm`.
+- or include payment details whose schedule has an interval for current ISO weekday where `starts_at <= current HH:mm:ss` and `ends_at > current HH:mm:ss`.
 
 Do not duplicate raw `whereHas` schedule conditions independently in every controller. The risk of one counter drifting from order selection is high.
 
 ### Suggested SQL Shape
 
-At runtime:
+Implemented in `PaymentDetailScheduleAvailabilityService::applyAvailableBySchedule()`. At runtime:
 
 - compute `$weekday = now()->isoWeekday()`;
-- compute `$time = now()->format('H:i')` or a safer comparable `HH:MM:SS` value;
+- compute `$time = now()->format('H:i:s')`;
 - filter:
   - no schedule attached;
   - or schedule interval exists for `$weekday` where start <= `$time` and end > `$time`.
@@ -271,7 +311,7 @@ Time comparison should use normalized fixed-width strings or database `TIME` col
 
 The UI needs status labels and timing details.
 
-Recommended status keys:
+Status keys are defined in `App\Enums\PaymentDetailScheduleStatus` **(Phase 2)**:
 
 - `not_configured`: no schedule attached;
 - `working`: current server time is inside an interval;
@@ -281,7 +321,7 @@ Recommended status keys:
 - `finished`: all today's intervals ended;
 - `invalid`: schedule exists but has invalid or empty effective intervals, should not happen after validation.
 
-Recommended labels:
+Labels come from `PaymentDetailScheduleStatus::label()`:
 
 - `Без расписания`;
 - `Работает`;
@@ -292,16 +332,17 @@ Recommended labels:
 
 ### Status Payload
 
-For each payment detail resource, return enough data to render status without hidden timezone assumptions:
+For each payment detail resource, return enough data to render status without hidden timezone assumptions. Resolved by `PaymentDetailScheduleAvailabilityService::resolveStatus()` / `resolveStatusForPaymentDetail()` **(Phase 2)**:
 
 - `schedule.id`;
 - `schedule.name`;
 - `schedule.server_timezone`;
-- `schedule.server_now_iso`;
+- `schedule.server_now` (ISO string);
 - `schedule.today_intervals`;
 - `schedule.next_interval`;
 - `schedule.current_interval`;
 - `schedule.status`;
+- `schedule.status_label`;
 
 Example shape:
 
@@ -604,11 +645,13 @@ Do not expose unrelated user data through schedule payloads.
 
 ## Query Integration Points
 
-### Order Selection
+All traffic-available integration points below use `PaymentDetail::availableBySchedule()` (delegates to `PaymentDetailScheduleAvailabilityService::applyAvailableBySchedule`). **Implemented in Phase 5 (2026-05-24).**
 
-`FindAvailablePaymentDetail::queryPaymentDetails()` must apply schedule availability close to the existing `->active()` condition.
+### Order Selection — **implemented**
 
-The schedule filter should not run after `first()` in PHP; it must be part of the SQL query to avoid selecting an unavailable detail and then falling through.
+`FindAvailablePaymentDetail::queryPaymentDetails()` applies `->availableBySchedule()` immediately after `->active()`.
+
+The filter runs in SQL (not after `first()` in PHP) so unavailable scheduled details are never selected under `FOR UPDATE SKIP LOCKED`.
 
 Critical behavior:
 
@@ -616,43 +659,42 @@ Critical behavior:
 - payment details with schedule are eligible only during current server-time interval;
 - existing `FOR UPDATE SKIP LOCKED` behavior remains unchanged.
 
-### Enabled Cards Admin Page
+### Enabled Cards Admin Page — **implemented**
 
-`Admin\EnabledCardsController` has multiple active detail queries. Each query that claims to represent active/enabled/available payment details should use the shared schedule availability helper.
+`EnabledCardsController::trafficAvailablePaymentDetailsQuery()` centralizes:
 
-This includes:
+- `whereNull('archived_at')`, `is_active`, user `is_online`, `availableBySchedule()`;
+- optional filters: `detail_type`, payment gateway, `user_id`.
+
+Used for:
 
 - total enabled payment details count;
-- active payment detail ids used for pending order sums;
+- active payment detail ids for pending order sums;
 - free/potential limit calculations;
-- filtered views by detail type, gateway, and user.
+- min-amount group stats per currency.
 
-### Merchant Main Page Availability
+### Merchant Main Page Availability — **implemented**
 
-`EnabledCards\MinAmountStatsService::activePaymentDetailsQuery()` should use schedule availability so merchant-facing available card statistics match actual selection behavior.
+`MinAmountStatsService::activePaymentDetailsQuery()` includes `->availableBySchedule()` so merchant-facing min-amount statistics match order selection.
 
-### Sidebar Active Detail Counts
+### Sidebar Active Detail Counts — **implemented**
 
-`HandleInertiaRequests` active detail counters should use the same schedule availability helper.
+`HandleInertiaRequests` trader (`active_details_trader_{id}`) and admin (`active_details_admin`) cached counts include `->availableBySchedule()`.
 
-The existing 15-second cache can remain. It is acceptable for counts to lag schedule edits or boundary changes by up to the existing cache lifetime.
+The 15-second cache is unchanged; counts may lag schedule boundary crossings by up to the cache TTL.
 
-### Other Active Detail Queries
+### Query audit (Phase 5)
 
-Search for active detail queries using combinations of:
-
-- `PaymentDetail::query()`;
-- `where('is_active', true)`;
-- `whereNull('archived_at')`;
-- `whereRelation('user', 'is_online', true)`;
-- `active()`.
-
-For each query, decide whether it means:
-
-- manually active, regardless of schedule;
-- traffic-available, schedule must apply.
-
-Only traffic-available queries should receive schedule filtering.
+| Location | Schedule filter | Rationale |
+|----------|-----------------|-----------|
+| `FindAvailablePaymentDetail` | Yes | Order traffic selection |
+| `EnabledCardsController` | Yes | Admin “available cards” metrics |
+| `MinAmountStatsService::activePaymentDetailsQuery` | Yes | Merchant availability stats |
+| `HandleInertiaRequests` active detail counts | Yes | Sidebar traffic-available count |
+| `PaymentDetailQueriesEloquent` (`filters.active`) | No | Manual `is_active` list filter only |
+| `PaymentDetailEnabledPeriodService` | No | Historical enabled periods |
+| `TraderAnalyticsController` enabled-detail charts | No | Point-in-time enabled-period analytics |
+| `MainPageController` payment detail search | No | Historical order-linked search, not live eligibility |
 
 ## Validation Rules
 
@@ -780,10 +822,10 @@ This intentionally avoids unexpected mass changes by an admin to a shared trader
 Recommended components:
 
 - `PaymentDetailScheduleSelect.vue`: select/clear schedule and open manager/create modal.
-- `PaymentDetailScheduleManagerModal.vue`: list and edit schedules.
-- `PaymentDetailScheduleForm.vue`: reusable create/edit/copy form.
+- `PaymentDetailScheduleManagerModal.vue`: list and edit schedules **(Phase 6 — implemented)**.
+- `PaymentDetailScheduleForm.vue`: reusable create/edit form **(Phase 6 — implemented)**.
 - `PaymentDetailSchedulePreview.vue`: render days, intervals, server-time helper.
-- `PaymentDetailScheduleStatus.vue`: render table status cell and relative labels.
+- `PaymentDetailScheduleStatus.vue`: render table status cell and relative labels **(Phase 7 — implemented)**.
 
 Keep Vue `script setup` before `template`, follow existing modal patterns, and do not add component-local styles.
 
@@ -793,7 +835,7 @@ Use existing DaisyUI/Tailwind utility classes and existing modal/select/input co
 
 ### Backend Calculation
 
-Backend status calculation should use server time:
+Implemented in `PaymentDetailScheduleAvailabilityService::resolveStatus()`. Uses server time:
 
 1. Get today's effective intervals for `now()->isoWeekday()`.
 2. If no intervals, status is `day_off`.
@@ -842,7 +884,7 @@ Notes:
 - do not modify `PaymentDetailEnabledPeriod` logic except if a later requirement explicitly asks to include schedule in historical effective-enabled stats;
 - document which “active” queries are schedule-aware and which remain manual-active only.
 
-### Phase 1: Database and Models
+### Phase 1: Database and Models — **Done** (2026-05-24)
 
 Goals:
 
@@ -868,14 +910,14 @@ Acceptance:
 - schedule names are unique per user;
 - intervals are linked to schedules and constrained on delete.
 
-### Phase 2: Domain Service and Validation
+### Phase 2: Domain Service and Validation — **Done** (2026-05-24)
 
 Goals:
 
 - centralize schedule normalization, validation, and status calculation;
 - avoid duplicating time logic across controllers and components.
 
-Backend tasks:
+Backend tasks (all complete):
 
 - create Form Requests for schedule store/update/copy;
 - create a service/action for schedule create/update/copy;
@@ -884,7 +926,7 @@ Backend tasks:
 - create status resolver for server-time status payload;
 - create query helper/scope for availability filtering.
 
-Acceptance:
+Acceptance (verified in code):
 
 - invalid intervals are rejected;
 - empty schedules are rejected;
@@ -893,7 +935,7 @@ Acceptance:
 - editing a schedule replaces intervals atomically;
 - status resolver returns stable results for working, day off, starts later, break, and finished cases.
 
-### Phase 3: Schedule CRUD API
+### Phase 3: Schedule CRUD API — **Done** (2026-05-24)
 
 Goals:
 
@@ -921,7 +963,7 @@ Route changes require:
 - `php artisan optimize`;
 - `php artisan ziggy:generate resources/js/ziggy-routes.js`.
 
-### Phase 4: Payment Detail Assignment
+### Phase 4: Payment Detail Assignment — **Done** (2026-05-24)
 
 Goals:
 
@@ -954,21 +996,21 @@ Acceptance:
 - bulk edit can remove schedule;
 - none of these actions changes `is_active`.
 
-### Phase 5: Traffic Selection and Availability Queries
+### Phase 5: Traffic Selection and Availability Queries — **Done** (2026-05-24)
 
 Goals:
 
 - make schedule restrictions authoritative in backend selection and availability counts.
 
-Backend tasks:
+Backend tasks (all complete):
 
-- apply shared schedule availability helper in `FindAvailablePaymentDetail`;
-- apply helper in `EnabledCardsController` active/available detail queries;
-- apply helper in `MinAmountStatsService::activePaymentDetailsQuery`;
-- apply helper in `HandleInertiaRequests` active detail counts;
-- audit other active detail queries and classify them.
+- `FindAvailablePaymentDetail::queryPaymentDetails()` — `->availableBySchedule()` after `->active()`;
+- `EnabledCardsController::trafficAvailablePaymentDetailsQuery()` — shared builder for all enabled-card queries;
+- `MinAmountStatsService::activePaymentDetailsQuery()` — `->availableBySchedule()`;
+- `HandleInertiaRequests` — trader/admin sidebar counts;
+- query audit documented in [Query Integration Points](#query-integration-points).
 
-Acceptance:
+Acceptance (verified in code):
 
 - scheduled payment detail receives traffic only inside schedule intervals;
 - unscheduled payment detail behaves as before;
@@ -977,24 +1019,21 @@ Acceptance:
 - enabled cards stats match schedule-aware availability;
 - sidebar active counts become schedule-aware after existing cache refresh.
 
-### Phase 6: Schedule Manager UI
+### Phase 6: Schedule Manager UI — **Done (2026-05-24)**
 
 Goals:
 
 - provide full trader schedule management without leaving payment detail workflows.
 
-Frontend tasks:
+**Implemented (frontend only, reuses Phase 3 API):**
 
-- build schedule manager modal;
-- build schedule form with default days and per-day overrides;
-- build interval add/remove UI;
-- add copy action;
-- add shared edit warning;
-- show server-time helper text;
-- show validation errors clearly;
-- disable submit buttons while processing.
+- `PaymentDetailScheduleManagerModal.vue` — schedule list, create/edit form, copy-by-name;
+- `PaymentDetailScheduleForm.vue` + `usePaymentDetailScheduleEditor.js` — default weekdays/times, per-day overrides, multiple intervals, local validation;
+- entry: payment detail index (trader) «Расписания работы», `PaymentDetailScheduleField` «Управлять расписаниями»;
+- `ConfirmModal` before save when `payment_details_count > 0`;
+- quick-create modal unchanged for fast Mon–Fri default.
 
-Acceptance:
+Acceptance (met in code):
 
 - trader can manage schedule list from payment detail page;
 - trader can create/edit/copy schedules;
@@ -1002,49 +1041,49 @@ Acceptance:
 - backend validation errors are shown next to relevant fields;
 - no delete action is present.
 
-### Phase 7: Payment Detail Table Status
+### Phase 7: Payment Detail Table Status — **Done (2026-05-24)**
 
 Goals:
 
 - make schedule state visible and understandable in the payment detail table.
 
-Backend tasks:
+**Backend:** no changes — index already loads `schedule.intervals` and `PaymentDetailResource` exposes full `schedule` payload (Phase 4).
 
-- include schedule status payload in payment detail index resource;
-- include today's intervals, current interval, next interval, and server now ISO.
+**Implemented (frontend):**
 
-Frontend tasks:
+- `resources/js/utils/paymentDetailScheduleStatus.js` — `resolvePaymentDetailScheduleDisplay()`, badge classes
+- `resources/js/composables/usePaymentDetailScheduleTableTick.js` — 30s tick, `server_now` offset, midnight `router.reload({ only: ['paymentDetails'] })`
+- `resources/js/Components/PaymentDetail/PaymentDetailScheduleStatus.vue` — badge + schedule name + interval line
+- `resources/js/Pages/PaymentDetail/Index.vue` — column «Расписание» (desktop, between «Лимиты» and «Статус»); mobile card block
 
-- add schedule column near active status;
-- render status label, schedule name, and interval;
-- show `Без расписания` or dash when no schedule is attached;
-- implement single page-level timer for relative labels;
-- avoid per-row polling.
-
-Acceptance:
+Acceptance (met in code):
 
 - status labels are understandable;
 - break between intervals displays as `Перерыв до HH:mm`;
 - table clearly distinguishes no schedule, day off, starts later, working, break, and finished;
-- displayed editable schedule times remain server-time values.
+- displayed interval times remain server-time values from API payload.
 
 ### Phase 8: Role Read Views
+
+**Status:** Done (2026-05-24). See [Phase 8 artifacts](#phase-8-artifacts-implemented) below.
 
 Goals:
 
 - let Team Leaders and admins understand trader payment detail schedules without mutation access.
 
-Tasks:
+Tasks (completed):
 
 - include schedule name/status in pages where Team Leaders/admins already view trader payment details;
 - avoid create/edit controls for schedules in those roles;
 - ensure policy/controller restrictions prevent mutation.
 
-Acceptance:
+Acceptance (met):
 
-- Team Leader can see schedule state where they can see trader payment details;
-- admin can see schedule state where they can see trader payment details;
-- neither role can edit trader schedules in first version.
+- Team Leader can see schedule state on `leader.traders.payment-details.index` (`Leader/Trader/PaymentDetails.vue`);
+- admin can see schedule state on `admin.payment-details.index` (shared `PaymentDetail/Index.vue` column) and read-only block in `PaymentDetailEditModal`;
+- neither role can edit trader schedules: `PaymentDetailScheduleController::ensureTrader()`, `UpdateRequest::canUpdateSchedule()`, schedule modals gated by `isTraderView`, `BulkUpdateRequest::authorize()` for bulk schedule fields.
+
+**Out of scope (v1):** Analyst `users.payment-details.index`; dedicated non-trader schedule manager pages; schedule list API for admin/Team Leader.
 
 ### Phase 9: Verification
 
@@ -1078,11 +1117,290 @@ Manual verification checklist:
 
 Programmatic verification should focus on the pure schedule availability/status resolver and request validation. Run tests only when explicitly requested according to the project's current working rules.
 
+## Implementation Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 0 — Discovery and design lock | **Done** (wiki plan, 2026-05-22) | Spec and file anchors documented in this article |
+| 1 — Database and models | **Done** (2026-05-24) | Migrations, `PaymentDetailSchedule`, `PaymentDetailScheduleInterval`, `PaymentDetail::schedule()` |
+| 2 — Domain service and validation | **Done** (2026-05-24) | Normalizer, CRUD service, status/availability services, Form Requests, `scopeAvailableBySchedule` |
+| 3 — Schedule CRUD API | **Done** (2026-05-24) | `PaymentDetailScheduleController`, resources, `payment-detail-schedules.*` routes, Ziggy |
+| 4 — Payment detail assignment | **Done** (2026-05-24) | Store/update/bulk attach-remove; `PaymentDetailResource` schedule payload; trader UI field + quick create |
+| 5 — Traffic selection and availability queries | **Done** (2026-05-24) | `FindAvailablePaymentDetail`, `EnabledCardsController`, `MinAmountStatsService`, `HandleInertiaRequests` |
+| 6 — Schedule manager UI | **Done** (2026-05-24) | Manager modal, editor composable, form with overrides; no backend changes |
+| 7 — Payment detail table status | **Done** (2026-05-24) | Index + mobile UI; client tick; backend payload unchanged (Phase 4) |
+| 8 — Role read views | **Done** (2026-05-24) | Admin index + TL trader requisites; read-only edit modal; query eager-load |
+| 9 — Verification | Pending | Manual checklist and targeted tests when requested |
+
+### Phase 1 artifacts (implemented)
+
+**Migrations** (2026-05-24):
+
+- `database/migrations/2026_05_24_130610_create_payment_detail_schedules_table.php` — `payment_detail_schedules` + `payment_detail_schedule_intervals` (short FK `pdsi_schedule_fk` for MySQL identifier limit)
+- `database/migrations/2026_05_24_130620_add_payment_detail_schedule_id_to_payment_details_table.php` — nullable FK `pd_schedule_fk`, index `pd_schedule_id_idx`
+
+**Models:**
+
+- `app/Models/PaymentDetailSchedule.php` — `user()`, `intervals()`, `paymentDetails()`; strict types
+- `app/Models/PaymentDetailScheduleInterval.php` — `schedule()`; `day_of_week` cast to integer; strict types
+- `app/Models/PaymentDetail.php` — `payment_detail_schedule_id` in `$fillable`; `schedule()` `belongsTo`
+
+**Schema choices locked in Phase 1:**
+
+- Intervals stored as expanded rows (`day_of_week` + `time` `starts_at`/`ends_at`); no `source_type` column
+- Schedule names unique per `user_id` at database level
+- Detaching schedule from payment detail: set `payment_detail_schedule_id` null; schedule row delete (not in v1 product) would null FK via `nullOnDelete`
+
+**Not changed in Phase 1:**
+
+- Traffic selection, availability counters, API routes, Form Requests, services
+- `PaymentDetailResource`, Vue modals/pages, bulk edit
+- `PaymentDetailEnabledPeriod` / enabled-period statistics
+
+### Phase 2 artifacts (implemented)
+
+**Enum:**
+
+- `app/Enums/PaymentDetailScheduleStatus.php` — status keys + Russian `label()`
+
+**DTOs:**
+
+- `app/DTO/PaymentDetailSchedule/PaymentDetailScheduleIntervalData.php`
+- `app/DTO/PaymentDetailSchedule/PaymentDetailScheduleUpsertDTO.php`
+- `app/DTO/PaymentDetailSchedule/PaymentDetailScheduleCopyDTO.php`
+
+**Services:**
+
+- `app/Services/PaymentDetail/PaymentDetailScheduleIntervalNormalizer.php` — parse, sort, overlap/overnight validation
+- `app/Services/PaymentDetail/PaymentDetailScheduleService.php` — create, update, copy (atomic interval replace)
+- `app/Services/PaymentDetail/PaymentDetailScheduleAvailabilityService.php` — `applyAvailableBySchedule`, status payload resolver
+
+**Validation:**
+
+- `app/Rules/PaymentDetailScheduleIntervals.php`
+- `app/Http/Requests/PaymentDetailSchedule/StoreRequest.php`
+- `app/Http/Requests/PaymentDetailSchedule/UpdateRequest.php`
+- `app/Http/Requests/PaymentDetailSchedule/CopyRequest.php`
+
+**Model:**
+
+- `app/Models/PaymentDetail.php` — `scopeAvailableBySchedule()`
+
+**Domain service API (Phase 2; HTTP routes in Phase 3):**
+
+| Component | Method | Purpose |
+|-----------|--------|---------|
+| `PaymentDetailScheduleService` | `create($user_id, PaymentDetailScheduleUpsertDTO)` | Create schedule + intervals |
+| `PaymentDetailScheduleService` | `update($schedule, PaymentDetailScheduleUpsertDTO)` | Update name, replace intervals |
+| `PaymentDetailScheduleService` | `copy($schedule, PaymentDetailScheduleCopyDTO)` | Independent copy |
+| `PaymentDetailScheduleAvailabilityService` | `applyAvailableBySchedule($query, $at?)` | SQL availability filter |
+| `PaymentDetailScheduleAvailabilityService` | `resolveStatus($schedule, $at?)` | Status payload for UI |
+| `PaymentDetailScheduleAvailabilityService` | `resolveStatusForPaymentDetail($detail, $at?)` | Null when no schedule attached |
+| `PaymentDetailScheduleIntervalNormalizer` | `normalize($intervals)` | Parse/validate/sort intervals |
+
+**Schedule store/update payload (Form Request):**
+
+```json
+{
+  "name": "День",
+  "intervals": [
+    { "day_of_week": 1, "starts_at": "09:00", "ends_at": "19:00" }
+  ]
+}
+```
+
+**Not changed in Phase 2:**
+
+- Schedule CRUD routes, controller, API resources (delivered in Phase 3)
+- Payment detail assignment in store/update/bulk
+- Traffic selection and availability counters integration
+- Vue UI
+
+### Phase 3 artifacts (implemented)
+
+**Routes** (`routes/web.php`, `role:Trader|Super Admin` group):
+
+| Method | URI | Name |
+|--------|-----|------|
+| GET | `/payment-detail-schedules` | `payment-detail-schedules.index` |
+| POST | `/payment-detail-schedules` | `payment-detail-schedules.store` |
+| PATCH | `/payment-detail-schedules/{paymentDetailSchedule}` | `payment-detail-schedules.update` |
+| POST | `/payment-detail-schedules/{paymentDetailSchedule}/copy` | `payment-detail-schedules.copy` |
+
+**Controller:**
+
+- `app/Http/Controllers/PaymentDetailScheduleController.php` — `index`, `store`, `update`, `copy`; `ensureTrader()` + `ensureOwner()` (same pattern as `PaymentDetailTagController`)
+
+**Resources:**
+
+- `app/Http/Resources/PaymentDetailScheduleResource.php` — status via `resolveStatus()`, `payment_details_count`, `intervals`, ISO timestamps
+- `app/Http/Resources/PaymentDetailScheduleIntervalResource.php` — `id`, `day_of_week`, `starts_at`, `ends_at` (`HH:mm`)
+
+**JSON responses:**
+
+- Index: `{ success, data: { server_timezone, server_now, schedules[] } }`
+- Store/update/copy: `{ success, data: <schedule resource> }`
+
+**Authorization:**
+
+- Mutations only when `isRouteFor('Trader')` and schedule `user_id === auth()->id()`
+- No delete route (v1)
+- Admin/Team Leader schedule read deferred to payment detail resources (Phases 4/8)
+
+**Not changed in Phase 3:**
+
+- `PaymentDetailResource` / payment detail store-update-bulk assignment (delivered in Phase 4)
+- Vue schedule manager and table column (Phases 6–7)
+
+### Phase 4 artifacts (implemented)
+
+**Validation:**
+
+- `app/Rules/OwnedPaymentDetailSchedule.php`
+
+**Payment detail requests:**
+
+- `StoreRequest` / `UpdateRequest` — nullable `payment_detail_schedule_id`; update rules only when auth user owns the detail
+- `BulkUpdateRequest` — fields `schedule_apply`, `schedule_remove`; schedule id required for apply
+
+**DTOs and service:**
+
+- `PaymentDetailCreateDTO`, `PaymentDetailUpdateDTO` — `payment_detail_schedule_id`; update DTO has `updates_schedule` flag
+- `PaymentDetailService` — create persists FK; update changes FK only when `updates_schedule`
+
+**Controller and queries:**
+
+- `PaymentDetailController` — owner-only schedule on update; bulk payload builder; `schedule.intervals` eager load on index/show
+- `PaymentDetailQueriesEloquent::paginateForUser()` — `schedule.intervals` in default `with()`
+
+**Resource:**
+
+- `PaymentDetailResource` — `payment_detail_schedule_id`, `schedule` from `resolveStatusForPaymentDetail()`
+
+**Frontend:**
+
+- `resources/js/composables/usePaymentDetailSchedules.js`
+- `resources/js/Components/PaymentDetail/PaymentDetailScheduleField.vue`
+- `resources/js/Modals/PaymentDetailSchedule/PaymentDetailScheduleQuickCreateModal.vue` — default Mon–Fri 09:00–19:00 server time
+- Integrated into create/edit/bulk modals; modal store entry `paymentDetailScheduleQuickCreate`
+
+**Authorization notes:**
+
+- Admin editing another user's payment detail cannot change schedule assignment (schedule fields omitted from update DTO path)
+- Bulk schedule changes require trader ownership of both details and schedule
+
+**Not changed in Phase 4:**
+
+- Traffic selection (`FindAvailablePaymentDetail`) and availability counters (delivered in Phase 5)
+- Full schedule manager with per-day override editor (Phase 6)
+- Admin/Team Leader read-only schedule surfaces (delivered in Phase 8)
+
+### Phase 5 artifacts (implemented)
+
+**Traffic selection:**
+
+- `app/Services/Order/Features/OrderDetailProvider/Classes/FindAvailablePaymentDetail.php` — `->availableBySchedule()` in `queryPaymentDetails()` after `->active()`
+
+**Availability counters:**
+
+- `app/Http/Controllers/Admin/EnabledCardsController.php` — `trafficAvailablePaymentDetailsQuery()` applies schedule filter to all enabled-card statistics queries
+- `app/Services/EnabledCards/MinAmountStatsService.php` — `activePaymentDetailsQuery()` includes `->availableBySchedule()`
+- `app/Http/Middleware/HandleInertiaRequests.php` — trader/admin `active_details_*` cached counts include `->availableBySchedule()`
+
+**Audit: intentionally not schedule-filtered**
+
+- `PaymentDetailQueriesEloquent` list filters (`active` filter = manual `is_active` only)
+- `PaymentDetailEnabledPeriodService` — historical periods
+- `TraderAnalyticsController` enabled-detail charts — enabled-period based
+
+**Not changed in Phase 5:**
+
+- Schedule manager UI (delivered in Phase 6)
+- Index table schedule column UI (delivered in Phase 7)
+- Admin/Team Leader read-only schedule surfaces (delivered in Phase 8)
+
+### Phase 6 artifacts (implemented)
+
+**Editor composable:**
+
+- `resources/js/composables/usePaymentDetailScheduleEditor.js` — `intervalsToEditorState`, `editorStateToIntervals`, `validateEditorStateLocally`, weekday toggles and override interval helpers
+
+**UI:**
+
+- `resources/js/Components/PaymentDetail/PaymentDetailScheduleForm.vue`
+- `resources/js/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue`
+
+**Integration:**
+
+- `resources/js/store/modal.js` — `paymentDetailScheduleManager`, `openPaymentDetailScheduleManagerModal()`
+- `resources/js/Components/PaymentDetail/PaymentDetailScheduleField.vue` — «Управлять расписаниями»; list refresh on modal close
+- `resources/js/Pages/PaymentDetail/Index.vue` — trader dropdown «Расписания работы»
+
+**Behavior:**
+
+- Create/update send `{ name, intervals }` to existing store/update routes
+- Copy sends `{ name }` to copy route; intervals duplicated server-side
+- Edit save with attached payment details shows confirmation warning
+- Per-day override replaces default for that ISO weekday; multiple non-overlapping intervals per day supported in UI
+
+**Not changed in Phase 6:**
+
+- Backend PHP (no new routes or migrations)
+- Index table schedule status column (delivered in Phase 7)
+- Admin/Team Leader read-only schedule surfaces (delivered in Phase 8)
+- Verification checklist execution (Phase 9)
+
+### Phase 7 artifacts (implemented)
+
+**Client status display:**
+
+- `resources/js/utils/paymentDetailScheduleStatus.js` — mirrors backend interval semantics (inclusive start, exclusive end); `invalid` trusts API `schedule.status`
+- `resources/js/composables/usePaymentDetailScheduleTableTick.js` — one `setInterval` per index page; partial reload on server date rollover
+
+**UI:**
+
+- `resources/js/Components/PaymentDetail/PaymentDetailScheduleStatus.vue`
+- `resources/js/Pages/PaymentDetail/Index.vue` — desktop column + mobile «Расписание» section; visible to trader and admin on shared index
+
+**Behavior:**
+
+- Frontend status is informational; selection still uses `availableBySchedule()` (Phase 5)
+- Between Inertia reloads, labels refresh every 30s from `today_intervals` + server offset
+- After server midnight, `paymentDetails` prop reload preserves scroll
+
+**Not changed in Phase 7:**
+
+- Backend PHP, routes, migrations
+- Team Leader trader requisites schedule column (delivered in Phase 8)
+- Verification checklist (Phase 9)
+
+### Phase 8 artifacts (implemented)
+
+**Queries:**
+
+- `app/Queries/Eloquent/PaymentDetailQueriesEloquent.php` — `paginateForAdmin()` and `paginateForTeamLeader()` eager-load `schedule.intervals`
+
+**Authorization:**
+
+- `app/Http/Requests/PaymentDetail/BulkUpdateRequest.php` — `authorize()` blocks schedule bulk fields outside Trader routes
+
+**UI:**
+
+- `resources/js/Pages/Leader/Trader/PaymentDetails.vue` — «Расписание» column + mobile block; `usePaymentDetailScheduleTableTick`
+- `resources/js/Pages/PaymentDetail/Index.vue` — schedule modals only when `isTraderView`
+- `resources/js/Modals/PaymentDetail/PaymentDetailEditModal.vue` — read-only `PaymentDetailScheduleStatus` for admin viewing trader details
+
+**Not changed in Phase 8:**
+
+- Analyst user payment details page
+- Non-trader schedule list/manager API
+- Verification checklist (Phase 9)
+
 ## Rollout Notes
 
 This feature changes traffic eligibility, so implementation should be conservative:
 
-- ship schedule filtering only after assignment UI and status UI are ready enough for traders to understand why traffic is not going to a detail;
+- schedule filtering is live in order selection and availability counters (Phase 5); traders can manage schedules in the manager UI (Phase 6), assign via modals/bulk (Phase 4), and see per-detail schedule state in the index table/cards (Phase 7); admin and Team Leader see schedule status read-only on payment detail pages (Phase 8);
 - avoid hidden timezone conversions in editable inputs;
 - prefer server-side authority for selection;
 - keep frontend status display informational;
@@ -1093,9 +1411,9 @@ This feature changes traffic eligibility, so implementation should be conservati
 
 The following choices can be made during implementation without changing product behavior:
 
-- whether to persist effective expanded intervals only, or persist default rule plus overrides and derive effective intervals;
+- whether to persist effective expanded intervals only, or persist default rule plus overrides and derive effective intervals — **Phase 1 stores expanded intervals only** (no `source_type`);
 - whether adjacent intervals should be merged or preserved;
-- whether the table status reloads at interval boundaries or only updates text locally until the next normal Inertia refresh;
+- whether the table status reloads at interval boundaries or only updates text locally until the next normal Inertia refresh — **Phase 7 default:** local recompute every 30s from `today_intervals`; partial Inertia reload on server calendar date change; full navigation refresh still authoritative;
 - exact route names and component names, as long as they follow project conventions.
 
 The recommended default is to persist effective expanded intervals because it makes traffic filtering simple and reliable.

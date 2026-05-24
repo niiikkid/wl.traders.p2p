@@ -10,6 +10,8 @@ import FieldHint from "@/Components/Form/FieldHint.vue";
 import TextInputBlock from "@/Components/Form/TextInputBlock.vue";
 import NumberInputBlock from "@/Components/Form/NumberInputBlock.vue";
 import TraderCommissionRangePreview from "@/Components/PaymentGateway/TraderCommissionRangePreview.vue";
+import PaymentDetailScheduleField from "@/Components/PaymentDetail/PaymentDetailScheduleField.vue";
+import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
 import { useModalStore } from "@/store/modal.js";
 import {useViewStore} from "@/store/view.js";
 import {
@@ -24,6 +26,16 @@ import { router, usePage } from "@inertiajs/vue3";
 const modalStore = useModalStore();
 const { paymentDetailEditModal } = storeToRefs(modalStore);
 const viewStore = useViewStore();
+
+const isTraderView = computed(() => viewStore.isTraderViewMode);
+const canEditSchedule = computed(() => {
+    if (!isTraderView.value) {
+        return false;
+    }
+
+    return payment_detail.value?.user_id === currentUser?.id
+        || payment_detail.value?.owner_id === currentUser?.id;
+});
 
 const processing = ref(false);
 const loading = ref(false);
@@ -67,6 +79,7 @@ const form = ref({
     order_interval_minutes: null,
     user_device_id: 0,
     payment_gateway_ids: [],
+    payment_detail_schedule_id: null,
 });
 
 
@@ -244,6 +257,7 @@ const resetState = () => {
         order_interval_minutes: null,
         user_device_id: 0,
         payment_gateway_ids: [],
+        payment_detail_schedule_id: null,
     };
     canWorkWithoutDevice.value = usePage().props.auth?.user?.can_work_without_device ?? false;
 };
@@ -296,6 +310,7 @@ const loadPaymentDetail = (id) => {
             order_interval_minutes: detail.order_interval_minutes,
             user_device_id: detail.user_device_id ?? 0,
             payment_gateway_ids: detail.payment_gateway_ids ?? [],
+            payment_detail_schedule_id: detail.payment_detail_schedule_id ?? null,
         };
 
         if (typeof detail.owner_can_work_without_device !== 'undefined') {
@@ -340,6 +355,11 @@ const submit = () => {
         payload.user_device_id = null;
     }
     payload.additional_info = payload.additional_info || null;
+    if (!canEditSchedule.value) {
+        delete payload.payment_detail_schedule_id;
+    } else if (!payload.payment_detail_schedule_id) {
+        payload.payment_detail_schedule_id = null;
+    }
 
     axios.patch(route('payment-details.update', payment_detail.value.id), payload, {
         headers: { 'Accept': 'application/json' }
@@ -686,6 +706,22 @@ watch(
                     <div class="text-xs text-base-content/70 mt-2">
                         Оставьте пустым для отключения лимита
                     </div>
+                </div>
+
+                <PaymentDetailScheduleField
+                    v-if="canEditSchedule"
+                    v-model="form.payment_detail_schedule_id"
+                    :errors="errors"
+                    :disabled="processing"
+                    @clear-error="(field) => (errors[field] = null)"
+                />
+
+                <div v-else-if="payment_detail?.schedule" class="space-y-2">
+                    <InputLabel value="Рабочее расписание" />
+                    <PaymentDetailScheduleStatus :schedule="payment_detail.schedule" />
+                    <p class="text-xs text-base-content/60">
+                        Только просмотр. Расписание настраивает трейдер.
+                    </p>
                 </div>
 
                 <div>

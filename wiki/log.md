@@ -68,3 +68,36 @@
 
 ## [2026-05-23] ingest | Shadow SMS Log Implementation Plan (implementation status)
 - Updated: Shadow SMS Log Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 2 compile)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 2 status)
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 1 status)
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 4 compile)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 3 compile)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 5 compile)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 5 wiki refresh)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 6)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 7)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 8)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (Phase 8 wiki sync)
+- Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] lint | 0 issues found, 0 auto-fixed

@@ -38,6 +38,8 @@ class PaymentDetailController extends Controller
 
         $paymentDetailTags = null;
         $canSeeTags = isRouteFor('Trader');
+        $paymentDetails->getCollection()->load('schedule.intervals');
+
         if ($canSeeTags) {
             $paymentDetails->getCollection()->load('tags');
             $paymentDetailTags = PaymentDetailTagResource::collection(
@@ -146,7 +148,7 @@ class PaymentDetailController extends Controller
     {
         Gate::authorize('access-to-payment-detail', $paymentDetail);
 
-        $paymentDetail->load(['user', 'userDevice', 'paymentGateways']);
+        $paymentDetail->load(['user', 'userDevice', 'paymentGateways', 'schedule.intervals']);
         $paymentDetail->loadCount(['orders as pending_orders_count' => function ($query) {
             $query->where('status', OrderStatus::PENDING);
         }]);
@@ -220,7 +222,8 @@ class PaymentDetailController extends Controller
             ]);
         }
 
-        $dto = PaymentDetailUpdateDTO::makeFromRequest($request->validated());
+        $updatesSchedule = $request->user()?->id === $paymentDetail->user_id;
+        $dto = PaymentDetailUpdateDTO::makeFromRequest($request->validated(), $updatesSchedule);
         services()->paymentDetail()->update($dto, $paymentDetail);
 
         if ($request->expectsJson()) {
@@ -270,7 +273,8 @@ class PaymentDetailController extends Controller
             Gate::authorize('access-to-payment-detail', $detail);
 
             $payload = $this->buildBulkUpdatePayload($detail, $fields, $request);
-            $dto = PaymentDetailUpdateDTO::makeFromRequest($payload);
+            $updatesSchedule = in_array('schedule_apply', $fields, true) || in_array('schedule_remove', $fields, true);
+            $dto = PaymentDetailUpdateDTO::makeFromRequest($payload, $updatesSchedule);
 
             services()->paymentDetail()->update($dto, $detail);
             $updatedCount++;
@@ -307,7 +311,15 @@ class PaymentDetailController extends Controller
             'order_interval_minutes' => $detail->order_interval_minutes,
             'user_device_id' => $detail->user_device_id,
             'payment_gateway_ids' => $detail->paymentGateways->pluck('id')->all(),
+            'payment_detail_schedule_id' => $detail->payment_detail_schedule_id,
         ];
+
+        if (in_array('schedule_apply', $fields, true)) {
+            $payload['payment_detail_schedule_id'] = $request->input('payment_detail_schedule_id');
+        }
+        if (in_array('schedule_remove', $fields, true)) {
+            $payload['payment_detail_schedule_id'] = null;
+        }
 
         if (in_array('is_active', $fields, true)) {
             $payload['is_active'] = (bool) $request->input('is_active');

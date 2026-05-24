@@ -23,7 +23,7 @@ Payment detail work schedule knowledge for trader-owned reusable server-time sch
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Payment Detail Work Schedule Implementation Plan](payment-detail-schedules/payment-detail-work-schedule-implementation-plan.md) | Detailed technical specification and phased implementation plan for reusable trader-owned payment detail work schedules, server-time interval handling, schedule-aware traffic filtering, UI management, and role read access. | 2026-05-22 |
+| [Payment Detail Work Schedule Implementation Plan](payment-detail-schedules/payment-detail-work-schedule-implementation-plan.md) | Phases **0–8 done:** trader CRUD/assignment/traffic/UI; admin + Team Leader read-only schedule on requisites (index, TL card, edit modal); Phase **9** manual verification pending. | 2026-05-24 |
 
 ## trader-balance-transfers
 

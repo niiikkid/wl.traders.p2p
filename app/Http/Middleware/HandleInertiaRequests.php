@@ -248,6 +248,7 @@ class HandleInertiaRequests extends Middleware
                         ->whereRelation('user', 'is_online', true)
                         ->whereRelation('user', 'id', $userId)
                         ->whereRelation('user', 'stop_traffic', false)
+                        ->availableBySchedule()
                         ->count();
                 });
             } elseif (isRouteFor('Super Admin')) {
@@ -257,6 +258,7 @@ class HandleInertiaRequests extends Middleware
                         ->where('is_active', true)
                         ->whereRelation('user', 'is_online', true)
                         ->whereRelation('user', 'stop_traffic', false)
+                        ->availableBySchedule()
                         ->count();
                 });
             }
