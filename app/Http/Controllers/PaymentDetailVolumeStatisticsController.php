@@ -46,6 +46,8 @@ class PaymentDetailVolumeStatisticsController extends Controller
             $barsLimit,
             $includeArchived,
             $paymentGatewayId,
+            $request->volumeFrom(),
+            $request->volumeTo(),
         );
 
         $chartPayload = $this->volumeStatisticsService->formatChartPayload($chartResult['items']);
@@ -77,7 +79,10 @@ class PaymentDetailVolumeStatisticsController extends Controller
                 'bars_limit' => $chartResult['meta']['bars_limit'],
                 'include_archived' => $includeArchived,
                 'payment_gateway_id' => $paymentGatewayId,
+                'volume_from' => $chartResult['meta']['volume_from'],
+                'volume_to' => $chartResult['meta']['volume_to'],
             ],
+            'volumePresets' => $chartResult['volume_presets'],
             'bankOptions' => $bankOptions,
             'selectedBank' => $paymentGatewayId === null
                 ? null

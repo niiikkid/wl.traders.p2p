@@ -26,6 +26,8 @@ class VolumeStatisticsRequest extends FormRequest
             'bars_limit' => ['nullable', 'string', Rule::in(['25', '50', '75', '100', '200'])],
             'include_archived' => ['nullable', 'boolean'],
             'payment_gateway_id' => ['nullable', 'integer', 'exists:payment_gateways,id'],
+            'volume_from' => ['nullable', 'string', 'regex:/^\d+$/'],
+            'volume_to' => ['nullable', 'string', 'regex:/^\d+$/'],
         ];
 
         if ($this->routeIs('admin.payment-details.volume-statistics')) {
@@ -80,6 +82,20 @@ class VolumeStatisticsRequest extends FormRequest
     public function dateTo(): ?string
     {
         $value = $this->string('date_to')->toString();
+
+        return $value !== '' ? $value : null;
+    }
+
+    public function volumeFrom(): ?string
+    {
+        $value = trim($this->string('volume_from')->toString());
+
+        return $value !== '' ? $value : null;
+    }
+
+    public function volumeTo(): ?string
+    {
+        $value = trim($this->string('volume_to')->toString());
 
         return $value !== '' ? $value : null;
     }

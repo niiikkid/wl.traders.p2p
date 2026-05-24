@@ -11,6 +11,14 @@ const props = defineProps({
         type: String,
         required: true,
     },
+    compact: {
+        type: Boolean,
+        default: false,
+    },
+    label: {
+        type: String,
+        default: 'Трейдер',
+    },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -110,16 +118,20 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="w-full trader-search-select">
-        <label class="label p-0">
-            <span class="label-text">Трейдер</span>
-        </label>
-        <div class="form-control relative">
+    <label
+        class="trader-search-select form-control w-full"
+        :class="compact ? 'min-w-0' : ''"
+    >
+        <div class="label py-0">
+            <span class="label-text" :class="compact ? 'text-xs' : ''">{{ label }}</span>
+        </div>
+        <div class="relative w-full">
             <input
-                type="text"
-                class="input input-sm input-bordered w-full"
-                placeholder="Введите имя или email..."
                 v-model="searchQuery"
+                type="text"
+                class="input input-bordered input-sm w-full"
+                :class="compact ? 'pr-8' : ''"
+                placeholder="Email..."
                 @focus="showDropdown = true"
                 @input="showDropdown = true"
             >
@@ -127,17 +139,20 @@ onUnmounted(() => {
             <button
                 v-if="selectedTrader"
                 type="button"
-                class="btn btn-ghost btn-xs absolute right-1 top-1"
+                class="btn btn-ghost btn-xs absolute right-1 top-1/2 -translate-y-1/2"
                 @click="clearSelection"
             >
-                x
+                ×
             </button>
 
-            <span v-if="loading" class="loading loading-spinner loading-sm absolute right-3 top-3"></span>
+            <span
+                v-if="loading"
+                class="loading loading-spinner loading-sm absolute right-2 top-1/2 -translate-y-1/2"
+            />
 
             <div
                 v-if="showDropdown && traders.length > 0"
-                class="menu menu-sm bg-base-100 rounded-box absolute z-10 w-full mt-1 shadow"
+                class="menu menu-sm bg-base-100 rounded-box absolute z-10 mt-1 w-full shadow"
             >
                 <ul>
                     <li
@@ -152,10 +167,10 @@ onUnmounted(() => {
 
             <div
                 v-if="showDropdown && searchQuery && !loading && traders.length === 0"
-                class="alert alert-info shadow mt-1 absolute z-10 w-full"
+                class="alert alert-info absolute z-10 mt-1 w-full p-2 text-xs shadow"
             >
                 <span>Ничего не найдено</span>
             </div>
         </div>
-    </div>
+    </label>
 </template>

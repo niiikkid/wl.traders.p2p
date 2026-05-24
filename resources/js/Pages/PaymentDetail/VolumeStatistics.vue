@@ -19,8 +19,9 @@ const filters = computed(() => page.props.filters ?? {});
 const periodOptions = computed(() => page.props.periodOptions ?? []);
 const barsLimitPresets = computed(() => page.props.barsLimitPresets ?? []);
 const bankOptions = computed(() => page.props.bankOptions ?? []);
+const volumePresets = computed(() => page.props.volumePresets ?? []);
 const defaultBarsLimit = computed(() => page.props.defaultBarsLimit ?? '100');
-const selectedBank = computed(() => page.props.selectedBank ?? null);
+const hasVolumePresets = computed(() => volumePresets.value.length > 0);
 const isAdmin = computed(() => Boolean(page.props.isAdmin));
 const traderSearchRoute = computed(() => page.props.traderSearchRoute);
 const backRoute = computed(() => page.props.backRoute);
@@ -52,6 +53,8 @@ const includeArchived = ref(parseTruthyFilter(filters.value.include_archived));
 const selectedPaymentGatewayId = ref(
     filters.value.payment_gateway_id ? String(filters.value.payment_gateway_id) : '',
 );
+const volumeFromPreset = ref(filters.value.volume_from ? String(filters.value.volume_from) : '');
+const volumeToPreset = ref(filters.value.volume_to ? String(filters.value.volume_to) : '');
 
 syncBarsLimitFields(filters.value.bars_limit);
 
@@ -90,15 +93,54 @@ const buildRequestData = () => {
         data.payment_gateway_id = selectedPaymentGatewayId.value;
     }
 
+    if (volumeFromPreset.value) {
+        data.volume_from = volumeFromPreset.value;
+    }
+
+    if (volumeToPreset.value) {
+        data.volume_to = volumeToPreset.value;
+    }
+
     return data;
 };
 
 const barsLimitSummary = computed(() => meta.value.bars_limit ?? defaultBarsLimit.value);
 
+watch(selectedTraderId, (newTraderId) => {
+    if (!isAdmin.value) {
+        return;
+    }
+
+    const filterTraderId = filters.value.trader_id ? String(filters.value.trader_id) : '';
+
+    if (newTraderId === filterTraderId) {
+        return;
+    }
+
+    applyFilters();
+});
+
 const applyFilters = () => {
     processing.value = true;
 
     router.get(volumeStatisticsRoute.value, buildRequestData(), {
+        preserveScroll: true,
+        preserveState: true,
+        replace: true,
+        onFinish: () => {
+            processing.value = false;
+        },
+    });
+};
+
+const resetFilters = () => {
+    processing.value = true;
+
+    router.get(volumeStatisticsRoute.value, {
+        period: 'all',
+        bars_limit: defaultBarsLimit.value,
+        include_archived: 0,
+    }, {
         preserveScroll: true,
         preserveState: true,
         replace: true,
@@ -316,6 +358,8 @@ router.on('success', () => {
     selectedPaymentGatewayId.value = filters.value.payment_gateway_id
         ? String(filters.value.payment_gateway_id)
         : '';
+    volumeFromPreset.value = filters.value.volume_from ? String(filters.value.volume_from) : '';
+    volumeToPreset.value = filters.value.volume_to ? String(filters.value.volume_to) : '';
 });
 
 onMounted(() => {
@@ -355,21 +399,16 @@ onBeforeUnmount(() => {
 
                     <div class="card bg-base-100 shadow-sm">
                         <div class="card-body gap-3 p-3 lg:p-4">
-                            <div
-                                class="grid grid-cols-1 gap-3"
-                                :class="isAdmin && traderSearchRoute ? 'sm:grid-cols-2' : ''"
-                            >
-                                <div
+                            <div class="flex flex-wrap items-end gap-3">
+                                <TraderSearchSelect
                                     v-if="isAdmin && traderSearchRoute"
-                                    class="min-w-0"
-                                >
-                                    <TraderSearchSelect
-                                        v-model="selectedTraderId"
-                                        :search-route="traderSearchRoute"
-                                    />
-                                </div>
+                                    v-model="selectedTraderId"
+                                    :search-route="traderSearchRoute"
+                                    compact
+                                    class="w-full shrink-0 sm:max-w-xs sm:w-auto"
+                                />
 
-                                <label class="form-control min-w-0 w-full">
+                                <label class="form-control w-full shrink-0 sm:max-w-xs sm:w-auto">
                                     <div class="label py-0">
                                         <span class="label-text text-xs">Банк</span>
                                     </div>
@@ -390,23 +429,7 @@ onBeforeUnmount(() => {
                                         </option>
                                     </select>
                                 </label>
-                            </div>
 
-                            <div class="flex flex-wrap gap-2">
-                                <button
-                                    v-for="option in periodOptions"
-                                    :key="option.value"
-                                    type="button"
-                                    class="btn btn-xs"
-                                    :class="selectedPeriod === option.value && !hasCustomPeriod ? 'btn-primary' : 'btn-outline btn-primary'"
-                                    :disabled="processing"
-                                    @click="selectPeriod(option.value)"
-                                >
-                                    {{ option.label }}
-                                </button>
-                            </div>
-
-                            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
                                 <label class="form-control w-full shrink-0 sm:max-w-[11rem] sm:w-auto">
                                     <div class="label py-0">
                                         <span class="label-text text-xs">Столбиков на графике</span>
@@ -435,12 +458,60 @@ onBeforeUnmount(() => {
                                         :disabled="processing"
                                         @change="applyFilters"
                                     >
-                                    <span class="label-text text-xs sm:text-sm">Включать архивированные реквизиты</span>
+                                    <span class="label-text text-xs">С архивом</span>
                                 </label>
                             </div>
 
-                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                <label class="form-control w-full">
+                            <div class="flex flex-wrap items-end gap-3">
+                                <template v-if="hasVolumePresets">
+                                    <label class="form-control w-full shrink-0 sm:max-w-[11rem] sm:w-auto">
+                                        <div class="label py-0">
+                                            <span class="label-text text-xs">Объём от</span>
+                                        </div>
+                                        <select
+                                            v-model="volumeFromPreset"
+                                            class="select select-bordered select-sm w-full"
+                                            :disabled="processing"
+                                            @change="applyFilters"
+                                        >
+                                            <option value="">
+                                                Любой
+                                            </option>
+                                            <option
+                                                v-for="option in volumePresets"
+                                                :key="`from-${option.value}`"
+                                                :value="option.value"
+                                            >
+                                                {{ option.label }}
+                                            </option>
+                                        </select>
+                                    </label>
+
+                                    <label class="form-control w-full shrink-0 sm:max-w-[11rem] sm:w-auto">
+                                        <div class="label py-0">
+                                            <span class="label-text text-xs">Объём до</span>
+                                        </div>
+                                        <select
+                                            v-model="volumeToPreset"
+                                            class="select select-bordered select-sm w-full"
+                                            :disabled="processing"
+                                            @change="applyFilters"
+                                        >
+                                            <option value="">
+                                                Любой
+                                            </option>
+                                            <option
+                                                v-for="option in volumePresets"
+                                                :key="`to-${option.value}`"
+                                                :value="option.value"
+                                            >
+                                                {{ option.label }}
+                                            </option>
+                                        </select>
+                                    </label>
+                                </template>
+
+                                <label class="form-control w-full shrink-0 sm:max-w-[11rem] sm:w-auto">
                                     <div class="label py-0">
                                         <span class="label-text text-xs">Период с (необязательно)</span>
                                     </div>
@@ -450,7 +521,7 @@ onBeforeUnmount(() => {
                                         class="input input-sm input-bordered w-full"
                                     >
                                 </label>
-                                <label class="form-control w-full">
+                                <label class="form-control w-full shrink-0 sm:max-w-[11rem] sm:w-auto">
                                     <div class="label py-0">
                                         <span class="label-text text-xs">Период по (необязательно)</span>
                                     </div>
@@ -460,7 +531,38 @@ onBeforeUnmount(() => {
                                         class="input input-sm input-bordered w-full"
                                     >
                                 </label>
-                                <div class="flex items-end">
+                            </div>
+
+                            <p
+                                v-if="hasCustomPeriod"
+                                class="text-xs text-base-content/60"
+                            >
+                                Используется собственный период. Пресеты игнорируются, пока задана дата «с» или «по».
+                            </p>
+
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div class="flex flex-wrap gap-2">
+                                    <button
+                                        v-for="option in periodOptions"
+                                        :key="option.value"
+                                        type="button"
+                                        class="btn btn-xs"
+                                        :class="selectedPeriod === option.value && !hasCustomPeriod ? 'btn-primary' : 'btn-outline btn-primary'"
+                                        :disabled="processing"
+                                        @click="selectPeriod(option.value)"
+                                    >
+                                        {{ option.label }}
+                                    </button>
+                                </div>
+                                <div class="flex shrink-0 gap-2">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline btn-sm"
+                                        :disabled="processing"
+                                        @click="resetFilters"
+                                    >
+                                        Сбросить
+                                    </button>
                                     <button
                                         type="button"
                                         class="btn btn-primary btn-sm"
@@ -471,33 +573,7 @@ onBeforeUnmount(() => {
                                     </button>
                                 </div>
                             </div>
-
-                            <p
-                                v-if="hasCustomPeriod"
-                                class="text-xs text-base-content/60"
-                            >
-                                Используется собственный период. Пресеты игнорируются, пока задана дата «с» или «по».
-                            </p>
                         </div>
-                    </div>
-
-                    <div
-                        v-if="selectedBank"
-                        class="alert alert-info text-sm"
-                    >
-                        <span>Фильтр по банку: <strong>{{ selectedBank.label }}</strong></span>
-                    </div>
-
-                    <div
-                        v-if="meta.scope_all_traders"
-                        class="alert alert-info text-sm"
-                    >
-                        <span>
-                            Фильтр по трейдеру не выбран — на графике топ-{{ barsLimitSummary }}
-                            реквизитов по объёму среди <strong>всех</strong>
-                            <template v-if="meta.include_archived">реквизитов платформы (включая архив)</template>
-                            <template v-else>активных реквизитов платформы</template>.
-                        </span>
                     </div>
 
                     <div class="flex flex-wrap gap-2 text-xs">
@@ -512,6 +588,12 @@ onBeforeUnmount(() => {
                                 class="badge badge-warning badge-outline badge-sm"
                             >
                                 Скрыто с нулевым объёмом: {{ formatInteger(meta.hidden_zero_volume_count) }}
+                            </span>
+                            <span
+                                v-if="meta.excluded_by_volume_count > 0"
+                                class="badge badge-info badge-outline badge-sm"
+                            >
+                                Вне диапазона объёма: {{ formatInteger(meta.excluded_by_volume_count) }}
                             </span>
                             <span
                                 v-if="meta.excluded_over_limit_count > 0"
