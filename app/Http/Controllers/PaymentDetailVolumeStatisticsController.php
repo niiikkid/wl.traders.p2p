@@ -51,6 +51,16 @@ class PaymentDetailVolumeStatisticsController extends Controller
         );
 
         $chartPayload = $this->volumeStatisticsService->formatChartPayload($chartResult['items']);
+        $dealAmountDistribution = $this->volumeStatisticsService->buildDealAmountDistribution(
+            $userId,
+            $periodStartAt,
+            $periodEndAt,
+            $includeArchived,
+            $paymentGatewayId,
+            $request->volumeFrom(),
+            $request->volumeTo(),
+            $chartPayload['ids'],
+        );
         $selectedTrader = $isAdmin && $userId !== null
             ? User::query()->select(['id', 'email'])->find($userId)
             : null;
@@ -66,7 +76,10 @@ class PaymentDetailVolumeStatisticsController extends Controller
                 ],
                 'colors' => $chartPayload['colors'],
                 'volumes' => $chartPayload['volumes'],
+                'ids' => $chartPayload['ids'],
             ],
+            'dealAmountDistribution' => $dealAmountDistribution['aggregate'],
+            'dealAmountDistributionByDetail' => $dealAmountDistribution['by_payment_detail'],
             'meta' => [
                 ...$chartResult['meta'],
                 'scope_all_traders' => $isAdmin && $userId === null,

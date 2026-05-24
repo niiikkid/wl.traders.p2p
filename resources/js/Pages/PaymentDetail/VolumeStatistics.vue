@@ -13,7 +13,15 @@ const mainSectionBodyPlaceholder = [1];
 
 const page = usePage();
 
-const chartData = computed(() => page.props.chart ?? { labels: [], series: [], colors: [], volumes: [] });
+const chartData = computed(() => page.props.chart ?? {
+    labels: [],
+    series: [],
+    colors: [],
+    volumes: [],
+    ids: [],
+});
+const dealAmountDistribution = computed(() => page.props.dealAmountDistribution ?? { buckets: [], total_deals: 0 });
+const dealAmountDistributionByDetail = computed(() => page.props.dealAmountDistributionByDetail ?? {});
 const meta = computed(() => page.props.meta ?? {});
 const filters = computed(() => page.props.filters ?? {});
 const periodOptions = computed(() => page.props.periodOptions ?? []);
@@ -59,9 +67,99 @@ const volumeToPreset = ref(filters.value.volume_to ? String(filters.value.volume
 syncBarsLimitFields(filters.value.bars_limit);
 
 const chartRef = ref(null);
+const pieChartRef = ref(null);
 const apexChart = ref(null);
+const pieApexChart = ref(null);
 const chartContainerHeight = ref(400);
 const processing = ref(false);
+const selectedPaymentDetailId = ref('');
+
+const getThemeColor = (cssVariable, fallback) => {
+    if (typeof document === 'undefined') {
+        return fallback;
+    }
+
+    const value = getComputedStyle(document.documentElement).getPropertyValue(cssVariable).trim();
+
+    return value || fallback;
+};
+
+/** Градиент как у столбчатого графика: мелкие чеки — success, крупные — error. */
+const buildPieChartColors = (count) => {
+    if (count <= 0) {
+        return [];
+    }
+
+    return Array.from({ length: count }, (_item, index) => {
+        const ratio = count <= 1 ? 0.5 : index / (count - 1);
+        const hue = Math.round(120 * (1 - ratio));
+
+        return `hsl(${hue}, 70%, 45%)`;
+    });
+};
+
+/**
+ * @param {Array<{label: string, percent?: number}>} buckets
+ */
+const createPieSliceDataLabelFormatter = (buckets) => (percent, opts) => {
+    const seriesIndex = opts?.seriesIndex ?? 0;
+    const bucket = buckets[seriesIndex];
+
+    if (!bucket || percent <= 0) {
+        return '';
+    }
+
+    const rangeLabel = bucket.label;
+    const percentLabel = `${Math.round(percent)}%`;
+    const sliceAngle = percent * 3.6;
+    const minAngleForLabel = rangeLabel.length > 14
+        ? 30
+        : rangeLabel.length > 11
+            ? 24
+            : 20;
+
+    if (sliceAngle < minAngleForLabel || percent < 7) {
+        return '';
+    }
+
+    return [rangeLabel, percentLabel];
+};
+
+const activeDealAmountDistribution = computed(() => {
+    if (!selectedPaymentDetailId.value) {
+        return dealAmountDistribution.value;
+    }
+
+    const detailId = selectedPaymentDetailId.value;
+
+    return dealAmountDistributionByDetail.value[detailId]
+        ?? dealAmountDistributionByDetail.value[Number(detailId)]
+        ?? { buckets: [], total_deals: 0 };
+});
+
+const selectedPaymentDetailLabel = computed(() => {
+    if (!selectedPaymentDetailId.value) {
+        return null;
+    }
+
+    const index = (chartData.value.ids ?? []).findIndex(
+        (id) => String(id) === selectedPaymentDetailId.value,
+    );
+
+    if (index < 0) {
+        return null;
+    }
+
+    return chartData.value.labels?.[index] ?? null;
+});
+
+const hasPieChartData = computed(() => (activeDealAmountDistribution.value.buckets ?? []).length > 0);
+
+const pieChartColorsList = computed(() => buildPieChartColors(
+    (activeDealAmountDistribution.value.buckets ?? []).length,
+));
+
+const pieChartColorForIndex = (index) => pieChartColorsList.value[index] ?? 'hsl(120, 70%, 45%)';
 
 const volumeStatisticsRoute = computed(() => (
     isAdmin.value
@@ -120,7 +218,26 @@ watch(selectedTraderId, (newTraderId) => {
     applyFilters();
 });
 
+const clearSelectedPaymentDetail = ({ syncVisual = true } = {}) => {
+    if (syncVisual && apexChart.value && selectedPaymentDetailId.value) {
+        const index = (chartData.value.ids ?? []).findIndex(
+            (id) => String(id) === selectedPaymentDetailId.value,
+        );
+
+        if (index >= 0 && typeof apexChart.value.toggleDataPointSelection === 'function') {
+            const selectedPoints = apexChart.value.w?.globals?.selectedDataPoints?.[0] ?? [];
+
+            if (selectedPoints.includes(index)) {
+                apexChart.value.toggleDataPointSelection(0, index);
+            }
+        }
+    }
+
+    selectedPaymentDetailId.value = '';
+};
+
 const applyFilters = () => {
+    clearSelectedPaymentDetail({ syncVisual: false });
     processing.value = true;
 
     router.get(volumeStatisticsRoute.value, buildRequestData(), {
@@ -134,6 +251,7 @@ const applyFilters = () => {
 };
 
 const resetFilters = () => {
+    clearSelectedPaymentDetail({ syncVisual: false });
     processing.value = true;
 
     router.get(volumeStatisticsRoute.value, {
@@ -204,6 +322,211 @@ const destroyChart = () => {
     }
 };
 
+const destroyPieChart = () => {
+    if (pieApexChart.value) {
+        pieApexChart.value.destroy();
+        pieApexChart.value = null;
+    }
+};
+
+const handleBarDataPointSelection = (_event, _chartContext, config) => {
+    const index = config?.dataPointIndex;
+
+    if (index === undefined || index < 0) {
+        return;
+    }
+
+    const paymentDetailId = chartData.value.ids?.[index];
+
+    if (paymentDetailId === undefined) {
+        return;
+    }
+
+    if (selectedPaymentDetailId.value === String(paymentDetailId)) {
+        clearSelectedPaymentDetail({ syncVisual: false });
+
+        return;
+    }
+
+    selectedPaymentDetailId.value = String(paymentDetailId);
+};
+
+const syncBarChartSelection = () => {
+    if (!apexChart.value || !selectedPaymentDetailId.value) {
+        return;
+    }
+
+    const index = (chartData.value.ids ?? []).findIndex(
+        (id) => String(id) === selectedPaymentDetailId.value,
+    );
+
+    if (index < 0) {
+        selectedPaymentDetailId.value = '';
+
+        return;
+    }
+
+    apexChart.value.toggleDataPointSelection(0, index);
+};
+
+const mountPieChart = () => {
+    if (!pieChartRef.value) {
+        return;
+    }
+
+    const buckets = activeDealAmountDistribution.value.buckets ?? [];
+    const labels = buckets.map((bucket) => bucket.label);
+    const series = buckets.map((bucket) => bucket.count);
+    const totalDeals = activeDealAmountDistribution.value.total_deals ?? 0;
+    const sliceColors = buildPieChartColors(buckets.length);
+    const baseContentMuted = getThemeColor('--color-base-content', '#a3a3a3');
+    const baseSurface = getThemeColor('--color-base-100', '#1f2937');
+
+    const options = {
+        chart: {
+            type: 'donut',
+            height: 340,
+            background: 'transparent',
+            fontFamily: 'inherit',
+            animations: {
+                enabled: true,
+                easing: 'easeinout',
+                speed: 450,
+            },
+        },
+        labels,
+        series,
+        colors: sliceColors,
+        stroke: {
+            width: 3,
+            colors: [baseSurface],
+        },
+        plotOptions: {
+            pie: {
+                expandOnClick: true,
+                dataLabels: {
+                    minAngleToShowLabel: 20,
+                },
+                donut: {
+                    size: '56%',
+                    labels: {
+                        show: true,
+                        name: {
+                            show: true,
+                            fontSize: '13px',
+                            color: baseContentMuted,
+                            offsetY: 20,
+                        },
+                        value: {
+                            show: true,
+                            fontSize: '22px',
+                            fontWeight: 600,
+                            color: getThemeColor('--color-base-content', '#e5e5e5'),
+                            offsetY: -12,
+                            formatter: (value) => formatInteger(value),
+                        },
+                        total: {
+                            show: true,
+                            showAlways: true,
+                            label: 'Сделок',
+                            fontSize: '12px',
+                            color: baseContentMuted,
+                            formatter: () => formatInteger(totalDeals),
+                        },
+                    },
+                },
+            },
+        },
+        dataLabels: {
+            enabled: true,
+            dropShadow: {
+                enabled: false,
+            },
+            style: {
+                fontSize: '10px',
+                fontWeight: 600,
+                colors: ['#ffffff'],
+            },
+            formatter: createPieSliceDataLabelFormatter(buckets),
+        },
+        legend: {
+            show: false,
+        },
+        tooltip: {
+            theme: 'dark',
+            fillSeriesColor: true,
+            y: {
+                formatter: (value, opts) => {
+                    const bucket = buckets[opts?.seriesIndex ?? 0];
+                    const percent = bucket?.percent ?? 0;
+
+                    return `${formatInteger(value)} сделок · ${percent}%`;
+                },
+            },
+        },
+        states: {
+            hover: {
+                filter: {
+                    type: 'lighten',
+                    value: 0.08,
+                },
+            },
+            active: {
+                filter: {
+                    type: 'darken',
+                    value: 0.12,
+                },
+            },
+        },
+        noData: {
+            text: 'Нет сделок за выбранный период',
+            align: 'center',
+            verticalAlign: 'middle',
+            style: {
+                color: baseContentMuted,
+                fontSize: '14px',
+            },
+        },
+        responsive: [
+            {
+                breakpoint: 640,
+                options: {
+                    chart: {
+                        height: 300,
+                    },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '52%',
+                            },
+                        },
+                    },
+                },
+            },
+        ],
+    };
+
+    if (pieApexChart.value) {
+        if (series.length === 0) {
+            pieApexChart.value.updateOptions({
+                ...options,
+                series: [],
+                labels: [],
+            }, true, true);
+
+            return;
+        }
+
+        pieApexChart.value.updateOptions(options, true, true);
+        pieApexChart.value.updateSeries(series, true);
+
+        return;
+    }
+
+    pieApexChart.value = new ApexCharts(pieChartRef.value, options);
+    pieApexChart.value.render();
+};
+
 const mountChart = () => {
     if (!chartRef.value) {
         return;
@@ -240,6 +563,21 @@ const mountChart = () => {
             background: 'transparent',
             toolbar: {
                 show: false,
+            },
+            events: {
+                dataPointSelection: handleBarDataPointSelection,
+            },
+            selection: {
+                enabled: true,
+            },
+        },
+        states: {
+            active: {
+                allowMultipleDataPointsSelection: false,
+                filter: {
+                    type: 'darken',
+                    value: 0.55,
+                },
             },
         },
         plotOptions: {
@@ -333,11 +671,14 @@ const mountChart = () => {
 
     if (apexChart.value) {
         apexChart.value.updateOptions(options, true, true);
+        nextTick(() => syncBarChartSelection());
+
         return;
     }
 
     apexChart.value = new ApexCharts(chartRef.value, options);
     apexChart.value.render();
+    nextTick(() => syncBarChartSelection());
 };
 
 watch(
@@ -348,7 +689,32 @@ watch(
     { deep: true },
 );
 
+watch(
+    () => activeDealAmountDistribution.value,
+    () => {
+        nextTick(() => mountPieChart());
+    },
+    { deep: true },
+);
+
+watch(selectedPaymentDetailId, () => {
+    nextTick(() => mountPieChart());
+});
+
+watch(hasPieChartData, (hasData, hadData) => {
+    if (hadData && !hasData) {
+        destroyPieChart();
+    }
+
+    nextTick(() => mountPieChart());
+});
+
 router.on('success', () => {
+    const chartIds = new Set((chartData.value.ids ?? []).map((id) => String(id)));
+
+    if (selectedPaymentDetailId.value && !chartIds.has(selectedPaymentDetailId.value)) {
+        selectedPaymentDetailId.value = '';
+    }
     selectedPeriod.value = filters.value.period ?? 'all';
     dateFrom.value = filters.value.date_from ?? '';
     dateTo.value = filters.value.date_to ?? '';
@@ -363,11 +729,15 @@ router.on('success', () => {
 });
 
 onMounted(() => {
-    nextTick(() => mountChart());
+    nextTick(() => {
+        mountChart();
+        mountPieChart();
+    });
 });
 
 onBeforeUnmount(() => {
     destroyChart();
+    destroyPieChart();
 });
 </script>
 
@@ -640,6 +1010,88 @@ onBeforeUnmount(() => {
                             class="mt-2 text-center text-xs text-base-content/60"
                         >
                             Нет реквизитов с объёмом за выбранный период.
+                        </p>
+                        <p
+                            v-else
+                            class="mt-2 text-center text-xs text-base-content/50"
+                        >
+                            Нажмите на столбец, чтобы увидеть распределение сделок по этому реквизиту.
+                        </p>
+                    </div>
+
+                    <div class="card bg-base-100 shadow p-4 lg:p-6">
+                        <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-lg text-base-content/70">
+                                    Распределение сделок по сумме (USDT)
+                                </h3>
+                                <p class="mt-1 text-xs text-base-content/50">
+                                    <template v-if="selectedPaymentDetailLabel">
+                                        По реквизиту: {{ selectedPaymentDetailLabel }}
+                                    </template>
+                                    <template v-else>
+                                        По всем реквизитам в выборке с учётом фильтров
+                                    </template>
+                                </p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span
+                                    v-if="hasPieChartData"
+                                    class="badge badge-outline badge-sm"
+                                >
+                                    Сделок: {{ formatInteger(activeDealAmountDistribution.total_deals) }}
+                                </span>
+                                <button
+                                    v-if="selectedPaymentDetailId"
+                                    type="button"
+                                    class="btn btn-ghost btn-xs"
+                                    :disabled="processing"
+                                    @click="clearSelectedPaymentDetail"
+                                >
+                                    Сбросить выбор реквизита
+                                </button>
+                            </div>
+                        </div>
+                        <div
+                            class="grid gap-6"
+                            :class="hasPieChartData ? 'lg:grid-cols-[minmax(0,1fr)_15.5rem] lg:items-center' : ''"
+                        >
+                            <div
+                                ref="pieChartRef"
+                                class="mx-auto w-full min-w-0"
+                                :class="hasPieChartData ? 'max-w-[400px] lg:max-w-none' : ''"
+                            />
+                            <ul
+                                v-if="hasPieChartData"
+                                class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200/30 text-xs lg:w-[15.5rem] lg:shrink-0"
+                            >
+                                <li
+                                    v-for="(bucket, index) in activeDealAmountDistribution.buckets"
+                                    :key="bucket.key"
+                                    class="flex items-center justify-between gap-2 px-2.5 py-2"
+                                >
+                                    <span class="flex min-w-0 items-center gap-2">
+                                        <span
+                                            class="size-2 shrink-0 rounded-full ring-2 ring-base-100"
+                                            :style="{ backgroundColor: pieChartColorForIndex(index) }"
+                                        />
+                                        <span class="truncate text-base-content/85 leading-tight">
+                                            {{ bucket.label }}
+                                        </span>
+                                    </span>
+                                    <span class="shrink-0 tabular-nums text-[11px] text-base-content/55">
+                                        {{ formatInteger(bucket.count) }}
+                                        <span class="text-base-content/35">·</span>
+                                        {{ bucket.percent }}%
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                        <p
+                            v-if="!hasPieChartData"
+                            class="mt-2 text-center text-xs text-base-content/60"
+                        >
+                            Нет успешных сделок за выбранный период.
                         </p>
                     </div>
                 </div>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\PaymentDetail;
 
 use App\Enums\OrderStatus;
+use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\PaymentGateway;
 use App\Services\Money\Currency;
@@ -12,6 +13,7 @@ use App\Services\Money\Money;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class PaymentDetailVolumeStatisticsService
 {
@@ -21,6 +23,23 @@ class PaymentDetailVolumeStatisticsService
 
     /** @var list<int> */
     public const array ALLOWED_BARS_LIMITS = [25, 50, 75, 100, 200];
+
+    /**
+     * @var list<array{key: string, label: string, min_usdt: float, max_usdt: float|null}>
+     */
+    public const array DEAL_AMOUNT_BUCKETS = [
+        ['key' => '0_10', 'label' => '0–10 USDT', 'min_usdt' => 0, 'max_usdt' => 10],
+        ['key' => '10_15', 'label' => '10–15 USDT', 'min_usdt' => 10, 'max_usdt' => 15],
+        ['key' => '15_20', 'label' => '15–20 USDT', 'min_usdt' => 15, 'max_usdt' => 20],
+        ['key' => '20_25', 'label' => '20–25 USDT', 'min_usdt' => 20, 'max_usdt' => 25],
+        ['key' => '25_30', 'label' => '25–30 USDT', 'min_usdt' => 25, 'max_usdt' => 30],
+        ['key' => '30_40', 'label' => '30–40 USDT', 'min_usdt' => 30, 'max_usdt' => 40],
+        ['key' => '40_50', 'label' => '40–50 USDT', 'min_usdt' => 40, 'max_usdt' => 50],
+        ['key' => '50_100', 'label' => '50–100 USDT', 'min_usdt' => 50, 'max_usdt' => 100],
+        ['key' => '100_200', 'label' => '100–200 USDT', 'min_usdt' => 100, 'max_usdt' => 200],
+        ['key' => '200_1000', 'label' => '200–1000 USDT', 'min_usdt' => 200, 'max_usdt' => 1000],
+        ['key' => '1000_plus', 'label' => 'от 1000 USDT', 'min_usdt' => 1000, 'max_usdt' => null],
+    ];
 
     /**
      * @return array{
@@ -629,7 +648,162 @@ class PaymentDetailVolumeStatisticsService
     }
 
     /**
-     * @return array{labels: list<string>, data: list<float>, colors: list<string>, volumes: list<string>}
+     * @param  list<int>  $chartPaymentDetailIds
+     * @return array{
+     *     aggregate: array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int},
+     *     by_payment_detail: array<int, array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}>
+     * }
+     */
+    public function buildDealAmountDistribution(
+        ?int $userId,
+        ?CarbonInterface $periodStartAt,
+        ?CarbonInterface $periodEndAt,
+        bool $includeArchived,
+        ?int $paymentGatewayId,
+        ?string $volumeFrom,
+        ?string $volumeTo,
+        array $chartPaymentDetailIds = [],
+    ): array {
+        $baseQuery = $this->basePaymentDetailQuery($userId, $includeArchived, $paymentGatewayId);
+
+        $ordersSumConstraint = function (Builder $query) use ($periodStartAt, $periodEndAt): void {
+            $query->where('status', OrderStatus::SUCCESS);
+
+            if ($periodStartAt !== null) {
+                $query->where('created_at', '>=', $periodStartAt);
+            }
+
+            if ($periodEndAt !== null) {
+                $query->where('created_at', '<=', $periodEndAt);
+            }
+        };
+
+        $positiveVolumeBaseQuery = $this->positiveVolumeQuery($baseQuery, $ordersSumConstraint);
+
+        /** @var list<int> $allVolumes */
+        $allVolumes = (clone $positiveVolumeBaseQuery)
+            ->pluck('volume_usdt_units')
+            ->map(fn (mixed $volume): int => (int) $volume)
+            ->all();
+
+        $volumePresetData = $this->buildVolumePresetData($allVolumes);
+        $allowedVolumeUnits = array_map(
+            fn (array $option): int => (int) $option['value'],
+            $volumePresetData['options'],
+        );
+        [$volumeFromUnits, $volumeToUnits] = $this->resolveVolumeBounds(
+            $volumeFrom,
+            $volumeTo,
+            $allowedVolumeUnits,
+        );
+
+        /** @var list<int> $scopedPaymentDetailIds */
+        $scopedPaymentDetailIds = $this->applyVolumeBounds(
+            clone $positiveVolumeBaseQuery,
+            $volumeFromUnits,
+            $volumeToUnits,
+        )
+            ->pluck('id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->all();
+
+        if ($scopedPaymentDetailIds === []) {
+            return [
+                'aggregate' => $this->formatDealAmountDistributionRows([]),
+                'by_payment_detail' => [],
+            ];
+        }
+
+        $ordersQuery = $this->ordersInScopeQuery(
+            $scopedPaymentDetailIds,
+            $periodStartAt,
+            $periodEndAt,
+        );
+
+        $bucketCaseSql = $this->dealAmountBucketCaseSql();
+
+        /** @var Collection<int, object{amount_bucket: string, deals_count: int|string}> $aggregateRows */
+        $aggregateRows = (clone $ordersQuery)
+            ->selectRaw("{$bucketCaseSql} as amount_bucket, COUNT(*) as deals_count")
+            ->groupBy('amount_bucket')
+            ->get();
+
+        $byPaymentDetail = [];
+
+        $chartPaymentDetailIds = array_values(array_unique(array_filter(
+            $chartPaymentDetailIds,
+            fn (int $id): bool => $id > 0,
+        )));
+
+        if ($chartPaymentDetailIds !== []) {
+            /** @var Collection<int, object{payment_detail_id: int|string, amount_bucket: string, deals_count: int|string}> $detailRows */
+            $detailRows = (clone $ordersQuery)
+                ->whereIn('payment_detail_id', $chartPaymentDetailIds)
+                ->selectRaw("payment_detail_id, {$bucketCaseSql} as amount_bucket, COUNT(*) as deals_count")
+                ->groupBy('payment_detail_id', 'amount_bucket')
+                ->get();
+
+            foreach ($detailRows->groupBy('payment_detail_id') as $paymentDetailId => $rows) {
+                $byPaymentDetail[(int) $paymentDetailId] = $this->formatDealAmountDistributionRows($rows);
+            }
+        }
+
+        return [
+            'aggregate' => $this->formatDealAmountDistributionRows($aggregateRows),
+            'by_payment_detail' => $byPaymentDetail,
+        ];
+    }
+
+    /**
+     * @return array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}
+     */
+    public function formatDealAmountDistributionRows(iterable $rows): array
+    {
+        $countsByKey = [];
+
+        foreach ($rows as $row) {
+            $bucketKey = (string) ($row->amount_bucket ?? '');
+            $countsByKey[$bucketKey] = ($countsByKey[$bucketKey] ?? 0) + (int) ($row->deals_count ?? 0);
+        }
+
+        $buckets = [];
+        $totalDeals = 0;
+
+        foreach (self::DEAL_AMOUNT_BUCKETS as $bucketDefinition) {
+            $count = $countsByKey[$bucketDefinition['key']] ?? 0;
+
+            if ($count <= 0) {
+                continue;
+            }
+
+            $buckets[] = [
+                'key' => $bucketDefinition['key'],
+                'label' => $bucketDefinition['label'],
+                'count' => $count,
+                'percent' => 0.0,
+            ];
+            $totalDeals += $count;
+        }
+
+        if ($totalDeals > 0) {
+            $buckets = array_map(
+                function (array $bucket) use ($totalDeals): array {
+                    $bucket['percent'] = round(($bucket['count'] / $totalDeals) * 100, 1);
+
+                    return $bucket;
+                },
+                $buckets,
+            );
+        }
+
+        return [
+            'buckets' => $buckets,
+            'total_deals' => $totalDeals,
+        ];
+    }
+
+    /**
+     * @return array{labels: list<string>, data: list<float>, colors: list<string>, volumes: list<string>, ids: list<int>}
      */
     public function formatChartPayload(array $items): array
     {
@@ -639,6 +813,7 @@ class PaymentDetailVolumeStatisticsService
                 'data' => [],
                 'colors' => [],
                 'volumes' => [],
+                'ids' => [],
             ];
         }
 
@@ -653,6 +828,7 @@ class PaymentDetailVolumeStatisticsService
                 ->map(fn (array $item): string => $this->volumeColor((int) $item['volume_usdt_units'], $minUnits, $maxUnits))
                 ->all(),
             'volumes' => array_column($items, 'volume_usdt'),
+            'ids' => array_column($items, 'id'),
         ];
     }
 
@@ -694,5 +870,57 @@ class PaymentDetailVolumeStatisticsService
         $date = Carbon::parse($value);
 
         return $startOfDay ? $date->startOfDay() : $date->endOfDay();
+    }
+
+    /**
+     * @param  list<int>  $paymentDetailIds
+     */
+    private function ordersInScopeQuery(
+        array $paymentDetailIds,
+        ?CarbonInterface $periodStartAt,
+        ?CarbonInterface $periodEndAt,
+    ): Builder {
+        return Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereIn('payment_detail_id', $paymentDetailIds)
+            ->when(
+                $periodStartAt !== null,
+                fn (Builder $query) => $query->where('created_at', '>=', $periodStartAt),
+            )
+            ->when(
+                $periodEndAt !== null,
+                fn (Builder $query) => $query->where('created_at', '<=', $periodEndAt),
+            );
+    }
+
+    private function dealAmountBucketCaseSql(): string
+    {
+        $conditions = [];
+
+        foreach (self::DEAL_AMOUNT_BUCKETS as $bucketDefinition) {
+            if ($bucketDefinition['max_usdt'] === null) {
+                continue;
+            }
+
+            $maxUnits = $this->usdtDisplayAmountToUnits($bucketDefinition['max_usdt']);
+            $conditions[] = "WHEN orders.total_profit < {$maxUnits} THEN '{$bucketDefinition['key']}'";
+        }
+
+        $lastBucketKey = self::DEAL_AMOUNT_BUCKETS[array_key_last(self::DEAL_AMOUNT_BUCKETS)]['key'];
+
+        return 'CASE '.implode(' ', $conditions)." ELSE '{$lastBucketKey}' END";
+    }
+
+    private function usdtDisplayAmountToUnits(float $usdt): int
+    {
+        if ($usdt <= 0) {
+            return 0;
+        }
+
+        $amount = fmod($usdt, 1.0) === 0.0
+            ? (string) (int) round($usdt)
+            : rtrim(rtrim(number_format($usdt, 2, '.', ''), '0'), '.');
+
+        return Money::fromPrecision($amount, Currency::USDT()->getCode())->toUnitsInt();
     }
 }
