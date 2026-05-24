@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import Pagination from '@/Components/Pagination/Pagination.vue';
 import TraderSearchSelect from '@/Pages/Admin/TraderAnalytics/Components/TraderSearchSelect.vue';
+import { useFormatPaymentDetail } from '@/utils/paymentDetail.js';
 import ApexCharts from 'apexcharts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
@@ -20,6 +21,10 @@ const chartData = computed(() => page.props.chart ?? {
     colors: [],
     volumes: [],
     ids: [],
+    names: [],
+    details: [],
+    detail_types: [],
+    is_archived: [],
 });
 const dealAmountDistribution = computed(() => page.props.dealAmountDistribution ?? { buckets: [], total_deals: 0 });
 const dealAmountDistributionByDetail = computed(() => page.props.dealAmountDistributionByDetail ?? {});
@@ -238,9 +243,16 @@ const tableRows = computed(() => {
             ?? dealAmountDistributionByDetail.value[Number(id)]
             ?? null;
 
+        const detail = chartData.value.details?.[index] ?? '';
+        const detailType = chartData.value.detail_types?.[index] ?? '';
+
         return {
             id: detailId,
-            label: chartData.value.labels?.[index] ?? '',
+            name: chartData.value.names?.[index] ?? '',
+            detail,
+            detailType,
+            formattedDetail: useFormatPaymentDetail(detail, detailType),
+            isArchived: Boolean(chartData.value.is_archived?.[index]),
             volume: chartData.value.volumes?.[index] ?? '',
             dealsCount: distribution?.total_deals ?? 0,
             color: chartData.value.colors?.[index] ?? '',
@@ -1161,23 +1173,25 @@ onBeforeUnmount(() => {
                         </template>
 
                         <template v-else>
-                            <div class="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                                <div class="min-w-0 space-y-3">
-                                    <p class="text-xs text-base-content/50">
+                            <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.88fr)]">
+                                <div class="min-w-0 space-y-2">
+                                    <p class="text-[11px] text-base-content/50">
                                         Нажмите на строку, чтобы увидеть распределение сделок по реквизиту.
                                     </p>
                                     <div
                                         v-if="hasChartData"
                                         class="overflow-x-auto rounded-box border border-base-300"
                                     >
-                                        <table class="table table-sm table-zebra [&_tbody_tr:hover]:bg-inherit">
+                                        <table class="table table-xs table-zebra [&_tbody_tr:hover]:bg-inherit text-[11px]">
                                             <thead>
-                                                <tr class="text-xs uppercase text-base-content/60">
-                                                    <th>Реквизит</th>
-                                                    <th class="text-right">
+                                                <tr class="text-[10px] uppercase text-base-content/60">
+                                                    <th class="py-2">
+                                                        Реквизит
+                                                    </th>
+                                                    <th class="py-2 text-right">
                                                         Объём
                                                     </th>
-                                                    <th class="text-right">
+                                                    <th class="py-2 text-right">
                                                         Сделок
                                                     </th>
                                                 </tr>
@@ -1190,13 +1204,32 @@ onBeforeUnmount(() => {
                                                     :class="selectedPaymentDetailId === row.id ? 'bg-primary/10 hover:bg-primary/10' : ''"
                                                     @click="selectPaymentDetailFromTable(row.id)"
                                                 >
-                                                    <td class="max-w-[14rem] truncate font-medium">
-                                                        {{ row.label }}
+                                                    <td class="max-w-[11rem] py-1.5">
+                                                        <div class="flex min-w-0 flex-col gap-0.5 leading-tight">
+                                                            <div class="flex min-w-0 items-center gap-1">
+                                                                <span class="truncate font-medium text-base-content">
+                                                                    {{ row.name }}
+                                                                </span>
+                                                                <span class="shrink-0 text-base-content/40">
+                                                                    #{{ row.id }}
+                                                                </span>
+                                                                <span
+                                                                    v-if="row.isArchived"
+                                                                    class="badge badge-outline badge-xs shrink-0 px-1"
+                                                                >
+                                                                    архив
+                                                                </span>
+                                                            </div>
+                                                            <span class="truncate font-mono text-[10px] text-base-content/65">
+                                                                {{ row.formattedDetail }}
+                                                            </span>
+                                                        </div>
                                                     </td>
-                                                    <td class="text-right tabular-nums whitespace-nowrap">
-                                                        {{ row.volume }}
+                                                    <td class="py-1.5 text-right tabular-nums whitespace-nowrap">
+                                                        <span>{{ row.volume }}</span>
+                                                        <span class="ml-1 text-primary font-medium">USDT</span>
                                                     </td>
-                                                    <td class="text-right tabular-nums">
+                                                    <td class="py-1.5 text-right tabular-nums text-base-content/80">
                                                         {{ formatInteger(row.dealsCount) }}
                                                     </td>
                                                 </tr>

@@ -126,7 +126,7 @@ class PaymentDetailVolumeStatisticsService
 
         $topRowsQuery = $this->applyVolumeBounds(
             (clone $baseQuery)
-                ->select(['id', 'name', 'archived_at'])
+                ->select(['id', 'name', 'detail', 'detail_type', 'archived_at'])
                 ->withSum(['orders as volume_usdt_units' => $ordersSumConstraint], 'total_profit')
                 ->having('volume_usdt_units', '>', 0),
             $volumeFromUnits,
@@ -164,6 +164,9 @@ class PaymentDetailVolumeStatisticsService
                 return [
                     'id' => $paymentDetail->id,
                     'name' => (string) $paymentDetail->name,
+                    'detail' => (string) $paymentDetail->detail,
+                    'detail_type' => $paymentDetail->detail_type->value,
+                    'is_archived' => $paymentDetail->archived_at !== null,
                     'label' => $label,
                     'volume_usdt_units' => $volumeUnits,
                     'volume_usdt' => $volumeMoney->toBeauty(),
@@ -820,7 +823,17 @@ class PaymentDetailVolumeStatisticsService
     }
 
     /**
-     * @return array{labels: list<string>, data: list<float>, colors: list<string>, volumes: list<string>, ids: list<int>}
+     * @return array{
+     *     labels: list<string>,
+     *     data: list<float>,
+     *     colors: list<string>,
+     *     volumes: list<string>,
+     *     ids: list<int>,
+     *     names: list<string>,
+     *     details: list<string>,
+     *     detail_types: list<string>,
+     *     is_archived: list<bool>
+     * }
      */
     public function formatChartPayload(array $items): array
     {
@@ -831,6 +844,10 @@ class PaymentDetailVolumeStatisticsService
                 'colors' => [],
                 'volumes' => [],
                 'ids' => [],
+                'names' => [],
+                'details' => [],
+                'detail_types' => [],
+                'is_archived' => [],
             ];
         }
 
@@ -846,6 +863,10 @@ class PaymentDetailVolumeStatisticsService
                 ->all(),
             'volumes' => array_column($items, 'volume_usdt'),
             'ids' => array_column($items, 'id'),
+            'names' => array_column($items, 'name'),
+            'details' => array_column($items, 'detail'),
+            'detail_types' => array_column($items, 'detail_type'),
+            'is_archived' => array_column($items, 'is_archived'),
         ];
     }
 
