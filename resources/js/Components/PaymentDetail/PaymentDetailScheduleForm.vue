@@ -5,11 +5,13 @@ import ScheduleTimeInput from '@/Components/PaymentDetail/ScheduleTimeInput.vue'
 import TextInput from '@/Components/TextInput.vue';
 import {
     WEEKDAY_OPTIONS,
+    MAX_DAY_INTERVALS,
     addDayOverrideInterval,
     removeDayOverrideInterval,
     setDayOverrideEnabled,
     toggleDefaultDay,
 } from '@/composables/usePaymentDetailScheduleEditor.js';
+import { formatServerScheduleDateTime } from '@/utils/paymentDetailScheduleStatus.js';
 import { computed } from 'vue';
 
 const editorState = defineModel({
@@ -46,22 +48,10 @@ const props = defineProps({
 
 const compactInputClass = 'w-full input-sm h-8 min-h-8 text-sm';
 
-const formatServerNow = computed(() => {
-    if (!props.serverNow) {
-        return null;
-    }
-
-    try {
-        return new Date(props.serverNow).toLocaleString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            day: '2-digit',
-            month: '2-digit',
-        });
-    } catch {
-        return null;
-    }
-});
+const formatServerNow = computed(() => formatServerScheduleDateTime(
+    props.serverNow,
+    props.serverTimezone,
+));
 
 const isDefaultDaySelected = (day) => (editorState.value.defaultDays || []).includes(day);
 
@@ -291,7 +281,8 @@ const updateOverrideInterval = (day, index, field, value) => {
                             <button
                                 type="button"
                                 class="btn btn-outline btn-primary btn-xs gap-1 font-normal"
-                                :disabled="processing"
+                                :disabled="processing || dayOverrideIntervals(weekday.value).length >= MAX_DAY_INTERVALS"
+                                :title="dayOverrideIntervals(weekday.value).length >= MAX_DAY_INTERVALS ? `Не более ${MAX_DAY_INTERVALS} интервалов в день` : undefined"
                                 @click="onAddOverrideInterval(weekday.value)"
                             >
                                 <svg

@@ -17,6 +17,16 @@ const STATUS_LABELS = {
     [SCHEDULE_STATUS.INVALID]: 'Некорректное расписание',
 };
 
+const ISO_WEEKDAY_LABELS = {
+    1: 'Пн',
+    2: 'Вт',
+    3: 'Ср',
+    4: 'Чт',
+    5: 'Пт',
+    6: 'Сб',
+    7: 'Вс',
+};
+
 function normalizeTime(time) {
     if (typeof time !== 'string' || !time) {
         return '00:00:00';
@@ -47,6 +57,68 @@ function formatTimeInTimezone(date, timeZone) {
     return `${get('hour')}:${get('minute')}:${get('second')}`;
 }
 
+export function formatServerScheduleDateTime(serverNow, serverTimezone) {
+    if (!serverNow) {
+        return null;
+    }
+
+    try {
+        return new Date(serverNow).toLocaleString('ru-RU', {
+            timeZone: serverTimezone || undefined,
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+        });
+    } catch {
+        return null;
+    }
+}
+
+function getIsoWeekdayInTimezone(date, timeZone) {
+    try {
+        const dateKey = new Intl.DateTimeFormat('en-CA', {
+            timeZone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).format(date);
+        const [year, month, day] = dateKey.split('-').map(Number);
+        const utcDate = new Date(Date.UTC(year, month - 1, day));
+        const weekday = utcDate.getUTCDay();
+
+        return weekday === 0 ? 7 : weekday;
+    } catch {
+        return null;
+    }
+}
+
+export function formatServerScheduleClock(date, serverTimezone) {
+    const timezone = serverTimezone || 'UTC';
+
+    try {
+        const isoWeekday = getIsoWeekdayInTimezone(date, timezone);
+        const time = new Intl.DateTimeFormat('ru-RU', {
+            timeZone: timezone,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(date);
+
+        return {
+            weekday: ISO_WEEKDAY_LABELS[isoWeekday] ?? '—',
+            time,
+            timezone,
+        };
+    } catch {
+        return {
+            weekday: '—',
+            time: '—:—',
+            timezone,
+        };
+    }
+}
+
 function intervalContains(interval, time) {
     const startsAt = normalizeTime(interval.starts_at);
     const endsAt = normalizeTime(interval.ends_at);
@@ -72,30 +144,18 @@ function formatIntervalList(intervals) {
         .join(', ');
 }
 
-function resolveIntervalText(status, todayIntervals, currentInterval, nextInterval) {
-    if (status === SCHEDULE_STATUS.DAY_OFF) {
-        return null;
+function buildIntervalItems(intervals) {
+    if (!intervals?.length) {
+        return [];
     }
 
-    if (status === SCHEDULE_STATUS.WORKING && currentInterval) {
-        return `${currentInterval.starts_at}-${currentInterval.ends_at}`;
-    }
-
-    if (status === SCHEDULE_STATUS.BREAK_UNTIL && nextInterval) {
-        return `${nextInterval.starts_at}-${nextInterval.ends_at}`;
-    }
-
-    if (status === SCHEDULE_STATUS.STARTS_LATER && nextInterval) {
-        return `${nextInterval.starts_at}-${nextInterval.ends_at}`;
-    }
-
-    return formatIntervalList(todayIntervals);
+    return intervals.map((interval) => `${interval.starts_at}-${interval.ends_at}`);
 }
 
 /**
  * @param {object|null} schedule
  * @param {number} offsetMs
- * @returns {{ status: string, statusLabel: string, scheduleName: string|null, intervalText: string|null }}
+ * @returns {{ status: string, statusLabel: string, scheduleName: string|null, intervalText: string|null, intervalItems: string[] }}
  */
 export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
     if (!schedule) {
@@ -104,6 +164,7 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             statusLabel: STATUS_LABELS[SCHEDULE_STATUS.NOT_CONFIGURED],
             scheduleName: null,
             intervalText: null,
+            intervalItems: [],
         };
     }
 
@@ -118,6 +179,7 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             statusLabel: schedule.status_label || STATUS_LABELS[SCHEDULE_STATUS.INVALID],
             scheduleName: schedule.name,
             intervalText: null,
+            intervalItems: [],
         };
     }
 
@@ -127,13 +189,15 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             statusLabel: STATUS_LABELS[SCHEDULE_STATUS.DAY_OFF],
             scheduleName: schedule.name,
             intervalText: null,
+            intervalItems: [],
         };
     }
 
     const sortedIntervals = [...todayIntervals].sort(
         (left, right) => normalizeTime(left.starts_at).localeCompare(normalizeTime(right.starts_at)),
     );
-
+    const intervalItems = buildIntervalItems(sortedIntervals);
+    const intervalText = formatIntervalList(sortedIntervals);
     const currentInterval = findCurrentInterval(sortedIntervals, time);
 
     if (currentInterval) {
@@ -141,12 +205,8 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             status: SCHEDULE_STATUS.WORKING,
             statusLabel: STATUS_LABELS[SCHEDULE_STATUS.WORKING],
             scheduleName: schedule.name,
-            intervalText: resolveIntervalText(
-                SCHEDULE_STATUS.WORKING,
-                sortedIntervals,
-                currentInterval,
-                null,
-            ),
+            intervalText,
+            intervalItems,
         };
     }
 
@@ -157,7 +217,8 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             status: SCHEDULE_STATUS.FINISHED,
             statusLabel: STATUS_LABELS[SCHEDULE_STATUS.FINISHED],
             scheduleName: schedule.name,
-            intervalText: formatIntervalList(sortedIntervals),
+            intervalText,
+            intervalItems,
         };
     }
 
@@ -172,12 +233,8 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             status: SCHEDULE_STATUS.BREAK_UNTIL,
             statusLabel: `Перерыв до ${breakUntil}`,
             scheduleName: schedule.name,
-            intervalText: resolveIntervalText(
-                SCHEDULE_STATUS.BREAK_UNTIL,
-                sortedIntervals,
-                null,
-                nextInterval,
-            ),
+            intervalText,
+            intervalItems,
         };
     }
 
@@ -185,12 +242,8 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
         status: SCHEDULE_STATUS.STARTS_LATER,
         statusLabel: STATUS_LABELS[SCHEDULE_STATUS.STARTS_LATER],
         scheduleName: schedule.name,
-        intervalText: resolveIntervalText(
-            SCHEDULE_STATUS.STARTS_LATER,
-            sortedIntervals,
-            null,
-            nextInterval,
-        ),
+        intervalText,
+        intervalItems,
     };
 }
 
@@ -204,7 +257,7 @@ export function scheduleStatusBadgeClass(status) {
         case SCHEDULE_STATUS.DAY_OFF:
             return 'badge-error badge-outline';
         case SCHEDULE_STATUS.FINISHED:
-            return 'badge-neutral badge-outline';
+            return 'badge-accent badge-outline';
         case SCHEDULE_STATUS.INVALID:
             return 'badge-error badge-outline';
         case SCHEDULE_STATUS.NOT_CONFIGURED:

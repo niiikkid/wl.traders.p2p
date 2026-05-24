@@ -26,6 +26,7 @@ import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulk
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
+import PaymentDetailScheduleServerClock from "@/Components/PaymentDetail/PaymentDetailScheduleServerClock.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailScheduleTableTick.js";
@@ -56,7 +57,8 @@ const openBulkEditModal = () => {
 };
 const viewStore = useViewStore();
 const paymentDetails = ref(usePage().props.paymentDetails)
-usePaymentDetailScheduleTableTick(paymentDetails);
+const scheduleServerClock = ref(usePage().props.scheduleServerClock)
+usePaymentDetailScheduleTableTick(paymentDetails, scheduleServerClock);
 const paymentDetailTags = ref(usePage().props.paymentDetailTags || [])
 const detailActiveToggleForm = useForm({});
 const currentTab = ref('active');
@@ -80,6 +82,7 @@ const toggleFiltersFromToolbar = () => {
 };
 
 const displayShortDetail = ref(getCookieValue('displayShortDetail', true));
+const displayDetailLastDeal = ref(getCookieValue('displayDetailLastDeal', true));
 const displayDetailTags = ref(getCookieValue('displayDetailTags', false));
 const displayDetailSchedule = ref(getCookieValue('displayDetailSchedule', true));
 
@@ -99,6 +102,16 @@ function updateDisplayShortDetailCookie() {
 // Следим за изменениями и обновляем cookie
 watch(displayShortDetail, () => {
     updateDisplayShortDetailCookie();
+});
+
+const updateDisplayDetailLastDealCookie = () => {
+    const currentRoute = route().current();
+    const cookieName = `displayDetailLastDeal_${currentRoute}`;
+    document.cookie = `${cookieName}=${displayDetailLastDeal.value}; path=/; max-age=31536000`;
+};
+
+watch(displayDetailLastDeal, () => {
+    updateDisplayDetailLastDealCookie();
 });
 
 const updateDisplayDetailTagsCookie = () => {
@@ -237,6 +250,7 @@ const toggleActive = (detail_id) => {
 
 router.on('success', (event) => {
     paymentDetails.value = usePage().props.paymentDetails;
+    scheduleServerClock.value = usePage().props.scheduleServerClock;
     paymentDetailTags.value = usePage().props.paymentDetailTags || [];
     selectedDetailIds.value = [];
 })
@@ -618,6 +632,16 @@ defineOptions({ layout: AuthenticatedLayout })
                             v-if="isTraderView"
                             type="button"
                             class="badge badge-sm cursor-pointer border font-medium transition-colors"
+                            :class="columnToggleBadgeClass(displayDetailLastDeal)"
+                            :title="displayDetailLastDeal ? 'Скрыть время последней сделки' : 'Показать время последней сделки'"
+                            @click="displayDetailLastDeal = !displayDetailLastDeal"
+                        >
+                            Последняя сделка
+                        </button>
+                        <button
+                            v-if="isTraderView"
+                            type="button"
+                            class="badge badge-sm cursor-pointer border font-medium transition-colors"
                             :class="columnToggleBadgeClass(displayDetailTags)"
                             :title="displayDetailTags ? 'Скрыть колонку тегов' : 'Показать колонку тегов'"
                             @click="displayDetailTags = !displayDetailTags"
@@ -633,6 +657,7 @@ defineOptions({ layout: AuthenticatedLayout })
                         >
                             Расписание
                         </button>
+                        <PaymentDetailScheduleServerClock v-if="displayDetailSchedule" />
                     </div>
 
                     <!-- Desktop/tablet view (table) -->
@@ -673,19 +698,21 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 />
                                             </label>
                                         </th>
-                                        <th scope="col" class="flex items-center">
-                                            Реквизит
-                                            <div class="inline-flex items-center ml-2">
-                                                <label class="swap swap-rotate cursor-pointer inline-grid place-items-center w-6 h-6">
-                                                    <input type="checkbox" v-model="displayShortDetail" class="sr-only" />
-                                                    <svg class="swap-on w-5 h-5 text-base-content/70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                                    </svg>
-                                                    <svg class="swap-off w-5 h-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                                                    </svg>
-                                                </label>
+                                        <th scope="col" >
+                                            <div class="flex items-center">
+                                                Реквизит
+                                                <div class="inline-flex items-center ml-2">
+                                                    <label class="swap swap-rotate cursor-pointer inline-grid place-items-center w-6 h-6">
+                                                        <input type="checkbox" v-model="displayShortDetail" class="sr-only" />
+                                                        <svg class="swap-on w-5 h-5 text-base-content/70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                                        </svg>
+                                                        <svg class="swap-off w-5 h-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                                        </svg>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </th>
                                         <th v-if="isTraderView && displayDetailTags" scope="col">
@@ -700,7 +727,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col" class="text-nowrap">
                                             Статус
                                         </th>
-                                        <th v-if="isTraderView" scope="col" class="text-nowrap">
+                                        <th v-if="isTraderView && displayDetailLastDeal" scope="col" class="text-nowrap">
                                             Последняя сделка
                                         </th>
                                         <th scope="col" class="text-right">
@@ -974,7 +1001,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </label>
                                                 </div>
                                             </td>
-                                            <td v-if="isTraderView" class="text-nowrap text-xs">
+                                            <td v-if="isTraderView && displayDetailLastDeal" class="text-nowrap text-xs">
                                                 <DateTime
                                                     v-if="payment_detail.last_deal_at"
                                                     :data="payment_detail.last_deal_at"
@@ -1117,6 +1144,79 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 :schedule="payment_detail.schedule"
                                                 compact
                                             />
+                                        </div>
+                                    </template>
+
+                                    <template v-if="isTraderView && displayDetailTags">
+                                        <div class="border-b border-base-content/10"></div>
+
+                                        <div class="text-xs">
+                                            <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
+                                                Теги
+                                            </div>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <TableCellPopover>
+                                                    <template #trigger>
+                                                        <span class="badge badge-xs badge-primary badge-outline flex items-center justify-center">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-2.5">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
+                                                            </svg>
+                                                        </span>
+                                                    </template>
+                                                    <div class="grid gap-2 text-sm">
+                                                        <div v-if="!paymentDetailTags.length" class="text-xs text-base-content/60">
+                                                            Теги не созданы
+                                                        </div>
+                                                        <div v-else class="grid gap-2">
+                                                            <label
+                                                                v-for="tag in paymentDetailTags"
+                                                                :key="tag.id"
+                                                                class="label cursor-pointer justify-start gap-2"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    class="checkbox checkbox-xs"
+                                                                    :checked="isTagSelected(payment_detail, tag.id)"
+                                                                    :disabled="tagSyncProcessing[payment_detail.id] || isTagDisabled(payment_detail, tag.id)"
+                                                                    @change="syncDetailTags(payment_detail, tag.id)"
+                                                                />
+                                                                <span class="badge badge-xs border-0" :style="tagBadgeStyle(tag.color)">
+                                                                    {{ tag.name }}
+                                                                </span>
+                                                            </label>
+                                                        </div>
+                                                        <div class="text-[11px] text-base-content/60">
+                                                            Максимум 3 тега на реквизит
+                                                        </div>
+                                                    </div>
+                                                </TableCellPopover>
+                                                <span
+                                                    v-for="tag in (payment_detail.tags || [])"
+                                                    :key="tag.id"
+                                                    class="badge badge-xs border-0 w-fit"
+                                                    :style="tagBadgeStyle(tag.color)"
+                                                >
+                                                    {{ tag.name }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </template>
+
+                                    <template v-if="isTraderView && displayDetailLastDeal">
+                                        <div class="border-b border-base-content/10"></div>
+
+                                        <div class="text-xs">
+                                            <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
+                                                Последняя сделка
+                                            </div>
+                                            <DateTime
+                                                v-if="payment_detail.last_deal_at"
+                                                :data="payment_detail.last_deal_at"
+                                                :plural="true"
+                                                :copyable="false"
+                                            />
+                                            <span v-else class="text-base-content/50">—</span>
                                         </div>
                                     </template>
 

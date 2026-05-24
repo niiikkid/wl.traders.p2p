@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\UserDevice;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\PaymentDetail\PaymentDetailScheduleAvailabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -53,8 +54,9 @@ class PaymentDetailController extends Controller
         $this->appendSuccessfulOrdersStats($paymentDetails->getCollection());
 
         $paymentDetails = PaymentDetailResource::collection($paymentDetails);
+        $scheduleServerClock = app(PaymentDetailScheduleAvailabilityService::class)->serverClockPayload();
 
-        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants', 'paymentDetailTags'));
+        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants', 'paymentDetailTags', 'scheduleServerClock'));
     }
 
     public function create()

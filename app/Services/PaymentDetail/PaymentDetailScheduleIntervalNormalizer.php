@@ -91,8 +91,26 @@ class PaymentDetailScheduleIntervalNormalizer
         );
 
         $this->assertNoOverlaps($normalized);
+        $this->assertMaxIntervalsPerDay($normalized);
 
         return $normalized;
+    }
+
+    /**
+     * @param  array<int, PaymentDetailScheduleIntervalData>  $intervals
+     */
+    private function assertMaxIntervalsPerDay(array $intervals): void
+    {
+        /** @var Collection<int, Collection<int, PaymentDetailScheduleIntervalData>> $byDay */
+        $byDay = collect($intervals)->groupBy(fn (PaymentDetailScheduleIntervalData $interval): int => $interval->day_of_week);
+
+        foreach ($byDay as $dayIntervals) {
+            if ($dayIntervals->count() > 2) {
+                throw ValidationException::withMessages([
+                    'intervals' => 'Для одного дня можно указать не более двух интервалов.',
+                ]);
+            }
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import InputError from '@/Components/InputError.vue';
 import Select from '@/Components/Select.vue';
 import { usePaymentDetailSchedules } from '@/composables/usePaymentDetailSchedules.js';
 import { useModalStore } from '@/store/modal.js';
+import { formatServerScheduleDateTime } from '@/utils/paymentDetailScheduleStatus.js';
 import { computed, onMounted, watch } from 'vue';
 
 const model = defineModel({ type: [Number, String, null], default: null });
@@ -58,22 +59,10 @@ const selectedSchedulePreview = computed(() => {
     };
 });
 
-const formatServerNow = computed(() => {
-    if (!serverNow.value) {
-        return null;
-    }
-
-    try {
-        return new Date(serverNow.value).toLocaleString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            day: '2-digit',
-            month: '2-digit',
-        });
-    } catch {
-        return null;
-    }
-});
+const formatServerNow = computed(() => formatServerScheduleDateTime(
+    serverNow.value,
+    serverTimezone.value,
+));
 
 const clearSchedule = () => {
     model.value = null;

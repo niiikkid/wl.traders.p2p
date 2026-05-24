@@ -14,6 +14,19 @@ use Illuminate\Support\Collection;
 
 class PaymentDetailScheduleAvailabilityService
 {
+    /**
+     * @return array{server_timezone: string, server_now: string}
+     */
+    public function serverClockPayload(?CarbonInterface $at = null): array
+    {
+        $at = $at ?? now();
+
+        return [
+            'server_timezone' => config('app.timezone'),
+            'server_now' => $at->toISOString(),
+        ];
+    }
+
     public function applyAvailableBySchedule(Builder $query, ?CarbonInterface $at = null): Builder
     {
         $at = $at ?? now();

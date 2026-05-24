@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PaymentDetailBankStatisticResource;
 use App\Http\Resources\PaymentDetailResource;
 use App\Models\PaymentGateway;
+use App\Services\PaymentDetail\PaymentDetailScheduleAvailabilityService;
 use Carbon\Carbon;
 use Inertia\Inertia;
 
@@ -22,8 +23,9 @@ class PaymentDetailController extends Controller
         $paymentDetails = queries()->paymentDetail()->paginateForAdmin($filters, $fromArchive);
 
         $paymentDetails = PaymentDetailResource::collection($paymentDetails);
+        $scheduleServerClock = app(PaymentDetailScheduleAvailabilityService::class)->serverClockPayload();
 
-        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants'));
+        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants', 'scheduleServerClock'));
     }
 
     public function statistics()

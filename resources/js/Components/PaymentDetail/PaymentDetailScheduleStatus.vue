@@ -49,10 +49,13 @@ const showScheduleName = computed(
                 {{ display.scheduleName }}
             </div>
             <div
-                v-if="display.intervalText"
-                class="text-base-content/70 text-nowrap"
+                v-if="display.intervalItems.length"
+                class="text-base-content/70 flex flex-wrap items-center gap-x-1.5 text-nowrap"
             >
-                {{ display.intervalText }}
+                <template v-for="(interval, index) in display.intervalItems" :key="index">
+                    <span v-if="index > 0" class="text-base-content/35 select-none" aria-hidden="true">·</span>
+                    <span>{{ interval }}</span>
+                </template>
             </div>
         </template>
     </div>

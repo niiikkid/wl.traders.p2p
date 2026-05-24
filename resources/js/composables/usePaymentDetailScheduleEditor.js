@@ -8,6 +8,8 @@ export const WEEKDAY_OPTIONS = [
     { value: 7, label: 'Вс' },
 ];
 
+export const MAX_DAY_INTERVALS = 2;
+
 const TIME_PATTERN = /^(\d{2}):(\d{2})$/;
 
 export const trimTime = (value) => {
@@ -249,6 +251,11 @@ export const validateEditorStateLocally = (state) => {
             continue;
         }
 
+        if (override.intervals.length > MAX_DAY_INTERVALS) {
+            errors[`dayOverrides.${option.value}`] = `Для одного дня можно указать не более ${MAX_DAY_INTERVALS} интервалов.`;
+            continue;
+        }
+
         validateIntervalList(override.intervals, `dayOverrides.${option.value}`, errors);
     }
 
@@ -306,6 +313,11 @@ export const addDayOverrideInterval = (state, day) => {
     const dayOverrides = { ...(state.dayOverrides || {}) };
     const override = dayOverrides[day] || { enabled: true, intervals: [] };
     const intervals = [...(override.intervals || [])];
+
+    if (intervals.length >= MAX_DAY_INTERVALS) {
+        return state;
+    }
+
     const last = intervals[intervals.length - 1];
 
     intervals.push({
