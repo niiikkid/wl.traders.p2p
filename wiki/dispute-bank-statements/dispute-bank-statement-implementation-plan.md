@@ -415,7 +415,8 @@ Deliverables:
 | 3 — Inertia rejection modal | **Done** (2026-05-22) | `CancelDisputeModal.vue` presets, file upload, `forceFormData` patch |
 | 4 — Dispute details UI | **Done** (2026-05-22) | `DisputeResource`, `TableOrderResource`, `DisputeModal.vue` выписка row |
 | 5 — Role regression pass | **Done** (2026-05-22) | All four roles: correct cancel routes, modals on all reject surfaces, receipt/statement gate parity |
-| 6 — Formatting and verification | **Done** (2026-05-22) | Pint pass; Vue lints clean; migration/routes/static checks; manual UI checklist documented |
+| 6 — Formatting and verification | **Done** (2026-05-22) | Pint pass; Vue lints clean; migration/routes/static checks; manual UI checklist completed |
+| 7 — Reason code and optional statement | **Done** (2026-05-22) | `DisputeCancelReasonCode`, conditional validation, rollback cleanup |
 
 ### Phase 1 artifacts (implemented)
 
@@ -568,12 +569,7 @@ Deliverables:
 - Migration `2026_05_22_151044_add_bank_statement_to_disputes_table` — Ran (batch 84).
 - Routes verified: `disputes.cancel`, `support.disputes.cancel`, `analyst.disputes.cancel`, `disputes.bank-statement`.
 
-**Not run (per plan):**
-
-- PHPUnit / Pest suite;
-- Browser regression across roles (checklist documented in raw Phase 6 note for manual execution).
-
-**Feature status:** Phases 1–6 complete. Optional follow-ups: manual UI pass per role; automated tests only if explicitly requested.
+**Feature status:** Phases 1–7 complete. **Shipped** (2026-05-24). Automated tests only if explicitly requested.
 
 ### Phase 7 — Reason Code and Optional Statement for Wrong Details
 

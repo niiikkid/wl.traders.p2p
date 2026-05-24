@@ -6,8 +6,8 @@ Telegram bot and chat automation knowledge for the project.
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | Telegram chat dispute bot; Phases 1–6 complete; opening only for `fail` orders (replies for `success`/`pending`); Features 1–2 (reply + resolution notifications) implemented; live Telegram verification pending. | 2026-05-23 |
-| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | Reply/resolution spec; Features 1–2 implemented; opening rejection replies for non-`fail` orders; `wrong_details` text-only rejection path; Phase 5 manual checks pending. | 2026-05-23 |
+| [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | **Shipped:** Phases 1–6; Features 1–2 (reply + resolution); fail-only opening; live Telegram verification complete. | 2026-05-24 |
+| [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | **Shipped:** Features 1–2; order-status rejection replies; resolution notifications with statement document/text fallback; Phase 5 verified. | 2026-05-24 |
 
 ## traffic-categories
 
@@ -39,7 +39,7 @@ Dispute rejection evidence requirements for bank/card statement uploads in class
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | Specification and phased plan for dispute rejection with bank/card statement; late update adds enum reason code and optional statement for `wrong_details`; rollback now clears old statement artifacts. | 2026-05-22 |
+| [Dispute Bank Statement Implementation Plan](dispute-bank-statements/dispute-bank-statement-implementation-plan.md) | **Shipped:** rejection with bank/card statement; reason codes; optional statement for `wrong_details`; phases 1–7; manual UI per role complete. | 2026-05-24 |
 
 ## team-leader-insurance-mode
 
@@ -55,7 +55,7 @@ SMS/push automation ingress, filtering, and admin inspection outside the main `s
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Shadow SMS Log Implementation Plan](sms-automation/shadow-sms-log-implementation-plan.md) | **Shipped in code:** `shadow_sms_logs` async logging for filtered SMS, admin Автоматика page, global enable toggle via `settings`, search, hard delete all; DB migration pending explicit run. | 2026-05-23 |
+| [Shadow SMS Log Implementation Plan](sms-automation/shadow-sms-log-implementation-plan.md) | **Shipped:** `shadow_sms_logs` async logging, admin Автоматика page, global enable toggle, search, hard delete all; migration applied. | 2026-05-24 |
 
 ## user-devices
 

@@ -104,3 +104,13 @@
 
 ## [2026-05-24] ingest | Payment Detail Work Schedule Implementation Plan (feature shipped)
 - Updated: Payment Detail Work Schedule Implementation Plan
+
+## [2026-05-24] ingest | Telegram Chat Dispute Automation Plan (feature shipped)
+- Updated: Telegram Chat Dispute Automation Plan
+- Updated: Telegram Dispute Reply and Resolution Notifications Specification
+
+## [2026-05-24] ingest | Dispute Bank Statement Implementation Plan (feature shipped)
+- Updated: Dispute Bank Statement Implementation Plan
+
+## [2026-05-24] ingest | Shadow SMS Log Implementation Plan (feature shipped)
+- Updated: Shadow SMS Log Implementation Plan

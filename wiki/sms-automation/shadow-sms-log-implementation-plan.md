@@ -1,12 +1,14 @@
 # Shadow SMS Log (Теневой лог) — Implementation Plan
 
-> Sources: User conversation, 2026-05-23; repository exploration, 2026-05-23; implementation status, 2026-05-23
-> Raw: [Shadow SMS Log Requirements](../../raw/sms-automation/2026-05-23-shadow-sms-log-requirements.md); [Shadow SMS Log Enable Toggle](../../raw/sms-automation/2026-05-23-shadow-sms-log-enabled-toggle-requirements.md); [Shadow SMS Log Implementation Status](../../raw/sms-automation/2026-05-23-shadow-sms-log-implementation-status.md)
-> Updated: 2026-05-23
+> Sources: User conversation, 2026-05-23; repository exploration, 2026-05-23; implementation status, 2026-05-23; feature shipped confirmation, 2026-05-24
+> Raw: [Shadow SMS Log Requirements](../../raw/sms-automation/2026-05-23-shadow-sms-log-requirements.md); [Shadow SMS Log Enable Toggle](../../raw/sms-automation/2026-05-23-shadow-sms-log-enabled-toggle-requirements.md); [Shadow SMS Log Implementation Status](../../raw/sms-automation/2026-05-23-shadow-sms-log-implementation-status.md); [Feature Shipped Status](../../raw/sms-automation/2026-05-24-feature-shipped-status.md)
+> Updated: 2026-05-24
 
 ## Overview
 
-Теневой лог сохраняет SMS/push, которые **отсекаются на входе** API приложения и **никогда не попадают** в `sms_logs`. Это отдельная сущность `ShadowSmsLog` с явной причиной фильтрации и деталями (какое стоп-слово, какой нормализованный отправитель, длина сообщения). Запись асинхронная (очередь `sms`), сбой записи не влияет на ответ приложению и на основной pipeline. Админ видит отдельную страницу в группе «Автоматика», может искать и полностью очистить таблицу вручную. **Фича реализована в коде; миграция БД оставлена к запуску отдельным `php artisan migrate`.**
+Теневой лог сохраняет SMS/push, которые **отсекаются на входе** API приложения и **никогда не попадают** в `sms_logs`. Это отдельная сущность `ShadowSmsLog` с явной причиной фильтрации и деталями (какое стоп-слово, какой нормализованный отправитель, длина сообщения). Запись асинхронная (очередь `sms`), сбой записи не влияет на ответ приложению и на основной pipeline. Админ видит отдельную страницу в группе «Автоматика», может искать и полностью очистить таблицу вручную.
+
+**Status: shipped** (2026-05-24). Код, миграция БД и админ UI развёрнуты. Нет pending-шагов для v1.
 
 **Глобальный переключатель** на странице «Теневой лог» включает или выключает запись: при выключении фильтрация на API не меняется, но job в `shadow_sms_logs` не ставится. Настройка хранится в `settings` через `SettingsService`.
 
@@ -26,7 +28,7 @@
 | Settings install | Completed: `php artisan app:install-settings --no-interaction` |
 | Code formatting | Completed: `vendor/bin/pint --dirty --format agent` |
 | Tests | Not run; project rule requires explicit request |
-| Migration apply | Not run; requires explicit `php artisan migrate` |
+| Migration apply | Completed (2026-05-24) |
 
 ## Product Decisions (Locked)
 
