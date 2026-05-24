@@ -2,6 +2,7 @@
 import { Head, router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
+import Pagination from '@/Components/Pagination/Pagination.vue';
 import TraderSearchSelect from '@/Pages/Admin/TraderAnalytics/Components/TraderSearchSelect.vue';
 import ApexCharts from 'apexcharts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -63,11 +64,18 @@ const selectedPaymentGatewayId = ref(
 );
 const volumeFromPreset = ref(filters.value.volume_from ? String(filters.value.volume_from) : '');
 const volumeToPreset = ref(filters.value.volume_to ? String(filters.value.volume_to) : '');
+const viewMode = ref(filters.value.view_mode === 'chart' ? 'chart' : 'table');
+const currentPage = ref(Number(filters.value.page) > 0 ? Number(filters.value.page) : 1);
 
 syncBarsLimitFields(filters.value.bars_limit);
 
 const chartRef = ref(null);
-const pieChartRef = ref(null);
+const pieChartRefChart = ref(null);
+const pieChartRefTable = ref(null);
+
+const activePieChartElement = () => (
+    isTableView.value ? pieChartRefTable.value : pieChartRefChart.value
+);
 const apexChart = ref(null);
 const pieApexChart = ref(null);
 const chartContainerHeight = ref(400);
@@ -167,10 +175,12 @@ const volumeStatisticsRoute = computed(() => (
         : route('payment-details.volume-statistics')
 ));
 
-const buildRequestData = () => {
+const buildRequestData = ({ page = currentPage.value } = {}) => {
     const data = {
         period: selectedPeriod.value,
         bars_limit: barsLimitPreset.value,
+        page,
+        view_mode: viewMode.value,
     };
 
     if (dateFrom.value) {
@@ -203,6 +213,40 @@ const buildRequestData = () => {
 };
 
 const barsLimitSummary = computed(() => meta.value.bars_limit ?? defaultBarsLimit.value);
+const paginationMeta = computed(() => ({
+    currentPage: Number(meta.value.current_page ?? currentPage.value ?? 1),
+    lastPage: Number(meta.value.last_page ?? 1),
+    perPage: Number(meta.value.per_page ?? barsLimitSummary.value ?? defaultBarsLimit.value),
+    totalItems: Number(meta.value.positive_volume_count ?? 0),
+}));
+const showPagination = computed(() => paginationMeta.value.lastPage > 1);
+const isTableView = computed(() => viewMode.value === 'table');
+const isChartView = computed(() => viewMode.value === 'chart');
+const barsLimitLabel = computed(() => (
+    isTableView.value ? 'Реквизитов на странице' : 'Реквизитов на графике'
+));
+const onViewCountLabel = computed(() => (
+    isTableView.value ? 'На странице' : 'На графике'
+));
+
+const tableRows = computed(() => {
+    const ids = chartData.value.ids ?? [];
+
+    return ids.map((id, index) => {
+        const detailId = String(id);
+        const distribution = dealAmountDistributionByDetail.value[detailId]
+            ?? dealAmountDistributionByDetail.value[Number(id)]
+            ?? null;
+
+        return {
+            id: detailId,
+            label: chartData.value.labels?.[index] ?? '',
+            volume: chartData.value.volumes?.[index] ?? '',
+            dealsCount: distribution?.total_deals ?? 0,
+            color: chartData.value.colors?.[index] ?? '',
+        };
+    });
+});
 
 watch(selectedTraderId, (newTraderId) => {
     if (!isAdmin.value) {
@@ -236,7 +280,11 @@ const clearSelectedPaymentDetail = ({ syncVisual = true } = {}) => {
     selectedPaymentDetailId.value = '';
 };
 
-const applyFilters = () => {
+const applyFilters = ({ resetPage = true } = {}) => {
+    if (resetPage) {
+        currentPage.value = 1;
+    }
+
     clearSelectedPaymentDetail({ syncVisual: false });
     processing.value = true;
 
@@ -250,13 +298,61 @@ const applyFilters = () => {
     });
 };
 
+const goToPage = (page) => {
+    const nextPage = Number(page);
+
+    if (!Number.isFinite(nextPage) || nextPage < 1 || nextPage > paginationMeta.value.lastPage) {
+        return;
+    }
+
+    currentPage.value = nextPage;
+    clearSelectedPaymentDetail({ syncVisual: false });
+    processing.value = true;
+
+    router.get(volumeStatisticsRoute.value, buildRequestData({ page: nextPage }), {
+        preserveScroll: true,
+        preserveState: true,
+        replace: true,
+        onFinish: () => {
+            processing.value = false;
+        },
+    });
+};
+
+const setViewMode = (mode) => {
+    if (viewMode.value === mode) {
+        return;
+    }
+
+    viewMode.value = mode;
+    applyFilters({ resetPage: false });
+};
+
+const selectPaymentDetailFromTable = (paymentDetailId) => {
+    if (selectedPaymentDetailId.value === String(paymentDetailId)) {
+        clearSelectedPaymentDetail({ syncVisual: isChartView.value });
+
+        return;
+    }
+
+    selectedPaymentDetailId.value = String(paymentDetailId);
+
+    if (isChartView.value) {
+        nextTick(() => syncBarChartSelection());
+    }
+};
+
 const resetFilters = () => {
     clearSelectedPaymentDetail({ syncVisual: false });
+    currentPage.value = 1;
+    viewMode.value = 'table';
     processing.value = true;
 
     router.get(volumeStatisticsRoute.value, {
         period: 'all',
         bars_limit: defaultBarsLimit.value,
+        page: 1,
+        view_mode: 'table',
         include_archived: 0,
     }, {
         preserveScroll: true,
@@ -278,6 +374,9 @@ const selectPeriod = (period) => {
 const hasCustomPeriod = computed(() => Boolean(dateFrom.value || dateTo.value));
 
 const hasChartData = computed(() => chartData.value.labels?.length > 0);
+const showVolumeStatsFooter = computed(() => (
+    hasChartData.value || Number(meta.value.positive_volume_count ?? 0) > 0
+));
 
 const formatInteger = (value) => Number(value ?? 0).toLocaleString('ru-RU');
 
@@ -370,7 +469,9 @@ const syncBarChartSelection = () => {
 };
 
 const mountPieChart = () => {
-    if (!pieChartRef.value) {
+    const pieChartElement = activePieChartElement();
+
+    if (!pieChartElement) {
         return;
     }
 
@@ -523,7 +624,7 @@ const mountPieChart = () => {
         return;
     }
 
-    pieApexChart.value = new ApexCharts(pieChartRef.value, options);
+    pieApexChart.value = new ApexCharts(pieChartElement, options);
     pieApexChart.value.render();
 };
 
@@ -684,10 +785,24 @@ const mountChart = () => {
 watch(
     () => chartData.value,
     () => {
-        nextTick(() => mountChart());
+        if (isChartView.value) {
+            nextTick(() => mountChart());
+        }
     },
     { deep: true },
 );
+
+watch(viewMode, (mode) => {
+    destroyPieChart();
+
+    if (mode === 'chart') {
+        nextTick(() => mountChart());
+    } else {
+        destroyChart();
+    }
+
+    nextTick(() => mountPieChart());
+});
 
 watch(
     () => activeDealAmountDistribution.value,
@@ -726,11 +841,16 @@ router.on('success', () => {
         : '';
     volumeFromPreset.value = filters.value.volume_from ? String(filters.value.volume_from) : '';
     volumeToPreset.value = filters.value.volume_to ? String(filters.value.volume_to) : '';
+    currentPage.value = Number(filters.value.page) > 0 ? Number(filters.value.page) : 1;
+    viewMode.value = filters.value.view_mode === 'chart' ? 'chart' : 'table';
 });
 
 onMounted(() => {
     nextTick(() => {
-        mountChart();
+        if (isChartView.value) {
+            mountChart();
+        }
+
         mountPieChart();
     });
 });
@@ -764,7 +884,7 @@ onBeforeUnmount(() => {
             <template #body>
                 <div class="mb-4 flex flex-col gap-4">
                     <p class="text-[11px] leading-tight text-base-content/45">
-                        Реквизиты с нулевым объёмом за выбранный период не отображаются на графике.
+                        Реквизиты с нулевым объёмом за выбранный период не отображаются в отчёте.
                     </p>
 
                     <div class="card bg-base-100 shadow-sm">
@@ -802,7 +922,7 @@ onBeforeUnmount(() => {
 
                                 <label class="form-control w-full shrink-0 sm:max-w-[11rem] sm:w-auto">
                                     <div class="label py-0">
-                                        <span class="label-text text-xs">Столбиков на графике</span>
+                                        <span class="label-text text-xs">{{ barsLimitLabel }}</span>
                                     </div>
                                     <select
                                         v-model="barsLimitPreset"
@@ -950,9 +1070,6 @@ onBeforeUnmount(() => {
                             <span class="badge badge-outline badge-sm">
                                 {{ meta.include_archived ? 'В выборке' : 'Активных' }} реквизитов: {{ formatInteger(meta.active_payment_details_count) }}
                             </span>
-                            <span class="badge badge-primary badge-outline badge-sm">
-                                На графике: {{ formatInteger(meta.displayed_count) }}
-                            </span>
                             <span
                                 v-if="meta.hidden_zero_volume_count > 0"
                                 class="badge badge-warning badge-outline badge-sm"
@@ -966,10 +1083,10 @@ onBeforeUnmount(() => {
                                 Вне диапазона объёма: {{ formatInteger(meta.excluded_by_volume_count) }}
                             </span>
                             <span
-                                v-if="meta.excluded_over_limit_count > 0"
+                                v-if="meta.other_pages_count > 0 || meta.excluded_over_limit_count > 0"
                                 class="badge badge-error badge-outline badge-sm"
                             >
-                                Не вошли в лимит ({{ barsLimitSummary }}): {{ formatInteger(meta.excluded_over_limit_count) }}
+                                На других страницах: {{ formatInteger(meta.other_pages_count ?? meta.excluded_over_limit_count) }}
                             </span>
                             <span
                                 v-if="meta.include_archived && meta.archived_in_scope_count > 0"
@@ -986,40 +1103,218 @@ onBeforeUnmount(() => {
                         </div>
 
                     <div class="card bg-base-100 shadow p-4 lg:p-6">
-                        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                             <h3 class="text-lg text-base-content/70">
                                 Объём успешных сделок (USDT)
                             </h3>
-                            <div
-                                v-if="hasChartData"
-                                class="flex items-center gap-2 text-xs text-base-content/60"
-                            >
-                                <span class="inline-block h-3 w-3 rounded-sm bg-success" />
-                                <span>больше объём</span>
-                                <span class="inline-block h-3 w-3 rounded-sm bg-error" />
-                                <span>меньше объём</span>
+                            <div class="join">
+                                <button
+                                    type="button"
+                                    class="btn btn-xs join-item"
+                                    :class="isTableView ? 'btn-primary' : 'btn-outline'"
+                                    :disabled="processing"
+                                    @click="setViewMode('table')"
+                                >
+                                    Таблица
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn btn-xs join-item"
+                                    :class="isChartView ? 'btn-primary' : 'btn-outline'"
+                                    :disabled="processing"
+                                    @click="setViewMode('chart')"
+                                >
+                                    График
+                                </button>
                             </div>
                         </div>
+
+                        <template v-if="isChartView">
+                            <div class="mb-3 flex flex-wrap items-center justify-end gap-2">
+                                <div
+                                    v-if="hasChartData"
+                                    class="flex items-center gap-2 text-xs text-base-content/60"
+                                >
+                                    <span class="inline-block h-3 w-3 rounded-sm bg-success" />
+                                    <span>больше объём</span>
+                                    <span class="inline-block h-3 w-3 rounded-sm bg-error" />
+                                    <span>меньше объём</span>
+                                </div>
+                            </div>
+                            <div
+                                ref="chartRef"
+                                class="w-full min-w-0 overflow-hidden"
+                                :style="{ height: `${chartContainerHeight}px` }"
+                            />
+                            <p
+                                v-if="!hasChartData"
+                                class="mt-2 text-center text-xs text-base-content/60"
+                            >
+                                Нет реквизитов с объёмом за выбранный период.
+                            </p>
+                            <p
+                                v-else
+                                class="mt-2 text-center text-xs text-base-content/50"
+                            >
+                                Нажмите на столбец, чтобы увидеть распределение сделок по этому реквизиту.
+                            </p>
+                        </template>
+
+                        <template v-else>
+                            <div class="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                                <div class="min-w-0 space-y-3">
+                                    <p class="text-xs text-base-content/50">
+                                        Нажмите на строку, чтобы увидеть распределение сделок по реквизиту.
+                                    </p>
+                                    <div
+                                        v-if="hasChartData"
+                                        class="overflow-x-auto rounded-box border border-base-300"
+                                    >
+                                        <table class="table table-sm table-zebra [&_tbody_tr:hover]:bg-inherit">
+                                            <thead>
+                                                <tr class="text-xs uppercase text-base-content/60">
+                                                    <th>Реквизит</th>
+                                                    <th class="text-right">
+                                                        Объём
+                                                    </th>
+                                                    <th class="text-right">
+                                                        Сделок
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="row in tableRows"
+                                                    :key="row.id"
+                                                    class="cursor-pointer hover:bg-inherit"
+                                                    :class="selectedPaymentDetailId === row.id ? 'bg-primary/10 hover:bg-primary/10' : ''"
+                                                    @click="selectPaymentDetailFromTable(row.id)"
+                                                >
+                                                    <td class="max-w-[14rem] truncate font-medium">
+                                                        {{ row.label }}
+                                                    </td>
+                                                    <td class="text-right tabular-nums whitespace-nowrap">
+                                                        {{ row.volume }}
+                                                    </td>
+                                                    <td class="text-right tabular-nums">
+                                                        {{ formatInteger(row.dealsCount) }}
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p
+                                        v-else
+                                        class="py-6 text-center text-xs text-base-content/60"
+                                    >
+                                        Нет реквизитов с объёмом за выбранный период.
+                                    </p>
+                                </div>
+
+                                <div class="flex min-w-0 flex-col gap-4">
+                                    <div class="flex flex-wrap items-start justify-between gap-2">
+                                        <div>
+                                            <h4 class="text-base font-medium text-base-content/75">
+                                                Распределение сделок по сумме (USDT)
+                                            </h4>
+                                            <p class="mt-1 text-xs text-base-content/50">
+                                                <template v-if="selectedPaymentDetailLabel">
+                                                    По реквизиту: {{ selectedPaymentDetailLabel }}
+                                                </template>
+                                                <template v-else>
+                                                    По всем реквизитам в выборке с учётом фильтров
+                                                </template>
+                                            </p>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <span
+                                                v-if="hasPieChartData"
+                                                class="badge badge-outline badge-sm"
+                                            >
+                                                Сделок: {{ formatInteger(activeDealAmountDistribution.total_deals) }}
+                                            </span>
+                                            <button
+                                                v-if="selectedPaymentDetailId"
+                                                type="button"
+                                                class="btn btn-ghost btn-xs"
+                                                :disabled="processing"
+                                                @click="clearSelectedPaymentDetail"
+                                            >
+                                                Сбросить
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div
+                                        ref="pieChartRefTable"
+                                        class="mx-auto w-full min-w-0 max-w-[360px]"
+                                    />
+                                    <ul
+                                        v-if="hasPieChartData"
+                                        class="divide-y divide-base-300 rounded-box border border-base-300 bg-base-200/30 text-xs"
+                                    >
+                                        <li
+                                            v-for="(bucket, index) in activeDealAmountDistribution.buckets"
+                                            :key="bucket.key"
+                                            class="flex items-center justify-between gap-2 px-2.5 py-2"
+                                        >
+                                            <span class="flex min-w-0 items-center gap-2">
+                                                <span
+                                                    class="size-2 shrink-0 rounded-full ring-2 ring-base-100"
+                                                    :style="{ backgroundColor: pieChartColorForIndex(index) }"
+                                                />
+                                                <span class="truncate text-base-content/85 leading-tight">
+                                                    {{ bucket.label }}
+                                                </span>
+                                            </span>
+                                            <span class="shrink-0 tabular-nums text-[11px] text-base-content/55">
+                                                {{ formatInteger(bucket.count) }}
+                                                <span class="text-base-content/35">·</span>
+                                                {{ bucket.percent }}%
+                                            </span>
+                                        </li>
+                                    </ul>
+                                    <p
+                                        v-if="!hasPieChartData"
+                                        class="text-center text-xs text-base-content/60"
+                                    >
+                                        Нет успешных сделок за выбранный период.
+                                    </p>
+                                </div>
+                            </div>
+                        </template>
+
                         <div
-                            ref="chartRef"
-                            class="w-full min-w-0 overflow-hidden"
-                            :style="{ height: `${chartContainerHeight}px` }"
-                        />
-                        <p
-                            v-if="!hasChartData"
-                            class="mt-2 text-center text-xs text-base-content/60"
+                            v-if="showVolumeStatsFooter"
+                            class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-base-300 pt-4"
                         >
-                            Нет реквизитов с объёмом за выбранный период.
-                        </p>
-                        <p
-                            v-else
-                            class="mt-2 text-center text-xs text-base-content/50"
-                        >
-                            Нажмите на столбец, чтобы увидеть распределение сделок по этому реквизиту.
-                        </p>
+                            <p class="text-xs text-base-content/55">
+                                <template v-if="showPagination">
+                                    Страница {{ paginationMeta.currentPage }} из {{ paginationMeta.lastPage }}
+                                    <span class="text-base-content/35">·</span>
+                                    по {{ paginationMeta.perPage }} реквизитов
+                                    <span class="text-base-content/35">·</span>
+                                </template>
+                                {{ onViewCountLabel }}: {{ formatInteger(meta.displayed_count) }}
+                                <span class="text-base-content/35">·</span>
+                                С объёмом: {{ formatInteger(meta.positive_volume_count) }}
+                            </p>
+                            <Pagination
+                                v-if="showPagination"
+                                :model-value="paginationMeta.currentPage"
+                                :total-items="paginationMeta.totalItems"
+                                :per-page="paginationMeta.perPage"
+                                previous-label="Назад"
+                                next-label="Вперёд"
+                                :show-icons="false"
+                                @page-changed="goToPage"
+                            />
+                        </div>
                     </div>
 
-                    <div class="card bg-base-100 shadow p-4 lg:p-6">
+                    <div
+                        v-if="isChartView"
+                        class="card bg-base-100 shadow p-4 lg:p-6"
+                    >
                         <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
                             <div>
                                 <h3 class="text-lg text-base-content/70">
@@ -1057,7 +1352,7 @@ onBeforeUnmount(() => {
                             :class="hasPieChartData ? 'lg:grid-cols-[minmax(0,1fr)_15.5rem] lg:items-center' : ''"
                         >
                             <div
-                                ref="pieChartRef"
+                                ref="pieChartRefChart"
                                 class="mx-auto w-full min-w-0"
                                 :class="hasPieChartData ? 'max-w-[400px] lg:max-w-none' : ''"
                             />

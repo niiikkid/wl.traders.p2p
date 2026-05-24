@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
 
 class PaymentDetailVolumeStatisticsService
 {
-    public const int DEFAULT_BARS_LIMIT = 100;
+    public const int DEFAULT_BARS_LIMIT = 25;
 
     public const int MAX_BARS_LIMIT = 200;
 
@@ -49,7 +49,11 @@ class PaymentDetailVolumeStatisticsService
      *         displayed_count: int,
      *         hidden_zero_volume_count: int,
      *         excluded_over_limit_count: int,
+     *         other_pages_count: int,
      *         positive_volume_count: int,
+     *         current_page: int,
+     *         last_page: int,
+     *         per_page: int,
      *         bars_limit: string,
      *         bars_limit_is_all: bool,
      *         include_archived: bool,
@@ -69,6 +73,7 @@ class PaymentDetailVolumeStatisticsService
         ?CarbonInterface $periodStartAt,
         ?CarbonInterface $periodEndAt,
         ?int $barsLimit = self::DEFAULT_BARS_LIMIT,
+        int $page = 1,
         bool $includeArchived = false,
         ?int $paymentGatewayId = null,
         ?string $volumeFrom = null,
@@ -130,11 +135,20 @@ class PaymentDetailVolumeStatisticsService
             ->orderByDesc('volume_usdt_units')
             ->orderBy('name');
 
-        if ($barsLimit !== null) {
-            $topRowsQuery->limit($barsLimit);
+        $perPage = max(1, $barsLimit ?? self::DEFAULT_BARS_LIMIT);
+        $page = max(1, $page);
+        $lastPage = max(1, (int) ceil($positiveVolumeCount / $perPage));
+
+        if ($page > $lastPage) {
+            $page = $lastPage;
         }
 
-        $topRows = $topRowsQuery->get();
+        $offset = ($page - 1) * $perPage;
+
+        $topRows = $topRowsQuery
+            ->offset($offset)
+            ->limit($perPage)
+            ->get();
 
         $items = $topRows
             ->map(function (PaymentDetail $paymentDetail): array {
@@ -158,7 +172,8 @@ class PaymentDetailVolumeStatisticsService
             })
             ->all();
 
-        $barsLimitLabel = $barsLimit === null ? 'all' : (string) $barsLimit;
+        $barsLimitLabel = (string) $perPage;
+        $otherPagesCount = max(0, $positiveVolumeCount - $offset - count($items));
         $archivedInScopeCount = $includeArchived
             ? (clone $baseQuery)->whereNotNull('archived_at')->count()
             : 0;
@@ -172,14 +187,16 @@ class PaymentDetailVolumeStatisticsService
                 'active_payment_details_count' => $activePaymentDetailsCount,
                 'displayed_count' => count($items),
                 'hidden_zero_volume_count' => max(0, $activePaymentDetailsCount - $scopePositiveVolumeCount),
-                'excluded_over_limit_count' => $barsLimit === null
-                    ? 0
-                    : max(0, $positiveVolumeCount - $barsLimit),
+                'excluded_over_limit_count' => $otherPagesCount,
+                'other_pages_count' => $otherPagesCount,
                 'excluded_by_volume_count' => $excludedByVolumeCount,
                 'scope_positive_volume_count' => $scopePositiveVolumeCount,
                 'positive_volume_count' => $positiveVolumeCount,
+                'current_page' => $page,
+                'last_page' => $lastPage,
+                'per_page' => $perPage,
                 'bars_limit' => $barsLimitLabel,
-                'bars_limit_is_all' => $barsLimit === null,
+                'bars_limit_is_all' => false,
                 'include_archived' => $includeArchived,
                 'payment_gateway_id' => $paymentGatewayId,
                 'volume_from' => $volumeFromUnits === null ? null : (string) $volumeFromUnits,

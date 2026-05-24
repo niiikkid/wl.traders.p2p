@@ -24,6 +24,8 @@ class VolumeStatisticsRequest extends FormRequest
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
             'bars_limit' => ['nullable', 'string', Rule::in(['25', '50', '75', '100', '200'])],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'view_mode' => ['nullable', 'string', Rule::in(['chart', 'table'])],
             'include_archived' => ['nullable', 'boolean'],
             'payment_gateway_id' => ['nullable', 'integer', 'exists:payment_gateways,id'],
             'volume_from' => ['nullable', 'string', 'regex:/^\d+$/'],
@@ -98,5 +100,19 @@ class VolumeStatisticsRequest extends FormRequest
         $value = trim($this->string('volume_to')->toString());
 
         return $value !== '' ? $value : null;
+    }
+
+    public function page(): int
+    {
+        $page = $this->integer('page');
+
+        return $page > 0 ? $page : 1;
+    }
+
+    public function viewMode(): string
+    {
+        $value = $this->string('view_mode')->toString();
+
+        return in_array($value, ['chart', 'table'], true) ? $value : 'table';
     }
 }
