@@ -201,13 +201,14 @@ export function scheduleStatusBadgeClass(status) {
         case SCHEDULE_STATUS.BREAK_UNTIL:
         case SCHEDULE_STATUS.STARTS_LATER:
             return 'badge-warning badge-outline';
-        case SCHEDULE_STATUS.FINISHED:
         case SCHEDULE_STATUS.DAY_OFF:
+            return 'badge-error badge-outline';
+        case SCHEDULE_STATUS.FINISHED:
             return 'badge-neutral badge-outline';
         case SCHEDULE_STATUS.INVALID:
             return 'badge-error badge-outline';
         case SCHEDULE_STATUS.NOT_CONFIGURED:
         default:
-            return 'badge-ghost';
+            return 'badge-ghost badge-outline';
     }
 }
