@@ -2,32 +2,60 @@
 import AppTooltip from '@/Components/AppTooltip.vue';
 import AlertError from '@/Components/Alerts/AlertError.vue';
 import { useTraderTrafficCategories } from '@/composables/useTraderTrafficCategories.js';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 
 const TOOLTIP_DELAY_MS = 400;
 
 const {
     categories,
-    merchantTrafficCategoriesEnabled,
     loading,
     fetchCategories,
     setCategoryEnabled,
 } = useTraderTrafficCategories();
 
-const visible = ref(false);
+const featureEnabled = ref(false);
+const panelOpen = ref(getCookieValue('displayTrafficCategories', false));
 const toggleError = ref('');
 const togglingCategoryIds = ref(new Set());
 
-const showRow = computed(() => visible.value && categories.value.length > 0);
+const featureAvailable = computed(() => featureEnabled.value && categories.value.length > 0);
 
 const isToggling = (categoryId) => togglingCategoryIds.value.has(Number(categoryId));
+
+function getCookieValue(name, defaultValue) {
+    const currentRoute = route().current();
+    const cookieName = `${name}_${currentRoute}`;
+    const match = document.cookie.match(new RegExp('(^| )' + cookieName + '=([^;]+)'));
+
+    return match ? match[2] === 'true' : defaultValue;
+}
+
+function updatePanelOpenCookie() {
+    const currentRoute = route().current();
+    const cookieName = `displayTrafficCategories_${currentRoute}`;
+    document.cookie = `${cookieName}=${panelOpen.value}; path=/; max-age=31536000`;
+}
+
+const columnToggleBadgeClass = (active) => (
+    active
+        ? 'badge-primary border-primary text-primary-content'
+        : 'badge-outline border-primary/70 bg-base-100 text-base-content hover:border-primary hover:bg-primary/10'
+);
 
 const load = async () => {
     toggleError.value = '';
 
     const result = await fetchCategories();
 
-    visible.value = Boolean(result.merchant_traffic_categories_enabled);
+    featureEnabled.value = Boolean(result.merchant_traffic_categories_enabled);
+
+    if (!featureEnabled.value) {
+        panelOpen.value = false;
+    }
+};
+
+const togglePanel = () => {
+    panelOpen.value = !panelOpen.value;
 };
 
 const toggleCategory = async (category) => {
@@ -60,34 +88,46 @@ const toggleCategory = async (category) => {
     }
 };
 
+watch(panelOpen, () => {
+    updatePanelOpenCookie();
+});
+
 onMounted(() => {
     load();
 });
 </script>
 
 <template>
-    <div v-if="loading && !showRow" class="rounded-xl border border-base-300 bg-base-200/40 px-4 py-3">
-        <div class="flex items-center gap-2 text-sm text-base-content/70">
-            <span class="loading loading-spinner loading-sm text-primary" role="status" aria-label="Загрузка категорий" />
-            <span>Загрузка категорий трафика…</span>
-        </div>
+    <div v-if="featureAvailable" class="mb-2 flex flex-wrap items-center gap-1">
+        <button
+            type="button"
+            class="badge badge-sm cursor-pointer border font-medium transition-colors"
+            :class="columnToggleBadgeClass(panelOpen)"
+            :title="panelOpen ? 'Скрыть категории трафика' : 'Показать категории трафика'"
+            :aria-expanded="panelOpen"
+            @click="togglePanel"
+        >
+            Категории трафика
+        </button>
     </div>
 
     <div
-        v-else-if="showRow"
-        class="rounded-xl border border-base-300 bg-base-200/40 px-4 py-3"
+        v-if="featureAvailable && panelOpen"
+        class="mb-3 rounded-xl border border-base-300 bg-base-200/40 px-4 py-3"
     >
         <div class="flex flex-col gap-3">
             <div class="min-w-0">
-                <h3 class="text-sm font-semibold text-base-content">
-                    Категории трафика
-                </h3>
-                <p class="mt-1 text-xs leading-relaxed text-base-content/70">
+                <p class="text-xs leading-relaxed text-base-content/70">
                     Включите категории, с которыми хотите работать. Если выключить категорию, заявки от таких мерчантов не будут приходить.
                 </p>
             </div>
 
-            <div class="flex flex-wrap gap-2">
+            <div v-if="loading" class="flex items-center gap-2 text-sm text-base-content/70">
+                <span class="loading loading-spinner loading-sm text-primary" role="status" aria-label="Загрузка категорий" />
+                <span>Загрузка категорий…</span>
+            </div>
+
+            <div v-else class="flex flex-wrap gap-2">
                 <AppTooltip
                     v-for="category in categories"
                     :key="category.id"

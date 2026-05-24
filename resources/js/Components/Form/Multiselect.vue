@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 
 const props = defineProps({
     options: {
@@ -37,15 +37,24 @@ const props = defineProps({
     disabled: {
         type: Boolean,
         default: false
-    }
+    },
+    teleportDropdown: {
+        type: Boolean,
+        default: true,
+    },
 });
 
 const emit = defineEmits(['update:modelValue', 'change']);
+
+const DROPDOWN_GAP_PX = 4;
+const DROPDOWN_Z_INDEX = 10060;
 
 const selectedOptions = ref(Array.isArray(props.modelValue) ? [...props.modelValue] : []);
 const isOpen = ref(false);
 const searchQuery = ref('');
 const rootEl = ref(null);
+const dropdownEl = ref(null);
+const dropdownStyle = ref({});
 
 // Следим за внешними изменениями v-model и синхронизируем локальное состояние
 watch(
@@ -56,12 +65,36 @@ watch(
     { immediate: true, deep: true }
 );
 
-const toggleDropdown = () => {
-    if (props.disabled) return;
+const updateDropdownPosition = () => {
+    if (!props.teleportDropdown || !isOpen.value || !rootEl.value) {
+        return;
+    }
+
+    const rect = rootEl.value.getBoundingClientRect();
+
+    dropdownStyle.value = {
+        position: 'fixed',
+        top: `${rect.bottom + DROPDOWN_GAP_PX}px`,
+        left: `${rect.left}px`,
+        width: `${rect.width}px`,
+        zIndex: DROPDOWN_Z_INDEX,
+    };
+};
+
+const toggleDropdown = async () => {
+    if (props.disabled) {
+        return;
+    }
+
     isOpen.value = !isOpen.value;
+
     if (!isOpen.value) {
         searchQuery.value = '';
+        return;
     }
+
+    await nextTick();
+    updateDropdownPosition();
 };
 
 const selectOption = (option) => {
@@ -116,12 +149,59 @@ watch(
     }
 );
 
-// Закрытие по клику вне компонента
+const dropdownPanelClass = 'p-0 shadow bg-base-100 rounded-box border border-base-300 overflow-x-hidden max-h-60 overflow-y-auto';
+
+const dropdownPositionClass = computed(() => (
+    props.teleportDropdown
+        ? ''
+        : 'absolute left-0 top-full z-50 mt-1 w-full'
+));
+
+// Close on outside click
 const handleClickOutside = (event) => {
-    if (rootEl.value && !rootEl.value.contains(event.target)) {
-        isOpen.value = false;
+    const target = event.target;
+
+    if (rootEl.value?.contains(target)) {
+        return;
     }
+
+    if (dropdownEl.value?.contains(target)) {
+        return;
+    }
+
+    isOpen.value = false;
 };
+
+const handleReposition = () => {
+    updateDropdownPosition();
+};
+
+let removeRepositionListeners = null;
+
+const attachRepositionListeners = () => {
+    const handler = () => handleReposition();
+
+    window.addEventListener('resize', handler);
+    window.addEventListener('scroll', handler, true);
+
+    return () => {
+        window.removeEventListener('resize', handler);
+        window.removeEventListener('scroll', handler, true);
+    };
+};
+
+watch(isOpen, async (open) => {
+    removeRepositionListeners?.();
+    removeRepositionListeners = null;
+
+    if (!open || !props.teleportDropdown) {
+        return;
+    }
+
+    await nextTick();
+    updateDropdownPosition();
+    removeRepositionListeners = attachRepositionListeners();
+});
 
 onMounted(() => {
     document.addEventListener('click', handleClickOutside);
@@ -129,6 +209,7 @@ onMounted(() => {
 
 onUnmounted(() => {
     document.removeEventListener('click', handleClickOutside);
+    removeRepositionListeners?.();
 });
 </script>
 
@@ -147,40 +228,54 @@ onUnmounted(() => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
             </svg>
         </div>
-        <div v-if="isOpen" class="absolute left-0 top-full z-50 w-full mt-1 p-0 shadow bg-base-100 rounded-box border border-base-300 overflow-x-hidden max-h-60 overflow-y-auto" tabindex="0" @click.stop>
-            <div v-if="enableSearch" class="p-2 border-b border-base-300">
-                <input
-                    type="text"
-                    v-model="searchQuery"
-                    class="input input-bordered input-sm w-full"
-                    placeholder="Поиск..."
-                    @click="onSearchInput"
-                    :disabled="disabled"
-                />
+        <Teleport to="body" :disabled="!teleportDropdown">
+            <div
+                v-if="isOpen"
+                ref="dropdownEl"
+                :style="teleportDropdown ? dropdownStyle : undefined"
+                :class="[dropdownPanelClass, dropdownPositionClass]"
+                tabindex="0"
+                @click.stop
+            >
+                <div v-if="enableSearch" class="border-b border-base-300 p-2">
+                    <input
+                        v-model="searchQuery"
+                        type="text"
+                        class="input input-bordered input-sm w-full"
+                        placeholder="Поиск..."
+                        :disabled="disabled"
+                        @click="onSearchInput"
+                    />
+                </div>
+                <ul class="menu menu-sm w-full">
+                    <li v-for="option in filteredOptions" :key="option[valueKey]">
+                        <a
+                            class="flex items-center gap-2"
+                            href="#"
+                            :class="{
+                                'pointer-events-none opacity-50': disabled
+                                    || (singleSelect && selectedOptions.length > 0 && !canUnselect(selectedOptions[0]))
+                                    || (isSelected(option) && !canUnselect(option[valueKey])),
+                            }"
+                            @click.prevent="selectOption(option)"
+                        >
+                            <input
+                                :type="singleSelect ? 'radio' : 'checkbox'"
+                                :class="singleSelect ? 'radio radio-sm' : 'checkbox checkbox-sm'"
+                                :checked="isSelected(option)"
+                                :name="singleSelect ? 'multiselect-radio' : ''"
+                                :disabled="disabled
+                                    || (singleSelect && selectedOptions.length > 0 && !canUnselect(selectedOptions[0]))
+                                    || (isSelected(option) && !canUnselect(option[valueKey]))"
+                            />
+                            <span class="truncate">{{ option[labelKey] }}</span>
+                        </a>
+                    </li>
+                    <li v-if="enableSearch && filteredOptions.length === 0" class="px-4 py-2 opacity-70">
+                        Ничего не найдено
+                    </li>
+                </ul>
             </div>
-            <ul class="menu menu-sm w-full">
-                <li v-for="option in filteredOptions" :key="option[valueKey]" class="">
-                    <a @click.prevent="selectOption(option)" class="flex items-center gap-2"
-                       :class="{
-                           'opacity-50 pointer-events-none': disabled ||
-                               (singleSelect && selectedOptions.length > 0 && !canUnselect(selectedOptions[0])) ||
-                               (isSelected(option) && !canUnselect(option[valueKey]))
-                       }">
-                        <input
-                            :type="singleSelect ? 'radio' : 'checkbox'"
-                            :class="singleSelect ? 'radio radio-sm' : 'checkbox checkbox-sm'"
-                            :checked="isSelected(option)"
-                            :name="singleSelect ? 'multiselect-radio' : ''"
-                            :disabled="disabled || (singleSelect && selectedOptions.length > 0 && !canUnselect(selectedOptions[0])) ||
-                                     (isSelected(option) && !canUnselect(option[valueKey]))"
-                        />
-                        <span class="truncate">{{ option[labelKey] }}</span>
-                    </a>
-                </li>
-                <li v-if="enableSearch && filteredOptions.length === 0" class="px-4 py-2 opacity-70">
-                    Ничего не найдено
-                </li>
-            </ul>
-        </div>
+        </Teleport>
     </div>
 </template>

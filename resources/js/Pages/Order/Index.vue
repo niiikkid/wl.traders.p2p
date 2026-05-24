@@ -308,8 +308,6 @@ defineOptions({ layout: AuthenticatedLayout })
                         <MoneyTreeGame />
                     </div>-->
 
-                    <TraderTrafficCategoriesRow v-if="viewStore.isTraderViewMode" />
-
                     <FiltersPanel
                         ref="filtersPanelRef"
                         name="orders"
@@ -357,6 +355,8 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
             <template v-slot:body>
                 <div class="relative">
+                    <TraderTrafficCategoriesRow v-if="viewStore.isTraderViewMode" />
+
                     <!-- Desktop/tablet view (table) -->
                     <div class="hidden xl:block rounded-table relative">
                         <div
