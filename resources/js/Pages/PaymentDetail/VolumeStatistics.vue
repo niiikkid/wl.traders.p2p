@@ -27,17 +27,20 @@ const backRoute = computed(() => page.props.backRoute);
 
 const presetBarsLimitValues = computed(() => barsLimitPresets.value.map((option) => option.value));
 
+const parseTruthyFilter = (value) => (
+    value === true
+    || value === 1
+    || value === '1'
+    || value === 'true'
+    || value === 'on'
+);
+
 const syncBarsLimitFields = (barsLimitValue) => {
     const value = String(barsLimitValue ?? defaultBarsLimit.value);
 
-    if (presetBarsLimitValues.value.includes(value)) {
-        barsLimitPreset.value = value;
-        barsLimitCustom.value = '';
-        return;
-    }
-
-    barsLimitPreset.value = defaultBarsLimit.value;
-    barsLimitCustom.value = value;
+    barsLimitPreset.value = presetBarsLimitValues.value.includes(value)
+        ? value
+        : defaultBarsLimit.value;
 };
 
 const selectedPeriod = ref(filters.value.period ?? 'all');
@@ -45,8 +48,7 @@ const dateFrom = ref(filters.value.date_from ?? '');
 const dateTo = ref(filters.value.date_to ?? '');
 const selectedTraderId = ref(filters.value.trader_id ? String(filters.value.trader_id) : '');
 const barsLimitPreset = ref(defaultBarsLimit.value);
-const barsLimitCustom = ref('');
-const includeArchived = ref(Boolean(filters.value.include_archived));
+const includeArchived = ref(parseTruthyFilter(filters.value.include_archived));
 const selectedPaymentGatewayId = ref(
     filters.value.payment_gateway_id ? String(filters.value.payment_gateway_id) : '',
 );
@@ -55,6 +57,7 @@ syncBarsLimitFields(filters.value.bars_limit);
 
 const chartRef = ref(null);
 const apexChart = ref(null);
+const chartContainerHeight = ref(400);
 const processing = ref(false);
 
 const volumeStatisticsRoute = computed(() => (
@@ -63,20 +66,10 @@ const volumeStatisticsRoute = computed(() => (
         : route('payment-details.volume-statistics')
 ));
 
-const resolveBarsLimitForRequest = () => {
-    const custom = Number.parseInt(String(barsLimitCustom.value).trim(), 10);
-
-    if (!Number.isNaN(custom) && custom > 0) {
-        return String(custom);
-    }
-
-    return barsLimitPreset.value;
-};
-
 const buildRequestData = () => {
     const data = {
         period: selectedPeriod.value,
-        bars_limit: resolveBarsLimitForRequest(),
+        bars_limit: barsLimitPreset.value,
     };
 
     if (dateFrom.value) {
@@ -91,9 +84,7 @@ const buildRequestData = () => {
         data.trader_id = selectedTraderId.value;
     }
 
-    if (includeArchived.value) {
-        data.include_archived = true;
-    }
+    data.include_archived = includeArchived.value ? 1 : 0;
 
     if (selectedPaymentGatewayId.value) {
         data.payment_gateway_id = selectedPaymentGatewayId.value;
@@ -102,13 +93,7 @@ const buildRequestData = () => {
     return data;
 };
 
-const barsLimitSummary = computed(() => {
-    if (meta.value.bars_limit_is_all) {
-        return 'все найденные';
-    }
-
-    return meta.value.bars_limit ?? defaultBarsLimit.value;
-});
+const barsLimitSummary = computed(() => meta.value.bars_limit ?? defaultBarsLimit.value);
 
 const applyFilters = () => {
     processing.value = true;
@@ -136,6 +121,40 @@ const hasChartData = computed(() => chartData.value.labels?.length > 0);
 
 const formatInteger = (value) => Number(value ?? 0).toLocaleString('ru-RU');
 
+const formatYAxisValue = (value) => {
+    const num = Number(value);
+
+    if (!Number.isFinite(num)) {
+        return '';
+    }
+
+    if (num >= 1_000_000) {
+        const scaled = num / 1_000_000;
+
+        return `${Number.isInteger(scaled) ? scaled : scaled.toFixed(1)}M`;
+    }
+
+    if (num >= 1000) {
+        const scaled = num / 1000;
+
+        return `${Number.isInteger(scaled) ? scaled : scaled.toFixed(1)}k`;
+    }
+
+    if (num >= 100) {
+        return String(Math.round(num));
+    }
+
+    if (num >= 10) {
+        return String(Math.round(num));
+    }
+
+    if (num >= 1) {
+        return num.toFixed(1);
+    }
+
+    return num.toFixed(2);
+};
+
 const destroyChart = () => {
     if (apexChart.value) {
         apexChart.value.destroy();
@@ -156,13 +175,20 @@ const mountChart = () => {
     const maxValue = seriesData.length > 0 ? Math.max(...seriesData) : 0;
 
     const columnWidth = barCount > 40 ? '96%' : barCount > 25 ? '90%' : barCount > 12 ? '82%' : '68%';
-    const labelFontSize = barCount > 50 ? '7px' : barCount > 30 ? '8px' : barCount > 15 ? '9px' : '10px';
+    const labelFontSizePx = barCount > 50 ? 7 : barCount > 30 ? 8 : barCount > 15 ? 9 : 10;
+    const labelFontSize = `${labelFontSizePx}px`;
     const longestLabelChars = labels.reduce(
         (max, label) => Math.max(max, String(label).length),
         0,
     );
-    const xAxisLabelPadding = Math.min(360, Math.max(80, Math.ceil(longestLabelChars * 5.2)));
-    const chartHeight = Math.min(820, 300 + xAxisLabelPadding);
+    const plotHeight = 300;
+    const xAxisLabelsHeight = Math.min(
+        200,
+        Math.max(48, Math.ceil(longestLabelChars * (labelFontSizePx * 0.48)) + 10),
+    );
+    const chartHeight = Math.min(520, plotHeight + xAxisLabelsHeight);
+
+    chartContainerHeight.value = chartHeight;
 
     const options = {
         chart: {
@@ -225,21 +251,25 @@ const mountChart = () => {
             min: 0,
             max: maxValue > 0 ? maxValue : undefined,
             forceNiceScale: true,
+            tickAmount: 5,
             labels: {
+                align: 'left',
+                minWidth: 0,
+                maxWidth: 36,
+                offsetX: -6,
                 style: {
                     colors: '#999',
+                    fontSize: '10px',
+                    fontWeight: 400,
                 },
-                formatter: (value) => Number(value).toLocaleString('ru-RU', {
-                    maximumFractionDigits: 2,
-                }),
+                formatter: formatYAxisValue,
             },
         },
         grid: {
             borderColor: 'rgba(200, 200, 200, 0.1)',
             padding: {
-                left: 8,
-                right: 8,
-                bottom: xAxisLabelPadding - 20,
+                left: 0,
+                right: 4,
             },
         },
         legend: {
@@ -282,7 +312,7 @@ router.on('success', () => {
     dateTo.value = filters.value.date_to ?? '';
     selectedTraderId.value = filters.value.trader_id ? String(filters.value.trader_id) : '';
     syncBarsLimitFields(filters.value.bars_limit);
-    includeArchived.value = Boolean(filters.value.include_archived);
+    includeArchived.value = parseTruthyFilter(filters.value.include_archived);
     selectedPaymentGatewayId.value = filters.value.payment_gateway_id
         ? String(filters.value.payment_gateway_id)
         : '';
@@ -319,56 +349,48 @@ onBeforeUnmount(() => {
 
             <template #body>
                 <div class="mb-4 flex flex-col gap-4">
-                    <div class="alert alert-info text-sm">
-                        <span v-if="meta.include_archived">
-                            В выборку входят <strong>активные и архивированные</strong> реквизиты.
-                            Архивные отмечены в подписи «(архив)».
-                        </span>
-                        <span v-else>
-                            По умолчанию только <strong>активные</strong> реквизиты (не из архива).
-                            Включите опцию ниже, чтобы добавить архивированные.
-                        </span>
-                    </div>
-
-                    <div class="alert alert-warning text-sm">
-                        <span>
-                            Реквизиты с нулевым объёмом за выбранный период <strong>не отображаются</strong> на графике.
-                        </span>
-                    </div>
+                    <p class="text-[11px] leading-tight text-base-content/45">
+                        Реквизиты с нулевым объёмом за выбранный период не отображаются на графике.
+                    </p>
 
                     <div class="card bg-base-100 shadow-sm">
-                        <div class="card-body gap-4 p-4 lg:p-5">
+                        <div class="card-body gap-3 p-3 lg:p-4">
                             <div
-                                v-if="isAdmin && traderSearchRoute"
-                                class="max-w-md"
+                                class="grid grid-cols-1 gap-3"
+                                :class="isAdmin && traderSearchRoute ? 'sm:grid-cols-2' : ''"
                             >
-                                <TraderSearchSelect
-                                    v-model="selectedTraderId"
-                                    :search-route="traderSearchRoute"
-                                />
-                            </div>
-
-                            <label class="form-control w-full max-w-md">
-                                <div class="label py-0">
-                                    <span class="label-text text-xs">Банк</span>
-                                </div>
-                                <select
-                                    v-model="selectedPaymentGatewayId"
-                                    class="select select-bordered select-sm w-full"
-                                    :disabled="processing"
+                                <div
+                                    v-if="isAdmin && traderSearchRoute"
+                                    class="min-w-0"
                                 >
-                                    <option value="">
-                                        Все банки
-                                    </option>
-                                    <option
-                                        v-for="bank in bankOptions"
-                                        :key="bank.value"
-                                        :value="String(bank.value)"
+                                    <TraderSearchSelect
+                                        v-model="selectedTraderId"
+                                        :search-route="traderSearchRoute"
+                                    />
+                                </div>
+
+                                <label class="form-control min-w-0 w-full">
+                                    <div class="label py-0">
+                                        <span class="label-text text-xs">Банк</span>
+                                    </div>
+                                    <select
+                                        v-model="selectedPaymentGatewayId"
+                                        class="select select-bordered select-sm w-full"
+                                        :disabled="processing"
                                     >
-                                        {{ bank.label }}
-                                    </option>
-                                </select>
-                            </label>
+                                        <option value="">
+                                            Все банки
+                                        </option>
+                                        <option
+                                            v-for="bank in bankOptions"
+                                            :key="bank.value"
+                                            :value="String(bank.value)"
+                                        >
+                                            {{ bank.label }}
+                                        </option>
+                                    </select>
+                                </label>
+                            </div>
 
                             <div class="flex flex-wrap gap-2">
                                 <button
@@ -384,8 +406,8 @@ onBeforeUnmount(() => {
                                 </button>
                             </div>
 
-                            <div class="flex flex-wrap items-end gap-3">
-                                <label class="form-control w-full max-w-[11rem] sm:w-auto">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                                <label class="form-control w-full shrink-0 sm:max-w-[11rem] sm:w-auto">
                                     <div class="label py-0">
                                         <span class="label-text text-xs">Столбиков на графике</span>
                                     </div>
@@ -393,6 +415,7 @@ onBeforeUnmount(() => {
                                         v-model="barsLimitPreset"
                                         class="select select-bordered select-sm w-full"
                                         :disabled="processing"
+                                        @change="applyFilters"
                                     >
                                         <option
                                             v-for="option in barsLimitPresets"
@@ -403,31 +426,18 @@ onBeforeUnmount(() => {
                                         </option>
                                     </select>
                                 </label>
-                                <label class="form-control w-full max-w-[9rem] sm:w-auto">
-                                    <div class="label py-0">
-                                        <span class="label-text text-xs">Своё число</span>
-                                    </div>
+
+                                <label class="label min-h-8 w-auto shrink-0 cursor-pointer justify-start gap-2 rounded-lg border border-base-300 px-3 py-1.5">
                                     <input
-                                        v-model="barsLimitCustom"
-                                        type="number"
-                                        min="1"
-                                        max="10000"
-                                        placeholder="100"
-                                        class="input input-bordered input-sm w-full"
+                                        v-model="includeArchived"
+                                        type="checkbox"
+                                        class="checkbox checkbox-sm checkbox-primary"
                                         :disabled="processing"
+                                        @change="applyFilters"
                                     >
+                                    <span class="label-text text-xs sm:text-sm">Включать архивированные реквизиты</span>
                                 </label>
                             </div>
-
-                            <label class="label cursor-pointer justify-start gap-3 rounded-lg border border-base-300 px-3 py-2">
-                                <input
-                                    v-model="includeArchived"
-                                    type="checkbox"
-                                    class="checkbox checkbox-sm checkbox-primary"
-                                    :disabled="processing"
-                                >
-                                <span class="label-text text-sm">Включать архивированные реквизиты</span>
-                            </label>
 
                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                 <label class="form-control w-full">
@@ -468,9 +478,6 @@ onBeforeUnmount(() => {
                             >
                                 Используется собственный период. Пресеты игнорируются, пока задана дата «с» или «по».
                             </p>
-                            <p class="text-xs text-base-content/60">
-                                Если заполнено «Своё число», оно имеет приоритет над списком. По умолчанию — {{ defaultBarsLimit }} столбиков.
-                            </p>
                         </div>
                     </div>
 
@@ -486,9 +493,7 @@ onBeforeUnmount(() => {
                         class="alert alert-info text-sm"
                     >
                         <span>
-                            Фильтр по трейдеру не выбран — на графике
-                            <template v-if="meta.bars_limit_is_all">все найденные</template>
-                            <template v-else>топ-{{ barsLimitSummary }}</template>
+                            Фильтр по трейдеру не выбран — на графике топ-{{ barsLimitSummary }}
                             реквизитов по объёму среди <strong>всех</strong>
                             <template v-if="meta.include_archived">реквизитов платформы (включая архив)</template>
                             <template v-else>активных реквизитов платформы</template>.
@@ -514,6 +519,18 @@ onBeforeUnmount(() => {
                             >
                                 Не вошли в лимит ({{ barsLimitSummary }}): {{ formatInteger(meta.excluded_over_limit_count) }}
                             </span>
+                            <span
+                                v-if="meta.include_archived && meta.archived_in_scope_count > 0"
+                                class="badge badge-secondary badge-outline badge-sm"
+                            >
+                                Архивных в выборке: {{ formatInteger(meta.archived_in_scope_count) }}
+                            </span>
+                            <span
+                                v-if="meta.include_archived && meta.archived_on_chart_count > 0"
+                                class="badge badge-secondary badge-outline badge-sm"
+                            >
+                                Архивных на графике: {{ formatInteger(meta.archived_on_chart_count) }}
+                            </span>
                         </div>
 
                     <div class="card bg-base-100 shadow p-4 lg:p-6">
@@ -533,7 +550,8 @@ onBeforeUnmount(() => {
                         </div>
                         <div
                             ref="chartRef"
-                            class="w-full min-w-0"
+                            class="w-full min-w-0 overflow-hidden"
+                            :style="{ height: `${chartContainerHeight}px` }"
                         />
                         <p
                             v-if="!hasChartData"

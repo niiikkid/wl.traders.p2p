@@ -18,7 +18,7 @@ class PaymentDetailVolumeStatisticsController extends Controller
 
     public function index(VolumeStatisticsRequest $request): Response
     {
-        $isAdmin = isRouteFor('Super Admin');
+        $isAdmin = $request->routeIs('admin.payment-details.volume-statistics');
         $period = $request->period();
         [$periodStartAt, $periodEndAt] = $this->volumeStatisticsService->resolvePeriodBounds(
             $period,
@@ -49,7 +49,7 @@ class PaymentDetailVolumeStatisticsController extends Controller
         );
 
         $chartPayload = $this->volumeStatisticsService->formatChartPayload($chartResult['items']);
-        $selectedTrader = $userId !== null
+        $selectedTrader = $isAdmin && $userId !== null
             ? User::query()->select(['id', 'email'])->find($userId)
             : null;
 
@@ -73,7 +73,7 @@ class PaymentDetailVolumeStatisticsController extends Controller
                 'period' => $period,
                 'date_from' => $request->dateFrom(),
                 'date_to' => $request->dateTo(),
-                'trader_id' => $userId,
+                'trader_id' => $isAdmin ? $userId : null,
                 'bars_limit' => $chartResult['meta']['bars_limit'],
                 'include_archived' => $includeArchived,
                 'payment_gateway_id' => $paymentGatewayId,
@@ -85,11 +85,9 @@ class PaymentDetailVolumeStatisticsController extends Controller
             'barsLimitPresets' => [
                 ['value' => '25', 'label' => '25'],
                 ['value' => '50', 'label' => '50'],
+                ['value' => '75', 'label' => '75'],
                 ['value' => '100', 'label' => '100'],
                 ['value' => '200', 'label' => '200'],
-                ['value' => '500', 'label' => '500'],
-                ['value' => '1000', 'label' => '1000'],
-                ['value' => 'all', 'label' => 'Все найденные'],
             ],
             'defaultBarsLimit' => (string) PaymentDetailVolumeStatisticsService::DEFAULT_BARS_LIMIT,
             'selectedTrader' => $selectedTrader === null ? null : [

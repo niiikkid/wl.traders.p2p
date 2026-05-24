@@ -19,15 +19,20 @@ class VolumeStatisticsRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'period' => ['nullable', 'string', Rule::in(['1d', '7d', '14d', '30d', 'all'])],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
-            'trader_id' => ['nullable', 'integer', 'exists:users,id'],
-            'bars_limit' => ['nullable', 'string', 'max:10'],
+            'bars_limit' => ['nullable', 'string', Rule::in(['25', '50', '75', '100', '200'])],
             'include_archived' => ['nullable', 'boolean'],
             'payment_gateway_id' => ['nullable', 'integer', 'exists:payment_gateways,id'],
         ];
+
+        if ($this->routeIs('admin.payment-details.volume-statistics')) {
+            $rules['trader_id'] = ['nullable', 'integer', 'exists:users,id'];
+        }
+
+        return $rules;
     }
 
     public function paymentGatewayId(): ?int
@@ -39,7 +44,7 @@ class VolumeStatisticsRequest extends FormRequest
 
     public function includeArchived(): bool
     {
-        return filter_var($this->input('include_archived'), FILTER_VALIDATE_BOOLEAN);
+        return $this->boolean('include_archived');
     }
 
     public function barsLimit(): ?string
@@ -56,6 +61,10 @@ class VolumeStatisticsRequest extends FormRequest
 
     public function traderId(): ?int
     {
+        if (! $this->routeIs('admin.payment-details.volume-statistics')) {
+            return null;
+        }
+
         $traderId = $this->integer('trader_id');
 
         return $traderId > 0 ? $traderId : null;

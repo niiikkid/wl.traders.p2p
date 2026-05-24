@@ -472,10 +472,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                 @click="router.visit(route(volumeStatisticsRouteName), { preserveScroll: true })"
                             >
                                 <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                    <rect x="3" y="14" width="3.5" height="6" rx="1.75" stroke="currentColor" stroke-width="1.3" />
-                                    <rect x="8.25" y="10" width="3.5" height="10" rx="1.75" stroke="currentColor" stroke-width="1.3" />
-                                    <rect x="13.5" y="6" width="3.5" height="14" rx="1.75" stroke="currentColor" stroke-width="1.3" />
-                                    <rect x="18.75" y="2" width="3.5" height="18" rx="1.75" stroke="currentColor" stroke-width="1.3" />
+                                    <path
+                                        d="M2 2v18a2 2 0 0 0 2 2h18"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                    <path
+                                        d="M6 18V8.5A3.5 3.5 0 0 1 9.5 5h0A3.5 3.5 0 0 1 13 8.5v2.298A7.202 7.202 0 0 0 20.202 18H22"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
                                 </svg>
                             </button>
 

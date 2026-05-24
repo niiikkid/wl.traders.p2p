@@ -17,7 +17,10 @@ class PaymentDetailVolumeStatisticsService
 {
     public const int DEFAULT_BARS_LIMIT = 100;
 
-    public const int MAX_BARS_LIMIT = 10000;
+    public const int MAX_BARS_LIMIT = 200;
+
+    /** @var list<int> */
+    public const array ALLOWED_BARS_LIMITS = [25, 50, 75, 100, 200];
 
     /**
      * @return array{
@@ -100,6 +103,12 @@ class PaymentDetailVolumeStatisticsService
             ->all();
 
         $barsLimitLabel = $barsLimit === null ? 'all' : (string) $barsLimit;
+        $archivedInScopeCount = $includeArchived
+            ? (clone $baseQuery)->whereNotNull('archived_at')->count()
+            : 0;
+        $archivedOnChartCount = $topRows->filter(
+            fn (PaymentDetail $paymentDetail): bool => $paymentDetail->archived_at !== null,
+        )->count();
 
         return [
             'items' => $this->arrangePyramid($items),
@@ -115,6 +124,8 @@ class PaymentDetailVolumeStatisticsService
                 'bars_limit_is_all' => $barsLimit === null,
                 'include_archived' => $includeArchived,
                 'payment_gateway_id' => $paymentGatewayId,
+                'archived_in_scope_count' => $archivedInScopeCount,
+                'archived_on_chart_count' => $archivedOnChartCount,
             ],
         ];
     }
@@ -141,19 +152,12 @@ class PaymentDetailVolumeStatisticsService
             ->all();
     }
 
-    /**
-     * @return int|null Limit for SQL query; null means all requisites with volume.
-     */
-    public function resolveBarsLimit(?string $barsLimit): ?int
+    public function resolveBarsLimit(?string $barsLimit): int
     {
         $value = trim((string) ($barsLimit ?? ''));
 
         if ($value === '' || $value === (string) self::DEFAULT_BARS_LIMIT) {
             return self::DEFAULT_BARS_LIMIT;
-        }
-
-        if ($value === 'all') {
-            return null;
         }
 
         if (! ctype_digit($value)) {
@@ -162,11 +166,11 @@ class PaymentDetailVolumeStatisticsService
 
         $limit = (int) $value;
 
-        if ($limit < 1) {
+        if (! in_array($limit, self::ALLOWED_BARS_LIMITS, true)) {
             return self::DEFAULT_BARS_LIMIT;
         }
 
-        return min($limit, self::MAX_BARS_LIMIT);
+        return $limit;
     }
 
     public function resolvePeriodBounds(
