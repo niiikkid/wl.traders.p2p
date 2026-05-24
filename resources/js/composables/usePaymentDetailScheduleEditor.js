@@ -51,7 +51,7 @@ const groupIntervalsByDay = (intervals) => {
 
 export const createEmptyEditorState = (name = '') => ({
     name,
-    defaultDays: [1, 2, 3, 4, 5],
+    defaultDays: [1, 2, 3, 4, 5, 6, 7],
     defaultStart: '09:00',
     defaultEnd: '19:00',
     dayOverrides: {},

@@ -64,7 +64,7 @@ function findNextInterval(intervals, time) {
 
 function formatIntervalList(intervals) {
     if (!intervals?.length) {
-        return '—';
+        return null;
     }
 
     return intervals
@@ -74,7 +74,7 @@ function formatIntervalList(intervals) {
 
 function resolveIntervalText(status, todayIntervals, currentInterval, nextInterval) {
     if (status === SCHEDULE_STATUS.DAY_OFF) {
-        return '—';
+        return null;
     }
 
     if (status === SCHEDULE_STATUS.WORKING && currentInterval) {
@@ -95,7 +95,7 @@ function resolveIntervalText(status, todayIntervals, currentInterval, nextInterv
 /**
  * @param {object|null} schedule
  * @param {number} offsetMs
- * @returns {{ status: string, statusLabel: string, scheduleName: string|null, intervalText: string }}
+ * @returns {{ status: string, statusLabel: string, scheduleName: string|null, intervalText: string|null }}
  */
 export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
     if (!schedule) {
@@ -103,7 +103,7 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             status: SCHEDULE_STATUS.NOT_CONFIGURED,
             statusLabel: STATUS_LABELS[SCHEDULE_STATUS.NOT_CONFIGURED],
             scheduleName: null,
-            intervalText: '—',
+            intervalText: null,
         };
     }
 
@@ -117,7 +117,7 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             status: SCHEDULE_STATUS.INVALID,
             statusLabel: schedule.status_label || STATUS_LABELS[SCHEDULE_STATUS.INVALID],
             scheduleName: schedule.name,
-            intervalText: '—',
+            intervalText: null,
         };
     }
 
@@ -126,7 +126,7 @@ export function resolvePaymentDetailScheduleDisplay(schedule, offsetMs = 0) {
             status: SCHEDULE_STATUS.DAY_OFF,
             statusLabel: STATUS_LABELS[SCHEDULE_STATUS.DAY_OFF],
             scheduleName: schedule.name,
-            intervalText: '—',
+            intervalText: null,
         };
     }
 

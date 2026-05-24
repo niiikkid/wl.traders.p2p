@@ -225,13 +225,18 @@ const saveSchedule = () => {
 
             const created = response.data?.data;
             const onCreated = paymentDetailScheduleManagerModal.value.params?.onCreated;
-
-            if (created?.id) {
-                selectSchedule(created);
-            }
+            const closeOnCreate = paymentDetailScheduleManagerModal.value.params?.closeOnCreate === true;
 
             if (typeof onCreated === 'function' && created?.id) {
                 onCreated(created);
+            }
+
+            if (created?.id) {
+                if (closeOnCreate) {
+                    close();
+                } else {
+                    selectSchedule(created);
+                }
             }
         })
         .catch((error) => {
@@ -302,6 +307,8 @@ watch(
                 if (schedule) {
                     selectSchedule(schedule);
                 }
+            } else if (paymentDetailScheduleManagerModal.value.params?.startInCreate) {
+                startCreate();
             }
         } else {
             resetEditor();
@@ -317,11 +324,11 @@ watch(
             <div v-if="loading && !schedules.length" class="text-center text-sm text-base-content/70 py-8">
                 Загрузка расписаний…
             </div>
-            <div v-else class="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-                <div class="space-y-3">
+            <div v-else class="grid gap-4 lg:grid-cols-[200px_minmax(0,1fr)]">
+                <div class="space-y-2">
                     <button
                         type="button"
-                        class="btn btn-sm btn-primary w-full"
+                        class="btn btn-xs btn-primary w-full min-h-8 h-8"
                         :disabled="processing"
                         @click="startCreate"
                     >
@@ -332,27 +339,27 @@ watch(
                         Расписания ещё не созданы.
                     </div>
 
-                    <div v-else class="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                    <div v-else class="space-y-1 max-h-[28rem] overflow-y-auto pr-1">
                         <button
                             v-for="schedule in schedules"
                             :key="schedule.id"
                             type="button"
-                            class="w-full text-left rounded-box border p-3 transition-colors"
+                            class="w-full text-left rounded-box border px-2 py-1.5 transition-colors"
                             :class="Number(selectedScheduleId) === Number(schedule.id)
                                 ? 'border-primary bg-primary/10'
                                 : 'border-base-300 hover:border-base-content/30'"
                             :disabled="processing"
                             @click="selectSchedule(schedule)"
                         >
-                            <div class="font-medium text-sm truncate">
+                            <div class="font-medium text-xs truncate">
                                 {{ schedule.name }}
                             </div>
-                            <div class="text-xs text-base-content/70 mt-1">
+                            <div class="text-[11px] text-base-content/70 mt-0.5">
                                 {{ schedule.status_label }}
                             </div>
                             <div
                                 v-if="schedule.payment_details_count !== undefined"
-                                class="text-xs text-base-content/60 mt-1"
+                                class="text-[11px] text-base-content/60"
                             >
                                 Реквизитов: {{ schedule.payment_details_count }}
                             </div>
@@ -365,8 +372,8 @@ watch(
                         Выберите расписание слева или создайте новое.
                     </div>
 
-                    <div v-else-if="panelMode === 'copy'" class="space-y-4">
-                        <p class="text-xs text-base-content/70">
+                    <div v-else-if="panelMode === 'copy'" class="space-y-2">
+                        <p class="text-[11px] leading-snug text-base-content/70">
                             Будет создано независимое расписание с теми же интервалами, что у «{{ selectedSchedule?.name }}».
                         </p>
                         <div>
@@ -374,18 +381,18 @@ watch(
                                 for="schedule_copy_name"
                                 value="Название копии"
                                 :error="!!errors.name"
-                                class="mb-1"
+                                class="mb-0.5 [&_.label-text]:text-xs"
                             />
                             <TextInput
                                 id="schedule_copy_name"
                                 v-model="copyForm.name"
                                 type="text"
-                                class="w-full"
+                                class="w-full input-sm h-8 min-h-8 text-sm"
                                 :class="{ 'input-error': !!errors.name }"
                                 autocomplete="off"
                                 :disabled="processing"
                             />
-                            <InputError :message="errors.name" class="mt-2" />
+                            <InputError :message="errors.name" class="mt-1" />
                         </div>
                     </div>
 

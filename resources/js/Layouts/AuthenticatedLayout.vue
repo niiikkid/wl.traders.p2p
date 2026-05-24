@@ -14,6 +14,7 @@ import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
 import ProviderLiquidityMenu from "@/Layouts/Partials/ProviderLiquidityMenu.vue";
 import AgentMenu from "@/Layouts/Partials/AgentMenu.vue";
 import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
+import PaymentDetailScheduleManagerModal from '@/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue';
 
 const viewStore = useViewStore();
 
@@ -591,5 +592,7 @@ const openDocs = () => {
             </div>
         </div>
         </div>
+
+        <PaymentDetailScheduleManagerModal v-if="viewStore.isTraderViewMode" />
     </div>
 </template>

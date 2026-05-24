@@ -25,8 +25,6 @@ import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModa
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
-import PaymentDetailScheduleQuickCreateModal from "@/Modals/PaymentDetailSchedule/PaymentDetailScheduleQuickCreateModal.vue";
-import PaymentDetailScheduleManagerModal from "@/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
@@ -83,6 +81,7 @@ const toggleFiltersFromToolbar = () => {
 
 const displayShortDetail = ref(getCookieValue('displayShortDetail', true));
 const displayDetailTags = ref(getCookieValue('displayDetailTags', false));
+const displayDetailSchedule = ref(getCookieValue('displayDetailSchedule', true));
 
 function getCookieValue(name, defaultValue) {
     const currentRoute = route().current();
@@ -111,6 +110,24 @@ const updateDisplayDetailTagsCookie = () => {
 watch(displayDetailTags, () => {
     updateDisplayDetailTagsCookie();
 });
+
+const updateDisplayDetailScheduleCookie = () => {
+    const currentRoute = route().current();
+    const cookieName = `displayDetailSchedule_${currentRoute}`;
+    document.cookie = `${cookieName}=${displayDetailSchedule.value}; path=/; max-age=31536000`;
+};
+
+watch(displayDetailSchedule, () => {
+    updateDisplayDetailScheduleCookie();
+});
+
+const showTableColumnToggles = computed(() => viewStore.isAdminViewMode || isTraderView.value);
+
+const columnToggleBadgeClass = (active) => (
+    active
+        ? 'badge-primary border-primary text-primary-content'
+        : 'badge-outline border-primary/70 bg-base-100 text-base-content hover:border-primary hover:bg-primary/10'
+);
 
 const currentUser = usePage().props.auth?.user;
 
@@ -270,10 +287,6 @@ const openTagManageModal = () => {
 
 const openScheduleManagerModal = () => {
     modalStore.openPaymentDetailScheduleManagerModal();
-};
-
-const toggleDisplayDetailTags = () => {
-    displayDetailTags.value = !displayDetailTags.value;
 };
 
 const tagSyncProcessing = ref({});
@@ -597,6 +610,31 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
             <template v-slot:body>
                 <div class="relative">
+                    <div
+                        v-if="showTableColumnToggles"
+                        class="mb-2 flex flex-wrap items-center gap-1"
+                    >
+                        <button
+                            v-if="isTraderView"
+                            type="button"
+                            class="badge badge-sm cursor-pointer border font-medium transition-colors"
+                            :class="columnToggleBadgeClass(displayDetailTags)"
+                            :title="displayDetailTags ? 'Скрыть колонку тегов' : 'Показать колонку тегов'"
+                            @click="displayDetailTags = !displayDetailTags"
+                        >
+                            Теги
+                        </button>
+                        <button
+                            type="button"
+                            class="badge badge-sm cursor-pointer border font-medium transition-colors"
+                            :class="columnToggleBadgeClass(displayDetailSchedule)"
+                            :title="displayDetailSchedule ? 'Скрыть колонку расписания' : 'Показать колонку расписания'"
+                            @click="displayDetailSchedule = !displayDetailSchedule"
+                        >
+                            Расписание
+                        </button>
+                    </div>
+
                     <!-- Desktop/tablet view (table) -->
                     <div class="hidden xl:block rounded-table relative">
                         <div v-if="selectionModeEnabled" class="mb-3 flex items-center justify-between gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
@@ -656,7 +694,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col" class="text-nowrap">
                                             Лимиты
                                         </th>
-                                        <th scope="col" class="text-nowrap">
+                                        <th v-if="displayDetailSchedule" scope="col" class="text-nowrap">
                                             Расписание
                                         </th>
                                         <th scope="col" class="text-nowrap">
@@ -703,9 +741,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </TableAction>
                                                         <TableAction @click="openBulkEditModal">
                                                             Массовая настройка
-                                                        </TableAction>
-                                                        <TableAction @click="toggleDisplayDetailTags">
-                                                            {{ displayDetailTags ? 'Скрыть теги' : 'Показать теги' }}
                                                         </TableAction>
                                                     </TableActionsDropdown>
                                                 </div>
@@ -926,7 +961,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </div>
                                                 </TableCellPopover>
                                             </td>
-                                            <td class="min-w-[9rem]">
+                                            <td v-if="displayDetailSchedule" class="min-w-[9rem]">
                                                 <PaymentDetailScheduleStatus
                                                     :schedule="payment_detail.schedule"
                                                     compact
@@ -1071,17 +1106,19 @@ defineOptions({ layout: AuthenticatedLayout })
                                         />
                                     </div>
 
-                                    <div class="border-b border-base-content/10"></div>
+                                    <template v-if="displayDetailSchedule">
+                                        <div class="border-b border-base-content/10"></div>
 
-                                    <div class="text-xs">
-                                        <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
-                                            Расписание
+                                        <div class="text-xs">
+                                            <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
+                                                Расписание
+                                            </div>
+                                            <PaymentDetailScheduleStatus
+                                                :schedule="payment_detail.schedule"
+                                                compact
+                                            />
                                         </div>
-                                        <PaymentDetailScheduleStatus
-                                            :schedule="payment_detail.schedule"
-                                            compact
-                                        />
-                                    </div>
+                                    </template>
 
                                     <div class="border-b border-base-content/10"></div>
 
@@ -1242,8 +1279,6 @@ defineOptions({ layout: AuthenticatedLayout })
         <PaymentDetailBulkEditModal :tags="paymentDetailTags" />
         <PaymentDetailTagCreateModal />
         <PaymentDetailTagManageModal :tags="paymentDetailTags" />
-        <PaymentDetailScheduleQuickCreateModal v-if="isTraderView" />
-        <PaymentDetailScheduleManagerModal v-if="isTraderView" />
         <ConfirmModal/>
     </div>
 </template>

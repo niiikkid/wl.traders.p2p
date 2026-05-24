@@ -49,7 +49,7 @@ const selectedSchedulePreview = computed(() => {
     const intervals = schedule.today_intervals || [];
     const intervalText = intervals.length
         ? intervals.map((interval) => `${interval.starts_at}-${interval.ends_at}`).join(', ')
-        : '—';
+        : null;
 
     return {
         name: schedule.name,
@@ -80,26 +80,27 @@ const clearSchedule = () => {
     emit('clear-error', 'payment_detail_schedule_id');
 };
 
-const openQuickCreate = () => {
-    modalStore.openPaymentDetailScheduleQuickCreateModal({
-        onCreated: (schedule) => {
-            if (schedule?.id) {
-                model.value = schedule.id;
-            }
-            emit('clear-error', 'payment_detail_schedule_id');
-        },
+const scheduleManagerParams = () => ({
+    onCreated: (schedule) => {
+        if (schedule?.id) {
+            model.value = schedule.id;
+        }
+        emit('clear-error', 'payment_detail_schedule_id');
+    },
+});
+
+const openCreateSchedule = () => {
+    modalStore.openPaymentDetailScheduleManagerModal({
+        ...scheduleManagerParams(),
+        startInCreate: true,
+        closeOnCreate: true,
     });
 };
 
 const openScheduleManager = () => {
     modalStore.openPaymentDetailScheduleManagerModal({
+        ...scheduleManagerParams(),
         scheduleId: model.value || null,
-        onCreated: (schedule) => {
-            if (schedule?.id) {
-                model.value = schedule.id;
-            }
-            emit('clear-error', 'payment_detail_schedule_id');
-        },
     });
 };
 
@@ -118,7 +119,6 @@ const refreshSchedulesAfterModal = (modalKey) => {
     );
 };
 
-refreshSchedulesAfterModal('paymentDetailScheduleQuickCreate');
 refreshSchedulesAfterModal('paymentDetailScheduleManager');
 </script>
 
@@ -167,7 +167,7 @@ refreshSchedulesAfterModal('paymentDetailScheduleManager');
                 <span class="font-medium">{{ selectedSchedulePreview.name }}</span>
                 <span class="opacity-70"> — {{ selectedSchedulePreview.status_label }}</span>
             </div>
-            <div class="opacity-70">
+            <div v-if="selectedSchedulePreview.intervalText" class="opacity-70">
                 Сегодня: {{ selectedSchedulePreview.intervalText }}
             </div>
         </div>
@@ -187,7 +187,7 @@ refreshSchedulesAfterModal('paymentDetailScheduleManager');
                 type="button"
                 class="btn btn-sm btn-outline"
                 :disabled="disabled || loading"
-                @click="openQuickCreate"
+                @click="openCreateSchedule"
             >
                 Создать расписание
             </button>

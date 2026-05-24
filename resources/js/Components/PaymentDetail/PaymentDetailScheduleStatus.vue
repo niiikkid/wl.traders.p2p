@@ -48,12 +48,12 @@ const showScheduleName = computed(
             <div v-if="showScheduleName" class="truncate font-medium text-base-content">
                 {{ display.scheduleName }}
             </div>
-            <div class="text-base-content/70 text-nowrap">
+            <div
+                v-if="display.intervalText"
+                class="text-base-content/70 text-nowrap"
+            >
                 {{ display.intervalText }}
             </div>
         </template>
-        <div v-else class="text-base-content/50">
-            —
-        </div>
     </div>
 </template>

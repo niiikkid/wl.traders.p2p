@@ -9,7 +9,7 @@ const loaded = ref(false);
 const buildDefaultWeekdayIntervals = () => {
     const intervals = [];
 
-    for (let day = 1; day <= 5; day += 1) {
+    for (let day = 1; day <= 7; day += 1) {
         intervals.push({
             day_of_week: day,
             starts_at: '09:00',

@@ -85,10 +85,6 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
-                paymentDetailScheduleQuickCreate: {
-                    showed: false,
-                    params: {},
-                },
                 paymentDetailScheduleManager: {
                     showed: false,
                     params: {},
@@ -153,7 +149,6 @@ export const useModalStore = defineStore('modal', {
         paymentDetailBulkEditModal: (state) => state.modals.paymentDetailBulkEdit,
         paymentDetailTagCreateModal: (state) => state.modals.paymentDetailTagCreate,
         paymentDetailTagManageModal: (state) => state.modals.paymentDetailTagManage,
-        paymentDetailScheduleQuickCreateModal: (state) => state.modals.paymentDetailScheduleQuickCreate,
         paymentDetailScheduleManagerModal: (state) => state.modals.paymentDetailScheduleManager,
         merchantCreateModal: (state) => state.modals.merchantCreate,
         merchantSettingsModal: (state) => state.modals.merchantSettings,
@@ -248,9 +243,6 @@ export const useModalStore = defineStore('modal', {
         },
         openPaymentDetailTagManageModal(props) {
             this.openModal('paymentDetailTagManage', props);
-        },
-        openPaymentDetailScheduleQuickCreateModal(props) {
-            this.openModal('paymentDetailScheduleQuickCreate', props);
         },
         openPaymentDetailScheduleManagerModal(props) {
             this.openModal('paymentDetailScheduleManager', props);
