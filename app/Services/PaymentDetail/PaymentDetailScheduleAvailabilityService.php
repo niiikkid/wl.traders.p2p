@@ -27,6 +27,68 @@ class PaymentDetailScheduleAvailabilityService
         ];
     }
 
+    /**
+     * @return array{
+     *     total: int,
+     *     with_schedule: int,
+     *     counts: array<string, int>,
+     *     server_timezone: string,
+     *     server_now: string
+     * }
+     */
+    public function buildPaymentDetailSummary(Builder $query, ?CarbonInterface $at = null): array
+    {
+        $at = $at ?? now();
+        $clock = $this->serverClockPayload($at);
+
+        $counts = [];
+
+        foreach (PaymentDetailScheduleStatus::cases() as $status) {
+            $counts[$status->value] = 0;
+        }
+
+        $total = (clone $query)->count();
+        $not_configured = (clone $query)->whereNull('payment_detail_schedule_id')->count();
+        $counts[PaymentDetailScheduleStatus::NotConfigured->value] = $not_configured;
+
+        $schedule_counts = (clone $query)
+            ->whereNotNull('payment_detail_schedule_id')
+            ->select('payment_detail_schedule_id')
+            ->selectRaw('COUNT(*) as payment_details_count')
+            ->groupBy('payment_detail_schedule_id')
+            ->pluck('payment_details_count', 'payment_detail_schedule_id');
+
+        if ($schedule_counts->isNotEmpty()) {
+            $schedules = PaymentDetailSchedule::query()
+                ->with('intervals')
+                ->whereIn('id', $schedule_counts->keys())
+                ->get()
+                ->keyBy('id');
+
+            foreach ($schedule_counts as $schedule_id => $detail_count) {
+                $detail_count = (int) $detail_count;
+                $schedule = $schedules->get($schedule_id);
+
+                if (! $schedule) {
+                    $counts[PaymentDetailScheduleStatus::Invalid->value] += $detail_count;
+
+                    continue;
+                }
+
+                $status = $this->resolveStatus($schedule, $at)['status'];
+                $counts[$status] += $detail_count;
+            }
+        }
+
+        return [
+            'total' => $total,
+            'with_schedule' => $total - $not_configured,
+            'counts' => $counts,
+            'server_timezone' => $clock['server_timezone'],
+            'server_now' => $clock['server_now'],
+        ];
+    }
+
     public function applyAvailableBySchedule(Builder $query, ?CarbonInterface $at = null): Builder
     {
         $at = $at ?? now();

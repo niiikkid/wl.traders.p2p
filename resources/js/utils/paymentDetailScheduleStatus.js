@@ -265,3 +265,143 @@ export function scheduleStatusBadgeClass(status) {
             return 'badge-ghost badge-outline';
     }
 }
+
+const SUMMARY_SHORT_LABELS = {
+    [SCHEDULE_STATUS.WORKING]: 'Работают',
+    [SCHEDULE_STATUS.STARTS_LATER]: 'Скоро начнут',
+    [SCHEDULE_STATUS.BREAK_UNTIL]: 'Перерыв',
+    [SCHEDULE_STATUS.DAY_OFF]: 'Выходной',
+    [SCHEDULE_STATUS.FINISHED]: 'Закончили',
+    [SCHEDULE_STATUS.INVALID]: 'Ошибка',
+    [SCHEDULE_STATUS.NOT_CONFIGURED]: 'Без расписания',
+};
+
+const SUMMARY_STATUS_ORDER = [
+    SCHEDULE_STATUS.WORKING,
+    SCHEDULE_STATUS.STARTS_LATER,
+    SCHEDULE_STATUS.BREAK_UNTIL,
+    SCHEDULE_STATUS.DAY_OFF,
+    SCHEDULE_STATUS.FINISHED,
+    SCHEDULE_STATUS.INVALID,
+    SCHEDULE_STATUS.NOT_CONFIGURED,
+];
+
+const SUMMARY_COUNT_LABELS = {
+    [SCHEDULE_STATUS.WORKING]: {
+        one: 'реквизит работает',
+        few: 'реквизита работают',
+        many: 'реквизитов работают',
+    },
+    [SCHEDULE_STATUS.STARTS_LATER]: {
+        one: 'реквизит скоро начнёт работу',
+        few: 'реквизита скоро начнут работу',
+        many: 'реквизитов скоро начнут работу',
+    },
+    [SCHEDULE_STATUS.BREAK_UNTIL]: {
+        one: 'реквизит на перерыве',
+        few: 'реквизита на перерыве',
+        many: 'реквизитов на перерыве',
+    },
+    [SCHEDULE_STATUS.DAY_OFF]: {
+        one: 'реквизит отдыхает сегодня',
+        few: 'реквизита отдыхают сегодня',
+        many: 'реквизитов отдыхают сегодня',
+    },
+    [SCHEDULE_STATUS.FINISHED]: {
+        one: 'реквизит уже отработал сегодня',
+        few: 'реквизита уже отработали сегодня',
+        many: 'реквизитов уже отработали сегодня',
+    },
+    [SCHEDULE_STATUS.INVALID]: {
+        one: 'реквизит с ошибкой расписания',
+        few: 'реквизита с ошибкой расписания',
+        many: 'реквизитов с ошибкой расписания',
+    },
+    [SCHEDULE_STATUS.NOT_CONFIGURED]: {
+        one: 'реквизит без расписания',
+        few: 'реквизита без расписания',
+        many: 'реквизитов без расписания',
+    },
+};
+
+function pluralizeCount(count, forms) {
+    const abs = Math.abs(count) % 100;
+    const last = abs % 10;
+
+    if (abs > 10 && abs < 20) {
+        return forms.many;
+    }
+
+    if (last > 1 && last < 5) {
+        return forms.few;
+    }
+
+    if (last === 1) {
+        return forms.one;
+    }
+
+    return forms.many;
+}
+
+function normalizePaymentDetailRows(paymentDetails) {
+    if (Array.isArray(paymentDetails)) {
+        return paymentDetails;
+    }
+
+    return paymentDetails?.data ?? [];
+}
+
+function buildSummaryItemsFromCounts(counts) {
+    return SUMMARY_STATUS_ORDER
+        .filter((status) => (counts[status] ?? 0) > 0)
+        .map((status) => ({
+            status,
+            count: counts[status],
+            shortLabel: SUMMARY_SHORT_LABELS[status],
+            countLabel: `${counts[status]} ${pluralizeCount(counts[status], SUMMARY_COUNT_LABELS[status])}`,
+            badgeClass: scheduleStatusBadgeClass(status),
+        }));
+}
+
+/**
+ * @param {{ total?: number, with_schedule?: number, counts?: Record<string, number> }|null|undefined} summaryPayload
+ * @returns {{ total: number, withSchedule: number, counts: Record<string, number>, items: Array<{ status: string, count: number, shortLabel: string, countLabel: string, badgeClass: string }> }}
+ */
+export function buildScheduleSummaryDisplay(summaryPayload) {
+    const counts = summaryPayload?.counts ?? {};
+    const total = summaryPayload?.total ?? 0;
+    const withSchedule = summaryPayload?.with_schedule ?? 0;
+
+    return {
+        total,
+        withSchedule,
+        counts,
+        items: buildSummaryItemsFromCounts(counts),
+    };
+}
+
+/**
+ * @param {Array|object|null} paymentDetails
+ * @param {number} offsetMs
+ * @returns {{ total: number, withSchedule: number, counts: Record<string, number>, items: Array<{ status: string, count: number, shortLabel: string, countLabel: string, badgeClass: string }> }}
+ */
+export function computePaymentDetailScheduleSummary(paymentDetails, offsetMs = 0) {
+    const rows = normalizePaymentDetailRows(paymentDetails);
+    const counts = Object.fromEntries(
+        Object.values(SCHEDULE_STATUS).map((status) => [status, 0]),
+    );
+
+    for (const detail of rows) {
+        const display = resolvePaymentDetailScheduleDisplay(detail?.schedule ?? null, offsetMs);
+        counts[display.status] += 1;
+    }
+
+    const withSchedule = rows.length - counts[SCHEDULE_STATUS.NOT_CONFIGURED];
+
+    return {
+        total: rows.length,
+        withSchedule,
+        counts,
+        items: buildSummaryItemsFromCounts(counts),
+    };
+}

@@ -59,8 +59,8 @@ export function usePaymentDetailScheduleTableTick(paymentDetailsRef, scheduleSer
                 lastServerDateKey = dateKey;
 
                 const reloadProps = scheduleServerClockRef
-                    ? ['paymentDetails', 'scheduleServerClock']
-                    : ['paymentDetails'];
+                    ? ['paymentDetails', 'scheduleServerClock', 'scheduleSummary']
+                    : ['paymentDetails', 'scheduleSummary'];
 
                 router.reload({
                     only: reloadProps,

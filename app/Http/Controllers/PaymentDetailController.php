@@ -54,9 +54,16 @@ class PaymentDetailController extends Controller
         $this->appendSuccessfulOrdersStats($paymentDetails->getCollection());
 
         $paymentDetails = PaymentDetailResource::collection($paymentDetails);
-        $scheduleServerClock = app(PaymentDetailScheduleAvailabilityService::class)->serverClockPayload();
+        $scheduleAvailabilityService = app(PaymentDetailScheduleAvailabilityService::class);
+        $scheduleServerClock = $scheduleAvailabilityService->serverClockPayload();
+        $scheduleSummary = $scheduleAvailabilityService->buildPaymentDetailSummary(
+            PaymentDetail::query()
+                ->where('user_id', auth()->id())
+                ->when(! $fromArchive, fn ($query) => $query->whereNull('archived_at'))
+                ->when($fromArchive, fn ($query) => $query->whereNotNull('archived_at')),
+        );
 
-        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants', 'paymentDetailTags', 'scheduleServerClock'));
+        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants', 'paymentDetailTags', 'scheduleServerClock', 'scheduleSummary'));
     }
 
     public function create()

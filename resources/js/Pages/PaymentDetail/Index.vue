@@ -7,7 +7,7 @@ import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue"
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
-import {computed, onMounted, ref, unref, watch} from "vue";
+import {computed, onBeforeUnmount, onMounted, ref, unref, watch} from "vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
@@ -27,6 +27,7 @@ import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetail
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
 import PaymentDetailScheduleServerClock from "@/Components/PaymentDetail/PaymentDetailScheduleServerClock.vue";
+import PaymentDetailScheduleSummary from "@/Components/PaymentDetail/PaymentDetailScheduleSummary.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailScheduleTableTick.js";
@@ -58,6 +59,7 @@ const openBulkEditModal = () => {
 const viewStore = useViewStore();
 const paymentDetails = ref(usePage().props.paymentDetails)
 const scheduleServerClock = ref(usePage().props.scheduleServerClock)
+const scheduleSummary = ref(usePage().props.scheduleSummary)
 usePaymentDetailScheduleTableTick(paymentDetails, scheduleServerClock);
 const paymentDetailTags = ref(usePage().props.paymentDetailTags || [])
 const detailActiveToggleForm = useForm({});
@@ -85,6 +87,7 @@ const displayShortDetail = ref(getCookieValue('displayShortDetail', true));
 const displayDetailLastDeal = ref(getCookieValue('displayDetailLastDeal', true));
 const displayDetailTags = ref(getCookieValue('displayDetailTags', false));
 const displayDetailSchedule = ref(getCookieValue('displayDetailSchedule', true));
+const displayScheduleSummary = ref(false);
 
 function getCookieValue(name, defaultValue) {
     const currentRoute = route().current();
@@ -130,8 +133,42 @@ const updateDisplayDetailScheduleCookie = () => {
     document.cookie = `${cookieName}=${displayDetailSchedule.value}; path=/; max-age=31536000`;
 };
 
-watch(displayDetailSchedule, () => {
+watch(displayDetailSchedule, (visible) => {
     updateDisplayDetailScheduleCookie();
+
+    if (!visible) {
+        displayScheduleSummary.value = false;
+    }
+});
+
+let scheduleSummaryTimer = null;
+
+const reloadScheduleSummary = () => {
+    router.reload({
+        only: ['scheduleSummary'],
+        preserveScroll: true,
+    });
+};
+
+watch(displayScheduleSummary, (visible) => {
+    if (scheduleSummaryTimer) {
+        clearInterval(scheduleSummaryTimer);
+        scheduleSummaryTimer = null;
+    }
+
+    if (!visible) {
+        return;
+    }
+
+    reloadScheduleSummary();
+    scheduleSummaryTimer = setInterval(reloadScheduleSummary, 30_000);
+});
+
+onBeforeUnmount(() => {
+    if (scheduleSummaryTimer) {
+        clearInterval(scheduleSummaryTimer);
+        scheduleSummaryTimer = null;
+    }
 });
 
 const showTableColumnToggles = computed(() => viewStore.isAdminViewMode || isTraderView.value);
@@ -251,6 +288,7 @@ const toggleActive = (detail_id) => {
 router.on('success', (event) => {
     paymentDetails.value = usePage().props.paymentDetails;
     scheduleServerClock.value = usePage().props.scheduleServerClock;
+    scheduleSummary.value = usePage().props.scheduleSummary;
     paymentDetailTags.value = usePage().props.paymentDetailTags || [];
     selectedDetailIds.value = [];
 })
@@ -658,7 +696,22 @@ defineOptions({ layout: AuthenticatedLayout })
                             Расписание
                         </button>
                         <PaymentDetailScheduleServerClock v-if="displayDetailSchedule" />
+                        <button
+                            v-if="displayDetailSchedule"
+                            type="button"
+                            class="badge badge-sm cursor-pointer border font-medium transition-colors"
+                            :class="columnToggleBadgeClass(displayScheduleSummary)"
+                            :title="displayScheduleSummary ? 'Скрыть сводку по расписанию' : 'Показать сводку по расписанию'"
+                            @click="displayScheduleSummary = !displayScheduleSummary"
+                        >
+                            Сводка
+                        </button>
                     </div>
+
+                    <PaymentDetailScheduleSummary
+                        v-if="displayDetailSchedule && displayScheduleSummary && scheduleSummary"
+                        :summary="scheduleSummary"
+                    />
 
                     <!-- Desktop/tablet view (table) -->
                     <div class="hidden xl:block rounded-table relative">
