@@ -25,7 +25,7 @@ const confirm = () => {
 </script>
 
 <template>
-    <Modal :show="confirmModal.showed" max-width="md" @close="close">
+    <Modal :show="confirmModal.showed" max-width="md" :stack-level="1" @close="close">
         <div class="space-y-3">
             <h2 class="text-lg font-semibold text-base-content">
                 {{ confirmModal.params.title }}
