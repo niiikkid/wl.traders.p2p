@@ -9,14 +9,22 @@ use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TransactionResource;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\User\TeamLeaderInsuranceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class WalletController extends Controller
 {
+    public function __construct(
+        private readonly TeamLeaderInsuranceService $teamLeaderInsuranceService,
+    ) {}
+
     public function index(Request $request)
     {
-        $balanceType = $this->resolveBalanceType($request);
+        $user = $request->user();
+        $teamLeaderUsesSharedReserve = $request->routeIs('leader.finances.index')
+            && $user instanceof User
+            && $this->teamLeaderInsuranceService->teamLeaderUsesSharedReserve($user);
 
         /**
          * @var Wallet $wallet
@@ -64,6 +72,14 @@ class WalletController extends Controller
             ],
         ];
 
+        if ($teamLeaderUsesSharedReserve) {
+            $balanceFilterVariants = $this->teamLeaderInsuranceService->sharedReserveHistoryBalanceFilterVariants();
+            $filters['invoices']['balanceTypes'] = $balanceFilterVariants;
+            $filters['transactions']['balanceTypes'] = $balanceFilterVariants;
+            $currentFilters['invoices']['balanceTypes'] = request()->input('currentFilters.invoices.balanceTypes', 'all');
+            $currentFilters['transactions']['balanceTypes'] = request()->input('currentFilters.transactions.balanceTypes', 'all');
+        }
+
         $walletStats = services()->wallet()->getWalletStats($wallet)->toArray();
 
         $invoices = null;
@@ -73,13 +89,13 @@ class WalletController extends Controller
             $invoices = queries()->invoice()->paginate(
                 wallet: $wallet,
                 invoiceType: InvoiceType::tryFrom($currentFilters['invoices']['invoiceTypes']),
-                balanceType: $balanceType,
+                balanceType: $this->resolvePaginatedHistoryBalanceType($request, $teamLeaderUsesSharedReserve, $currentFilters['invoices']['balanceTypes'] ?? 'all'),
             );
             $invoices = InvoiceResource::collection($invoices);
         } elseif ($currentTab === 'transactions') {
             $transactions = queries()->transaction()->paginate(
                 wallet: $wallet,
-                balanceType: $balanceType,
+                balanceType: $this->resolvePaginatedHistoryBalanceType($request, $teamLeaderUsesSharedReserve, $currentFilters['transactions']['balanceTypes'] ?? 'all'),
             );
             $transactions = TransactionResource::collection($transactions);
         }
@@ -109,8 +125,22 @@ class WalletController extends Controller
         }
 
         $traderBalanceTransfer = $this->traderBalanceTransferProps($request, $wallet);
+        $teamLeaderInsurance = $this->teamLeaderInsuranceProps($request);
+        $walletHistoryShowsBalanceType = $teamLeaderUsesSharedReserve;
 
-        return Inertia::render('Wallet/Index', compact('walletStats', 'invoices', 'transactions', 'tabs', 'filters', 'currentTab', 'currentFilters', 'walletSurfaces', 'traderBalanceTransfer'));
+        return Inertia::render('Wallet/Index', compact(
+            'walletStats',
+            'invoices',
+            'transactions',
+            'tabs',
+            'filters',
+            'currentTab',
+            'currentFilters',
+            'walletSurfaces',
+            'traderBalanceTransfer',
+            'teamLeaderInsurance',
+            'walletHistoryShowsBalanceType',
+        ));
     }
 
     public function updateFiatCurrency(UpdateFiatCurrencyRequest $request)
@@ -177,5 +207,31 @@ class WalletController extends Controller
             'agent.finances.index' => BalanceType::AGENT,
             'provider-liquidity.wallet.index' => BalanceType::PROVIDER,
         };
+    }
+
+    private function resolvePaginatedHistoryBalanceType(
+        Request $request,
+        bool $teamLeaderUsesSharedReserve,
+        string $balanceFilterKey,
+    ): ?BalanceType {
+        if ($teamLeaderUsesSharedReserve) {
+            return $this->teamLeaderInsuranceService->resolveSharedReserveHistoryBalanceType($balanceFilterKey);
+        }
+
+        return $this->resolveBalanceType($request);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function teamLeaderInsuranceProps(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        return $this->teamLeaderInsuranceService->teamLeaderInsurancePropsForUser($user);
     }
 }

@@ -95,6 +95,12 @@ const withdraw = () => {
                 @close="close"
             />
         </template>
+        <template v-if="balanceType === 'reserve'">
+            <ModalHeader
+                title="Вывод общего страхового резерва"
+                @close="close"
+            />
+        </template>
         <template v-if="balanceType === 'provider'">
             <ModalHeader
                 :title="providerWithdrawalModalTitle"

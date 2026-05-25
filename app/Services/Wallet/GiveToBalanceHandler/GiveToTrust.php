@@ -21,6 +21,24 @@ class GiveToTrust extends GiveToBalance
 
         $wallet->loadMissing('user');
 
+        if ($wallet->user->usesTeamLeaderSharedReserve()) {
+            $wallet->update([
+                'trust_balance' => $wallet->trust_balance->add($amount),
+            ]);
+
+            Transaction::create([
+                'amount' => $amount,
+                'direction' => TransactionDirection::IN,
+                'type' => $transactionType,
+                'balance_type' => BalanceType::TRUST,
+                'wallet_id' => $wallet->id,
+                'transactionable_id' => $transactionable?->getKey(),
+                'transactionable_type' => $transactionable?->getMorphClass(),
+            ]);
+
+            return;
+        }
+
         $maxReserveBalance = services()->wallet()->getMaxReserveBalance($wallet->user);
         $reserveNeeded = Money::fromPrecision((string) $maxReserveBalance, $wallet->reserve_balance->getCurrency());
 

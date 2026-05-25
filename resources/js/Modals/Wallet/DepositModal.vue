@@ -8,7 +8,7 @@ import { storeToRefs } from 'pinia'
 import { useModalStore } from "@/store/modal.js";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
-import {router, useForm} from "@inertiajs/vue3";
+import {router, useForm, usePage} from "@inertiajs/vue3";
 import {computed} from "vue";
 import {useViewStore} from "@/store/view.js";
 import InputHelper from "@/Components/InputHelper.vue";
@@ -25,9 +25,21 @@ const modalStore = useModalStore();
 const { depositModal } = storeToRefs(modalStore);
 const viewStore = useViewStore();
 
+const page = usePage();
+
 const providerDepositModalTitle = computed(() =>
     viewStore.isAdminViewMode ? 'Пополнение баланса провайдера' : 'Пополнение баланса',
 );
+
+const trustDepositHelper = computed(() => {
+    const insurance = page.props.teamLeaderInsurance;
+
+    if (insurance?.role === 'trader' && insurance?.uses_shared_reserve) {
+        return 'Пополнение зачисляется на основной баланс. Резерв трейдера не используется.';
+    }
+
+    return 'Если резерв меньше 1000 USDT, то часть депозита зачислится в резерв.';
+});
 
 const close = () => {
     modalStore.closeModal('deposit')
@@ -76,6 +88,12 @@ const deposit = () => {
                 @close="close"
             />
         </template>
+        <template v-if="balanceType === 'reserve'">
+            <ModalHeader
+                title="Пополнение общего страхового резерва"
+                @close="close"
+            />
+        </template>
         <template v-if="balanceType === 'provider'">
             <ModalHeader
                 :title="providerDepositModalTitle"
@@ -113,7 +131,13 @@ const deposit = () => {
 
                             <InputError class="mt-2" :message="form.errors.amount" />
                             <template v-if="balanceType === 'trust'">
-                                <InputHelper v-if="! form.errors.amount" model-value="Если резерв меньше 1000 USDT, то часть депозита зачислится в резерв."></InputHelper>
+                                <InputHelper v-if="! form.errors.amount" :model-value="trustDepositHelper" />
+                            </template>
+                            <template v-if="balanceType === 'reserve'">
+                                <InputHelper
+                                    v-if="! form.errors.amount"
+                                    model-value="Средства зачисляются только на резервный баланс Team Leader."
+                                />
                             </template>
                         </div>
 

@@ -74,6 +74,7 @@ use App\Http\Controllers\Support\EnabledCardsController;
 use App\Http\Controllers\Support\FilterController;
 use App\Http\Controllers\Support\TraderAnalyticsController;
 use App\Http\Controllers\Support\UserController;
+use App\Http\Controllers\TeamLeader\DepositInvoiceController as TeamLeaderDepositInvoiceController;
 use App\Http\Controllers\TeamLeader\ReferralController;
 use App\Http\Controllers\TeamLeader\TraderController;
 use App\Http\Controllers\TeamLeader\TraderDisputeController;
@@ -173,6 +174,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/main', [MainPageController::class, 'leader'])->name('main.index');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/finances', [WalletController::class, 'index'])->name('finances.index');
+        Route::post('/deposit/invoices', [TeamLeaderDepositInvoiceController::class, 'store'])->name('deposit.invoices.store');
         Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
         Route::get('/traders', [TraderController::class, 'index'])->name('traders.index');
         Route::patch('/traders/{trader}/toggle-online', [TraderController::class, 'toggleOnline'])->name('traders.toggle-online');

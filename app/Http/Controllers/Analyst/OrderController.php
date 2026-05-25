@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Analyst;
 
-use App\Enums\BalanceType;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TableOrderResource;
 use App\Models\Order;
 use App\Services\Money\Money;
+use App\Services\Order\OrderTraderDebitService;
 use App\Utils\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -39,10 +39,9 @@ class OrderController extends Controller
             return;
         }
 
-        $balance = services()->wallet()->getTotalAvailableBalance(
-            wallet: $order->trader->wallet,
-            balanceType: BalanceType::TRUST,
-        );
+        $order->trader->loadMissing(['wallet', 'teamLeader.wallet']);
+
+        $balance = app(OrderTraderDebitService::class)->getAvailableDebitBalance($order->trader);
 
         if ($balance->lessThan($order->trader_paid_for_order) && $order->status->equals(OrderStatus::FAIL)) {
             return redirect()->back()->with('error', 'Не достаточно средств на балансе.');

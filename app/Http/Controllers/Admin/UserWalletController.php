@@ -15,6 +15,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\User\TeamLeaderInsuranceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Maatwebsite\Excel\Facades\Excel;
@@ -22,9 +23,13 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class UserWalletController extends Controller
 {
+    public function __construct(
+        private readonly TeamLeaderInsuranceService $teamLeaderInsuranceService,
+    ) {}
+
     public function index(User $user)
     {
-        $user->loadMissing(['roles', 'wallet']);
+        $user->loadMissing(['roles', 'wallet', 'teamLeader']);
 
         $wallet = $user->wallet;
 
@@ -89,6 +94,10 @@ class UserWalletController extends Controller
                             'key' => BalanceType::AGENT->value,
                             'name' => 'Агент',
                         ],
+                        BalanceType::RESERVE->value => [
+                            'key' => BalanceType::RESERVE->value,
+                            'name' => 'Резерв',
+                        ],
                     ],
                 ],
                 'transactions' => [
@@ -117,6 +126,10 @@ class UserWalletController extends Controller
                             'key' => BalanceType::AGENT->value,
                             'name' => 'Агент',
                         ],
+                        BalanceType::RESERVE->value => [
+                            'key' => BalanceType::RESERVE->value,
+                            'name' => 'Резерв',
+                        ],
                     ],
                 ],
             ];
@@ -141,6 +154,9 @@ class UserWalletController extends Controller
                 ? null
                 : BalanceType::tryFrom($transactionBalanceFilter);
         } else {
+            $teamLeaderUsesSharedReserve = $user->hasRole('Team Leader')
+                && $this->teamLeaderInsuranceService->teamLeaderUsesSharedReserve($user);
+
             $filters = [
                 'invoices' => [
                     'invoiceTypes' => [
@@ -166,9 +182,23 @@ class UserWalletController extends Controller
                 ],
             ];
 
-            $scopedBalanceType = $this->resolveScopedBalanceType($user);
-            $invoicesBalanceType = $scopedBalanceType;
-            $transactionsBalanceType = $scopedBalanceType;
+            if ($teamLeaderUsesSharedReserve) {
+                $balanceFilterVariants = $this->teamLeaderInsuranceService->sharedReserveHistoryBalanceFilterVariants();
+                $filters['invoices']['balanceTypes'] = $balanceFilterVariants;
+                $filters['transactions']['balanceTypes'] = $balanceFilterVariants;
+                $currentFilters['invoices']['balanceTypes'] = request()->input('currentFilters.invoices.balanceTypes', 'all');
+                $currentFilters['transactions']['balanceTypes'] = request()->input('currentFilters.transactions.balanceTypes', 'all');
+
+                $invoiceBalanceFilter = $currentFilters['invoices']['balanceTypes'];
+                $transactionBalanceFilter = $currentFilters['transactions']['balanceTypes'];
+                $invoicesBalanceType = $this->teamLeaderInsuranceService->resolveSharedReserveHistoryBalanceType($invoiceBalanceFilter);
+                $transactionsBalanceType = $this->teamLeaderInsuranceService->resolveSharedReserveHistoryBalanceType($transactionBalanceFilter);
+            } else {
+                $scopedBalanceType = $this->resolveScopedBalanceType($user);
+                $historyBalanceType = $this->resolveHistoryBalanceType($user, $scopedBalanceType);
+                $invoicesBalanceType = $historyBalanceType;
+                $transactionsBalanceType = $historyBalanceType;
+            }
         }
 
         $walletStats = services()->wallet()->getWalletStats($wallet)->toArray();
@@ -191,6 +221,10 @@ class UserWalletController extends Controller
             $transactions = TransactionResource::collection($transactions);
         }
 
+        $teamLeaderInsurance = $this->teamLeaderInsuranceService->teamLeaderInsurancePropsForUser($user);
+        $walletHistoryShowsBalanceType = $walletAdminFullView
+            || ($user->hasRole('Team Leader') && $this->teamLeaderInsuranceService->teamLeaderUsesSharedReserve($user));
+
         $user = UserResource::make($user)->resolve();
 
         return Inertia::render('Wallet/Index', compact(
@@ -204,6 +238,8 @@ class UserWalletController extends Controller
             'currentFilters',
             'walletSurfaces',
             'walletAdminFullView',
+            'teamLeaderInsurance',
+            'walletHistoryShowsBalanceType',
         ));
     }
 
@@ -250,7 +286,7 @@ class UserWalletController extends Controller
     /**
      * Карточки балансов на странице «как у пользователя с этой ролью», кроме Super Admin (ему — все сразу).
      *
-     * @return array{trust: bool, merchant: bool, teamleader: bool, provider: bool, agent: bool, escrow: bool, dispute: bool}
+     * @return array{trust: bool, merchant: bool, teamleader: bool, reserve: bool, provider: bool, agent: bool, escrow: bool, dispute: bool}
      */
     private function walletSurfacesForUser(User $user): array
     {
@@ -259,6 +295,7 @@ class UserWalletController extends Controller
                 'trust' => true,
                 'merchant' => true,
                 'teamleader' => true,
+                'reserve' => true,
                 'provider' => true,
                 'agent' => true,
                 'escrow' => true,
@@ -271,6 +308,7 @@ class UserWalletController extends Controller
                 'trust' => false,
                 'merchant' => true,
                 'teamleader' => false,
+                'reserve' => false,
                 'provider' => false,
                 'agent' => false,
                 'escrow' => false,
@@ -283,6 +321,7 @@ class UserWalletController extends Controller
                 'trust' => true,
                 'merchant' => false,
                 'teamleader' => false,
+                'reserve' => false,
                 'provider' => false,
                 'agent' => false,
                 'escrow' => true,
@@ -291,10 +330,13 @@ class UserWalletController extends Controller
         }
 
         if ($user->hasRole('Team Leader')) {
+            $sharedReserve = $this->teamLeaderInsuranceService->teamLeaderUsesSharedReserve($user);
+
             return [
                 'trust' => false,
                 'merchant' => false,
                 'teamleader' => true,
+                'reserve' => $sharedReserve,
                 'provider' => false,
                 'agent' => false,
                 'escrow' => false,
@@ -307,6 +349,7 @@ class UserWalletController extends Controller
                 'trust' => false,
                 'merchant' => false,
                 'teamleader' => false,
+                'reserve' => false,
                 'provider' => true,
                 'agent' => false,
                 'escrow' => false,
@@ -319,6 +362,7 @@ class UserWalletController extends Controller
                 'trust' => false,
                 'merchant' => false,
                 'teamleader' => false,
+                'reserve' => false,
                 'provider' => false,
                 'agent' => true,
                 'escrow' => false,
@@ -331,6 +375,7 @@ class UserWalletController extends Controller
                 'trust' => true,
                 'merchant' => false,
                 'teamleader' => false,
+                'reserve' => false,
                 'provider' => false,
                 'agent' => false,
                 'escrow' => true,
@@ -342,6 +387,7 @@ class UserWalletController extends Controller
             'trust' => true,
             'merchant' => false,
             'teamleader' => false,
+            'reserve' => false,
             'provider' => false,
             'agent' => false,
             'escrow' => true,
@@ -374,6 +420,11 @@ class UserWalletController extends Controller
         }
 
         return BalanceType::TRUST;
+    }
+
+    private function resolveHistoryBalanceType(User $user, BalanceType $scopedBalanceType): ?BalanceType
+    {
+        return $scopedBalanceType;
     }
 
     public function deposit(DepositRequest $request, User $user)

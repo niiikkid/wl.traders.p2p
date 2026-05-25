@@ -6,6 +6,7 @@ import Pagination from "@/Components/Pagination/Pagination.vue";
 import TableEmptyState from "@/Components/TableEmptyState.vue";
 import DateTime from "@/Components/DateTime.vue";
 import CopyAddress from "@/Components/CopyAddress.vue";
+import {walletBalanceTypeLabel} from "@/utils/walletBalanceTypeLabel.js";
 
 const viewStore = useViewStore();
 
@@ -13,6 +14,22 @@ const page = usePage();
 
 /** Полный доступ к типам балансов в таблице — только при просмотре кошелька Super Admin в админке. */
 const walletAdminFullView = computed(() => Boolean(page.props.walletAdminFullView));
+
+const walletHistoryShowsBalanceType = computed(() => Boolean(page.props.walletHistoryShowsBalanceType));
+
+const sharedReserveHistoryContext = computed(() => (
+    walletHistoryShowsBalanceType.value
+    && !walletAdminFullView.value
+));
+
+const showHistoryBalanceTypeColumn = computed(() => (
+    walletAdminFullView.value
+    || walletHistoryShowsBalanceType.value
+));
+
+const balanceTypeLabel = (balanceType) => walletBalanceTypeLabel(balanceType, {
+    sharedReserveContext: sharedReserveHistoryContext.value || walletHistoryShowsBalanceType.value,
+});
 
 const user = page.props.user;
 const invoices = ref(page.props.invoices);
@@ -178,13 +195,9 @@ const openTransactionsExport = () => {
                                         <template v-if="invoice.type === 'withdrawal'">Вывод</template>
                                     </div>
                                 </td>
-                                <td v-show="viewStore.isAdminViewMode && walletAdminFullView">
+                                <td v-show="showHistoryBalanceTypeColumn">
                                     <div class="text-nowrap text-center">
-                                        <template v-if="invoice.balance_type === 'trust'">Траст</template>
-                                        <template v-else-if="invoice.balance_type === 'merchant'">Мерчант</template>
-                                        <template v-else-if="invoice.balance_type === 'teamleader'">Тимлид</template>
-                                        <template v-else-if="invoice.balance_type === 'provider'">Провайдер</template>
-                                        <template v-else-if="invoice.balance_type === 'agent'">Агент</template>
+                                        {{ balanceTypeLabel(invoice.balance_type) }}
                                     </div>
                                 </td>
                                 <td>
@@ -247,14 +260,10 @@ const openTransactionsExport = () => {
                                 <div class="text-right">
                                     <DateTime :data="invoice.created_at" />
                                 </div>
-                                <template v-if="viewStore.isAdminViewMode && walletAdminFullView">
+                                <template v-if="showHistoryBalanceTypeColumn">
                                     <div class="text-base-content/70 text-sm">Баланс</div>
                                     <div class="text-right">
-                                        <template v-if="invoice.balance_type === 'trust'">Траст</template>
-                                        <template v-else-if="invoice.balance_type === 'merchant'">Мерчант</template>
-                                        <template v-else-if="invoice.balance_type === 'teamleader'">Тимлид</template>
-                                        <template v-else-if="invoice.balance_type === 'provider'">Провайдер</template>
-                                        <template v-else-if="invoice.balance_type === 'agent'">Агент</template>
+                                        {{ balanceTypeLabel(invoice.balance_type) }}
                                     </div>
                                 </template>
                             </div>
@@ -314,6 +323,11 @@ const openTransactionsExport = () => {
                                         <p class="font-medium">{{ transaction.type_name }}</p>
                                     </div>
                                 </td>
+                                <td v-show="showHistoryBalanceTypeColumn">
+                                    <div class="text-nowrap text-center">
+                                        {{ balanceTypeLabel(transaction.balance_type) }}
+                                    </div>
+                                </td>
                                 <td class="text-nowrap">
                                     <div class="flex justify-center">
                                         <DateTime class="" :data="transaction.created_at"/>
@@ -351,6 +365,12 @@ const openTransactionsExport = () => {
                                 </div>
                                 <div class="text-base-content/70 text-sm">Тип</div>
                                 <div class="text-right">{{ transaction.type_name }}</div>
+                                <template v-if="showHistoryBalanceTypeColumn">
+                                    <div class="text-base-content/70 text-sm">Баланс</div>
+                                    <div class="text-right">
+                                        {{ balanceTypeLabel(transaction.balance_type) }}
+                                    </div>
+                                </template>
                                 <div class="text-base-content/70 text-sm">Дата</div>
                                 <div class="text-right">
                                     <DateTime :data="transaction.created_at" />

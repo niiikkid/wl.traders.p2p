@@ -58,8 +58,25 @@ class UserResource extends JsonResource
                 return [
                     'id' => $this->teamLeader->id,
                     'email' => $this->teamLeader->email,
+                    'team_leader_insurance_mode' => $this->teamLeader->team_leader_insurance_mode->value,
+                    'team_leader_insurance_mode_label' => $this->teamLeader->team_leader_insurance_mode->label(),
+                    'uses_team_leader_shared_reserve' => $this->teamLeader->team_leader_insurance_mode->usesSharedReserve(),
                 ];
             }),
+            'team_leader_insurance_mode' => $this->team_leader_insurance_mode->value,
+            'team_leader_insurance_mode_label' => $this->team_leader_insurance_mode->label(),
+            'team_leader_trader_limit' => $this->team_leader_trader_limit,
+            'team_leader_reserve_balance_limit' => $this->team_leader_reserve_balance_limit,
+            'team_leader_reserve_stop_threshold' => $this->team_leader_reserve_stop_threshold,
+            'connected_trader_count' => $this->when(
+                $this->hasRole('Team Leader'),
+                fn () => $this->connectedTraderCount()
+            ),
+            'remaining_team_leader_trader_slots' => $this->when(
+                $this->hasRole('Team Leader'),
+                fn () => $this->remainingTeamLeaderTraderSlots()
+            ),
+            'uses_team_leader_shared_reserve' => $this->usesTeamLeaderSharedReserve(),
             'agent' => $this->whenLoaded('agent', function () {
                 return $this->agent ? [
                     'id' => $this->agent->id,

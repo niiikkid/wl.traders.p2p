@@ -13,6 +13,7 @@ import Select from "@/Components/Select.vue";
 import {computed, ref, watch} from "vue";
 import { router } from '@inertiajs/vue3';
 import Multiselect from "@/Components/Form/Multiselect.vue";
+import TeamLeaderInsuranceFields from "@/Modals/User/Partials/TeamLeaderInsuranceFields.vue";
 
 const modalStore = useModalStore();
 const { userCreateModal } = storeToRefs(modalStore);
@@ -33,6 +34,10 @@ const form = ref({
     team_leader_id: [],
     agent_id: [],
     agent_commission_percentage: 0.2,
+    team_leader_insurance_mode: 'trader_reserve',
+    team_leader_trader_limit: null,
+    team_leader_reserve_balance_limit: null,
+    team_leader_reserve_stop_threshold: null,
 });
 
 const selectedRoleName = computed(() => {
@@ -49,6 +54,10 @@ const resetForm = () => {
         team_leader_id: [],
         agent_id: [],
         agent_commission_percentage: 0.2,
+        team_leader_insurance_mode: 'trader_reserve',
+        team_leader_trader_limit: null,
+        team_leader_reserve_balance_limit: null,
+        team_leader_reserve_stop_threshold: null,
     };
     errors.value = {};
 };
@@ -270,6 +279,13 @@ watch(
                         Необязательно. Агент будет получать комиссию с новых успешных сделок мерчанта.
                     </p>
                 </div>
+
+                <TeamLeaderInsuranceFields
+                    v-if="selectedRoleName === 'Team Leader'"
+                    :form="form"
+                    :errors="errors"
+                    :processing="processing"
+                />
 
                 <div v-if="selectedRoleName === 'Agent'">
                     <InputLabel

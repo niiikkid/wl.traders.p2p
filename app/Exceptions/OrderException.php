@@ -73,6 +73,11 @@ class OrderException extends BaseException
         return new self('Трафик временно остановлен администратором.');
     }
 
+    public static function teamLeaderReserveStopThresholdReached(): OrderException
+    {
+        return new self('Выдача сделок остановлена: резерв Team Leader на пороге или ниже.');
+    }
+
     public static function merchantApiRateRequired(string $currency): OrderException
     {
         return new self("Для валюты {$currency} требуется передать параметр rate.");

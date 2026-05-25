@@ -3,19 +3,22 @@
 namespace App\Services\Order\Features;
 
 use App\DTO\Order\AssignDetailsToOrderDTO;
-use App\Enums\BalanceType;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
 use App\Enums\TransactionType;
 use App\Events\DetailsAssignedToOrderEvent;
 use App\Exceptions\OrderException;
 use App\Models\Order;
+use App\Models\User;
 use App\Services\Order\Features\OrderDetailProvider\OrderDetailProvider;
+use App\Services\Order\OrderTraderDebitService;
 use App\Services\Order\Utils\DailyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
 use App\Services\Order\Utils\MonthlyLimit;
 use App\Services\Order\Utils\MonthlySuccessfulOrdersLimit;
+use App\Services\User\TeamLeaderInsuranceService;
 use App\Support\AgentCommission;
+use Illuminate\Support\Facades\Log;
 
 class OrderDetailAssigner
 {
@@ -62,6 +65,21 @@ class OrderDetailAssigner
             : AgentCommission::zero();
         $serviceProfit = $profits->serviceFee->sub($agentProfit);
 
+        $trader = User::query()
+            ->with(['teamLeader.wallet', 'wallet'])
+            ->find($details->trader->id);
+
+        if ($trader !== null && ! app(TeamLeaderInsuranceService::class)->canIssueOrdersForTrader($trader)) {
+            Log::warning('Order assign blocked: Team Leader reserve at or below stop threshold', [
+                'reason' => TeamLeaderInsuranceService::ORDER_ISSUE_BLOCK_REASON_RESERVE_THRESHOLD,
+                'order_id' => $this->order->id,
+                'trader_id' => $trader->id,
+                'team_leader_id' => $trader->team_leader_id,
+            ]);
+
+            throw OrderException::teamLeaderReserveStopThresholdReached();
+        }
+
         $this->order->update([
             'amount' => $details->amount,
             'total_profit' => $profits->convertedAmount,
@@ -94,13 +112,16 @@ class OrderDetailAssigner
         DailySuccessfulOrdersLimit::increment($this->order->payment_detail_id, $this->order->created_at);
         MonthlySuccessfulOrdersLimit::increment($this->order->payment_detail_id, $this->order->created_at);
 
-        services()->wallet()->takeFromBalance(
-            $this->order->trader->wallet->id,
-            $this->order->trader_paid_for_order,
-            TransactionType::PAYMENT_FOR_OPENED_ORDER,
-            BalanceType::TRUST,
+        $allocation = app(OrderTraderDebitService::class)->debit(
+            $trader ?? $this->order->trader,
+            $profits->traderDebit,
             $this->order,
+            TransactionType::PAYMENT_FOR_OPENED_ORDER,
         );
+
+        if ($allocation !== null) {
+            $this->order->update($allocation->toOrderAttributes());
+        }
 
         DetailsAssignedToOrderEvent::dispatch($this->order);
 

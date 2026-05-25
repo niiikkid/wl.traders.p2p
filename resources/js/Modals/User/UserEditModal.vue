@@ -14,6 +14,7 @@ import {ref, watch, computed} from "vue";
 import DateTime from "@/Components/DateTime.vue";
 import { router } from '@inertiajs/vue3';
 import Multiselect from "@/Components/Form/Multiselect.vue";
+import TeamLeaderInsuranceFields from "@/Modals/User/Partials/TeamLeaderInsuranceFields.vue";
 
 const modalStore = useModalStore();
 const { userEditModal } = storeToRefs(modalStore);
@@ -54,6 +55,10 @@ const form = ref({
     team_leader_id: [],
     agent_id: [],
     agent_commission_percentage: 0.2,
+    team_leader_insurance_mode: 'trader_reserve',
+    team_leader_trader_limit: null,
+    team_leader_reserve_balance_limit: null,
+    team_leader_reserve_stop_threshold: null,
 });
 
 const isAdmin = (roleId) => roleId === 1;
@@ -104,6 +109,10 @@ const resetState = () => {
         team_leader_id: [],
         agent_id: [],
         agent_commission_percentage: 0.2,
+        team_leader_insurance_mode: 'trader_reserve',
+        team_leader_trader_limit: null,
+        team_leader_reserve_balance_limit: null,
+        team_leader_reserve_stop_threshold: null,
     };
 };
 
@@ -162,8 +171,20 @@ const loadUser = () => {
             form.value.team_leader_id = data.team_leader_id ? [data.team_leader_id] : [];
             form.value.agent_id = data.agent_id ? [data.agent_id] : [];
             form.value.agent_commission_percentage = data.agent_commission_percentage ?? 0.2;
+            form.value.team_leader_insurance_mode = data.team_leader_insurance_mode ?? 'trader_reserve';
+            form.value.team_leader_trader_limit = data.team_leader_trader_limit;
+            form.value.team_leader_reserve_balance_limit = data.team_leader_reserve_balance_limit;
+            form.value.team_leader_reserve_stop_threshold = data.team_leader_reserve_stop_threshold;
         });
 };
+
+const canChangeTeamLeaderInsuranceMode = computed(() => {
+    if (!user.value || selectedRoleName.value !== 'Team Leader') {
+        return true;
+    }
+
+    return (user.value.connected_trader_count ?? 0) === 0;
+});
 
 const teamLeaderSplitMode = computed({
     get() {
@@ -510,7 +531,9 @@ watch(
                     </div>
                 </div>
 
-                <div v-if="isTrader(form.role_id) || isAdmin(form.role_id)">
+                <div
+                    v-if="(isTrader(form.role_id) || isAdmin(form.role_id)) && !user?.uses_team_leader_shared_reserve"
+                >
                     <InputLabel
                         for="reserve_balance_limit"
                         value="Страховой депозит (USDT)"
@@ -532,7 +555,23 @@ watch(
                     </div>
                 </div>
 
+                <div v-if="user?.uses_team_leader_shared_reserve" class="alert alert-info text-sm">
+                    <span>
+                        Трейдер работает через общий страховой резерв Team Leader.
+                        Пополнения зачисляются на основной баланс, резервный баланс трейдера не используется.
+                    </span>
+                </div>
+
                 <div v-if="isTeamLeader(form.role_id) || isAdmin(form.role_id)" class="space-y-6">
+                    <TeamLeaderInsuranceFields
+                        v-if="isTeamLeader(form.role_id)"
+                        :form="form"
+                        :errors="errors"
+                        :processing="processing"
+                        :can-change-insurance-mode="canChangeTeamLeaderInsuranceMode"
+                        :connected-trader-count="user?.connected_trader_count ?? 0"
+                    />
+
                     <div v-if="isTeamLeader(form.role_id) || isAdmin(form.role_id)">
                         <div class="form-control w-fit">
                             <label class="label cursor-pointer gap-3">

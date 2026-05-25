@@ -6,6 +6,7 @@ use App\Enums\DetailType;
 use App\Enums\DisputeStatus;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
+use App\Enums\TeamLeaderInsuranceMode;
 use App\Exceptions\OrderException;
 use App\Models\Merchant;
 use App\Models\PaymentDetail;
@@ -19,9 +20,11 @@ use App\Services\Order\Features\OrderDetailProvider\Classes\Utils\TraderFactory;
 use App\Services\Order\Features\OrderDetailProvider\Values\Detail;
 use App\Services\Order\Features\OrderDetailProvider\Values\Gateway;
 use App\Services\Order\Features\OrderDetailProvider\Values\Trader;
+use App\Services\User\TeamLeaderInsuranceService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class FindAvailablePaymentDetail
 {
@@ -82,6 +85,8 @@ class FindAvailablePaymentDetail
         $paymentDetail = $this->queryPaymentDetails()->first();
 
         if (! $paymentDetail) {
+            $this->logWhenBlockedByTeamLeaderReserveThreshold();
+
             return null;
         }
 
@@ -159,8 +164,34 @@ class FindAvailablePaymentDetail
             ->whereNull('banned_at')
             ->whereNull('archived_at')
             ->tap(fn (Builder $query) => services()->merchantTrafficCategory()->constrainEligibleTradersForMerchant($query, $this->merchant))
+            ->tap(fn (Builder $query) => app(TeamLeaderInsuranceService::class)->constrainEligibleTradersForOrderIssuing($query))
             ->whereHas('wallet', function ($q) {
-                $q->where('trust_balance', '>=', $this->approximateTotalProfit->toUnitsInt());
+                $requiredUnits = $this->approximateTotalProfit->toUnitsInt();
+                $sharedMode = TeamLeaderInsuranceMode::TeamLeaderReserve->value;
+
+                $q->where(function (Builder $walletQuery) use ($requiredUnits, $sharedMode) {
+                    $walletQuery
+                        ->where('trust_balance', '>=', $requiredUnits)
+                        ->orWhere(function (Builder $sharedReserveQuery) use ($requiredUnits, $sharedMode) {
+                            $sharedReserveQuery
+                                ->whereHas('user', function (Builder $userQuery) use ($sharedMode) {
+                                    $userQuery
+                                        ->whereNotNull('team_leader_id')
+                                        ->whereHas('teamLeader', function (Builder $teamLeaderQuery) use ($sharedMode) {
+                                            $teamLeaderQuery->where('team_leader_insurance_mode', $sharedMode);
+                                        });
+                                })
+                                ->whereRaw(
+                                    'CAST(trust_balance AS DECIMAL(65, 0)) + COALESCE((
+                                        SELECT CAST(team_leader_wallets.reserve_balance AS DECIMAL(65, 0))
+                                        FROM users AS traders
+                                        INNER JOIN wallets AS team_leader_wallets ON team_leader_wallets.user_id = traders.team_leader_id
+                                        WHERE traders.id = wallets.user_id
+                                    ), 0) >= ?',
+                                    [$requiredUnits]
+                                );
+                        });
+                });
             })
             ->withCount(['disputes as pending_disputes_count' => function ($q) {
                 $q->where('status', DisputeStatus::PENDING);
@@ -273,5 +304,39 @@ class FindAvailablePaymentDetail
             ->when(! is_local(), function (Builder $query) {
                 $query->lock('FOR UPDATE SKIP LOCKED');
             });
+    }
+
+    protected function logWhenBlockedByTeamLeaderReserveThreshold(): void
+    {
+        $sharedMode = TeamLeaderInsuranceMode::TeamLeaderReserve->value;
+
+        $hasBlockedTrader = User::query()
+            ->where('is_online', true)
+            ->where('stop_traffic', false)
+            ->whereNull('banned_at')
+            ->whereNull('archived_at')
+            ->whereNotNull('team_leader_id')
+            ->whereHas('teamLeader', function (Builder $teamLeaderQuery) use ($sharedMode) {
+                $teamLeaderQuery
+                    ->where('team_leader_insurance_mode', $sharedMode)
+                    ->whereNotNull('team_leader_reserve_stop_threshold')
+                    ->whereHas('wallet', function (Builder $walletQuery) {
+                        $walletQuery->whereRaw(
+                            'CAST(wallets.reserve_balance AS DECIMAL(65, 0)) <= CAST(users.team_leader_reserve_stop_threshold AS DECIMAL(65, 0))'
+                        );
+                    });
+            })
+            ->exists();
+
+        if (! $hasBlockedTrader) {
+            return;
+        }
+
+        Log::info('Payment detail search found no match: traders blocked by Team Leader reserve stop threshold', [
+            'reason' => TeamLeaderInsuranceService::ORDER_ISSUE_BLOCK_REASON_RESERVE_THRESHOLD,
+            'merchant_id' => $this->merchant->id,
+            'amount' => $this->amount->toUnits(),
+            'currency' => $this->amount->getCurrency()->getCode(),
+        ]);
     }
 }

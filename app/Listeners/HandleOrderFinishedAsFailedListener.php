@@ -2,9 +2,9 @@
 
 namespace App\Listeners;
 
-use App\Enums\BalanceType;
 use App\Enums\TransactionType;
 use App\Events\OrderFinishedAsFailedEvent;
+use App\Services\Order\OrderTraderDebitService;
 use App\Services\Order\Utils\DailyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
 use App\Services\Order\Utils\MonthlyLimit;
@@ -35,12 +35,9 @@ class HandleOrderFinishedAsFailedListener implements ShouldQueue
             DailySuccessfulOrdersLimit::decrement($event->order->payment_detail_id, $event->order->created_at);
             MonthlySuccessfulOrdersLimit::decrement($event->order->payment_detail_id, $event->order->created_at);
 
-            services()->wallet()->giveToBalance(
-                $event->order->paymentDetail->user->wallet->id,
-                $event->order->trader_paid_for_order,
-                TransactionType::REFUND_FOR_CANCELED_ORDER,
-                BalanceType::TRUST,
+            app(OrderTraderDebitService::class)->refund(
                 $event->order,
+                TransactionType::REFUND_FOR_CANCELED_ORDER,
             );
         });
     }

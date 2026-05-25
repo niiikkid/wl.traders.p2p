@@ -5,6 +5,7 @@ namespace App\Services\User;
 use App\Contracts\UserServiceContract;
 use App\DTO\User\UserCreateDTO;
 use App\DTO\User\UserUpdateDTO;
+use App\Enums\TeamLeaderInsuranceMode;
 use App\Models\User;
 use App\Utils\Transaction;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,10 @@ use Spatie\Permission\Models\Role;
 
 class UserService implements UserServiceContract
 {
+    public function __construct(
+        private readonly TeamLeaderInsuranceService $teamLeaderInsuranceService,
+    ) {}
+
     private const DEFAULT_TEAM_LEADER_COMMISSION_PERCENTAGE = 0.20;
 
     private const DEFAULT_AGENT_COMMISSION_PERCENTAGE = 0.20;
@@ -31,7 +36,7 @@ class UserService implements UserServiceContract
                 ? $data->agent_commission_percentage
                 : self::DEFAULT_AGENT_COMMISSION_PERCENTAGE;
 
-            $user = User::create([
+            $userAttributes = [
                 'name' => '',
                 'email' => strtolower($data->login),
                 'telegram_username' => $data->telegram_username,
@@ -52,7 +57,21 @@ class UserService implements UserServiceContract
                 'payout_hold_enabled' => true,
                 'payout_hold_minutes' => 60,
                 'payout_active_payouts_limit' => 1,
-            ]);
+            ];
+
+            if ($roleName === 'Team Leader') {
+                $userAttributes = [
+                    ...$userAttributes,
+                    ...$this->teamLeaderInsuranceConfigurationFromDto($roleName, [
+                        'team_leader_insurance_mode' => $data->team_leader_insurance_mode ?? TeamLeaderInsuranceMode::TraderReserve->value,
+                        'team_leader_trader_limit' => $data->team_leader_trader_limit,
+                        'team_leader_reserve_balance_limit' => $data->team_leader_reserve_balance_limit,
+                        'team_leader_reserve_stop_threshold' => $data->team_leader_reserve_stop_threshold,
+                    ]),
+                ];
+            }
+
+            $user = User::create($userAttributes);
 
             $user->assignRole($data->role_id);
 
@@ -107,7 +126,9 @@ class UserService implements UserServiceContract
                 'payout_referral_commission_percentage' => $data->payout_referral_commission_percentage ?? $user->payout_referral_commission_percentage,
                 'payout_team_leader_split_from_service_percent' => $data->payout_team_leader_split_from_service_percent
                     ?? $user->payout_team_leader_split_from_service_percent,
-                'reserve_balance_limit' => $data->reserve_balance_limit,
+                'reserve_balance_limit' => $this->teamLeaderInsuranceService->shouldIgnoreTraderReserveLimit($roleName, $user)
+                    ? $user->reserve_balance_limit
+                    : $data->reserve_balance_limit,
                 'agent_id' => $agentId,
                 'agent_commission_percentage' => $agentCommissionPercentage,
                 'traffic_enabled_at' => $wasTrafficStopped && ! $data->stop_traffic ? now() : $user->traffic_enabled_at,
@@ -129,6 +150,18 @@ class UserService implements UserServiceContract
                     ? $data->support_can_use_manual_control_acq
                     : false,
             ];
+
+            if ($roleName === 'Team Leader') {
+                $updateData = [
+                    ...$updateData,
+                    ...$this->teamLeaderInsuranceConfigurationFromDto($roleName, [
+                        'team_leader_insurance_mode' => $data->team_leader_insurance_mode ?? $user->team_leader_insurance_mode->value,
+                        'team_leader_trader_limit' => $data->team_leader_trader_limit,
+                        'team_leader_reserve_balance_limit' => $data->team_leader_reserve_balance_limit,
+                        'team_leader_reserve_stop_threshold' => $data->team_leader_reserve_stop_threshold,
+                    ]),
+                ];
+            }
 
             if ($teamLeaderId) {
                 $updateData['team_leader_id'] = $teamLeaderId;
@@ -191,5 +224,19 @@ class UserService implements UserServiceContract
             ->first();
 
         return $agent?->id;
+    }
+
+    /**
+     * @param  array<string, mixed>  $configuration
+     * @return array<string, int|string|null>
+     */
+    private function teamLeaderInsuranceConfigurationFromDto(?string $roleName, array $configuration): array
+    {
+        return $this->teamLeaderInsuranceService->resolveTeamLeaderConfigurationForPersist($roleName, [
+            'team_leader_insurance_mode' => $configuration['team_leader_insurance_mode'],
+            'team_leader_trader_limit' => $configuration['team_leader_trader_limit'],
+            'team_leader_reserve_balance_limit' => $configuration['team_leader_reserve_balance_limit'],
+            'team_leader_reserve_stop_threshold' => $configuration['team_leader_reserve_stop_threshold'],
+        ]);
     }
 }

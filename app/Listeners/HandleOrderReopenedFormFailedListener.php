@@ -2,9 +2,9 @@
 
 namespace App\Listeners;
 
-use App\Enums\BalanceType;
 use App\Enums\TransactionType;
 use App\Events\OrderReopenedFromFailedEvent;
+use App\Services\Order\OrderTraderDebitService;
 use App\Services\Order\Utils\DailyLimit;
 use App\Services\Order\Utils\DailySuccessfulOrdersLimit;
 use App\Services\Order\Utils\MonthlyLimit;
@@ -35,12 +35,13 @@ class HandleOrderReopenedFormFailedListener implements ShouldQueue
             DailySuccessfulOrdersLimit::increment($event->order->payment_detail_id, $event->order->created_at);
             MonthlySuccessfulOrdersLimit::increment($event->order->payment_detail_id, $event->order->created_at);
 
-            services()->wallet()->takeFromBalance(
-                $event->order->paymentDetail->user->wallet->id,
+            $event->order->loadMissing(['trader.wallet', 'teamLeader.wallet']);
+
+            app(OrderTraderDebitService::class)->debit(
+                $event->order->trader,
                 $event->order->trader_paid_for_order,
-                TransactionType::PAYMENT_FOR_OPENED_ORDER,
-                BalanceType::TRUST,
                 $event->order,
+                TransactionType::PAYMENT_FOR_OPENED_ORDER,
             );
         });
     }

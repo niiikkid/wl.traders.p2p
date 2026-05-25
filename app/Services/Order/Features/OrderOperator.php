@@ -2,7 +2,6 @@
 
 namespace App\Services\Order\Features;
 
-use App\Enums\BalanceType;
 use App\Enums\DisputeStatus;
 use App\Enums\OrderStatus;
 use App\Enums\OrderSubStatus;
@@ -14,6 +13,7 @@ use App\Events\OrderReopenedFromSucessfulEvent;
 use App\Exceptions\OrderException;
 use App\Models\Order;
 use App\Services\Money\Money;
+use App\Services\Order\OrderTraderDebitService;
 use App\Support\AgentCommission;
 
 class OrderOperator
@@ -96,12 +96,11 @@ class OrderOperator
             throw OrderException::make('The order must be pending and has opened dispute.');
         }
 
-        services()->wallet()->giveToBalance(
-            $order->trader->wallet->id,
-            $order->trader_paid_for_order,
-            TransactionType::REFUND_FOR_CHANGE_ORDER_AMOUNT,
-            BalanceType::TRUST,
+        $order->loadMissing(['trader.wallet', 'teamLeader.wallet']);
+
+        app(OrderTraderDebitService::class)->refund(
             $order,
+            TransactionType::REFUND_FOR_CHANGE_ORDER_AMOUNT,
         );
 
         $profits = services()->profit()->calculateInBody(
@@ -129,16 +128,17 @@ class OrderOperator
             'updated_at' => now()->toDateTimeString(),
         ];
 
-        services()->wallet()->takeFromBalance(
-            $order->trader->wallet->id,
+        $order->loadMissing(['trader.wallet', 'teamLeader.wallet']);
+
+        $allocation = app(OrderTraderDebitService::class)->debit(
+            $order->trader,
             $profits->traderDebit,
-            TransactionType::PAYMENT_FOR_CHANGE_ORDER_AMOUNT,
-            BalanceType::TRUST,
             $order,
+            TransactionType::PAYMENT_FOR_CHANGE_ORDER_AMOUNT,
         );
 
         $rateFixedAt = $order->rate_fixed_at ?? now();
-        $order->update([
+        $orderUpdate = [
             'amount' => $amount,
             'total_profit' => $profits->convertedAmount,
             'total_fee' => $profits->totalFee,
@@ -152,6 +152,14 @@ class OrderOperator
             'agent_commission_rate' => $agentCommissionRate,
             'rate_fixed_at' => $rateFixedAt,
             'amount_updates_history' => $amountUpdatesHistory,
-        ]);
+            'trader_trust_paid_for_order' => null,
+            'team_leader_reserve_paid_for_order' => null,
+        ];
+
+        if ($allocation !== null) {
+            $orderUpdate = array_merge($orderUpdate, $allocation->toOrderAttributes());
+        }
+
+        $order->update($orderUpdate);
     }
 }

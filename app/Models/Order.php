@@ -40,6 +40,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Money|null $trader_receive
  * @property Money|null $merchant_credit
  * @property Money $trader_paid_for_order
+ * @property Money|null $trader_trust_paid_for_order
+ * @property Money|null $team_leader_reserve_paid_for_order
  * @property float|null $team_leader_split_from_service_percent
  * @property Currency $currency
  * @property MarketEnum $market
@@ -112,6 +114,8 @@ class Order extends Model
         'service_profit', // Комиссия сервиса (serviceProfit)
         'total_fee', // Комиссия всего (totalFee)
         'trader_paid_for_order', // Списано у трейдера (traderDebit / traderPaidForOrder)
+        'trader_trust_paid_for_order',
+        'team_leader_reserve_paid_for_order',
         'team_leader_split_from_service_percent', // Сплит тимлида: платит сервис, %
         'currency',
         'market',
@@ -171,6 +175,8 @@ class Order extends Model
         'trader_receive' => BaseCurrencyMoneyCast::class,
         'merchant_credit' => BaseCurrencyMoneyCast::class,
         'trader_paid_for_order' => BaseCurrencyMoneyCast::class,
+        'trader_trust_paid_for_order' => BaseCurrencyMoneyCast::class,
+        'team_leader_reserve_paid_for_order' => BaseCurrencyMoneyCast::class,
         'team_leader_split_from_service_percent' => 'float',
         'agent_commission_rate' => 'float',
         'conversion_price' => MoneyCast::class,

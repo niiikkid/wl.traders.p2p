@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\OrderStatus;
+use App\Enums\TeamLeaderInsuranceMode;
 use App\Observers\UserObserver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -80,6 +81,10 @@ use Spatie\Permission\Traits\HasRoles;
  * @property bool $manual_control_acq_is_working
  * @property Carbon|null $archived_at
  * @property float|null $team_leader_individual_commission_percentage
+ * @property TeamLeaderInsuranceMode $team_leader_insurance_mode
+ * @property int|null $team_leader_trader_limit
+ * @property int|null $team_leader_reserve_balance_limit
+ * @property int|null $team_leader_reserve_stop_threshold
  * @property User|null $teamLeader
  * @property User|null $agent
  * @property Collection<int, User> $agentMerchants
@@ -143,6 +148,10 @@ class User extends Authenticatable
         'support_can_use_manual_control_acq',
         'manual_control_acq_is_working',
         'team_leader_individual_commission_percentage',
+        'team_leader_insurance_mode',
+        'team_leader_trader_limit',
+        'team_leader_reserve_balance_limit',
+        'team_leader_reserve_stop_threshold',
         'banned_at',
         'archived_at',
         'merchant_id',
@@ -197,8 +206,39 @@ class User extends Authenticatable
             'support_can_use_manual_control_acq' => 'boolean',
             'manual_control_acq_is_working' => 'boolean',
             'team_leader_individual_commission_percentage' => 'float',
+            'team_leader_insurance_mode' => TeamLeaderInsuranceMode::class,
+            'team_leader_trader_limit' => 'integer',
+            'team_leader_reserve_balance_limit' => 'integer',
+            'team_leader_reserve_stop_threshold' => 'integer',
             'hide_name_in_trader_top' => 'boolean',
         ];
+    }
+
+    public function usesTeamLeaderSharedReserve(): bool
+    {
+        if ($this->team_leader_id === null) {
+            return false;
+        }
+
+        $teamLeader = $this->relationLoaded('teamLeader')
+            ? $this->teamLeader
+            : $this->teamLeader()->first(['id', 'team_leader_insurance_mode']);
+
+        return $teamLeader?->team_leader_insurance_mode->usesSharedReserve() ?? false;
+    }
+
+    public function connectedTraderCount(): int
+    {
+        return $this->referrals()->role('Trader')->count();
+    }
+
+    public function remainingTeamLeaderTraderSlots(): ?int
+    {
+        if ($this->team_leader_trader_limit === null) {
+            return null;
+        }
+
+        return max(0, $this->team_leader_trader_limit - $this->connectedTraderCount());
     }
 
     protected function google2faSecret(): Attribute

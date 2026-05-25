@@ -47,7 +47,7 @@ Team Leader shared insurance reserve mode knowledge for trader reserve delegatio
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Team Leader Shared Insurance Mode Specification](team-leader-insurance-mode/team-leader-shared-insurance-mode-spec.md) | Full technical specification and step-by-step implementation plan for the second Team Leader mode where connected traders use Team Leader `reserve_balance`. | 2026-05-22 |
+| [Team Leader Shared Insurance Mode Specification](team-leader-insurance-mode/team-leader-shared-insurance-mode-spec.md) | **Phases 1–6 shipped:** domain, admin, wallet, orders, finance UI polish. Next: manual verification (7). | 2026-05-26 |
 
 ## sms-automation
 

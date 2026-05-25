@@ -9,6 +9,7 @@ enum BalanceType: string
     use Enumable;
 
     case TRUST = 'trust';
+    case RESERVE = 'reserve';
     case PROVIDER = 'provider';
     case MERCHANT = 'merchant';
     case COMMISSION = 'commission';

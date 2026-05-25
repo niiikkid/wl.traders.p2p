@@ -34,6 +34,10 @@ readonly class UserUpdateDTO extends BaseDTO
         public bool $support_can_view_deposits = false,
         public bool $support_can_edit_order_amount = false,
         public bool $support_can_use_manual_control_acq = false,
+        public ?string $team_leader_insurance_mode = null,
+        public ?int $team_leader_trader_limit = null,
+        public ?int $team_leader_reserve_balance_limit = null,
+        public ?int $team_leader_reserve_stop_threshold = null,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -80,6 +84,10 @@ readonly class UserUpdateDTO extends BaseDTO
             support_can_view_deposits: (bool) ($data['support_can_view_deposits'] ?? false),
             support_can_edit_order_amount: (bool) ($data['support_can_edit_order_amount'] ?? false),
             support_can_use_manual_control_acq: (bool) ($data['support_can_use_manual_control_acq'] ?? false),
+            team_leader_insurance_mode: $data['team_leader_insurance_mode'] ?? null,
+            team_leader_trader_limit: isset($data['team_leader_trader_limit']) ? (int) $data['team_leader_trader_limit'] : null,
+            team_leader_reserve_balance_limit: isset($data['team_leader_reserve_balance_limit']) ? (int) $data['team_leader_reserve_balance_limit'] : null,
+            team_leader_reserve_stop_threshold: isset($data['team_leader_reserve_stop_threshold']) ? (int) $data['team_leader_reserve_stop_threshold'] : null,
         );
     }
 

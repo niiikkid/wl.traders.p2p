@@ -14,6 +14,10 @@ readonly class UserCreateDTO extends BaseDTO
         public ?int $agent_id = null,
         public float $agent_commission_percentage = 0.20,
         public ?string $telegram_username = null,
+        public ?string $team_leader_insurance_mode = null,
+        public ?int $team_leader_trader_limit = null,
+        public ?int $team_leader_reserve_balance_limit = null,
+        public ?int $team_leader_reserve_stop_threshold = null,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -28,6 +32,10 @@ readonly class UserCreateDTO extends BaseDTO
                 ? (float) $data['agent_commission_percentage']
                 : 0.20,
             telegram_username: self::normalizeTelegramUsername($data['telegram_username'] ?? null),
+            team_leader_insurance_mode: $data['team_leader_insurance_mode'] ?? null,
+            team_leader_trader_limit: isset($data['team_leader_trader_limit']) ? (int) $data['team_leader_trader_limit'] : null,
+            team_leader_reserve_balance_limit: isset($data['team_leader_reserve_balance_limit']) ? (int) $data['team_leader_reserve_balance_limit'] : null,
+            team_leader_reserve_stop_threshold: isset($data['team_leader_reserve_stop_threshold']) ? (int) $data['team_leader_reserve_stop_threshold'] : null,
         );
     }
 

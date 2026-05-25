@@ -18,12 +18,14 @@ use App\Services\Wallet\GiveToBalanceHandler\GiveToAgent;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToCommission;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToMerchant;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToProvider;
+use App\Services\Wallet\GiveToBalanceHandler\GiveToReserve;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToTeamleader;
 use App\Services\Wallet\GiveToBalanceHandler\GiveToTrust;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromAgent;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromCommission;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromMerchant;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromProvider;
+use App\Services\Wallet\TakeFromBalanceHandler\TakeFromReserve;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromTeamleader;
 use App\Services\Wallet\TakeFromBalanceHandler\TakeFromTrust;
 use App\Services\Wallet\ValueObjects\BalanceValue;
@@ -79,6 +81,8 @@ class WalletService implements WalletServiceContract
                 $handler = new TakeFromTeamleader;
             } elseif ($balanceType->equals(BalanceType::AGENT)) {
                 $handler = new TakeFromAgent;
+            } elseif ($balanceType->equals(BalanceType::RESERVE)) {
+                $handler = new TakeFromReserve;
             }
 
             $handler->handle($wallet, $amount, $transactionType, $transactionable);
@@ -104,6 +108,8 @@ class WalletService implements WalletServiceContract
                 $handler = new GiveToTeamleader;
             } elseif ($balanceType->equals(BalanceType::AGENT)) {
                 $handler = new GiveToAgent;
+            } elseif ($balanceType->equals(BalanceType::RESERVE)) {
+                $handler = new GiveToReserve;
             }
 
             $handler->handle($wallet, $amount, $transactionType, $transactionable);
@@ -114,6 +120,9 @@ class WalletService implements WalletServiceContract
     {
         if ($balanceType->equals(BalanceType::TRUST)) {
             $balanceAmount = $wallet->trust_balance->add($wallet->reserve_balance);
+        }
+        if ($balanceType->equals(BalanceType::RESERVE)) {
+            $balanceAmount = $wallet->reserve_balance;
         }
         if ($balanceType->equals(BalanceType::PROVIDER)) {
             $balanceAmount = $wallet->provider_balance ?? Money::zero('USDT');

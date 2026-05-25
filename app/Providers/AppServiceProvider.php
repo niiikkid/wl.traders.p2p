@@ -185,9 +185,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(OrderPoolingServiceContract::class, function () {
             return new OrderPoolingService;
         });
-        $this->app->singleton(UserServiceContract::class, function () {
-            return new UserService;
-        });
+        $this->app->singleton(UserServiceContract::class, UserService::class);
         $this->app->singleton(PaymentDetailServiceContract::class, function () {
             return new PaymentDetailService;
         });

@@ -69,6 +69,13 @@ const setBalanceType = (type) => {
                         </template>
                     </div>
 
+                    <p
+                        v-if="!viewStore.isAdminViewMode"
+                        class="text-sm opacity-70 mt-1"
+                    >
+                        Доход от подключённых трейдеров. Не используется для страховых списаний по сделкам.
+                    </p>
+
                     <div class="pt-1 inline-block align-middle">
                         <span class="text-xl font-bold">
                             {{ walletStats.totalAvailableBalances.teamleader.primary }} {{ primaryCurrency }}

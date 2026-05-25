@@ -9,6 +9,10 @@ const props = defineProps({
         type: Object,
         default: null,
     },
+    teamLeaderInsurance: {
+        type: Object,
+        default: null,
+    },
 });
 
 const viewStore = useViewStore();
@@ -37,6 +41,11 @@ const openTraderDepositModal = () => {
 const showTransferButton = computed(() => (
     !viewStore.isAdminViewMode
     && props.traderBalanceTransfer?.available === true
+));
+
+const usesTeamLeaderSharedReserve = computed(() => (
+    props.teamLeaderInsurance?.uses_shared_reserve === true
+    && props.teamLeaderInsurance?.role === 'trader'
 ));
 
 const openTraderBalanceTransferModal = () => {
@@ -123,9 +132,28 @@ function getRandomInt(max) {
                         </template>
                     </div>
 
+                    <div
+                        v-if="usesTeamLeaderSharedReserve"
+                        class="alert alert-info mt-2 text-sm"
+                    >
+                        <template v-if="viewStore.isAdminViewMode">
+                            Трейдер работает через общий страховой резерв Team Leader
+                            <template v-if="teamLeaderInsurance?.team_leader_email">
+                                ({{ teamLeaderInsurance.team_leader_email }})
+                            </template>.
+                            Пополнения зачисляются на траст-баланс; личный резерв трейдера не используется.
+                        </template>
+                        <template v-else>
+                            Вы работаете через общий страховой резерв Team Leader. Пополнения зачисляются на основной баланс, резервный баланс трейдера не используется.
+                        </template>
+                    </div>
+
                     <div class="pt-1 block sm:flex items-center sm:space-y-0 align-middle">
                         <span class="text-xl font-bold">{{ walletStats.base.trustAmount }} {{ primaryCurrency }}</span>
-                        <span class="sm:ml-3 mt-2 sm:mt-0 badge badge-neutral gap-1">
+                        <span
+                            v-if="!usesTeamLeaderSharedReserve"
+                            class="sm:ml-3 mt-2 sm:mt-0 badge badge-neutral gap-1"
+                        >
                             <svg class="md:w-4 md:h-4 w-3.5 h-3.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                  <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v3m-3-6V7a3 3 0 1 1 6 0v4m-8 0h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/>
                              </svg>
@@ -133,7 +161,7 @@ function getRandomInt(max) {
                         </span>
                     </div>
                     <div class="grid sm:block space-y-2 sm:space-y-0 mt-1">
-                        <div class="inline-flex">
+                        <div v-if="!usesTeamLeaderSharedReserve" class="inline-flex">
                             <div class="text-sm opacity-70">
                                 <span>Резерв</span>
                             </div>

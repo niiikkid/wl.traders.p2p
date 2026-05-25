@@ -123,6 +123,8 @@ Working balance is `wallets.trust_balance`. It is the only balance that can be u
 
 Reserve/insurance balance is `wallets.reserve_balance`. It cannot be selected or debited as the source balance.
 
+Traders under [Team Leader Shared Insurance Mode](../team-leader-insurance-mode/team-leader-shared-insurance-mode-spec.md) (mode 2) do not use personal reserve for top-ups or order debit; recipient `GiveToTrust` still credits `trust_balance` directly for those traders. Team Leader shared `reserve_balance` is out of scope for trader-to-trader transfers.
+
 ### Recipient Credit Behavior
 
 Do not bypass existing `GiveToTrust` behavior on the recipient side. Incoming transfer funds must be credited through the same trust-credit path used elsewhere:
@@ -527,3 +529,7 @@ Manual UI verification:
 - If avatar formatting is centralized in a resource, reuse that resource shape for the recipient preview (step 6 returns `avatar_uuid` / `avatar_style` from `User`).
 - Success feedback uses Inertia partial reload (no new toast); API success message is `Средства переведены.` — align with flash/toast convention if product adds one later.
 - Do not create a `TraderBalanceTransfer` model or table in the first version; the accepted requirement is to use existing wallet transaction records only.
+
+## See Also
+
+- [Team Leader Shared Insurance Mode Specification](../team-leader-insurance-mode/team-leader-shared-insurance-mode-spec.md) — shared reserve, split order debit, finance UI (Phases 1–6)

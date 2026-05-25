@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin\User;
 
 use App\Models\User;
+use App\Services\User\TeamLeaderInsuranceService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,6 +28,7 @@ class UpdateRequest extends FormRequest
     public function rules(): array
     {
         $user = $this->route('user');
+        $roleName = Role::query()->whereKey($this->integer('role_id'))->value('name');
 
         return [
             // Используем поле login, но проверяем уникальность по колонке email
@@ -61,6 +63,7 @@ class UpdateRequest extends FormRequest
             'support_can_view_deposits' => ['required', 'boolean'],
             'support_can_edit_order_amount' => ['required', 'boolean'],
             'support_can_use_manual_control_acq' => ['required', 'boolean'],
+            ...app(TeamLeaderInsuranceService::class)->teamLeaderConfigurationRules($roleName === 'Team Leader'),
         ];
     }
 
@@ -69,6 +72,24 @@ class UpdateRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $roleId = (int) $this->input('role_id');
             $roleName = Role::query()->whereKey($roleId)->value('name');
+            /** @var User $user */
+            $user = $this->route('user');
+            $insuranceService = app(TeamLeaderInsuranceService::class);
+
+            if ($roleName === 'Team Leader') {
+                $insuranceService->validateTeamLeaderConfiguration($validator, $user);
+            }
+
+            if ($roleName === 'Trader') {
+                $teamLeaderId = $this->integer('team_leader_id') ?: null;
+                if (! $user->team_leader_id && $teamLeaderId) {
+                    $user->loadMissing('wallet');
+                    $insuranceService->validateTraderTeamLeaderAssignment($validator, $teamLeaderId, $user);
+                }
+
+                $insuranceService->validateTraderReserveLimitChange($validator, $user);
+            }
+
             $agentId = $this->integer('agent_id') ?: null;
             if ($agentId) {
                 $agentExists = User::query()
@@ -149,6 +170,7 @@ class UpdateRequest extends FormRequest
             'support_can_view_deposits' => __('доступ саппорта к депозитам'),
             'support_can_edit_order_amount' => __('доступ саппорта к изменению суммы сделки'),
             'support_can_use_manual_control_acq' => __('доступ саппорта к Manual Control Acquiring'),
+            ...app(TeamLeaderInsuranceService::class)->teamLeaderConfigurationAttributes(),
         ];
     }
 }

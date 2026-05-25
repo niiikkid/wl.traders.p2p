@@ -3,6 +3,9 @@
 namespace App\Http\Requests\Admin\User\Wallet;
 
 use App\Enums\BalanceType;
+use App\Models\User;
+use App\Services\User\TeamLeaderInsuranceService;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +22,7 @@ class DepositRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -28,5 +31,25 @@ class DepositRequest extends FormRequest
             'balance_type' => ['required', Rule::enum(BalanceType::class)],
             'tx_hash' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            /** @var User|null $user */
+            $user = $this->route('user');
+
+            if ($user === null) {
+                return;
+            }
+
+            $balanceType = BalanceType::tryFrom((string) $this->input('balance_type'));
+
+            app(TeamLeaderInsuranceService::class)->validateAdminWalletDeposit(
+                $validator,
+                $user,
+                $balanceType,
+            );
+        });
     }
 }

@@ -1,5 +1,11 @@
 # Wiki Log
 
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 6)
+- Updated: Team Leader Shared Insurance Mode Specification
+- Updated: Trader Balance Transfer Implementation Plan
+
+## [2026-05-26] lint | 0 issues found, 0 auto-fixed
+
 ## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan
 
 ## [2026-05-21] ingest | Telegram Chat Dispute Automation Plan (Phase 1 status)
@@ -161,3 +167,24 @@
 
 ## [2026-05-26] ingest | Trader Balance Transfer Implementation Plan (steps 9–15 Inertia props and Vue UI)
 - Raw: 2026-05-26-step-9-15-inertia-props-vue-ui.md
+
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 1 shipped)
+- Raw: 2026-05-26-phase-1-data-and-domain-flags.md
+
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 2 shipped)
+- Raw: 2026-05-26-phase-2-admin-validation-and-configuration.md
+
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 3 shipped)
+- Raw: 2026-05-26-phase-3-wallet-top-up-behavior.md
+
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 3 wiki compile)
+- Raw: 2026-05-26-phase-3-wallet-top-up-behavior-details.md
+
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 4 shipped)
+- Raw: 2026-05-26-phase-4-order-issuing-guard.md
+
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 5 shipped)
+- Raw: 2026-05-26-phase-5-split-debit-and-refund-symmetry.md
+
+## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 5 wiki compile)
+- Updated: Team Leader Shared Insurance Mode Specification

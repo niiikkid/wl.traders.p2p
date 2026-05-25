@@ -26,7 +26,8 @@ class TakeFromTrust extends TakeFromBalance
         $currentTrustBalance = $trust;
 
         if ($trust->lessThanZero()) {
-            if ($transactionType->equals(TransactionType::TRANSFER_TO_TRADER)) {
+            if ($transactionType->equals(TransactionType::TRANSFER_TO_TRADER)
+                || $wallet->user?->usesTeamLeaderSharedReserve()) {
                 throw WalletException::insufficientFunds();
             }
 
