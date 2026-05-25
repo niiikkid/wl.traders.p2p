@@ -90,6 +90,20 @@ const close = () => {
     submitting.value = false;
 };
 
+const fieldErrorMessage = (errors, field) => {
+    const value = errors?.[field];
+
+    if (Array.isArray(value)) {
+        return value[0] ?? '';
+    }
+
+    if (typeof value === 'string') {
+        return value;
+    }
+
+    return '';
+};
+
 const applyFieldErrors = (errors) => {
     fieldErrors.value = errors ?? {};
 };
@@ -168,16 +182,10 @@ const submitTransfer = async () => {
     } catch (error) {
         const response = error.response?.data;
 
-        if (response?.errors) {
+        if (response?.errors && Object.keys(response.errors).length > 0) {
             applyFieldErrors(response.errors);
         } else if (response?.message) {
-            if (response.message.includes('2FA')) {
-                fieldErrors.value = { one_time_password: response.message };
-            } else if (response.message.includes('балансе')) {
-                fieldErrors.value = { amount: response.message };
-            } else {
-                recipientError.value = response.message;
-            }
+            recipientError.value = response.message;
         } else {
             recipientError.value = 'Перевод недоступен.';
         }
@@ -227,7 +235,7 @@ const confirmTransfer = () => {
                             Проверить
                         </button>
                     </div>
-                    <InputError class="mt-2" :message="recipientError || fieldErrors.login?.[0]" />
+                    <InputError class="mt-2" :message="recipientError || fieldErrorMessage(fieldErrors, 'login')" />
                 </div>
 
                 <div v-if="recipientPreview" class="flex items-center gap-3 rounded-lg border border-base-300 p-3">
@@ -260,7 +268,7 @@ const confirmTransfer = () => {
                             Перевести всё
                         </button>
                     </div>
-                    <InputError class="mt-2" :message="fieldErrors.amount?.[0]" />
+                    <InputError class="mt-2" :message="fieldErrorMessage(fieldErrors, 'amount')" />
                 </div>
 
                 <div v-if="has2fa">
@@ -274,7 +282,7 @@ const confirmTransfer = () => {
                         :error="!!fieldErrors.one_time_password"
                         :disabled="!recipientChecked || submitting"
                     />
-                    <InputError class="mt-2" :message="fieldErrors.one_time_password?.[0]" />
+                    <InputError class="mt-2" :message="fieldErrorMessage(fieldErrors, 'one_time_password')" />
                 </div>
             </div>
         </ModalBody>

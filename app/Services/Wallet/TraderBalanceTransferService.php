@@ -64,7 +64,9 @@ class TraderBalanceTransferService
             );
 
             if ($senderWallet->trust_balance->lessThan($amount)) {
-                throw TraderBalanceTransferException::insufficientTrustBalance();
+                throw TraderBalanceTransferException::insufficientTrustBalance(
+                    $senderWallet->trust_balance->toBeauty(),
+                );
             }
 
             (new TakeFromTrust)->handle(

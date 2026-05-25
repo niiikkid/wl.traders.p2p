@@ -26,6 +26,10 @@ class TakeFromTrust extends TakeFromBalance
         $currentTrustBalance = $trust;
 
         if ($trust->lessThanZero()) {
+            if ($transactionType->equals(TransactionType::TRANSFER_TO_TRADER)) {
+                throw WalletException::insufficientFunds();
+            }
+
             $currentTrustBalance = Money::fromUnits(0, $trust->getCurrency()->getCode());
             $wallet->update([
                 'trust_balance' => 0,

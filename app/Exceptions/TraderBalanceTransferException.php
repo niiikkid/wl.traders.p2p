@@ -11,9 +11,12 @@ class TraderBalanceTransferException extends BaseException
         return new self('Трейдер не найден или недоступен для перевода.');
     }
 
-    public static function insufficientTrustBalance(): static
+    public static function insufficientTrustBalance(string $availableAmount): static
     {
-        return new self('Недостаточно средств на рабочем балансе.');
+        return new self(sprintf(
+            'Недостаточно средств на рабочем балансе. Доступно: %s USDT.',
+            $availableAmount,
+        ));
     }
 
     public static function transferUnavailable(): static

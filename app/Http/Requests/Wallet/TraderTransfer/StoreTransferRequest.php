@@ -6,6 +6,7 @@ namespace App\Http\Requests\Wallet\TraderTransfer;
 
 use App\Http\Requests\Wallet\TraderTransfer\Concerns\AuthorizesTraderBalanceTransfer;
 use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Foundation\Http\FormRequest;
@@ -98,6 +99,12 @@ class StoreTransferRequest extends FormRequest
                 if ($this->senderRequires2fa() && ! $this->isValid2faCode()) {
                     $validator->errors()->add('one_time_password', 'Неверный код 2FA.');
                 }
+
+                if ($validator->errors()->isNotEmpty()) {
+                    return;
+                }
+
+                $this->assertAmountWithinTrustBalance($validator);
             },
         ];
     }
@@ -132,6 +139,39 @@ class StoreTransferRequest extends FormRequest
         }
 
         return $money->greaterThanZero();
+    }
+
+    private function assertAmountWithinTrustBalance(Validator $validator): void
+    {
+        $user = $this->user();
+
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $wallet = $this->resolveSenderWallet($user);
+        $amount = $this->amountMoney();
+
+        if ($wallet->trust_balance->lessThan($amount)) {
+            $validator->errors()->add(
+                'amount',
+                sprintf(
+                    'Недостаточно средств на рабочем балансе. Доступно: %s USDT.',
+                    $wallet->trust_balance->toBeauty(),
+                ),
+            );
+        }
+    }
+
+    private function resolveSenderWallet(User $user): Wallet
+    {
+        $user->loadMissing('wallet');
+
+        if ($user->wallet instanceof Wallet) {
+            return $user->wallet;
+        }
+
+        return services()->wallet()->create($user);
     }
 
     private function isValid2faCode(): bool
