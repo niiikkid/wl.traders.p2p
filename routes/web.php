@@ -241,7 +241,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/payment-details/{paymentDetail}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.toggle-active');
         Route::patch('/payment-details/bulk-update', [PaymentDetailController::class, 'bulkUpdate'])->name('payment-details.bulk-update');
         Route::resource('/payment-details', PaymentDetailController::class)->only(['index', 'store', 'update']);
-        Route::get('/payment-details/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'index'])->name('payment-details.volume-statistics');
+        Route::get('/payment-details/{paymentDetail}/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'show'])->name('payment-details.volume-statistics');
         Route::get('/payment-details/create-data', [PaymentDetailController::class, 'createData'])->name('payment-details.create-data');
         Route::get('/payment-details/{paymentDetail}', [PaymentDetailController::class, 'show'])->name('payment-details.show');
         Route::patch('/payment-details/{paymentDetail}/tags', [PaymentDetailTagAssignmentController::class, 'update'])->name('payment-details.tags.update');
@@ -527,7 +527,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::delete('/sms-stop-word/{smsStopWord}', [SmsStopWordController::class, 'destroy'])->name('sms-stop-word.destroy');
 
         Route::get('/payment-details/statistics', [App\Http\Controllers\Admin\PaymentDetailController::class, 'statistics'])->name('payment-details.statistics');
-        Route::get('/payment-details/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'index'])->name('payment-details.volume-statistics');
+        Route::get('/payment-details/{paymentDetail}/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'show'])->name('payment-details.volume-statistics');
         Route::get('/payment-details', [App\Http\Controllers\Admin\PaymentDetailController::class, 'index'])->name('payment-details.index');
 
         Route::get('/disputes', [App\Http\Controllers\Admin\DisputeController::class, 'index'])->name('disputes.index');

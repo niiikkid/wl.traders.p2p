@@ -23,6 +23,7 @@ import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import PaymentDetailCreateModal from "@/Modals/PaymentDetail/PaymentDetailCreateModal.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
+import PaymentDetailVolumeStatisticsModal from "@/Modals/PaymentDetail/PaymentDetailVolumeStatisticsModal.vue";
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
@@ -38,6 +39,9 @@ const openCreateModal = () => {
 };
 const openEditModal = (paymentDetail) => {
     modalStore.openPaymentDetailEditModal({ paymentDetail });
+};
+const openVolumeStatisticsModal = (paymentDetail) => {
+    modalStore.openPaymentDetailVolumeStatisticsModal({ id: paymentDetail.id, paymentDetail });
 };
 const openBulkEditModal = () => {
     if (selectionModeEnabled.value && selectedDetailIds.value.length) {
@@ -67,11 +71,6 @@ const currentTab = ref('active');
 const tableFiltersStore = useTableFiltersStore();
 const toggleBlocked = ref(false);
 const isTraderView = computed(() => viewStore.isTraderViewMode);
-const volumeStatisticsRouteName = computed(() => (
-    viewStore.isAdminViewMode
-        ? 'admin.payment-details.volume-statistics'
-        : 'payment-details.volume-statistics'
-));
 const selectionModeEnabled = ref(false);
 const selectedDetailIds = ref([]);
 
@@ -536,32 +535,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                     title="Есть применённые фильтры"
                                 />
                             </div>
-
-                            <button
-                                v-if="viewStore.isAdminViewMode || viewStore.isTraderViewMode"
-                                type="button"
-                                class="btn btn-sm btn-square btn-accent btn-outline shrink-0 rounded-lg"
-                                title="Объём по реквизитам"
-                                aria-label="Объём по реквизитам"
-                                @click="router.visit(route(volumeStatisticsRouteName), { preserveScroll: true })"
-                            >
-                                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                    <path
-                                        d="M2 2v18a2 2 0 0 0 2 2h18"
-                                        stroke="currentColor"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    />
-                                    <path
-                                        d="M6 18V8.5A3.5 3.5 0 0 1 9.5 5h0A3.5 3.5 0 0 1 13 8.5v2.298A7.202 7.202 0 0 0 20.202 18H22"
-                                        stroke="currentColor"
-                                        stroke-width="1.5"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    />
-                                </svg>
-                            </button>
 
                             <button
                                 v-if="viewStore.isAdminViewMode"
@@ -1116,6 +1089,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </div>
                                                     </TableInfoDropdown>
                                                     <TableActionsDropdown v-if="currentTab === 'active'">
+                                                        <TableAction @click="openVolumeStatisticsModal(payment_detail)">
+                                                            Статистика
+                                                        </TableAction>
                                                         <TableAction @click="openEditModal(payment_detail)">
                                                             Редактировать
                                                         </TableAction>
@@ -1124,6 +1100,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </TableAction>
                                                     </TableActionsDropdown>
                                                     <TableActionsDropdown v-else>
+                                                        <TableAction @click="openVolumeStatisticsModal(payment_detail)">
+                                                            Статистика
+                                                        </TableAction>
                                                         <TableAction @click="confirmUnarchiveDetail(payment_detail)">
                                                             Вернуть из архива
                                                         </TableAction>
@@ -1157,6 +1136,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </label>
                                             <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
                                                 <template v-if="currentTab === 'active'">
+                                                    <TableAction @click="openVolumeStatisticsModal(payment_detail)">
+                                                        Статистика
+                                                    </TableAction>
                                                     <TableAction @click="openEditModal(payment_detail)">
                                                         Редактировать
                                                     </TableAction>
@@ -1165,6 +1147,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </TableAction>
                                                 </template>
                                                 <template v-else>
+                                                    <TableAction @click="openVolumeStatisticsModal(payment_detail)">
+                                                        Статистика
+                                                    </TableAction>
                                                     <TableAction @click="confirmUnarchiveDetail(payment_detail)">
                                                         Вернуть из архива
                                                     </TableAction>
@@ -1430,6 +1415,7 @@ defineOptions({ layout: AuthenticatedLayout })
         <PaymentDetailCreateModal />
         <PaymentDetailEditModal />
         <PaymentDetailBulkEditModal :tags="paymentDetailTags" />
+        <PaymentDetailVolumeStatisticsModal />
         <PaymentDetailTagCreateModal />
         <PaymentDetailTagManageModal :tags="paymentDetailTags" />
         <ConfirmModal/>

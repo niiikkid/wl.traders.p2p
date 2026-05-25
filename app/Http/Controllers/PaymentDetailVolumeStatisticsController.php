@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\OrderStatus;
 use App\Http\Requests\PaymentDetail\VolumeStatisticsRequest;
-use App\Models\User;
+use App\Http\Resources\PaymentDetailResource;
+use App\Models\PaymentDetail;
 use App\Services\PaymentDetail\PaymentDetailVolumeStatisticsService;
-use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 
 class PaymentDetailVolumeStatisticsController extends Controller
 {
@@ -16,120 +19,30 @@ class PaymentDetailVolumeStatisticsController extends Controller
         private readonly PaymentDetailVolumeStatisticsService $volumeStatisticsService,
     ) {}
 
-    public function index(VolumeStatisticsRequest $request): Response
+    public function show(VolumeStatisticsRequest $request, PaymentDetail $paymentDetail): JsonResponse
     {
-        $isAdmin = $request->routeIs('admin.payment-details.volume-statistics');
+        Gate::authorize('access-to-payment-detail', $paymentDetail);
+
+        $paymentDetail->load(['user', 'userDevice', 'paymentGateways', 'schedule.intervals']);
+        $paymentDetail->loadCount(['orders as pending_orders_count' => function ($query) {
+            $query->where('status', OrderStatus::PENDING);
+        }]);
+
         $period = $request->period();
-        [$periodStartAt, $periodEndAt] = $this->volumeStatisticsService->resolvePeriodBounds(
+        $cacheKey = sprintf(
+            'payment_detail_volume_statistics:%d:%s:%s',
+            $paymentDetail->id,
             $period,
-            $request->dateFrom(),
-            $request->dateTo(),
+            $paymentDetail->updated_at?->timestamp ?? 0,
         );
 
-        $userId = $isAdmin ? $request->traderId() : (int) auth()->id();
-        $barsLimit = $this->volumeStatisticsService->resolveBarsLimit($request->barsLimit());
-        $includeArchived = $request->includeArchived();
-        $paymentGatewayId = $request->paymentGatewayId();
-        $bankOptions = $this->volumeStatisticsService->bankOptions($userId, $includeArchived);
-
-        if (
-            $paymentGatewayId !== null
-            && ! collect($bankOptions)->contains(fn (array $option): bool => $option['value'] === $paymentGatewayId)
-        ) {
-            $paymentGatewayId = null;
-        }
-
-        $chartResult = $this->volumeStatisticsService->buildChart(
-            $userId,
-            $periodStartAt,
-            $periodEndAt,
-            $barsLimit,
-            $request->page(),
-            $includeArchived,
-            $paymentGatewayId,
-            $request->volumeFrom(),
-            $request->volumeTo(),
-        );
-
-        $chartPayload = $this->volumeStatisticsService->formatChartPayload($chartResult['items']);
-        $dealAmountDistribution = $this->volumeStatisticsService->buildDealAmountDistribution(
-            $userId,
-            $periodStartAt,
-            $periodEndAt,
-            $includeArchived,
-            $paymentGatewayId,
-            $request->volumeFrom(),
-            $request->volumeTo(),
-            $chartPayload['ids'],
-        );
-        $selectedTrader = $isAdmin && $userId !== null
-            ? User::query()->select(['id', 'email'])->find($userId)
-            : null;
-
-        return Inertia::render('PaymentDetail/VolumeStatistics', [
-            'chart' => [
-                'labels' => $chartPayload['labels'],
-                'series' => [
-                    [
-                        'name' => 'Объём USDT',
-                        'data' => $chartPayload['data'],
-                    ],
-                ],
-                'colors' => $chartPayload['colors'],
-                'volumes' => $chartPayload['volumes'],
-                'ids' => $chartPayload['ids'],
-                'names' => $chartPayload['names'],
-                'details' => $chartPayload['details'],
-                'detail_types' => $chartPayload['detail_types'],
-                'is_archived' => $chartPayload['is_archived'],
+        return response()->json(Cache::remember(
+            $cacheKey,
+            now()->addMinute(),
+            fn (): array => [
+                ...$this->volumeStatisticsService->buildModalPayload($paymentDetail, $period),
+                'context_detail' => PaymentDetailResource::make($paymentDetail)->resolve(),
             ],
-            'dealAmountDistribution' => $dealAmountDistribution['aggregate'],
-            'dealAmountDistributionByDetail' => $dealAmountDistribution['by_payment_detail'],
-            'meta' => [
-                ...$chartResult['meta'],
-                'scope_all_traders' => $isAdmin && $userId === null,
-            ],
-            'filters' => [
-                'period' => $period,
-                'date_from' => $request->dateFrom(),
-                'date_to' => $request->dateTo(),
-                'trader_id' => $isAdmin ? $userId : null,
-                'bars_limit' => $chartResult['meta']['bars_limit'],
-                'include_archived' => $includeArchived,
-                'payment_gateway_id' => $paymentGatewayId,
-                'volume_from' => $chartResult['meta']['volume_from'],
-                'volume_to' => $chartResult['meta']['volume_to'],
-                'page' => $chartResult['meta']['current_page'],
-                'view_mode' => $request->viewMode(),
-            ],
-            'volumePresets' => $chartResult['volume_presets'],
-            'bankOptions' => $bankOptions,
-            'selectedBank' => $paymentGatewayId === null
-                ? null
-                : collect($bankOptions)->firstWhere('value', $paymentGatewayId),
-            'barsLimitPresets' => [
-                ['value' => '25', 'label' => '25'],
-                ['value' => '50', 'label' => '50'],
-                ['value' => '75', 'label' => '75'],
-                ['value' => '100', 'label' => '100'],
-                ['value' => '200', 'label' => '200'],
-            ],
-            'defaultBarsLimit' => (string) PaymentDetailVolumeStatisticsService::DEFAULT_BARS_LIMIT,
-            'selectedTrader' => $selectedTrader === null ? null : [
-                'id' => $selectedTrader->id,
-                'label' => $selectedTrader->email,
-            ],
-            'periodOptions' => [
-                ['value' => '1d', 'label' => 'За день'],
-                ['value' => '7d', 'label' => 'За 7 дней'],
-                ['value' => '14d', 'label' => 'За 2 недели'],
-                ['value' => '30d', 'label' => 'За 30 дней'],
-                ['value' => 'current_month', 'label' => 'За текущий месяц'],
-                ['value' => 'all', 'label' => 'За всё время'],
-            ],
-            'isAdmin' => $isAdmin,
-            'traderSearchRoute' => $isAdmin ? route('admin.main.filter-options', ['type' => 'trader']) : null,
-            'backRoute' => $isAdmin ? 'admin.payment-details.index' : 'payment-details.index',
-        ]);
+        ));
     }
 }
