@@ -19,6 +19,9 @@
 
 ## [2026-05-22] ingest | Merchant Traffic Categories Architecture
 
+## [2026-05-25] ingest | Trader Balance Transfer Implementation Plan (step 1 shipped in code)
+- Raw: 2026-05-25-step-1-trader-finances-located.md
+
 ## [2026-05-22] ingest | Trader Balance Transfer Implementation Plan
 
 ## [2026-05-22] ingest | Team Leader Shared Insurance Mode Specification
@@ -143,3 +146,18 @@
 
 ## [2026-05-24] ingest | Merchant Traffic Categories Architecture (step 9 trader UI)
 - Updated: Merchant Traffic Categories Architecture
+
+## [2026-05-25] ingest | Trader Balance Transfer Implementation Plan (steps 2–4 shipped in code)
+- Raw: 2026-05-25-step-2-4-transaction-types.md
+
+## [2026-05-26] ingest | Trader Balance Transfer Implementation Plan (step 5 Form Requests)
+- Raw: 2026-05-26-step-5-form-requests.md
+
+## [2026-05-26] ingest | Trader Balance Transfer Implementation Plan (step 6 Transfer Service)
+- Raw: 2026-05-26-step-6-trader-balance-transfer-service.md
+
+## [2026-05-26] ingest | Trader Balance Transfer Implementation Plan (steps 7–8 Controller and Routes)
+- Raw: 2026-05-26-step-7-8-controller-routes.md
+
+## [2026-05-26] ingest | Trader Balance Transfer Implementation Plan (steps 9–15 Inertia props and Vue UI)
+- Raw: 2026-05-26-step-9-15-inertia-props-vue-ui.md

@@ -105,6 +105,7 @@ use App\Services\Telegram\TelegramChatWebhookIngestionService;
 use App\Services\Telegram\TelegramService;
 use App\Services\TrafficCategory\MerchantTrafficCategoryService;
 use App\Services\User\UserService;
+use App\Services\Wallet\TraderBalanceTransferService;
 use App\Services\Wallet\WalletService;
 use App\Support\LoginLogger;
 use GuzzleHttp\Client as GuzzleClient;
@@ -162,6 +163,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(WalletServiceContract::class, function () {
             return new WalletService;
+        });
+        $this->app->singleton(TraderBalanceTransferService::class, function () {
+            return new TraderBalanceTransferService;
         });
         $this->app->singleton(InvoiceServiceContract::class, function () {
             return new InvoiceService;

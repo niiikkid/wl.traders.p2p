@@ -22,6 +22,7 @@ enum TransactionType: string
     case CASCADE_PROVIDER_COLLATERAL_HOLD = 'cascade_provider_collateral_hold';
     case CASCADE_PROVIDER_ADMIN_WITHDRAWAL = 'cascade_provider_admin_withdrawal';
     case ROLLBACK_INCOME_FROM_A_SUCCESSFUL_CASCADE_DEAL = 'rollback_income_from_a_successful_cascade_deal';
+    case TRANSFER_TO_TRADER = 'transfer_to_trader';
 
     // in
     case REFUND_FOR_CANCELED_ORDER = 'refund_for_canceled_order';
@@ -38,6 +39,7 @@ enum TransactionType: string
     case CASCADE_PROVIDER_COLLATERAL_RELEASE = 'cascade_provider_collateral_release';
     case CASCADE_PROVIDER_ADMIN_DEPOSIT = 'cascade_provider_admin_deposit';
     case INCOME_FROM_A_SUCCESSFUL_CASCADE_DEAL = 'income_from_a_successful_cascade_deal';
+    case TRANSFER_FROM_TRADER = 'transfer_from_trader';
 
     public function direction(): TransactionDirection
     {
@@ -54,7 +56,8 @@ enum TransactionType: string
             self::PAYMENT_FOR_OPENED_PAYOUT,
             self::CASCADE_PROVIDER_COLLATERAL_HOLD,
             self::CASCADE_PROVIDER_ADMIN_WITHDRAWAL,
-            self::ROLLBACK_INCOME_FROM_A_SUCCESSFUL_CASCADE_DEAL => TransactionDirection::OUT,
+            self::ROLLBACK_INCOME_FROM_A_SUCCESSFUL_CASCADE_DEAL,
+            self::TRANSFER_TO_TRADER => TransactionDirection::OUT,
             self::REFUND_FOR_CANCELED_ORDER,
             self::REFUND_FOR_CANCELED_DISPUTE,
             self::DEPOSIT_BY_ADMIN,
@@ -68,7 +71,8 @@ enum TransactionType: string
             self::INCOME_FROM_REFERRALS_SUCCESSFUL_PAYOUT,
             self::CASCADE_PROVIDER_COLLATERAL_RELEASE,
             self::CASCADE_PROVIDER_ADMIN_DEPOSIT,
-            self::INCOME_FROM_A_SUCCESSFUL_CASCADE_DEAL => TransactionDirection::IN,
+            self::INCOME_FROM_A_SUCCESSFUL_CASCADE_DEAL,
+            self::TRANSFER_FROM_TRADER => TransactionDirection::IN,
         };
     }
 }

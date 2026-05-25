@@ -1,8 +1,74 @@
 # Trader Balance Transfer Implementation Plan
 
-> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22
-> Raw: [Trader Balance Transfer Requirements](../../raw/trader-balance-transfers/2026-05-22-trader-balance-transfer-requirements.md)
-> Updated: 2026-05-22
+> Sources: User conversation, 2026-05-22; repository exploration, 2026-05-22; implementation sessions, 2026-05-25–2026-05-26
+> Raw: [Trader Balance Transfer Requirements](../../raw/trader-balance-transfers/2026-05-22-trader-balance-transfer-requirements.md); [Step 1 Trader Finances Located](../../raw/trader-balance-transfers/2026-05-25-step-1-trader-finances-located.md); [Steps 2–4 Transaction Types](../../raw/trader-balance-transfers/2026-05-25-step-2-4-transaction-types.md); [Step 5 Form Requests](../../raw/trader-balance-transfers/2026-05-26-step-5-form-requests.md); [Step 6 Transfer Service](../../raw/trader-balance-transfers/2026-05-26-step-6-trader-balance-transfer-service.md); [Steps 7–8 Controller and Routes](../../raw/trader-balance-transfers/2026-05-26-step-7-8-controller-routes.md); [Steps 9–15 Inertia Props and Vue UI](../../raw/trader-balance-transfers/2026-05-26-step-9-15-inertia-props-vue-ui.md)
+> Updated: 2026-05-26
+
+## Implementation Status
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 1. Locate trader finances page | **Done** | Anchors documented below; code helpers in `WalletController` |
+| 2–4. `TransactionType` + localization | **Done** | `TRANSFER_TO_TRADER` / `TRANSFER_FROM_TRADER` in `TransactionType.php`; `lang/ru/transaction-type.php` |
+| 5. Form requests | **Done** | `CheckRecipientRequest`, `StoreTransferRequest`, trait `AuthorizesTraderBalanceTransfer` |
+| 6. Transfer service | **Done** | `TraderBalanceTransferService`, `TraderBalanceTransferException`; handlers on locked wallets |
+| 7. Controller | **Done** | `TraderBalanceTransferController`: `recipient`, `store`; `TraderBalanceTransferException` → `422` + `{ message }` |
+| 8. Routes `wallet.trader-transfer.*` | **Done** | `GET /wallet/trader-transfer/recipient`, `POST /wallet/trader-transfer` in trader group after `wallet.index` |
+| 9. Inertia props | **Done** | `traderBalanceTransfer` on `wallet.index` via `traderBalanceTransferProps()` |
+| 10. Vue modal | **Done** | `TraderBalanceTransferModal.vue` + `modal.js` `traderBalanceTransfer` |
+| 11. Entry button | **Done** | `TrustBalance.vue` — «Перевести средства» when `available` |
+| 12–14. Modal flow | **Done** | Recipient check, amount/2FA, `ConfirmModal` before POST |
+| 15. Reload after success | **Done** | `router.reload` — `walletStats`, `invoices`, `transactions`, `traderBalanceTransfer` |
+| 16. Pint | **Done** | `WalletController` formatted in implementation session |
+| 17. Tests | Pending | Feature tests when explicitly requested |
+
+Feature is **shipped** (API + UI, steps 1–15). Remaining: automated tests (step 17) and manual QA per **Testing Plan**.
+
+## Trader Finances Page (Located)
+
+Step 1 is complete. Use only this surface for the `Перевести средства` entry point and transfer routes.
+
+| Item | Value |
+|------|-------|
+| URL | `GET /finances` |
+| Route name | `wallet.index` |
+| Middleware | `auth`, `banned`, `role:Trader\|Super Admin` |
+| Route file | `routes/web.php` — trader group (~line 279) |
+| Controller | `App\Http\Controllers\WalletController@index` |
+| Balance type on page | `wallet.index` → `BalanceType::TRUST` (any role on this route) |
+| Transfer UI scope | `WalletController::isTraderOwnFinancesPage()` — `routeIs('wallet.index')` + Trader role only |
+| Inertia page | `resources/js/Pages/Wallet/Index.vue` |
+| Trust balance card | `resources/js/Pages/Wallet/Partials/TrustBalance.vue` |
+| Operation history | `resources/js/Pages/Wallet/Partials/OperationsHistory.vue` |
+| Menu | `resources/js/Layouts/Partials/TraderMenu.vue` → `route('wallet.index')` |
+| Nav title | `resources/js/Layouts/Partials/NavBar.vue` → «Финансы трейдера» |
+
+Transfer routes are in the same trader middleware group, immediately after `wallet.index`:
+
+| Method | URI | Route name | Controller |
+|--------|-----|------------|------------|
+| GET | `/wallet/trader-transfer/recipient` | `wallet.trader-transfer.recipient` | `TraderBalanceTransferController@recipient` |
+| POST | `/wallet/trader-transfer` | `wallet.trader-transfer.store` | `TraderBalanceTransferController@store` |
+
+### Code landed in step 1
+
+- `WalletController::resolveBalanceType()` — `match` on route name (`wallet.index` → `BalanceType::TRUST`, etc.).
+- `WalletController::isTraderOwnFinancesPage()` — private helper; `routeIs('wallet.index')` and user has Trader role.
+- `WalletController::traderBalanceTransferProps()` — Inertia prop `traderBalanceTransfer` (step 9); `null` off `wallet.index`.
+- `WalletController::canTraderBalanceTransfer()` — mirrors sender eligibility for `available` flag.
+- PHPDoc on `isTraderOwnFinancesPage()` links to this wiki article.
+
+### Not the trader's own finances page
+
+| Item | Value |
+|------|-------|
+| URL | `GET /leader/traders/{trader}/finances` |
+| Route name | `leader.traders.finances.index` |
+| Controller | `App\Http\Controllers\TeamLeader\TraderFinanceController@index` |
+| Inertia page | `resources/js/Pages/Leader/Trader/Finances.vue` |
+| Purpose | Team Leader read-only view of a referral trader's wallet |
+
+Provider liquidity uses `provider-liquidity.wallet.index` (`GET /provider-liquidity/wallet`), not `wallet.index`.
 
 ## Overview
 
@@ -36,9 +102,16 @@ The implementation should reuse the current wallet and transaction foundation:
 - `app/Enums/TransactionType.php` controls transaction direction.
 - `lang/ru/transaction-type.php` localizes transaction labels shown by `TransactionResource`.
 - `resources/js/Pages/Wallet/Partials/OperationsHistory.vue` displays transaction history.
-- `resources/js/Pages/Leader/Trader/Finances.vue` is the Team Leader view for trader finances; the trader's own finance page should be located and updated according to existing routes.
+- `resources/js/Pages/Leader/Trader/Finances.vue` + `App\Http\Controllers\TeamLeader\TraderFinanceController` — Team Leader read-only finances for a trader (`leader.traders.finances.index`). Do not add transfer UI here.
+- Trader's own finances: `resources/js/Pages/Wallet/Index.vue` + `WalletController@index` (`wallet.index`, `GET /finances`). Helpers: `resolveBalanceType()`, `isTraderOwnFinancesPage()`, `traderBalanceTransferProps()`. See **Trader Finances Page (Located)** and **Inertia Props (step 9)** / **Vue UI (steps 10–15)**.
+- `resources/js/Modals/Wallet/TraderBalanceTransferModal.vue` — transfer modal (steps 10–15).
+- `resources/js/utils/truncateTrustBalanceForTransfer.js` — truncate-down helper for «Перевести всё».
+- `resources/js/store/modal.js` — `openTraderBalanceTransferModal()`, `traderBalanceTransfer` modal state.
 - `resources/js/Components/Modals/ConfirmModal.vue` is the existing simple confirmation modal pattern.
 - `app/Http/Controllers/Auth/Check2FACodeController.php` shows how current Google 2FA codes are verified.
+- `app/Services/Wallet/TraderBalanceTransferService.php` — recipient resolve/preview and atomic transfer (step 6).
+- `app/Exceptions/TraderBalanceTransferException.php` — domain errors mapped to JSON in controller (step 7).
+- `app/Http/Controllers/Wallet/TraderBalanceTransferController.php` — `recipient`, `store` JSON endpoints (steps 7–8).
 
 ## Domain Definitions
 
@@ -62,35 +135,130 @@ This preserves the project's current invariant: trust credits can satisfy reserv
 
 ## Transaction Types
 
-Add two new `TransactionType` enum cases:
+**Shipped (steps 2–4, 2026-05-25).** Enum cases in `app/Enums/TransactionType.php`:
 
-- outgoing debit from sender: `transfer_to_trader`;
-- incoming credit to recipient: `transfer_from_trader`.
+| Case | Value | Direction |
+|------|-------|-----------|
+| `TRANSFER_TO_TRADER` | `transfer_to_trader` | OUT (sender debit) |
+| `TRANSFER_FROM_TRADER` | `transfer_from_trader` | IN (recipient credit) |
 
-The outgoing type must return `TransactionDirection::OUT`.
-
-The incoming type must return `TransactionDirection::IN`.
-
-Add Russian localization in `lang/ru/transaction-type.php`:
+Russian labels in `lang/ru/transaction-type.php`:
 
 - `transfer_to_trader` => `Перевод трейдеру`;
 - `transfer_from_trader` => `Перевод от трейдера`.
 
-These labels are enough for the standard history table because `TransactionResource` returns `type_name` from `transaction-type.<type>`.
+These labels are enough for the standard history table because `TransactionResource` returns `type_name` from `transaction-type.<type>`. `TraderBalanceTransferService` uses `TransactionType::TRANSFER_TO_TRADER` and `TransactionType::TRANSFER_FROM_TRADER` via `TakeFromTrust` / `GiveToTrust` handlers.
+
+## Form Requests (step 5)
+
+**Shipped (2026-05-26).** Namespace `App\Http\Requests\Wallet\TraderTransfer`:
+
+| Class | Endpoint | Role |
+|-------|-------------------|------|
+| `CheckRecipientRequest` | `GET wallet.trader-transfer.recipient` | Validates `login`; `recipientLogin()` for service lookup |
+| `StoreTransferRequest` | `POST wallet.trader-transfer.store` | Validates `recipient_login`, `amount`, conditional `one_time_password`; `amountMoney()` for `Money` |
+
+Shared trait `Concerns\AuthorizesTraderBalanceTransfer` enforces sender eligibility in `authorize()` (Trader role, `team_leader_id`, not archived/blocked). Failed authorize → 403 before field validation.
+
+`StoreTransferRequest` specifics:
+
+- `amount`: string regex `^\d+(\.\d{1,2})?$`, then `after()` ensures `Money::fromPrecision` is `greaterThanZero()`;
+- `one_time_password`: required when `google2fa_secret` is set; OTP checked in `after()` via `pragmarx.google2fa` (not `user_2fa_passed`);
+- Russian validation messages match **Copy** section below.
+
+`TraderBalanceTransferController` type-hints these requests (step 7); `TraderBalanceTransferService` receives validated `recipientLogin()` / `amountMoney()` and does not re-validate 2FA or amount format.
+
+## Controller and Routes (steps 7–8)
+
+**Shipped (2026-05-26).** `App\Http\Controllers\Wallet\TraderBalanceTransferController` with constructor-injected `TraderBalanceTransferService`.
+
+| Action | Form Request | Service call | Success response |
+|--------|--------------|--------------|------------------|
+| `recipient` | `CheckRecipientRequest` | `resolveRecipient` + `recipientPreview` | `200` JSON `{ login, avatar_uuid, avatar_style }` |
+| `store` | `StoreTransferRequest` | `transfer` | `200` JSON `{ message: "Средства переведены." }` |
+
+`failTransfer(TraderBalanceTransferException)` returns `422` with `{ message }` for all service-level failures (`recipientNotAvailable`, `insufficientTrustBalance`, `transferUnavailable`).
+
+Laravel validation failures (amount regex, 2FA) return standard `422` with `errors` (not handled in controller). Failed `authorize()` on Form Requests → `403`.
+
+Frontend can call `route('wallet.trader-transfer.recipient')` and `route('wallet.trader-transfer.store')` (Ziggy updated).
+
+## Inertia Props (step 9)
+
+**Shipped (2026-05-26).** On `wallet.index` only (`isTraderOwnFinancesPage()`), `WalletController@index` passes `traderBalanceTransfer`:
+
+| Key | Source | UI use |
+|-----|--------|--------|
+| `available` | `canTraderBalanceTransfer($user)` | Show «Перевести средства» on trust card |
+| `trust_balance` | `$wallet->trust_balance->toPrecision()` | «Перевести всё» via `truncateTrustBalanceForTransfer()` |
+| `has_2fa` | `$user->google2fa_secret !== null` | Show 2FA field in modal |
+
+Off `wallet.index` (admin user wallet, `leader.traders.finances.index`, merchant/agent/provider finances) the prop is `null`.
+
+Eligibility for `available` matches `AuthorizesTraderBalanceTransfer`: Trader role, `team_leader_id`, not archived/blocked.
+
+## Vue UI (steps 10–15)
+
+**Shipped (2026-05-26).**
+
+| Piece | Location |
+|-------|----------|
+| Entry button | `TrustBalance.vue` — `btn` «Перевести средства» in join before withdraw/deposit; `v-if="traderBalanceTransfer?.available"` and not admin wallet view |
+| Modal | `TraderBalanceTransferModal.vue` — mounted from `Wallet/Index.vue` |
+| Modal store | `modal.js` — `traderBalanceTransfer`, `openTraderBalanceTransferModal()` |
+| Truncate helper | `truncateTrustBalanceForTransfer.js` |
+
+Flow:
+
+1. Open modal from trust card.
+2. Enter login → **Проверить** → `GET wallet.trader-transfer.recipient?login=...` → avatar + login preview; preview cleared on login change.
+3. Amount (≤2 decimals, sanitized on input); **Перевести всё** fills truncated `trust_balance`.
+4. 2FA field when `has_2fa`.
+5. **Перевести** → `ConfirmModal` («Подтвердите перевод») → `POST wallet.trader-transfer.store`.
+6. Success → close modal, `router.reload({ only: ['walletStats', 'invoices', 'transactions', 'traderBalanceTransfer'], preserveScroll: true })`.
+
+Copy matches **Copy** under **UI Requirements**. Backend validation errors map to field errors; service `422` `message` maps to recipient/amount/2FA as appropriate.
+
+## Trader Balance Transfer Service (step 6)
+
+**Shipped (2026-05-26).** `App\Services\Wallet\TraderBalanceTransferService` (singleton in `AppServiceProvider`). Exceptions: `App\Exceptions\TraderBalanceTransferException`.
+
+| Method | Role |
+|--------|------|
+| `resolveRecipient(User $sender, string $login): User` | Scoped lookup for recipient check endpoint |
+| `recipientPreview(User $recipient): array` | `{ login, avatar_uuid, avatar_style }` — `login` is `email` |
+| `transfer(User $sender, string $recipientLogin, Money $amount): void` | Atomic transfer |
+
+Recipient scope (same as planned API): `User::role('Trader')`, same `team_leader_id`, exact `email`, not self, `banned_at` / `archived_at` null.
+
+Inside `App\Utils\Transaction::run`:
+
+1. Re-query recipient; `refresh()` sender and recipient; re-assert eligibility.
+2. `lockWallets()` — sort wallet IDs, `lockForUpdate()` ascending by `id`.
+3. `trust_balance >= amount` on locked sender wallet.
+4. `TakeFromTrust` + `TRANSFER_TO_TRADER` (debit sender trust only when pre-check passes).
+5. `GiveToTrust` + `TRANSFER_FROM_TRADER` (recipient reserve-first).
+
+Does **not** call `WalletService::takeFromBalance` / `giveToBalance` — handlers run on already-locked rows to avoid nested locks.
+
+| Exception factory | Message |
+|-------------------|---------|
+| `recipientNotAvailable()` | Трейдер не найден или недоступен для перевода. |
+| `insufficientTrustBalance()` | Недостаточно средств на рабочем балансе. |
+| `transferUnavailable()` | Перевод недоступен. |
+
+`resolveWallet()` creates a wallet via `services()->wallet()->create()` when missing.
 
 ## Backend API
 
-Use Form Request classes for validation and keep controllers thin. Suggested endpoints:
+**Shipped (steps 7–8, 2026-05-26).** Thin `TraderBalanceTransferController` + Form Requests + `TraderBalanceTransferService`.
 
-- `GET /wallet/trader-transfer/recipient?login=...` checks recipient availability.
-- `POST /wallet/trader-transfer` performs the transfer.
+| Method | URI | Route name | Purpose |
+|--------|-----|------------|---------|
+| GET | `/wallet/trader-transfer/recipient?login=...` | `wallet.trader-transfer.recipient` | Check recipient |
+| POST | `/wallet/trader-transfer` | `wallet.trader-transfer.store` | Execute transfer |
 
-Route names should match existing route naming conventions for the trader wallet/finance area, for example:
-
-- `wallet.trader-transfer.recipient`;
-- `wallet.trader-transfer.store`.
-
-If the project has a more specific trader finance route group, place the routes there instead of introducing a parallel convention.
+Routes live in the trader group (`auth`, `banned`, `role:Trader|Super Admin`) immediately after `wallet.index`.
 
 ### Recipient Check Endpoint
 
@@ -171,52 +339,25 @@ The `Перевести всё` button should calculate the visible amount from 
 
 ## Atomic Transfer Flow
 
-The transfer must be a single database transaction with row locks for both wallets.
+**Shipped in `TraderBalanceTransferService::transfer()` (step 6).** Single `Transaction::run` with both wallets locked by ascending `id` before handler calls. 2FA stays in `StoreTransferRequest` (before the service is invoked).
 
-Recommended service method:
+1. Sender eligibility (Form Request `authorize()` + service `assertSenderEligible`).
+2. 2FA when enabled (`StoreTransferRequest` only).
+3. DB transaction: re-query recipient, `refresh()` users, re-check statuses.
+4. Lock both wallets (`orderBy('id')` after sorting IDs).
+5. `trust_balance >= amount` on locked sender wallet.
+6. `TakeFromTrust` → `TRANSFER_TO_TRADER`.
+7. `GiveToTrust` → `TRANSFER_FROM_TRADER`.
 
-```php
-public function transfer(User $sender, string $recipientLogin, Money $amount, ?string $oneTimePassword): void
-```
+Rollback on any failure. No separate transfer model.
 
-Flow:
+### Lock ordering (resolved)
 
-1. Validate sender role, status, and Team Leader.
-2. Validate 2FA when enabled.
-3. Start a DB transaction.
-4. Re-query and lock sender wallet with `lockForUpdate()`.
-5. Re-query recipient by exact scoped login and lock recipient wallet with `lockForUpdate()`.
-6. Re-check sender and recipient statuses inside the transaction.
-7. Re-check sender `trust_balance >= amount` inside the transaction.
-8. Debit sender `trust_balance` using `WalletService::takeFromBalance(..., TransactionType::TRANSFER_TO_TRADER, BalanceType::TRUST)`.
-9. Credit recipient using `WalletService::giveToBalance(..., TransactionType::TRANSFER_FROM_TRADER, BalanceType::TRUST)`.
-10. Commit.
-
-The transaction must fail completely if either wallet update, transaction insert, recipient lookup, status check, or 2FA validation fails.
-
-### Lock Ordering
-
-To reduce deadlock risk, lock wallets in a deterministic order by wallet ID when manually locking both records. If reusing `WalletService::takeFromBalance()` and `giveToBalance()` causes separate internal locks, wrap the outer process in a transaction and consider either:
-
-- ensuring the service method locks both wallets first in deterministic order, then updates balances directly following existing handler behavior; or
-- adding a wallet-service method designed for atomic two-wallet transfers.
-
-Preserve existing transaction creation semantics and do not create a separate transfer model.
+Step 6 locks both wallets in deterministic ID order, then invokes `TakeFromTrust` / `GiveToTrust` on the locked models — not `WalletService::takeFromBalance` / `giveToBalance`.
 
 ## Important Implementation Detail: Recipient Reserve Logic
 
-Because the recipient credit must keep current reserve-first behavior, the safest approach is to call the existing trust credit path for the recipient:
-
-```php
-services()->wallet()->giveToBalance(
-    walletID: $recipientWallet->id,
-    amount: $amount,
-    transactionType: TransactionType::TRANSFER_FROM_TRADER,
-    balanceType: BalanceType::TRUST,
-);
-```
-
-This allows `GiveToTrust` to decide how much goes to `reserve_balance` and how much goes to `trust_balance`.
+Recipient credit uses `(new GiveToTrust)->handle($recipientWallet, $amount, TransactionType::TRANSFER_FROM_TRADER)` on the locked wallet (same reserve-first behavior as `WalletService::giveToBalance` with `BalanceType::TRUST`).
 
 The sender debit must still be limited to available `trust_balance` only. Do not rely on `TakeFromTrust` alone for this feature, because `TakeFromTrust` can draw from `reserve_balance` when trust becomes negative. The transfer service must prevent this by checking `amount <= trust_balance` before calling the debit path, and it should do that check under lock.
 
@@ -237,9 +378,11 @@ Prefer extracting this into a small reusable service if no existing action alrea
 
 ## UI Requirements
 
+**Shipped (steps 10–15, 2026-05-26).** See **Vue UI (steps 10–15)** for file anchors.
+
 ### Entry Point
 
-Add a `Перевести средства` button on the trader's own `Финансы` page. The button should be visible only when:
+**Done.** `Перевести средства` button on the trader's own `Финансы` page (`TrustBalance.vue`). Visible only when:
 
 - current user is a Trader;
 - current user has `team_leader_id`;
@@ -331,29 +474,22 @@ Authorization should be enforced on backend regardless of UI visibility:
 
 ## Implementation Steps
 
-1. Locate the trader's own `Финансы` page and its controller/route. Do not confuse it with `Leader/Trader/Finances.vue`, which is the Team Leader view of a trader.
-2. Add new `TransactionType` cases for outgoing and incoming transfer.
-3. Update `TransactionType::direction()` for both new cases.
-4. Add Russian localization for both transaction types.
-5. Create Form Requests:
-   - recipient check request;
-   - transfer submit request.
-6. Add a focused service, for example `TraderBalanceTransferService`, responsible for recipient lookup, 2FA verification, amount checks, wallet locks, and atomic transfer.
-7. Add a controller with two actions:
-   - check recipient;
-   - store transfer.
-8. Add trader-authenticated routes in the existing wallet/finance route group.
-9. Expose enough props to the finance page:
-   - whether transfer is available;
-   - current trust balance for `Перевести всё`;
-   - whether the user has 2FA enabled.
-10. Create a Vue modal component for transfer, following existing modal/store patterns.
-11. Add the `Перевести средства` entry button to the finance page.
-12. Implement recipient check in the modal with exact login.
-13. Implement amount input with max 2 decimals and truncate-down max amount.
-14. Implement final confirmation and optional 2FA input.
-15. On success, refresh wallet stats and operation history.
-16. Run Pint on changed PHP files.
+1. ~~Locate the trader's own `Финансы` page and its controller/route.~~ **Done (2026-05-25)** — see **Trader Finances Page (Located)**.
+2. ~~Add new `TransactionType` cases for outgoing and incoming transfer.~~ **Done (2026-05-25)**.
+3. ~~Update `TransactionType::direction()` for both new cases.~~ **Done (2026-05-25)**.
+4. ~~Add Russian localization for both transaction types.~~ **Done (2026-05-25)**.
+5. ~~Create Form Requests (recipient check + transfer submit).~~ **Done (2026-05-26)** — see **Form Requests (step 5)**.
+6. ~~Add `TraderBalanceTransferService` (recipient lookup, locks, atomic transfer).~~ **Done (2026-05-26)** — see **Trader Balance Transfer Service (step 6)**.
+7. ~~Add a controller with two actions (check recipient, store transfer).~~ **Done (2026-05-26)** — see **Controller and Routes (steps 7–8)**.
+8. ~~Add trader-authenticated routes `wallet.trader-transfer.*`.~~ **Done (2026-05-26)** — see **Trader Finances Page (Located)** route table.
+9. ~~Expose enough props to the finance page (`traderBalanceTransfer`).~~ **Done (2026-05-26)** — see **Inertia Props (step 9)**.
+10. ~~Create `TraderBalanceTransferModal.vue` + modal store entry.~~ **Done (2026-05-26)** — see **Vue UI (steps 10–15)**.
+11. ~~Add «Перевести средства» on trust card.~~ **Done (2026-05-26)**.
+12. ~~Recipient check in modal.~~ **Done (2026-05-26)**.
+13. ~~Amount input + truncate-down «Перевести всё».~~ **Done (2026-05-26)** — `truncateTrustBalanceForTransfer.js`.
+14. ~~ConfirmModal + optional 2FA.~~ **Done (2026-05-26)**.
+15. ~~Reload wallet stats and history after success.~~ **Done (2026-05-26)**.
+16. ~~Run Pint on changed PHP files.~~ **Done (2026-05-26)**.
 17. When tests are requested, cover recipient lookup, forbidden cases, 2FA, precision, insufficient balance, reserve-first recipient credit, and atomic rollback behavior.
 
 ## Testing Plan
@@ -387,7 +523,7 @@ Manual UI verification:
 
 ## Open Implementation Notes
 
-- If the existing wallet service cannot safely lock both wallets in deterministic order, add a dedicated transfer method rather than composing two public methods blindly.
-- If avatar formatting is centralized in a resource, reuse that resource shape for the recipient preview.
-- If there is already a project-level flash/toast convention, use it instead of introducing a new notification mechanism.
+- ~~Wallet lock ordering for two-wallet transfer~~ — resolved in step 6 (`lockWallets` by ascending `id`).
+- If avatar formatting is centralized in a resource, reuse that resource shape for the recipient preview (step 6 returns `avatar_uuid` / `avatar_style` from `User`).
+- Success feedback uses Inertia partial reload (no new toast); API success message is `Средства переведены.` — align with flash/toast convention if product adds one later.
 - Do not create a `TraderBalanceTransfer` model or table in the first version; the accepted requirement is to use existing wallet transaction records only.

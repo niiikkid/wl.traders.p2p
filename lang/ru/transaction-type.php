@@ -25,4 +25,6 @@ return [
     'cascade_provider_collateral_hold' => 'Удержание залога (каскад)',
     'income_from_a_successful_cascade_deal' => 'Доход от успешной сделки',
     'rollback_income_from_a_successful_cascade_deal' => 'Отмена дохода от успешной сделки',
+    'transfer_to_trader' => 'Перевод трейдеру',
+    'transfer_from_trader' => 'Перевод от трейдера',
 ];

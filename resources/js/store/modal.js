@@ -25,6 +25,10 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
+                traderBalanceTransfer: {
+                    showed: false,
+                    params: {},
+                },
                 withdrawal: {
                     showed: false,
                     params: {},
@@ -150,6 +154,7 @@ export const useModalStore = defineStore('modal', {
         editOrderAmountModal: (state) => state.modals.editOrderAmount,
         userNotesModal: (state) => state.modals.userNotes,
         traderDepositModal: (state) => state.modals.traderDeposit,
+        traderBalanceTransferModal: (state) => state.modals.traderBalanceTransfer,
         userCreateModal: (state) => state.modals.userCreate,
         userEditModal: (state) => state.modals.userEdit,
         userTempVipHistoryModal: (state) => state.modals.userTempVipHistory,
@@ -213,6 +218,9 @@ export const useModalStore = defineStore('modal', {
         },
         openTraderDepositModal(props) {
             this.openModal('traderDeposit', props);
+        },
+        openTraderBalanceTransferModal(props = {}) {
+            this.openModal('traderBalanceTransfer', props);
         },
         openWithdrawalModal(props) {
             this.openModal('withdrawal', props);

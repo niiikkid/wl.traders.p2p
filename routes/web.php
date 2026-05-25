@@ -94,6 +94,7 @@ use App\Http\Controllers\Trader\TrafficCategoryController;
 use App\Http\Controllers\UserDeviceController;
 use App\Http\Controllers\UserDevicePingController;
 use App\Http\Controllers\UserOnlineController;
+use App\Http\Controllers\Wallet\TraderBalanceTransferController;
 use App\Http\Controllers\WalletController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -277,6 +278,11 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/bridge.apk', [ApkController::class, 'download'])->name('app.download');
 
         Route::get('/finances', [WalletController::class, 'index'])->name('wallet.index');
+
+        Route::prefix('wallet/trader-transfer')->name('wallet.trader-transfer.')->group(function () {
+            Route::get('/recipient', [TraderBalanceTransferController::class, 'recipient'])->name('recipient');
+            Route::post('/', [TraderBalanceTransferController::class, 'store'])->name('store');
+        });
 
         Route::get('/sms-logs', [SmsLogController::class, 'index'])->name('sms-logs.index');
 

@@ -2,7 +2,14 @@
 import {useModalStore} from "@/store/modal.js";
 import {router, usePage} from "@inertiajs/vue3";
 import {useViewStore} from "@/store/view.js";
-import {ref} from "vue";
+import {computed, ref} from "vue";
+
+const props = defineProps({
+    traderBalanceTransfer: {
+        type: Object,
+        default: null,
+    },
+});
 
 const viewStore = useViewStore();
 const modalStore = useModalStore();
@@ -25,7 +32,16 @@ const custom = getRandomInt(9999999999999999);
 
 const openTraderDepositModal = () => {
     modalStore.openTraderDepositModal({});
-}
+};
+
+const showTransferButton = computed(() => (
+    !viewStore.isAdminViewMode
+    && props.traderBalanceTransfer?.available === true
+));
+
+const openTraderBalanceTransferModal = () => {
+    modalStore.openTraderBalanceTransferModal({});
+};
 
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
@@ -65,6 +81,15 @@ function getRandomInt(max) {
                         </template>
                         <template v-else>
                             <div class="join">
+                                <button
+                                    v-if="showTransferButton"
+                                    type="button"
+                                    class="btn btn-outline btn-secondary join-item btn-sm"
+                                    @click.prevent="openTraderBalanceTransferModal"
+                                >
+                                    <span class="md:block hidden">Перевести средства</span>
+                                    <span class="md:hidden">Перевести</span>
+                                </button>
                                 <button
                                     @click.prevent="modalStore.openWithdrawalModal({user}); setBalanceType('trust')"
                                     type="button"

@@ -31,7 +31,7 @@ Trader-to-trader working balance transfer knowledge for Team Leader scoped walle
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Trader Balance Transfer Implementation Plan](trader-balance-transfers/trader-balance-transfer-implementation-plan.md) | Detailed specification and implementation plan for atomic `trust_balance` transfers between traders under the same Team Leader. | 2026-05-22 |
+| [Trader Balance Transfer Implementation Plan](trader-balance-transfers/trader-balance-transfer-implementation-plan.md) | **Shipped:** atomic `trust_balance` transfers within one Team Leader; API `wallet.trader-transfer.*` + Inertia/UI on `wallet.index` (steps 1–15). Tests pending (17). | 2026-05-26 |
 
 ## dispute-bank-statements
 

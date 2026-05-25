@@ -7,6 +7,7 @@ use App\Enums\InvoiceType;
 use App\Http\Requests\Wallet\UpdateFiatCurrencyRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TransactionResource;
+use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,17 +16,7 @@ class WalletController extends Controller
 {
     public function index(Request $request)
     {
-        if ($request->route()->action['as'] === 'wallet.index') {
-            $balanceType = BalanceType::TRUST;
-        } elseif ($request->route()->action['as'] === 'merchant.finances.index') {
-            $balanceType = BalanceType::MERCHANT;
-        } elseif ($request->route()->action['as'] === 'leader.finances.index') {
-            $balanceType = BalanceType::TEAMLEADER;
-        } elseif ($request->route()->action['as'] === 'agent.finances.index') {
-            $balanceType = BalanceType::AGENT;
-        } elseif ($request->route()->action['as'] === 'provider-liquidity.wallet.index') {
-            $balanceType = BalanceType::PROVIDER;
-        }
+        $balanceType = $this->resolveBalanceType($request);
 
         /**
          * @var Wallet $wallet
@@ -117,7 +108,9 @@ class WalletController extends Controller
             ];
         }
 
-        return Inertia::render('Wallet/Index', compact('walletStats', 'invoices', 'transactions', 'tabs', 'filters', 'currentTab', 'currentFilters', 'walletSurfaces'));
+        $traderBalanceTransfer = $this->traderBalanceTransferProps($request, $wallet);
+
+        return Inertia::render('Wallet/Index', compact('walletStats', 'invoices', 'transactions', 'tabs', 'filters', 'currentTab', 'currentFilters', 'walletSurfaces', 'traderBalanceTransfer'));
     }
 
     public function updateFiatCurrency(UpdateFiatCurrencyRequest $request)
@@ -127,5 +120,62 @@ class WalletController extends Controller
         ]);
 
         return redirect()->back();
+    }
+
+    /**
+     * Trader's own «Финансы» page (not Team Leader read-only view of a trader).
+     *
+     * @see wiki/trader-balance-transfers/trader-balance-transfer-implementation-plan.md
+     */
+    private function isTraderOwnFinancesPage(Request $request): bool
+    {
+        return $request->routeIs('wallet.index')
+            && $request->user()?->hasRole('Trader');
+    }
+
+    /**
+     * @return array{available: bool, trust_balance: string, has_2fa: bool}|null
+     */
+    private function traderBalanceTransferProps(Request $request, Wallet $wallet): ?array
+    {
+        if (! $this->isTraderOwnFinancesPage($request)) {
+            return null;
+        }
+
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        return [
+            'available' => $this->canTraderBalanceTransfer($user),
+            'trust_balance' => $wallet->trust_balance->toPrecision(),
+            'has_2fa' => $user->google2fa_secret !== null,
+        ];
+    }
+
+    private function canTraderBalanceTransfer(User $user): bool
+    {
+        if (! $user->hasRole('Trader')) {
+            return false;
+        }
+
+        if ($user->team_leader_id === null) {
+            return false;
+        }
+
+        return $user->archived_at === null && $user->banned_at === null;
+    }
+
+    private function resolveBalanceType(Request $request): BalanceType
+    {
+        return match ($request->route()->getName()) {
+            'wallet.index' => BalanceType::TRUST,
+            'merchant.finances.index' => BalanceType::MERCHANT,
+            'leader.finances.index' => BalanceType::TEAMLEADER,
+            'agent.finances.index' => BalanceType::AGENT,
+            'provider-liquidity.wallet.index' => BalanceType::PROVIDER,
+        };
     }
 }

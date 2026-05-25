@@ -16,6 +16,7 @@ import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import ProviderBalance from "@/Pages/Wallet/Partials/ProviderBalance.vue";
 import AgentBalance from "@/Pages/Wallet/Partials/AgentBalance.vue";
 import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
+import TraderBalanceTransferModal from "@/Modals/Wallet/TraderBalanceTransferModal.vue";
 import {useModalStore} from "@/store/modal.js";
 
 const page = usePage();
@@ -26,6 +27,8 @@ const modalStore = useModalStore();
 
 /** На admin.users.wallet приходит из бэка; на своём кошельке отсутствует — используем только viewStore. */
 const walletSurfaces = computed(() => page.props.walletSurfaces ?? null);
+
+const traderBalanceTransfer = computed(() => page.props.traderBalanceTransfer ?? null);
 
 const showTrustBalanceCard = computed(() => {
     const ws = walletSurfaces.value;
@@ -182,7 +185,11 @@ defineOptions({ layout: AuthenticatedLayout })
         </div>
 
         <div class="grid xl:grid-cols-2 grid-cols-1 gap-6 mb-6">
-            <TrustBalance v-show="showTrustBalanceCard" @setBalanceType="setBalanceType"/>
+            <TrustBalance
+                v-show="showTrustBalanceCard"
+                :trader-balance-transfer="traderBalanceTransfer"
+                @setBalanceType="setBalanceType"
+            />
             <MerchantBalance v-show="showMerchantBalanceCard" @setBalanceType="setBalanceType"/>
             <TeamleaderBalance v-show="showTeamleaderBalanceCard" @setBalanceType="setBalanceType"/>
             <ProviderBalance
@@ -199,6 +206,7 @@ defineOptions({ layout: AuthenticatedLayout })
 
         <DepositModal :balanceType="balanceType"/>
         <TraderDepositModal :balanceType="balanceType"/>
+        <TraderBalanceTransferModal />
         <WithdrawalModal :balanceType="balanceType"/>
         <UserNotesModal />
     </div>
