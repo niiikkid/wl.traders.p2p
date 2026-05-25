@@ -21,6 +21,10 @@ const selectedFiltersProp = computed(() => page.props.selectedFilters || {});
 const walletStats = computed(() => page.props.walletStats);
 const rates = computed(() => page.props.data?.rates ?? []);
 
+const usesTeamLeaderSharedReserve = computed(() => (
+    page.props.auth.user?.uses_team_leader_shared_reserve === true
+));
+
 const formatNumber = (num) => {
     const roundedNum = Math.round(num * 100) / 100;
     return roundedNum.toLocaleString('en-US', {
@@ -1395,8 +1399,17 @@ defineOptions({ layout: AuthenticatedLayout });
                             <div class="text-sm text-base-content/60 mt-1">
                                 ≈ {{ financeOverview.trustAmountSecondary }} {{ financeOverview.secondaryCurrency }}
                             </div>
-                            <div class="text-xs text-base-content/70 mt-2">
-                                Резерв: {{ financeOverview.trustReserveAmount }} {{ financeOverview.primaryCurrency }}
+                            <div class="text-xs text-base-content/70 mt-2 flex items-center gap-1.5">
+                                <span>Резерв:</span>
+                                <span
+                                    v-if="usesTeamLeaderSharedReserve"
+                                    class="badge badge-neutral badge-xs"
+                                >
+                                    тимлидерский
+                                </span>
+                                <span v-else>
+                                    {{ financeOverview.trustReserveAmount }} {{ financeOverview.primaryCurrency }}
+                                </span>
                             </div>
                             <div class="text-xs text-base-content/70">
                                 Вывод: {{ financeOverview.trustWithdrawalAmount }} {{ financeOverview.primaryCurrency }}

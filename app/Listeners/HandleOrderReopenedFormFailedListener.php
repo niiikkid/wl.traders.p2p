@@ -37,12 +37,17 @@ class HandleOrderReopenedFormFailedListener implements ShouldQueue
 
             $event->order->loadMissing(['trader.wallet', 'teamLeader.wallet']);
 
-            app(OrderTraderDebitService::class)->debit(
+            $allocation = app(OrderTraderDebitService::class)->debit(
                 $event->order->trader,
                 $event->order->trader_paid_for_order,
                 $event->order,
                 TransactionType::PAYMENT_FOR_OPENED_ORDER,
             );
+
+            $event->order->update($allocation?->toOrderAttributes() ?? [
+                'trader_trust_paid_for_order' => null,
+                'team_leader_reserve_paid_for_order' => null,
+            ]);
         });
     }
 

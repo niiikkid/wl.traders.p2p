@@ -106,6 +106,11 @@ const activeFinanceTitle = computed(() => {
     return 'Финансы трейдера';
 });
 
+const usesTeamLeaderSharedReserve = computed(() => (
+    viewStore.isTraderViewMode
+    && usePage().props.auth.user?.uses_team_leader_shared_reserve === true
+));
+
 const role = usePage().props.auth.role;
 const email = usePage().props.auth.user.email;
 
@@ -677,7 +682,10 @@ onMounted(async () => {
                                     <span class="text-lg leading-none">{{ walletFormated.trust_balance }}</span>
                                     <span class="badge badge-ghost">USDT</span>
                                 </div>
-                                <span class="inline-flex items-center text-sm px-3 py-1.5 rounded-full badge badge-outline">
+                                <span
+                                    v-if="!usesTeamLeaderSharedReserve"
+                                    class="inline-flex items-center text-sm px-3 py-1.5 rounded-full badge badge-outline"
+                                >
                                     <svg class="w-4 h-4 mr-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v3m-3-6V7a3 3 0 1 1 6 0v4m-8 0h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/>
                                     </svg>
@@ -696,7 +704,16 @@ onMounted(async () => {
                                         <p class="text-xs text-base-content/70">Траст баланс</p>
                                         <p class="text-base font-semibold">{{ walletFormated.trust_balance }} USDT</p>
                                         <div class="mt-2 space-y-1 text-xs text-base-content/65">
-                                            <p>Резерв: {{ traderFinanceOverview.trustReserveAmount }} USDT</p>
+                                            <p class="flex items-center gap-1.5">
+                                                <span>Резерв:</span>
+                                                <span
+                                                    v-if="usesTeamLeaderSharedReserve"
+                                                    class="badge badge-neutral badge-xs"
+                                                >
+                                                    тимлидерский
+                                                </span>
+                                                <span v-else>{{ traderFinanceOverview.trustReserveAmount }} USDT</span>
+                                            </p>
                                             <p>Ожидает вывода: {{ traderFinanceOverview.trustWithdrawalAmount }} USDT</p>
                                         </div>
                                     </div>
@@ -799,8 +816,16 @@ onMounted(async () => {
                                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v3m-3-6V7a3 3 0 1 1 6 0v4m-8 0h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/>
                                         </svg>
                                         <div class="font-semibold">
-                                            <span class="text-base text-base-content mr-1">{{ wallet.reserve_balance }}</span>
-                                            <span class="badge badge-ghost badge-sm">USDT</span>
+                                            <span
+                                                v-if="usesTeamLeaderSharedReserve"
+                                                class="badge badge-neutral badge-sm"
+                                            >
+                                                тимлидерский
+                                            </span>
+                                            <template v-else>
+                                                <span class="text-base text-base-content mr-1">{{ walletFormated.reserve_balance }}</span>
+                                                <span class="badge badge-ghost badge-sm">USDT</span>
+                                            </template>
                                         </div>
                                     </div>
                                 </div>

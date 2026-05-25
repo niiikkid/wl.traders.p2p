@@ -2,7 +2,7 @@
 import {useModalStore} from "@/store/modal.js";
 import {router, usePage} from "@inertiajs/vue3";
 import {useViewStore} from "@/store/view.js";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 
 const viewStore = useViewStore();
 const modalStore = useModalStore();
@@ -20,6 +20,16 @@ router.on('success', (event) => {
 const setBalanceType = (type) => {
     emit('setBalanceType', type);
 };
+
+const teamLeaderUsesSharedReserve = computed(() => {
+    const insurance = usePage().props.teamLeaderInsurance;
+
+    if (insurance?.role === 'team_leader') {
+        return insurance.uses_shared_reserve === true;
+    }
+
+    return usePage().props.auth.user?.team_leader_insurance_mode === 'team_leader_reserve';
+});
 </script>
 
 <template>
@@ -70,7 +80,7 @@ const setBalanceType = (type) => {
                     </div>
 
                     <p
-                        v-if="!viewStore.isAdminViewMode"
+                        v-if="!viewStore.isAdminViewMode && teamLeaderUsesSharedReserve"
                         class="text-sm opacity-70 mt-1"
                     >
                         Доход от подключённых трейдеров. Не используется для страховых списаний по сделкам.

@@ -160,8 +160,22 @@ function getRandomInt(max) {
                             {{ walletStats.maxReserveBalance }} {{ primaryCurrency }}
                         </span>
                     </div>
-                    <div class="grid sm:block space-y-2 sm:space-y-0 mt-1">
-                        <div v-if="!usesTeamLeaderSharedReserve" class="inline-flex">
+                    <div
+                        v-if="usesTeamLeaderSharedReserve"
+                        class="mt-1 inline-flex"
+                    >
+                        <div class="text-sm opacity-70">
+                            <span>Вывод</span>
+                        </div>
+                        <div class="text-sm ml-1.5">
+                            {{ walletStats.lockedForWithdrawalBalances.trust.primary }} {{ primaryCurrency }}
+                        </div>
+                    </div>
+                    <div
+                        v-else
+                        class="grid sm:block space-y-2 sm:space-y-0 mt-1"
+                    >
+                        <div class="inline-flex">
                             <div class="text-sm opacity-70">
                                 <span>Резерв</span>
                             </div>
