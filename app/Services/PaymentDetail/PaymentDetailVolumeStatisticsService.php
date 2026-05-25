@@ -14,9 +14,12 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class PaymentDetailVolumeStatisticsService
 {
+    private const int MODAL_STATISTICS_CACHE_TTL_SECONDS = 60;
+
     public const int DEFAULT_BARS_LIMIT = 25;
 
     public const int MAX_BARS_LIMIT = 200;
@@ -97,6 +100,35 @@ class PaymentDetailVolumeStatisticsService
     public function buildModalPayload(PaymentDetail $paymentDetail, string $period): array
     {
         $period = $this->normalizePeriod($period);
+
+        return Cache::remember(
+            $this->modalStatisticsCacheKey($paymentDetail->id, $period),
+            now()->addSeconds(self::MODAL_STATISTICS_CACHE_TTL_SECONDS),
+            fn (): array => $this->calculateModalPayload($paymentDetail, $period),
+        );
+    }
+
+    /**
+     * @return array{
+     *     period: string,
+     *     period_options: list<array{value: string, label: string}>,
+     *     payment_detail: array{
+     *         id: int,
+     *         name: string,
+     *         detail: string,
+     *         detail_type: string,
+     *         is_archived: bool,
+     *         currency_code: string,
+     *         currency_symbol: string,
+     *         payment_gateway: array{name: string, logo_path: string|null}|null
+     *     },
+     *     volume: string,
+     *     deals_count: int,
+     *     distribution: array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}
+     * }
+     */
+    private function calculateModalPayload(PaymentDetail $paymentDetail, string $period): array
+    {
         [$periodStartAt, $periodEndAt] = $this->resolvePeriodBounds($period, null, null);
         $currencyCode = $paymentDetail->currency->getCode();
 
@@ -154,6 +186,11 @@ class PaymentDetailVolumeStatisticsService
         }
 
         return 'current_month';
+    }
+
+    private function modalStatisticsCacheKey(int $paymentDetailId, string $period): string
+    {
+        return "payment_detail_volume_statistics:{$paymentDetailId}:{$period}";
     }
 
     private function modalDealAmountBucketCaseSql(string $currencyCode): string

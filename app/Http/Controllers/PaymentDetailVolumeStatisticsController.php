@@ -10,7 +10,6 @@ use App\Http\Resources\PaymentDetailResource;
 use App\Models\PaymentDetail;
 use App\Services\PaymentDetail\PaymentDetailVolumeStatisticsService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 
 class PaymentDetailVolumeStatisticsController extends Controller
@@ -28,21 +27,9 @@ class PaymentDetailVolumeStatisticsController extends Controller
             $query->where('status', OrderStatus::PENDING);
         }]);
 
-        $period = $request->period();
-        $cacheKey = sprintf(
-            'payment_detail_volume_statistics:%d:%s:%s',
-            $paymentDetail->id,
-            $period,
-            $paymentDetail->updated_at?->timestamp ?? 0,
-        );
-
-        return response()->json(Cache::remember(
-            $cacheKey,
-            now()->addMinute(),
-            fn (): array => [
-                ...$this->volumeStatisticsService->buildModalPayload($paymentDetail, $period),
-                'context_detail' => PaymentDetailResource::make($paymentDetail)->resolve(),
-            ],
-        ));
+        return response()->json([
+            ...$this->volumeStatisticsService->buildModalPayload($paymentDetail, $request->period()),
+            'context_detail' => PaymentDetailResource::make($paymentDetail)->resolve(),
+        ]);
     }
 }
