@@ -26,7 +26,7 @@ const selectedCurrency = ref('uah');
 
 const periodOptions = computed(() => payload.value?.period_options ?? []);
 const currencyOptions = computed(() => payload.value?.currency_options ?? []);
-const distribution = computed(() => payload.value?.distribution ?? { buckets: [], total_deals: 0 });
+const distribution = computed(() => payload.value?.distribution ?? { buckets: [], total_successful: 0, total_all: 0 });
 const currencySymbol = computed(() => payload.value?.currency_symbol ?? '');
 
 const distributionIndicatorColor = (count) => (
@@ -108,7 +108,7 @@ watch(
 <template>
     <Modal
         :show="show"
-        max-width="4xl"
+        max-width="5xl"
         @close="close"
     >
         <ModalHeader
@@ -155,7 +155,7 @@ watch(
                 >
                     <div class="card-body gap-3 p-4">
                         <p class="text-xs text-base-content/60">
-                            Период успешных API-запросов на создание сделки
+                            Период API-запросов на создание сделки
                         </p>
                         <div class="flex flex-wrap gap-2">
                             <button
@@ -199,16 +199,33 @@ watch(
                                         Сумма успешных запросов
                                     </p>
                                     <p class="mt-1 text-2xl font-semibold tabular-nums">
-                                        {{ payload.total_amount }}
+                                        {{ payload.successful_total_amount }}
                                         <span class="text-lg text-primary">{{ currencySymbol }}</span>
                                     </p>
                                 </div>
                                 <div class="rounded-box border border-base-300 bg-base-100 p-3">
                                     <p class="text-xs text-base-content/50">
-                                        Количество запросов
+                                        Сумма всех запросов
                                     </p>
                                     <p class="mt-1 text-2xl font-semibold tabular-nums">
-                                        {{ formatInteger(payload.requests_count) }}
+                                        {{ payload.all_total_amount }}
+                                        <span class="text-lg text-base-content/70">{{ currencySymbol }}</span>
+                                    </p>
+                                </div>
+                                <div class="rounded-box border border-base-300 bg-base-100 p-3">
+                                    <p class="text-xs text-base-content/50">
+                                        Успешных запросов
+                                    </p>
+                                    <p class="mt-1 text-2xl font-semibold tabular-nums text-success">
+                                        {{ formatInteger(payload.successful_requests_count) }}
+                                    </p>
+                                </div>
+                                <div class="rounded-box border border-base-300 bg-base-100 p-3">
+                                    <p class="text-xs text-base-content/50">
+                                        Всего запросов
+                                    </p>
+                                    <p class="mt-1 text-2xl font-semibold tabular-nums">
+                                        {{ formatInteger(payload.all_requests_count) }}
                                     </p>
                                 </div>
                             </div>
@@ -221,9 +238,14 @@ watch(
                                 <h4 class="text-sm font-medium text-base-content/80">
                                     Распределение по сумме
                                 </h4>
-                                <span class="badge badge-outline badge-sm">
-                                    Запросов: {{ formatInteger(distribution.total_deals) }}
-                                </span>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="badge badge-success badge-outline badge-sm">
+                                        Успешных: {{ formatInteger(distribution.total_successful) }}
+                                    </span>
+                                    <span class="badge badge-outline badge-sm">
+                                        Всего: {{ formatInteger(distribution.total_all) }}
+                                    </span>
+                                </div>
                             </div>
 
                             <div
@@ -233,8 +255,22 @@ watch(
                                 <table class="table table-xs table-zebra text-[11px]">
                                     <thead>
                                         <tr class="text-[10px] uppercase text-base-content/60">
-                                            <th class="py-2">
+                                            <th class="py-2" rowspan="2">
                                                 Диапазон
+                                            </th>
+                                            <th class="py-1 text-center" colspan="2">
+                                                Успешные
+                                            </th>
+                                            <th class="py-1 text-center" colspan="2">
+                                                Все
+                                            </th>
+                                        </tr>
+                                        <tr class="text-[10px] uppercase text-base-content/60">
+                                            <th class="py-2 text-right">
+                                                Запросов
+                                            </th>
+                                            <th class="py-2 text-right">
+                                                %
                                             </th>
                                             <th class="py-2 text-right">
                                                 Запросов
@@ -248,24 +284,30 @@ watch(
                                         <tr
                                             v-for="bucket in distribution.buckets"
                                             :key="bucket.key"
-                                            :class="bucket.count > 0 ? '' : 'text-base-content/50'"
+                                            :class="bucket.all_count > 0 || bucket.successful_count > 0 ? '' : 'text-base-content/50'"
                                         >
                                             <td class="py-1.5">
                                                 <span class="flex min-w-0 items-center gap-2">
                                                     <span
                                                         class="size-2 shrink-0 rounded-full ring-2 ring-base-100"
-                                                        :style="{ backgroundColor: distributionIndicatorColor(bucket.count) }"
+                                                        :style="{ backgroundColor: distributionIndicatorColor(bucket.successful_count || bucket.all_count) }"
                                                     />
                                                     <span class="truncate leading-tight">
                                                         {{ bucket.label }}
                                                     </span>
                                                 </span>
                                             </td>
-                                            <td class="py-1.5 text-right tabular-nums">
-                                                {{ formatInteger(bucket.count) }}
+                                            <td class="py-1.5 text-right tabular-nums text-success">
+                                                {{ formatInteger(bucket.successful_count) }}
+                                            </td>
+                                            <td class="py-1.5 text-right tabular-nums text-success">
+                                                {{ bucket.successful_percent }}%
                                             </td>
                                             <td class="py-1.5 text-right tabular-nums">
-                                                {{ bucket.percent }}%
+                                                {{ formatInteger(bucket.all_count) }}
+                                            </td>
+                                            <td class="py-1.5 text-right tabular-nums">
+                                                {{ bucket.all_percent }}%
                                             </td>
                                         </tr>
                                     </tbody>

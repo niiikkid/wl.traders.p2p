@@ -30,9 +30,22 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
      *     currency_symbol: string,
      *     period_options: list<array{value: string, label: string}>,
      *     currency_options: list<string>,
-     *     requests_count: int,
-     *     total_amount: string,
-     *     distribution: array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}
+     *     successful_requests_count: int,
+     *     all_requests_count: int,
+     *     successful_total_amount: string,
+     *     all_total_amount: string,
+     *     distribution: array{
+     *         buckets: list<array{
+     *             key: string,
+     *             label: string,
+     *             successful_count: int,
+     *             successful_percent: float,
+     *             all_count: int,
+     *             all_percent: float
+     *         }>,
+     *         total_successful: int,
+     *         total_all: int
+     *     }
      * }
      */
     public function getAmountDistribution(string $currency, string $period): array
@@ -54,9 +67,22 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
      *     currency_symbol: string,
      *     period_options: list<array{value: string, label: string}>,
      *     currency_options: list<string>,
-     *     requests_count: int,
-     *     total_amount: string,
-     *     distribution: array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}
+     *     successful_requests_count: int,
+     *     all_requests_count: int,
+     *     successful_total_amount: string,
+     *     all_total_amount: string,
+     *     distribution: array{
+     *         buckets: list<array{
+     *             key: string,
+     *             label: string,
+     *             successful_count: int,
+     *             successful_percent: float,
+     *             all_count: int,
+     *             all_percent: float
+     *         }>,
+     *         total_successful: int,
+     *         total_all: int
+     *     }
      * }
      */
     private function calculateAmountDistribution(string $currency, string $period): array
@@ -68,21 +94,25 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
 
         $logsQuery = MerchantApiRequestLog::query()
             ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
-            ->where('is_successful', true)
             ->whereRaw('LOWER(currency) = ?', [$currency])
             ->whereNotNull('amount')
             ->where('amount', '!=', '')
             ->when($periodStartAt !== null, fn (Builder $query) => $query->where('created_at', '>=', $periodStartAt))
             ->when($periodEndAt !== null, fn (Builder $query) => $query->where('created_at', '<=', $periodEndAt));
 
-        /** @var Collection<int, object{amount_bucket: string, deals_count: int|string}> $rows */
+        /** @var Collection<int, object{amount_bucket: string, all_count: int|string, successful_count: int|string}> $rows */
         $rows = (clone $logsQuery)
-            ->selectRaw("{$bucketCaseSql} as amount_bucket, COUNT(*) as deals_count")
+            ->selectRaw("{$bucketCaseSql} as amount_bucket, COUNT(*) as all_count, SUM(CASE WHEN is_successful = 1 THEN 1 ELSE 0 END) as successful_count")
             ->groupBy('amount_bucket')
             ->get();
 
-        $distribution = $this->volumeStatisticsService->formatModalDealAmountDistributionRows($rows, $currency);
-        $totalAmount = (float) ((clone $logsQuery)->selectRaw("COALESCE(SUM({$amountExpression}), 0) as total")->value('total') ?? 0);
+        $distribution = $this->formatDualAmountDistribution($rows, $currency);
+
+        $allTotalAmount = (float) ((clone $logsQuery)->selectRaw("COALESCE(SUM({$amountExpression}), 0) as total")->value('total') ?? 0);
+        $successfulTotalAmount = (float) ((clone $logsQuery)
+            ->where('is_successful', true)
+            ->selectRaw("COALESCE(SUM({$amountExpression}), 0) as total")
+            ->value('total') ?? 0);
 
         return [
             'period' => $period,
@@ -90,9 +120,71 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             'currency_symbol' => $currencyModel->getSymbol(),
             'period_options' => PaymentDetailVolumeStatisticsService::AMOUNT_DISTRIBUTION_PERIOD_OPTIONS,
             'currency_options' => Currency::getAllCodes(),
-            'requests_count' => $distribution['total_deals'],
-            'total_amount' => $this->formatDistributionTotalAmount($totalAmount, $currencyModel),
+            'successful_requests_count' => $distribution['total_successful'],
+            'all_requests_count' => $distribution['total_all'],
+            'successful_total_amount' => $this->formatDistributionTotalAmount($successfulTotalAmount, $currencyModel),
+            'all_total_amount' => $this->formatDistributionTotalAmount($allTotalAmount, $currencyModel),
             'distribution' => $distribution,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, object{amount_bucket: string, all_count: int|string, successful_count: int|string}>  $rows
+     * @return array{
+     *     buckets: list<array{
+     *         key: string,
+     *         label: string,
+     *         successful_count: int,
+     *         successful_percent: float,
+     *         all_count: int,
+     *         all_percent: float
+     *     }>,
+     *     total_successful: int,
+     *     total_all: int
+     * }
+     */
+    private function formatDualAmountDistribution(Collection $rows, string $currency): array
+    {
+        $successfulRows = $rows->map(
+            fn (object $row): object => (object) [
+                'amount_bucket' => $row->amount_bucket,
+                'deals_count' => $row->successful_count,
+            ],
+        );
+        $allRows = $rows->map(
+            fn (object $row): object => (object) [
+                'amount_bucket' => $row->amount_bucket,
+                'deals_count' => $row->all_count,
+            ],
+        );
+
+        $successfulDistribution = $this->volumeStatisticsService->formatModalDealAmountDistributionRows($successfulRows, $currency);
+        $allDistribution = $this->volumeStatisticsService->formatModalDealAmountDistributionRows($allRows, $currency);
+
+        $buckets = [];
+
+        foreach ($successfulDistribution['buckets'] as $index => $successfulBucket) {
+            $allBucket = $allDistribution['buckets'][$index] ?? [
+                'key' => $successfulBucket['key'],
+                'label' => $successfulBucket['label'],
+                'count' => 0,
+                'percent' => 0.0,
+            ];
+
+            $buckets[] = [
+                'key' => $successfulBucket['key'],
+                'label' => $successfulBucket['label'],
+                'successful_count' => $successfulBucket['count'],
+                'successful_percent' => $successfulBucket['percent'],
+                'all_count' => $allBucket['count'],
+                'all_percent' => $allBucket['percent'],
+            ];
+        }
+
+        return [
+            'buckets' => $buckets,
+            'total_successful' => $successfulDistribution['total_deals'],
+            'total_all' => $allDistribution['total_deals'],
         ];
     }
 
