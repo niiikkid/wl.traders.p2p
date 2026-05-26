@@ -8,12 +8,112 @@ use App\Models\MerchantApiStatistic;
 use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Services\Money\Currency;
+use App\Services\PaymentDetail\PaymentDetailVolumeStatisticsService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContract
 {
+    private const int AMOUNT_DISTRIBUTION_CACHE_TTL_SECONDS = 60;
+
+    public function __construct(
+        private readonly PaymentDetailVolumeStatisticsService $volumeStatisticsService,
+    ) {}
+
+    /**
+     * @return array{
+     *     period: string,
+     *     currency: string,
+     *     currency_symbol: string,
+     *     period_options: list<array{value: string, label: string}>,
+     *     currency_options: list<string>,
+     *     requests_count: int,
+     *     total_amount: string,
+     *     distribution: array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}
+     * }
+     */
+    public function getAmountDistribution(string $currency, string $period): array
+    {
+        $currency = strtolower($currency);
+        $period = $this->volumeStatisticsService->normalizeAmountDistributionPeriod($period);
+
+        return Cache::remember(
+            "merchant_api_logs_amount_distribution:{$currency}:{$period}",
+            now()->addSeconds(self::AMOUNT_DISTRIBUTION_CACHE_TTL_SECONDS),
+            fn (): array => $this->calculateAmountDistribution($currency, $period),
+        );
+    }
+
+    /**
+     * @return array{
+     *     period: string,
+     *     currency: string,
+     *     currency_symbol: string,
+     *     period_options: list<array{value: string, label: string}>,
+     *     currency_options: list<string>,
+     *     requests_count: int,
+     *     total_amount: string,
+     *     distribution: array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}
+     * }
+     */
+    private function calculateAmountDistribution(string $currency, string $period): array
+    {
+        [$periodStartAt, $periodEndAt] = $this->volumeStatisticsService->resolvePeriodBounds($period, null, null);
+        $amountExpression = $this->normalizedAmountExpression();
+        $bucketCaseSql = $this->volumeStatisticsService->modalDealAmountBucketCaseSqlForFiatAmount($currency, $amountExpression);
+        $currencyModel = Currency::make($currency);
+
+        $logsQuery = MerchantApiRequestLog::query()
+            ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
+            ->where('is_successful', true)
+            ->whereRaw('LOWER(currency) = ?', [$currency])
+            ->whereNotNull('amount')
+            ->where('amount', '!=', '')
+            ->when($periodStartAt !== null, fn (Builder $query) => $query->where('created_at', '>=', $periodStartAt))
+            ->when($periodEndAt !== null, fn (Builder $query) => $query->where('created_at', '<=', $periodEndAt));
+
+        /** @var Collection<int, object{amount_bucket: string, deals_count: int|string}> $rows */
+        $rows = (clone $logsQuery)
+            ->selectRaw("{$bucketCaseSql} as amount_bucket, COUNT(*) as deals_count")
+            ->groupBy('amount_bucket')
+            ->get();
+
+        $distribution = $this->volumeStatisticsService->formatModalDealAmountDistributionRows($rows, $currency);
+        $totalAmount = (float) ((clone $logsQuery)->selectRaw("COALESCE(SUM({$amountExpression}), 0) as total")->value('total') ?? 0);
+
+        return [
+            'period' => $period,
+            'currency' => $currency,
+            'currency_symbol' => $currencyModel->getSymbol(),
+            'period_options' => PaymentDetailVolumeStatisticsService::AMOUNT_DISTRIBUTION_PERIOD_OPTIONS,
+            'currency_options' => Currency::getAllCodes(),
+            'requests_count' => $distribution['total_deals'],
+            'total_amount' => $this->formatDistributionTotalAmount($totalAmount, $currencyModel),
+            'distribution' => $distribution,
+        ];
+    }
+
+    private function formatDistributionTotalAmount(float $totalAmount, Currency $currency): string
+    {
+        if ($totalAmount <= 0) {
+            return '0';
+        }
+
+        if (fmod($totalAmount, 1.0) === 0.0) {
+            return number_format((int) round($totalAmount), 0, '', ' ');
+        }
+
+        $displayPrecision = $currency->getDisplayPrecision();
+
+        return rtrim(
+            rtrim(number_format($totalAmount, $displayPrecision, ',', ' '), '0'),
+            ',',
+        );
+    }
+
     /**
      * Обновляет статистику за указанный период
      */

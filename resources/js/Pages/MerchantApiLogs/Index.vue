@@ -10,6 +10,7 @@ import {computed, nextTick, onBeforeUnmount, onMounted, ref, unref, watch} from 
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import DisplayID from "@/Components/DisplayID.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
+import MerchantApiLogAmountDistributionModal from "@/Modals/MerchantApiLogs/MerchantApiLogAmountDistributionModal.vue";
 import {useModalStore} from "@/store/modal";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import ApexCharts from 'apexcharts';
@@ -18,6 +19,18 @@ const modalStore = useModalStore();
 const page = usePage();
 
 const isAdminMerchantApiLogsPage = computed(() => route().current() === 'admin.merchant-api-logs.index');
+const showAmountDistributionModal = ref(false);
+const amountDistributionRoute = computed(() => {
+    if (route().current('analyst.merchant-api-logs.index')) {
+        return route('analyst.merchant-api-logs.amount-distribution');
+    }
+
+    if (route().current('admin.merchant-api-logs.index')) {
+        return route('admin.merchant-api-logs.amount-distribution');
+    }
+
+    return null;
+});
 const filtersPanelRef = ref(null);
 const hasActiveMerchantApiLogFilters = useHasActiveTableFilters();
 const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
@@ -537,7 +550,17 @@ onBeforeUnmount(() => {
             <template v-slot:body>
                 <!-- Панель статистики -->
                 <div v-if="!isPayoutLogsTab" class="mb-6">
-                    <h2 class="text-xl font-semibold mb-4">Статистика запросов</h2>
+                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <h2 class="text-xl font-semibold">Статистика запросов</h2>
+                        <button
+                            v-if="amountDistributionRoute"
+                            type="button"
+                            class="btn btn-sm btn-outline btn-primary"
+                            @click="showAmountDistributionModal = true"
+                        >
+                            Распределение по сумме
+                        </button>
+                    </div>
 
                     <!-- Карточки статистики -->
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1167,6 +1190,12 @@ onBeforeUnmount(() => {
         </MainTableSection>
 
         <ConfirmModal />
+
+        <MerchantApiLogAmountDistributionModal
+            :show="showAmountDistributionModal"
+            :amount-distribution-route="amountDistributionRoute"
+            @close="showAmountDistributionModal = false"
+        />
     </div>
 </template>
 

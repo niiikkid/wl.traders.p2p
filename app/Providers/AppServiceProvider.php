@@ -91,6 +91,7 @@ use App\Services\Order\OrderService;
 use App\Services\OrderCallback\CallbackService;
 use App\Services\OrderPooling\OrderPoolingService;
 use App\Services\PaymentDetail\PaymentDetailService;
+use App\Services\PaymentDetail\PaymentDetailVolumeStatisticsService;
 use App\Services\Payout\PayoutService;
 use App\Services\Profit\ProfitService;
 use App\Services\ServiceBuilder;
@@ -192,8 +193,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(DeviceServiceContract::class, function () {
             return new DeviceService;
         });
-        $this->app->singleton(MerchantApiStatisticsServiceContract::class, function () {
-            return new MerchantApiStatisticsService;
+        $this->app->singleton(MerchantApiStatisticsServiceContract::class, function ($app) {
+            return new MerchantApiStatisticsService(
+                $app->make(PaymentDetailVolumeStatisticsService::class),
+            );
         });
         $this->app->singleton(MerchantServiceContract::class, function () {
             return new MerchantService;

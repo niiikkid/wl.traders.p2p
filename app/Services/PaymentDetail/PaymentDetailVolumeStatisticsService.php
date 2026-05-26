@@ -57,6 +57,17 @@ class PaymentDetailVolumeStatisticsService
     ];
 
     /**
+     * @var list<array{value: string, label: string}>
+     */
+    public const array AMOUNT_DISTRIBUTION_PERIOD_OPTIONS = [
+        ['value' => '1d', 'label' => 'За день'],
+        ['value' => '7d', 'label' => 'За 7 дней'],
+        ['value' => '14d', 'label' => 'За 2 недели'],
+        ['value' => '30d', 'label' => 'За 30 дней'],
+        ['value' => 'current_month', 'label' => 'За текущий месяц'],
+    ];
+
+    /**
      * Upper bounds for deal amount buckets in display currency amounts.
      *
      * @var array<string, list<int>>
@@ -193,6 +204,39 @@ class PaymentDetailVolumeStatisticsService
         return "payment_detail_volume_statistics:{$paymentDetailId}:{$period}";
     }
 
+    public function normalizeAmountDistributionPeriod(?string $period): string
+    {
+        $period = trim((string) ($period ?? ''));
+
+        foreach (self::AMOUNT_DISTRIBUTION_PERIOD_OPTIONS as $option) {
+            if ($option['value'] === $period) {
+                return $period;
+            }
+        }
+
+        return 'current_month';
+    }
+
+    public function modalDealAmountBucketCaseSqlForFiatAmount(string $currencyCode, string $amountExpression): string
+    {
+        $conditions = [];
+
+        foreach ($this->modalDealAmountBucketsForCurrency($currencyCode) as $bucketDefinition) {
+            if ($bucketDefinition['max'] === null) {
+                continue;
+            }
+
+            $maxFiat = $bucketDefinition['max'];
+            $bucketKey = $bucketDefinition['key'];
+            $conditions[] = "WHEN {$amountExpression} < {$maxFiat} THEN '{$bucketKey}'";
+        }
+
+        $buckets = $this->modalDealAmountBucketsForCurrency($currencyCode);
+        $lastBucketKey = $buckets[array_key_last($buckets)]['key'];
+
+        return 'CASE '.implode(' ', $conditions)." ELSE '{$lastBucketKey}' END";
+    }
+
     private function modalDealAmountBucketCaseSql(string $currencyCode): string
     {
         $conditions = [];
@@ -216,7 +260,7 @@ class PaymentDetailVolumeStatisticsService
     /**
      * @return array{buckets: list<array{key: string, label: string, count: int, percent: float}>, total_deals: int}
      */
-    private function formatModalDealAmountDistributionRows(iterable $rows, string $currencyCode): array
+    public function formatModalDealAmountDistributionRows(iterable $rows, string $currencyCode): array
     {
         $countsByKey = [];
 

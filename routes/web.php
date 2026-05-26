@@ -339,6 +339,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/main', [MainPageController::class, 'analyst'])->name('main.index');
         Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
         Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant-api-logs.index');
+        Route::get('/merchant-api-logs/amount-distribution', [MerchantApiLogController::class, 'amountDistribution'])->name('merchant-api-logs.amount-distribution');
 
         Route::get('/users', [AnalystUserController::class, 'index'])->name('users.index');
         Route::get('/users/{user}/payment-details', [AnalystUserController::class, 'paymentDetails'])->name('users.payment-details.index');
@@ -603,6 +604,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         })->name('impersonate.start');
 
         Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant-api-logs.index');
+        Route::get('/merchant-api-logs/amount-distribution', [MerchantApiLogController::class, 'amountDistribution'])->name('merchant-api-logs.amount-distribution');
         Route::post('/merchant-api-logs/delete', [MerchantApiLogController::class, 'deleteByDateRange'])->name('merchant-api-logs.delete');
         Route::get('/callback-logs', [CallbackLogController::class, 'index'])->name('callback-logs.index');
 

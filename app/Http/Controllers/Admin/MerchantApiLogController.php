@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\MerchantApiLog\AmountDistributionRequest;
 use App\Http\Resources\MerchantApiLogResource;
 use App\Models\MerchantApiRequestLog;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Statistics\MerchantApiStatisticsService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -108,6 +110,26 @@ class MerchantApiLogController extends Controller
             'can_manage_merchant_api_log_deletion' => $can_manage_merchant_api_log_deletion,
             'activeApiLogTab' => $activeApiLogTab,
         ]);
+    }
+
+    public function amountDistribution(
+        AmountDistributionRequest $request,
+        MerchantApiStatisticsService $statisticsService,
+    ): JsonResponse {
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
+        if ($user->hasRole('Merchant') && ! $user->hasRole('Super Admin')) {
+            abort(404);
+        }
+
+        return response()->json(
+            $statisticsService->getAmountDistribution(
+                $request->currency(),
+                $request->period(),
+            ),
+        );
     }
 
     /**
