@@ -6,11 +6,12 @@ use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Translation\PotentiallyTranslatedString;
 
 class ReceiptFileRule implements ValidationRule
 {
     /**
-     * @param  \Closure(string, ?string=): \Illuminate\Translation\PotentiallyTranslatedString  $fail
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
@@ -63,11 +64,11 @@ class ReceiptFileRule implements ValidationRule
         }
 
         try {
-            $header = fread($handle, 5);
+            $header = fread($handle, 4096);
         } finally {
             fclose($handle);
         }
 
-        return $header === '%PDF-';
+        return is_string($header) && str_contains($header, '%PDF-');
     }
 }
