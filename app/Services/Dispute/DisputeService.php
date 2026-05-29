@@ -13,6 +13,7 @@ use App\Jobs\SendTelegramDisputeResolutionNotificationJob;
 use App\Models\Dispute;
 use App\Models\Order;
 use App\Models\User;
+use App\Rules\ReceiptFileRule;
 use App\Utils\Transaction;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
@@ -214,11 +215,8 @@ class DisputeService implements DisputeServiceContract
     {
         $this->ensureBankStatementDirectoryExists();
 
-        $extension = strtolower($bankStatement->getClientOriginalExtension() ?: $bankStatement->extension() ?: 'bin');
-        $filename = 'bank_statement_'.strtolower(Str::random(32));
-        if ($extension !== '') {
-            $filename .= '.'.$extension;
-        }
+        $extension = $this->resolveBankStatementExtension($bankStatement);
+        $filename = 'bank_statement_'.strtolower(Str::random(32)).'.'.$extension;
 
         $bankStatement->move(storage_path(self::BANK_STATEMENT_DIRECTORY), $filename);
 
@@ -252,5 +250,23 @@ class DisputeService implements DisputeServiceContract
         if (! is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
+    }
+
+    private function resolveBankStatementExtension(UploadedFile $bankStatement): string
+    {
+        $allowed = ['jpg', 'jpeg', 'png', 'pdf'];
+        $extension = strtolower($bankStatement->extension() ?: $bankStatement->getClientOriginalExtension() ?: '');
+
+        if (in_array($extension, $allowed, true)) {
+            return $extension;
+        }
+
+        $path = $bankStatement->getRealPath() ?: $bankStatement->getPathname();
+
+        if (ReceiptFileRule::hasPdfSignature($path)) {
+            return 'pdf';
+        }
+
+        return 'bin';
     }
 }

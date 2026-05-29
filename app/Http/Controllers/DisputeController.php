@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Dispute\CancelRequest;
 use App\Http\Resources\DisputeResource;
 use App\Models\Dispute;
+use App\Rules\ReceiptFileRule;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DisputeController extends Controller
 {
@@ -57,7 +59,7 @@ class DisputeController extends Controller
         return response()->file($file_path);
     }
 
-    public function bankStatement(Dispute $dispute)
+    public function bankStatement(Dispute $dispute): BinaryFileResponse
     {
         Gate::authorize('access-to-dispute-bank-statement', $dispute);
 
@@ -71,6 +73,25 @@ class DisputeController extends Controller
             abort(404);
         }
 
-        return response()->file($file_path);
+        $downloadFilename = $dispute->bank_statement;
+        $mime = mime_content_type($file_path) ?: 'application/octet-stream';
+
+        if ($mime === 'application/octet-stream' && ReceiptFileRule::hasPdfSignature($file_path)) {
+            $mime = 'application/pdf';
+        }
+
+        if ($mime === 'application/octet-stream') {
+            $mime = match (strtolower(pathinfo($downloadFilename, PATHINFO_EXTENSION))) {
+                'pdf' => 'application/pdf',
+                'png' => 'image/png',
+                'jpg', 'jpeg' => 'image/jpeg',
+                default => $mime,
+            };
+        }
+
+        return response()->file($file_path, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.$downloadFilename.'"',
+        ]);
     }
 }

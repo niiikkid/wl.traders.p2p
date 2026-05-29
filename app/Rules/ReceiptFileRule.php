@@ -43,16 +43,8 @@ class ReceiptFileRule implements ValidationRule
         $fail('Допустимы только JPG, JPEG, PNG или PDF.');
     }
 
-    private function passesPdfFallback(UploadedFile $file): bool
+    public static function hasPdfSignature(string $path): bool
     {
-        $extension = strtolower($file->getClientOriginalExtension());
-
-        if ($extension !== 'pdf') {
-            return false;
-        }
-
-        $path = $file->getPathname();
-
         if (! is_file($path) || ! is_readable($path)) {
             return false;
         }
@@ -70,5 +62,16 @@ class ReceiptFileRule implements ValidationRule
         }
 
         return is_string($header) && str_contains($header, '%PDF-');
+    }
+
+    private function passesPdfFallback(UploadedFile $file): bool
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if ($extension !== 'pdf') {
+            return false;
+        }
+
+        return self::hasPdfSignature($file->getPathname());
     }
 }
