@@ -78,7 +78,15 @@ defineOptions({ layout: AuthenticatedLayout });
                     <div class="flex items-center justify-between">
                         <div
                             v-if="reloadingTableData"
-                            class="px-2 text-sm text-base-content/80 flex items-center gap-2"
+                            class="px-2 text-sm text-base-content/80 flex items-center gap-2 xl:hidden"
+                            aria-live="polite"
+                        >
+                            <span class="loading loading-spinner loading-sm text-primary" />
+                            <span>Обновляем данные...</span>
+                        </div>
+                        <div
+                            v-if="reloadingTableData"
+                            class="hidden xl:flex px-2 text-sm text-base-content/80 items-center gap-2"
                             aria-live="polite"
                         >
                             <span class="loading loading-spinner loading-sm text-primary" />
@@ -313,6 +321,220 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </template>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Mobile view (cards list) -->
+                    <div class="xl:hidden rounded-table relative">
+                        <div
+                            class="card sticky top-0 left-0 bg-base-100/40 z-10 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ease-in-out opacity-0 pointer-events-none"
+                            :class="{'opacity-100 pointer-events-auto': reloadingTableData}"
+                            style="position: absolute; inset: 0; width: 100%; height: 100%;"
+                        >
+                            <div class="flex flex-col items-center transition-transform duration-300" :class="{'scale-90 opacity-0': !reloadingTableData, 'scale-100 opacity-100': reloadingTableData}">
+                                <span class="loading loading-spinner loading-lg text-primary" />
+                                <span class="mt-3 text-sm font-medium text-base-content">Загрузка данных...</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3" :class="{'pointer-events-none': reloadingTableData}">
+                            <div class="space-y-2">
+                                <div
+                                    v-for="payout in payoutItems"
+                                    :key="`mobile-${payout.id}`"
+                                    class="card bg-base-100 shadow-sm"
+                                >
+                                    <div class="card-body p-4 pt-2 pb-3 space-y-2">
+                                        <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
+                                            <div class="min-w-0 flex-1 text-[11px]">
+                                                <div class="inline-flex items-center gap-1 pl-1 min-w-0">
+                                                    <span class="text-base-content/70">UUID:</span>
+                                                    <DisplayUUID :uuid="payout.uuid" class="text-sm font-semibold" />
+                                                </div>
+                                            </div>
+                                            <div class="shrink-0">
+                                                <div class="badge badge-sm" :class="statusBadge(payout.status)">
+                                                    {{ payout.status_label }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex items-center gap-2 min-w-0 pt-1">
+                                            <div v-if="hasCustomBank(payout)" class="text-base-content/70 shrink-0">
+                                                <BankManualIcon class="w-8 h-8 sm:w-10 sm:h-10" />
+                                            </div>
+                                            <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative shrink-0">
+                                                <img src="/images/sbp.svg" alt="СБП" class="w-8 h-8 sm:w-10 sm:h-10">
+                                                <GatewayLogo
+                                                    v-if="payout.payment_gateway?.logo"
+                                                    :img_path="payout.payment_gateway?.logo"
+                                                    :name="payout.payment_gateway?.name"
+                                                    class="absolute right-[-2px] bottom-[-2px] w-4 h-4 sm:w-5 sm:h-5 bg-base-100 border border-base-300 rounded-full"
+                                                />
+                                            </div>
+                                            <div v-else class="shrink-0">
+                                                <GatewayLogo
+                                                    :img_path="payout.payment_gateway?.logo"
+                                                    :name="payout.payment_gateway?.name"
+                                                    class="w-8 h-8 sm:w-10 sm:h-10"
+                                                />
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <div class="text-xs font-medium text-base-content leading-snug break-words">
+                                                    {{ payout.requisites }}
+                                                </div>
+                                                <div class="text-[11px] text-base-content/60 leading-snug">
+                                                    {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="border-b border-base-content/10 my-1"></div>
+
+                                        <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
+                                            <div>
+                                                <div class="text-[10px] text-base-content/50 uppercase">Сумма</div>
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ formatMoney(payout.amount) }}
+                                                </div>
+                                                <div class="text-[10px] text-base-content/60 text-nowrap">
+                                                    {{ formatMoney(payout.usdt_body) }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="text-[10px] text-base-content/50 uppercase">Курс</div>
+                                                <div class="font-medium text-xs text-base-content text-nowrap">
+                                                    {{ payout.rate?.price ?? '—' }} {{ payout.rate?.currency ?? '' }}
+                                                </div>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="text-[10px] text-base-content/50 uppercase">Мерчант</div>
+                                                <div class="font-medium text-xs text-base-content break-all">
+                                                    {{ payout.merchant?.owner?.email ?? '—' }}
+                                                </div>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="text-[10px] text-base-content/50 uppercase">Трейдер</div>
+                                                <div class="font-medium text-xs text-base-content break-all">
+                                                    {{ payout.trader?.email ?? '—' }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            class="btn btn-ghost btn-xs w-full text-xs"
+                                            type="button"
+                                            @click="toggleRow(payout.id)"
+                                        >
+                                            <span>{{ isExpanded(payout.id) ? 'Скрыть' : 'Подробнее' }}</span>
+                                            <svg class="size-4 transition-transform" :class="{'rotate-180': isExpanded(payout.id)}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                        </button>
+
+                                        <div v-if="isExpanded(payout.id)" class="bg-base-200/40 border border-base-300 rounded-box p-3 space-y-3">
+                                            <div class="flex flex-wrap gap-6 text-xs">
+                                                <div>
+                                                    <div class="text-[10px] uppercase text-base-content/50">Доп. информация</div>
+                                                    <div class="mt-1 flex items-center gap-2">
+                                                        <span class="text-[10px] uppercase text-base-content/50">External ID</span>
+                                                        <DisplayID v-if="payout.external_id" :id="payout.external_id" />
+                                                        <div v-else class="text-xs text-base-content/40">—</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="space-y-2">
+                                                <div class="card bg-base-100 shadow-sm">
+                                                    <div class="card-body text-sm p-3">
+                                                        <div class="text-xs uppercase text-base-content/50">Комиссии</div>
+                                                        <div class="flex items-center justify-between">
+                                                            <span>Всего</span>
+                                                            <span class="font-semibold">{{ payout.fees.total ?? '—' }} {{ payout.fees.currency }}</span>
+                                                        </div>
+                                                        <div class="flex items-center justify-between">
+                                                            <span>Трейдер</span>
+                                                            <span class="font-semibold">{{ payout.fees.trader ?? '—' }} {{ payout.fees.currency }}</span>
+                                                        </div>
+                                                        <div class="flex items-center justify-between">
+                                                            <span>Тимлид</span>
+                                                            <span class="font-semibold">{{ payout.fees.teamlead ?? '—' }} {{ payout.fees.currency }}</span>
+                                                        </div>
+                                                        <div class="flex items-center justify-between">
+                                                            <span>Сервис</span>
+                                                            <span class="font-semibold">{{ payout.fees.service ?? '—' }} {{ payout.fees.currency }}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="card bg-base-100 shadow-sm">
+                                                    <div class="card-body text-sm p-3">
+                                                        <div class="text-xs uppercase text-base-content/50">Суммы</div>
+                                                        <div class="space-y-2">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-base-content/60">Клиенту (₽)</span>
+                                                                <span class="font-semibold">{{ formatMoney(payout.amount) }}</span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-base-content/60">Списано у мерчанта</span>
+                                                                <span class="font-semibold">{{ formatMoney(payout.merchant_debit) }}</span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-base-content/60">Получит трейдер</span>
+                                                                <span class="font-semibold">{{ formatMoney(payout.trader_credit) }}</span>
+                                                            </div>
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-xs text-base-content/60">Тело (USDT)</span>
+                                                                <span class="font-semibold">{{ formatMoney(payout.usdt_body) }}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="card bg-base-100 shadow-sm">
+                                                    <div class="card-body text-sm p-3">
+                                                        <div class="text-xs uppercase text-base-content/50">Тайминг</div>
+                                                        <div>
+                                                            <div class="text-xs text-base-content/60">Создано</div>
+                                                            <DateTime :data="payout.timings.created_at" simple class="justify-start font-semibold" />
+                                                        </div>
+                                                        <div>
+                                                            <div class="text-xs text-base-content/60">Истекает</div>
+                                                            <DateTime :data="payout.timings.expires_at" simple class="justify-start font-semibold" />
+                                                        </div>
+                                                        <div v-if="payout.timings.completed_at">
+                                                            <div class="text-xs text-base-content/60">Завершено</div>
+                                                            <DateTime :data="payout.timings.completed_at" simple class="justify-start font-semibold" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="space-y-2">
+                                                <h4 class="text-sm font-semibold text-base-content">Операции</h4>
+                                                <div v-if="(payout.operations ?? []).length" class="space-y-2">
+                                                    <div
+                                                        v-for="operation in payout.operations"
+                                                        :key="`mobile-op-${operation.id}`"
+                                                        class="border border-base-300 rounded-box p-3 space-y-1 text-xs bg-base-100"
+                                                    >
+                                                        <div class="font-semibold text-sm">{{ operation.type_label }}</div>
+                                                        <div>Сумма: {{ formatMoney(operation.amount) }}</div>
+                                                        <div>
+                                                            Дата:
+                                                            <DateTime :data="operation.created_at" simple class="justify-start font-semibold" />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div v-else class="text-sm text-base-content/60">
+                                                    Операции не найдены.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-if="payoutItems.length === 0" class="py-6 text-center text-sm text-base-content/60">
+                                Выплаты не найдены.
+                            </div>
                         </div>
                     </div>
                 </div>
