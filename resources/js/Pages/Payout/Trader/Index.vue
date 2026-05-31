@@ -642,6 +642,26 @@ defineOptions({ layout: AuthenticatedLayout });
     <div>
         <Head title="Выплаты" />
 
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0 -translate-y-2"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 -translate-y-2"
+        >
+            <div
+                v-if="active_payout_copied_id"
+                class="toast toast-top toast-center z-[70] pointer-events-none"
+                role="status"
+                aria-live="polite"
+            >
+                <div class="alert alert-success py-2 text-sm shadow-lg">
+                    <span>Скопировано</span>
+                </div>
+            </div>
+        </Transition>
+
         <MainTableSection
             title="Выплаты"
             :data="[1]"
