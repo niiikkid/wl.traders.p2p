@@ -619,7 +619,13 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dl class="block sm:flex items-center justify-between gap-4">
                                                 <dt class="text-base-content/70">Прибыль</dt>
                                                 <!-- trader_profit: сколько получил трейдер -->
-                                                <dd class="font-medium text-base-content">{{ order.trader_profit }} {{order.base_currency.toUpperCase()}}</dd>
+                                                <dd class="font-medium text-base-content flex flex-wrap items-center justify-end gap-x-1.5">
+                                                    <span
+                                                        v-if="order.trader_commission_rate !== null && order.trader_commission_rate !== undefined && order.trader_commission_rate !== ''"
+                                                        class="text-primary"
+                                                    >{{ displayPercent(order.trader_commission_rate) }}</span>
+                                                    <span>{{ order.trader_profit }} {{ order.base_currency.toUpperCase() }}</span>
+                                                </dd>
                                             </dl>
                                         </template>
                                         <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">

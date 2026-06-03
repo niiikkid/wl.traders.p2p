@@ -1,5 +1,7 @@
 # Wiki Log
 
+## [2026-06-03] ingest | Merchant Reconciliation Service Specification
+
 ## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 6)
 - Updated: Team Leader Shared Insurance Mode Specification
 - Updated: Trader Balance Transfer Implementation Plan

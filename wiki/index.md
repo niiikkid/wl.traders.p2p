@@ -64,3 +64,11 @@ Trader automation device connect API and admin inspection of raw device snapshot
 | Article | Summary | Updated |
 |---------|---------|---------|
 | [Device Connect Snapshot Implementation Plan](user-devices/device-connect-snapshot-implementation-plan.md) | **Shipped:** optional `device_connect_snapshot` on device connect, admin lazy snapshot modal; migration `2026_05_22_212222_*`. | 2026-05-23 |
+
+## reconciliation
+
+Merchant/provider reconciliation knowledge for admin-side comparison of local payments, payouts, commissions, statuses, and balances against external provider records.
+
+| Article | Summary | Updated |
+|---------|---------|---------|
+| [Merchant Reconciliation Service Specification](reconciliation/merchant-reconciliation-service-specification.md) | Detailed phased specification for an abstract reconciliation service, with SP24 API as the first provider strategy and future-provider extension points. | 2026-06-03 |
