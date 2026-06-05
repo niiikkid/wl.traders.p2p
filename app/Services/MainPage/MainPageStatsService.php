@@ -262,6 +262,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $resolvedPeriod = $this->resolvePeriodRange($periodPreset, $dateFrom, $dateTo);
         $startDate = $resolvedPeriod['startDate'];
         $endDate = $resolvedPeriod['endDate'];
+        $bucketGranularity = $this->resolveAdminBucketGranularity($resolvedPeriod['preset']);
 
         if ($resolvedPeriod['preset'] === 'all') {
             $allBoundsQuery = Order::query();
@@ -282,10 +283,9 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $resolvedPeriod['dateTo'] = $endDate->toDateString();
         }
 
-        $isHourly = $startDate->isSameDay($endDate);
-        $bucketSql = $isHourly
-            ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
-            : 'DATE(created_at)';
+        $isHourly = $bucketGranularity === 'hourly';
+        $isEightHours = $bucketGranularity === 'eight_hours';
+        $bucketSql = $this->resolveOrderBucketSql($bucketGranularity);
 
         $query = Order::query()
             ->where('status', OrderStatus::SUCCESS)
@@ -414,9 +414,11 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 ? $currentBucketDate->format('Y-m-d H:00:00')
                 : $currentBucketDate->toDateString();
 
-            $label = $isHourly
-                ? $currentBucketDate->format('H:i')
-                : $currentBucketDate->format('d.m');
+            $label = match ($bucketGranularity) {
+                'hourly' => $currentBucketDate->format('H:i'),
+                'eight_hours' => $currentBucketDate->format('d.m H:i'),
+                default => $currentBucketDate->format('d.m'),
+            };
             $income = Money::fromUnits(
                 (int) ($earningsByDay[$bucketKey] ?? 0),
                 Currency::USDT()
@@ -442,6 +444,8 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
             if ($isHourly) {
                 $currentBucketDate->addHour();
+            } elseif ($isEightHours) {
+                $currentBucketDate->addHours(8);
             } else {
                 $currentBucketDate->addDay();
             }
@@ -488,6 +492,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $resolvedPeriod,
             $merchantId,
             $normalizedFilters,
+            $bucketGranularity,
         );
 
         $pendingOrdersQuery = Order::query()
@@ -556,6 +561,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $resolvedPeriod = $this->resolvePeriodRange($periodPreset, $dateFrom, $dateTo);
         $startDate = $resolvedPeriod['startDate'];
         $endDate = $resolvedPeriod['endDate'];
+        $bucketGranularity = $this->resolveAdminBucketGranularity($resolvedPeriod['preset']);
 
         $completedAtExpression = 'COALESCE(completed_at, updated_at)';
         $canceledAtExpression = 'COALESCE(canceled_at, updated_at)';
@@ -577,10 +583,9 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $resolvedPeriod['dateTo'] = $endDate->toDateString();
         }
 
-        $isHourly = $startDate->isSameDay($endDate);
-        $bucketSql = $isHourly
-            ? "DATE_FORMAT({$completedAtExpression}, '%Y-%m-%d %H:00:00')"
-            : "DATE({$completedAtExpression})";
+        $isHourly = $bucketGranularity === 'hourly';
+        $isEightHours = $bucketGranularity === 'eight_hours';
+        $bucketSql = $this->resolvePayoutBucketSql($bucketGranularity, $completedAtExpression);
 
         $applyCompletedBetween = static function (Builder $query) use ($startDate, $endDate, $completedAtExpression): void {
             $query->whereRaw("{$completedAtExpression} between ? and ?", [$startDate, $endDate]);
@@ -649,9 +654,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
             ->groupBy(DB::raw($bucketSql))
             ->pluck('cnt', 'bucket_key');
 
-        $canceledBucketSql = $isHourly
-            ? "DATE_FORMAT({$canceledAtExpression}, '%Y-%m-%d %H:00:00')"
-            : "DATE({$canceledAtExpression})";
+        $canceledBucketSql = $this->resolvePayoutBucketSql($bucketGranularity, $canceledAtExpression);
 
         $canceledByBucketQuery = Payout::query()
             ->where('status', PayoutStatus::CANCELED->value);
@@ -676,9 +679,11 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 ? $currentBucketDate->format('Y-m-d H:00:00')
                 : $currentBucketDate->toDateString();
 
-            $label = $isHourly
-                ? $currentBucketDate->format('H:i')
-                : $currentBucketDate->format('d.m');
+            $label = match ($bucketGranularity) {
+                'hourly' => $currentBucketDate->format('H:i'),
+                'eight_hours' => $currentBucketDate->format('d.m H:i'),
+                default => $currentBucketDate->format('d.m'),
+            };
 
             $income = Money::fromUnits(
                 (int) ($earningsByBucket[$bucketKey] ?? 0),
@@ -706,6 +711,8 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
             if ($isHourly) {
                 $currentBucketDate->addHour();
+            } elseif ($isEightHours) {
+                $currentBucketDate->addHours(8);
             } else {
                 $currentBucketDate->addDay();
             }
@@ -755,6 +762,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $resolvedPeriod,
             $merchantId,
             $normalizedFilters,
+            $bucketGranularity,
         );
 
         $selectedFiltersForResponse = $this->normalizeFilters([
@@ -1660,8 +1668,12 @@ class MainPageStatsService implements MainPageStatsServiceContract
         }
     }
 
-    private function buildAdminOrderShadowCharts(array $resolvedPeriod, ?int $merchantId, array $filters): array
-    {
+    private function buildAdminOrderShadowCharts(
+        array $resolvedPeriod,
+        ?int $merchantId,
+        array $filters,
+        string $bucketGranularity,
+    ): array {
         $emptyCharts = $this->emptyShadowCharts();
         $shadowRange = $this->resolveShadowPeriodRange($resolvedPeriod);
 
@@ -1672,11 +1684,8 @@ class MainPageStatsService implements MainPageStatsServiceContract
         return Cache::remember(
             $this->shadowChartCacheKey('admin-orders', $resolvedPeriod['preset'], $shadowRange, $merchantId, $filters),
             now()->addDay(),
-            function () use ($shadowRange, $merchantId, $filters) {
-                $isHourly = $shadowRange['startDate']->isSameDay($shadowRange['endDate']);
-                $bucketSql = $isHourly
-                    ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
-                    : 'DATE(created_at)';
+            function () use ($shadowRange, $merchantId, $filters, $bucketGranularity) {
+                $bucketSql = $this->resolveOrderBucketSql($bucketGranularity);
 
                 $earningsQuery = Order::query()
                     ->where('status', OrderStatus::SUCCESS)
@@ -1724,13 +1733,20 @@ class MainPageStatsService implements MainPageStatsServiceContract
                         ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_amount")
                         ->groupBy('bucket_key')
                         ->pluck('total_amount', 'bucket_key'),
+                    null,
+                    false,
+                    $bucketGranularity,
                 );
             },
         );
     }
 
-    private function buildAdminPayoutShadowCharts(array $resolvedPeriod, ?int $merchantId, array $filters): array
-    {
+    private function buildAdminPayoutShadowCharts(
+        array $resolvedPeriod,
+        ?int $merchantId,
+        array $filters,
+        string $bucketGranularity,
+    ): array {
         $emptyCharts = $this->emptyShadowCharts();
         $shadowRange = $this->resolveShadowPeriodRange($resolvedPeriod);
 
@@ -1741,16 +1757,11 @@ class MainPageStatsService implements MainPageStatsServiceContract
         return Cache::remember(
             $this->shadowChartCacheKey('admin-payouts', $resolvedPeriod['preset'], $shadowRange, $merchantId, $filters),
             now()->addDay(),
-            function () use ($shadowRange, $merchantId, $filters) {
+            function () use ($shadowRange, $merchantId, $filters, $bucketGranularity) {
                 $completedAtExpression = 'COALESCE(completed_at, updated_at)';
                 $canceledAtExpression = 'COALESCE(canceled_at, updated_at)';
-                $isHourly = $shadowRange['startDate']->isSameDay($shadowRange['endDate']);
-                $completedBucketSql = $isHourly
-                    ? "DATE_FORMAT({$completedAtExpression}, '%Y-%m-%d %H:00:00')"
-                    : "DATE({$completedAtExpression})";
-                $canceledBucketSql = $isHourly
-                    ? "DATE_FORMAT({$canceledAtExpression}, '%Y-%m-%d %H:00:00')"
-                    : "DATE({$canceledAtExpression})";
+                $completedBucketSql = $this->resolvePayoutBucketSql($bucketGranularity, $completedAtExpression);
+                $canceledBucketSql = $this->resolvePayoutBucketSql($bucketGranularity, $canceledAtExpression);
 
                 $baseCompletedPayoutQuery = function () use ($merchantId, $filters): Builder {
                     $query = Payout::query()
@@ -1795,6 +1806,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                     $turnoverByBucket,
                     $successByBucket,
                     true,
+                    $bucketGranularity,
                 );
             },
         );
@@ -1809,6 +1821,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
         mixed $totalAmountByBucket,
         mixed $averageCheckCountsByBucket = null,
         bool $ordersUseSuccessOnly = false,
+        string $bucketGranularity = 'daily',
     ): array {
         $incomeData = [];
         $turnoverData = [];
@@ -1817,12 +1830,14 @@ class MainPageStatsService implements MainPageStatsServiceContract
         $averageCheckData = [];
 
         $currentBucketDate = $shadowRange['startDate']->copy();
-        $isHourly = $shadowRange['startDate']->isSameDay($shadowRange['endDate']);
+        $isHourly = $bucketGranularity === 'hourly';
+        $isEightHours = $bucketGranularity === 'eight_hours';
 
         while ($currentBucketDate->lte($shadowRange['endDate'])) {
-            $bucketKey = $isHourly
-                ? $currentBucketDate->format('Y-m-d H:00:00')
-                : $currentBucketDate->toDateString();
+            $bucketKey = match ($bucketGranularity) {
+                'hourly', 'eight_hours' => $currentBucketDate->format('Y-m-d H:00:00'),
+                default => $currentBucketDate->toDateString(),
+            };
             $successCount = (int) ($successCountsByBucket[$bucketKey] ?? 0);
             $failedCount = (int) ($failedCountsByBucket[$bucketKey] ?? 0);
             $totalCount = $successCount + $failedCount;
@@ -1851,6 +1866,8 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
             if ($isHourly) {
                 $currentBucketDate->addHour();
+            } elseif ($isEightHours) {
+                $currentBucketDate->addHours(8);
             } else {
                 $currentBucketDate->addDay();
             }
@@ -1920,6 +1937,33 @@ class MainPageStatsService implements MainPageStatsServiceContract
     private function hasNonZeroValue(array $data): bool
     {
         return collect($data)->contains(fn (int|float $value) => $value > 0);
+    }
+
+    private function resolveAdminBucketGranularity(string $preset): string
+    {
+        return match ($preset) {
+            'today' => 'hourly',
+            'week' => 'eight_hours',
+            default => 'daily',
+        };
+    }
+
+    private function resolveOrderBucketSql(string $bucketGranularity): string
+    {
+        return match ($bucketGranularity) {
+            'hourly' => "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')",
+            'eight_hours' => "DATE_FORMAT(DATE_ADD(DATE(created_at), INTERVAL FLOOR(HOUR(created_at) / 8) * 8 HOUR), '%Y-%m-%d %H:00:00')",
+            default => 'DATE(created_at)',
+        };
+    }
+
+    private function resolvePayoutBucketSql(string $bucketGranularity, string $dateExpression): string
+    {
+        return match ($bucketGranularity) {
+            'hourly' => "DATE_FORMAT({$dateExpression}, '%Y-%m-%d %H:00:00')",
+            'eight_hours' => "DATE_FORMAT(DATE_ADD(DATE({$dateExpression}), INTERVAL FLOOR(HOUR({$dateExpression}) / 8) * 8 HOUR), '%Y-%m-%d %H:00:00')",
+            default => "DATE({$dateExpression})",
+        };
     }
 
     private function normalizeIdArray(mixed $value): array

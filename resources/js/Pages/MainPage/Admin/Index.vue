@@ -326,6 +326,25 @@ const normalizeChartLabels = (source, periodPreset) => {
         };
     }
 
+    if (periodPreset === 'week') {
+        return {
+            data: source.data,
+            shadowData: Array.isArray(source.shadowData) ? source.shadowData : [],
+            labels: source.labels.map((label) => {
+                if (typeof label !== 'string') {
+                    return label;
+                }
+
+                const dateTimeMatch = label.match(/(\d{1,2}\.\d{1,2})\s+(\d{1,2}:\d{2})/);
+                if (dateTimeMatch) {
+                    return `${dateTimeMatch[1]} ${dateTimeMatch[2]}`;
+                }
+
+                return label;
+            }),
+        };
+    }
+
     return {
         data: source.data,
         shadowData: Array.isArray(source.shadowData) ? source.shadowData : [],
