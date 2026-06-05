@@ -1,7 +1,7 @@
 <script setup>
 import { Head, usePage, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import ApexCharts from 'apexcharts';
 import axios from 'axios';
 
@@ -13,6 +13,7 @@ const conversionChartData = computed(() => page.props.conversionChart || { label
 const turnoverChartData = computed(() => page.props.turnoverChart || { labels: [], data: [] });
 const ordersChartData = computed(() => page.props.ordersChart || { labels: [], data: [] });
 const averageCheckChartData = computed(() => page.props.averageCheckChart || { labels: [], data: [] });
+const merchantChartSeries = computed(() => page.props.merchantChartSeries || {});
 const selectedPeriodPresetProp = computed(() => page.props.selectedPeriodPreset || 'month');
 const selectedDateFromProp = computed(() => page.props.selectedDateFrom || '');
 const selectedDateToProp = computed(() => page.props.selectedDateTo || '');
@@ -42,6 +43,7 @@ const mobilePeriodDropdownRef = ref(null);
 const filterDropdownRef = ref(null);
 const desktopCustomPeriodDropdownRef = ref(null);
 const mobileCustomPeriodDropdownRef = ref(null);
+const chartDisplayMode = ref('total');
 
 const selectedFilters = ref({
     trader: selectedFiltersProp.value.traderIds || [],
@@ -271,6 +273,35 @@ const getThemeColor = (token) => {
     return getComputedStyle(span).color || '#6366f1';
 };
 
+const buildMerchantLegendOptions = () => {
+    const labelColor = getThemeColor('base-content');
+    const seriesCount = activeMerchantSeries.value.length;
+
+    return {
+        show: true,
+        position: 'top',
+        horizontalAlign: 'left',
+        fontSize: '13px',
+        fontWeight: 500,
+        formatter: (seriesName) => `\u00A0\u00A0${seriesName}`,
+        labels: {
+            colors: Array.from({ length: seriesCount }, () => labelColor),
+            useSeriesColors: false,
+        },
+        markers: {
+            width: 10,
+            height: 10,
+            strokeWidth: 0,
+            offsetX: -4,
+            offsetY: 0,
+        },
+        itemMargin: {
+            horizontal: 16,
+            vertical: 4,
+        },
+    };
+};
+
 const updateIsMobile = () => {
     if (typeof window === 'undefined') {
         return;
@@ -373,6 +404,24 @@ const activeTabConfig = computed(() => {
 
 const activeTabTitle = computed(() => activeTabConfig.value.label);
 const activeData = computed(() => chartDataByTab.value[activeChartTab.value] || { labels: [], data: [], shadowData: [] });
+const hasSelectedMerchants = computed(() => (selectedFilters.value.merchant || []).length > 0);
+const activeMerchantSeries = computed(() => {
+    const series = merchantChartSeries.value?.[activeChartTab.value];
+    return Array.isArray(series)
+        ? series.filter((item) => Array.isArray(item?.data))
+        : [];
+});
+const canShowMerchantSeries = computed(() => hasSelectedMerchants.value && activeMerchantSeries.value.length > 0);
+const isMerchantSplitMode = computed(() => canShowMerchantSeries.value && chartDisplayMode.value === 'by_merchant');
+const chartContainerClass = computed(() => (
+    isMerchantSplitMode.value ? 'h-[calc(12.5rem*1.5)]' : 'h-50'
+));
+
+const resizeChart = () => {
+    nextTick(() => {
+        apexChart.value?.resize();
+    });
+};
 
 const getYFormatter = (tab) => {
     if (tab === 'conversion') {
@@ -407,13 +456,18 @@ const renderChart = () => {
     const { min, max } = getYRange(activeChartTab.value);
     const color = getThemeColor(activeTabConfig.value.colorToken);
     const currentData = activeData.value;
-    const hasShadowData = Array.isArray(currentData.shadowData) && currentData.shadowData.length > 0;
-    const series = [
-        {
+    const hasShadowData = !isMerchantSplitMode.value
+        && Array.isArray(currentData.shadowData)
+        && currentData.shadowData.length > 0;
+    const series = isMerchantSplitMode.value
+        ? activeMerchantSeries.value.map((item) => ({
+            name: item.name,
+            data: item.data,
+        }))
+        : [{
             name: activeTabConfig.value.seriesName,
             data: currentData.data,
-        },
-    ];
+        }];
 
     if (hasShadowData) {
         series.push({
@@ -486,8 +540,14 @@ const renderChart = () => {
                 formatter,
             },
         },
-        colors: hasShadowData ? [color, shadowChartColor] : [color],
-        markers: hasShadowData ? {
+        colors: isMerchantSplitMode.value
+            ? undefined
+            : hasShadowData ? [color, shadowChartColor] : [color],
+        markers: isMerchantSplitMode.value ? {
+            size: 4,
+            strokeColors: '#fff',
+            strokeWidth: 2,
+        } : hasShadowData ? {
             size: [4, 4],
             colors: [color, shadowMarkerColor],
             strokeColors: ['#fff', shadowMarkerStrokeColor],
@@ -502,13 +562,19 @@ const renderChart = () => {
             strokeWidth: 2,
         },
         stroke: {
-            width: hasShadowData ? [2, 2] : [2],
+            width: isMerchantSplitMode.value
+                ? series.map(() => 2)
+                : hasShadowData ? [2, 2] : [2],
             curve: 'smooth',
-            dashArray: hasShadowData ? [0, 8] : [0],
+            dashArray: isMerchantSplitMode.value
+                ? series.map(() => 0)
+                : hasShadowData ? [0, 8] : [0],
         },
-        legend: {
-            show: false,
-        },
+        legend: isMerchantSplitMode.value
+            ? buildMerchantLegendOptions()
+            : {
+                show: false,
+            },
         tooltip: {
             theme: 'dark',
             y: {
@@ -531,6 +597,25 @@ watch(activeChartTab, () => {
 watch(activeData, () => {
     renderChart();
 }, { deep: true });
+
+watch(activeMerchantSeries, () => {
+    renderChart();
+}, { deep: true });
+
+watch(chartDisplayMode, () => {
+    renderChart();
+    resizeChart();
+});
+
+watch(isMerchantSplitMode, () => {
+    resizeChart();
+});
+
+watch(canShowMerchantSeries, (canShow) => {
+    if (!canShow) {
+        chartDisplayMode.value = 'total';
+    }
+});
 
 const switchStatsMode = (mode) => {
     if (activeStatsMode.value === mode) {
@@ -1463,7 +1548,28 @@ defineOptions({ layout: AuthenticatedLayout });
                             </button>
                         </div>
                     </div>
-                    <div ref="chart" class="h-50"></div>
+                    <div ref="chart" :class="chartContainerClass"></div>
+                </div>
+
+                <div v-if="canShowMerchantSeries" class="mt-2 flex justify-end">
+                    <div class="join join-horizontal">
+                        <button
+                            type="button"
+                            class="btn btn-sm join-item"
+                            :class="chartDisplayMode === 'total' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
+                            @click="chartDisplayMode = 'total'"
+                        >
+                            Общее
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-sm join-item"
+                            :class="chartDisplayMode === 'by_merchant' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
+                            @click="chartDisplayMode = 'by_merchant'"
+                        >
+                            По мерчантам
+                        </button>
+                    </div>
                 </div>
             </section>
         </div>

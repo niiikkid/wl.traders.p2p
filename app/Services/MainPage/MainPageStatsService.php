@@ -494,6 +494,12 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $normalizedFilters,
             $bucketGranularity,
         );
+        $merchantChartSeries = $this->buildAdminOrderMerchantSeries(
+            $resolvedPeriod,
+            $merchantId,
+            $normalizedFilters,
+            $bucketGranularity,
+        );
 
         $pendingOrdersQuery = Order::query()
             ->where('status', OrderStatus::PENDING)
@@ -542,6 +548,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'data' => $averageCheckData,
                 'shadowData' => $shadowCharts['averageCheck'],
             ],
+            'merchantChartSeries' => $merchantChartSeries,
             'selectedPeriodPreset' => $resolvedPeriod['preset'],
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
             'selectedDateTo' => $resolvedPeriod['dateTo'],
@@ -764,6 +771,12 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $normalizedFilters,
             $bucketGranularity,
         );
+        $merchantChartSeries = $this->buildAdminPayoutMerchantSeries(
+            $resolvedPeriod,
+            $merchantId,
+            $normalizedFilters,
+            $bucketGranularity,
+        );
 
         $selectedFiltersForResponse = $this->normalizeFilters([
             'traderIds' => $normalizedFilters['traderIds'],
@@ -807,6 +820,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'data' => $averageCheckData,
                 'shadowData' => $shadowCharts['averageCheck'],
             ],
+            'merchantChartSeries' => $merchantChartSeries,
             'selectedPeriodPreset' => $resolvedPeriod['preset'],
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
             'selectedDateTo' => $resolvedPeriod['dateTo'],
@@ -1997,6 +2011,355 @@ class MainPageStatsService implements MainPageStatsServiceContract
         if (! empty($filters['merchantIds'])) {
             $query->whereIn('merchant_id', $filters['merchantIds']);
         }
+    }
+
+    private function buildAdminOrderMerchantSeries(
+        array $resolvedPeriod,
+        ?int $merchantId,
+        array $filters,
+        string $bucketGranularity,
+    ): array {
+        $merchantIds = $this->normalizeIdArray($filters['merchantIds'] ?? []);
+        if ($merchantId && ! in_array($merchantId, $merchantIds, true)) {
+            $merchantIds[] = $merchantId;
+        }
+
+        if ($merchantIds === []) {
+            return [];
+        }
+
+        $startDate = $resolvedPeriod['startDate'];
+        $endDate = $resolvedPeriod['endDate'];
+        $isHourly = $bucketGranularity === 'hourly';
+        $isEightHours = $bucketGranularity === 'eight_hours';
+        $bucketSql = $this->resolveOrderBucketSql($bucketGranularity);
+
+        $incomeByMerchantAndBucket = Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyOrderFilters($incomeByMerchantAndBucket, $filters);
+        $incomeByMerchantAndBucket = $incomeByMerchantAndBucket
+            ->selectRaw("merchant_id, {$bucketSql} as bucket_key, SUM(service_profit) as total_earnings")
+            ->groupBy('merchant_id', 'bucket_key')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                "{$row->merchant_id}|{$row->bucket_key}" => Money::fromUnits((int) $row->total_earnings, Currency::USDT())->toInt(),
+            ]);
+
+        $turnoverByMerchantAndBucket = Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyOrderFilters($turnoverByMerchantAndBucket, $filters);
+        $turnoverByMerchantAndBucket = $turnoverByMerchantAndBucket
+            ->selectRaw("merchant_id, {$bucketSql} as bucket_key, SUM(total_profit) as total_turnover")
+            ->groupBy('merchant_id', 'bucket_key')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                "{$row->merchant_id}|{$row->bucket_key}" => Money::fromUnits((int) $row->total_turnover, Currency::USDT())->toInt(),
+            ]);
+
+        $successCountByMerchantAndBucket = Order::query()
+            ->where('status', OrderStatus::SUCCESS)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyOrderFilters($successCountByMerchantAndBucket, $filters);
+        $successCountByMerchantAndBucket = $successCountByMerchantAndBucket
+            ->selectRaw("merchant_id, {$bucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('merchant_id', 'bucket_key')
+            ->get()
+            ->mapWithKeys(fn ($row) => ["{$row->merchant_id}|{$row->bucket_key}" => (int) $row->count]);
+
+        $failedCountByMerchantAndBucket = Order::query()
+            ->where('status', OrderStatus::FAIL)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyOrderFilters($failedCountByMerchantAndBucket, $filters);
+        $failedCountByMerchantAndBucket = $failedCountByMerchantAndBucket
+            ->selectRaw("merchant_id, {$bucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('merchant_id', 'bucket_key')
+            ->get()
+            ->mapWithKeys(fn ($row) => ["{$row->merchant_id}|{$row->bucket_key}" => (int) $row->count]);
+
+        $totalAmountByMerchantAndBucket = Order::query()
+            ->whereIn('status', [OrderStatus::SUCCESS, OrderStatus::FAIL])
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyOrderFilters($totalAmountByMerchantAndBucket, $filters);
+        $totalAmountByMerchantAndBucket = $totalAmountByMerchantAndBucket
+            ->selectRaw("merchant_id, {$bucketSql} as bucket_key, SUM(total_profit) as total_amount")
+            ->groupBy('merchant_id', 'bucket_key')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                "{$row->merchant_id}|{$row->bucket_key}" => Money::fromUnits((int) $row->total_amount, Currency::USDT())->toInt(),
+            ]);
+
+        $merchantNames = Merchant::query()
+            ->whereIn('id', $merchantIds)
+            ->pluck('name', 'id');
+
+        $seriesByMetric = [
+            'income' => [],
+            'turnover' => [],
+            'conversion' => [],
+            'orders' => [],
+            'average_check' => [],
+        ];
+
+        foreach ($merchantIds as $currentMerchantId) {
+            $merchantBuckets = [];
+            $currentBucketDate = $startDate->copy();
+
+            while ($currentBucketDate->lte($endDate)) {
+                $bucketKey = $isHourly
+                    ? $currentBucketDate->format('Y-m-d H:00:00')
+                    : $currentBucketDate->toDateString();
+                $combinedKey = "{$currentMerchantId}|{$bucketKey}";
+
+                $income = (int) ($incomeByMerchantAndBucket[$combinedKey] ?? 0);
+                $turnover = (int) ($turnoverByMerchantAndBucket[$combinedKey] ?? 0);
+                $successCount = (int) ($successCountByMerchantAndBucket[$combinedKey] ?? 0);
+                $failedCount = (int) ($failedCountByMerchantAndBucket[$combinedKey] ?? 0);
+                $totalAmount = (int) ($totalAmountByMerchantAndBucket[$combinedKey] ?? 0);
+                $totalCount = $successCount + $failedCount;
+
+                $merchantBuckets[] = [
+                    'income' => $income,
+                    'turnover' => $turnover,
+                    'successCount' => $successCount,
+                    'failedCount' => $failedCount,
+                    'totalAmount' => $totalAmount,
+                    'totalCount' => $totalCount,
+                ];
+
+                if ($isHourly) {
+                    $currentBucketDate->addHour();
+                } elseif ($isEightHours) {
+                    $currentBucketDate->addHours(8);
+                } else {
+                    $currentBucketDate->addDay();
+                }
+            }
+
+            if (in_array($resolvedPeriod['preset'], ['custom', 'all'], true) && count($merchantBuckets) > 30) {
+                $chunkSize = (int) ceil(count($merchantBuckets) / 30);
+                $groupedBuckets = [];
+
+                for ($i = 0; $i < count($merchantBuckets); $i += $chunkSize) {
+                    $chunk = array_slice($merchantBuckets, $i, $chunkSize);
+                    $sumSuccess = array_sum(array_column($chunk, 'successCount'));
+                    $sumFailed = array_sum(array_column($chunk, 'failedCount'));
+                    $sumTotal = $sumSuccess + $sumFailed;
+                    $groupedBuckets[] = [
+                        'income' => array_sum(array_column($chunk, 'income')),
+                        'turnover' => array_sum(array_column($chunk, 'turnover')),
+                        'successCount' => $sumSuccess,
+                        'failedCount' => $sumFailed,
+                        'totalAmount' => array_sum(array_column($chunk, 'totalAmount')),
+                        'totalCount' => $sumTotal,
+                    ];
+                }
+
+                $merchantBuckets = $groupedBuckets;
+            }
+
+            $incomeData = [];
+            $turnoverData = [];
+            $conversionData = [];
+            $ordersData = [];
+            $averageCheckData = [];
+
+            foreach ($merchantBuckets as $bucket) {
+                $incomeData[] = $bucket['income'];
+                $turnoverData[] = $bucket['turnover'];
+                $ordersData[] = $bucket['totalCount'];
+                $averageCheckData[] = $bucket['totalCount'] > 0
+                    ? round($bucket['totalAmount'] / $bucket['totalCount'], 2)
+                    : 0;
+                $conversionData[] = $bucket['totalCount'] > 0
+                    ? round(($bucket['successCount'] / $bucket['totalCount']) * 100, 2)
+                    : 0;
+            }
+
+            $merchantLabel = (string) ($merchantNames[$currentMerchantId] ?? "Мерчант #{$currentMerchantId}");
+
+            $seriesByMetric['income'][] = ['name' => $merchantLabel, 'data' => $incomeData];
+            $seriesByMetric['turnover'][] = ['name' => $merchantLabel, 'data' => $turnoverData];
+            $seriesByMetric['conversion'][] = ['name' => $merchantLabel, 'data' => $conversionData];
+            $seriesByMetric['orders'][] = ['name' => $merchantLabel, 'data' => $ordersData];
+            $seriesByMetric['average_check'][] = ['name' => $merchantLabel, 'data' => $averageCheckData];
+        }
+
+        return $seriesByMetric;
+    }
+
+    private function buildAdminPayoutMerchantSeries(
+        array $resolvedPeriod,
+        ?int $merchantId,
+        array $filters,
+        string $bucketGranularity,
+    ): array {
+        $merchantIds = $this->normalizeIdArray($filters['merchantIds'] ?? []);
+        if ($merchantId && ! in_array($merchantId, $merchantIds, true)) {
+            $merchantIds[] = $merchantId;
+        }
+
+        if ($merchantIds === []) {
+            return [];
+        }
+
+        $startDate = $resolvedPeriod['startDate'];
+        $endDate = $resolvedPeriod['endDate'];
+        $isHourly = $bucketGranularity === 'hourly';
+        $isEightHours = $bucketGranularity === 'eight_hours';
+        $completedAtExpression = 'COALESCE(completed_at, updated_at)';
+        $canceledAtExpression = 'COALESCE(canceled_at, updated_at)';
+        $completedBucketSql = $this->resolvePayoutBucketSql($bucketGranularity, $completedAtExpression);
+        $canceledBucketSql = $this->resolvePayoutBucketSql($bucketGranularity, $canceledAtExpression);
+
+        $incomeByMerchantAndBucket = Payout::query()
+            ->where('status', PayoutStatus::COMPLETED->value)
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyAdminPayoutFilters($incomeByMerchantAndBucket, $merchantId, $filters);
+        $incomeByMerchantAndBucket->whereRaw("{$completedAtExpression} between ? and ?", [$startDate, $endDate]);
+        $incomeByMerchantAndBucket = $incomeByMerchantAndBucket
+            ->selectRaw("merchant_id, {$completedBucketSql} as bucket_key, SUM(CAST(IFNULL(service_fee, 0) AS SIGNED)) as total_earnings")
+            ->groupBy('merchant_id', DB::raw($completedBucketSql))
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                "{$row->merchant_id}|{$row->bucket_key}" => Money::fromUnits((int) $row->total_earnings, Currency::USDT())->toInt(),
+            ]);
+
+        $turnoverByMerchantAndBucket = Payout::query()
+            ->where('status', PayoutStatus::COMPLETED->value)
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyAdminPayoutFilters($turnoverByMerchantAndBucket, $merchantId, $filters);
+        $turnoverByMerchantAndBucket->whereRaw("{$completedAtExpression} between ? and ?", [$startDate, $endDate]);
+        $turnoverByMerchantAndBucket = $turnoverByMerchantAndBucket
+            ->selectRaw("merchant_id, {$completedBucketSql} as bucket_key, SUM(CAST(IFNULL(usdt_body, 0) AS SIGNED)) as total_turnover")
+            ->groupBy('merchant_id', DB::raw($completedBucketSql))
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                "{$row->merchant_id}|{$row->bucket_key}" => Money::fromUnits((int) $row->total_turnover, Currency::USDT())->toInt(),
+            ]);
+
+        $successCountByMerchantAndBucket = Payout::query()
+            ->where('status', PayoutStatus::COMPLETED->value)
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyAdminPayoutFilters($successCountByMerchantAndBucket, $merchantId, $filters);
+        $successCountByMerchantAndBucket->whereRaw("{$completedAtExpression} between ? and ?", [$startDate, $endDate]);
+        $successCountByMerchantAndBucket = $successCountByMerchantAndBucket
+            ->selectRaw("merchant_id, {$completedBucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('merchant_id', DB::raw($completedBucketSql))
+            ->get()
+            ->mapWithKeys(fn ($row) => ["{$row->merchant_id}|{$row->bucket_key}" => (int) $row->count]);
+
+        $failedCountByMerchantAndBucket = Payout::query()
+            ->where('status', PayoutStatus::CANCELED->value)
+            ->whereIn('merchant_id', $merchantIds);
+        $this->applyAdminPayoutFilters($failedCountByMerchantAndBucket, $merchantId, $filters);
+        $failedCountByMerchantAndBucket->whereRaw("{$canceledAtExpression} between ? and ?", [$startDate, $endDate]);
+        $failedCountByMerchantAndBucket = $failedCountByMerchantAndBucket
+            ->selectRaw("merchant_id, {$canceledBucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('merchant_id', DB::raw($canceledBucketSql))
+            ->get()
+            ->mapWithKeys(fn ($row) => ["{$row->merchant_id}|{$row->bucket_key}" => (int) $row->count]);
+
+        $merchantNames = Merchant::query()
+            ->whereIn('id', $merchantIds)
+            ->pluck('name', 'id');
+
+        $seriesByMetric = [
+            'income' => [],
+            'turnover' => [],
+            'conversion' => [],
+            'orders' => [],
+            'average_check' => [],
+        ];
+
+        foreach ($merchantIds as $currentMerchantId) {
+            $merchantBuckets = [];
+            $currentBucketDate = $startDate->copy();
+
+            while ($currentBucketDate->lte($endDate)) {
+                $bucketKey = $isHourly
+                    ? $currentBucketDate->format('Y-m-d H:00:00')
+                    : $currentBucketDate->toDateString();
+                $combinedKey = "{$currentMerchantId}|{$bucketKey}";
+
+                $income = (int) ($incomeByMerchantAndBucket[$combinedKey] ?? 0);
+                $turnover = (int) ($turnoverByMerchantAndBucket[$combinedKey] ?? 0);
+                $successCount = (int) ($successCountByMerchantAndBucket[$combinedKey] ?? 0);
+                $failedCount = (int) ($failedCountByMerchantAndBucket[$combinedKey] ?? 0);
+                $totalCount = $successCount + $failedCount;
+
+                $merchantBuckets[] = [
+                    'income' => $income,
+                    'turnover' => $turnover,
+                    'successCount' => $successCount,
+                    'failedCount' => $failedCount,
+                    'totalCount' => $totalCount,
+                ];
+
+                if ($isHourly) {
+                    $currentBucketDate->addHour();
+                } elseif ($isEightHours) {
+                    $currentBucketDate->addHours(8);
+                } else {
+                    $currentBucketDate->addDay();
+                }
+            }
+
+            if (in_array($resolvedPeriod['preset'], ['custom', 'all'], true) && count($merchantBuckets) > 30) {
+                $chunkSize = (int) ceil(count($merchantBuckets) / 30);
+                $groupedBuckets = [];
+
+                for ($i = 0; $i < count($merchantBuckets); $i += $chunkSize) {
+                    $chunk = array_slice($merchantBuckets, $i, $chunkSize);
+                    $sumSuccess = array_sum(array_column($chunk, 'successCount'));
+                    $sumFailed = array_sum(array_column($chunk, 'failedCount'));
+                    $sumTotal = $sumSuccess + $sumFailed;
+                    $groupedBuckets[] = [
+                        'income' => array_sum(array_column($chunk, 'income')),
+                        'turnover' => array_sum(array_column($chunk, 'turnover')),
+                        'successCount' => $sumSuccess,
+                        'failedCount' => $sumFailed,
+                        'totalCount' => $sumTotal,
+                    ];
+                }
+
+                $merchantBuckets = $groupedBuckets;
+            }
+
+            $incomeData = [];
+            $turnoverData = [];
+            $conversionData = [];
+            $ordersData = [];
+            $averageCheckData = [];
+
+            foreach ($merchantBuckets as $bucket) {
+                $incomeData[] = $bucket['income'];
+                $turnoverData[] = $bucket['turnover'];
+                $ordersData[] = $bucket['successCount'];
+                $averageCheckData[] = $bucket['successCount'] > 0
+                    ? round($bucket['turnover'] / $bucket['successCount'], 2)
+                    : 0;
+                $conversionData[] = $bucket['totalCount'] > 0
+                    ? round(($bucket['successCount'] / $bucket['totalCount']) * 100, 2)
+                    : 0;
+            }
+
+            $merchantLabel = (string) ($merchantNames[$currentMerchantId] ?? "Мерчант #{$currentMerchantId}");
+
+            $seriesByMetric['income'][] = ['name' => $merchantLabel, 'data' => $incomeData];
+            $seriesByMetric['turnover'][] = ['name' => $merchantLabel, 'data' => $turnoverData];
+            $seriesByMetric['conversion'][] = ['name' => $merchantLabel, 'data' => $conversionData];
+            $seriesByMetric['orders'][] = ['name' => $merchantLabel, 'data' => $ordersData];
+            $seriesByMetric['average_check'][] = ['name' => $merchantLabel, 'data' => $averageCheckData];
+        }
+
+        return $seriesByMetric;
     }
 
     private function resolvePeriodRange(
