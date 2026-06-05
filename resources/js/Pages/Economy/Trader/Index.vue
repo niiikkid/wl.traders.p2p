@@ -124,7 +124,6 @@ const computeRow = (row) => {
     const endBalance = toNumber(row.end_balance);
     const exchangeBalance = toNumber(row.exchange_balance);
     const arbitrageUsd = toNumber(row.arbitrage_usd);
-    const expenseUah = toNumber(row.expense_uah);
 
     const cardUsd = roundToCalculationPrecision((cardUah !== null && rate) ? cardUah / rate : null);
     const totalEnd = (endBalance !== null || exchangeBalance !== null || cardUsd !== null)
@@ -133,13 +132,13 @@ const computeRow = (row) => {
     const grossProfit = (totalEnd !== null && startBalance !== null)
         ? roundToCalculationPrecision(totalEnd - startBalance)
         : null;
-    const expenseUsd = roundToCalculationPrecision((expenseUah !== null && rate) ? expenseUah / rate : null);
+    // «Прибыль, $» (чистая): Прибыль + Арбитраж; расходы в ₴ в эту колонку не входят.
     const netUsd = (grossProfit !== null)
-        ? roundToCalculationPrecision(grossProfit - (arbitrageUsd ?? 0) - (expenseUsd ?? 0))
+        ? roundToCalculationPrecision(grossProfit + (arbitrageUsd ?? 0))
         : null;
     const netUah = roundToCalculationPrecision((netUsd !== null && rate) ? netUsd * rate : null);
 
-    return {cardUsd, totalEnd, grossProfit, expenseUsd, netUsd, netUah};
+    return {cardUsd, totalEnd, grossProfit, netUsd, netUah};
 };
 
 const computedRows = computed(() => rows.value.map(computeRow));
