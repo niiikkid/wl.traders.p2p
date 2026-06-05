@@ -38,6 +38,7 @@ const form = ref({
     team_leader_trader_limit: null,
     team_leader_reserve_balance_limit: null,
     team_leader_reserve_stop_threshold: null,
+    trader_economy_enabled: false,
 });
 
 const selectedRoleName = computed(() => {
@@ -58,6 +59,7 @@ const resetForm = () => {
         team_leader_trader_limit: null,
         team_leader_reserve_balance_limit: null,
         team_leader_reserve_stop_threshold: null,
+        trader_economy_enabled: false,
     };
     errors.value = {};
 };
@@ -235,6 +237,23 @@ watch(
                         :disabled="processing"
                     ></Select>
                     <InputError class="mt-1" :message="errors.role_id?.[0]" />
+                </div>
+
+                <div v-if="selectedRoleName === 'Trader'">
+                    <div class="form-control w-fit">
+                        <label class="label cursor-pointer gap-3">
+                            <input
+                                type="checkbox"
+                                class="toggle toggle-primary"
+                                v-model="form.trader_economy_enabled"
+                                :disabled="processing"
+                            >
+                            <span class="label-text">Экономика включена</span>
+                        </label>
+                    </div>
+                    <p class="mt-1 text-xs text-base-content/70">
+                        Трейдер увидит страницу «Экономика» в меню и сможет вести учёт.
+                    </p>
                 </div>
 
                 <div v-if="selectedRoleName === 'Trader'">

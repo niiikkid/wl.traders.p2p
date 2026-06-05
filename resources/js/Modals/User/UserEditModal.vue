@@ -38,6 +38,7 @@ const form = ref({
     can_work_without_device: false,
     is_vip: false,
     payouts_enabled: true,
+    trader_economy_enabled: false,
     priority_payout_access_enabled: false,
     payout_hold_enabled: true,
     payout_hold_minutes: 60,
@@ -93,6 +94,7 @@ const resetState = () => {
         can_work_without_device: false,
         is_vip: false,
         payouts_enabled: true,
+        trader_economy_enabled: false,
         priority_payout_access_enabled: false,
         payout_hold_enabled: true,
         payout_hold_minutes: 60,
@@ -152,6 +154,7 @@ const loadUser = () => {
             form.value.can_work_without_device = !!data.can_work_without_device;
             form.value.is_vip = !!data.is_vip;
             form.value.payouts_enabled = data.payouts_enabled ?? true;
+            form.value.trader_economy_enabled = !!data.trader_economy_enabled;
             form.value.priority_payout_access_enabled = !!data.priority_payout_access_enabled;
             form.value.payout_hold_enabled = data.payout_hold_enabled ?? true;
             form.value.payout_hold_minutes = data.payout_hold_minutes ?? 60;
@@ -438,6 +441,23 @@ watch(
                     </div>
                     <div class="mt-1 text-xs opacity-70">
                         При включении реквизиты можно создавать без привязки к устройству, страница устройств будет недоступна.
+                    </div>
+                </div>
+
+                <div v-if="isTrader(form.role_id)">
+                    <div class="form-control w-fit">
+                        <label class="label cursor-pointer gap-3">
+                            <input
+                                type="checkbox"
+                                class="toggle toggle-primary"
+                                v-model="form.trader_economy_enabled"
+                                :disabled="processing"
+                            >
+                            <span class="label-text">Экономика включена</span>
+                        </label>
+                    </div>
+                    <div class="mt-1 text-xs opacity-70">
+                        Трейдер увидит страницу «Экономика» в меню и сможет вести учёт.
                     </div>
                 </div>
 

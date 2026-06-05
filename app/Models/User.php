@@ -53,6 +53,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property bool $can_work_without_device
  * @property bool $sms_auto_close_orders_enabled
  * @property bool $payouts_enabled
+ * @property bool $trader_economy_enabled
  * @property bool $priority_payout_access_enabled
  * @property bool $payout_hold_enabled
  * @property int $payout_hold_minutes
@@ -124,6 +125,7 @@ class User extends Authenticatable
         'can_work_without_device',
         'sms_auto_close_orders_enabled',
         'payouts_enabled',
+        'trader_economy_enabled',
         'priority_payout_access_enabled',
         'payout_hold_enabled',
         'payout_hold_minutes',
@@ -194,6 +196,7 @@ class User extends Authenticatable
             'can_work_without_device' => 'boolean',
             'sms_auto_close_orders_enabled' => 'boolean',
             'payouts_enabled' => 'boolean',
+            'trader_economy_enabled' => 'boolean',
             'priority_payout_access_enabled' => 'boolean',
             'payout_hold_enabled' => 'boolean',
             'payout_active_payouts_limit' => 'integer',

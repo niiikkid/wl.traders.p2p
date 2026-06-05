@@ -43,6 +43,7 @@ class StoreRequest extends FormRequest
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
             'agent_id' => ['nullable', 'integer', 'exists:users,id'],
             'agent_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'trader_economy_enabled' => ['nullable', 'boolean'],
             ...app(TeamLeaderInsuranceService::class)->teamLeaderConfigurationRules($roleName === 'Team Leader'),
         ];
     }

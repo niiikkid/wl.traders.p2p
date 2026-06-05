@@ -18,6 +18,7 @@ readonly class UserCreateDTO extends BaseDTO
         public ?int $team_leader_trader_limit = null,
         public ?int $team_leader_reserve_balance_limit = null,
         public ?int $team_leader_reserve_stop_threshold = null,
+        public bool $trader_economy_enabled = false,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -36,6 +37,7 @@ readonly class UserCreateDTO extends BaseDTO
             team_leader_trader_limit: isset($data['team_leader_trader_limit']) ? (int) $data['team_leader_trader_limit'] : null,
             team_leader_reserve_balance_limit: isset($data['team_leader_reserve_balance_limit']) ? (int) $data['team_leader_reserve_balance_limit'] : null,
             team_leader_reserve_stop_threshold: isset($data['team_leader_reserve_stop_threshold']) ? (int) $data['team_leader_reserve_stop_threshold'] : null,
+            trader_economy_enabled: (bool) ($data['trader_economy_enabled'] ?? false),
         );
     }
 

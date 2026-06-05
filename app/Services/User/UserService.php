@@ -58,6 +58,7 @@ class UserService implements UserServiceContract
                 'payout_hold_enabled' => true,
                 'payout_hold_minutes' => 60,
                 'payout_active_payouts_limit' => 1,
+                'trader_economy_enabled' => $roleName === 'Trader' ? $data->trader_economy_enabled : false,
             ];
 
             if ($roleName === 'Team Leader') {
@@ -119,6 +120,7 @@ class UserService implements UserServiceContract
                 'can_work_without_device' => $data->can_work_without_device,
                 'is_vip' => $data->is_vip,
                 'payouts_enabled' => $data->payouts_enabled,
+                'trader_economy_enabled' => $roleName === 'Trader' ? $data->trader_economy_enabled : false,
                 'priority_payout_access_enabled' => in_array($roleName, ['Trader', 'Super Admin'], true)
                     ? $data->priority_payout_access_enabled
                     : false,

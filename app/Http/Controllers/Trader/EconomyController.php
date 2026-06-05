@@ -9,6 +9,7 @@ use App\Http\Requests\Trader\Economy\StoreMonthRequest;
 use App\Http\Requests\Trader\Economy\UpdateDayRequest;
 use App\Models\TraderEconomyDay;
 use App\Models\TraderEconomyMonth;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -33,6 +34,8 @@ class EconomyController extends Controller
 
     public function index(Request $request): Response
     {
+        $this->ensureEconomyAccess($request);
+
         $user = $request->user();
 
         $months = TraderEconomyMonth::query()
@@ -92,6 +95,8 @@ class EconomyController extends Controller
 
     public function store(StoreMonthRequest $request): RedirectResponse
     {
+        $this->ensureEconomyAccess($request);
+
         $user = $request->user();
 
         /** @var array{year: int, month: int} $validated */
@@ -110,6 +115,8 @@ class EconomyController extends Controller
 
     public function updateDay(UpdateDayRequest $request, TraderEconomyMonth $month, int $day): RedirectResponse
     {
+        $this->ensureEconomyAccess($request);
+
         abort_unless($month->user_id === $request->user()->id, 403);
 
         $daysInMonth = (int) CarbonImmutable::createFromDate(
@@ -145,6 +152,8 @@ class EconomyController extends Controller
 
     public function destroy(Request $request, TraderEconomyMonth $month): RedirectResponse
     {
+        $this->ensureEconomyAccess($request);
+
         abort_unless($month->user_id === $request->user()->id, 403);
 
         $month->delete();
@@ -152,5 +161,23 @@ class EconomyController extends Controller
         return redirect()
             ->route('trader.economy.index')
             ->with('message', 'Месяц удалён.');
+    }
+
+    private function ensureEconomyAccess(Request $request): void
+    {
+        /** @var User|null $user */
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            abort(403);
+        }
+
+        if ($user->hasRole('Super Admin')) {
+            return;
+        }
+
+        if ($user->hasRole('Trader') && ! $user->trader_economy_enabled) {
+            abort(403, 'Страница «Экономика» для вашего аккаунта отключена.');
+        }
     }
 }

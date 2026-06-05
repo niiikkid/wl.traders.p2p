@@ -151,6 +151,7 @@ class UserResource extends JsonResource
             'reserve_balance_limit' => $this->reserve_balance_limit,
             'fiat_currency' => $this->fiat_currency,
             'payouts_enabled' => (bool) $this->payouts_enabled,
+            'trader_economy_enabled' => (bool) $this->trader_economy_enabled,
             'priority_payout_access_enabled' => (bool) $this->priority_payout_access_enabled,
             'payout_hold_enabled' => (bool) $this->payout_hold_enabled,
             'payout_hold_minutes' => (int) ($this->payout_hold_minutes ?? 0),

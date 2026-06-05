@@ -7,7 +7,11 @@ import OnlineSwitcher from "@/Layouts/Partials/OnlineSwitcher.vue";
 
 const menu = ref(usePage().props.menu);
 const userStore = useUserStore();
-const payoutsEnabled = computed(() => !!usePage().props.auth?.user?.payouts_enabled);
+const page = usePage();
+const payoutsEnabled = computed(() => !!page.props.auth?.user?.payouts_enabled);
+const traderEconomyEnabled = computed(() => (
+    !!page.props.auth?.is_admin || !!page.props.auth?.user?.trader_economy_enabled
+));
 
 router.on('success', (event) => {
     menu.value = usePage().props.menu;
@@ -158,20 +162,21 @@ router.on('success', (event) => {
                 Автоматика
             </span>
         </li>
-       <!-- <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.economy.*') }]">
+        <li
+            v-if="traderEconomyEnabled"
+            :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.economy.*') }]"
+        >
             <span
                 @click="router.visit(route('trader.economy.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('trader.economy.index'), { preserveScroll: true })"
                 role="link"
                 tabindex="0"
             >
-                <svg class="size-5 opacity-30" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true">
-                    <path d="M32 13.22V29H4V7h18.57a8.35 8.35 0 0 1-.07-1 8.35 8.35 0 0 1 .07-1H4a2 2 0 0 0-2 2v22a2 2 0 0 0 2 2h28a2 2 0 0 0 2-2V12.34a8.45 8.45 0 0 1-2 .88Z"/>
-                    <path d="m15.62 15.22-6.02 8.75-4.05-3.58 1.06-1.2 2.7 2.39 6.32-9.2 6.75 10.02 6.76-8.93 1.27.97-8.1 10.71-6.69-9.93Z"/>
-                    <circle cx="30" cy="6" r="5"/>
+                <svg class="size-5 opacity-30" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m7 12 3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4" />
                 </svg>
                 Экономика
             </span>
-        </li>-->
+        </li>
     </ul>
 </template>
