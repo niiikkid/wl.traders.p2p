@@ -19,6 +19,10 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
 {
     private const int AMOUNT_DISTRIBUTION_CACHE_TTL_SECONDS = 60;
 
+    private const int DASHBOARD_STATS_CACHE_TTL_SECONDS = 30;
+
+    private const int REQUESTS_CHART_CACHE_TTL_SECONDS = 60;
+
     public function __construct(
         private readonly PaymentDetailVolumeStatisticsService $volumeStatisticsService,
     ) {}
@@ -298,91 +302,113 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
     {
         $today = now()->toDateString();
 
-        // Успешные и неуспешные запросы за сегодня
-        $todayStats = MerchantApiStatistic::where('date', $today)
-            ->get()
-            ->groupBy('is_successful');
+        return Cache::remember(
+            "merchant_api_logs:dashboard_stats:{$today}",
+            now()->addSeconds(self::DASHBOARD_STATS_CACHE_TTL_SECONDS),
+            function () use ($today): array {
+                // Успешные и неуспешные запросы за сегодня
+                $todayStats = MerchantApiStatistic::query()
+                    ->where('date', '=', $today)
+                    ->get()
+                    ->groupBy('is_successful');
 
-        // Общая статистика за все время
-        $totalStats = MerchantApiStatistic::select([
-            'is_successful',
-            'currency',
-            DB::raw('SUM(count) as total_count'),
-            DB::raw('SUM(sum_amount) as total_sum'),
-        ])
-            ->groupBy('is_successful', 'currency')
-            ->get()
-            ->groupBy('is_successful');
+                // Общая статистика за все время
+                $totalStats = MerchantApiStatistic::select([
+                    'is_successful',
+                    'currency',
+                    DB::raw('SUM(count) as total_count'),
+                    DB::raw('SUM(sum_amount) as total_sum'),
+                ])
+                    ->groupBy('is_successful', 'currency')
+                    ->get()
+                    ->groupBy('is_successful');
 
-        // Формируем результаты
-        $successToday = $todayStats[true] ?? collect();
-        $failedToday = $todayStats[false] ?? collect();
-        $successTotal = $totalStats[true] ?? collect();
-        $failedTotal = $totalStats[false] ?? collect();
+                // Формируем результаты
+                $successToday = $todayStats[true] ?? collect();
+                $failedToday = $todayStats[false] ?? collect();
+                $successTotal = $totalStats[true] ?? collect();
+                $failedTotal = $totalStats[false] ?? collect();
 
-        // Суммы по валютам
-        $sumBySuccessCurrencyToday = $successToday->pluck('sum_amount', 'currency')->toArray();
-        $sumByFailedCurrencyToday = $failedToday->pluck('sum_amount', 'currency')->toArray();
-        $sumBySuccessCurrencyTotal = $successTotal->pluck('total_sum', 'currency')->toArray();
-        $sumByFailedCurrencyTotal = $failedTotal->pluck('total_sum', 'currency')->toArray();
+                // Суммы по валютам
+                $sumBySuccessCurrencyToday = $successToday->pluck('sum_amount', 'currency')->toArray();
+                $sumByFailedCurrencyToday = $failedToday->pluck('sum_amount', 'currency')->toArray();
+                $sumBySuccessCurrencyTotal = $successTotal->pluck('total_sum', 'currency')->toArray();
+                $sumByFailedCurrencyTotal = $failedTotal->pluck('total_sum', 'currency')->toArray();
 
-        // Общие количества
-        $successTodayCount = $successToday->sum('count');
-        $failedTodayCount = $failedToday->sum('count');
-        $successTotalCount = $successTotal->sum('total_count');
-        $failedTotalCount = $failedTotal->sum('total_count');
+                // Общие количества
+                $successTodayCount = $successToday->sum('count');
+                $failedTodayCount = $failedToday->sum('count');
+                $successTotalCount = $successTotal->sum('total_count');
+                $failedTotalCount = $failedTotal->sum('total_count');
 
-        return [
-            'successToday' => $successTodayCount,
-            'failedToday' => $failedTodayCount,
-            'successTotal' => $successTotalCount,
-            'failedTotal' => $failedTotalCount,
-            'sumBySuccessCurrencyToday' => $sumBySuccessCurrencyToday,
-            'sumByFailedCurrencyToday' => $sumByFailedCurrencyToday,
-            'sumBySuccessCurrencyTotal' => $sumBySuccessCurrencyTotal,
-            'sumByFailedCurrencyTotal' => $sumByFailedCurrencyTotal,
-        ];
+                return [
+                    'successToday' => $successTodayCount,
+                    'failedToday' => $failedTodayCount,
+                    'successTotal' => $successTotalCount,
+                    'failedTotal' => $failedTotalCount,
+                    'sumBySuccessCurrencyToday' => $sumBySuccessCurrencyToday,
+                    'sumByFailedCurrencyToday' => $sumByFailedCurrencyToday,
+                    'sumBySuccessCurrencyTotal' => $sumBySuccessCurrencyTotal,
+                    'sumByFailedCurrencyTotal' => $sumByFailedCurrencyTotal,
+                ];
+            },
+        );
     }
 
     public function getHourlyRequestsChart(Carbon $date, ?User $merchantUser = null, array $filters = []): array
     {
-        $startDate = $date->copy()->startOfDay();
-        $endDate = $date->copy()->endOfDay();
+        $normalizedFilters = $this->normalizeChartFilters($filters);
+        $cacheKey = $this->buildRequestsChartCacheKey(
+            'day',
+            $date->toDateString(),
+            [],
+            $merchantUser,
+            $normalizedFilters,
+        );
 
-        $baseQuery = MerchantApiRequestLog::query()
-            ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->when($merchantUser, function (Builder $query, User $user): void {
-                $query->whereRelation('merchant', 'user_id', $user->id);
-            });
-        $this->applyChartFilters($baseQuery, $filters);
+        return Cache::remember(
+            $cacheKey,
+            now()->addSeconds(self::REQUESTS_CHART_CACHE_TTL_SECONDS),
+            function () use ($date, $merchantUser, $normalizedFilters): array {
+                $startDate = $date->copy()->startOfDay();
+                $endDate = $date->copy()->endOfDay();
 
-        $totalByHour = (clone $baseQuery)
-            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
-            ->groupBy('hour')
-            ->pluck('aggregate', 'hour');
+                $baseQuery = MerchantApiRequestLog::query()
+                    ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
+                    ->whereBetween('created_at', [$startDate, $endDate])
+                    ->when($merchantUser, function (Builder $query, User $user): void {
+                        $query->whereRelation('merchant', 'user_id', $user->id);
+                    });
+                $this->applyChartFilters($baseQuery, $normalizedFilters);
 
-        $successfulByHour = (clone $baseQuery)
-            ->where('is_successful', true)
-            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
-            ->groupBy('hour')
-            ->pluck('aggregate', 'hour');
+                $totalByHour = (clone $baseQuery)
+                    ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+                    ->groupBy('hour')
+                    ->pluck('aggregate', 'hour');
 
-        $labels = [];
-        $total = [];
-        $successful = [];
+                $successfulByHour = (clone $baseQuery)
+                    ->where('is_successful', true)
+                    ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+                    ->groupBy('hour')
+                    ->pluck('aggregate', 'hour');
 
-        for ($hour = 0; $hour < 24; $hour++) {
-            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00';
-            $total[] = (int) ($totalByHour[$hour] ?? 0);
-            $successful[] = (int) ($successfulByHour[$hour] ?? 0);
-        }
+                $labels = [];
+                $total = [];
+                $successful = [];
 
-        return [
-            'labels' => $labels,
-            'total' => $total,
-            'successful' => $successful,
-        ];
+                for ($hour = 0; $hour < 24; $hour++) {
+                    $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00';
+                    $total[] = (int) ($totalByHour[$hour] ?? 0);
+                    $successful[] = (int) ($successfulByHour[$hour] ?? 0);
+                }
+
+                return [
+                    'labels' => $labels,
+                    'total' => $total,
+                    'successful' => $successful,
+                ];
+            },
+        );
     }
 
     public function getAverageHourlyRequestsChart(array $weekdays, ?User $merchantUser = null, array $filters = []): array
@@ -398,50 +424,65 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             $weekdays = range(1, 7);
         }
 
-        $baseQuery = MerchantApiRequestLog::query()
-            ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
-            ->when($merchantUser, function (Builder $query, User $user): void {
-                $query->whereRelation('merchant', 'user_id', $user->id);
-            });
-        $this->applyChartFilters($baseQuery, $filters);
+        $normalizedFilters = $this->normalizeChartFilters($filters);
+        $cacheKey = $this->buildRequestsChartCacheKey(
+            'average',
+            null,
+            $weekdays,
+            $merchantUser,
+            $normalizedFilters,
+        );
 
-        $firstLogDate = (clone $baseQuery)->min('created_at');
-        $startDate = $firstLogDate ? Carbon::parse($firstLogDate)->startOfDay() : now()->startOfDay();
-        $endDate = now()->endOfDay();
-        $daysCount = $this->countWeekdaysInRange($startDate, $endDate, $weekdays);
+        return Cache::remember(
+            $cacheKey,
+            now()->addSeconds(self::REQUESTS_CHART_CACHE_TTL_SECONDS),
+            function () use ($weekdays, $merchantUser, $normalizedFilters): array {
+                $baseQuery = MerchantApiRequestLog::query()
+                    ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
+                    ->when($merchantUser, function (Builder $query, User $user): void {
+                        $query->whereRelation('merchant', 'user_id', $user->id);
+                    });
+                $this->applyChartFilters($baseQuery, $normalizedFilters);
 
-        $weekdayList = implode(',', $weekdays);
-        $averageBaseQuery = (clone $baseQuery)
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->whereRaw("WEEKDAY(created_at) + 1 in ({$weekdayList})");
+                $firstLogDate = (clone $baseQuery)->min('created_at');
+                $startDate = $firstLogDate ? Carbon::parse($firstLogDate)->startOfDay() : now()->startOfDay();
+                $endDate = now()->endOfDay();
+                $daysCount = $this->countWeekdaysInRange($startDate, $endDate, $weekdays);
 
-        $totalByHour = (clone $averageBaseQuery)
-            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
-            ->groupBy('hour')
-            ->pluck('aggregate', 'hour');
+                $weekdayList = implode(',', $weekdays);
+                $averageBaseQuery = (clone $baseQuery)
+                    ->whereBetween('created_at', [$startDate, $endDate])
+                    ->whereRaw("WEEKDAY(created_at) + 1 in ({$weekdayList})");
 
-        $successfulByHour = (clone $averageBaseQuery)
-            ->where('is_successful', true)
-            ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
-            ->groupBy('hour')
-            ->pluck('aggregate', 'hour');
+                $totalByHour = (clone $averageBaseQuery)
+                    ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+                    ->groupBy('hour')
+                    ->pluck('aggregate', 'hour');
 
-        $labels = [];
-        $total = [];
-        $successful = [];
+                $successfulByHour = (clone $averageBaseQuery)
+                    ->where('is_successful', true)
+                    ->selectRaw('HOUR(created_at) as hour, COUNT(*) as aggregate')
+                    ->groupBy('hour')
+                    ->pluck('aggregate', 'hour');
 
-        for ($hour = 0; $hour < 24; $hour++) {
-            $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00';
-            $total[] = round(((int) ($totalByHour[$hour] ?? 0)) / $daysCount, 2);
-            $successful[] = round(((int) ($successfulByHour[$hour] ?? 0)) / $daysCount, 2);
-        }
+                $labels = [];
+                $total = [];
+                $successful = [];
 
-        return [
-            'labels' => $labels,
-            'total' => $total,
-            'successful' => $successful,
-            'daysCount' => $daysCount,
-        ];
+                for ($hour = 0; $hour < 24; $hour++) {
+                    $labels[] = str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':00';
+                    $total[] = round(((int) ($totalByHour[$hour] ?? 0)) / $daysCount, 2);
+                    $successful[] = round(((int) ($successfulByHour[$hour] ?? 0)) / $daysCount, 2);
+                }
+
+                return [
+                    'labels' => $labels,
+                    'total' => $total,
+                    'successful' => $successful,
+                    'daysCount' => $daysCount,
+                ];
+            },
+        );
     }
 
     private function countWeekdaysInRange(Carbon $startDate, Carbon $endDate, array $weekdays): int
@@ -489,5 +530,44 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
     private function normalizedAmountExpression(): string
     {
         return "CAST(REPLACE(REPLACE(amount, ' ', ''), ',', '.') AS DECIMAL(20, 8))";
+    }
+
+    private function normalizeChartFilters(array $filters): array
+    {
+        $currency = $filters['currency'] ?? null;
+        $amountFrom = $filters['amount_from'] ?? null;
+        $amountTo = $filters['amount_to'] ?? null;
+
+        return [
+            'currency' => is_string($currency) ? strtolower($currency) : null,
+            'amount_from' => is_numeric($amountFrom) ? (float) $amountFrom : null,
+            'amount_to' => is_numeric($amountTo) ? (float) $amountTo : null,
+        ];
+    }
+
+    private function buildRequestsChartCacheKey(
+        string $mode,
+        ?string $date,
+        array $weekdays,
+        ?User $merchantUser,
+        array $filters
+    ): string {
+        $normalizedWeekdays = collect($weekdays)
+            ->map(fn ($weekday) => (int) $weekday)
+            ->filter(fn (int $weekday): bool => $weekday >= 1 && $weekday <= 7)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $payload = [
+            'mode' => $mode,
+            'date' => $date,
+            'weekdays' => $normalizedWeekdays,
+            'merchant_user_id' => $merchantUser?->id,
+            'filters' => $filters,
+        ];
+
+        return 'merchant_api_logs:requests_chart:'.md5((string) json_encode($payload));
     }
 }

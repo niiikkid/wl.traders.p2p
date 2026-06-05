@@ -22,7 +22,18 @@ class MerchantApiLogController extends Controller
     public function index(Request $request, MerchantApiStatisticsService $statisticsService)
     {
         $filters = $this->getTableFilters();
-        $filtersVariants = $this->getFiltersData();
+        $filtersVariants = [
+            'apiLogStatuses' => [
+                [
+                    'name' => 'Успешные',
+                    'value' => '1',
+                ],
+                [
+                    'name' => 'Неуспешные',
+                    'value' => '0',
+                ],
+            ],
+        ];
         $user = Auth::user();
         if (! $user instanceof User) {
             abort(403);
