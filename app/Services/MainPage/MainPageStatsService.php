@@ -19,6 +19,7 @@ use App\Services\Money\Money;
 use App\Support\AgentCommission;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -483,6 +484,12 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 : 0;
         }
 
+        $shadowCharts = $this->buildAdminOrderShadowCharts(
+            $resolvedPeriod,
+            $merchantId,
+            $normalizedFilters,
+        );
+
         $pendingOrdersQuery = Order::query()
             ->where('status', OrderStatus::PENDING)
             ->whereBetween('created_at', [$startDate, $endDate]);
@@ -508,22 +515,27 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'chart' => [
                 'labels' => $labels,
                 'data' => $incomeData,
+                'shadowData' => $shadowCharts['income'],
             ],
             'conversionChart' => [
                 'labels' => $labels,
                 'data' => $conversionData,
+                'shadowData' => $shadowCharts['conversion'],
             ],
             'turnoverChart' => [
                 'labels' => $labels,
                 'data' => $turnoverData,
+                'shadowData' => $shadowCharts['turnover'],
             ],
             'ordersChart' => [
                 'labels' => $labels,
                 'data' => $ordersData,
+                'shadowData' => $shadowCharts['orders'],
             ],
             'averageCheckChart' => [
                 'labels' => $labels,
                 'data' => $averageCheckData,
+                'shadowData' => $shadowCharts['averageCheck'],
             ],
             'selectedPeriodPreset' => $resolvedPeriod['preset'],
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
@@ -739,6 +751,12 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 : 0;
         }
 
+        $shadowCharts = $this->buildAdminPayoutShadowCharts(
+            $resolvedPeriod,
+            $merchantId,
+            $normalizedFilters,
+        );
+
         $selectedFiltersForResponse = $this->normalizeFilters([
             'traderIds' => $normalizedFilters['traderIds'],
             'merchantIds' => $normalizedFilters['merchantIds'],
@@ -759,22 +777,27 @@ class MainPageStatsService implements MainPageStatsServiceContract
             'chart' => [
                 'labels' => $labels,
                 'data' => $incomeData,
+                'shadowData' => $shadowCharts['income'],
             ],
             'conversionChart' => [
                 'labels' => $labels,
                 'data' => $conversionData,
+                'shadowData' => $shadowCharts['conversion'],
             ],
             'turnoverChart' => [
                 'labels' => $labels,
                 'data' => $turnoverData,
+                'shadowData' => $shadowCharts['turnover'],
             ],
             'ordersChart' => [
                 'labels' => $labels,
                 'data' => $ordersData,
+                'shadowData' => $shadowCharts['orders'],
             ],
             'averageCheckChart' => [
                 'labels' => $labels,
                 'data' => $averageCheckData,
+                'shadowData' => $shadowCharts['averageCheck'],
             ],
             'selectedPeriodPreset' => $resolvedPeriod['preset'],
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
@@ -1635,6 +1658,268 @@ class MainPageStatsService implements MainPageStatsServiceContract
         if (! empty($filters['merchantIds'])) {
             $query->whereIn('merchant_id', $filters['merchantIds']);
         }
+    }
+
+    private function buildAdminOrderShadowCharts(array $resolvedPeriod, ?int $merchantId, array $filters): array
+    {
+        $emptyCharts = $this->emptyShadowCharts();
+        $shadowRange = $this->resolveShadowPeriodRange($resolvedPeriod);
+
+        if (! $shadowRange) {
+            return $emptyCharts;
+        }
+
+        return Cache::remember(
+            $this->shadowChartCacheKey('admin-orders', $resolvedPeriod['preset'], $shadowRange, $merchantId, $filters),
+            now()->addDay(),
+            function () use ($shadowRange, $merchantId, $filters) {
+                $isHourly = $shadowRange['startDate']->isSameDay($shadowRange['endDate']);
+                $bucketSql = $isHourly
+                    ? "DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00')"
+                    : 'DATE(created_at)';
+
+                $earningsQuery = Order::query()
+                    ->where('status', OrderStatus::SUCCESS)
+                    ->whereBetween('created_at', [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $turnoverQuery = Order::query()
+                    ->where('status', OrderStatus::SUCCESS)
+                    ->whereBetween('created_at', [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $successCountQuery = Order::query()
+                    ->where('status', OrderStatus::SUCCESS)
+                    ->whereBetween('created_at', [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $failedCountQuery = Order::query()
+                    ->where('status', OrderStatus::FAIL)
+                    ->whereBetween('created_at', [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $totalAmountQuery = Order::query()
+                    ->whereIn('status', [OrderStatus::SUCCESS, OrderStatus::FAIL])
+                    ->whereBetween('created_at', [$shadowRange['startDate'], $shadowRange['endDate']]);
+
+                foreach ([$earningsQuery, $turnoverQuery, $successCountQuery, $failedCountQuery, $totalAmountQuery] as $query) {
+                    if ($merchantId) {
+                        $query->where('merchant_id', $merchantId);
+                    }
+
+                    $this->applyOrderFilters($query, $filters);
+                }
+
+                return $this->buildShadowChartsFromBuckets(
+                    $shadowRange,
+                    $earningsQuery
+                        ->selectRaw("{$bucketSql} as bucket_key, SUM(service_profit) as total_earnings")
+                        ->groupBy('bucket_key')
+                        ->pluck('total_earnings', 'bucket_key'),
+                    $turnoverQuery
+                        ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_turnover")
+                        ->groupBy('bucket_key')
+                        ->pluck('total_turnover', 'bucket_key'),
+                    $successCountQuery
+                        ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
+                        ->groupBy('bucket_key')
+                        ->pluck('count', 'bucket_key'),
+                    $failedCountQuery
+                        ->selectRaw("{$bucketSql} as bucket_key, COUNT(*) as count")
+                        ->groupBy('bucket_key')
+                        ->pluck('count', 'bucket_key'),
+                    $totalAmountQuery
+                        ->selectRaw("{$bucketSql} as bucket_key, SUM(total_profit) as total_amount")
+                        ->groupBy('bucket_key')
+                        ->pluck('total_amount', 'bucket_key'),
+                );
+            },
+        );
+    }
+
+    private function buildAdminPayoutShadowCharts(array $resolvedPeriod, ?int $merchantId, array $filters): array
+    {
+        $emptyCharts = $this->emptyShadowCharts();
+        $shadowRange = $this->resolveShadowPeriodRange($resolvedPeriod);
+
+        if (! $shadowRange) {
+            return $emptyCharts;
+        }
+
+        return Cache::remember(
+            $this->shadowChartCacheKey('admin-payouts', $resolvedPeriod['preset'], $shadowRange, $merchantId, $filters),
+            now()->addDay(),
+            function () use ($shadowRange, $merchantId, $filters) {
+                $completedAtExpression = 'COALESCE(completed_at, updated_at)';
+                $canceledAtExpression = 'COALESCE(canceled_at, updated_at)';
+                $isHourly = $shadowRange['startDate']->isSameDay($shadowRange['endDate']);
+                $completedBucketSql = $isHourly
+                    ? "DATE_FORMAT({$completedAtExpression}, '%Y-%m-%d %H:00:00')"
+                    : "DATE({$completedAtExpression})";
+                $canceledBucketSql = $isHourly
+                    ? "DATE_FORMAT({$canceledAtExpression}, '%Y-%m-%d %H:00:00')"
+                    : "DATE({$canceledAtExpression})";
+
+                $baseCompletedPayoutQuery = function () use ($merchantId, $filters): Builder {
+                    $query = Payout::query()
+                        ->where('status', PayoutStatus::COMPLETED->value);
+                    $this->applyAdminPayoutFilters($query, $merchantId, $filters);
+
+                    return $query;
+                };
+
+                $earningsQuery = $baseCompletedPayoutQuery();
+                $turnoverQuery = $baseCompletedPayoutQuery();
+                $successCountQuery = $baseCompletedPayoutQuery();
+                $failedCountQuery = Payout::query()->where('status', PayoutStatus::CANCELED->value);
+                $this->applyAdminPayoutFilters($failedCountQuery, $merchantId, $filters);
+
+                $earningsQuery->whereRaw("{$completedAtExpression} between ? and ?", [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $turnoverQuery->whereRaw("{$completedAtExpression} between ? and ?", [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $successCountQuery->whereRaw("{$completedAtExpression} between ? and ?", [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $failedCountQuery->whereRaw("{$canceledAtExpression} between ? and ?", [$shadowRange['startDate'], $shadowRange['endDate']]);
+
+                $turnoverByBucket = $turnoverQuery
+                    ->selectRaw("{$completedBucketSql} as bucket_key, SUM(CAST(IFNULL(usdt_body, 0) AS SIGNED)) as total_turnover")
+                    ->groupBy(DB::raw($completedBucketSql))
+                    ->pluck('total_turnover', 'bucket_key');
+                $successByBucket = $successCountQuery
+                    ->selectRaw("{$completedBucketSql} as bucket_key, COUNT(*) as count")
+                    ->groupBy(DB::raw($completedBucketSql))
+                    ->pluck('count', 'bucket_key');
+
+                return $this->buildShadowChartsFromBuckets(
+                    $shadowRange,
+                    $earningsQuery
+                        ->selectRaw("{$completedBucketSql} as bucket_key, SUM(CAST(IFNULL(service_fee, 0) AS SIGNED)) as total_earnings")
+                        ->groupBy(DB::raw($completedBucketSql))
+                        ->pluck('total_earnings', 'bucket_key'),
+                    $turnoverByBucket,
+                    $successByBucket,
+                    $failedCountQuery
+                        ->selectRaw("{$canceledBucketSql} as bucket_key, COUNT(*) as count")
+                        ->groupBy(DB::raw($canceledBucketSql))
+                        ->pluck('count', 'bucket_key'),
+                    $turnoverByBucket,
+                    $successByBucket,
+                    true,
+                );
+            },
+        );
+    }
+
+    private function buildShadowChartsFromBuckets(
+        array $shadowRange,
+        mixed $earningsByBucket,
+        mixed $turnoverByBucket,
+        mixed $successCountsByBucket,
+        mixed $failedCountsByBucket,
+        mixed $totalAmountByBucket,
+        mixed $averageCheckCountsByBucket = null,
+        bool $ordersUseSuccessOnly = false,
+    ): array {
+        $incomeData = [];
+        $turnoverData = [];
+        $conversionData = [];
+        $ordersData = [];
+        $averageCheckData = [];
+
+        $currentBucketDate = $shadowRange['startDate']->copy();
+        $isHourly = $shadowRange['startDate']->isSameDay($shadowRange['endDate']);
+
+        while ($currentBucketDate->lte($shadowRange['endDate'])) {
+            $bucketKey = $isHourly
+                ? $currentBucketDate->format('Y-m-d H:00:00')
+                : $currentBucketDate->toDateString();
+            $successCount = (int) ($successCountsByBucket[$bucketKey] ?? 0);
+            $failedCount = (int) ($failedCountsByBucket[$bucketKey] ?? 0);
+            $totalCount = $successCount + $failedCount;
+            $ordersCount = $ordersUseSuccessOnly ? $successCount : $totalCount;
+            $averageCheckCount = (int) (($averageCheckCountsByBucket ?? $successCountsByBucket)[$bucketKey] ?? 0);
+            $totalAmount = Money::fromUnits(
+                (string) ($totalAmountByBucket[$bucketKey] ?? 0),
+                Currency::USDT()->getCode()
+            )->toInt();
+
+            $incomeData[] = Money::fromUnits(
+                (string) ($earningsByBucket[$bucketKey] ?? 0),
+                Currency::USDT()->getCode()
+            )->toInt();
+            $turnoverData[] = Money::fromUnits(
+                (string) ($turnoverByBucket[$bucketKey] ?? 0),
+                Currency::USDT()->getCode()
+            )->toInt();
+            $ordersData[] = $ordersCount;
+            $conversionData[] = $totalCount > 0
+                ? round(($successCount / $totalCount) * 100, 2)
+                : 0;
+            $averageCheckData[] = $averageCheckCount > 0
+                ? round($totalAmount / $averageCheckCount, 2)
+                : 0;
+
+            if ($isHourly) {
+                $currentBucketDate->addHour();
+            } else {
+                $currentBucketDate->addDay();
+            }
+        }
+
+        return [
+            'income' => $this->hasNonZeroValue($incomeData) ? $incomeData : [],
+            'turnover' => $this->hasNonZeroValue($turnoverData) ? $turnoverData : [],
+            'conversion' => $this->hasNonZeroValue($conversionData) ? $conversionData : [],
+            'orders' => $this->hasNonZeroValue($ordersData) ? $ordersData : [],
+            'averageCheck' => $this->hasNonZeroValue($averageCheckData) ? $averageCheckData : [],
+        ];
+    }
+
+    private function resolveShadowPeriodRange(array $resolvedPeriod): ?array
+    {
+        if (! in_array($resolvedPeriod['preset'], ['today', 'week', 'month'], true)) {
+            return null;
+        }
+
+        $startDate = $resolvedPeriod['startDate']->copy();
+        $endDate = $resolvedPeriod['endDate']->copy();
+
+        if ($resolvedPeriod['preset'] === 'today') {
+            $startDate->subDay();
+            $endDate->subDay();
+        } elseif ($resolvedPeriod['preset'] === 'week') {
+            $startDate->subWeek();
+            $endDate->subWeek();
+        } else {
+            $startDate->subMonthNoOverflow()->startOfMonth()->startOfDay();
+            $endDate = $startDate->copy()->endOfMonth()->endOfDay();
+        }
+
+        return [
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+        ];
+    }
+
+    private function emptyShadowCharts(): array
+    {
+        return [
+            'income' => [],
+            'turnover' => [],
+            'conversion' => [],
+            'orders' => [],
+            'averageCheck' => [],
+        ];
+    }
+
+    private function shadowChartCacheKey(string $mode, string $preset, array $shadowRange, ?int $merchantId, array $filters): string
+    {
+        ksort($filters);
+
+        return implode(':', [
+            'main-page-shadow-chart',
+            $mode,
+            $preset,
+            $shadowRange['startDate']->toDateString(),
+            $shadowRange['endDate']->toDateString(),
+            $merchantId ?: 'all',
+            md5(json_encode($filters)),
+        ]);
+    }
+
+    private function hasNonZeroValue(array $data): bool
+    {
+        return collect($data)->contains(fn (int|float $value) => $value > 0);
     }
 
     private function normalizeIdArray(mixed $value): array

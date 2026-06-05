@@ -281,7 +281,7 @@ const updateIsMobile = () => {
 
 const getLastPoints = (source, limit = 10) => {
     if (!source || !Array.isArray(source.data) || !Array.isArray(source.labels)) {
-        return { data: [], labels: [] };
+        return { data: [], labels: [], shadowData: [] };
     }
 
     if (!isMobile.value) {
@@ -289,21 +289,26 @@ const getLastPoints = (source, limit = 10) => {
     }
 
     const startIndex = Math.max(source.data.length - limit, 0);
+    const shadowData = Array.isArray(source.shadowData)
+        ? source.shadowData.slice(startIndex)
+        : [];
 
     return {
         data: source.data.slice(startIndex),
         labels: source.labels.slice(startIndex),
+        shadowData,
     };
 };
 
 const normalizeChartLabels = (source, periodPreset) => {
     if (!source || !Array.isArray(source.labels) || !Array.isArray(source.data)) {
-        return { labels: [], data: [] };
+        return { labels: [], data: [], shadowData: [] };
     }
 
     if (periodPreset === 'custom' || periodPreset === 'all') {
         return {
             data: source.data,
+            shadowData: Array.isArray(source.shadowData) ? source.shadowData : [],
             labels: source.labels.map((label) => {
                 if (typeof label !== 'string') {
                     return label;
@@ -323,6 +328,7 @@ const normalizeChartLabels = (source, periodPreset) => {
 
     return {
         data: source.data,
+        shadowData: Array.isArray(source.shadowData) ? source.shadowData : [],
         labels: source.labels.map((label) => {
             if (typeof label !== 'string') {
                 return label;
@@ -347,7 +353,7 @@ const activeTabConfig = computed(() => {
 });
 
 const activeTabTitle = computed(() => activeTabConfig.value.label);
-const activeData = computed(() => chartDataByTab.value[activeChartTab.value] || { labels: [], data: [] });
+const activeData = computed(() => chartDataByTab.value[activeChartTab.value] || { labels: [], data: [], shadowData: [] });
 
 const getYFormatter = (tab) => {
     if (tab === 'conversion') {
@@ -366,8 +372,12 @@ const getYRange = (tab) => {
         return { min: 0, max: 100 };
     }
 
-    return {};
+    return { min: 0 };
 };
+
+const shadowChartColor = 'rgba(156, 163, 175, 0.55)';
+const shadowMarkerColor = 'rgba(107, 114, 128, 0.28)';
+const shadowMarkerStrokeColor = 'rgba(107, 114, 128, 0.12)';
 
 const renderChart = () => {
     if (!chart.value) {
@@ -378,6 +388,20 @@ const renderChart = () => {
     const { min, max } = getYRange(activeChartTab.value);
     const color = getThemeColor(activeTabConfig.value.colorToken);
     const currentData = activeData.value;
+    const hasShadowData = Array.isArray(currentData.shadowData) && currentData.shadowData.length > 0;
+    const series = [
+        {
+            name: activeTabConfig.value.seriesName,
+            data: currentData.data,
+        },
+    ];
+
+    if (hasShadowData) {
+        series.push({
+            name: `${activeTabConfig.value.seriesName} shadow`,
+            data: currentData.shadowData,
+        });
+    }
 
     if (!apexChart.value) {
         apexChart.value = new ApexCharts(chart.value, {
@@ -395,8 +419,9 @@ const renderChart = () => {
             },
             yaxis: {},
             stroke: {
-                width: 2,
+                width: [2, 2],
                 curve: 'smooth',
+                dashArray: [0, 8],
             },
             grid: {
                 borderColor: 'rgba(200, 200, 200, 0.1)',
@@ -409,15 +434,15 @@ const renderChart = () => {
             tooltip: {
                 theme: 'dark',
             },
+            legend: {
+                show: false,
+            },
         });
         apexChart.value.render();
     }
 
     apexChart.value.updateOptions({
-        series: [{
-            name: activeTabConfig.value.seriesName,
-            data: currentData.data,
-        }],
+        series,
         xaxis: {
             categories: currentData.labels,
             labels: {
@@ -442,9 +467,28 @@ const renderChart = () => {
                 formatter,
             },
         },
-        colors: [color],
-        markers: {
+        colors: hasShadowData ? [color, shadowChartColor] : [color],
+        markers: hasShadowData ? {
+            size: [4, 4],
+            colors: [color, shadowMarkerColor],
+            strokeColors: ['#fff', shadowMarkerStrokeColor],
+            strokeWidth: [2, 1],
+            hover: {
+                sizeOffset: 2,
+            },
+        } : {
+            size: 4,
             colors: [color],
+            strokeColors: '#fff',
+            strokeWidth: 2,
+        },
+        stroke: {
+            width: hasShadowData ? [2, 2] : [2],
+            curve: 'smooth',
+            dashArray: hasShadowData ? [0, 8] : [0],
+        },
+        legend: {
+            show: false,
         },
         tooltip: {
             theme: 'dark',
