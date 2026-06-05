@@ -1,14 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Models\Order;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class DisconnectInactiveUsersCommand extends Command
 {
+    private const PANEL_ACTIVITY_THRESHOLD_MINUTES = 15;
+
     /**
      * The name and signature of the console command.
      *
@@ -21,26 +24,40 @@ class DisconnectInactiveUsersCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Отключает пользователей, которые не получали сделки более 6 часов';
+    protected $description = 'Отключает трейдеров в статусе «работает», если в панели не было активности более 15 минут';
 
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
-        $inactiveUsers = User::query()
+        $inactiveUsers = User::role('Trader')
             ->where('is_online', true)
-            ->where('updated_at', '<', Carbon::now()->subHours(3))
-            ->whereDoesntHave('orders', function ($query) {
-                $query->where('created_at', '>', Carbon::now()->subHours(6));
-            })
             ->whereHas('orders')
-            ->get();
+            ->get()
+            ->filter(fn (User $user): bool => $this->hasNoRecentPanelActivity($user));
 
-        $inactiveUsers->each(function (User $user) {
+        $inactiveUsers->each(function (User $user): void {
             $user->update(['is_online' => false]);
         });
 
         return Command::SUCCESS;
+    }
+
+    private function hasNoRecentPanelActivity(User $user): bool
+    {
+        $onlineAt = cache()->get("user-online-at-{$user->id}");
+
+        if (! is_string($onlineAt) || $onlineAt === '') {
+            return true;
+        }
+
+        try {
+            return Carbon::parse($onlineAt)->lt(
+                now()->subMinutes(self::PANEL_ACTIVITY_THRESHOLD_MINUTES)
+            );
+        } catch (\Throwable) {
+            return true;
+        }
     }
 }
