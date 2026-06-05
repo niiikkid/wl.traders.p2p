@@ -15,6 +15,7 @@ import DateTime from "@/Components/DateTime.vue";
 import { router } from '@inertiajs/vue3';
 import Multiselect from "@/Components/Form/Multiselect.vue";
 import TeamLeaderInsuranceFields from "@/Modals/User/Partials/TeamLeaderInsuranceFields.vue";
+import TextArea from "@/Components/TextArea.vue";
 
 const modalStore = useModalStore();
 const { userEditModal } = storeToRefs(modalStore);
@@ -32,6 +33,7 @@ const form = ref({
     telegram_username: '',
     role_id: 0,
     banned: false,
+    ban_reason: '',
     stop_traffic: false,
     can_work_without_device: false,
     is_vip: false,
@@ -86,6 +88,7 @@ const resetState = () => {
         telegram_username: '',
         role_id: 0,
         banned: false,
+        ban_reason: '',
         stop_traffic: false,
         can_work_without_device: false,
         is_vip: false,
@@ -144,6 +147,7 @@ const loadUser = () => {
             form.value.telegram_username = data.telegram_username || '';
             form.value.role_id = data.role.id;
             form.value.banned = !!data.banned_at;
+            form.value.ban_reason = data.ban_reason || '';
             form.value.stop_traffic = !!data.stop_traffic;
             form.value.can_work_without_device = !!data.can_work_without_device;
             form.value.is_vip = !!data.is_vip;
@@ -393,6 +397,24 @@ watch(
                         <input type="checkbox" class="toggle toggle-primary" v-model="form.banned" :disabled="processing">
                         <span class="label-text">Заблокирован</span>
                     </label>
+                </div>
+
+                <div v-if="form.banned">
+                    <InputLabel
+                        for="ban_reason"
+                        value="Причина блокировки (необязательно)"
+                        :error="!!errors.ban_reason?.[0]"
+                    />
+                    <TextArea
+                        id="ban_reason"
+                        v-model="form.ban_reason"
+                        class="mt-1 block w-full"
+                        :rows="3"
+                        :error="!!errors.ban_reason?.[0]"
+                        :disabled="processing"
+                        @input="errors.ban_reason = null"
+                    />
+                    <InputError class="mt-1" :message="errors.ban_reason?.[0]" />
                 </div>
 
                 <div v-if="isTrader(form.role_id) || isAdmin(form.role_id)">

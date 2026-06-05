@@ -8,6 +8,7 @@ use App\DTO\User\UserUpdateDTO;
 use App\Enums\TeamLeaderInsuranceMode;
 use App\Models\User;
 use App\Utils\Transaction;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
@@ -107,10 +108,13 @@ class UserService implements UserServiceContract
                 ? $data->agent_commission_percentage
                 : self::DEFAULT_AGENT_COMMISSION_PERCENTAGE;
 
+            $wasBanned = $user->banned_at !== null;
+            $isBanned = (bool) $data->banned;
+
             $updateData = [
                 'email' => strtolower($data->login),
                 'telegram_username' => $data->telegram_username,
-                'banned_at' => $data->banned ? now() : null,
+                ...$this->resolveBanAttributes($user, $wasBanned, $isBanned, $data->ban_reason),
                 'stop_traffic' => $data->stop_traffic,
                 'can_work_without_device' => $data->can_work_without_device,
                 'is_vip' => $data->is_vip,
@@ -224,6 +228,34 @@ class UserService implements UserServiceContract
             ->first();
 
         return $agent?->id;
+    }
+
+    /**
+     * @return array{banned_at: ?Carbon, ban_reason: ?string, banned_by_user_id: ?int}
+     */
+    private function resolveBanAttributes(User $user, bool $wasBanned, bool $isBanned, ?string $banReason): array
+    {
+        if (! $isBanned) {
+            return [
+                'banned_at' => null,
+                'ban_reason' => null,
+                'banned_by_user_id' => null,
+            ];
+        }
+
+        if (! $wasBanned) {
+            return [
+                'banned_at' => now(),
+                'ban_reason' => $banReason,
+                'banned_by_user_id' => auth()->id(),
+            ];
+        }
+
+        return [
+            'banned_at' => $user->banned_at,
+            'ban_reason' => $banReason,
+            'banned_by_user_id' => $user->banned_by_user_id,
+        ];
     }
 
     /**

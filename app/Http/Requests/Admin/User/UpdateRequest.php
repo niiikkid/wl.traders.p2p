@@ -40,6 +40,7 @@ class UpdateRequest extends FormRequest
                 Rule::exists('roles', 'id')->where(fn ($query) => $query->where('name', '!=', 'Provider Liquidity')),
             ],
             'banned' => ['required', 'boolean'],
+            'ban_reason' => ['nullable', 'string', 'max:500'],
             'stop_traffic' => ['required', 'boolean'],
             'can_work_without_device' => ['required', 'boolean'],
             'is_vip' => ['required', 'boolean'],

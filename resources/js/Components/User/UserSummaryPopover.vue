@@ -2,6 +2,9 @@
 import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import DateTime from "@/Components/DateTime.vue";
 import { useAppClipboard } from '@/composables/useAppClipboard.js';
+import { useViewStore } from '@/store/view.js';
+
+const viewStore = useViewStore();
 
 const props = defineProps({
     user: {
@@ -188,11 +191,26 @@ onUnmounted(() => {
                         <span v-else>—</span>
                     </div>
 
+                    <template v-if="viewStore.isAdminViewMode && props.user.banned_at && props.user.banned_by?.email">
+                        <div class="text-base-content/70">Заблокировал</div>
+                        <div class="font-medium text-right truncate" :title="props.user.banned_by.email">
+                            {{ props.user.banned_by.email }}
+                        </div>
+                    </template>
+
                     <div class="text-base-content/70">Архив</div>
                     <div class="font-medium text-right">
                         <DateTime v-if="props.user.archived_at" :data="props.user.archived_at" :simple="true" />
                         <span v-else>—</span>
                     </div>
+                </div>
+
+                <div
+                    v-if="viewStore.isAdminViewMode && props.user.banned_at && props.user.ban_reason"
+                    class="mt-3 rounded-box border border-error/30 bg-error/5 p-3 text-xs"
+                >
+                    <div class="text-base-content/70 mb-1">Причина блокировки</div>
+                    <div class="whitespace-pre-wrap break-words">{{ props.user.ban_reason }}</div>
                 </div>
             </div>
         </teleport>

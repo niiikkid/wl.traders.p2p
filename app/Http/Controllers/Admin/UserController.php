@@ -27,7 +27,7 @@ class UserController extends Controller
         $fromArchive = request()->tab === 'archived';
 
         $users = User::query()
-            ->with(['roles', 'wallet', 'userTeam'])
+            ->with(['roles', 'wallet', 'userTeam', 'bannedBy:id,email'])
             ->when($fromArchive, function ($query) {
                 $query->whereNotNull('archived_at');
             }, function ($query) {
@@ -121,7 +121,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load('roles', 'meta', 'teamLeader', 'agent', 'userTeam');
+        $user->load('roles', 'meta', 'teamLeader', 'agent', 'userTeam', 'bannedBy:id,email');
         $user = UserResource::make($user)->resolve();
 
         return response()->json([

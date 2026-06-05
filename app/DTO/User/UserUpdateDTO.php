@@ -11,6 +11,7 @@ readonly class UserUpdateDTO extends BaseDTO
         public int $role_id,
         public ?string $telegram_username = null,
         public ?bool $banned = null,
+        public ?string $ban_reason = null,
         public bool $stop_traffic = false,
         public bool $can_work_without_device = false,
         public bool $is_vip = false,
@@ -46,6 +47,7 @@ readonly class UserUpdateDTO extends BaseDTO
             login: strtolower($data['login']),
             telegram_username: self::normalizeTelegramUsername($data['telegram_username'] ?? null),
             banned: isset($data['banned']) ? (bool) $data['banned'] : null,
+            ban_reason: self::normalizeBanReason($data['ban_reason'] ?? null),
             stop_traffic: (bool) ($data['stop_traffic'] ?? false),
             can_work_without_device: (bool) ($data['can_work_without_device'] ?? false),
             is_vip: (bool) ($data['is_vip'] ?? false),
@@ -89,6 +91,17 @@ readonly class UserUpdateDTO extends BaseDTO
             team_leader_reserve_balance_limit: isset($data['team_leader_reserve_balance_limit']) ? (int) $data['team_leader_reserve_balance_limit'] : null,
             team_leader_reserve_stop_threshold: isset($data['team_leader_reserve_stop_threshold']) ? (int) $data['team_leader_reserve_stop_threshold'] : null,
         );
+    }
+
+    private static function normalizeBanReason(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
     }
 
     private static function normalizeTelegramUsername(?string $value): ?string

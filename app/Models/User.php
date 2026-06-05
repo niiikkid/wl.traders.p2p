@@ -90,6 +90,9 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Collection<int, User> $agentMerchants
  * @property UserTeam|null $userTeam
  * @property Carbon $banned_at
+ * @property string|null $ban_reason
+ * @property int|null $banned_by_user_id
+ * @property User|null $bannedBy
  * @property Carbon $created_at
  * @property Carbon $updated_At
  */
@@ -153,6 +156,8 @@ class User extends Authenticatable
         'team_leader_reserve_balance_limit',
         'team_leader_reserve_stop_threshold',
         'banned_at',
+        'ban_reason',
+        'banned_by_user_id',
         'archived_at',
         'merchant_id',
     ];
@@ -332,6 +337,11 @@ class User extends Authenticatable
     public function teamLeader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'team_leader_id');
+    }
+
+    public function bannedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'banned_by_user_id');
     }
 
     public function userTeam(): BelongsTo
