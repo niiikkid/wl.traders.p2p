@@ -19,6 +19,7 @@ Schedule::command('app:load-filter-conditions')->hourly();
 Schedule::command('telescope:prune --hours=48')->daily();
 Schedule::command('app:clear-trash-from-sms-log-command')->daily();
 Schedule::command('app:disconnect-inactive-users')->everyMinute();
+Schedule::command('app:notify-traders-about-available-payouts')->everyMinute()->withoutOverlapping();
 
 // Обновление статистики API логов мерчанта каждые 5 минут (включая вчерашний день)
 Schedule::command('api-stats:update')->everyFiveMinutes();

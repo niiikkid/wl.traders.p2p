@@ -20,9 +20,15 @@ class NotificationRuleController extends Controller
             return back()->with('error', 'Этот тип уведомления недоступен для вашей роли.');
         }
 
+        $usesCurrencyFilter = ! in_array($event, [
+            NotificationEvent::WITHDRAWAL_REQUESTED,
+            NotificationEvent::MESSAGE_RECEIVED,
+            NotificationEvent::TRUST_BALANCE_LOW,
+        ], true);
         $usesAmountFilters = ! in_array($event, [
             NotificationEvent::WITHDRAWAL_REQUESTED,
             NotificationEvent::MESSAGE_RECEIVED,
+            NotificationEvent::PAYOUTS_AVAILABLE,
         ], true);
         $isTrustBalanceLow = $event === NotificationEvent::TRUST_BALANCE_LOW;
 
@@ -32,9 +38,9 @@ class NotificationRuleController extends Controller
             'message_scope' => $event === NotificationEvent::MESSAGE_RECEIVED
                 ? NotificationMessageScope::ALL
                 : null,
-            'currency' => ! $usesAmountFilters
-                ? null
-                : ($isTrustBalanceLow ? Currency::USDT()->getCode() : $request->validated('currency')),
+            'currency' => $isTrustBalanceLow
+                ? Currency::USDT()->getCode()
+                : ($usesCurrencyFilter ? $request->validated('currency') : null),
             'statuses' => $request->validated('statuses'),
             'min_amount_minor' => $usesAmountFilters ? $request->minAmountMinor() : null,
             'enabled' => $request->validated('enabled', true),
@@ -54,9 +60,15 @@ class NotificationRuleController extends Controller
             return back()->with('error', 'Этот тип уведомления недоступен для вашей роли.');
         }
 
+        $usesCurrencyFilter = ! in_array($event, [
+            NotificationEvent::WITHDRAWAL_REQUESTED,
+            NotificationEvent::MESSAGE_RECEIVED,
+            NotificationEvent::TRUST_BALANCE_LOW,
+        ], true);
         $usesAmountFilters = ! in_array($event, [
             NotificationEvent::WITHDRAWAL_REQUESTED,
             NotificationEvent::MESSAGE_RECEIVED,
+            NotificationEvent::PAYOUTS_AVAILABLE,
         ], true);
         $isTrustBalanceLow = $event === NotificationEvent::TRUST_BALANCE_LOW;
 
@@ -65,11 +77,11 @@ class NotificationRuleController extends Controller
             'message_scope' => $event === NotificationEvent::MESSAGE_RECEIVED
                 ? NotificationMessageScope::ALL
                 : null,
-            'currency' => ! $usesAmountFilters
-                ? null
-                : ($isTrustBalanceLow
-                    ? Currency::USDT()->getCode()
-                    : $request->validated('currency', $notificationRule->currency?->getCode())),
+            'currency' => $isTrustBalanceLow
+                ? Currency::USDT()->getCode()
+                : ($usesCurrencyFilter
+                    ? $request->validated('currency', $notificationRule->currency?->getCode())
+                    : null),
             'statuses' => $request->validated('statuses', $notificationRule->statuses),
             'min_amount_minor' => $usesAmountFilters
                 ? ($request->has('min_amount') ? $request->minAmountMinor() : $notificationRule->min_amount_minor)

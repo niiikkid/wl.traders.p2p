@@ -23,6 +23,9 @@ return [
         'message' => [
             'received' => 'SMS/PUSH',
         ],
+        'payouts' => [
+            'available' => 'Новые выплаты',
+        ],
     ],
     'message_scopes' => [
         'all' => 'Для всех сообщений',
@@ -53,6 +56,10 @@ return [
                 'out' => 'Списание средств',
                 'none' => 'Не определено',
             ],
+        ],
+        'payouts_available' => [
+            'title' => 'Новые выплаты',
+            'body' => 'В общем стакане появились доступные выплаты: :count шт. Валюта: :currency.',
         ],
     ],
     'telegram' => [

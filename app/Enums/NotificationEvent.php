@@ -14,6 +14,7 @@ enum NotificationEvent: string
     case DISPUTE_OPENED = 'dispute.opened';
     case TRUST_BALANCE_LOW = 'trust.balance.low';
     case MESSAGE_RECEIVED = 'message.received';
+    case PAYOUTS_AVAILABLE = 'payouts.available';
 
     public function label(): string
     {
@@ -31,6 +32,7 @@ enum NotificationEvent: string
             self::DISPUTE_OPENED => ['Trader'],
             self::TRUST_BALANCE_LOW => ['Trader'],
             self::MESSAGE_RECEIVED => ['Trader'],
+            self::PAYOUTS_AVAILABLE => ['Trader'],
         };
     }
 

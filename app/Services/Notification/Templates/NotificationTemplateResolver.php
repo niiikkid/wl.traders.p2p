@@ -53,6 +53,14 @@ class NotificationTemplateResolver
                 body: $this->buildMessageReceivedBody($payload),
                 payload: $payload
             ),
+            NotificationEvent::PAYOUTS_AVAILABLE => new NotificationContent(
+                title: $this->telegramBoldTitle(trans('notifications.templates.payouts_available.title')),
+                body: trans('notifications.templates.payouts_available.body', [
+                    'count' => '<b>'.$this->e($payload['available_count'] ?? null).'</b>',
+                    'currency' => '<b>'.$this->e(strtoupper((string) ($payload['currency'] ?? ''))).'</b>',
+                ]),
+                payload: $payload
+            ),
         };
     }
 

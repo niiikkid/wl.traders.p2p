@@ -80,8 +80,9 @@ const findTrackByValue = (trackValue) => audioTracks.value.find((item) => item.v
 const getSelectedTrackForEvent = (eventKey) => findTrackByValue(soundForm.settings[eventKey]?.track ?? null);
 
 const isMessageEvent = computed(() => ruleForm.event === 'message.received');
+const isPayoutsAvailableEvent = computed(() => ruleForm.event === 'payouts.available');
 const showMinAmountFilter = computed(() => {
-    return ruleForm.event !== 'withdrawal.requested' && !isMessageEvent.value;
+    return ruleForm.event !== 'withdrawal.requested' && !isMessageEvent.value && !isPayoutsAvailableEvent.value;
 });
 const showCurrencyFilter = computed(() => {
     return ruleForm.event !== 'withdrawal.requested'
@@ -274,6 +275,10 @@ watch(() => ruleForm.event, (value) => {
         ruleForm.currency = '';
         ruleForm.min_amount = '';
     }
+
+    if (value === 'payouts.available') {
+        ruleForm.min_amount = '';
+    }
 });
 
 onMounted(() => {
@@ -437,10 +442,10 @@ router.on('success', () => {
                             </div>
                             <div v-if="showCurrencyFilter">
                                 <label class="label">
-                                    <span class="label-text">Валюта (опционально)</span>
+                                    <span class="label-text">{{ isPayoutsAvailableEvent ? 'Валюта' : 'Валюта (опционально)' }}</span>
                                 </label>
                                 <select v-model="ruleForm.currency" class="select select-bordered w-full">
-                                    <option value="">Любая</option>
+                                    <option value="">{{ isPayoutsAvailableEvent ? 'Выберите валюту' : 'Любая' }}</option>
                                     <option v-for="currency in filtersVariants.currency" :key="currency.value" :value="currency.value">
                                         {{ currency.name }}
                                     </option>

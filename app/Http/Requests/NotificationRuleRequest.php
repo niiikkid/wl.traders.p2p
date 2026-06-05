@@ -40,6 +40,10 @@ class NotificationRuleRequest extends FormRequest
             $baseRules['min_amount'] = ['required', 'string', 'regex:/^\d+(\.\d+)?$/'];
         }
 
+        if ($event?->equals(NotificationEvent::PAYOUTS_AVAILABLE)) {
+            $baseRules['currency'][] = 'required';
+        }
+
         if ($this->filled('min_amount') && ! $event?->equals(NotificationEvent::TRUST_BALANCE_LOW)) {
             $baseRules['currency'][] = 'required';
         }

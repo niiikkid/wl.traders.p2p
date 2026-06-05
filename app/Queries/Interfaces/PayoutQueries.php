@@ -19,6 +19,8 @@ interface PayoutQueries
     /** Пагинация стакана (query-параметр страницы: stack_page). */
     public function paginateStackForTrader(User $trader, int $perPage = 10, ?int $page = null): LengthAwarePaginator;
 
+    public function countStackForTrader(User $trader, string $currency): int;
+
     /**
      * @return Collection<int, Payout>
      */

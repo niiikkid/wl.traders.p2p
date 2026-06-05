@@ -45,6 +45,15 @@ class PayoutQueriesEloquent implements PayoutQueries
             ->paginate($perPage, ['*'], 'stack_page', $page);
     }
 
+    public function countStackForTrader(User $trader, string $currency): int
+    {
+        return Payout::query()
+            ->where('status', PayoutStatus::OPEN->value)
+            ->where('amount_fiat_currency', strtoupper($currency))
+            ->where($this->availableForTraderConstraint($trader))
+            ->count();
+    }
+
     /**
      * {@inheritDoc}
      */
