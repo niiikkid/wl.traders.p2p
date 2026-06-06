@@ -67,10 +67,14 @@ const messageDetailModalOpen = ref(false);
 const attachmentPreview = ref(null);
 const attachmentPreviewModalOpen = ref(false);
 
+const CHAT_DETAIL_PROPS = ['selectedChat', 'messages', 'messagesMeta'];
+const CHAT_LIST_PROPS = ['chats'];
+
 const chatList = computed(() => props.chats?.data ?? []);
 const messageList = computed(() => props.messages?.data ?? []);
 const chatsMeta = computed(() => props.chats?.meta ?? null);
 const chatDetailOpen = computed(() => props.selectedChat !== null);
+const chatDetailLoading = ref(false);
 
 const statusLabels = {
     pending_moderation: 'Ожидает модерации',
@@ -109,41 +113,120 @@ const botStatusSummary = computed(() => {
     return { text: 'Webhook не установлен', class: 'badge-warning' };
 });
 
-const visitChats = (extra = {}) => {
-    router.visit(route('admin.telegram-chats.index'), {
-        data: {
-            tab: props.tab,
-            chat: props.selectedChat?.id ?? undefined,
-            per_page: props.chats?.meta?.per_page,
-            messages_page: props.messagesMeta?.current_page,
-            ...extra,
+const buildChatQuery = (extra = {}) => {
+    const query = {
+        tab: props.tab,
+    };
+
+    if (props.chats?.meta?.per_page) {
+        query.per_page = props.chats.meta.per_page;
+    }
+
+    if ('page' in extra) {
+        if (extra.page) {
+            query.page = extra.page;
+        }
+    } else if (props.chats?.meta?.current_page) {
+        query.page = props.chats.meta.current_page;
+    }
+
+    if ('chat' in extra) {
+        if (extra.chat) {
+            query.chat = extra.chat;
+        }
+    } else if (props.selectedChat?.id) {
+        query.chat = props.selectedChat.id;
+    }
+
+    if ('messages_page' in extra) {
+        if (extra.messages_page) {
+            query.messages_page = extra.messages_page;
+        }
+    } else if (props.messagesMeta?.current_page) {
+        query.messages_page = props.messagesMeta.current_page;
+    }
+
+    return query;
+};
+
+const visitChats = (extra = {}, options = {}) => {
+    const {
+        only = null,
+        preserveScroll = true,
+        preserveState = true,
+    } = options;
+
+    const visitOptions = {
+        data: buildChatQuery(extra),
+        preserveScroll,
+        preserveState,
+        onStart: () => {
+            if (only?.some((prop) => CHAT_DETAIL_PROPS.includes(prop))) {
+                chatDetailLoading.value = true;
+            }
         },
-        preserveScroll: true,
-        preserveState: true,
-    });
+        onFinish: () => {
+            chatDetailLoading.value = false;
+        },
+    };
+
+    if (only?.length) {
+        visitOptions.only = only;
+    }
+
+    router.visit(route('admin.telegram-chats.index'), visitOptions);
 };
 
 const switchTab = (tab) => {
     router.visit(route('admin.telegram-chats.index'), {
         data: { tab },
         preserveScroll: false,
+        preserveState: false,
     });
 };
 
 const selectChat = (chat) => {
-    visitChats({ chat: chat.id, messages_page: 1 });
+    visitChats(
+        { chat: chat.id, messages_page: 1 },
+        {
+            only: CHAT_DETAIL_PROPS,
+            preserveScroll: chatDetailOpen.value,
+            preserveState: true,
+        },
+    );
 };
 
 const clearSelectedChat = () => {
-    visitChats({ chat: undefined, messages_page: undefined });
+    visitChats(
+        { chat: undefined, messages_page: undefined },
+        {
+            only: CHAT_DETAIL_PROPS,
+            preserveScroll: false,
+            preserveState: true,
+        },
+    );
 };
 
 const visitChatListPage = (page) => {
-    visitChats({
-        page,
-        chat: props.selectedChat?.id,
-        messages_page: props.messagesMeta?.current_page,
-    });
+    visitChats(
+        { page },
+        {
+            only: chatDetailOpen.value ? CHAT_LIST_PROPS : null,
+            preserveScroll: true,
+            preserveState: true,
+        },
+    );
+};
+
+const visitMessagesPage = (page) => {
+    visitChats(
+        { messages_page: page },
+        {
+            only: ['messages', 'messagesMeta'],
+            preserveScroll: true,
+            preserveState: true,
+        },
+    );
 };
 
 const chatUpdateForm = useForm({
@@ -185,12 +268,29 @@ const filteredTraderSearchResults = computed(() =>
     traderSearchResults.value.filter((trader) => !existingTeamTraderIds.value.has(trader.id)),
 );
 
+const clearTraderToAdd = () => {
+    selectedTraderToAdd.value = null;
+    traderSearchQuery.value = '';
+    addTraderForm.trader_id = '';
+    addTraderForm.telegram_username = '';
+    traderSearchResults.value = [];
+};
+
 watch(
     () => props.selectedChat,
-    (chat) => {
+    (chat, previousChat) => {
         if (!chat) {
+            chatUpdateForm.reset();
+            traderUsernameEdits.value = {};
+            clearTraderToAdd();
+
             return;
         }
+
+        if (previousChat?.id !== chat.id) {
+            clearTraderToAdd();
+        }
+
         chatUpdateForm.status = chat.status;
         chatUpdateForm.chat_type = chat.chat_type ?? '';
 
@@ -245,14 +345,6 @@ const selectTraderToAdd = (trader) => {
     traderSearchQuery.value = trader.email;
     addTraderForm.trader_id = trader.id;
     traderSearchDropdownOpen.value = false;
-};
-
-const clearTraderToAdd = () => {
-    selectedTraderToAdd.value = null;
-    traderSearchQuery.value = '';
-    addTraderForm.trader_id = '';
-    addTraderForm.telegram_username = '';
-    traderSearchResults.value = [];
 };
 
 const addTeamTrader = () => {
@@ -810,8 +902,17 @@ watch(
                 </div>
 
                 <div class="relative w-full min-w-0 shadow-md rounded-table">
+                    <div
+                        v-if="chatDetailLoading"
+                        class="absolute inset-0 z-10 flex items-center justify-center rounded-table bg-base-100/70"
+                    >
+                        <span class="loading loading-spinner loading-md text-primary" />
+                    </div>
                     <div class="card bg-base-100 shadow">
-                    <div class="flex w-full flex-col gap-4 p-4 sm:p-6">
+                    <div
+                        class="flex w-full flex-col gap-4 p-4 sm:p-6"
+                        :class="{ 'pointer-events-none opacity-60': chatDetailLoading }"
+                    >
                         <div class="flex items-start justify-between gap-2 border-b border-base-200 pb-3">
                             <h3 class="text-lg font-semibold text-base-content">
                                 {{ selectedChat.display_title }}
@@ -1140,7 +1241,7 @@ watch(
                                     type="button"
                                     class="btn btn-xs btn-outline"
                                     :disabled="messagesMeta.current_page <= 1"
-                                    @click="visitChats({ messages_page: messagesMeta.current_page - 1 })"
+                                    @click="visitMessagesPage(messagesMeta.current_page - 1)"
                                 >
                                     Назад
                                 </button>
@@ -1151,7 +1252,7 @@ watch(
                                     type="button"
                                     class="btn btn-xs btn-outline"
                                     :disabled="messagesMeta.current_page >= messagesMeta.last_page"
-                                    @click="visitChats({ messages_page: messagesMeta.current_page + 1 })"
+                                    @click="visitMessagesPage(messagesMeta.current_page + 1)"
                                 >
                                     Вперёд
                                 </button>
