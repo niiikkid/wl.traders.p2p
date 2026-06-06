@@ -27,7 +27,10 @@ class DeviceService implements DeviceServiceContract
             'device_by_token_'.$token,
             now()->addMinutes(10),
             function () use ($token) {
-                return UserDevice::where('token', $token)->first();
+                return UserDevice::query()
+                    ->with('user:id,archived_at,banned_at')
+                    ->where('token', $token)
+                    ->first();
             }
         );
     }

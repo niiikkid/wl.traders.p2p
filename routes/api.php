@@ -82,7 +82,7 @@ Route::group(['prefix' => 'withdraw', 'middleware' => ['api-withdrawals-access-t
 });
 
 Route::group(['prefix' => 'app', 'middleware' => ['device-access-token']], function () {
-    Route::post('sms', [SmsController::class, 'store'])->middleware('idempotency_for_app');
+    Route::post('sms', [SmsController::class, 'store']);
     Route::get('state', [StateController::class, 'index']);
     Route::get('device/ping', [DeviceController::class, 'ping']);
     Route::post('device/connect', [DeviceController::class, 'connect']);

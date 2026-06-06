@@ -13,6 +13,7 @@ use App\Models\SenderStopList;
 use App\Models\UserDevice;
 use App\Services\Sms\Parser;
 use App\Services\Sms\Utils\NormalizeMessage;
+use Illuminate\Foundation\Bus\PendingDispatch;
 use Throwable;
 
 class SmsController extends Controller
@@ -21,17 +22,24 @@ class SmsController extends Controller
 
     public function store(StoreRequest $request)
     {
-        //TODO tmp fix for testing
-        return response()->success();
-
-
-        $device = services()->device()->get($request->header('Access-Token'));
+        $device = $request->get('device');
+        if (! $device instanceof UserDevice) {
+            $device = services()->device()->get($request->header('Access-Token'));
+        }
 
         if (! $device->android_id) {
             return response()->failWithMessage('Устройство не подключено', 401);
         }
 
-        services()->device()->ping($device);
+        /** @var PendingDispatch $dispatch */
+        $dispatch = dispatch(function () use ($device): void {
+            try {
+                services()->device()->ping($device);
+            } catch (Throwable $exception) {
+                report($exception);
+            }
+        });
+        $dispatch->afterResponse();
 
         if (mb_strlen($request->message) > self::MAX_INCOMING_SMS_MESSAGE_LENGTH) {
             $this->recordShadowSmsLog(

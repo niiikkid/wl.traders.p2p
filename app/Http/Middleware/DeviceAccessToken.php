@@ -2,10 +2,8 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\UserDevice;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class DeviceAccessToken
@@ -13,23 +11,23 @@ class DeviceAccessToken
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->header('Access-Token');
 
-        if (!$token) {
+        if (! $token) {
             return response()->failWithMessage('Токен устройства не указан', 401);
         }
 
         $device = services()->device()->get($token);
 
-        if (!$device) {
+        if (! $device) {
             return response()->failWithMessage('Неверный токен устройства', 401);
         }
 
-        $user = $device->user()->first();
+        $user = $device->user;
         if (! $user || $user->archived_at !== null || $user->banned_at !== null) {
             return response()->failWithMessage('Пользователь устройства недоступен', 403);
         }

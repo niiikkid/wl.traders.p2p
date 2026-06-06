@@ -756,6 +756,29 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <h2 class="text-xl font-semibold">Ваши активные выплаты</h2>
                                 <span v-if="activeEmptyState" class="text-sm text-base-content/60">Нет активных выплат</span>
                             </div>
+                            <div
+                                v-if="!activeEmptyState"
+                                class="alert alert-info alert-outline min-h-0 gap-2.5 py-2.5 px-3 sm:gap-3 sm:py-3 sm:px-4"
+                                role="note"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="h-4 w-4 sm:h-5 sm:w-5 shrink-0 stroke-current"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
+                                    />
+                                </svg>
+                                <span class="text-xs sm:text-sm leading-snug">
+                                    Перечисляйте средства на указанные реквизиты максимум в 2 транзакции.
+                                </span>
+                            </div>
                             <div class="space-y-3">
                                 <div
                                     v-for="payout in activePayoutsList"
