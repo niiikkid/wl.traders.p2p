@@ -61,6 +61,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentDemoController;
 use App\Http\Controllers\PaymentDetailArchiveController;
 use App\Http\Controllers\PaymentDetailController;
+use App\Http\Controllers\PaymentDetailLimitResetController;
 use App\Http\Controllers\PaymentDetailScheduleController;
 use App\Http\Controllers\PaymentDetailTagAssignmentController;
 use App\Http\Controllers\PaymentDetailTagController;
@@ -239,6 +240,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
             ->name('trader.devices.sms-processing-mode.update');
         Route::get('/trader/devices/{device}/pings', [UserDevicePingController::class, 'index'])->name('trader.devices.pings');
 
+        Route::post('/payment-details/{paymentDetail}/reset-limits', [PaymentDetailLimitResetController::class, 'store'])->name('payment-details.reset-limits');
         Route::post('/payment-details/{paymentDetail}/archive', [PaymentDetailArchiveController::class, 'store'])->name('payment-details.archive');
         Route::delete('/payment-details/{paymentDetail}/unarchive', [PaymentDetailArchiveController::class, 'destroy'])->name('payment-details.unarchive');
         Route::patch('/payment-details/{paymentDetail}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.unarchive');

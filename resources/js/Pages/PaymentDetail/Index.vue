@@ -24,6 +24,7 @@ import PaymentDetailCreateModal from "@/Modals/PaymentDetail/PaymentDetailCreate
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
 import PaymentDetailVolumeStatisticsModal from "@/Modals/PaymentDetail/PaymentDetailVolumeStatisticsModal.vue";
+import PaymentDetailResetLimitsModal from "@/Modals/PaymentDetail/PaymentDetailResetLimitsModal.vue";
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
@@ -42,6 +43,9 @@ const openEditModal = (paymentDetail) => {
 };
 const openVolumeStatisticsModal = (paymentDetail) => {
     modalStore.openPaymentDetailVolumeStatisticsModal({ id: paymentDetail.id, paymentDetail });
+};
+const openResetLimitsModal = (paymentDetail) => {
+    modalStore.openPaymentDetailResetLimitsModal({ paymentDetail });
 };
 const openBulkEditModal = () => {
     if (selectionModeEnabled.value && selectedDetailIds.value.length) {
@@ -1098,6 +1102,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <TableAction @click="confirmArchiveDetail(payment_detail)">
                                                             Архивировать
                                                         </TableAction>
+                                                        <TableAction @click="openResetLimitsModal(payment_detail)">
+                                                            Сбросить лимиты
+                                                        </TableAction>
                                                     </TableActionsDropdown>
                                                     <TableActionsDropdown v-else>
                                                         <TableAction @click="openVolumeStatisticsModal(payment_detail)">
@@ -1144,6 +1151,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </TableAction>
                                                     <TableAction @click="confirmArchiveDetail(payment_detail)">
                                                         Архивировать
+                                                    </TableAction>
+                                                    <TableAction @click="openResetLimitsModal(payment_detail)">
+                                                        Сбросить лимиты
                                                     </TableAction>
                                                 </template>
                                                 <template v-else>
@@ -1416,6 +1426,7 @@ defineOptions({ layout: AuthenticatedLayout })
         <PaymentDetailEditModal />
         <PaymentDetailBulkEditModal :tags="paymentDetailTags" />
         <PaymentDetailVolumeStatisticsModal />
+        <PaymentDetailResetLimitsModal />
         <PaymentDetailTagCreateModal />
         <PaymentDetailTagManageModal :tags="paymentDetailTags" />
         <ConfirmModal/>
