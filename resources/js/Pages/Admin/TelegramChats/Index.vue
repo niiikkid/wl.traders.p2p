@@ -10,6 +10,7 @@ import Modal from '@/Components/Modals/Modal.vue';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
 import TableAction from '@/Components/Table/TableAction.vue';
+import AppTooltip from '@/Components/AppTooltip.vue';
 import { useModalStore } from '@/store/modal.js';
 
 const props = defineProps({
@@ -66,6 +67,7 @@ const messageDetail = ref(null);
 const messageDetailModalOpen = ref(false);
 const attachmentPreview = ref(null);
 const attachmentPreviewModalOpen = ref(false);
+const addTraderModalOpen = ref(false);
 
 const CHAT_DETAIL_PROPS = ['selectedChat', 'messages', 'messagesMeta'];
 const CHAT_LIST_PROPS = ['chats'];
@@ -262,6 +264,26 @@ const chatTypeLabel = (chatType) => {
     return match?.label ?? 'Не назначен';
 };
 
+const chatTypeVisual = (chatType) => {
+    switch (chatType) {
+        case 'dispute_processing':
+            return {
+                icon: 'gavel',
+                containerClass: 'bg-warning/15 text-warning ring-warning/30',
+            };
+        case 'trader_team':
+            return {
+                icon: 'users',
+                containerClass: 'bg-info/15 text-info ring-info/30',
+            };
+        default:
+            return {
+                icon: 'help',
+                containerClass: 'bg-base-300/70 text-base-content/45 ring-base-content/15',
+            };
+    }
+};
+
 const existingTeamTraderIds = computed(() => new Set(teamTraders.value.map((trader) => trader.id)));
 
 const filteredTraderSearchResults = computed(() =>
@@ -274,6 +296,17 @@ const clearTraderToAdd = () => {
     addTraderForm.trader_id = '';
     addTraderForm.telegram_username = '';
     traderSearchResults.value = [];
+    traderSearchDropdownOpen.value = false;
+};
+
+const openAddTraderModal = () => {
+    clearTraderToAdd();
+    addTraderModalOpen.value = true;
+};
+
+const closeAddTraderModal = () => {
+    addTraderModalOpen.value = false;
+    clearTraderToAdd();
 };
 
 watch(
@@ -282,13 +315,14 @@ watch(
         if (!chat) {
             chatUpdateForm.reset();
             traderUsernameEdits.value = {};
-            clearTraderToAdd();
+            closeAddTraderModal();
 
             return;
         }
 
         if (previousChat?.id !== chat.id) {
             clearTraderToAdd();
+            closeAddTraderModal();
         }
 
         chatUpdateForm.status = chat.status;
@@ -355,7 +389,7 @@ const addTeamTrader = () => {
     addTraderForm.post(route('admin.telegram-chats.traders.store', props.selectedChat.id), {
         preserveScroll: true,
         onSuccess: () => {
-            clearTraderToAdd();
+            closeAddTraderModal();
         },
     });
 };
@@ -838,9 +872,66 @@ watch(
                                 @click="selectChat(chat)"
                             >
                                 <div class="flex w-full items-center justify-between gap-2 p-2">
-                                    <span class="min-w-0 flex-1 font-medium leading-snug text-base-content">
-                                        {{ chat.display_title }}
-                                    </span>
+                                    <div class="flex min-w-0 flex-1 items-center gap-2.5">
+                                        <AppTooltip
+                                            :tip="chatTypeLabel(chat.chat_type)"
+                                            placement="right"
+                                            wrapper-class="shrink-0"
+                                        >
+                                            <span
+                                                class="flex size-8 items-center justify-center rounded-lg ring-1 ring-inset"
+                                                :class="chatTypeVisual(chat.chat_type).containerClass"
+                                            >
+                                                <svg
+                                                    v-if="chatTypeVisual(chat.chat_type).icon === 'gavel'"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="size-4"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path d="m13 10l7.383 7.418c.823.82.823 2.148 0 2.967a2.11 2.11 0 0 1-2.976 0L10 13M6 9l4 4m3-3L9 6M3 21h7" />
+                                                    <path d="m6.793 15.793l-3.586-3.586a1 1 0 0 1 0-1.414L5.5 8.5L6 9l3-3l-.5-.5l2.293-2.293a1 1 0 0 1 1.414 0l3.586 3.586a1 1 0 0 1 0 1.414L13.5 10.5L13 10l-3 3l.5.5l-2.293 2.293a1 1 0 0 1-1.414 0" />
+                                                </svg>
+                                                <svg
+                                                    v-else-if="chatTypeVisual(chat.chat_type).icon === 'users'"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="size-4"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path d="M10 13a2 2 0 1 0 4 0a2 2 0 0 0-4 0m-2 8v-1a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1M15 5a2 2 0 1 0 4 0a2 2 0 0 0-4 0m2 5h2a2 2 0 0 1 2 2v1M5 5a2 2 0 1 0 4 0a2 2 0 0 0-4 0m-2 8v-1a2 2 0 0 1 2-2h2" />
+                                                </svg>
+                                                <svg
+                                                    v-else
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="size-4"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0-18 0m9 4v.01" />
+                                                    <path d="M12 13a2 2 0 0 0 .914-3.782a1.98 1.98 0 0 0-2.414.483" />
+                                                </svg>
+                                            </span>
+                                        </AppTooltip>
+                                        <span class="min-w-0 flex-1 truncate font-medium leading-snug text-base-content">
+                                            {{ chat.display_title }}
+                                        </span>
+                                    </div>
                                     <div class="shrink-0" @click.stop>
                                         <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
                                             <template v-if="tab === 'archived'">
@@ -993,11 +1084,40 @@ watch(
                             </div>
 
                             <div v-if="isTraderTeamChatSelected" class="space-y-3 rounded-box border border-base-300 bg-base-200/30 p-4">
-                                <div>
-                                    <h4 class="text-sm font-semibold text-base-content">Трейдеры</h4>
-                                    <p class="text-xs text-base-content/60">
-                                        Уведомления о новых спорах будут отправляться в этот чат для выбранных трейдеров.
-                                    </p>
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <h4 class="text-sm font-semibold text-base-content">Трейдеры</h4>
+                                        <p class="text-xs text-base-content/60">
+                                            Уведомления о новых спорах для выбранных трейдеров.
+                                        </p>
+                                    </div>
+                                    <AppTooltip
+                                        v-if="canManageTeamTraders"
+                                        tip="Добавить трейдера"
+                                        placement="left"
+                                        wrapper-class="shrink-0"
+                                    >
+                                        <button
+                                            type="button"
+                                            class="btn btn-primary btn-sm btn-square"
+                                            aria-label="Добавить трейдера"
+                                            @click="openAddTraderModal"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="size-5"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-width="2"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0-8 0m8 12h6m-3-3v6M6 21v-2a4 4 0 0 1 4-4h4" />
+                                            </svg>
+                                        </button>
+                                    </AppTooltip>
                                 </div>
 
                                 <div
@@ -1008,54 +1128,75 @@ watch(
                                 </div>
 
                                 <template v-else>
-                                    <div v-if="teamTraders.length" class="overflow-x-auto">
-                                        <table class="table table-sm">
-                                            <thead class="text-xs uppercase bg-base-300">
+                                    <p class="text-[11px] text-base-content/50">
+                                        Telegram username без @ — для упоминания в уведомлениях.
+                                    </p>
+
+                                    <div
+                                        v-if="teamTraders.length"
+                                        class="overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-sm"
+                                    >
+                                        <table class="table table-xs">
+                                            <thead class="bg-base-300/80 text-[10px] uppercase tracking-wide text-base-content/70">
                                                 <tr>
-                                                    <th scope="col">Трейдер</th>
-                                                    <th scope="col">Telegram</th>
-                                                    <th scope="col"><span class="sr-only">Действия</span></th>
+                                                    <th scope="col" class="font-medium">Трейдер</th>
+                                                    <th scope="col" class="font-medium">Telegram</th>
+                                                    <th scope="col" class="w-8">
+                                                        <span class="sr-only">Действия</span>
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 <tr
                                                     v-for="trader in teamTraders"
                                                     :key="trader.id"
-                                                    class="bg-base-100 border-b border-base-200 last:border-none"
+                                                    class="border-b border-base-200/80 last:border-none"
                                                 >
-                                                    <td class="align-middle whitespace-nowrap">
+                                                    <td class="max-w-[10rem] truncate align-middle text-xs font-medium">
                                                         {{ trader.email }}
                                                     </td>
                                                     <td class="align-middle">
-                                                        <div class="flex flex-wrap items-center gap-2">
+                                                        <div class="flex items-center gap-1">
                                                             <input
                                                                 v-model="traderUsernameEdits[trader.id]"
                                                                 type="text"
-                                                                class="input input-bordered input-xs w-full min-w-[8rem] max-w-xs"
+                                                                class="input input-bordered input-xs w-28 max-w-[7.5rem]"
                                                                 placeholder="username"
                                                                 autocomplete="off"
                                                             >
                                                             <button
                                                                 type="button"
-                                                                class="btn btn-xs btn-outline"
+                                                                class="btn btn-xs btn-outline shrink-0 px-2"
                                                                 :disabled="updatingTraderId === trader.id"
                                                                 @click="updateTeamTraderUsername(trader)"
                                                             >
                                                                 {{ updatingTraderId === trader.id ? '...' : 'Сохранить' }}
                                                             </button>
                                                         </div>
-                                                        <p class="mt-1 text-xs text-base-content/50">
-                                                            Без @. Для упоминания в уведомлениях.
-                                                        </p>
                                                     </td>
                                                     <td class="align-middle text-right">
-                                                        <button
-                                                            type="button"
-                                                            class="btn btn-xs btn-error btn-outline"
-                                                            @click="removeTeamTrader(trader)"
-                                                        >
-                                                            Удалить
-                                                        </button>
+                                                        <AppTooltip tip="Удалить" placement="left" wrapper-class="inline-flex">
+                                                            <button
+                                                                type="button"
+                                                                class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10"
+                                                                aria-label="Удалить трейдера"
+                                                                @click="removeTeamTrader(trader)"
+                                                            >
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    class="size-4"
+                                                                    viewBox="0 0 24 24"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    stroke-width="2"
+                                                                    stroke-linecap="round"
+                                                                    stroke-linejoin="round"
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    <path d="M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
+                                                                </svg>
+                                                            </button>
+                                                        </AppTooltip>
                                                     </td>
                                                 </tr>
                                             </tbody>
@@ -1064,89 +1205,6 @@ watch(
                                     <p v-else class="text-sm text-base-content/60">
                                         Участники не добавлены.
                                     </p>
-
-                                    <div class="space-y-2 border-t border-base-300 pt-3">
-                                        <p class="text-sm font-medium">Добавить трейдера</p>
-                                        <div class="grid gap-3 sm:grid-cols-[minmax(12rem,1fr)_minmax(8rem,12rem)_auto] sm:items-end">
-                                            <div ref="traderSearchRootRef" class="relative w-full">
-                                                <label class="label py-0">
-                                                    <span class="label-text text-xs">Поиск по email</span>
-                                                </label>
-                                                <div class="relative">
-                                                    <input
-                                                        v-model="traderSearchQuery"
-                                                        type="text"
-                                                        class="input input-bordered input-sm w-full pr-8"
-                                                        placeholder="Email трейдера..."
-                                                        autocomplete="off"
-                                                        @focus="traderSearchDropdownOpen = true"
-                                                        @input="traderSearchDropdownOpen = true"
-                                                    >
-                                                    <button
-                                                        v-if="selectedTraderToAdd"
-                                                        type="button"
-                                                        class="btn btn-ghost btn-xs absolute right-1 top-1/2 -translate-y-1/2"
-                                                        @click="clearTraderToAdd"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                    <span
-                                                        v-if="traderSearchLoading"
-                                                        class="loading loading-spinner loading-sm absolute right-2 top-1/2 -translate-y-1/2"
-                                                    />
-                                                </div>
-                                                <div
-                                                    v-if="traderSearchDropdownOpen && filteredTraderSearchResults.length > 0"
-                                                    class="menu menu-sm bg-base-100 rounded-box absolute z-10 mt-1 w-full shadow"
-                                                >
-                                                    <ul>
-                                                        <li
-                                                            v-for="trader in filteredTraderSearchResults"
-                                                            :key="trader.id"
-                                                        >
-                                                            <button
-                                                                type="button"
-                                                                class="w-full text-left"
-                                                                @click="selectTraderToAdd(trader)"
-                                                            >
-                                                                {{ trader.email }}
-                                                            </button>
-                                                        </li>
-                                                    </ul>
-                                                </div>
-                                                <div
-                                                    v-if="traderSearchDropdownOpen && traderSearchQuery && !traderSearchLoading && filteredTraderSearchResults.length === 0"
-                                                    class="alert alert-info absolute z-10 mt-1 w-full p-2 text-xs shadow"
-                                                >
-                                                    <span>Ничего не найдено</span>
-                                                </div>
-                                            </div>
-                                            <fieldset class="fieldset">
-                                                <legend class="fieldset-legend text-xs">Telegram username</legend>
-                                                <input
-                                                    v-model="addTraderForm.telegram_username"
-                                                    type="text"
-                                                    class="input input-bordered input-sm w-full"
-                                                    placeholder="Необязательно"
-                                                    autocomplete="off"
-                                                >
-                                            </fieldset>
-                                            <button
-                                                type="button"
-                                                class="btn btn-primary btn-sm"
-                                                :disabled="!addTraderForm.trader_id || addTraderForm.processing"
-                                                @click="addTeamTrader"
-                                            >
-                                                {{ addTraderForm.processing ? 'Добавляем...' : 'Добавить' }}
-                                            </button>
-                                        </div>
-                                        <p v-if="addTraderForm.errors.trader_id" class="text-xs text-error">
-                                            {{ addTraderForm.errors.trader_id }}
-                                        </p>
-                                        <p v-if="addTraderForm.errors.telegram_username" class="text-xs text-error">
-                                            {{ addTraderForm.errors.telegram_username }}
-                                        </p>
-                                    </div>
                                 </template>
                             </div>
 
@@ -1264,6 +1322,101 @@ watch(
                 </div>
             </template>
         </MainTableSection>
+
+        <Modal :show="addTraderModalOpen" max-width="md" @close="closeAddTraderModal">
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold">Добавить трейдера</h3>
+                <p class="text-sm text-base-content/60">
+                    Найдите трейдера по email и при необходимости укажите Telegram username для упоминаний.
+                </p>
+
+                <div ref="traderSearchRootRef" class="relative w-full">
+                    <fieldset class="fieldset">
+                        <legend class="fieldset-legend">Поиск по email</legend>
+                        <div class="relative">
+                            <input
+                                v-model="traderSearchQuery"
+                                type="text"
+                                class="input input-bordered input-sm w-full pr-8"
+                                placeholder="Email трейдера..."
+                                autocomplete="off"
+                                @focus="traderSearchDropdownOpen = true"
+                                @input="traderSearchDropdownOpen = true"
+                            >
+                            <button
+                                v-if="selectedTraderToAdd"
+                                type="button"
+                                class="btn btn-ghost btn-xs absolute right-1 top-1/2 -translate-y-1/2"
+                                @click="clearTraderToAdd"
+                            >
+                                ×
+                            </button>
+                            <span
+                                v-if="traderSearchLoading"
+                                class="loading loading-spinner loading-sm absolute right-2 top-1/2 -translate-y-1/2"
+                            />
+                        </div>
+                    </fieldset>
+                    <div
+                        v-if="traderSearchDropdownOpen && filteredTraderSearchResults.length > 0"
+                        class="menu menu-sm bg-base-100 rounded-box absolute z-10 mt-1 max-h-48 w-full overflow-y-auto shadow"
+                    >
+                        <ul>
+                            <li
+                                v-for="trader in filteredTraderSearchResults"
+                                :key="trader.id"
+                            >
+                                <button
+                                    type="button"
+                                    class="w-full text-left"
+                                    @click="selectTraderToAdd(trader)"
+                                >
+                                    {{ trader.email }}
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div
+                        v-if="traderSearchDropdownOpen && traderSearchQuery && !traderSearchLoading && filteredTraderSearchResults.length === 0"
+                        class="alert alert-info mt-1 p-2 text-xs"
+                    >
+                        <span>Ничего не найдено</span>
+                    </div>
+                </div>
+
+                <fieldset class="fieldset">
+                    <legend class="fieldset-legend">Telegram username</legend>
+                    <input
+                        v-model="addTraderForm.telegram_username"
+                        type="text"
+                        class="input input-bordered input-sm w-full"
+                        placeholder="Необязательно, без @"
+                        autocomplete="off"
+                    >
+                </fieldset>
+
+                <p v-if="addTraderForm.errors.trader_id" class="text-xs text-error">
+                    {{ addTraderForm.errors.trader_id }}
+                </p>
+                <p v-if="addTraderForm.errors.telegram_username" class="text-xs text-error">
+                    {{ addTraderForm.errors.telegram_username }}
+                </p>
+
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost btn-sm" @click="closeAddTraderModal">
+                        Отмена
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-primary btn-sm"
+                        :disabled="!addTraderForm.trader_id || addTraderForm.processing"
+                        @click="addTeamTrader"
+                    >
+                        {{ addTraderForm.processing ? 'Добавляем...' : 'Добавить' }}
+                    </button>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="botSettingsModalOpen" max-width="lg" @close="botSettingsModalOpen = false">
             <div class="space-y-4">
