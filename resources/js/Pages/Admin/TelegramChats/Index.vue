@@ -1128,13 +1128,9 @@ watch(
                                 </div>
 
                                 <template v-else>
-                                    <p class="text-[11px] text-base-content/50">
-                                        Telegram username без @ — для упоминания в уведомлениях.
-                                    </p>
-
                                     <div
                                         v-if="teamTraders.length"
-                                        class="overflow-hidden rounded-box border border-base-300 bg-base-100 shadow-sm"
+                                        class="overflow-hidden rounded-lg border border-base-300 bg-base-100"
                                     >
                                         <table class="table table-xs">
                                             <thead class="bg-base-300/80 text-[10px] uppercase tracking-wide text-base-content/70">
@@ -1390,9 +1386,12 @@ watch(
                         v-model="addTraderForm.telegram_username"
                         type="text"
                         class="input input-bordered input-sm w-full"
-                        placeholder="Необязательно, без @"
+                        placeholder="Необязательно"
                         autocomplete="off"
                     >
+                    <p class="label text-xs text-base-content/60">
+                        Telegram username без @ — для упоминания в уведомлениях.
+                    </p>
                 </fieldset>
 
                 <p v-if="addTraderForm.errors.trader_id" class="text-xs text-error">
