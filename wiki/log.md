@@ -1,5 +1,7 @@
 # Wiki Log
 
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification
+
 ## [2026-06-03] ingest | Merchant Reconciliation Service Specification
 
 ## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 6)
