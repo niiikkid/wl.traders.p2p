@@ -21,6 +21,10 @@ class SmsController extends Controller
 
     public function store(StoreRequest $request)
     {
+        //TODO tmp fix for testing
+        return response()->success();
+
+
         $device = services()->device()->get($request->header('Access-Token'));
 
         if (! $device->android_id) {
