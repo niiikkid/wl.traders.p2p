@@ -93,7 +93,7 @@ class TelegramChatController extends Controller
             'chatTypes' => [
                 ['value' => '', 'label' => 'Не назначен'],
                 ['value' => TelegramChatType::DISPUTE_PROCESSING->value, 'label' => 'Споры'],
-                ['value' => TelegramChatType::TRADER_TEAM->value, 'label' => 'Команда трейдеров'],
+                ['value' => TelegramChatType::TRADER_TEAM->value, 'label' => 'Трейдеры'],
             ],
             'chatStatuses' => [
                 ['value' => 'pending_moderation', 'label' => 'Ожидает модерации'],

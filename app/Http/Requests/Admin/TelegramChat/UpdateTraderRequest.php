@@ -49,7 +49,7 @@ class UpdateTraderRequest extends FormRequest
             $telegramChat = $this->route('telegramChat');
 
             if ($telegramChat === null || ! $telegramChat->chat_type?->equals(TelegramChatType::TRADER_TEAM)) {
-                $validator->errors()->add('telegram_chat', 'Участников можно редактировать только в чате «Команда трейдеров».');
+                $validator->errors()->add('telegram_chat', 'Участников можно редактировать только в чате «Трейдеры».');
             }
         });
     }

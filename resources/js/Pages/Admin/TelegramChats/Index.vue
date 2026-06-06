@@ -8,6 +8,8 @@ import DateTime from '@/Components/DateTime.vue';
 import DisplayUUID from '@/Components/DisplayUUID.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
+import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
+import TableAction from '@/Components/Table/TableAction.vue';
 import { useModalStore } from '@/store/modal.js';
 
 const props = defineProps({
@@ -637,6 +639,7 @@ watch(
                                 <thead class="text-xs uppercase bg-base-300">
                                     <tr>
                                         <th scope="col">Чат</th>
+                                        <th scope="col">Функция</th>
                                         <th scope="col">Статус</th>
                                         <th scope="col">Debug</th>
                                         <th scope="col">Сообщений</th>
@@ -653,6 +656,14 @@ watch(
                                         <th scope="row" class="font-medium text-base-content">
                                             {{ chat.display_title }}
                                         </th>
+                                        <td>
+                                            <span
+                                                class="badge badge-sm badge-outline whitespace-nowrap"
+                                                :class="chat.chat_type ? 'badge-primary' : 'badge-ghost'"
+                                            >
+                                                {{ chatTypeLabel(chat.chat_type) }}
+                                            </span>
+                                        </td>
                                         <td>
                                             <span class="badge badge-sm" :class="statusBadgeClass(chat.status)">
                                                 {{ statusLabels[chat.status] ?? chat.status }}
@@ -675,53 +686,43 @@ watch(
                                             </div>
                                         </td>
                                         <td>
-                                            <div class="flex flex-wrap justify-end gap-1">
+                                            <div class="flex items-center justify-end gap-1">
                                                 <button
                                                     type="button"
                                                     class="btn btn-xs btn-primary btn-outline"
-                                                    :class="{ 'btn-active': selectedChat?.id === chat.id }"
                                                     @click="selectChat(chat)"
                                                 >
-                                                    Сообщения
+                                                    Открыть
                                                 </button>
-                                                <button
-                                                    v-if="tab === 'archived'"
-                                                    type="button"
-                                                    class="btn btn-xs btn-outline"
-                                                    @click="restoreChat(chat)"
-                                                >
-                                                    Восстановить
-                                                </button>
-                                                <template v-else>
-                                                    <button
-                                                        v-if="chat.status !== 'active'"
-                                                        type="button"
-                                                        class="btn btn-xs btn-success btn-outline"
-                                                        @click="activateChat(chat)"
-                                                    >
-                                                        Активировать
-                                                    </button>
-                                                    <button
-                                                        v-if="chat.status === 'active'"
-                                                        type="button"
-                                                        class="btn btn-xs btn-warning btn-outline"
-                                                        @click="disableChat(chat)"
-                                                    >
-                                                        Отключить
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        class="btn btn-xs btn-outline"
-                                                        @click="archiveChat(chat)"
-                                                    >
-                                                        Архив
-                                                    </button>
-                                                </template>
+                                                <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
+                                                    <template v-if="tab === 'archived'">
+                                                        <TableAction @click="restoreChat(chat)">
+                                                            Восстановить
+                                                        </TableAction>
+                                                    </template>
+                                                    <template v-else>
+                                                        <TableAction
+                                                            v-if="chat.status !== 'active'"
+                                                            @click="activateChat(chat)"
+                                                        >
+                                                            Активировать
+                                                        </TableAction>
+                                                        <TableAction
+                                                            v-if="chat.status === 'active'"
+                                                            @click="disableChat(chat)"
+                                                        >
+                                                            Отключить
+                                                        </TableAction>
+                                                        <TableAction @click="archiveChat(chat)">
+                                                            Архивировать
+                                                        </TableAction>
+                                                    </template>
+                                                </TableActionsDropdown>
                                             </div>
                                         </td>
                                     </tr>
                                     <tr v-if="!chatList.length">
-                                        <td colspan="6" class="bg-base-100 py-8 text-center text-base-content/60">
+                                        <td colspan="7" class="bg-base-100 py-8 text-center text-base-content/60">
                                             Чаты не найдены.
                                         </td>
                                     </tr>
@@ -740,55 +741,39 @@ watch(
                             <li
                                 v-for="chat in chatList"
                                 :key="chat.id"
-                                class="w-full rounded-lg"
+                                class="w-full rounded-lg cursor-pointer transition-colors hover:bg-base-200/70"
                                 :class="{ 'bg-base-200': selectedChat?.id === chat.id }"
+                                @click="selectChat(chat)"
                             >
-                                <div class="flex w-full flex-col items-stretch gap-2 p-2">
-                                    <span class="font-medium leading-snug text-base-content">
+                                <div class="flex w-full items-center justify-between gap-2 p-2">
+                                    <span class="min-w-0 flex-1 font-medium leading-snug text-base-content">
                                         {{ chat.display_title }}
                                     </span>
-                                    <div class="flex w-full flex-wrap gap-1">
-                                        <button
-                                            type="button"
-                                            class="btn btn-xs btn-primary btn-outline"
-                                            :class="{ 'btn-active': selectedChat?.id === chat.id }"
-                                            @click="selectChat(chat)"
-                                        >
-                                            Сообщения
-                                        </button>
-                                        <button
-                                            v-if="tab === 'archived'"
-                                            type="button"
-                                            class="btn btn-xs btn-outline"
-                                            @click="restoreChat(chat)"
-                                        >
-                                            Восстановить
-                                        </button>
-                                        <template v-else>
-                                            <button
-                                                v-if="chat.status !== 'active'"
-                                                type="button"
-                                                class="btn btn-xs btn-success btn-outline"
-                                                @click="activateChat(chat)"
-                                            >
-                                                Активировать
-                                            </button>
-                                            <button
-                                                v-if="chat.status === 'active'"
-                                                type="button"
-                                                class="btn btn-xs btn-warning btn-outline"
-                                                @click="disableChat(chat)"
-                                            >
-                                                Отключить
-                                            </button>
-                                            <button
-                                                type="button"
-                                                class="btn btn-xs btn-outline"
-                                                @click="archiveChat(chat)"
-                                            >
-                                                Архив
-                                            </button>
-                                        </template>
+                                    <div class="shrink-0" @click.stop>
+                                        <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
+                                            <template v-if="tab === 'archived'">
+                                                <TableAction @click="restoreChat(chat)">
+                                                    Восстановить
+                                                </TableAction>
+                                            </template>
+                                            <template v-else>
+                                                <TableAction
+                                                    v-if="chat.status !== 'active'"
+                                                    @click="activateChat(chat)"
+                                                >
+                                                    Активировать
+                                                </TableAction>
+                                                <TableAction
+                                                    v-if="chat.status === 'active'"
+                                                    @click="disableChat(chat)"
+                                                >
+                                                    Отключить
+                                                </TableAction>
+                                                <TableAction @click="archiveChat(chat)">
+                                                    Архивировать
+                                                </TableAction>
+                                            </template>
+                                        </TableActionsDropdown>
                                     </div>
                                 </div>
                             </li>
@@ -908,7 +893,7 @@ watch(
 
                             <div v-if="isTraderTeamChatSelected" class="space-y-3 rounded-box border border-base-300 bg-base-200/30 p-4">
                                 <div>
-                                    <h4 class="text-sm font-semibold text-base-content">Команда трейдеров</h4>
+                                    <h4 class="text-sm font-semibold text-base-content">Трейдеры</h4>
                                     <p class="text-xs text-base-content/60">
                                         Уведомления о новых спорах будут отправляться в этот чат для выбранных трейдеров.
                                     </p>
@@ -918,7 +903,7 @@ watch(
                                     v-if="!canManageTeamTraders"
                                     class="alert alert-warning text-sm"
                                 >
-                                    Сохраните настройки чата с функцией «Команда трейдеров», чтобы управлять составом команды.
+                                    Сохраните настройки чата с функцией «Трейдеры», чтобы управлять составом команды.
                                 </div>
 
                                 <template v-else>
