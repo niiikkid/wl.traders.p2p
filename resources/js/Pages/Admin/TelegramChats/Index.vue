@@ -1030,8 +1030,8 @@ watch(
                                 </span>
                             </div>
 
-                            <div class="grid gap-3 sm:grid-cols-2">
-                                <fieldset class="fieldset">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                                <fieldset class="fieldset min-w-0 flex-1 sm:max-w-xs">
                                     <legend class="fieldset-legend">Статус</legend>
                                     <select
                                         v-model="chatUpdateForm.status"
@@ -1046,7 +1046,7 @@ watch(
                                         </option>
                                     </select>
                                 </fieldset>
-                                <fieldset class="fieldset">
+                                <fieldset class="fieldset min-w-0 flex-1 sm:max-w-xs">
                                     <legend class="fieldset-legend">Функция чата</legend>
                                     <select
                                         v-model="chatUpdateForm.chat_type"
@@ -1061,9 +1061,20 @@ watch(
                                         </option>
                                     </select>
                                 </fieldset>
+                                <fieldset class="fieldset w-full shrink-0 sm:w-auto">
+                                    <legend class="fieldset-legend invisible select-none" aria-hidden="true">&nbsp;</legend>
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary btn-sm w-full sm:w-auto"
+                                        :disabled="chatUpdateForm.processing"
+                                        @click="saveChatSettings"
+                                    >
+                                        {{ chatUpdateForm.processing ? 'Сохраняем...' : 'Сохранить' }}
+                                    </button>
+                                </fieldset>
                             </div>
 
-                            <div class="flex flex-wrap items-center gap-3">
+                            <div v-if="!isTraderTeamChatSelected" class="flex flex-wrap items-center gap-3">
                                 <label class="label cursor-pointer gap-2">
                                     <span class="label-text">Режим отладки</span>
                                     <input
@@ -1073,14 +1084,6 @@ watch(
                                         @change="toggleDebug(selectedChat, $event.target.checked)"
                                     >
                                 </label>
-                                <button
-                                    type="button"
-                                    class="btn btn-primary btn-sm"
-                                    :disabled="chatUpdateForm.processing"
-                                    @click="saveChatSettings"
-                                >
-                                    {{ chatUpdateForm.processing ? 'Сохраняем...' : 'Сохранить' }}
-                                </button>
                             </div>
 
                             <div v-if="isTraderTeamChatSelected" class="space-y-3 rounded-box border border-base-300 bg-base-200/30 p-4">
