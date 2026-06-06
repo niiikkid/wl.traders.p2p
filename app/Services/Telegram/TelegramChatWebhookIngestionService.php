@@ -7,7 +7,6 @@ namespace App\Services\Telegram;
 use App\Contracts\TelegramChatWebhookIngestionServiceContract;
 use App\Enums\TelegramChatMessageStatus;
 use App\Enums\TelegramChatMessageType;
-use App\Enums\TelegramChatParserType;
 use App\Enums\TelegramChatStatus;
 use App\Jobs\ProcessTelegramChatMessageJob;
 use App\Models\TelegramChat;
@@ -53,11 +52,11 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
         }
 
         $apiChatId = (string) $chat['id'];
-        
+
         try {
             DB::transaction(function () use ($updateId, $message, $chat, $apiChatId, $telegramMessageId): void {
                 $telegramChat = $this->resolveTelegramChat($apiChatId, $chat);
-                
+
                 if ($this->messageAlreadyExists($telegramChat->id, $telegramMessageId)) {
                     return;
                 }
@@ -66,7 +65,7 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
                 $text = $this->nullableString($message['text'] ?? null);
                 $caption = $this->nullableString($message['caption'] ?? null);
                 $isDisputeRelated = $this->isDisputeRelated($message, $text, $caption);
-                
+
                 if (! $telegramChat->debug_enabled && ! $isDisputeRelated) {
                     return;
                 }
@@ -82,7 +81,7 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
                     'is_dispute_related' => $isDisputeRelated,
                     'raw_payload' => $message,
                 ]);
-                
+
                 ProcessTelegramChatMessageJob::dispatch($telegramChatMessage);
             });
         } catch (QueryException $exception) {
@@ -103,7 +102,8 @@ class TelegramChatWebhookIngestionService implements TelegramChatWebhookIngestio
             ['telegram_chat_id' => $apiChatId],
             [
                 'status' => TelegramChatStatus::PENDING_MODERATION,
-                'parser_type' => TelegramChatParserType::STANDARD_DISPUTE,
+                'chat_type' => null,
+                'parser_type' => null,
                 'debug_enabled' => true,
             ],
         );

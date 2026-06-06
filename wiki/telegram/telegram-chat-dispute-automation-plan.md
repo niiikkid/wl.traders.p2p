@@ -1,8 +1,8 @@
 # Telegram Chat Dispute Automation Plan
 
-> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21; immediate reply implementation, 2026-05-22; fail-only order status gate, 2026-05-23; feature shipped confirmation, 2026-05-24
+> Sources: User conversation, 2026-05-21; Telegram Bot API documentation, 2026-05-21; Phase 1 implementation, 2026-05-21; Phase 2 implementation, 2026-05-21; Phase 3 implementation, 2026-05-21; Phase 4 implementation, 2026-05-21; Phase 5 implementation, 2026-05-21; Phase 6 implementation, 2026-05-21; Local webhook base URL, 2026-05-21; immediate reply implementation, 2026-05-22; fail-only order status gate, 2026-05-23; feature shipped confirmation, 2026-05-24; chat types extension cross-reference, 2026-06-06
 > Raw: [Telegram Chat Dispute Automation Requirements](../../raw/telegram/2026-05-21-telegram-chat-dispute-automation-requirements.md); [Phase 3 Webhook Ingestion Implementation](../../raw/telegram/2026-05-21-phase-3-webhook-ingestion-implementation.md); [Phase 4 Message Processing Implementation](../../raw/telegram/2026-05-21-phase-4-message-processing-implementation.md); [Phase 5 Admin UI Implementation](../../raw/telegram/2026-05-21-phase-5-admin-ui-implementation.md); [Phase 6 Cleanup and Hardening Implementation](../../raw/telegram/2026-05-21-phase-6-cleanup-and-hardening-implementation.md); [Local Webhook Base URL Implementation](../../raw/telegram/2026-05-21-local-webhook-base-url-implementation.md); [Telegram Dispute Immediate Reply Implementation](../../raw/telegram/2026-05-22-telegram-dispute-immediate-reply-implementation.md); [Telegram Dispute Fail-Only Order Status Requirements](../../raw/telegram/2026-05-23-telegram-dispute-fail-only-order-status-requirements.md); [Feature Shipped Status](../../raw/telegram/2026-05-24-feature-shipped-status.md)
-> Updated: 2026-05-24
+> Updated: 2026-06-06
 
 ## Overview
 
@@ -731,6 +731,10 @@ Telegram reply and resolution notifications per [Telegram Dispute Reply and Reso
 
 - **Feature 1** (immediate success/duplicate replies) — **shipped** (Phases 1–2).
 - **Feature 2** (accept/reject resolution notifications + `sendChatDocument`) — **shipped** (Phases 1, 3–5).
+
+## Chat Types Extension (2026-06-06)
+
+The v1 plan assumed `parser_type` default `standard_dispute` on new webhook chats. The [Telegram Chat Types and Trader Team Notifications Specification](telegram-chat-types-and-trader-team-notifications-spec.md) adds nullable `chat_type`, unassigned webhook defaults, `TelegramChat::canProcessDisputeMessages()`, and (Phases 6–7) outbound trader-team dispute notifications on `DisputeOpenedEvent`. Shipped dispute-processing parser behavior is preserved for backfilled and explicitly configured dispute-processing chats; trader-team mode is outbound-only and does not parse incoming messages.
 
 ## Future Enhancements (not v1)
 - Decide later whether to parse replies, forwarded messages, media groups, and thread-specific messages.

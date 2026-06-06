@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\TelegramChatParserType;
 use App\Enums\TelegramChatStatus;
+use App\Enums\TelegramChatType;
 use App\Exceptions\TelegramChatBotException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\TelegramChat\ToggleDebugRequest;
@@ -56,7 +58,10 @@ class TelegramChatController extends Controller
         if ($selectedChatId > 0) {
             $selectedChat = TelegramChat::query()
                 ->withCount('messages')
-                ->with('latestMessage')
+                ->with([
+                    'latestMessage',
+                    'traders' => fn ($query) => $query->orderBy('users.email'),
+                ])
                 ->find($selectedChatId);
 
             if ($selectedChat !== null) {
@@ -85,8 +90,10 @@ class TelegramChatController extends Controller
                 'total' => $messages->total(),
             ] : null,
             'tab' => $fromArchive ? 'archived' : 'active',
-            'parserTypes' => [
-                ['value' => 'standard_dispute', 'label' => 'Стандартный (спор)'],
+            'chatTypes' => [
+                ['value' => '', 'label' => 'Не назначен'],
+                ['value' => TelegramChatType::DISPUTE_PROCESSING->value, 'label' => 'Споры'],
+                ['value' => TelegramChatType::TRADER_TEAM->value, 'label' => 'Команда трейдеров'],
             ],
             'chatStatuses' => [
                 ['value' => 'pending_moderation', 'label' => 'Ожидает модерации'],
@@ -119,7 +126,7 @@ class TelegramChatController extends Controller
     public function update(UpdateRequest $request, TelegramChat $telegramChat): RedirectResponse
     {
         $previousStatus = $telegramChat->status;
-        $validated = $request->validated();
+        $validated = $this->resolveChatConfiguration($request->validated());
 
         $telegramChat->update($validated);
         $telegramChat->refresh();
@@ -141,6 +148,37 @@ class TelegramChatController extends Controller
         return redirect()
             ->back()
             ->with('message', $message);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function resolveChatConfiguration(array $validated): array
+    {
+        if (array_key_exists('chat_type', $validated)) {
+            $chatType = $validated['chat_type'];
+            $validated['parser_type'] = ($chatType instanceof TelegramChatType
+                && $chatType->equals(TelegramChatType::DISPUTE_PROCESSING))
+                ? TelegramChatParserType::STANDARD_DISPUTE
+                : null;
+
+            return $validated;
+        }
+
+        if (array_key_exists('parser_type', $validated)) {
+            $parserType = $validated['parser_type'];
+            $validated['chat_type'] = ($parserType instanceof TelegramChatParserType
+                && $parserType->equals(TelegramChatParserType::STANDARD_DISPUTE))
+                ? TelegramChatType::DISPUTE_PROCESSING
+                : null;
+
+            if ($validated['chat_type'] === null) {
+                $validated['parser_type'] = null;
+            }
+        }
+
+        return $validated;
     }
 
     public function archive(TelegramChat $telegramChat): RedirectResponse

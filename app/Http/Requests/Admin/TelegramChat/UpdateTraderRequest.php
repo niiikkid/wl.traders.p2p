@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\Admin\TelegramChat;
+
+use App\Enums\TelegramChatType;
+use App\Models\TelegramChat;
+use App\Support\TelegramUsernameNormalizer;
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
+
+class UpdateTraderRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'telegram_username' => TelegramUsernameNormalizer::normalize(
+                $this->input('telegram_username'),
+            ),
+        ]);
+    }
+
+    /**
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'telegram_username' => [
+                'nullable',
+                'string',
+                'max:32',
+                'regex:'.TelegramUsernameNormalizer::VALIDATION_PATTERN,
+            ],
+        ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            /** @var TelegramChat|null $telegramChat */
+            $telegramChat = $this->route('telegramChat');
+
+            if ($telegramChat === null || ! $telegramChat->chat_type?->equals(TelegramChatType::TRADER_TEAM)) {
+                $validator->errors()->add('telegram_chat', 'Участников можно редактировать только в чате «Команда трейдеров».');
+            }
+        });
+    }
+}

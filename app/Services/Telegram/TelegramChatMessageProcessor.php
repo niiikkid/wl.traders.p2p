@@ -71,7 +71,7 @@ class TelegramChatMessageProcessor
 
         $telegramChat = $message->telegramChat;
 
-        if ($telegramChat === null) {
+        if ($telegramChat === null || ! $telegramChat->canProcessDisputeMessages()) {
             return;
         }
 
@@ -86,7 +86,8 @@ class TelegramChatMessageProcessor
         Log::warning('Telegram chat message processing skipped: no matching parser', [
             'telegram_chat_message_id' => $message->id,
             'telegram_chat_id' => $telegramChat->id,
-            'parser_type' => $telegramChat->parser_type->value,
+            'chat_type' => $telegramChat->chat_type?->value,
+            'parser_type' => $telegramChat->parser_type?->value,
         ]);
     }
 }

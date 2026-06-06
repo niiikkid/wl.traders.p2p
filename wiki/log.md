@@ -1,5 +1,28 @@
 # Wiki Log
 
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phases 6–7 shipped)
+- Updated: Telegram Chat Types and Trader Team Notifications Specification
+- Updated: Telegram Chat Dispute Automation Plan
+
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phase 5 shipped)
+- Updated: Telegram Chat Types and Trader Team Notifications Specification
+
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phase 4 shipped)
+- Updated: Telegram Chat Types and Trader Team Notifications Specification
+
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phase 3 raw compile)
+- Updated: Telegram Chat Types and Trader Team Notifications Specification
+- Updated: Telegram Chat Dispute Automation Plan
+
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phase 3 shipped)
+- Updated: Telegram Chat Types and Trader Team Notifications Specification
+
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phase 2 shipped)
+- Updated: Telegram Chat Types and Trader Team Notifications Specification
+
+## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phase 1 shipped)
+- Updated: Telegram Chat Types and Trader Team Notifications Specification
+
 ## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification
 
 ## [2026-06-03] ingest | Merchant Reconciliation Service Specification

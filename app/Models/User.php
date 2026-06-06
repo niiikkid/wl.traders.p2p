@@ -337,6 +337,13 @@ class User extends Authenticatable
         return $this->hasOne(TelegramAccount::class);
     }
 
+    public function telegramTeamChats(): BelongsToMany
+    {
+        return $this->belongsToMany(TelegramChat::class, 'telegram_chat_traders', 'trader_id', 'telegram_chat_id')
+            ->withPivot('telegram_username')
+            ->withTimestamps();
+    }
+
     public function teamLeader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'team_leader_id');

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\TelegramChatStatus;
 use App\Models\TelegramChatMessage;
 use App\Services\Telegram\TelegramChatMessageProcessor;
 use Illuminate\Bus\Queueable;
@@ -38,7 +37,7 @@ class ProcessTelegramChatMessageJob implements ShouldQueue
 
         $processor->storeDebugAttachmentsIfNeeded($message);
 
-        if ($telegramChat === null || ! $telegramChat->status->equals(TelegramChatStatus::ACTIVE)) {
+        if ($telegramChat === null || ! $telegramChat->canProcessDisputeMessages()) {
             return;
         }
 

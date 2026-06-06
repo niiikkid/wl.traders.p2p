@@ -8,7 +8,7 @@ Telegram bot and chat automation knowledge for the project.
 |---------|---------|---------|
 | [Telegram Chat Dispute Automation Plan](telegram/telegram-chat-dispute-automation-plan.md) | **Shipped:** Phases 1–6; Features 1–2 (reply + resolution); fail-only opening; live Telegram verification complete. | 2026-05-24 |
 | [Telegram Dispute Reply and Resolution Notifications Specification](telegram/telegram-dispute-reply-and-resolution-notifications-spec.md) | **Shipped:** Features 1–2; order-status rejection replies; resolution notifications with statement document/text fallback; Phase 5 verified. | 2026-05-24 |
-| [Telegram Chat Types and Trader Team Notifications Specification](telegram/telegram-chat-types-and-trader-team-notifications-spec.md) | Planned extension: unassigned chat defaults, explicit dispute-processing mode, trader team chats, async dispute notifications, and recurring reminders. | 2026-06-06 |
+| [Telegram Chat Types and Trader Team Notifications Specification](telegram/telegram-chat-types-and-trader-team-notifications-spec.md) | **Phases 1–7 shipped:** schema, admin UI, webhook gates, async team dispute notifications + self-scheduling reminders. Next: Phase 8 manual verification. | 2026-06-06 |
 
 ## traffic-categories
 

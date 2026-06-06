@@ -7,8 +7,11 @@ namespace App\Models;
 use App\Enums\TelegramChatMessageStatus;
 use App\Enums\TelegramChatParserType;
 use App\Enums\TelegramChatStatus;
+use App\Enums\TelegramChatType;
 use App\Jobs\ProcessTelegramChatMessageJob;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
@@ -20,12 +23,14 @@ use Illuminate\Support\Carbon;
  * @property string|null $title
  * @property string|null $username
  * @property TelegramChatStatus $status
- * @property TelegramChatParserType $parser_type
+ * @property TelegramChatType|null $chat_type
+ * @property TelegramChatParserType|null $parser_type
  * @property bool $debug_enabled
  * @property Carbon|null $last_message_at
  * @property array|null $raw_payload
  * @property Carbon $created_at
  * @property Carbon $updated_at
+ * @property-read Collection<int, User> $traders
  */
 class TelegramChat extends Model
 {
@@ -35,6 +40,7 @@ class TelegramChat extends Model
         'title',
         'username',
         'status',
+        'chat_type',
         'parser_type',
         'debug_enabled',
         'last_message_at',
@@ -45,6 +51,7 @@ class TelegramChat extends Model
     {
         return [
             'status' => TelegramChatStatus::class,
+            'chat_type' => TelegramChatType::class,
             'parser_type' => TelegramChatParserType::class,
             'debug_enabled' => 'boolean',
             'last_message_at' => 'datetime',
@@ -60,6 +67,30 @@ class TelegramChat extends Model
     public function latestMessage(): HasOne
     {
         return $this->hasOne(TelegramChatMessage::class)->latestOfMany();
+    }
+
+    public function traders(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'telegram_chat_traders', 'telegram_chat_id', 'trader_id')
+            ->withPivot('telegram_username')
+            ->withTimestamps();
+    }
+
+    public function canProcessDisputeMessages(): bool
+    {
+        if (! $this->status->equals(TelegramChatStatus::ACTIVE)) {
+            return false;
+        }
+
+        if ($this->chat_type?->equals(TelegramChatType::TRADER_TEAM)) {
+            return false;
+        }
+
+        if ($this->chat_type !== null && ! $this->chat_type->equals(TelegramChatType::DISPUTE_PROCESSING)) {
+            return false;
+        }
+
+        return $this->parser_type?->equals(TelegramChatParserType::STANDARD_DISPUTE) ?? false;
     }
 
     public function redispatchReceivedMessages(): int

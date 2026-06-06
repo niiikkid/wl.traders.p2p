@@ -1,6 +1,6 @@
 <script setup>
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
@@ -35,7 +35,7 @@ const props = defineProps({
         type: String,
         default: 'active',
     },
-    parserTypes: {
+    chatTypes: {
         type: Array,
         default: () => [],
     },
@@ -146,8 +146,42 @@ const visitChatListPage = (page) => {
 
 const chatUpdateForm = useForm({
     status: '',
-    parser_type: '',
+    chat_type: '',
 });
+
+const teamTraders = computed(() => props.selectedChat?.team_traders ?? []);
+const isTraderTeamChatSelected = computed(() => chatUpdateForm.chat_type === 'trader_team');
+const canManageTeamTraders = computed(
+    () => isTraderTeamChatSelected.value && props.selectedChat?.chat_type === 'trader_team',
+);
+
+const traderSearchQuery = ref('');
+const traderSearchResults = ref([]);
+const traderSearchLoading = ref(false);
+const traderSearchDropdownOpen = ref(false);
+const selectedTraderToAdd = ref(null);
+const traderSearchRootRef = ref(null);
+let traderSearchTimeout = null;
+
+const addTraderForm = useForm({
+    trader_id: '',
+    telegram_username: '',
+});
+
+const updatingTraderId = ref(null);
+const traderUsernameEdits = ref({});
+
+const chatTypeLabel = (chatType) => {
+    const match = props.chatTypes.find((item) => item.value === (chatType ?? ''));
+
+    return match?.label ?? 'Не назначен';
+};
+
+const existingTeamTraderIds = computed(() => new Set(teamTraders.value.map((trader) => trader.id)));
+
+const filteredTraderSearchResults = computed(() =>
+    traderSearchResults.value.filter((trader) => !existingTeamTraderIds.value.has(trader.id)),
+);
 
 watch(
     () => props.selectedChat,
@@ -156,10 +190,23 @@ watch(
             return;
         }
         chatUpdateForm.status = chat.status;
-        chatUpdateForm.parser_type = chat.parser_type;
+        chatUpdateForm.chat_type = chat.chat_type ?? '';
+
+        const edits = {};
+        (chat.team_traders ?? []).forEach((trader) => {
+            edits[trader.id] = trader.telegram_username ?? '';
+        });
+        traderUsernameEdits.value = edits;
     },
     { immediate: true },
 );
+
+watch(traderSearchQuery, () => {
+    clearTimeout(traderSearchTimeout);
+    traderSearchTimeout = setTimeout(() => {
+        searchTraders();
+    }, 300);
+});
 
 const saveChatSettings = () => {
     if (!props.selectedChat) {
@@ -170,6 +217,104 @@ const saveChatSettings = () => {
         preserveScroll: true,
     });
 };
+
+const searchTraders = async () => {
+    traderSearchLoading.value = true;
+
+    try {
+        const response = await axios.get(route('admin.telegram-chats.trader-search'), {
+            params: {
+                query: traderSearchQuery.value.trim(),
+            },
+        });
+
+        traderSearchResults.value = response.data.traders ?? [];
+        traderSearchDropdownOpen.value = true;
+    } catch (error) {
+        traderSearchResults.value = [];
+        console.error('Ошибка при поиске трейдеров:', error);
+    } finally {
+        traderSearchLoading.value = false;
+    }
+};
+
+const selectTraderToAdd = (trader) => {
+    selectedTraderToAdd.value = trader;
+    traderSearchQuery.value = trader.email;
+    addTraderForm.trader_id = trader.id;
+    traderSearchDropdownOpen.value = false;
+};
+
+const clearTraderToAdd = () => {
+    selectedTraderToAdd.value = null;
+    traderSearchQuery.value = '';
+    addTraderForm.trader_id = '';
+    addTraderForm.telegram_username = '';
+    traderSearchResults.value = [];
+};
+
+const addTeamTrader = () => {
+    if (!props.selectedChat || !addTraderForm.trader_id) {
+        return;
+    }
+
+    addTraderForm.post(route('admin.telegram-chats.traders.store', props.selectedChat.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            clearTraderToAdd();
+        },
+    });
+};
+
+const updateTeamTraderUsername = (trader) => {
+    if (!props.selectedChat) {
+        return;
+    }
+
+    updatingTraderId.value = trader.id;
+
+    useForm({
+        telegram_username: traderUsernameEdits.value[trader.id] ?? '',
+    }).patch(route('admin.telegram-chats.traders.update', [props.selectedChat.id, trader.id]), {
+        preserveScroll: true,
+        onFinish: () => {
+            updatingTraderId.value = null;
+        },
+    });
+};
+
+const removeTeamTrader = (trader) => {
+    if (!props.selectedChat) {
+        return;
+    }
+
+    modalStore.openConfirmModal({
+        title: 'Удалить трейдера из команды?',
+        body: `Трейдер ${trader.email} перестанет получать уведомления в этом чате.`,
+        confirm_button_name: 'Удалить',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            useForm({}).delete(route('admin.telegram-chats.traders.destroy', [props.selectedChat.id, trader.id]), {
+                preserveScroll: true,
+            });
+        },
+    });
+};
+
+const onTraderSearchClickOutside = (event) => {
+    if (traderSearchRootRef.value && !traderSearchRootRef.value.contains(event.target)) {
+        traderSearchDropdownOpen.value = false;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', onTraderSearchClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', onTraderSearchClickOutside);
+    clearTimeout(traderSearchTimeout);
+});
 
 const archiveChat = (chat) => {
     modalStore.openConfirmModal({
@@ -704,7 +849,7 @@ watch(
                                     {{ statusLabels[selectedChat.status] ?? selectedChat.status }}
                                 </span>
                                 <span class="badge badge-outline">
-                                    {{ selectedChat.parser_type }}
+                                    {{ chatTypeLabel(selectedChat.chat_type) }}
                                 </span>
                             </div>
 
@@ -725,13 +870,13 @@ watch(
                                     </select>
                                 </fieldset>
                                 <fieldset class="fieldset">
-                                    <legend class="fieldset-legend">Парсер</legend>
+                                    <legend class="fieldset-legend">Функция чата</legend>
                                     <select
-                                        v-model="chatUpdateForm.parser_type"
+                                        v-model="chatUpdateForm.chat_type"
                                         class="select select-bordered select-sm w-full"
                                     >
                                         <option
-                                            v-for="item in parserTypes"
+                                            v-for="item in chatTypes"
                                             :key="item.value"
                                             :value="item.value"
                                         >
@@ -757,8 +902,166 @@ watch(
                                     :disabled="chatUpdateForm.processing"
                                     @click="saveChatSettings"
                                 >
-                                    Сохранить
+                                    {{ chatUpdateForm.processing ? 'Сохраняем...' : 'Сохранить' }}
                                 </button>
+                            </div>
+
+                            <div v-if="isTraderTeamChatSelected" class="space-y-3 rounded-box border border-base-300 bg-base-200/30 p-4">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-base-content">Команда трейдеров</h4>
+                                    <p class="text-xs text-base-content/60">
+                                        Уведомления о новых спорах будут отправляться в этот чат для выбранных трейдеров.
+                                    </p>
+                                </div>
+
+                                <div
+                                    v-if="!canManageTeamTraders"
+                                    class="alert alert-warning text-sm"
+                                >
+                                    Сохраните настройки чата с функцией «Команда трейдеров», чтобы управлять составом команды.
+                                </div>
+
+                                <template v-else>
+                                    <div v-if="teamTraders.length" class="overflow-x-auto">
+                                        <table class="table table-sm">
+                                            <thead class="text-xs uppercase bg-base-300">
+                                                <tr>
+                                                    <th scope="col">Трейдер</th>
+                                                    <th scope="col">Telegram</th>
+                                                    <th scope="col"><span class="sr-only">Действия</span></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr
+                                                    v-for="trader in teamTraders"
+                                                    :key="trader.id"
+                                                    class="bg-base-100 border-b border-base-200 last:border-none"
+                                                >
+                                                    <td class="align-middle whitespace-nowrap">
+                                                        {{ trader.email }}
+                                                    </td>
+                                                    <td class="align-middle">
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            <input
+                                                                v-model="traderUsernameEdits[trader.id]"
+                                                                type="text"
+                                                                class="input input-bordered input-xs w-full min-w-[8rem] max-w-xs"
+                                                                placeholder="username"
+                                                                autocomplete="off"
+                                                            >
+                                                            <button
+                                                                type="button"
+                                                                class="btn btn-xs btn-outline"
+                                                                :disabled="updatingTraderId === trader.id"
+                                                                @click="updateTeamTraderUsername(trader)"
+                                                            >
+                                                                {{ updatingTraderId === trader.id ? '...' : 'Сохранить' }}
+                                                            </button>
+                                                        </div>
+                                                        <p class="mt-1 text-xs text-base-content/50">
+                                                            Без @. Для упоминания в уведомлениях.
+                                                        </p>
+                                                    </td>
+                                                    <td class="align-middle text-right">
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-xs btn-error btn-outline"
+                                                            @click="removeTeamTrader(trader)"
+                                                        >
+                                                            Удалить
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p v-else class="text-sm text-base-content/60">
+                                        Участники не добавлены.
+                                    </p>
+
+                                    <div class="space-y-2 border-t border-base-300 pt-3">
+                                        <p class="text-sm font-medium">Добавить трейдера</p>
+                                        <div class="grid gap-3 sm:grid-cols-[minmax(12rem,1fr)_minmax(8rem,12rem)_auto] sm:items-end">
+                                            <div ref="traderSearchRootRef" class="relative w-full">
+                                                <label class="label py-0">
+                                                    <span class="label-text text-xs">Поиск по email</span>
+                                                </label>
+                                                <div class="relative">
+                                                    <input
+                                                        v-model="traderSearchQuery"
+                                                        type="text"
+                                                        class="input input-bordered input-sm w-full pr-8"
+                                                        placeholder="Email трейдера..."
+                                                        autocomplete="off"
+                                                        @focus="traderSearchDropdownOpen = true"
+                                                        @input="traderSearchDropdownOpen = true"
+                                                    >
+                                                    <button
+                                                        v-if="selectedTraderToAdd"
+                                                        type="button"
+                                                        class="btn btn-ghost btn-xs absolute right-1 top-1/2 -translate-y-1/2"
+                                                        @click="clearTraderToAdd"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                    <span
+                                                        v-if="traderSearchLoading"
+                                                        class="loading loading-spinner loading-sm absolute right-2 top-1/2 -translate-y-1/2"
+                                                    />
+                                                </div>
+                                                <div
+                                                    v-if="traderSearchDropdownOpen && filteredTraderSearchResults.length > 0"
+                                                    class="menu menu-sm bg-base-100 rounded-box absolute z-10 mt-1 w-full shadow"
+                                                >
+                                                    <ul>
+                                                        <li
+                                                            v-for="trader in filteredTraderSearchResults"
+                                                            :key="trader.id"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                class="w-full text-left"
+                                                                @click="selectTraderToAdd(trader)"
+                                                            >
+                                                                {{ trader.email }}
+                                                            </button>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                                <div
+                                                    v-if="traderSearchDropdownOpen && traderSearchQuery && !traderSearchLoading && filteredTraderSearchResults.length === 0"
+                                                    class="alert alert-info absolute z-10 mt-1 w-full p-2 text-xs shadow"
+                                                >
+                                                    <span>Ничего не найдено</span>
+                                                </div>
+                                            </div>
+                                            <fieldset class="fieldset">
+                                                <legend class="fieldset-legend text-xs">Telegram username</legend>
+                                                <input
+                                                    v-model="addTraderForm.telegram_username"
+                                                    type="text"
+                                                    class="input input-bordered input-sm w-full"
+                                                    placeholder="Необязательно"
+                                                    autocomplete="off"
+                                                >
+                                            </fieldset>
+                                            <button
+                                                type="button"
+                                                class="btn btn-primary btn-sm"
+                                                :disabled="!addTraderForm.trader_id || addTraderForm.processing"
+                                                @click="addTeamTrader"
+                                            >
+                                                {{ addTraderForm.processing ? 'Добавляем...' : 'Добавить' }}
+                                            </button>
+                                        </div>
+                                        <p v-if="addTraderForm.errors.trader_id" class="text-xs text-error">
+                                            {{ addTraderForm.errors.trader_id }}
+                                        </p>
+                                        <p v-if="addTraderForm.errors.telegram_username" class="text-xs text-error">
+                                            {{ addTraderForm.errors.telegram_username }}
+                                        </p>
+                                    </div>
+                                </template>
                             </div>
 
                             <div class="divider my-0 text-base-content/50">Сообщения</div>

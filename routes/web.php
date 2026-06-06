@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\SmsStopWordController;
 use App\Http\Controllers\Admin\TelegramBotSettingController;
 use App\Http\Controllers\Admin\TelegramChatAttachmentController;
 use App\Http\Controllers\Admin\TelegramChatController;
+use App\Http\Controllers\Admin\TelegramChatTraderController;
 use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
 use App\Http\Controllers\Admin\UserNoteController;
 use App\Http\Controllers\Admin\UserTeamController;
@@ -439,6 +440,10 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/telegram-bot/settings', [TelegramBotSettingController::class, 'update'])->name('telegram-bot.settings.update');
         Route::post('/telegram-bot/webhook', [TelegramBotSettingController::class, 'setupWebhook'])->name('telegram-bot.webhook.setup');
         Route::get('/telegram-chats', [TelegramChatController::class, 'index'])->name('telegram-chats.index');
+        Route::get('/telegram-chats/trader-search', [TelegramChatTraderController::class, 'search'])->name('telegram-chats.trader-search');
+        Route::post('/telegram-chats/{telegramChat}/traders', [TelegramChatTraderController::class, 'store'])->name('telegram-chats.traders.store');
+        Route::patch('/telegram-chats/{telegramChat}/traders/{trader}', [TelegramChatTraderController::class, 'update'])->name('telegram-chats.traders.update');
+        Route::delete('/telegram-chats/{telegramChat}/traders/{trader}', [TelegramChatTraderController::class, 'destroy'])->name('telegram-chats.traders.destroy');
         Route::get('/telegram-chats/{telegramChat}/messages', [TelegramChatController::class, 'messages'])->name('telegram-chats.messages.index');
         Route::patch('/telegram-chats/{telegramChat}', [TelegramChatController::class, 'update'])->name('telegram-chats.update');
         Route::post('/telegram-chats/{telegramChat}/archive', [TelegramChatController::class, 'archive'])->name('telegram-chats.archive');

@@ -1,8 +1,23 @@
 # Telegram Chat Types and Trader Team Notifications Specification
 
-> Sources: User conversation, 2026-06-06; Context7 docs for `irazasyed/telegram-bot-sdk`, 2026-06-06; existing Telegram chat automation code, 2026-06-06
-> Raw: [Telegram Chat Types and Trader Team Dispute Notifications Requirements](../../raw/telegram/2026-06-06-telegram-chat-types-and-trader-team-dispute-notifications-requirements.md)
+> Sources: User conversation, 2026-06-06; Context7 docs for `irazasyed/telegram-bot-sdk`, 2026-06-06; existing Telegram chat automation code, 2026-06-06; implementation session, 2026-06-06; Phase 3 webhook and processing gates, 2026-06-06; Phase 4 admin backend, 2026-06-06; Phase 5 admin frontend, 2026-06-06; Phase 6–7 dispute notification jobs and scheduling, 2026-06-06
+> Raw: [Telegram Chat Types and Trader Team Dispute Notifications Requirements](../../raw/telegram/2026-06-06-telegram-chat-types-and-trader-team-dispute-notifications-requirements.md); [Phase 1 Domain Enums and Schema](../../raw/telegram/2026-06-06-phase-1-domain-enums-and-schema.md); [Phase 2 Models and Resources](../../raw/telegram/2026-06-06-phase-2-models-and-resources.md); [Phase 3 Webhook and Processing Gates](../../raw/telegram/2026-06-06-phase-3-webhook-and-processing-gates.md); [Phase 4 Admin Backend](../../raw/telegram/2026-06-06-phase-4-admin-backend.md); [Phase 5 Admin Frontend](../../raw/telegram/2026-06-06-phase-5-admin-frontend.md); [Phase 6–7 Dispute Notification Jobs](../../raw/telegram/2026-06-06-phase-6-dispute-notification-jobs.md)
 > Updated: 2026-06-06
+
+## Implementation Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 1. Domain enums and schema | **Done** | `TelegramChatType`, `chat_type` column, nullable `parser_type`, backfill, `telegram_chat_traders`; `TelegramChat` casts/fillable |
+| 2. Models and resources | **Done** | `TelegramChat::traders()`, `User::telegramTeamChats()`, `TelegramChatTraderResource`, `chat_type`/`team_traders` in `TelegramChatResource`; selected chat eager loads traders |
+| 3. Webhook and processing gates | **Done** | Unassigned defaults in webhook; `TelegramChat::canProcessDisputeMessages()` gates job and processor |
+| 4. Admin backend | **Done** | `chat_type` update + derived `parser_type`; `TelegramChatTraderController`; trader search; membership CRUD; `TelegramUsernameNormalizer`; `chatTypes` Inertia prop |
+| 5. Admin frontend | **Done** | `Index.vue` chat function selector; team membership UI; backend trader search; username edit; `ConfirmModal` on remove; `parserTypes` prop removed |
+| 6. Dispute notification jobs | **Done** | `SendTelegramTraderTeamDisputeNotificationJob`, `SendTelegramTraderTeamDisputeReminderJob`, `TelegramTraderTeamDisputeNotificationService`, `SendTelegramTraderTeamDisputeNotificationListener` on `DisputeOpenedEvent` |
+| 7. Scheduling strategy | **Done** | Self-rescheduling delayed jobs: immediate → +15 min → +1 hour loop while `PENDING` |
+| 8. Verification | Pending | Manual checklist; automated tests deferred |
+
+Feature is **not shipped** end-to-end until Phase 8 manual verification passes. Phases 1–7 cover schema, admin UI, processing gates, and async notification delivery with reminders.
 
 ## Overview
 
@@ -26,10 +41,7 @@ The current chat automation flow is:
 7. `StandardTelegramDisputeParser` opens disputes only for `OrderStatus::FAIL` orders with a receipt attachment and no existing dispute.
 8. Dispute resolution replies are sent by `SendTelegramDisputeResolutionNotificationJob`.
 
-Important current default to change:
-
-- `TelegramChatWebhookIngestionService::resolveTelegramChat()` creates new chats with `parser_type = standard_dispute`.
-- This must become unassigned by default.
+**Shipped in Phase 3:** new webhook chats are unassigned by default (`chat_type = null`, `parser_type = null`). Dispute parsing is gated by `TelegramChat::canProcessDisputeMessages()`.
 
 ## Goals
 
@@ -116,132 +128,162 @@ Validation:
 - Accept `@username` or `username`; store without `@`.
 - Reject spaces and invalid Telegram username characters.
 
-Model relationships:
+Model relationships (**shipped in Phase 2**):
 
-- `TelegramChat::traders()` belongsToMany `User::class` with pivot `telegram_username`.
-- `User::telegramTeamChats()` belongsToMany `TelegramChat::class`.
+- `TelegramChat::traders()` — `belongsToMany(User::class, 'telegram_chat_traders', ...)` with pivot `telegram_username` and timestamps.
+- `User::telegramTeamChats()` — inverse `belongsToMany(TelegramChat::class, 'telegram_chat_traders', ...)`.
+
+### API Resource Shape (Phase 2)
+
+`TelegramChatTraderResource` — one row per membership:
+
+| Field | Source |
+|-------|--------|
+| `id` | Trader `users.id` |
+| `email` | Trader email (UI display field) |
+| `telegram_username` | Pivot, nullable |
+| `telegram_tag` | `@username` when set |
+| `created_at`, `updated_at` | Pivot timestamps |
+
+`TelegramChatResource` additions:
+
+- `chat_type` — nullable
+- `parser_type` — nullable-safe
+- `team_traders` — only when `traders` is eager loaded; nested collection resolved for Inertia `selectedChat`
+
+`TelegramChatController::index()` loads `traders` ordered by `users.email` for the selected chat only.
 
 ## Webhook Ingestion Changes
 
-New chat creation:
+**Implemented in Phase 3.**
+
+New chat creation (`TelegramChatWebhookIngestionService::resolveTelegramChat()`):
 
 1. Resolve Telegram chat by API chat id.
 2. If missing, create:
    - `status = pending_moderation`
    - `chat_type = null`
    - `parser_type = null`
-   - `debug_enabled = true` may remain as today for admin inspection.
+   - `debug_enabled = true`
 3. Update chat metadata and `last_message_at`.
-4. Store messages according to current debug/relevance rules, but do not process unassigned chats.
+4. Store messages according to current debug/relevance rules when `debug_enabled` or dispute-related.
+5. Dispatch `ProcessTelegramChatMessageJob` as before; parser no-ops for unassigned chats.
 
-Processing gate:
+Processing gate (`TelegramChat::canProcessDisputeMessages()`):
 
-- `ProcessTelegramChatMessageJob` must only call the parser processor when:
-  - chat status is `active`
-  - chat function is `dispute_processing`
-  - parser type is `standard_dispute`
-- If chat is unassigned or `trader_team`, message processing must stop safely.
+- Returns `true` only when chat is `active`, not `trader_team`, `parser_type = standard_dispute`, and `chat_type` is `null` or `dispute_processing`.
+- Transitional: pre-phase-4 admin UI may set only `parser_type`; `chat_type = null` + `parser_type = standard_dispute` still processes when active.
+- Used in `ProcessTelegramChatMessageJob` (before `process()`) and `TelegramChatMessageProcessor::process()`.
+- `storeDebugAttachmentsIfNeeded()` runs for all chats regardless of gate.
 
-When an admin changes an unassigned chat to dispute-processing and activates it:
+| Chat state | Debug attachments | Dispute parser |
+|------------|-------------------|----------------|
+| Unassigned (`null`/`null`) | yes (if debug or dispute-related) | no |
+| `trader_team` | yes | no |
+| `dispute_processing` + active | yes | yes |
+| Backfilled existing chats | yes | yes |
 
-- Existing `received` messages can be redispatched exactly like current activation behavior.
-- The current parser must process them without behavior changes.
+When an admin activates a dispute-processing chat:
+
+- `redispatchReceivedMessages()` unchanged; jobs no-op until chat passes `canProcessDisputeMessages()`.
+- Once configured and active, existing parser behavior is unchanged.
 
 ## Admin UI Changes
 
-The existing page `resources/js/Pages/Admin/TelegramChats/Index.vue` should support a clear chat function selector.
+**Shipped in Phase 5.** Page: `resources/js/Pages/Admin/TelegramChats/Index.vue`.
 
-Chat settings:
+### Chat settings panel
 
-- Status: existing `pending_moderation`, `active`, `disabled`, `archived`.
-- Chat function:
-  - "Не назначен"
-  - "Споры"
-  - "Команда трейдеров"
-- Parser type field should be hidden or derived for the "Споры" function.
-- Debug toggle remains available as today.
+- Status select unchanged (`chatStatuses`).
+- Chat function select (`chatTypes` Inertia prop): «Не назначен», «Споры», «Команда трейдеров».
+- Form saves `chat_type` (not `parser_type`); parser derived on backend.
+- Parser implementation hidden; header badge shows function label.
+- Debug toggle unchanged; `ConfirmModal` when disabling debug.
 
-For "Команда трейдеров":
+### Trader team block (when `chat_type = trader_team`)
 
-- Show a team members block.
-- Backend search input for traders.
-- Add selected trader to chat.
-- Optional Telegram username field per trader.
-- Remove trader from chat.
-- Edit Telegram username for existing membership.
-- A trader may be added to multiple chats.
+- Warning until chat is saved with `trader_team` function.
+- Members table from `selectedChat.team_traders`: email, editable `telegram_username`, save, remove.
+- Add trader: debounced email search (`admin.telegram-chats.trader-search`), optional username, excludes existing members.
+- Remove via `ConfirmModal`.
+- Mutations use Phase 4 routes (`traders.store`, `traders.update`, `traders.destroy`).
 
-Search behavior:
+Search behavior (backend, Phase 4):
 
-- Search by trader email, because `email` is the default user display field in this project.
-- Return only users with Trader role.
-- Keep response small and paginated/limited.
+- Search by trader `email`; Trader role only; limit 20.
+- Response: `{ traders: [{ id, email }, ...] }`.
 
 ## Routes and Controllers
 
-Extend the Super Admin route group only.
+**Shipped in Phase 4.** Super Admin route group only; authorization via existing `role:Super Admin` middleware.
 
-Recommended endpoints:
+### Chat update
 
-- `GET admin.telegram-chats.trader-search`  
-  Search traders for membership UI.
-- `POST admin.telegram-chats.{telegramChat}.traders`  
-  Add trader to a trader team chat.
-- `PATCH admin.telegram-chats.{telegramChat}.traders.{trader}`  
-  Update optional Telegram username.
-- `DELETE admin.telegram-chats.{telegramChat}.traders.{trader}`  
-  Remove trader from chat.
+`TelegramChatController::update()` — accepts `chat_type` (nullable) and transitional `parser_type`; derives parser via `resolveChatConfiguration()`:
 
-Alternative: create `Admin\TelegramChatTraderController`.
+- `dispute_processing` → `parser_type = standard_dispute`
+- `trader_team` or unassigned → `parser_type = null`
 
-Requests:
+Legacy `parser_type`-only path in `resolveChatConfiguration()` remains for transitional compatibility; Phase 5 frontend sends `chat_type` only.
 
-- `StoreTelegramChatTraderRequest`
-- `UpdateTelegramChatTraderRequest`
-- `SearchTelegramChatTraderRequest` if needed
+### Trader membership — `TelegramChatTraderController`
 
-Authorization:
+| Method | Route name | Action |
+|--------|------------|--------|
+| GET | `admin.telegram-chats.trader-search` | Search traders by email (limit 20, Trader role) |
+| POST | `admin.telegram-chats.traders.store` | Add trader to team chat |
+| PATCH | `admin.telegram-chats.traders.update` | Update pivot `telegram_username` |
+| DELETE | `admin.telegram-chats.traders.destroy` | Remove trader from chat |
 
-- Keep using `role:Super Admin` route middleware.
-- Form Request `authorize()` can remain true if route middleware is authoritative.
+Form Requests: `SearchTraderRequest`, `StoreTraderRequest`, `UpdateTraderRequest`.
+
+Search response: `{ traders: [{ id, email }, ...] }`.
+
+Membership mutations return `RedirectResponse` with flash message. Store/update validate `chat_type = trader_team`, Trader role, unique membership; username normalized via `TelegramUsernameNormalizer`.
+
+`trader-search` route registered before `{telegramChat}` parameterized routes.
+
+### Authorization
+
+Form Request `authorize()` returns true; route middleware is authoritative.
 
 ## Dispute Notification Flow
 
-Trigger point:
+**Shipped in Phases 6–7.**
 
-- Use the existing dispute creation flow, preferably around `DisputeOpenedEvent` or immediately after `DisputeService::create()` creates the dispute.
-- The trigger must dispatch a job only. It must not send Telegram messages synchronously.
+Trigger:
 
-Recommended jobs:
+- `DisputeService::create()` dispatches `DisputeOpenedEvent` (after commit).
+- `SendTelegramTraderTeamDisputeNotificationListener` dispatches `SendTelegramTraderTeamDisputeNotificationJob` (sync listener; no Telegram I/O in listener).
 
-- `SendTelegramTraderTeamDisputeNotificationJob`
-- `SendTelegramTraderTeamDisputeReminderJob`
+Jobs:
 
-Queue:
+- `SendTelegramTraderTeamDisputeNotificationJob` — immediate notification
+- `SendTelegramTraderTeamDisputeReminderJob` — 15-minute and hourly reminders
 
-- Use existing `telegram-chat-automation`.
-- Use `afterCommit()`.
+Shared service: `TelegramTraderTeamDisputeNotificationService`.
+
+Enum: `TelegramTraderTeamDisputeNotificationType` (`immediate`, `fifteen_minute`, `hourly`).
+
+Queue: `telegram-chat-automation`; both jobs use `afterCommit()`.
 
 Immediate notification:
 
-1. A dispute is created.
-2. Dispatch immediate notification job after commit.
-3. Job loads dispute with order and trader.
-4. Job finds all active trader team chats containing `dispute.trader_id`.
-5. For every chat, send a message through `TelegramChatBotService::sendChatMessage()`.
-6. If membership has `telegram_username`, include `@username` in the text.
-7. Log failures per chat; do not throw failures into dispute flow.
-8. Dispatch or schedule the 15-minute reminder.
+1. Dispute created → `DisputeOpenedEvent` → listener dispatches immediate job.
+2. Job reloads dispute with order; returns if missing or not `PENDING`.
+3. Service finds active `trader_team` chats for `dispute.trader_id`.
+4. Per chat: `TelegramChatBotService::sendChatMessage()` with optional `@username` mention from pivot.
+5. Failures logged per chat (`TelegramChatBotException` / `Throwable`); dispute flow unaffected.
+6. Job schedules `SendTelegramTraderTeamDisputeReminderJob` (`fifteen_minute`) with `delay(now()->addMinutes(15))`.
 
 Reminder sequence:
 
-1. Immediate notification job schedules first reminder with 15-minute delay.
-2. Reminder job checks the dispute fresh from DB.
-3. If dispute is no longer open/pending, stop.
-4. If still open:
-   - send reminder to all current matching active trader team chats
-   - schedule next reminder with 60-minute delay
-5. Repeat hourly while dispute remains open.
+1. Reminder job reloads dispute; returns if missing or not `PENDING`.
+2. Sends reminder to all current matching active team chats.
+3. Self-dispatches `HOURLY_REMINDER` with `delay(now()->addHour())`.
+4. Hourly job repeats step 1–3 until dispute closes.
+
+Post-deploy: run `php artisan event:clear` if cached events omit the new listener.
 
 Open status:
 
@@ -334,72 +376,89 @@ The new trader team notification flow is separate:
 
 ## Implementation Plan
 
-### Phase 1: Domain Enums and Schema
+### Phase 1: Domain Enums and Schema — **Done**
 
-1. Add a chat function enum, for example `TelegramChatType`.
-2. Add nullable `chat_type` to `telegram_chats`.
-3. Make `parser_type` nullable if it is not already.
-4. Backfill existing dispute-processing chats:
-   - chats with `parser_type = standard_dispute` become `chat_type = dispute_processing`
-5. Ensure new chats default to `chat_type = null`, `parser_type = null`.
-6. Add `telegram_chat_traders` pivot table.
+Shipped in code (2026-06-06):
 
-### Phase 2: Models and Resources
+1. **`TelegramChatType` enum** — `app/Enums/TelegramChatType.php` with `dispute_processing`, `trader_team`; unassigned = `null`.
+2. **Nullable `chat_type`** — migration `2026_06_06_074023_add_chat_type_to_telegram_chats_table.php`; indexed column on `telegram_chats`.
+3. **Nullable `parser_type`** — same migration removes `standard_dispute` default; column default is `null`.
+4. **Backfill** — existing rows with `parser_type = standard_dispute` set to `chat_type = dispute_processing`.
+5. **DB defaults for new rows** — `chat_type` and `parser_type` default to `null` at schema level; webhook ingestion aligned in Phase 3.
+6. **`telegram_chat_traders` pivot** — migration `2026_06_06_074023_create_telegram_chat_traders_table.php` with `telegram_chat_id`, `trader_id`, nullable `telegram_username`, unique pair, indexes.
 
-1. Update `TelegramChat` casts and fillable fields.
-2. Add trader membership relationships.
-3. Add a resource shape for team traders in `TelegramChatResource`.
-4. Ensure API resources still call `->resolve()` where needed for non-paginated props.
+Also shipped ahead of Phase 2 scope: `TelegramChat` `$fillable` and `casts()` for `chat_type`; nullable `parser_type` in PHPDoc.
 
-### Phase 3: Webhook and Processing Gates
+### Phase 2: Models and Resources — **Done**
 
-1. Change `TelegramChatWebhookIngestionService::resolveTelegramChat()` default creation values.
-2. Update `ProcessTelegramChatMessageJob` or `TelegramChatMessageProcessor` so unassigned/team chats do not run dispute parsers.
-3. Preserve redispatch behavior when a chat becomes active and dispute-processing.
-4. Verify existing dispute-processing chats still process messages after explicit mode selection.
+Shipped in code (2026-06-06):
 
-### Phase 4: Admin Backend
+1. **`TelegramChat::traders()`** — `belongsToMany` via `telegram_chat_traders`; pivot `telegram_username`; `withTimestamps()`.
+2. **`User::telegramTeamChats()`** — inverse relationship with same pivot.
+3. **`TelegramChatTraderResource`** — `id`, `email`, `telegram_username`, `telegram_tag`, pivot timestamps.
+4. **`TelegramChatResource`** — `chat_type`, nullable-safe `parser_type`, `team_traders` via `whenLoaded('traders')` with `->resolve()`.
+5. **`TelegramChatController::index()`** — selected chat eager loads `traders` ordered by `users.email`; paginated list unchanged.
 
-1. Extend `TelegramChatController::update()` validation to accept chat function.
-2. Derive parser settings:
-   - `dispute_processing` => `parser_type = standard_dispute`
-   - `trader_team` or unassigned => `parser_type = null`
-3. Add trader search endpoint.
-4. Add membership add/update/delete endpoints.
-5. Enforce Trader role and unique membership.
-6. Normalize Telegram username.
+### Phase 3: Webhook and Processing Gates — **Done**
 
-### Phase 5: Admin Frontend
+Shipped in code (2026-06-06):
 
-1. Update `Admin/TelegramChats/Index.vue` chat settings panel.
-2. Add "Не назначен", "Споры", "Команда трейдеров" selector.
-3. Hide parser implementation details from UI when possible.
-4. Add trader team membership UI only for `trader_team`.
-5. Implement backend-powered trader search.
-6. Add optional Telegram username input.
-7. Use existing DaisyUI/Tailwind style and `ConfirmModal` where removal needs confirmation.
+1. **`TelegramChatWebhookIngestionService::resolveTelegramChat()`** — new chats created with `chat_type = null`, `parser_type = null`, `status = pending_moderation`, `debug_enabled = true`; removed `TelegramChatParserType::STANDARD_DISPUTE` default.
+2. **`TelegramChat::canProcessDisputeMessages()`** — domain gate: `active` + not `trader_team` + `parser_type = standard_dispute` + (`chat_type` null or `dispute_processing`).
+3. **`ProcessTelegramChatMessageJob`** — `storeDebugAttachmentsIfNeeded()` before gate; `process()` only when `canProcessDisputeMessages()`.
+4. **`TelegramChatMessageProcessor::process()`** — same gate; null-safe skip log with `chat_type` and `parser_type`.
+5. **`redispatchReceivedMessages()`** — unchanged; safe no-op for unassigned/team chats until configured.
 
-### Phase 6: Dispute Notification Jobs
+**Not changed in Phase 3:** admin `UpdateRequest` (still `parser_type` only), membership CRUD, notification jobs, automated tests.
 
-1. Add immediate notification job.
-2. Add reminder job or a single job with reminder stage metadata.
-3. Dispatch from `DisputeOpenedEvent` listener or after `DisputeService::create()`.
-4. Use queue `telegram-chat-automation`.
-5. Use `afterCommit()`.
-6. Load matching active trader team chats at send time.
-7. Send to all chats.
-8. Catch and log Telegram failures.
-9. Schedule 15-minute reminder.
-10. Schedule hourly reminders while dispute remains pending.
+### Phase 4: Admin Backend — **Done**
 
-### Phase 7: Scheduling Strategy
+Shipped in code (2026-06-06):
 
-Preferred: self-rescheduling delayed job.
+1. **`UpdateRequest`** — accepts nullable `chat_type` (`TelegramChatType` enum); empty string → `null`; keeps transitional `parser_type` for legacy frontend.
+2. **`TelegramChatController::resolveChatConfiguration()`** — derives `parser_type` from `chat_type`; legacy `parser_type`-only path maps to `dispute_processing` or unassigned.
+3. **`TelegramChatController::index()`** — new `chatTypes` Inertia prop for Phase 5 UI.
+4. **`TelegramChatTraderController`** — search, store, update, destroy for team membership.
+5. **Routes** — `trader-search`, `traders.store`, `traders.update`, `traders.destroy` in Super Admin group.
+6. **Form Requests** — `SearchTraderRequest`, `StoreTraderRequest`, `UpdateTraderRequest` with Trader role, unique membership, and `trader_team` chat type guards.
+7. **`TelegramUsernameNormalizer`** — shared normalize + validation regex for pivot `telegram_username`.
 
-- Immediate job dispatches first reminder with `delay(now()->addMinutes(15))`.
-- Reminder job schedules another copy with `delay(now()->addHour())` only after it confirms the dispute remains pending.
+**Not changed in Phase 4:** admin frontend, notification jobs, automated tests.
 
-This avoids a global scheduler scan and naturally stops when a dispute is closed.
+### Phase 5: Admin Frontend — **Done**
+
+Shipped in code (2026-06-06):
+
+1. **`Index.vue` chat settings** — `chat_type` selector from `chatTypes` prop; status + debug unchanged; save via `PATCH` with `processing` state.
+2. **Parser hidden** — removed `parserTypes` prop from controller; badge shows `chatTypeLabel()` instead of raw `parser_type`.
+3. **Trader team block** — shown when form selects `trader_team`; CRUD gated on saved `selectedChat.chat_type === 'trader_team'`.
+4. **Members table** — `team_traders` list with per-row username edit (`traders.update`) and remove (`ConfirmModal` + `traders.destroy`).
+5. **Add trader** — debounced search (`trader-search`, 300 ms), dropdown filters existing members, optional username, `traders.store`.
+6. **DaisyUI/Tailwind** — fieldset/select/input/table patterns consistent with existing admin page; `ConfirmModal` for removal.
+
+**Not changed in Phase 5:** dispute notification jobs, reminder scheduling, automated tests, Phase 8 manual verification.
+
+### Phase 6: Dispute Notification Jobs — **Done**
+
+Shipped in code (2026-06-06):
+
+1. **`TelegramTraderTeamDisputeNotificationType` enum** — `immediate`, `fifteen_minute`, `hourly`.
+2. **`TelegramTraderTeamDisputeNotificationService`** — find active team chats, pending check, message build, per-chat send with fault isolation and structured logging.
+3. **`SendTelegramTraderTeamDisputeNotificationJob`** — immediate send; schedules 15-minute reminder.
+4. **`SendTelegramTraderTeamDisputeReminderJob`** — 15-minute and hourly reminders; reloads dispute state at execution time.
+5. **`SendTelegramTraderTeamDisputeNotificationListener`** — dispatches immediate job on `DisputeOpenedEvent` (auto-discovered).
+
+**Not changed in Phase 6:** notification log table, automated tests, Phase 8 verification.
+
+### Phase 7: Scheduling Strategy — **Done**
+
+Shipped in code (2026-06-06) inside reminder job:
+
+- Immediate job → `SendTelegramTraderTeamDisputeReminderJob` (`fifteen_minute`) with `delay(now()->addMinutes(15))`.
+- Reminder job → after pending check and send, self-dispatches `HOURLY_REMINDER` with `delay(now()->addHour())`.
+- Chain stops when reloaded dispute is no longer `PENDING` (accept/cancel/rollback/missing).
+
+No global scheduler scan.
 
 ### Phase 8: Verification
 
