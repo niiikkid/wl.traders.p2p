@@ -26,7 +26,7 @@ class ResetPaymentDetailLimitsCommand extends Command
      */
     public function handle(PaymentDetailLimitResetService $paymentDetailLimitResetService): void
     {
-        $paymentDetailLimitResetService->resetDailyLimitsForAll();
-        $paymentDetailLimitResetService->resetMonthlyLimitsDueToday();
+        $paymentDetailLimitResetService->resetDailyLimitsForAllIfNeeded();
+        $paymentDetailLimitResetService->resetMonthlyLimitsDueTodayIfNeeded();
     }
 }

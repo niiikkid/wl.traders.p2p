@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Money|null $monthly_limit
  * @property Money $current_monthly_limit
  * @property int|null $monthly_limit_reset_day
+ * @property Carbon|null $monthly_limits_last_reset_on
  * @property int|null $monthly_successful_orders_limit
  * @property int $current_monthly_successful_orders_count
  * @property int|null $daily_successful_orders_limit
@@ -73,6 +74,7 @@ class PaymentDetail extends Model
         'monthly_limit',
         'current_monthly_limit',
         'monthly_limit_reset_day',
+        'monthly_limits_last_reset_on',
         'monthly_successful_orders_limit',
         'current_monthly_successful_orders_count',
         'daily_successful_orders_limit',
@@ -104,6 +106,7 @@ class PaymentDetail extends Model
         'detail_type' => DetailType::class,
         'archived_at' => 'datetime',
         'last_used_at' => 'datetime',
+        'monthly_limits_last_reset_on' => 'date',
     ];
 
     public function paymentGateway(): BelongsTo
