@@ -87,7 +87,7 @@ class TelegramTraderTeamDisputeNotificationService
         return match ($type) {
             TelegramTraderTeamDisputeNotificationType::IMMEDIATE => "{$mention}Открыт новый спор.\nUUID сделки: {$orderUuid}\nПожалуйста, обработайте спор.",
             TelegramTraderTeamDisputeNotificationType::FIFTEEN_MINUTE_REMINDER => "{$mention}Спор всё ещё ожидает обработки.\nUUID сделки: {$orderUuid}\nПожалуйста, обработайте его как можно скорее.",
-            TelegramTraderTeamDisputeNotificationType::HOURLY_REMINDER => "{$mention}Напоминание: спор всё ещё открыт.\nUUID сделки: {$orderUuid}\nТребуется обработка спора.\n\n⚠️ Потрібно закрити диспут протягом 30 хвилин, інакше адміністрація має право закрити його самостійно за SLA.\n\n⚠️ Необходимо закрыть спор в течение 30 минут, в противном случае администрация имеет право закрыть его самостоятельно в соответствии с SLA.",
+            TelegramTraderTeamDisputeNotificationType::HOURLY_REMINDER => "{$mention}Напоминание: спор всё ещё открыт.\nUUID сделки: {$orderUuid}\nТребуется обработка спора.\n\n⚠️ Потрібно закрити спір протягом 30 хвилин, інакше адміністрація має право закрити його самостійно відповідно до SLA.\n\n⚠️ Необходимо закрыть спор в течение 30 минут, в противном случае администрация имеет право закрыть его самостоятельно в соответствии с SLA.",
         };
     }
 
