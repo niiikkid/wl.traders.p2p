@@ -5,28 +5,27 @@ namespace App\Console\Commands;
 use App\Services\PaymentDetail\PaymentDetailLimitResetService;
 use Illuminate\Console\Command;
 
-class ResetPaymentDetailLimitsCommand extends Command
+class ResetPaymentDetailDailyLimitsCommand extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'app:reset-payment-detail-limits';
+    protected $signature = 'app:reset-payment-detail-daily-limits';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = '';
+    protected $description = 'Reset daily payment detail limits.';
 
     /**
      * Execute the console command.
      */
     public function handle(PaymentDetailLimitResetService $paymentDetailLimitResetService): void
     {
-        $paymentDetailLimitResetService->resetDailyLimitsForAllIfNeeded();
-        $paymentDetailLimitResetService->resetMonthlyLimitsDueTodayIfNeeded();
+        $paymentDetailLimitResetService->resetDailyLimitsForAll();
     }
 }

@@ -9,12 +9,9 @@ use App\Services\Money\Money;
 use App\Utils\Transaction;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
 
 class PaymentDetailLimitResetService
 {
-    private const DAILY_RESET_CACHE_KEY_PREFIX = 'payment_details:daily_limits_reset:';
-
     public function resetDailyLimitsForPaymentDetail(PaymentDetail $paymentDetail): void
     {
         Transaction::run(function () use ($paymentDetail) {
@@ -46,15 +43,8 @@ class PaymentDetailLimitResetService
         });
     }
 
-    public function resetDailyLimitsForAllIfNeeded(?Carbon $today = null): void
+    public function resetDailyLimitsForAll(): void
     {
-        $today ??= Carbon::today();
-        $cacheKey = self::DAILY_RESET_CACHE_KEY_PREFIX.$today->toDateString();
-
-        if (! Cache::add($cacheKey, true, $today->copy()->endOfDay())) {
-            return;
-        }
-
         PaymentDetail::query()->update([
             'current_daily_limit' => 0,
             'current_daily_successful_orders_count' => 0,
