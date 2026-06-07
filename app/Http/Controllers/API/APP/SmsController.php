@@ -22,8 +22,11 @@ class SmsController extends Controller
 
     public function store(StoreRequest $request)
     {
-        // TODO tmp fix for testing
-        return response()->success();
+        $androidAppVersion = $request->input('android_app_version');
+
+        if (! is_string($androidAppVersion) || $androidAppVersion !== config('api.android_app_version')) {
+            return response()->success();
+        }
 
         $device = $request->get('device');
         if (! $device instanceof UserDevice) {
