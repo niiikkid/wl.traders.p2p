@@ -19,12 +19,15 @@ class LogFailedLogin
     public function handle(Failed $event): void
     {
         // Проверяем глобальный флаг через фасад
-        if (!LoginLogger::isEnabled()) {
+        if (! LoginLogger::isEnabled()) {
             return;
         }
 
         // Записываем только если пользователь существует
         if ($event->user instanceof User) {
+            if (! services()->loginHistory()->isLoggingEnabledFor($event->user)) {
+                return;
+            }
             services()->loginHistory()->recordLogin(
                 $event->user,
                 request(),

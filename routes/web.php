@@ -152,6 +152,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.update.avatar');
         Route::patch('/profile/auth2fa', [ProfileController::class, 'updateAuth2fa'])->name('profile.update.auth2fa');
         Route::post('/profile/logout-other-devices', [ProfileController::class, 'logoutOtherDevices'])->name('profile.logout-other-devices');
+        Route::patch('/profile/login-history-logging', [ProfileController::class, 'toggleLoginHistoryLogging'])->name('profile.toggle-login-history-logging');
         Route::patch('/wallet/fiat-currency', [WalletController::class, 'updateFiatCurrency'])->name('wallet.fiat-currency.update');
     });
 

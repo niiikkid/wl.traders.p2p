@@ -68,6 +68,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $avatar_uuid
  * @property string $avatar_style
  * @property string $google2fa_secret
+ * @property bool $login_history_logging_enabled
  * @property int|null $team_leader_id
  * @property int|null $agent_id
  * @property float $agent_commission_percentage
@@ -140,6 +141,7 @@ class User extends Authenticatable
         'avatar_uuid',
         'avatar_style',
         'google2fa_secret',
+        'login_history_logging_enabled',
         'team_leader_id',
         'agent_id',
         'agent_commission_percentage',
@@ -219,6 +221,7 @@ class User extends Authenticatable
             'team_leader_reserve_balance_limit' => 'integer',
             'team_leader_reserve_stop_threshold' => 'integer',
             'hide_name_in_trader_top' => 'boolean',
+            'login_history_logging_enabled' => 'boolean',
         ];
     }
 

@@ -1,14 +1,16 @@
 <script setup>
 import { formatDateTime } from '@/utils';
+import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
 import DateTime from "@/Components/DateTime.vue";
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { useModalStore } from '@/store/modal.js';
 import { useForm } from '@inertiajs/vue3';
 import { nextTick, ref } from 'vue';
 
-defineProps({
+const props = defineProps({
     loginHistory: {
         type: Array,
         required: true,
@@ -17,7 +19,17 @@ defineProps({
         type: String,
         default: null,
     },
+    loginHistoryLoggingEnabled: {
+        type: Boolean,
+        default: true,
+    },
+    canManageLoginHistoryLogging: {
+        type: Boolean,
+        default: false,
+    },
 });
+
+const modalStore = useModalStore();
 
 const confirmingLogout = ref(false);
 const currentPasswordInput = ref(null);
@@ -159,6 +171,26 @@ const logoutOtherDevices = () => {
         onError: () => currentPasswordInput.value?.focus(),
     });
 };
+
+const toggleLoginHistoryLoggingForm = useForm({});
+
+const toggleLoginHistoryLogging = () => {
+    const enabling = ! props.loginHistoryLoggingEnabled;
+
+    modalStore.openConfirmModal({
+        title: enabling ? 'Включить логирование сессий?' : 'Отключить логирование сессий?',
+        body: enabling
+            ? 'Новые входы снова будут записываться в историю сессий.'
+            : 'Логирование сессий входа будет отключено, а все существующие записи истории будут удалены.',
+        confirm_button_name: enabling ? 'Включить' : 'Отключить',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            toggleLoginHistoryLoggingForm.patch(route('profile.toggle-login-history-logging'), {
+                preserveScroll: true,
+            });
+        },
+    });
+};
 </script>
 
 <template>
@@ -172,17 +204,45 @@ const logoutOtherDevices = () => {
                 </p>
             </div>
 
-            <button
-                type="button"
-                class="btn btn-sm btn-outline btn-error sm:ml-auto"
-                @click="openLogoutModal"
-            >
-                Выйти из других аккаунтов
-            </button>
+            <div class="flex flex-wrap gap-2 sm:ml-auto">
+                <button
+                    v-if="canManageLoginHistoryLogging"
+                    type="button"
+                    class="btn btn-sm btn-outline"
+                    :class="loginHistoryLoggingEnabled ? 'btn-warning' : 'btn-success'"
+                    :disabled="toggleLoginHistoryLoggingForm.processing"
+                    @click="toggleLoginHistoryLogging"
+                >
+                    {{ loginHistoryLoggingEnabled ? 'Отключить логирование' : 'Включить логирование' }}
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline btn-error"
+                    @click="openLogoutModal"
+                >
+                    Выйти из других аккаунтов
+                </button>
+            </div>
         </header>
 
         <div v-if="status === 'other-sessions-logged-out'" class="alert alert-success mt-4 py-2 text-sm">
             Другие активные сессии завершены.
+        </div>
+
+        <div v-if="status === 'login-history-logging-disabled'" class="alert alert-warning mt-4 py-2 text-sm">
+            Логирование сессий отключено, история входов удалена.
+        </div>
+
+        <div v-if="status === 'login-history-logging-enabled'" class="alert alert-success mt-4 py-2 text-sm">
+            Логирование сессий снова включено.
+        </div>
+
+        <div
+            v-if="canManageLoginHistoryLogging && !loginHistoryLoggingEnabled"
+            class="alert alert-info mt-4 py-2 text-sm"
+        >
+            Логирование сессий входа отключено. Новые входы не записываются в историю.
         </div>
 
         <div class="mt-5">
@@ -354,5 +414,7 @@ const logoutOtherDevices = () => {
                 </div>
             </form>
         </Modal>
+
+        <ConfirmModal />
     </section>
 </template>

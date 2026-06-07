@@ -51,6 +51,14 @@ defineProps({
         type: Array,
         default: () => [],
     },
+    loginHistoryLoggingEnabled: {
+        type: Boolean,
+        default: true,
+    },
+    canManageLoginHistoryLogging: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 defineOptions({ layout: AuthenticatedLayout })
@@ -139,7 +147,13 @@ defineOptions({ layout: AuthenticatedLayout })
                     aria-label="Сессии входа"
                     class="w-full"
                 >
-                    <LoginHistoryForm :login-history="loginHistory" :status="status" class="w-full"/>
+                    <LoginHistoryForm
+                        :login-history="loginHistory"
+                        :status="status"
+                        :login-history-logging-enabled="loginHistoryLoggingEnabled"
+                        :can-manage-login-history-logging="canManageLoginHistoryLogging"
+                        class="w-full"
+                    />
                 </section>
             </div>
         </div>

@@ -23,6 +23,18 @@ class LoginHistoryService implements LoginHistoryServiceContract
     /**
      * Записывает информацию о входе пользователя в систему
      */
+    public function isLoggingEnabledFor(User $user): bool
+    {
+        return (bool) $user->login_history_logging_enabled;
+    }
+
+    public function clearUserHistory(User $user): void
+    {
+        UserLoginHistory::query()
+            ->where('user_id', $user->id)
+            ->delete();
+    }
+
     public function recordLogin(User $user, Request $request, bool $isSuccessful = true): UserLoginHistory
     {
         $agent = new Agent;

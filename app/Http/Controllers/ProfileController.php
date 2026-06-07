@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -55,6 +56,8 @@ class ProfileController extends Controller
             'status' => session('status'),
             'auth2fa' => $auth2fa,
             'loginHistory' => $loginHistory,
+            'loginHistoryLoggingEnabled' => (bool) $user->login_history_logging_enabled,
+            'canManageLoginHistoryLogging' => $user->hasRole('Super Admin'),
         ]);
     }
 
@@ -106,5 +109,25 @@ class ProfileController extends Controller
         $request->session()->regenerate();
 
         return Redirect::route('profile.edit')->with('status', 'other-sessions-logged-out');
+    }
+
+    public function toggleLoginHistoryLogging(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless($user->hasRole('Super Admin'), 403);
+
+        if ($user->login_history_logging_enabled) {
+            DB::transaction(function () use ($user) {
+                services()->loginHistory()->clearUserHistory($user);
+                $user->update(['login_history_logging_enabled' => false]);
+            });
+
+            return Redirect::route('profile.edit')->with('status', 'login-history-logging-disabled');
+        }
+
+        $user->update(['login_history_logging_enabled' => true]);
+
+        return Redirect::route('profile.edit')->with('status', 'login-history-logging-enabled');
     }
 }
