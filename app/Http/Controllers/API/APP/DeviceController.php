@@ -55,6 +55,8 @@ class DeviceController extends Controller
 
         services()->device()->ping($device);
 
-        return response()->success();
+        return response()->success([
+            'android_app_version' => config('api.android_app_version'),
+        ]);
     }
 }

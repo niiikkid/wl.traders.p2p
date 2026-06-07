@@ -6,4 +6,5 @@ return [
     'api_withdraw_token' => env('API_WITHDRAW_TOKEN'),
     'withdrawal_service_host' => env('WITHDRAWAL_SERVICE_HOST'),
     'withdrawal_service_x_api_key' => env('WITHDRAWAL_SERVICE_X_API_KEY'),
+    'android_app_version' => env('ANDROID_APP_VERSION', '1.0.0'),
 ];
