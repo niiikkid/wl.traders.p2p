@@ -1,6 +1,7 @@
 <script setup>
 import { Head, usePage, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AppTooltip from '@/Components/AppTooltip.vue';
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import ApexCharts from 'apexcharts';
 import axios from 'axios';
@@ -957,7 +958,15 @@ const statisticsFormated = computed(() => ({
     failedOrderCount: statistics.value?.failedOrderCount ?? 0,
     pendingOrderCount: statistics.value?.pendingOrderCount ?? 0,
     conversionRate: statistics.value?.conversionRate ?? '0%',
+    apiRequestStats: statistics.value?.apiRequestStats ?? {
+        processing_rate_formatted: '0%',
+        success_count: 0,
+        failed_count: 0,
+        total_count: 0,
+    },
 }));
+
+const apiRequestStatsTooltip = 'К данному показателю применяются только фильтры по временному промежутку. Фильтры по трейдеру, методу, реквизитам и мерчантам не учитываются.';
 
 const hasActiveAdvancedFilters = computed(() => gearFilterTypes.value.some((filterType) => {
     const items = selectedFilters.value[filterType.key] || [];
@@ -1201,12 +1210,55 @@ defineOptions({ layout: AuthenticatedLayout });
 
                     <div class="card bg-base-100 shadow px-4 py-3">
                         <div class="flex items-center justify-between gap-2">
-                            <div>
-                                <p class="text-base-content/70 text-xs">{{ activeStatsMode === 'payouts' ? 'Активные выплаты' : 'Активные сделки' }}</p>
-                                <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.pendingOrderCount }}</p>
+                            <div class="min-w-0">
+                                <template v-if="activeStatsMode === 'payouts'">
+                                    <p class="text-base-content/70 text-xs">Активные выплаты</p>
+                                    <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.pendingOrderCount }}</p>
+                                </template>
+                                <template v-else>
+                                    <div class="flex items-center gap-1.5">
+                                        <p class="text-base-content/70 text-xs">Обработка API</p>
+                                        <AppTooltip
+                                            :tip="apiRequestStatsTooltip"
+                                            placement="top"
+                                            wrapper-class="inline-flex shrink-0"
+                                        >
+                                            <svg
+                                                class="w-3.5 h-3.5 text-info cursor-help"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0"
+                                                />
+                                            </svg>
+                                        </AppTooltip>
+                                    </div>
+                                    <p class="text-lg font-semibold text-base-content">{{ statisticsFormated.apiRequestStats.processing_rate_formatted }}</p>
+                                </template>
                             </div>
-                            <svg class="w-5 h-5 text-warning shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg
+                                v-if="activeStatsMode === 'payouts'"
+                                class="w-5 h-5 text-warning shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <svg
+                                v-else
+                                class="w-5 h-5 text-info shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9h8M8 13h6m-6 4h10a2 2 0 002-2V7a2 2 0 00-2-2H8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                             </svg>
                         </div>
                     </div>

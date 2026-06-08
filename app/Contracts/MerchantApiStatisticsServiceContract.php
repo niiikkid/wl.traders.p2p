@@ -20,4 +20,15 @@ interface MerchantApiStatisticsServiceContract
      * Получает статистику за сегодня и за все время
      */
     public function getStatistics(): array;
+
+    /**
+     * @return array{
+     *     success_count: int,
+     *     failed_count: int,
+     *     total_count: int,
+     *     processing_rate: float,
+     *     processing_rate_formatted: string
+     * }
+     */
+    public function getOrderCreateRequestsStats(Carbon $startDate, Carbon $endDate): array;
 }

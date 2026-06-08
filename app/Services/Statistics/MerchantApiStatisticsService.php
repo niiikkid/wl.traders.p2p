@@ -23,6 +23,8 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
 
     private const int REQUESTS_CHART_CACHE_TTL_SECONDS = 60;
 
+    private const int ORDER_CREATE_PROCESSING_CACHE_TTL_SECONDS = 3600;
+
     public function __construct(
         private readonly PaymentDetailVolumeStatisticsService $volumeStatisticsService,
     ) {}
@@ -298,6 +300,52 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
     /**
      * Получает статистику за сегодня и за все время
      */
+    public function getOrderCreateRequestsStats(Carbon $startDate, Carbon $endDate): array
+    {
+        $cacheKey = sprintf(
+            'merchant_api_logs:order_create_processing:%s:%s',
+            $startDate->toDateTimeString(),
+            $endDate->toDateTimeString(),
+        );
+
+        return Cache::remember(
+            $cacheKey,
+            now()->addSeconds(self::ORDER_CREATE_PROCESSING_CACHE_TTL_SECONDS),
+            fn (): array => $this->calculateOrderCreateRequestsStats($startDate, $endDate),
+        );
+    }
+
+    /**
+     * @return array{
+     *     success_count: int,
+     *     failed_count: int,
+     *     total_count: int,
+     *     processing_rate: float,
+     *     processing_rate_formatted: string
+     * }
+     */
+    private function calculateOrderCreateRequestsStats(Carbon $startDate, Carbon $endDate): array
+    {
+        $baseQuery = MerchantApiRequestLog::query()
+            ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
+            ->whereBetween('created_at', [$startDate, $endDate]);
+
+        $totalCount = (int) (clone $baseQuery)->count();
+        $successCount = (int) (clone $baseQuery)->where('is_successful', true)->count();
+        $failedCount = $totalCount - $successCount;
+        $processingRate = $totalCount > 0
+            ? round(($successCount / $totalCount) * 100, 2)
+            : 0.0;
+
+        return [
+            'success_count' => $successCount,
+            'failed_count' => $failedCount,
+            'total_count' => $totalCount,
+            'processing_rate' => $processingRate,
+            'processing_rate_formatted' => $processingRate.'%',
+        ];
+    }
+
     public function getStatistics(): array
     {
         $today = now()->toDateString();

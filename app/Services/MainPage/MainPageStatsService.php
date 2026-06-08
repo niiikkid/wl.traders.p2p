@@ -3,6 +3,7 @@
 namespace App\Services\MainPage;
 
 use App\Contracts\MainPageStatsServiceContract;
+use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Enums\BalanceType;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
@@ -10,6 +11,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
 use App\Models\Invoice;
 use App\Models\Merchant;
+use App\Models\MerchantApiRequestLog;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\Payout\Payout;
@@ -25,6 +27,10 @@ use Throwable;
 
 class MainPageStatsService implements MainPageStatsServiceContract
 {
+    public function __construct(
+        private readonly MerchantApiStatisticsServiceContract $merchantApiStatisticsService,
+    ) {}
+
     public function buildMerchantStats(User $user): array
     {
         $query = Order::query()
@@ -513,6 +519,28 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
         $pendingOrderCount = $pendingOrdersQuery->count();
 
+        $apiRequestStatsStartDate = $startDate;
+        $apiRequestStatsEndDate = $endDate;
+
+        if ($resolvedPeriod['preset'] === 'all') {
+            $firstLogCreatedAt = MerchantApiRequestLog::query()
+                ->where(function (Builder $query): void {
+                    $query
+                        ->where('request_type', MerchantApiRequestLog::TYPE_ORDER)
+                        ->orWhereNull('request_type');
+                })
+                ->min('created_at');
+
+            if ($firstLogCreatedAt) {
+                $apiRequestStatsStartDate = Carbon::parse($firstLogCreatedAt)->startOfDay();
+            }
+        }
+
+        $apiRequestStats = $this->merchantApiStatisticsService->getOrderCreateRequestsStats(
+            $apiRequestStatsStartDate,
+            $apiRequestStatsEndDate,
+        );
+
         return [
             'statistics' => [
                 'totalTurnover' => $totalTurnover->toBeauty(),
@@ -522,6 +550,7 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'failedOrderCount' => $failedOrderCount,
                 'conversionRate' => $conversionRate.'%',
                 'pendingOrderCount' => $pendingOrderCount,
+                'apiRequestStats' => $apiRequestStats,
             ],
             'chart' => [
                 'labels' => $labels,

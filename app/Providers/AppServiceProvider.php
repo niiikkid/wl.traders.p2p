@@ -250,7 +250,9 @@ class AppServiceProvider extends ServiceProvider
             );
         });
         $this->app->singleton(MainPageStatsServiceContract::class, function () {
-            return new MainPageStatsService;
+            return new MainPageStatsService(
+                merchantApiStatisticsService: make(MerchantApiStatisticsServiceContract::class),
+            );
         });
         $this->app->singleton(MainPageCacheServiceContract::class, function () {
             return new MainPageCacheService(
