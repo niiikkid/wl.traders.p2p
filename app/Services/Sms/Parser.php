@@ -298,23 +298,33 @@ PROMPT;
             return SmsStopWord::all()->pluck('word')->toArray();
         });
 
-        $message = NormalizeMessage::normalize($message);
-
         foreach ($stopWords as $stopWord) {
             $stopWord = trim((string) $stopWord);
             if ($stopWord === '') {
                 continue;
             }
 
-            $quoted = preg_quote($stopWord, '/');
-            // Whole token in any script: not surrounded by Unicode letters (works at line/string ends).
-            $regex = '/(?<!\p{L})'.$quoted.'(?!\p{L})/iu';
-            if (preg_match($regex, $message) === 1) {
+            if ($this->matchesStopWord($message, $stopWord)) {
                 return $stopWord;
             }
         }
 
         return null;
+    }
+
+    public function matchesStopWord(string $message, string $normalizedStopWord): bool
+    {
+        $normalizedStopWord = trim($normalizedStopWord);
+        if ($normalizedStopWord === '') {
+            return false;
+        }
+
+        $message = NormalizeMessage::normalize($message);
+        $quoted = preg_quote($normalizedStopWord, '/');
+        // Whole token in any script: not surrounded by Unicode letters (works at line/string ends).
+        $regex = '/(?<!\p{L})'.$quoted.'(?!\p{L})/iu';
+
+        return preg_match($regex, $message) === 1;
     }
 
     protected function containsCurrencyMarker(string $message): bool

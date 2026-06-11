@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SmsType;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -56,5 +57,16 @@ class SmsLog extends Model
     public function device()
     {
         return $this->belongsTo(UserDevice::class, 'user_device_id');
+    }
+
+    public function scopeWhereOperationTypeUndefined(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->whereNull('parsing_result')
+                ->orWhereRaw("JSON_EXTRACT(parsing_result, '$.operation_type') IS NULL")
+                ->orWhereRaw(
+                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) NOT IN ('in', 'out')"
+                );
+        });
     }
 }
