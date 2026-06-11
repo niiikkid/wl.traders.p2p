@@ -534,6 +534,7 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/shadow-sms-logs', [ShadowSmsLogController::class, 'index'])->name('shadow-sms-logs.index');
         Route::patch('/shadow-sms-logs/enabled', [ShadowSmsLogController::class, 'updateEnabled'])->name('shadow-sms-logs.enabled.update');
         Route::delete('/shadow-sms-logs', [ShadowSmsLogController::class, 'destroyAll'])->name('shadow-sms-logs.destroy-all');
+        Route::delete('/shadow-sms-logs/by-pattern', [ShadowSmsLogController::class, 'destroyByPattern'])->name('shadow-sms-logs.destroy-by-pattern');
         Route::get('/devices', [AdminUserDeviceController::class, 'index'])->name('devices.index');
         Route::get('/devices/{device}/connect-snapshot', [AdminUserDeviceController::class, 'connectSnapshot'])
             ->name('devices.connect-snapshot.show');

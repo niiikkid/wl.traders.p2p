@@ -10,6 +10,7 @@ import {computed, onMounted, ref} from "vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
+import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 
@@ -190,6 +191,10 @@ defineOptions({ layout: AuthenticatedLayout })
                     <FilterCheckbox
                         name="onlySuccessParsing"
                         title="Только зачисления"
+                    />
+                    <DropdownFilter
+                        name="smsOperationTypes"
+                        title="Операция"
                     />
                 </FiltersPanel>
             </template>

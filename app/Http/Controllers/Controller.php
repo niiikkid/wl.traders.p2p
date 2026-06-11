@@ -122,6 +122,13 @@ abstract class Controller
         $merchantIds = array_map('intval', $merchantIds);
         $merchantIds = array_values(array_unique(array_filter($merchantIds)));
 
+        $smsOperationTypes = request()->input('filters.smsOperationTypes', '');
+        $smsOperationTypes = explode(',', $smsOperationTypes);
+        $smsOperationTypes = array_values(array_filter(
+            $smsOperationTypes,
+            fn (string $value): bool => in_array($value, ['in', 'out', 'undefined'], true)
+        ));
+
         $startDate = request()->input('filters.startDate');
 
         if ($startDate) {
@@ -184,6 +191,7 @@ abstract class Controller
             'deviceName' => request()->input('filters.deviceName'),
             'searchSender' => request()->input('filters.searchSender'),
             'searchMessage' => request()->input('filters.searchMessage'),
+            'smsOperationTypes' => $smsOperationTypes,
         ];
 
         return new TableFiltersValue(
@@ -225,6 +233,7 @@ abstract class Controller
             deviceName: $currentFilters['deviceName'],
             searchSender: $currentFilters['searchSender'],
             searchMessage: $currentFilters['searchMessage'],
+            smsOperationTypes: $currentFilters['smsOperationTypes'],
         );
     }
 
@@ -347,6 +356,21 @@ abstract class Controller
             ->values()
             ->toArray();
 
+        $smsOperationTypes = [
+            [
+                'name' => 'Поступление',
+                'value' => 'in',
+            ],
+            [
+                'name' => 'Списание',
+                'value' => 'out',
+            ],
+            [
+                'name' => 'Неопределено',
+                'value' => 'undefined',
+            ],
+        ];
+
         return [
             'orderStatuses' => $orderStatuses,
             'disputeStatuses' => $disputeStatuses,
@@ -358,6 +382,7 @@ abstract class Controller
             'merchantIds' => $merchantItems,
             'payoutStatuses' => $payoutStatuses,
             'payoutMethodTypes' => $payoutMethodTypes,
+            'smsOperationTypes' => $smsOperationTypes,
         ];
     }
 }

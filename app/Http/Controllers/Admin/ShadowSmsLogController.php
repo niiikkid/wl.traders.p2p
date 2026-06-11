@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ShadowSmsLog\DestroyByPatternRequest;
 use App\Http\Resources\ShadowSmsLogResource;
 use App\Models\ShadowSmsLog;
+use App\Services\Sms\ShadowSmsLogService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -68,5 +70,17 @@ class ShadowSmsLogController extends Controller
         ShadowSmsLog::query()->delete();
 
         return redirect()->back()->with('message', 'Теневой лог очищен.');
+    }
+
+    public function destroyByPattern(DestroyByPatternRequest $request, ShadowSmsLogService $shadowSmsLogService)
+    {
+        $pattern = $request->validated('pattern');
+        $deletedCount = $shadowSmsLogService->deleteMatching($pattern);
+
+        if ($deletedCount === 0) {
+            return redirect()->back()->with('message', 'Записи по указанному совпадению не найдены.');
+        }
+
+        return redirect()->back()->with('message', "Удалено записей: {$deletedCount}.");
     }
 }

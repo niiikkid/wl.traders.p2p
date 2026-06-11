@@ -4,6 +4,7 @@ namespace App\Services\Sms;
 
 use App\DTO\SMS\ShadowSmsLogData;
 use App\Models\ShadowSmsLog;
+use Illuminate\Database\Eloquent\Builder;
 
 class ShadowSmsLogService
 {
@@ -21,5 +22,23 @@ class ShadowSmsLogService
             'matched_stop_word' => $data->matchedStopWord,
             'message_length' => $data->messageLength,
         ]);
+    }
+
+    public function matchingPatternQuery(string $pattern): Builder
+    {
+        $like = '%'.addcslashes($pattern, '%_\\').'%';
+
+        return ShadowSmsLog::query()->where(function (Builder $query) use ($like): void {
+            $query
+                ->where('sender', 'like', $like)
+                ->orWhere('message', 'like', $like)
+                ->orWhere('matched_sender', 'like', $like)
+                ->orWhere('matched_stop_word', 'like', $like);
+        });
+    }
+
+    public function deleteMatching(string $pattern): int
+    {
+        return $this->matchingPatternQuery($pattern)->delete();
     }
 }

@@ -15,6 +15,7 @@ class SmsLogController extends Controller
     public function index()
     {
         $filters = $this->getTableFilters();
+        $filtersVariants = $this->getFiltersData();
 
         $query = SmsLog::query()
             ->with('user', 'device', 'order')
@@ -23,6 +24,35 @@ class SmsLogController extends Controller
             })
             ->when($filters->onlySuccessParsing, function ($query) {
                 $query->whereNotNull('parsing_result');
+            })
+            ->when(! empty($filters->smsOperationTypes), function ($query) use ($filters) {
+                $query->where(function ($query) use ($filters) {
+                    foreach ($filters->smsOperationTypes as $operationType) {
+                        if ($operationType === 'in') {
+                            $query->orWhereRaw(
+                                "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) = 'in'"
+                            );
+
+                            continue;
+                        }
+
+                        if ($operationType === 'out') {
+                            $query->orWhereRaw(
+                                "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) = 'out'"
+                            );
+
+                            continue;
+                        }
+
+                        $query->orWhere(function ($query) {
+                            $query->whereNull('parsing_result')
+                                ->orWhereRaw("JSON_EXTRACT(parsing_result, '$.operation_type') IS NULL")
+                                ->orWhereRaw(
+                                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) NOT IN ('in', 'out')"
+                                );
+                        });
+                    }
+                });
             });
 
         $smsLogs = $query->clone()
@@ -81,7 +111,8 @@ class SmsLogController extends Controller
             'smsStopWords',
             'paymentGateways',
             'recentPaymentGateways',
-            'filters'
+            'filters',
+            'filtersVariants'
         ));
     }
 }

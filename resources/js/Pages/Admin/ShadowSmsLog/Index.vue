@@ -26,6 +26,10 @@ const toggleForm = useForm({
 
 const deleteForm = useForm({});
 
+const deleteByPatternForm = useForm({
+    pattern: '',
+});
+
 watch(shadowSmsLogEnabled, (value) => {
     enabled.value = value;
     toggleForm.enabled = value;
@@ -51,6 +55,33 @@ const confirmDeleteAll = () => {
             deleteForm.delete(route('admin.shadow-sms-logs.destroy-all'), {
                 preserveScroll: true,
             });
+        },
+    });
+};
+
+const confirmDeleteByPattern = () => {
+    const pattern = deleteByPatternForm.pattern.trim();
+
+    if (!pattern) {
+        return;
+    }
+
+    modalStore.openConfirmModal({
+        title: 'Удалить записи по совпадению?',
+        body: `Будут удалены все записи, где отправитель, сообщение или детали фильтра содержат «${pattern}». Это действие нельзя отменить.`,
+        confirm_button_name: 'Удалить',
+        confirm: () => {
+            deleteByPatternForm
+                .transform((data) => ({
+                    ...data,
+                    pattern,
+                }))
+                .delete(route('admin.shadow-sms-logs.destroy-by-pattern'), {
+                    preserveScroll: true,
+                    onSuccess: () => {
+                        deleteByPatternForm.reset();
+                    },
+                });
         },
     });
 };
@@ -104,6 +135,24 @@ const filterReasonBadgeClass = (reason) => {
                                 @change="updateEnabled"
                             >
                         </label>
+                        <div class="flex flex-wrap items-center gap-2 rounded-box bg-base-100 px-3 py-2 shadow-sm">
+                            <input
+                                v-model="deleteByPatternForm.pattern"
+                                type="text"
+                                class="input input-bordered input-sm w-48"
+                                placeholder="Удалить по совпадению"
+                                :disabled="deleteByPatternForm.processing"
+                                @keyup.enter="confirmDeleteByPattern"
+                            >
+                            <button
+                                type="button"
+                                class="btn btn-warning btn-sm"
+                                :disabled="deleteByPatternForm.processing || !deleteByPatternForm.pattern.trim()"
+                                @click="confirmDeleteByPattern"
+                            >
+                                Удалить по LIKE
+                            </button>
+                        </div>
                         <button
                             type="button"
                             class="btn btn-error btn-sm"
