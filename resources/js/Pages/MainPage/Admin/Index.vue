@@ -14,6 +14,11 @@ const conversionChartData = computed(() => page.props.conversionChart || { label
 const turnoverChartData = computed(() => page.props.turnoverChart || { labels: [], data: [] });
 const ordersChartData = computed(() => page.props.ordersChart || { labels: [], data: [] });
 const averageCheckChartData = computed(() => page.props.averageCheckChart || { labels: [], data: [] });
+const disputeStatistics = computed(() => page.props.disputeStatistics || {});
+const disputesChartData = computed(() => page.props.disputesChart || { labels: [], data: [] });
+const rejectedDisputesChartData = computed(() => page.props.rejectedDisputesChart || { labels: [], data: [] });
+const disputesVolumeChartData = computed(() => page.props.disputesVolumeChart || { labels: [], data: [] });
+const rejectedDisputesVolumeChartData = computed(() => page.props.rejectedDisputesVolumeChart || { labels: [], data: [] });
 const merchantChartSeries = computed(() => page.props.merchantChartSeries || {});
 const selectedPeriodPresetProp = computed(() => page.props.selectedPeriodPreset || 'month');
 const selectedDateFromProp = computed(() => page.props.selectedDateFrom || '');
@@ -39,12 +44,15 @@ const mobilePeriodDropdownOpen = ref(false);
 const activeFilterType = ref('trader');
 const chart = ref(null);
 const apexChart = ref(null);
+const disputeChart = ref(null);
+const apexDisputeChart = ref(null);
 const mobileChartDropdownRef = ref(null);
 const mobilePeriodDropdownRef = ref(null);
 const filterDropdownRef = ref(null);
 const desktopCustomPeriodDropdownRef = ref(null);
 const mobileCustomPeriodDropdownRef = ref(null);
 const chartDisplayMode = ref('total');
+const activeDisputeChartTab = ref('total_disputes');
 
 const selectedFilters = ref({
     trader: selectedFiltersProp.value.traderIds || [],
@@ -122,6 +130,13 @@ const periodPresetOptions = [
     { value: 'week', label: 'Неделя' },
     { value: 'month', label: 'Месяц' },
     { value: 'all', label: 'Все' },
+];
+
+const disputeChartTabs = [
+    { value: 'total_disputes', label: 'Все споры', colorToken: 'warning', seriesName: 'Споров', valueType: 'count' },
+    { value: 'rejected_disputes', label: 'Отклонённые споры', colorToken: 'error', seriesName: 'Отклонённых споров', valueType: 'count' },
+    { value: 'total_dispute_volume', label: 'Объём споров', colorToken: 'info', seriesName: 'Объём споров ($)', valueType: 'money' },
+    { value: 'rejected_dispute_volume', label: 'Объём отклонённых', colorToken: 'secondary', seriesName: 'Объём отклонённых ($)', valueType: 'money' },
 ];
 
 const russianMonthFormatter = new Intl.DateTimeFormat('ru-RU', {
@@ -399,12 +414,24 @@ const chartDataByTab = computed(() => ({
     average_check: getLastPoints(normalizeChartLabels(averageCheckChartData.value, selectedPeriodPreset.value)),
 }));
 
+const disputeChartDataByTab = computed(() => ({
+    total_disputes: getLastPoints(normalizeChartLabels(disputesChartData.value, selectedPeriodPreset.value)),
+    rejected_disputes: getLastPoints(normalizeChartLabels(rejectedDisputesChartData.value, selectedPeriodPreset.value)),
+    total_dispute_volume: getLastPoints(normalizeChartLabels(disputesVolumeChartData.value, selectedPeriodPreset.value)),
+    rejected_dispute_volume: getLastPoints(normalizeChartLabels(rejectedDisputesVolumeChartData.value, selectedPeriodPreset.value)),
+}));
+
 const activeTabConfig = computed(() => {
     return chartTabs.value.find((tab) => tab.value === activeChartTab.value) || chartTabs.value[0];
 });
 
 const activeTabTitle = computed(() => activeTabConfig.value.label);
 const activeData = computed(() => chartDataByTab.value[activeChartTab.value] || { labels: [], data: [], shadowData: [] });
+const activeDisputeTabConfig = computed(() => {
+    return disputeChartTabs.find((tab) => tab.value === activeDisputeChartTab.value) || disputeChartTabs[0];
+});
+const activeDisputeTabTitle = computed(() => activeDisputeTabConfig.value.label);
+const activeDisputeData = computed(() => disputeChartDataByTab.value[activeDisputeChartTab.value] || { labels: [], data: [], shadowData: [] });
 const hasSelectedMerchants = computed(() => (selectedFilters.value.merchant || []).length > 0);
 const activeMerchantSeries = computed(() => {
     const series = merchantChartSeries.value?.[activeChartTab.value];
@@ -427,6 +454,11 @@ const resizeChart = () => {
 const getYFormatter = (tab) => {
     if (tab === 'conversion') {
         return (value) => `${value}%`;
+    }
+
+    const disputeTab = disputeChartTabs.find((item) => item.value === tab);
+    if (disputeTab?.valueType === 'count') {
+        return (value) => Math.round(value);
     }
 
     if (tab === 'orders') {
@@ -585,6 +617,122 @@ const renderChart = () => {
     }, false, false);
 };
 
+const renderDisputeChart = () => {
+    if (!disputeChart.value || activeStatsMode.value !== 'deals') {
+        return;
+    }
+
+    const formatter = getYFormatter(activeDisputeChartTab.value);
+    const color = getThemeColor(activeDisputeTabConfig.value.colorToken);
+    const currentData = activeDisputeData.value;
+    const hasShadowData = Array.isArray(currentData.shadowData) && currentData.shadowData.length > 0;
+    const series = [{
+        name: activeDisputeTabConfig.value.seriesName,
+        data: currentData.data,
+    }];
+
+    if (hasShadowData) {
+        series.push({
+            name: `${activeDisputeTabConfig.value.seriesName} shadow`,
+            data: currentData.shadowData,
+        });
+    }
+
+    if (!apexDisputeChart.value) {
+        apexDisputeChart.value = new ApexCharts(disputeChart.value, {
+            chart: {
+                type: 'line',
+                height: '95%',
+                background: 'transparent',
+                toolbar: {
+                    show: false,
+                },
+            },
+            series: [],
+            xaxis: {
+                categories: [],
+            },
+            yaxis: {},
+            stroke: {
+                width: [2, 2],
+                curve: 'smooth',
+                dashArray: [0, 8],
+            },
+            grid: {
+                borderColor: 'rgba(200, 200, 200, 0.1)',
+            },
+            markers: {
+                size: 4,
+                strokeColors: '#fff',
+                strokeWidth: 2,
+            },
+            tooltip: {
+                theme: 'dark',
+            },
+            legend: {
+                show: false,
+            },
+        });
+        apexDisputeChart.value.render();
+    }
+
+    apexDisputeChart.value.updateOptions({
+        series,
+        xaxis: {
+            categories: currentData.labels,
+            labels: {
+                style: {
+                    colors: '#999',
+                },
+            },
+            axisBorder: {
+                show: false,
+            },
+            axisTicks: {
+                show: false,
+            },
+        },
+        yaxis: {
+            min: 0,
+            labels: {
+                style: {
+                    colors: '#999',
+                },
+                formatter,
+            },
+        },
+        colors: hasShadowData ? [color, shadowChartColor] : [color],
+        markers: hasShadowData ? {
+            size: [4, 4],
+            colors: [color, shadowMarkerColor],
+            strokeColors: ['#fff', shadowMarkerStrokeColor],
+            strokeWidth: [2, 1],
+            hover: {
+                sizeOffset: 2,
+            },
+        } : {
+            size: 4,
+            colors: [color],
+            strokeColors: '#fff',
+            strokeWidth: 2,
+        },
+        stroke: {
+            width: hasShadowData ? [2, 2] : [2],
+            curve: 'smooth',
+            dashArray: hasShadowData ? [0, 8] : [0],
+        },
+        legend: {
+            show: false,
+        },
+        tooltip: {
+            theme: 'dark',
+            y: {
+                formatter,
+            },
+        },
+    }, false, false);
+};
+
 watch(chartTabs, (tabs) => {
     if (!tabs.some((t) => t.value === activeChartTab.value)) {
         activeChartTab.value = 'income';
@@ -597,6 +745,14 @@ watch(activeChartTab, () => {
 
 watch(activeData, () => {
     renderChart();
+}, { deep: true });
+
+watch(activeDisputeChartTab, () => {
+    renderDisputeChart();
+});
+
+watch(activeDisputeData, () => {
+    renderDisputeChart();
 }, { deep: true });
 
 watch(activeMerchantSeries, () => {
@@ -966,6 +1122,15 @@ const statisticsFormated = computed(() => ({
     },
 }));
 
+const disputeStatisticsFormatted = computed(() => ({
+    totalDisputeCount: disputeStatistics.value?.totalDisputeCount ?? 0,
+    acceptedDisputeCount: disputeStatistics.value?.acceptedDisputeCount ?? 0,
+    rejectedDisputeCount: disputeStatistics.value?.rejectedDisputeCount ?? 0,
+    rejectedDisputeRate: disputeStatistics.value?.rejectedDisputeRate ?? '0%',
+    totalDisputeVolume: disputeStatistics.value?.totalDisputeVolume ?? '0.00',
+    rejectedDisputeVolume: disputeStatistics.value?.rejectedDisputeVolume ?? '0.00',
+}));
+
 const apiRequestStatsTooltip = 'К данному показателю применяются только фильтры по временному промежутку. Фильтры по трейдеру, методу, реквизитам и мерчантам не учитываются.';
 
 const hasActiveAdvancedFilters = computed(() => gearFilterTypes.value.some((filterType) => {
@@ -1042,6 +1207,7 @@ onMounted(() => {
         setPresetCursor(selectedPeriodPreset.value, nextCursor);
     }
     renderChart();
+    renderDisputeChart();
     const typesToPrefetch = activeStatsMode.value === 'payouts' ? payoutsGearFilterTypes : dealsGearFilterTypes;
     typesToPrefetch.forEach((filterType) => {
         if ((selectedFilters.value[filterType.key] || []).length > 0) {
@@ -1057,6 +1223,7 @@ onMounted(() => {
         scheduledThemeUpdate = true;
         requestAnimationFrame(() => {
             renderChart();
+            renderDisputeChart();
             scheduledThemeUpdate = false;
         });
     });
@@ -1081,6 +1248,11 @@ onBeforeUnmount(() => {
     if (apexChart.value) {
         apexChart.value.destroy();
         apexChart.value = null;
+    }
+
+    if (apexDisputeChart.value) {
+        apexDisputeChart.value.destroy();
+        apexDisputeChart.value = null;
     }
 
     Object.values(colorProbeSpans).forEach((span) => {
@@ -1623,6 +1795,105 @@ defineOptions({ layout: AuthenticatedLayout });
                         </button>
                     </div>
                 </div>
+
+                <template v-if="activeStatsMode === 'deals'">
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                        <div class="card bg-base-100 shadow px-4 py-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-base-content/70 text-xs">Всего споров</p>
+                                    <p class="text-lg font-semibold text-base-content">{{ disputeStatisticsFormatted.totalDisputeCount }}</p>
+                                </div>
+                                <svg class="w-5 h-5 text-warning shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2v4l-4-4H9a2 2 0 0 1-1.414-.586m0 0L11 14h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2v4z" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow px-4 py-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-base-content/70 text-xs">Принято споров</p>
+                                    <p class="text-lg font-semibold text-base-content">{{ disputeStatisticsFormatted.acceptedDisputeCount }}</p>
+                                </div>
+                                <svg class="w-5 h-5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 12l2 2l4-4m6 2a9 9 0 1 1-18 0a9 9 0 0 1 18 0" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow px-4 py-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-base-content/70 text-xs">Отклонено споров</p>
+                                    <p class="text-lg font-semibold text-base-content">{{ disputeStatisticsFormatted.rejectedDisputeCount }}</p>
+                                </div>
+                                <svg class="w-5 h-5 text-error shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 1 1-18 0a9 9 0 0 1 18 0" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow px-4 py-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-base-content/70 text-xs">Доля отклонённых</p>
+                                    <p class="text-lg font-semibold text-base-content">{{ disputeStatisticsFormatted.rejectedDisputeRate }}</p>
+                                </div>
+                                <svg class="w-5 h-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1 0 20.945 13H11z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.03 9.03 0 0 1 20.488 9" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow px-4 py-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-base-content/70 text-xs">Объём споров</p>
+                                    <p class="text-lg font-semibold text-base-content">${{ disputeStatisticsFormatted.totalDisputeVolume }}</p>
+                                </div>
+                                <svg class="w-5 h-5 text-info shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2s3 .895 3 2s-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 1 1-18 0a9 9 0 0 1 18 0" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <div class="card bg-base-100 shadow px-4 py-3">
+                            <div class="flex items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-base-content/70 text-xs">Объём отклонённых</p>
+                                    <p class="text-lg font-semibold text-base-content">${{ disputeStatisticsFormatted.rejectedDisputeVolume }}</p>
+                                </div>
+                                <svg class="w-5 h-5 text-secondary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 0 0-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v16l4-2l4 2l4-2z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <div class="join join-horizontal flex flex-wrap">
+                            <button
+                                v-for="tab in disputeChartTabs"
+                                :key="`dispute-chart-tab-${tab.value}`"
+                                type="button"
+                                class="btn btn-sm join-item"
+                                :class="activeDisputeChartTab === tab.value ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
+                                @click="activeDisputeChartTab = tab.value"
+                            >
+                                {{ tab.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card bg-base-100 shadow mt-4 pt-4 pb-7 px-6 pl-3">
+                        <div class="flex items-center justify-between gap-3 pl-3">
+                            <h2 class="text-base-content/70 text-lg">{{ activeDisputeTabTitle }}</h2>
+                        </div>
+                        <div ref="disputeChart" class="h-50"></div>
+                    </div>
+                </template>
             </section>
         </div>
     </div>

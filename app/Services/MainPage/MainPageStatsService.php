@@ -5,10 +5,12 @@ namespace App\Services\MainPage;
 use App\Contracts\MainPageStatsServiceContract;
 use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Enums\BalanceType;
+use App\Enums\DisputeStatus;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
+use App\Models\Dispute;
 use App\Models\Invoice;
 use App\Models\Merchant;
 use App\Models\MerchantApiRequestLog;
@@ -21,6 +23,7 @@ use App\Services\Money\Money;
 use App\Support\AgentCommission;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -500,6 +503,13 @@ class MainPageStatsService implements MainPageStatsServiceContract
             $normalizedFilters,
             $bucketGranularity,
         );
+        $disputeStats = $this->buildAdminDisputeStats(
+            $resolvedPeriod,
+            $merchantId,
+            $normalizedFilters,
+            $bucketGranularity,
+            $labels,
+        );
         $merchantChartSeries = $this->buildAdminOrderMerchantSeries(
             $resolvedPeriod,
             $merchantId,
@@ -577,6 +587,11 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'data' => $averageCheckData,
                 'shadowData' => $shadowCharts['averageCheck'],
             ],
+            'disputeStatistics' => $disputeStats['statistics'],
+            'disputesChart' => $disputeStats['totalChart'],
+            'rejectedDisputesChart' => $disputeStats['rejectedChart'],
+            'disputesVolumeChart' => $disputeStats['totalVolumeChart'],
+            'rejectedDisputesVolumeChart' => $disputeStats['rejectedVolumeChart'],
             'merchantChartSeries' => $merchantChartSeries,
             'selectedPeriodPreset' => $resolvedPeriod['preset'],
             'selectedDateFrom' => $resolvedPeriod['dateFrom'],
@@ -1855,6 +1870,321 @@ class MainPageStatsService implements MainPageStatsServiceContract
         );
     }
 
+    private function buildAdminDisputeStats(
+        array $resolvedPeriod,
+        ?int $merchantId,
+        array $filters,
+        string $bucketGranularity,
+        array $labels,
+    ): array {
+        $startDate = $resolvedPeriod['startDate'];
+        $endDate = $resolvedPeriod['endDate'];
+        $disputeBucketSql = $this->resolveDisputeBucketSql($bucketGranularity);
+        $shouldGroupBuckets = in_array($resolvedPeriod['preset'], ['custom', 'all'], true);
+
+        $totalDisputeQuery = Dispute::query()
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->applyDisputeOrderFilters($totalDisputeQuery, $merchantId, $filters);
+
+        $acceptedDisputeQuery = Dispute::query()
+            ->where('status', DisputeStatus::ACCEPTED)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->applyDisputeOrderFilters($acceptedDisputeQuery, $merchantId, $filters);
+
+        $rejectedDisputeQuery = Dispute::query()
+            ->where('status', DisputeStatus::CANCELED)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->applyDisputeOrderFilters($rejectedDisputeQuery, $merchantId, $filters);
+
+        $totalDisputeCount = (int) $totalDisputeQuery->count();
+        $acceptedDisputeCount = (int) $acceptedDisputeQuery->count();
+        $rejectedDisputeCount = (int) $rejectedDisputeQuery->count();
+        $rejectedDisputeRate = $totalDisputeCount > 0
+            ? round(($rejectedDisputeCount / $totalDisputeCount) * 100, 2)
+            : 0;
+
+        $totalDisputeVolumeQuery = Dispute::query()
+            ->join('orders', 'disputes.order_id', '=', 'orders.id')
+            ->whereBetween('disputes.created_at', [$startDate, $endDate]);
+        $this->applyDisputeOrderJoinFilters($totalDisputeVolumeQuery, $merchantId, $filters);
+
+        $rejectedDisputeVolumeQuery = Dispute::query()
+            ->join('orders', 'disputes.order_id', '=', 'orders.id')
+            ->where('disputes.status', DisputeStatus::CANCELED)
+            ->whereBetween('disputes.created_at', [$startDate, $endDate]);
+        $this->applyDisputeOrderJoinFilters($rejectedDisputeVolumeQuery, $merchantId, $filters);
+
+        $totalDisputeVolume = Money::fromUnits(
+            (int) $totalDisputeVolumeQuery->sum('orders.total_profit'),
+            Currency::USDT(),
+        );
+        $rejectedDisputeVolume = Money::fromUnits(
+            (int) $rejectedDisputeVolumeQuery->sum('orders.total_profit'),
+            Currency::USDT(),
+        );
+
+        $totalDisputesByBucketQuery = Dispute::query()
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->applyDisputeOrderFilters($totalDisputesByBucketQuery, $merchantId, $filters);
+
+        $rejectedDisputesByBucketQuery = Dispute::query()
+            ->where('status', DisputeStatus::CANCELED)
+            ->whereBetween('created_at', [$startDate, $endDate]);
+        $this->applyDisputeOrderFilters($rejectedDisputesByBucketQuery, $merchantId, $filters);
+
+        $totalDisputesByBucket = $totalDisputesByBucketQuery
+            ->selectRaw("{$disputeBucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('bucket_key')
+            ->pluck('count', 'bucket_key');
+        $rejectedDisputesByBucket = $rejectedDisputesByBucketQuery
+            ->selectRaw("{$disputeBucketSql} as bucket_key, COUNT(*) as count")
+            ->groupBy('bucket_key')
+            ->pluck('count', 'bucket_key');
+
+        $totalDisputeVolumeByBucket = $this->getDisputeVolumeByBucket(
+            $startDate,
+            $endDate,
+            $merchantId,
+            $filters,
+            $bucketGranularity,
+        );
+        $rejectedDisputeVolumeByBucket = $this->getDisputeVolumeByBucket(
+            $startDate,
+            $endDate,
+            $merchantId,
+            $filters,
+            $bucketGranularity,
+            DisputeStatus::CANCELED,
+        );
+
+        $chartBuckets = $this->buildDisputeChartBuckets(
+            $resolvedPeriod,
+            $bucketGranularity,
+            $totalDisputesByBucket,
+            $rejectedDisputesByBucket,
+            $shouldGroupBuckets ? count($labels) : null,
+        );
+        $volumeChartBuckets = $this->buildDisputeChartBuckets(
+            $resolvedPeriod,
+            $bucketGranularity,
+            $totalDisputeVolumeByBucket,
+            $rejectedDisputeVolumeByBucket,
+            $shouldGroupBuckets ? count($labels) : null,
+            convertMoney: true,
+        );
+
+        $shadowCharts = $this->buildAdminDisputeShadowCharts(
+            $resolvedPeriod,
+            $merchantId,
+            $filters,
+            $bucketGranularity,
+        );
+
+        return [
+            'statistics' => [
+                'totalDisputeCount' => $totalDisputeCount,
+                'acceptedDisputeCount' => $acceptedDisputeCount,
+                'rejectedDisputeCount' => $rejectedDisputeCount,
+                'rejectedDisputeRate' => $rejectedDisputeRate.'%',
+                'totalDisputeVolume' => $totalDisputeVolume->toBeauty(),
+                'rejectedDisputeVolume' => $rejectedDisputeVolume->toBeauty(),
+            ],
+            'totalChart' => [
+                'labels' => $labels,
+                'data' => $chartBuckets['total'],
+                'shadowData' => $shadowCharts['total'] ?? [],
+            ],
+            'rejectedChart' => [
+                'labels' => $labels,
+                'data' => $chartBuckets['rejected'],
+                'shadowData' => $shadowCharts['rejected'] ?? [],
+            ],
+            'totalVolumeChart' => [
+                'labels' => $labels,
+                'data' => $volumeChartBuckets['total'],
+                'shadowData' => $shadowCharts['totalVolume'] ?? [],
+            ],
+            'rejectedVolumeChart' => [
+                'labels' => $labels,
+                'data' => $volumeChartBuckets['rejected'],
+                'shadowData' => $shadowCharts['rejectedVolume'] ?? [],
+            ],
+        ];
+    }
+
+    private function buildAdminDisputeShadowCharts(
+        array $resolvedPeriod,
+        ?int $merchantId,
+        array $filters,
+        string $bucketGranularity,
+    ): array {
+        $emptyCharts = [
+            'total' => [],
+            'rejected' => [],
+            'totalVolume' => [],
+            'rejectedVolume' => [],
+        ];
+        $shadowRange = $this->resolveShadowPeriodRange($resolvedPeriod);
+
+        if (! $shadowRange) {
+            return $emptyCharts;
+        }
+
+        $cachedShadowCharts = Cache::remember(
+            $this->shadowChartCacheKey('admin-disputes-v2', $resolvedPeriod['preset'], $shadowRange, $merchantId, $filters),
+            now()->addDay(),
+            function () use ($shadowRange, $merchantId, $filters, $bucketGranularity) {
+                $disputeBucketSql = $this->resolveDisputeBucketSql($bucketGranularity);
+
+                $totalDisputesQuery = Dispute::query()
+                    ->whereBetween('disputes.created_at', [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $this->applyDisputeOrderFilters($totalDisputesQuery, $merchantId, $filters);
+
+                $rejectedDisputesQuery = Dispute::query()
+                    ->where('status', DisputeStatus::CANCELED)
+                    ->whereBetween('disputes.created_at', [$shadowRange['startDate'], $shadowRange['endDate']]);
+                $this->applyDisputeOrderFilters($rejectedDisputesQuery, $merchantId, $filters);
+
+                $countBuckets = $this->buildDisputeChartBuckets(
+                    $shadowRange,
+                    $bucketGranularity,
+                    $totalDisputesQuery
+                        ->selectRaw("{$disputeBucketSql} as bucket_key, COUNT(*) as count")
+                        ->groupBy('bucket_key')
+                        ->pluck('count', 'bucket_key'),
+                    $rejectedDisputesQuery
+                        ->selectRaw("{$disputeBucketSql} as bucket_key, COUNT(*) as count")
+                        ->groupBy('bucket_key')
+                        ->pluck('count', 'bucket_key'),
+                );
+
+                $volumeBuckets = $this->buildDisputeChartBuckets(
+                    $shadowRange,
+                    $bucketGranularity,
+                    $this->getDisputeVolumeByBucket(
+                        $shadowRange['startDate'],
+                        $shadowRange['endDate'],
+                        $merchantId,
+                        $filters,
+                        $bucketGranularity,
+                    ),
+                    $this->getDisputeVolumeByBucket(
+                        $shadowRange['startDate'],
+                        $shadowRange['endDate'],
+                        $merchantId,
+                        $filters,
+                        $bucketGranularity,
+                        DisputeStatus::CANCELED,
+                    ),
+                    convertMoney: true,
+                );
+
+                return [
+                    'total' => $countBuckets['total'],
+                    'rejected' => $countBuckets['rejected'],
+                    'totalVolume' => $volumeBuckets['total'],
+                    'rejectedVolume' => $volumeBuckets['rejected'],
+                ];
+            },
+        );
+
+        return array_merge($emptyCharts, $cachedShadowCharts);
+    }
+
+    private function getDisputeVolumeByBucket(
+        Carbon $startDate,
+        Carbon $endDate,
+        ?int $merchantId,
+        array $filters,
+        string $bucketGranularity,
+        ?DisputeStatus $status = null,
+    ): Collection {
+        $disputeBucketSql = $this->resolveDisputeBucketSql($bucketGranularity);
+
+        $query = Dispute::query()
+            ->join('orders', 'disputes.order_id', '=', 'orders.id')
+            ->whereBetween('disputes.created_at', [$startDate, $endDate]);
+
+        if ($status) {
+            $query->where('disputes.status', $status);
+        }
+
+        $this->applyDisputeOrderJoinFilters($query, $merchantId, $filters);
+
+        return $query
+            ->selectRaw("{$disputeBucketSql} as bucket_key, SUM(orders.total_profit) as total_volume")
+            ->groupBy('bucket_key')
+            ->pluck('total_volume', 'bucket_key');
+    }
+
+    private function buildDisputeChartBuckets(
+        array $periodRange,
+        string $bucketGranularity,
+        mixed $totalDisputesByBucket,
+        mixed $rejectedDisputesByBucket,
+        ?int $groupToBucketCount = null,
+        bool $convertMoney = false,
+    ): array {
+        $buckets = [];
+        $currentBucketDate = $periodRange['startDate']->copy();
+        $isHourly = $bucketGranularity === 'hourly';
+        $isEightHours = $bucketGranularity === 'eight_hours';
+
+        while ($currentBucketDate->lte($periodRange['endDate'])) {
+            $bucketKey = match ($bucketGranularity) {
+                'hourly', 'eight_hours' => $currentBucketDate->format('Y-m-d H:00:00'),
+                default => $currentBucketDate->toDateString(),
+            };
+
+            $totalValue = $totalDisputesByBucket[$bucketKey] ?? 0;
+            $rejectedValue = $rejectedDisputesByBucket[$bucketKey] ?? 0;
+
+            if ($convertMoney) {
+                $totalValue = Money::fromUnits((int) $totalValue, Currency::USDT())->toInt();
+                $rejectedValue = Money::fromUnits((int) $rejectedValue, Currency::USDT())->toInt();
+            } else {
+                $totalValue = (int) $totalValue;
+                $rejectedValue = (int) $rejectedValue;
+            }
+
+            $buckets[] = [
+                'total' => $totalValue,
+                'rejected' => $rejectedValue,
+            ];
+
+            if ($isHourly) {
+                $currentBucketDate->addHour();
+            } elseif ($isEightHours) {
+                $currentBucketDate->addHours(8);
+            } else {
+                $currentBucketDate->addDay();
+            }
+        }
+
+        if ($groupToBucketCount !== null && $groupToBucketCount > 0 && count($buckets) > $groupToBucketCount) {
+            $chunkSize = (int) ceil(count($buckets) / $groupToBucketCount);
+            $groupedBuckets = [];
+
+            for ($i = 0; $i < count($buckets); $i += $chunkSize) {
+                $chunk = array_slice($buckets, $i, $chunkSize);
+                $groupedBuckets[] = [
+                    'total' => array_sum(array_column($chunk, 'total')),
+                    'rejected' => array_sum(array_column($chunk, 'rejected')),
+                ];
+            }
+
+            $buckets = $groupedBuckets;
+        }
+
+        $totalData = array_column($buckets, 'total');
+        $rejectedData = array_column($buckets, 'rejected');
+
+        return [
+            'total' => $this->hasNonZeroValue($totalData) ? $totalData : [],
+            'rejected' => $this->hasNonZeroValue($rejectedData) ? $rejectedData : [],
+        ];
+    }
+
     private function buildShadowChartsFromBuckets(
         array $shadowRange,
         mixed $earningsByBucket,
@@ -2040,6 +2370,49 @@ class MainPageStatsService implements MainPageStatsServiceContract
         if (! empty($filters['merchantIds'])) {
             $query->whereIn('merchant_id', $filters['merchantIds']);
         }
+    }
+
+    private function applyDisputeOrderFilters(Builder $query, ?int $merchantId, array $filters): void
+    {
+        $query->whereHas('order', function (Builder $orderQuery) use ($merchantId, $filters): void {
+            if ($merchantId) {
+                $orderQuery->where('merchant_id', $merchantId);
+            }
+
+            $this->applyOrderFilters($orderQuery, $filters);
+        });
+    }
+
+    private function applyDisputeOrderJoinFilters(Builder $query, ?int $merchantId, array $filters): void
+    {
+        if ($merchantId) {
+            $query->where('orders.merchant_id', $merchantId);
+        }
+
+        if (! empty($filters['traderIds'])) {
+            $query->whereIn('orders.trader_id', $filters['traderIds']);
+        }
+
+        if (! empty($filters['paymentMethodIds'])) {
+            $query->whereIn('orders.payment_gateway_id', $filters['paymentMethodIds']);
+        }
+
+        if (! empty($filters['paymentDetailIds'])) {
+            $query->whereIn('orders.payment_detail_id', $filters['paymentDetailIds']);
+        }
+
+        if (! empty($filters['merchantIds'])) {
+            $query->whereIn('orders.merchant_id', $filters['merchantIds']);
+        }
+    }
+
+    private function resolveDisputeBucketSql(string $bucketGranularity): string
+    {
+        return match ($bucketGranularity) {
+            'hourly' => "DATE_FORMAT(disputes.created_at, '%Y-%m-%d %H:00:00')",
+            'eight_hours' => "DATE_FORMAT(DATE_ADD(DATE(disputes.created_at), INTERVAL FLOOR(HOUR(disputes.created_at) / 8) * 8 HOUR), '%Y-%m-%d %H:00:00')",
+            default => 'DATE(disputes.created_at)',
+        };
     }
 
     private function buildAdminOrderMerchantSeries(
