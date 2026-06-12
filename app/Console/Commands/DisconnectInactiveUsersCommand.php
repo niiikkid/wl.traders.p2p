@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 
 class DisconnectInactiveUsersCommand extends Command
 {
-    private const PANEL_ACTIVITY_THRESHOLD_MINUTES = 15;
+    private const PANEL_ACTIVITY_THRESHOLD_MINUTES = 30;
 
     /**
      * The name and signature of the console command.
@@ -24,7 +24,7 @@ class DisconnectInactiveUsersCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Отключает трейдеров в статусе «работает», если в панели не было активности более 15 минут';
+    protected $description = 'Отключает трейдеров в статусе «работает», если в панели не было активности более 30 минут';
 
     /**
      * Execute the console command.
