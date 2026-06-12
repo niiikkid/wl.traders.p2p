@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\SmsLog;
 use App\Models\UserMeta;
 use App\Services\Money\Currency;
+use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
@@ -93,6 +94,10 @@ class NotificationController extends Controller
         $user = $request->user();
 
         abort_unless($user->hasRole('Trader'), 403);
+
+        $now = now();
+        cache()->put("user-online-at-{$user->id}", $now->toISOString());
+        app(UserOnlinePeriodRecorder::class)->touch($user->id, $now);
 
         return response()->json([
             'latest_event_ids' => $this->resolveLatestEventIds($request),
