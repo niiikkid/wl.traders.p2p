@@ -23,6 +23,7 @@ import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import MoneyValue from "@/Components/MoneyValue.vue";
+import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
 import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
 import PaymentDetailInfoDropdown from "@/Components/PaymentDetailInfoDropdown.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
@@ -32,6 +33,7 @@ import TraderTrafficCategoriesRow from "@/Components/Order/TraderTrafficCategori
 const viewStore = useViewStore();
 const orders = ref(usePage().props.orders);
 const modalStore = useModalStore();
+const { confirmAcceptOrder } = useConfirmAcceptOrder();
 const trafficPaused = ref(usePage().props.trafficPaused ?? usePage().props.adminTrafficPaused ?? false);
 const trafficPauseForm = useForm({
     paused: trafficPaused.value,
@@ -81,24 +83,6 @@ const openOrderModal = (order) => {
         return;
     }
     modalStore.openOrderModal({order_id: order.id})
-}
-
-const confirmAcceptOrder = (order) => {
-    modalStore.openConfirmModal({
-        title: 'Вы уверены что хотите  закрыть сделку как оплаченную?',
-        confirm_button_name: 'Платеж поступил',
-        confirm: () => {
-            useForm({}).patch(route('orders.accept', order.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    modalStore.closeAll()
-                    router.visit(route(viewStore.adminPrefix + 'orders.index'), {
-                        only: ['orders'],
-                    })
-                },
-            })
-        }
-    });
 }
 
 const confirmAcceptDispute = (dispute) => {

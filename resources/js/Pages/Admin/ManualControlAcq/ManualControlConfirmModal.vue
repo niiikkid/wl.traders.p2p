@@ -7,6 +7,7 @@
  */
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
+import ConfirmOrderAcceptSummary from '@/Components/Confirm/ConfirmOrderAcceptSummary.vue';
 import { useModalStore } from '@/store/modal.js';
 
 const modal_store = useModalStore();
@@ -71,9 +72,17 @@ onUnmounted(() => {
                     {{ confirmModal.params.title }}
                 </h2>
 
-                <p class="mt-1 text-sm text-base-content/70">
+                <p
+                    v-if="confirmModal.params.body"
+                    class="text-sm text-base-content/70"
+                >
                     {{ confirmModal.params.body }}
                 </p>
+
+                <ConfirmOrderAcceptSummary
+                    v-if="confirmModal.params.order_summary"
+                    v-bind="confirmModal.params.order_summary"
+                />
 
                 <div class="mt-6 flex flex-wrap justify-end gap-2">
                     <button

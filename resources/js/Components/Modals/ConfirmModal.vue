@@ -1,6 +1,6 @@
 <script setup>
 import Modal from "@/Components/Modals/Modal.vue";
-import SecondaryButton from "@/Components/SecondaryButton.vue";
+import ConfirmOrderAcceptSummary from '@/Components/Confirm/ConfirmOrderAcceptSummary.vue';
 import { storeToRefs } from 'pinia'
 import {ref} from "vue";
 import { useModalStore } from "@/store/modal.js";
@@ -31,9 +31,17 @@ const confirm = () => {
                 {{ confirmModal.params.title }}
             </h2>
 
-            <p class="mt-1 text-sm text-base-content/70">
+            <p
+                v-if="confirmModal.params.body"
+                class="text-sm text-base-content/70"
+            >
                 {{ confirmModal.params.body }}
             </p>
+
+            <ConfirmOrderAcceptSummary
+                v-if="confirmModal.params.order_summary"
+                v-bind="confirmModal.params.order_summary"
+            />
 
             <div class="modal-action">
                 <button class="btn btn-sm btn-error btn-outline" @click="close">{{ confirmModal.params.cancel_button_name }}</button>

@@ -203,6 +203,7 @@ export const useModalStore = defineStore('modal', {
         openConfirmModal({
              title,
              body = 'Действие невозможно отменить.',
+             order_summary = null,
              confirm_button_name = 'Подтвердить',
              cancel_button_name = 'Отмена',
              confirm = null,
@@ -211,6 +212,7 @@ export const useModalStore = defineStore('modal', {
             this.openModal('confirm', {
                 title,
                 body,
+                order_summary,
                 confirm_button_name,
                 cancel_button_name,
                 confirm,

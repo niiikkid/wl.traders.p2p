@@ -19,9 +19,11 @@ import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vu
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
+import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
 
 const orders = ref(usePage().props.orders);
 const modalStore = useModalStore();
+const { confirmAcceptOrder } = useConfirmAcceptOrder();
 const canUseManualControlAcq = Boolean(usePage().props.auth?.user?.support_can_use_manual_control_acq);
 
 router.on('success', (event) => {
@@ -35,24 +37,6 @@ const openOrderModal = (order) => {
         return;
     }
     modalStore.openOrderModal({order_id: order.id})
-}
-
-const confirmAcceptOrder = (order) => {
-    modalStore.openConfirmModal({
-        title: 'Вы уверены что хотите  закрыть сделку как оплаченную?',
-        confirm_button_name: 'Платеж поступил',
-        confirm: () => {
-            useForm({}).patch(route('support.orders.accept', order.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    modalStore.closeAll()
-                    router.visit(route('support.orders.index'), {
-                        only: ['orders'],
-                    })
-                },
-            })
-        }
-    });
 }
 
 const confirmAcceptDispute = (dispute) => {

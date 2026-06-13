@@ -15,6 +15,7 @@ import CopyableExternalId from "@/Components/CopyableExternalId.vue";
 import EditOrderAmountModal from "@/Modals/Order/EditOrderAmountModal.vue";
 import AppTooltip from '@/Components/AppTooltip.vue';
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
+import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
 
 const viewStore = useViewStore();
 const modalStore = useModalStore();
@@ -81,23 +82,10 @@ const createDisputeRouteName = () => {
     return 'admin.disputes.store';
 };
 
-const confirmAcceptOrder = (order) => {
-    modalStore.openConfirmModal({
-        title: 'Вы уверены что хотите  закрыть сделку как оплаченную?',
-        confirm_button_name: 'Платеж поступил',
-        confirm: () => {
-            useForm({}).patch(route(acceptOrderRouteName(), order.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    modalStore.closeAll()
-                    router.visit(route(ordersIndexRouteName()), {
-                        only: ['orders'],
-                    })
-                },
-            })
-        }
-    });
-}
+const { confirmAcceptOrder } = useConfirmAcceptOrder({
+    acceptRouteName: acceptOrderRouteName,
+    indexRouteName: ordersIndexRouteName,
+});
 
 const confirmCreateDispute = (order) => {
     modalStore.openConfirmModal({
