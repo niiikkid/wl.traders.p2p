@@ -47,7 +47,6 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationRuleController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\PaymentDemoController;
 use App\Http\Controllers\PaymentDetailArchiveController;
 use App\Http\Controllers\PaymentDetailController;
 use App\Http\Controllers\PaymentDetailLimitResetController;
@@ -86,21 +85,12 @@ use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/payment/demo', [PaymentDemoController::class, 'show'])
-    ->middleware('payment.domain')
-    ->name('payment.demo.show');
-Route::post('/payment/demo/dispute', [PaymentDemoController::class, 'storeDispute'])
-    ->middleware('payment.domain')
-    ->name('payment.demo.dispute.store');
-Route::post('/payment/demo/payment-detail/{paymentGateway}', [PaymentDemoController::class, 'storePaymentDetail'])
-    ->middleware('payment.domain')
-    ->name('payment.demo.payment-detail.store');
 Route::post('/telegram/webhook', TelegramWebhookController::class)
-    ->middleware(['telegram.secret', 'backoffice.domain'])
+    ->middleware('telegram.secret')
     ->name('telegram.webhook');
 
 Route::post('/telegram/chat-automation/webhook', TelegramChatAutomationWebhookController::class)
-    ->middleware(['telegram.chat-automation.secret', 'backoffice.domain'])
+    ->middleware('telegram.chat-automation.secret')
     ->name('telegram.chat-automation.webhook');
 
 // Выход из режима Impersonate
@@ -114,9 +104,9 @@ Route::post('/impersonate/leave', function () {
     }
 
     return redirect()->back()->with('error', 'Вы не в режиме Impersonate');
-})->middleware('auth', 'banned', 'backoffice.domain')->name('impersonate.leave');
+})->middleware('auth', 'banned')->name('impersonate.leave');
 
-Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
+Route::group(['middleware' => ['2fa']], function () {
     Route::get('/', AppHomeController::class)->name('dashboard');
 
     Route::group(['middleware' => ['auth', 'banned']], function () {

@@ -1,5 +1,8 @@
 # Wiki Log
 
+## [2026-06-15] ingest | Legacy Feature Removal Technical Specification (Step 18 shipped)
+- Updated: Legacy Feature Removal Technical Specification
+
 ## [2026-06-15] query | Archived: Legacy Feature Removal Technical Specification
 
 ## [2026-06-15] ingest | Legacy Feature Removal Technical Specification (focused exploration sync)

@@ -1,7 +1,7 @@
 # Legacy Feature Removal Technical Specification
 
 > Sources: User conversation, 2026-06-15; repository exploration, 2026-06-15; focused repository exploration for Rapira/API/roles/trader features, 2026-06-15; existing wiki article [Merchant Traffic Categories Architecture](../traffic-categories/merchant-traffic-categories-architecture.md)
-> Raw: [Legacy Feature Removal Requirements](../../raw/feature-removal/2026-06-15-legacy-feature-removal-requirements.md)
+> Raw: [Legacy Feature Removal Requirements](../../raw/feature-removal/2026-06-15-legacy-feature-removal-requirements.md); [Payment Demo And Domain Split Removal](../../raw/feature-removal/2026-06-15-payment-demo-and-domain-split-removal.md)
 > Updated: 2026-06-15
 
 ## Overview
@@ -137,13 +137,13 @@ Every removal step must be implemented as a small isolated change. Before deleti
 
 #### Frontend Removal
 
-- In `resources/js/Pages/Integration/Index.vue`, remove tabs/components that execute API requests from the browser. Keep only documentation, API token regeneration, documentation download, and the demo payment page link.
+- In `resources/js/Pages/Integration/Index.vue`, remove tabs/components that execute API requests from the browser. Keep only documentation, API token regeneration, and documentation download.
 - Delete interactive request components that are no longer allowed: `MerchantApi.vue`, `PayoutApi.vue`, `StatementApi.vue`, `WalletApi.vue`, `CommonApi.vue`, and shared `ApiResponse.vue` if it becomes unused.
-- Keep `ApiDocumentation.vue`, H2H documentation, token display/regeneration, receipt-template download if still part of documentation, and demo payment page access.
+- Keep `ApiDocumentation.vue`, H2H documentation, token display/regeneration, and receipt-template download if still part of documentation. Demo payment page link removed in Step 18.
 
 #### Backend Removal
 
-- Keep merchant integration page routes `integration.index`, `integration.v2`, `integration.regenerate-token`, and `integration.receipt-template` only if they serve the remaining docs/token/download/demo surface.
+- Keep merchant integration page routes `integration.index`, `integration.v2`, `integration.regenerate-token`, and `integration.receipt-template` only if they serve the remaining docs/token/download surface.
 - Remove backend endpoints used solely by browser-based API request playgrounds. Do not remove actual external API endpoints yet unless covered by Step 9 or Step 10.
 - Update generated/downloaded API documentation so it no longer advertises browser playground functionality.
 - Re-check API logging pages and merchant API log analytics; they are separate admin/merchant observability surfaces and should not be removed by this step unless explicitly tied to the deleted playground.
@@ -153,14 +153,14 @@ Every removal step must be implemented as a small isolated change. Before deleti
 
 #### Frontend Removal
 
-- Remove public payment form UI and any merchant API documentation sections from the integration pages. Keep H2H API docs and demo payment page only if the demo is still required by product.
+- Remove public payment form UI and any merchant API documentation sections from the integration pages. Keep H2H API docs only.
 - Remove merchant API examples from downloadable documentation and UI tabs.
-- Check public payment routes `/payment/{order:uuid}` and `/payment/demo` before deletion: if demo payment page must remain, keep demo routes/components isolated from real payment form flow.
+- Public route `/payment/{order:uuid}` and `PaymentLinkController` were removed earlier. Demo page `/payment/demo` removed in Step 18.
 
 #### Backend Removal
 
 - Remove `api/merchant/order*` routes and `API\Merchant\OrderController` only after confirming all active merchants have moved to H2H or v2 payin. Keep `api/h2h/order*` routes and behavior.
-- Remove `PaymentLinkController` routes for real public payment form if product no longer supports form-based payment. Keep `PaymentDemoController` only if demo page remains.
+- Remove `PaymentLinkController` routes for real public payment form if product no longer supports form-based payment. `PaymentDemoController` removed in Step 18.
 - Do not remove H2H backend while `InternalCascadeProvider` still simulates H2H through `H2HStoreRequest` and `OrderPoolingService`. Move cascade/internal creation to a direct domain service first if H2H API is ever targeted for deletion.
 - Update order creation services so internal/cascade flows that simulate H2H are not broken. Per project rule, API v2 cascade payin remains under `/api/v2/payin`.
 - Remove merchant API docs, request validation, resources, and callbacks only where they belong to the deprecated merchant API, not shared H2H resources.
@@ -287,6 +287,50 @@ Every removal step must be implemented as a small isolated change. Before deleti
 - Narrow news view/reaction routes from `role:Trader|Support|Analyst|Team Leader|Agent|Super Admin` to `Trader|Team Leader|Super Admin` only if Super Admin is still needed for administration; otherwise `Trader|Team Leader`.
 - Ensure news view tracking and reactions cannot be posted by roles that no longer see news.
 
+### Step 18 — Remove Demo Payment Page And Payment Domain Split (**Shipped**)
+
+#### Context
+
+The real public hosted payment form (`/payment/{order:uuid}`, `PaymentLinkController`) was already gone. What remained was an isolated demo at `/payment/demo` (`PaymentDemoController` → `PaymentLink/Index.vue`) and split-domain config (`PAYMENT_FORM_URL`, `config/domains.php`, `EnsurePaymentDomain`, `EnsureBackofficeDomain`). Product accepts payins via H2H API only; merchants render requisites on their own sites.
+
+#### Frontend Removal (**done**)
+
+- Deleted `resources/js/Pages/PaymentLink/**` (stages, `DemoSwitcher`, headers, modals).
+- Deleted `resources/js/Layouts/PaymentLayout.vue`.
+- Removed demo card «Демонстрационная платежная форма» and link to `payment.demo.show` from `resources/js/Pages/Integration/Index.vue`.
+
+#### Backend Removal (**done**)
+
+- Deleted `app/Http/Controllers/PaymentDemoController.php`.
+- Removed routes `GET /payment/demo`, `POST /payment/demo/dispute`, `POST /payment/demo/payment-detail/{paymentGateway}` and names `payment.demo.*`.
+- Deleted `app/Http/Middleware/EnsurePaymentDomain.php` and `app/Http/Middleware/EnsureBackofficeDomain.php`.
+- Deleted `config/domains.php`.
+- Removed middleware aliases `payment.domain` and `backoffice.domain` from `bootstrap/app.php`.
+- Stripped `backoffice.domain` from all routes in `routes/web.php` and `routes/auth.php` (safe: middleware only restricted backoffice when payment host differed from `APP_URL`).
+
+#### Configuration Removal (**done**)
+
+- Removed `PAYMENT_FORM_URL` and `PAYMENT_LEGACY_REDIRECT_STATUS` from `.env.example` and `.env`.
+
+#### Post-deploy (**done**)
+
+- `php artisan optimize`
+- `php artisan ziggy:generate resources/js/ziggy-routes.js`
+- `vendor/bin/pint --dirty --format agent`
+
+#### Not affected
+
+- H2H API (`api/h2h/order*`) and cascade payin `/api/v2/payin`.
+- `payment_url` in trader/leader deposit invoices (external provider redirect).
+- Backoffice `Payment/Index` (trader payments list).
+- `POST /payment/{order}/callback/resend` (merchant callback resend; not a public payment page).
+
+#### Safety
+
+- No DB migration required.
+- No runtime code referenced `env('PAYMENT_FORM_URL')` after `config/domains.php` removal.
+- `backoffice.domain` was effectively disabled when payment host matched `APP_URL` (default).
+
 ## Cross-Feature Verification Checklist
 
 - Fresh route list contains no removed route names and Ziggy output has no stale references.
@@ -294,7 +338,7 @@ Every removal step must be implemented as a small isolated change. Before deleti
 - Admin user create/edit works without removed role fields, team fields, temp VIP fields, economy toggle, priority payout toggle, or agent fields.
 - Support flows still work after Analyst removal: users, orders, disputes, enabled cards, manual control acquiring, payouts, deposits, and trader analytics where retained.
 - Trader order acceptance, payment detail management, payout taking, finances, disputes, and H2H API order creation still work.
-- Merchant integration page still shows docs, token regeneration, documentation download, and demo payment page, with no browser API playground.
+- Merchant integration page still shows docs, token regeneration, and documentation download, with no browser API playground and no demo payment page (Step 18).
 - H2H API, payout callbacks, deposit/withdraw webhooks, cascade payin, and merchant finance history still work where explicitly retained.
 - No removed setting keys are read by runtime code.
 - No removed enum value can be selected in UI or accepted in API validation.

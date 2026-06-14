@@ -7,8 +7,6 @@ use App\Http\Middleware\ApiV2AccessToken;
 use App\Http\Middleware\ApiWithdrawalsAccessToken;
 use App\Http\Middleware\Banned;
 use App\Http\Middleware\DeviceAccessToken;
-use App\Http\Middleware\EnsureBackofficeDomain;
-use App\Http\Middleware\EnsurePaymentDomain;
 use App\Http\Middleware\Google2FAMiddleware;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\IdempotencyForAppMiddleware;
@@ -43,8 +41,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'idempotency_for_app' => IdempotencyForAppMiddleware::class,
             'role' => RoleMiddleware::class,
             'banned' => Banned::class,
-            'payment.domain' => EnsurePaymentDomain::class,
-            'backoffice.domain' => EnsureBackofficeDomain::class,
             'api-access-token' => ApiAccessToken::class,
             'api-v2-access-token' => ApiV2AccessToken::class,
             'integration-infrastructure-api-access-token' => IntegrationInfrastructureApiAccessToken::class,

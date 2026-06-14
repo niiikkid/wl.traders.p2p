@@ -385,25 +385,6 @@ defineOptions({ layout: AuthenticatedLayout });
                 </div>
             </div>
 
-            <div class="card bg-base-100 shadow mb-6">
-                <div class="card-body">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div class="flex items-center gap-3">
-                            <div class="badge badge-primary badge-outline">DEMO</div>
-                            <div class="text-base font-medium text-base-content">Демонстрационная платежная форма</div>
-                        </div>
-                        <a
-                            :href="route('payment.demo.show')"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="btn btn-primary btn-sm"
-                        >
-                            Открыть демо
-                        </a>
-                    </div>
-                </div>
-            </div>
-
             <ApiDocumentation />
         </div>
     </div>
