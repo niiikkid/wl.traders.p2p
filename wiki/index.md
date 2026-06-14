@@ -73,3 +73,11 @@ Merchant/provider reconciliation knowledge for admin-side comparison of local pa
 | Article | Summary | Updated |
 |---------|---------|---------|
 | [Merchant Reconciliation Service Specification](reconciliation/merchant-reconciliation-service-specification.md) | Detailed phased specification for an abstract reconciliation service, with SP24 API as the first provider strategy and future-provider extension points. | 2026-06-03 |
+
+## feature-removal
+
+Legacy feature removal plans for safely deleting deprecated roles, pages, API surfaces, settings, and data model branches.
+
+| Article | Summary | Updated |
+|---------|---------|---------|
+| [Legacy Feature Removal Technical Specification](feature-removal/legacy-feature-removal-technical-spec.md) | [Archived] Step-by-step removal specification for Analyst, Agent, temporary VIP, Rapira, merchant categories, API playgrounds, priority payout access, user notes, and related legacy UI/backend surfaces. | 2026-06-15 |
