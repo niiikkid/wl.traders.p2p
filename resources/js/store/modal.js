@@ -45,27 +45,11 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
-                userNotes: {
-                    showed: false,
-                    params: {},
-                },
                 userCreate: {
                     showed: false,
                     params: {},
                 },
                 userEdit: {
-                    showed: false,
-                    params: {},
-                },
-                userTempVipHistory: {
-                    showed: false,
-                    params: {},
-                },
-                userTeamManage: {
-                    showed: false,
-                    params: {},
-                },
-                userTeamChange: {
                     showed: false,
                     params: {},
                 },
@@ -97,10 +81,6 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
-                paymentDetailVolumeStatistics: {
-                    showed: false,
-                    params: {},
-                },
                 paymentDetailResetLimits: {
                     showed: false,
                     params: {},
@@ -110,14 +90,6 @@ export const useModalStore = defineStore('modal', {
                     params: {},
                 },
                 merchantSettings: {
-                    showed: false,
-                    params: {},
-                },
-                merchantTrafficCategoryManager: {
-                    showed: false,
-                    params: {},
-                },
-                merchantTrafficCategoriesAssign: {
                     showed: false,
                     params: {},
                 },
@@ -160,15 +132,11 @@ export const useModalStore = defineStore('modal', {
         withdrawalModal: (state) => state.modals.withdrawal,
         orderModal: (state) => state.modals.order,
         editOrderAmountModal: (state) => state.modals.editOrderAmount,
-        userNotesModal: (state) => state.modals.userNotes,
         traderDepositModal: (state) => state.modals.traderDeposit,
         leaderReserveDepositModal: (state) => state.modals.leaderReserveDeposit,
         traderBalanceTransferModal: (state) => state.modals.traderBalanceTransfer,
         userCreateModal: (state) => state.modals.userCreate,
         userEditModal: (state) => state.modals.userEdit,
-        userTempVipHistoryModal: (state) => state.modals.userTempVipHistory,
-        userTeamManageModal: (state) => state.modals.userTeamManage,
-        userTeamChangeModal: (state) => state.modals.userTeamChange,
         userSummaryModal: (state) => state.modals.userSummary,
         paymentDetailCreateModal: (state) => state.modals.paymentDetailCreate,
         paymentDetailEditModal: (state) => state.modals.paymentDetailEdit,
@@ -176,12 +144,9 @@ export const useModalStore = defineStore('modal', {
         paymentDetailTagCreateModal: (state) => state.modals.paymentDetailTagCreate,
         paymentDetailTagManageModal: (state) => state.modals.paymentDetailTagManage,
         paymentDetailScheduleManagerModal: (state) => state.modals.paymentDetailScheduleManager,
-        paymentDetailVolumeStatisticsModal: (state) => state.modals.paymentDetailVolumeStatistics,
         paymentDetailResetLimitsModal: (state) => state.modals.paymentDetailResetLimits,
         merchantCreateModal: (state) => state.modals.merchantCreate,
         merchantSettingsModal: (state) => state.modals.merchantSettings,
-        merchantTrafficCategoryManagerModal: (state) => state.modals.merchantTrafficCategoryManager,
-        merchantTrafficCategoriesAssignModal: (state) => state.modals.merchantTrafficCategoriesAssign,
         payoutSettingsModal: (state) => state.modals.payoutSettings,
         paymentGatewayCreateModal: (state) => state.modals.paymentGatewayCreate,
         paymentGatewayEditModal: (state) => state.modals.paymentGatewayEdit,
@@ -246,23 +211,11 @@ export const useModalStore = defineStore('modal', {
         openEditOrderAmountModal(props) {
             this.openModal('editOrderAmount', props);
         },
-        openUserNotesModal(props) {
-            this.openModal('userNotes', props);
-        },
         openUserCreateModal(props) {
             this.openModal('userCreate', props);
         },
         openUserEditModal(props) {
             this.openModal('userEdit', props);
-        },
-        openUserTempVipHistoryModal(props) {
-            this.openModal('userTempVipHistory', props);
-        },
-        openUserTeamManageModal(props) {
-            this.openModal('userTeamManage', props);
-        },
-        openUserTeamChangeModal(props) {
-            this.openModal('userTeamChange', props);
         },
         openUserSummaryModal(props) {
             this.openModal('userSummary', props);
@@ -285,9 +238,6 @@ export const useModalStore = defineStore('modal', {
         openPaymentDetailScheduleManagerModal(props) {
             this.openModal('paymentDetailScheduleManager', props);
         },
-        openPaymentDetailVolumeStatisticsModal(props) {
-            this.openModal('paymentDetailVolumeStatistics', props);
-        },
         openPaymentDetailResetLimitsModal(props) {
             this.openModal('paymentDetailResetLimits', props);
         },
@@ -296,12 +246,6 @@ export const useModalStore = defineStore('modal', {
         },
         openMerchantSettingsModal(props) {
             this.openModal('merchantSettings', props);
-        },
-        openMerchantTrafficCategoryManagerModal(props) {
-            this.openModal('merchantTrafficCategoryManager', props);
-        },
-        openMerchantTrafficCategoriesAssignModal(props) {
-            this.openModal('merchantTrafficCategoriesAssign', props);
         },
         openPayoutSettingsModal(props) {
             this.openModal('payoutSettings', props);

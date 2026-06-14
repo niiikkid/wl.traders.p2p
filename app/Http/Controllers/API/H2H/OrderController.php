@@ -19,7 +19,7 @@ class OrderController extends Controller
     public function show(Order $order): JsonResponse
     {
         if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+            return response()->failWithMessage('Сделка не предназначена для H2H API.');
         }
 
         $order->load('dispute', 'paymentGateway', 'paymentDetail');
@@ -39,7 +39,7 @@ class OrderController extends Controller
             ->firstOrFail();
 
         if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+            return response()->failWithMessage('Сделка не предназначена для H2H API.');
         }
 
         $order->load('dispute', 'paymentGateway', 'paymentDetail');
@@ -63,7 +63,7 @@ class OrderController extends Controller
     public function finish(Order $order): JsonResponse
     {
         if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+            return response()->failWithMessage('Сделка не предназначена для H2H API.');
         }
 
         Gate::authorize('access-to-order', $order);
@@ -93,7 +93,7 @@ class OrderController extends Controller
     public function cancel(Order $order): JsonResponse
     {
         if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+            return response()->failWithMessage('Сделка не предназначена для H2H API.');
         }
 
         Gate::authorize('access-to-order', $order);
@@ -123,7 +123,7 @@ class OrderController extends Controller
     public function storeConfirmationCode(StoreConfirmationCodeRequest $request, Order $order): JsonResponse
     {
         if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+            return response()->failWithMessage('Сделка не предназначена для H2H API.');
         }
 
         Gate::authorize('access-to-order', $order);

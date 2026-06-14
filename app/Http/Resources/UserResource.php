@@ -49,8 +49,6 @@ class UserResource extends JsonResource
             'archived_at' => $this->archived_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
             'team_leader_id' => $this->team_leader_id,
-            'agent_id' => $this->agent_id,
-            'agent_commission_percentage' => (float) $this->agent_commission_percentage,
             'team_leader_extended_access_enabled' => (bool) $this->team_leader_extended_access_enabled,
             'team_leader_flexible_trader_commission_enabled' => (bool) $this->team_leader_flexible_trader_commission_enabled,
             'team_leader_flexible_trader_commission_min' => $this->team_leader_flexible_trader_commission_min !== null
@@ -88,22 +86,6 @@ class UserResource extends JsonResource
                 fn () => $this->remainingTeamLeaderTraderSlots()
             ),
             'uses_team_leader_shared_reserve' => $this->usesTeamLeaderSharedReserve(),
-            'agent' => $this->whenLoaded('agent', function () {
-                return $this->agent ? [
-                    'id' => $this->agent->id,
-                    'email' => $this->agent->email,
-                ] : null;
-            }),
-            'user_team' => $this->whenLoaded('userTeam', function () {
-                if (! $this->userTeam) {
-                    return null;
-                }
-
-                return [
-                    'id' => $this->userTeam->id,
-                    'name' => $this->userTeam->name,
-                ];
-            }),
             $this->mergeWhen($this->resource->relationLoaded('roles'), function () {
                 return [
                     'role' => RoleResource::make($this->roles[0])->resolve(),
@@ -121,8 +103,6 @@ class UserResource extends JsonResource
                     $amount = $wallet->trust_balance;
                 } elseif ($this->hasRole('Team Leader')) {
                     $amount = $wallet->teamleader_balance;
-                } elseif ($this->hasRole('Agent')) {
-                    $amount = $wallet->agent_balance;
                 } elseif ($this->hasRole('Provider Liquidity')) {
                     $amount = $wallet->provider_balance;
                 }
@@ -138,12 +118,6 @@ class UserResource extends JsonResource
             'traffic_enabled_at' => $this->traffic_enabled_at?->toISOString(),
             'is_online' => $this->is_online,
             'is_vip' => $this->is_vip,
-            'temp_vip_active_until' => $this->temp_vip_active_until?->toIso8601String(),
-            'temp_vip_can_activate' => (bool) $this->temp_vip_can_activate,
-            'temp_vip_progress_start_at' => $this->temp_vip_progress_start_at?->toIso8601String(),
-            'is_temp_vip_active' => services()->settings()->isTempVipEnabled() && $this->temp_vip_active_until
-                ? now()->lt($this->temp_vip_active_until)
-                : false,
             'referral_commission_percentage' => $this->referral_commission_percentage,
             'team_leader_split_from_service_percent' => $this->team_leader_split_from_service_percent,
             'payout_referral_commission_percentage' => $this->payout_referral_commission_percentage,
@@ -151,8 +125,6 @@ class UserResource extends JsonResource
             'reserve_balance_limit' => $this->reserve_balance_limit,
             'fiat_currency' => $this->fiat_currency,
             'payouts_enabled' => (bool) $this->payouts_enabled,
-            'trader_economy_enabled' => (bool) $this->trader_economy_enabled,
-            'priority_payout_access_enabled' => (bool) $this->priority_payout_access_enabled,
             'payout_hold_enabled' => (bool) $this->payout_hold_enabled,
             'payout_hold_minutes' => (int) ($this->payout_hold_minutes ?? 0),
             'payout_active_payouts_limit' => (int) ($this->payout_active_payouts_limit ?? 1),

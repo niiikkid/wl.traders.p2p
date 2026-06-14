@@ -6,8 +6,8 @@ use App\Http\Controllers\API\APP\StateController;
 use App\Http\Controllers\API\CurrencyController;
 use App\Http\Controllers\API\Deposit\DepositController;
 use App\Http\Controllers\API\H2H\DisputeController;
+use App\Http\Controllers\API\H2H\OrderController;
 use App\Http\Controllers\API\Integration\InfrastructureController as IntegrationInfrastructureController;
-use App\Http\Controllers\API\Merchant\OrderController;
 use App\Http\Controllers\API\Merchant\WalletController;
 use App\Http\Controllers\API\PaymentGatewayController;
 use App\Http\Controllers\API\Payout\PayoutController;
@@ -25,30 +25,23 @@ Route::group(['middleware' => ['api-access-token']], function () {
     // common
     Route::get('payment-gateways', [PaymentGatewayController::class, 'index']);
     Route::get('currencies', [CurrencyController::class, 'index']);
-    Route::group(['prefix' => 'merchant'], function () {
-        Route::get('order/{order:uuid}', [OrderController::class, 'show']);
-        Route::get('order/{merchant_id}/{external_id}', [OrderController::class, 'showByExternal']);
-        Route::post('order', [OrderController::class, 'store'])->name('api.order');
-    });
-
     Route::group(['prefix' => 'h2h'], function () {
-        Route::get('order/{order:uuid}', [App\Http\Controllers\API\H2H\OrderController::class, 'show']);
-        Route::post('order', [App\Http\Controllers\API\H2H\OrderController::class, 'store']);
-        Route::patch('order/{order:uuid}/cancel', [App\Http\Controllers\API\H2H\OrderController::class, 'cancel']);
-        Route::patch('order/{order:uuid}/finish', [App\Http\Controllers\API\H2H\OrderController::class, 'finish']);
-        Route::post('order/{order:uuid}/confirmation-code', [App\Http\Controllers\API\H2H\OrderController::class, 'storeConfirmationCode']);
+        Route::get('order/{order:uuid}', [OrderController::class, 'show']);
+        Route::post('order', [OrderController::class, 'store']);
+        Route::patch('order/{order:uuid}/cancel', [OrderController::class, 'cancel']);
+        Route::patch('order/{order:uuid}/finish', [OrderController::class, 'finish']);
+        Route::post('order/{order:uuid}/confirmation-code', [OrderController::class, 'storeConfirmationCode']);
 
         // TODO
         // Route::patch('order/{order:uuid}/confirm-paid', [\App\Http\Controllers\API\H2H\OrderController::class, 'cancel']);
 
         Route::post('order/{order:uuid}/dispute', [DisputeController::class, 'store'])->name('api.dispute');
         Route::get('order/{order:uuid}/dispute', [DisputeController::class, 'show']);
-        Route::get('order/{merchant_id}/{external_id}', [App\Http\Controllers\API\H2H\OrderController::class, 'showByExternal']);
+        Route::get('order/{merchant_id}/{external_id}', [OrderController::class, 'showByExternal']);
     });
 
     Route::group(['prefix' => 'wallet'], function () {
         Route::get('balance', [WalletController::class, 'balance']);
-        Route::post('withdraw', [WalletController::class, 'withdraw']);
     });
 
     Route::group(['prefix' => 'payouts'], function () {
@@ -124,15 +117,6 @@ if (app()->environment(['local', 'dev', 'development'])) {
             'success' => true,
             'message' => 'Callback delivered',
             'received' => $request->all(),
-        ]);
-    });
-
-    Route::post('/sandbox/payout-callback', function (Request $request) {
-        return response()->json([
-            'success' => true,
-            'message' => 'Sandbox callback delivered',
-            'received' => $request->all(),
-            'timestamp' => now()->toIso8601String(),
         ]);
     });
 }

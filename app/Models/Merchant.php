@@ -26,7 +26,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $user_id
  * @property User $user
  * @property Collection<int, Order> $orders
- * @property Collection<int, Category> $categories
  * @property Collection<int, User> $supports Саппорты, имеющие доступ к этому мерчанту
  * @property AntiFraudSetting|null $antiFraudSetting
  * @property MerchantApiCredential|null $apiCredential
@@ -108,14 +107,6 @@ class Merchant extends Model
     }
 
     /**
-     * Получить категории, к которым принадлежит мерчант.
-     */
-    public function categories(): BelongsToMany
-    {
-        return $this->belongsToMany(Category::class);
-    }
-
-    /**
      * Получить саппортов, которые имеют доступ к этому мерчанту
      */
     public function supports(): BelongsToMany
@@ -185,7 +176,9 @@ class Merchant extends Model
         $geoMap = $this->getGeoMap();
         $market = $geoMap[$currency->getCode()] ?? $geoMap[strtolower($currency->getCode())] ?? null;
 
-        return $market ? MarketEnum::tryFrom($market) : null;
+        $marketEnum = $market ? MarketEnum::tryFrom($market) : null;
+
+        return $marketEnum?->activeReplacement();
     }
 
     /**

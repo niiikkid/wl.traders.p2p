@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\MerchantApiLog;
 
 use App\Services\Money\Currency;
-use App\Services\PaymentDetail\PaymentDetailVolumeStatisticsService;
+use App\Services\Statistics\AmountDistributionBucketService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +25,7 @@ class AmountDistributionRequest extends FormRequest
             'period' => [
                 'nullable',
                 'string',
-                Rule::in(array_column(PaymentDetailVolumeStatisticsService::AMOUNT_DISTRIBUTION_PERIOD_OPTIONS, 'value')),
+                Rule::in(array_column(AmountDistributionBucketService::PERIOD_OPTIONS, 'value')),
             ],
             'currency' => [
                 'nullable',

@@ -41,10 +41,6 @@ interface PayoutServiceContract
      */
     public function confirmPaid(Payout $payout): Payout;
 
-    public function releaseAllPriorityAccess(): int;
-
-    public function isPriorityAccessActive(Payout $payout): bool;
-
     /**
      * Ручное изменение статуса администратором с учётом побочных эффектов.
      *

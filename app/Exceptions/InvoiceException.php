@@ -9,11 +9,6 @@ class InvoiceException extends BaseException
         return new self('Недостаточно средств на балансе.');
     }
 
-    public static function unableToWithdrawByService(): static
-    {
-        return new self('Неизвестная ошибка. Обратитесь к администратору.');
-    }
-
     public static function invalidInvoiceType(): static
     {
         return new self('Неверный тип инвойса.');

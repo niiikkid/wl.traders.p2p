@@ -23,7 +23,6 @@ use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Utils\Transaction;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -34,8 +33,6 @@ class PayoutService implements PayoutServiceContract
     private const RECEIPT_DISK = 'local';
 
     private const RECEIPT_DIRECTORY = 'receipts/payouts';
-
-    private const PRIORITY_TRADER_ONLINE_MINUTES = 5;
 
     /**
      * @throws PayoutException
@@ -144,7 +141,6 @@ class PayoutService implements PayoutServiceContract
                 'rate_fixed_at' => $rateFixedAt,
                 'status' => PayoutStatus::OPEN,
                 'expires_at' => $expiresAt,
-                'priority_access_until' => $this->resolvePriorityAccessUntil($data->amountFiat),
                 'total_commission_rate' => $totalRate,
                 'trader_commission_rate' => $traderRate,
                 'teamlead_commission_rate' => $teamLeaderRate,
@@ -248,10 +244,6 @@ class PayoutService implements PayoutServiceContract
 
             if (! $lockedTrader->payouts_enabled) {
                 throw new PayoutException('Выплаты для трейдера отключены.');
-            }
-
-            if ($this->isPriorityAccessActive($payout) && ! $lockedTrader->priority_payout_access_enabled) {
-                throw new PayoutException('Выплата временно доступна только трейдерам с приоритетным доступом.');
             }
 
             $limit = max((int) $lockedTrader->payout_active_payouts_limit ?: 1, 1);
@@ -541,7 +533,6 @@ class PayoutService implements PayoutServiceContract
                     'completed_at' => null,
                     'canceled_at' => null,
                     'expires_at' => $expiresAt,
-                    'priority_access_until' => null,
                 ], $receiptResetPayload));
 
                 if ($expiresAt) {
@@ -651,109 +642,6 @@ class PayoutService implements PayoutServiceContract
 
             throw new PayoutException('Не удалось сменить статус выплаты.');
         });
-    }
-
-    public function releaseAllPriorityAccess(): int
-    {
-        return Payout::query()
-            ->where('status', PayoutStatus::OPEN->value)
-            ->whereNull('trader_id')
-            ->where('priority_access_until', '>', now())
-            ->update(['priority_access_until' => null]);
-    }
-
-    public function isPriorityAccessActive(Payout $payout): bool
-    {
-        return $payout->priority_access_until !== null
-            && $payout->priority_access_until->isFuture()
-            && $payout->status->equals(PayoutStatus::OPEN)
-            && $payout->trader_id === null;
-    }
-
-    private function resolvePriorityAccessUntil(Money $amount): ?Carbon
-    {
-        $settings = services()->settings()->getPayoutPriorityAccessSettings();
-
-        if (! $settings['enabled']) {
-            return null;
-        }
-
-        if (! $this->amountMatchesPriorityAccessSettings($amount)) {
-            return null;
-        }
-
-        if (! $this->hasAnyPriorityPayoutTrader()) {
-            return null;
-        }
-
-        if ($settings['release_without_online_traders'] && ! $this->hasOnlinePriorityPayoutTrader()) {
-            return null;
-        }
-
-        return now()->addMinutes((int) $settings['delay_minutes']);
-    }
-
-    private function amountMatchesPriorityAccessSettings(Money $amount): bool
-    {
-        $currency = $amount->getCurrency();
-        $settings = services()->settings()->getPayoutSettingsForCurrency($currency);
-        $min = $this->makeNullableMoney($settings['priority_access_min_amount'] ?? null, $currency);
-        $max = $this->makeNullableMoney($settings['priority_access_max_amount'] ?? null, $currency);
-
-        if ($min !== null && $amount->lessThan($min)) {
-            return false;
-        }
-
-        if ($max !== null && $amount->greaterThan($max)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private function makeNullableMoney(mixed $amount, Currency $currency): ?Money
-    {
-        if ($amount === null || $amount === '') {
-            return null;
-        }
-
-        return Money::fromPrecision((string) $amount, $currency->getCode());
-    }
-
-    private function hasAnyPriorityPayoutTrader(): bool
-    {
-        return $this->priorityPayoutTraderQuery()->exists();
-    }
-
-    private function hasOnlinePriorityPayoutTrader(): bool
-    {
-        $onlineSince = now()->subMinutes(self::PRIORITY_TRADER_ONLINE_MINUTES);
-
-        return $this->priorityPayoutTraderQuery()
-            ->pluck('id')
-            ->contains(function (int $userId) use ($onlineSince): bool {
-                $onlineAt = cache()->get("user-online-at-{$userId}");
-
-                if (! is_string($onlineAt) || $onlineAt === '') {
-                    return false;
-                }
-
-                try {
-                    return Carbon::parse($onlineAt)->greaterThanOrEqualTo($onlineSince);
-                } catch (\Throwable) {
-                    return false;
-                }
-            });
-    }
-
-    private function priorityPayoutTraderQuery(): Builder
-    {
-        return User::query()
-            ->role('Trader')
-            ->where('priority_payout_access_enabled', true)
-            ->where('payouts_enabled', true)
-            ->whereNull('banned_at')
-            ->whereNull('archived_at');
     }
 
     private function ensureGatewaySupportsPayouts(PaymentGateway $gateway): void
@@ -1037,14 +925,7 @@ class PayoutService implements PayoutServiceContract
      */
     private function resolveGeoMarket(Merchant $merchant, Currency $currency): MarketEnum
     {
-        $geoMap = $merchant->getGeoMap();
-        $marketValue = $geoMap[$currency->getCode()] ?? $geoMap[strtolower($currency->getCode())] ?? null;
-
-        if (! $marketValue) {
-            throw PayoutException::geoNotConfigured(strtoupper($currency->getCode()));
-        }
-
-        $market = MarketEnum::tryFrom($marketValue);
+        $market = $merchant->getGeoMarket($currency);
 
         if (! $market) {
             throw PayoutException::geoNotConfigured(strtoupper($currency->getCode()));

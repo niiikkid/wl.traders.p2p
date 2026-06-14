@@ -56,14 +56,12 @@ class HandleInertiaRequests extends Middleware
         $authUser = $request->user();
         $isAdmin = false;
         $isTrader = false;
-        $isAgent = false;
         $authRole = null;
 
         if ($authUser instanceof User) {
             $authUser->loadMissing('roles', 'wallet', 'meta');
             $isAdmin = $authUser->hasRole('Super Admin');
             $isTrader = $authUser->hasRole('Trader');
-            $isAgent = $authUser->hasRole('Agent');
             $authRole = $authUser->roles->first();
         }
 
@@ -77,11 +75,7 @@ class HandleInertiaRequests extends Middleware
 
             if ($request->routeIs([
                 'news.index',
-                'admin.news.index',
-                'support.news.index',
-                'analyst.news.index',
                 'leader.news.index',
-                'agent.news.index',
             ])) {
                 $user->meta()->updateOrCreate(
                     ['user_id' => $userId],
@@ -129,7 +123,7 @@ class HandleInertiaRequests extends Middleware
             ->where('status', DisputeStatus::PENDING);
 
         $userId = Auth::id();
-        $userRole = isRouteFor('Merchant') ? 'merchant' : (isRouteFor('Trader') ? 'trader' : (isRouteFor('Super Admin') ? 'admin' : (isRouteFor('Agent') ? 'agent' : 'guest')));
+        $userRole = isRouteFor('Merchant') ? 'merchant' : (isRouteFor('Trader') ? 'trader' : (isRouteFor('Super Admin') ? 'admin' : 'guest'));
 
         $pendingOrdersCount = cache()->remember("pending_orders_{$userRole}_{$userId}", 15, function () use ($orderQuery, $userRole, $userId) {
             if ($userRole === 'merchant') {
@@ -214,7 +208,7 @@ class HandleInertiaRequests extends Middleware
                         ->where('type', InvoiceType::WITHDRAWAL)
                         ->count();
                 });
-            } elseif (isRouteFor('Support') || isRouteFor('Analyst')) {
+            } elseif (isRouteFor('Support')) {
                 $onlineUsers = cache()->remember('online_users_support', 15, function () {
                     return User::query()
                         ->where('is_online', true)
@@ -263,27 +257,27 @@ class HandleInertiaRequests extends Middleware
                 });
             }
 
-            $newsUnreadCount = cache()->remember("news_unread_{$userId}", 15, function () use ($userId) {
-                $lastReadAt = UserMeta::query()
-                    ->where('user_id', $userId)
-                    ->value('news_last_read_at');
-                $user = User::query()->find($userId);
-                if (! $user) {
-                    return 0;
-                }
-                $roleNames = $user->roles()->pluck('name')->values()->all();
+            if ($authUser->hasRole('Trader') || $authUser->hasRole('Team Leader')) {
+                $newsUnreadCount = cache()->remember("news_unread_{$userId}", 15, function () use ($userId) {
+                    $lastReadAt = UserMeta::query()
+                        ->where('user_id', $userId)
+                        ->value('news_last_read_at');
+                    $user = User::query()->find($userId);
+                    if (! $user) {
+                        return 0;
+                    }
+                    $roleNames = $user->roles()->pluck('name')->values()->all();
 
-                $query = NewsPost::query()
-                    ->when($lastReadAt, function ($query) use ($lastReadAt) {
-                        $query->where('created_at', '>', $lastReadAt);
-                    });
+                    $query = NewsPost::query()
+                        ->when($lastReadAt, function ($query) use ($lastReadAt) {
+                            $query->where('created_at', '>', $lastReadAt);
+                        });
 
-                if (! $user->hasRole('Super Admin')) {
                     $query->visibleForRoles($roleNames);
-                }
 
-                return $query->count();
-            });
+                    return $query->count();
+                });
+            }
         }
 
         $pendingDisputePreview = null;
@@ -318,7 +312,7 @@ class HandleInertiaRequests extends Middleware
             : false;
 
         $sharedWalletStats = null;
-        if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant') || isRouteFor('Agent'))) {
+        if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant'))) {
             $walletStatsCacheKey = "shared_wallet_stats_{$userRole}_{$authUser->id}";
             $sharedWalletStats = cache()->remember($walletStatsCacheKey, 15, function () use ($authUser) {
                 /** @var WalletStatsValue $walletStatsValue */
@@ -341,7 +335,6 @@ class HandleInertiaRequests extends Middleware
                 'role' => $authRole,
                 'is_admin' => $isAdmin,
                 'is_trader' => $isTrader,
-                'is_agent' => $isAgent,
                 'is_impersonated' => $authUser?->isImpersonated(),
             ],
             'ziggy' => fn () => [

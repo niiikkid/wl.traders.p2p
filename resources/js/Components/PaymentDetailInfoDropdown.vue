@@ -25,13 +25,12 @@ const dropdownPosition = ref({top: 0, left: 0});
 const dropdownMaxHeight = ref(null);
 
 const isVipUser = computed(() => {
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1 || currentUser?.is_temp_vip_active;
+    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
 });
 
 const shouldShowAmountRange = computed(() => {
     return isVipUser.value
         || paymentDetail.value?.owner_is_vip
-        || paymentDetail.value?.owner_is_temp_vip_active
         || paymentDetail.value?.min_order_amount !== null
         || paymentDetail.value?.max_order_amount !== null;
 });

@@ -14,7 +14,6 @@ use App\Exceptions\OrderException;
 use App\Models\Order;
 use App\Services\Money\Money;
 use App\Services\Order\OrderTraderDebitService;
-use App\Support\AgentCommission;
 
 class OrderOperator
 {
@@ -111,13 +110,7 @@ class OrderOperator
             teamLeaderFeeRate: $order->team_leader_commission_rate,
             teamLeaderServiceSplitPercent: $order->team_leader_split_from_service_percent
         );
-        $agentCommissionRate = $order->agent_id
-            ? ($order->agent_commission_rate ?: AgentCommission::DEFAULT_RATE)
-            : 0;
-        $agentProfit = $order->agent_id
-            ? AgentCommission::calculate($profits->convertedAmount, $profits->serviceFee, $agentCommissionRate)
-            : AgentCommission::zero();
-        $serviceProfit = $profits->serviceFee->sub($agentProfit);
+        $serviceProfit = $profits->serviceFee;
 
         $amountUpdatesHistory = $order->amount_updates_history;
 
@@ -146,10 +139,8 @@ class OrderOperator
             'service_profit' => $serviceProfit,
             'trader_profit' => $profits->traderFee,
             'team_leader_profit' => $profits->teamLeaderFee,
-            'agent_profit' => $agentProfit,
             'trader_paid_for_order' => $profits->traderDebit,
             'team_leader_split_from_service_percent' => $order->team_leader_split_from_service_percent,
-            'agent_commission_rate' => $agentCommissionRate,
             'rate_fixed_at' => $rateFixedAt,
             'amount_updates_history' => $amountUpdatesHistory,
             'trader_trust_paid_for_order' => null,

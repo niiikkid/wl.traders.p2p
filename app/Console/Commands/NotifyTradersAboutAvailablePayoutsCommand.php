@@ -106,7 +106,7 @@ class NotifyTradersAboutAvailablePayoutsCommand extends Command
                     });
             })
             ->with([
-                'user:id,email,payouts_enabled,priority_payout_access_enabled,banned_at,archived_at',
+                'user:id,email,payouts_enabled,banned_at,archived_at',
             ])
             ->orderBy('id');
     }

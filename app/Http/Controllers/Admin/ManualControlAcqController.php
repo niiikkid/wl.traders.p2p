@@ -578,7 +578,7 @@ class ManualControlAcqController extends Controller
             return true;
         }
 
-        return ($user->hasRole('Support') || $user->hasRole('Analyst')) && (bool) $user->support_can_use_manual_control_acq;
+        return $user->hasRole('Support') && (bool) $user->support_can_use_manual_control_acq;
     }
 
     private function forbiddenResponse(): JsonResponse

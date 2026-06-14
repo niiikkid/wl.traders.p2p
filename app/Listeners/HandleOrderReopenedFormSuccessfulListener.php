@@ -42,15 +42,6 @@ class HandleOrderReopenedFormSuccessfulListener implements ShouldQueue
                     $event->order,
                 );
             }
-            if ($event->order->agent_id) {
-                services()->wallet()->takeFromBalance(
-                    $event->order->agent->wallet->id,
-                    $event->order->agent_profit,
-                    TransactionType::ROLLBACK_INCOME_FROM_REFERRALS_SUCCESSFUL_ORDER,
-                    BalanceType::AGENT,
-                    $event->order,
-                );
-            }
         });
     }
 

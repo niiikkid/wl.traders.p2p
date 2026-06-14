@@ -112,13 +112,11 @@ class MainPageController extends Controller
         $stats['statistics']['balance'] = $balance->toBeauty();
 
         $walletStats = services()->wallet()->getWalletStats($user->wallet)->toArray();
-        $tempVip = $user->getTempVipProgressData();
 
         return Inertia::render('MainPage/Trader/Index', [
             ...$stats,
             'activeStatsMode' => $activeStatsMode,
             'walletStats' => $walletStats,
-            'tempVip' => $tempVip,
         ]);
     }
 
@@ -127,13 +125,6 @@ class MainPageController extends Controller
         $stats = $this->mainPageCacheService->rememberLeader(auth()->user());
 
         return Inertia::render('MainPage/Leader/Index', $stats);
-    }
-
-    public function agent()
-    {
-        $stats = $this->mainPageStatsService->buildAgentStats(auth()->user());
-
-        return Inertia::render('MainPage/Agent/Index', $stats);
     }
 
     public function admin()
@@ -178,36 +169,6 @@ class MainPageController extends Controller
             ...$stats,
             'activeStatsMode' => $activeStatsMode,
         ]);
-    }
-
-    /**
-     * Главная для роли Analyst: те же метрики, что у администратора, но без данных о доходе сервиса.
-     */
-    public function analyst()
-    {
-        $merchantId = request()->get('merchant_id');
-        $periodPreset = (string) request()->get('period', 'month');
-        $dateFrom = request()->get('date_from');
-        $dateTo = request()->get('date_to');
-        $filters = [
-            'traderIds' => request()->input('trader_ids', []),
-            'paymentMethodIds' => request()->input('payment_method_ids', []),
-            'paymentDetailIds' => request()->input('payment_detail_ids', []),
-            'merchantIds' => request()->input('merchant_ids', []),
-        ];
-
-        $stats = $this->mainPageStatsService->buildAdminStats(
-            auth()->user(),
-            $merchantId,
-            $periodPreset,
-            $dateFrom,
-            $dateTo,
-            $filters,
-        );
-
-        unset($stats['statistics']['totalProfit'], $stats['chart']);
-
-        return Inertia::render('MainPage/Analyst/Index', $stats);
     }
 
     /**

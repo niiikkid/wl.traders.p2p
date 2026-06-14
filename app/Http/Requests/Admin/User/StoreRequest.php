@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Admin\User;
 
-use App\Models\User;
 use App\Services\User\TeamLeaderInsuranceService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -41,9 +40,6 @@ class StoreRequest extends FormRequest
                 Rule::exists('roles', 'id')->where(fn ($query) => $query->where('name', '!=', 'Provider Liquidity')),
             ],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
-            'agent_id' => ['nullable', 'integer', 'exists:users,id'],
-            'agent_commission_percentage' => ['nullable', 'numeric', 'min:0', 'max:100', 'regex:/^\d+(\.\d{1,2})?$/'],
-            'trader_economy_enabled' => ['nullable', 'boolean'],
             ...app(TeamLeaderInsuranceService::class)->teamLeaderConfigurationRules($roleName === 'Team Leader'),
         ];
     }
@@ -53,18 +49,6 @@ class StoreRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $roleName = Role::query()->whereKey($this->integer('role_id'))->value('name');
             $insuranceService = app(TeamLeaderInsuranceService::class);
-
-            $agentId = $this->integer('agent_id') ?: null;
-            if ($agentId) {
-                $agentExists = User::query()
-                    ->whereKey($agentId)
-                    ->role('Agent')
-                    ->exists();
-
-                if ($roleName !== 'Merchant' || ! $agentExists) {
-                    $validator->errors()->add('agent_id', __('Выберите пользователя с ролью Agent.'));
-                }
-            }
 
             if ($roleName === 'Trader') {
                 $insuranceService->validateTraderTeamLeaderAssignment(
@@ -80,8 +64,6 @@ class StoreRequest extends FormRequest
         return [
             'role_id' => __('роль'),
             'team_leader_id' => __('тим лидер'),
-            'agent_id' => __('агент'),
-            'agent_commission_percentage' => __('комиссия агента'),
             'telegram_username' => __('telegram'),
             ...app(TeamLeaderInsuranceService::class)->teamLeaderConfigurationAttributes(),
         ];

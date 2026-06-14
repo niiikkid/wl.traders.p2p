@@ -8,7 +8,6 @@ use App\Models\MerchantApiStatistic;
 use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Services\Money\Currency;
-use App\Services\PaymentDetail\PaymentDetailVolumeStatisticsService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -26,7 +25,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
     private const int ORDER_CREATE_PROCESSING_CACHE_TTL_SECONDS = 3600;
 
     public function __construct(
-        private readonly PaymentDetailVolumeStatisticsService $volumeStatisticsService,
+        private readonly AmountDistributionBucketService $amountDistributionBucketService,
     ) {}
 
     /**
@@ -57,7 +56,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
     public function getAmountDistribution(string $currency, string $period): array
     {
         $currency = strtolower($currency);
-        $period = $this->volumeStatisticsService->normalizeAmountDistributionPeriod($period);
+        $period = $this->amountDistributionBucketService->normalizePeriod($period);
 
         return Cache::remember(
             "merchant_api_logs_amount_distribution:{$currency}:{$period}",
@@ -93,9 +92,9 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
      */
     private function calculateAmountDistribution(string $currency, string $period): array
     {
-        [$periodStartAt, $periodEndAt] = $this->volumeStatisticsService->resolvePeriodBounds($period, null, null);
+        [$periodStartAt, $periodEndAt] = $this->amountDistributionBucketService->resolvePeriodBounds($period, null, null);
         $amountExpression = $this->normalizedAmountExpression();
-        $bucketCaseSql = $this->volumeStatisticsService->modalDealAmountBucketCaseSqlForFiatAmount($currency, $amountExpression);
+        $bucketCaseSql = $this->amountDistributionBucketService->bucketCaseSqlForFiatAmount($currency, $amountExpression);
         $currencyModel = Currency::make($currency);
 
         $logsQuery = MerchantApiRequestLog::query()
@@ -124,7 +123,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             'period' => $period,
             'currency' => $currency,
             'currency_symbol' => $currencyModel->getSymbol(),
-            'period_options' => PaymentDetailVolumeStatisticsService::AMOUNT_DISTRIBUTION_PERIOD_OPTIONS,
+            'period_options' => AmountDistributionBucketService::PERIOD_OPTIONS,
             'currency_options' => Currency::getAllCodes(),
             'successful_requests_count' => $distribution['total_successful'],
             'all_requests_count' => $distribution['total_all'],
@@ -164,8 +163,8 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             ],
         );
 
-        $successfulDistribution = $this->volumeStatisticsService->formatModalDealAmountDistributionRows($successfulRows, $currency);
-        $allDistribution = $this->volumeStatisticsService->formatModalDealAmountDistributionRows($allRows, $currency);
+        $successfulDistribution = $this->amountDistributionBucketService->formatDistributionRows($successfulRows, $currency);
+        $allDistribution = $this->amountDistributionBucketService->formatDistributionRows($allRows, $currency);
 
         $buckets = [];
 

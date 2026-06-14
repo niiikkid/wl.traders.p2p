@@ -21,10 +21,6 @@ const page = usePage();
 const isAdminMerchantApiLogsPage = computed(() => route().current() === 'admin.merchant-api-logs.index');
 const showAmountDistributionModal = ref(false);
 const amountDistributionRoute = computed(() => {
-    if (route().current('analyst.merchant-api-logs.index')) {
-        return route('analyst.merchant-api-logs.amount-distribution');
-    }
-
     if (route().current('admin.merchant-api-logs.index')) {
         return route('admin.merchant-api-logs.amount-distribution');
     }

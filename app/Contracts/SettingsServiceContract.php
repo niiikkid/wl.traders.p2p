@@ -19,18 +19,6 @@ interface SettingsServiceContract
 
     public function updatePrimeTimeBonus(string $starts, string $ends, float $rate): void;
 
-    public function getTempVipRequiredDeals(): int;
-
-    public function updateTempVipRequiredDeals(int $value): void;
-
-    public function getTempVipDurationMinutes(): int;
-
-    public function updateTempVipDurationMinutes(int $value): void;
-
-    public function isTempVipEnabled(): bool;
-
-    public function updateTempVipEnabled(bool $enabled): void;
-
     public function isTrafficPaused(): bool;
 
     public function updateTrafficPaused(bool $paused): void;
@@ -38,10 +26,6 @@ interface SettingsServiceContract
     public function isShadowSmsLogEnabled(): bool;
 
     public function updateShadowSmsLogEnabled(bool $enabled): void;
-
-    public function isMerchantTrafficCategoriesEnabled(): bool;
-
-    public function updateMerchantTrafficCategoriesEnabled(bool $enabled): void;
 
     public function getMarketPriceParser(
         Currency $currency,
@@ -79,20 +63,6 @@ interface SettingsServiceContract
     public function getPayoutSettingsForCurrency(Currency $currency): array;
 
     public function updatePayoutCurrencySettings(array $settings): void;
-
-    public function getPayoutPriorityAccessSettings(): array;
-
-    public function updatePayoutPriorityAccessSettings(
-        bool $enabled,
-        int $delayMinutes,
-        bool $releaseWithoutOnlineTraders
-    ): void;
-
-    public function getTraderAnalyticsOperationThresholds(): array;
-
-    public function getTraderAnalyticsOperationThresholdForCurrency(Currency $currency): string;
-
-    public function updateTraderAnalyticsOperationThreshold(string $currencyCode, string $threshold): void;
 
     public function createAll(): void;
 }

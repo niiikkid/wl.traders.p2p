@@ -28,17 +28,11 @@ class AppHomeController extends Controller
         if ($user->hasRole('Support')) {
             return redirect()->route('support.users.index');
         }
-        if ($user->hasRole('Analyst')) {
-            return redirect()->route('analyst.main.index');
-        }
         if ($user->hasRole('Team Leader')) {
             return redirect()->route('leader.main.index');
         }
         if ($user->hasRole('Provider Liquidity')) {
             return redirect()->route('provider-liquidity.main.index');
-        }
-        if ($user->hasRole('Agent')) {
-            return redirect()->route('agent.main.index');
         }
 
         return redirect()->route('admin.main.index');

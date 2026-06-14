@@ -18,7 +18,6 @@ use App\Contracts\MarketServiceContract;
 use App\Contracts\MerchantApiLogServiceContract;
 use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Contracts\MerchantServiceContract;
-use App\Contracts\MerchantTrafficCategoryServiceContract;
 use App\Contracts\NotificationServiceContract;
 use App\Contracts\OpenAiServiceContract;
 use App\Contracts\OrderPoolingServiceContract;
@@ -36,8 +35,6 @@ use App\Contracts\TelegramChatWebhookIngestionServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
-use App\Events\OrderSucceeded;
-use App\Listeners\UpdateTempVipProgressListener;
 use App\Mixins\ResponseMixins;
 use App\Models\CascadeDeal;
 use App\Models\CascadeProvider;
@@ -91,12 +88,12 @@ use App\Services\Order\OrderService;
 use App\Services\OrderCallback\CallbackService;
 use App\Services\OrderPooling\OrderPoolingService;
 use App\Services\PaymentDetail\PaymentDetailService;
-use App\Services\PaymentDetail\PaymentDetailVolumeStatisticsService;
 use App\Services\Payout\PayoutService;
 use App\Services\Profit\ProfitService;
 use App\Services\ServiceBuilder;
 use App\Services\Settings\SettingsService;
 use App\Services\Sms\SmsService;
+use App\Services\Statistics\AmountDistributionBucketService;
 use App\Services\Statistics\MerchantApiStatisticsService;
 use App\Services\Telegram\Parsers\StandardTelegramDisputeParser;
 use App\Services\Telegram\TelegramChatBotService;
@@ -104,14 +101,12 @@ use App\Services\Telegram\TelegramChatFileService;
 use App\Services\Telegram\TelegramChatMessageProcessor;
 use App\Services\Telegram\TelegramChatWebhookIngestionService;
 use App\Services\Telegram\TelegramService;
-use App\Services\TrafficCategory\MerchantTrafficCategoryService;
 use App\Services\User\UserService;
 use App\Services\Wallet\TraderBalanceTransferService;
 use App\Services\Wallet\WalletService;
 use App\Support\LoginLogger;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Queue\Events\JobFailed;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Response;
@@ -195,14 +190,11 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(MerchantApiStatisticsServiceContract::class, function ($app) {
             return new MerchantApiStatisticsService(
-                $app->make(PaymentDetailVolumeStatisticsService::class),
+                $app->make(AmountDistributionBucketService::class),
             );
         });
         $this->app->singleton(MerchantServiceContract::class, function () {
             return new MerchantService;
-        });
-        $this->app->singleton(MerchantTrafficCategoryServiceContract::class, function () {
-            return new MerchantTrafficCategoryService;
         });
         $this->app->singleton(PayoutServiceContract::class, function () {
             return new PayoutService;
@@ -329,8 +321,6 @@ class AppServiceProvider extends ServiceProvider
 
         Response::mixin(new ResponseMixins);
 
-        Event::listen(OrderSucceeded::class, UpdateTempVipProgressListener::class);
-
         Gate::define('access-to-payment-detail', function (User $user, PaymentDetail $paymentDetail) {
             return $user->id === $paymentDetail->user_id || $user->hasRole('Super Admin');
         });
@@ -338,8 +328,7 @@ class AppServiceProvider extends ServiceProvider
             return $user->id === $order->paymentDetail?->user_id
                 || $user->id === $order->merchant->user_id
                 || $user->hasRole('Super Admin')
-                || $user->hasRole('Support')
-                || $user->hasRole('Analyst');
+                || $user->hasRole('Support');
         });
         Gate::define('access-to-cascade-deal', function (User $user, CascadeDeal $cascadeDeal) {
             return $user->id === $cascadeDeal->merchant->user_id
@@ -351,14 +340,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-to-dispute', function (User $user, Dispute $dispute) {
             return $user->id === optional($dispute->order->paymentDetail)->user_id
                 || $user->hasRole('Super Admin')
-                || $user->hasRole('Support')
-                || $user->hasRole('Analyst');
+                || $user->hasRole('Support');
         });
         Gate::define('access-to-dispute-receipt', function (User $user, Dispute $dispute) {
-            return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin') || $user->hasRole('Support') || $user->hasRole('Analyst');
+            return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin') || $user->hasRole('Support');
         });
         Gate::define('access-to-dispute-bank-statement', function (User $user, Dispute $dispute) {
-            return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin') || $user->hasRole('Support') || $user->hasRole('Analyst');
+            return $user->id === optional($dispute->order->paymentDetail)->user_id || $user->hasRole('Super Admin') || $user->hasRole('Support');
         });
         Gate::define('access-to-self', function (User $user) {
             return $user->id === auth()->id() || $user->hasRole('Super Admin');

@@ -26,7 +26,6 @@ class PayoutQueriesEloquent implements PayoutQueries
     {
         return $this->baseQuery()
             ->where('status', PayoutStatus::OPEN->value)
-            ->where($this->availableForTraderConstraint($trader))
             ->orderByDesc('id')
             ->get();
     }
@@ -40,7 +39,6 @@ class PayoutQueriesEloquent implements PayoutQueries
 
         return $this->baseQuery()
             ->where('status', PayoutStatus::OPEN->value)
-            ->where($this->availableForTraderConstraint($trader))
             ->orderByDesc('id')
             ->paginate($perPage, ['*'], 'stack_page', $page);
     }
@@ -50,7 +48,6 @@ class PayoutQueriesEloquent implements PayoutQueries
         return Payout::query()
             ->where('status', PayoutStatus::OPEN->value)
             ->where('amount_fiat_currency', strtoupper($currency))
-            ->where($this->availableForTraderConstraint($trader))
             ->count();
     }
 
@@ -117,12 +114,6 @@ class PayoutQueriesEloquent implements PayoutQueries
             })
             ->when(! empty($filters->payoutMethodTypes), function (Builder $query) use ($filters) {
                 $query->whereIn('payout_method_type', $filters->payoutMethodTypes);
-            })
-            ->when($filters->priorityAccessOnly, function (Builder $query) {
-                $query
-                    ->where('status', PayoutStatus::OPEN->value)
-                    ->whereNull('trader_id')
-                    ->where('priority_access_until', '>', now());
             })
             ->when($filters->startDate, function (Builder $query) use ($filters) {
                 $query->whereDate('created_at', '>=', $filters->startDate);
@@ -289,30 +280,16 @@ class PayoutQueriesEloquent implements PayoutQueries
                 'canceled_at',
                 'receipt_path',
                 'expires_at',
-                'priority_access_until',
                 'created_at',
                 'updated_at',
             ])
             ->with([
-                'paymentGateway:id,name,code,logo,currency,reservation_time_for_payouts,trader_commission_rate_for_payouts,total_service_commission_rate_for_payouts',
+                'paymentGateway:id,name,code,currency,reservation_time_for_payouts,trader_commission_rate_for_payouts,total_service_commission_rate_for_payouts',
                 'merchant:id,name,user_id',
                 'merchant.user:id,name,email',
-                'trader:id,name,email,payout_hold_enabled,payout_hold_minutes,payout_active_payouts_limit,priority_payout_access_enabled',
+                'trader:id,name,email,payout_hold_enabled,payout_hold_minutes,payout_active_payouts_limit',
                 'receipts:id,payout_id,path,sort_order',
             ]);
-    }
-
-    private function availableForTraderConstraint(User $trader): \Closure
-    {
-        return function (Builder $query) use ($trader) {
-            $query
-                ->whereNull('priority_access_until')
-                ->orWhere('priority_access_until', '<=', now());
-
-            if ($trader->priority_payout_access_enabled) {
-                $query->orWhere('priority_access_until', '>', now());
-            }
-        };
     }
 
     /**

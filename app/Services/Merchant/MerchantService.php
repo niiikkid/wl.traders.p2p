@@ -16,7 +16,7 @@ class MerchantService implements MerchantServiceContract
     public function create(MerchantCreateDTO $data): Merchant
     {
         $defaultGeo = [
-            Currency::RUB()->getCode() => MarketEnum::RAPIRA->value,
+            Currency::RUB()->getCode() => MarketEnum::BYBIT->value,
         ];
 
         $merchant = Merchant::create([

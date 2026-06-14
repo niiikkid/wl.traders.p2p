@@ -56,11 +56,11 @@ const isVipUser = computed(() => {
 
     // В режиме "как трейдер" (или для обычного трейдера) ориентируемся на владельца реквизита,
     // если бэкенд его отдал, иначе — на текущего пользователя.
-    if (payment_detail.value?.owner_is_vip === true || payment_detail.value?.owner_is_temp_vip_active === true) {
+    if (payment_detail.value?.owner_is_vip === true) {
         return true;
     }
 
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1 || currentUser?.is_temp_vip_active;
+    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
 });
 
 const form = ref({

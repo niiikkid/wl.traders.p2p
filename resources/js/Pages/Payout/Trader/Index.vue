@@ -4,8 +4,6 @@ import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import {useViewStore} from '@/store/view.js';
-import GatewayLogo from '@/Components/GatewayLogo.vue';
-import BankManualIcon from '@/Components/BankManualIcon.vue';
 import DateTime from '@/Components/DateTime.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import Pagination from '@/Components/Pagination/Pagination.vue';
@@ -88,7 +86,6 @@ const refreshOptions = computed(() => props.refresh?.options ?? []);
 const refreshProgress = ref(0);
 let refreshProgressAnimationId = null;
 const autoRefreshTimer = ref(null);
-const priorityAccessReleaseTimer = ref(null);
 const isRefreshing = ref(false);
 
 const canTakeMore = computed(() => (props.limits?.currentActive ?? 0) < (props.limits?.maxActive ?? 1));
@@ -227,31 +224,6 @@ const reloadData = (replace = true) => {
     });
 };
 
-const clearPriorityAccessReleaseTimer = () => {
-    if (priorityAccessReleaseTimer.value) {
-        clearTimeout(priorityAccessReleaseTimer.value);
-        priorityAccessReleaseTimer.value = null;
-    }
-};
-
-const schedulePriorityAccessReleaseReload = () => {
-    clearPriorityAccessReleaseTimer();
-
-    const nearestUntil = [...orderBookList.value, ...activePayoutsList.value]
-        .filter((payout) => payout.priority_access?.is_active && payout.priority_access?.until)
-        .map((payout) => new Date(payout.priority_access.until).getTime())
-        .filter((timestamp) => !Number.isNaN(timestamp))
-        .sort((left, right) => left - right)[0];
-
-    if (!nearestUntil) {
-        return;
-    }
-
-    priorityAccessReleaseTimer.value = setTimeout(() => {
-        reloadData(false);
-    }, Math.max(nearestUntil - Date.now(), 0) + 1000);
-};
-
 const refreshNow = () => {
     if (isRefreshing.value) {
         return;
@@ -346,15 +318,11 @@ watch(refreshInterval, (value) => {
     }
 });
 
-watch([orderBookList, activePayoutsList], schedulePriorityAccessReleaseReload, {deep: true});
-
 onMounted(() => {
     if (trader_payouts_auto_refresh_allowed) {
         syncRefreshIntervalFromStorage();
         startAutoRefresh();
     }
-
-    schedulePriorityAccessReleaseReload();
 });
 
 let active_payout_copied_clear_timer = null;
@@ -362,7 +330,6 @@ let active_payout_copied_clear_timer = null;
 onBeforeUnmount(() => {
     stopAutoRefresh();
     stopRefreshProgressAnimation();
-    clearPriorityAccessReleaseTimer();
     if (active_payout_copied_clear_timer) {
         clearTimeout(active_payout_copied_clear_timer);
         active_payout_copied_clear_timer = null;
@@ -402,7 +369,6 @@ const formatHoldCountdown = (timestamp) => {
     return `Осталось: ${fragment}`;
 };
 
-const hasCustomBank = (payout) => !!payout?.bank_name;
 const resolveBankName = (payout) => payout?.bank_name ?? payout?.payment_gateway?.name ?? '—';
 
 /** Группы по 4 цифры для отображения номера карты (только визуально, без изменения данных). */
@@ -806,26 +772,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <div class="flex flex-col gap-2 min-w-0 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between xl:gap-4">
                                             <div class="flex min-w-0 flex-1 flex-col gap-2 xl:flex-row xl:items-center xl:gap-7">
                                                 <div class="flex w-full min-w-0 py-2 px-1 items-start justify-between gap-2 xl:w-auto xl:items-center xl:justify-start xl:gap-3">
-                                                    <div class="flex min-w-0 flex-1 items-center gap-3">
-                                                        <div v-if="hasCustomBank(payout)" class="text-base-content/70 shrink-0">
-                                                            <BankManualIcon class="w-8 h-8 xl:w-10 xl:h-10" />
-                                                        </div>
-                                                        <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative shrink-0">
-                                                            <img src="/images/sbp.svg" alt="" class="w-8 h-8 xl:w-10 xl:h-10">
-                                                            <GatewayLogo
-                                                                :img_path="payout.payment_gateway?.logo"
-                                                                :name="payout.payment_gateway?.name"
-                                                                class="absolute right-[-2px] bottom-[-2px] w-4 h-4 xl:right-[-3px] xl:bottom-[-3px] xl:w-5 xl:h-5 bg-base-100 border border-base-300 rounded-full"
-                                                            />
-                                                        </div>
-                                                        <div v-else class="shrink-0">
-                                                            <GatewayLogo
-                                                                :img_path="payout.payment_gateway?.logo"
-                                                                :name="payout.payment_gateway?.name"
-                                                                class="w-8 h-8 xl:w-10 xl:h-10"
-                                                            />
-                                                        </div>
-                                                        <div class="min-w-0 flex-1 -mt-1">
+                                                    <div class="min-w-0 flex-1 -mt-1">
                                                             <div class="flex min-w-0 items-center justify-start xl:gap-1">
                                                                 <AppTooltip
                                                                     v-if="payout.payout_method_type.value === 'card'"
@@ -870,7 +817,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                                                 {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
                                                             </div>
                                                         </div>
-                                                    </div>
                                                     <div class="shrink-0 self-center xl:hidden">
                                                         <div class="badge badge-primary badge-outline badge-sm font-normal">
                                                             {{ payout.status_label }}
@@ -1146,43 +1092,15 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 class="bg-base-100 border-b last:border-none border-base-200"
                                             >
                                                 <td class="font-mono text-xs">
-                                                    <div class="flex flex-col gap-1">
-                                                        <CopyableOrderUid :uuid="payout.uuid ?? ''" />
-                                                        <span
-                                                            v-if="payout.priority_access?.is_active"
-                                                            class="badge badge-warning badge-outline badge-xs font-sans"
-                                                        >
-                                                            Ранний доступ
-                                                        </span>
-                                                    </div>
+                                                    <CopyableOrderUid :uuid="payout.uuid ?? ''" />
                                                 </td>
                                                 <td>
-                                                    <div class="flex items-center gap-3">
-                                                        <div v-if="hasCustomBank(payout)" class="text-base-content/70">
-                                                            <BankManualIcon class="w-10 h-10" />
+                                                    <div>
+                                                        <div class="text-nowrap text-base-content">
+                                                            {{ displayAvailablePayoutRequisites(payout) }}
                                                         </div>
-                                                        <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative">
-                                                            <img src="/images/sbp.svg" class="w-10 h-10">
-                                                            <GatewayLogo
-                                                                :img_path="payout.payment_gateway?.logo"
-                                                                :name="payout.payment_gateway?.name"
-                                                                class="absolute right-[-3px] bottom-[-3px] w-5 h-5 bg-base-100 border border-base-300 rounded-full"
-                                                            />
-                                                        </div>
-                                                        <div v-else>
-                                                            <GatewayLogo
-                                                                :img_path="payout.payment_gateway?.logo"
-                                                                :name="payout.payment_gateway?.name"
-                                                                class="w-10 h-10"
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <div class="text-nowrap text-base-content">
-                                                                {{ displayAvailablePayoutRequisites(payout) }}
-                                                            </div>
-                                                            <div class="text-xs text-base-content/60">
-                                                                {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
-                                                            </div>
+                                                        <div class="text-xs text-base-content/60">
+                                                            {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1239,12 +1157,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         <div class="inline-flex items-center gap-1 pl-1 min-w-0">
                                                             <span class="text-base-content/70">UUID:</span>
                                                             <CopyableOrderUid :uuid="payout.uuid ?? ''" />
-                                                            <span
-                                                                v-if="payout.priority_access?.is_active"
-                                                                class="badge badge-warning badge-outline badge-xs"
-                                                            >
-                                                                Ранний доступ
-                                                            </span>
                                                         </div>
                                                     </div>
                                                     <div class="shrink-0 text-right leading-tight">
@@ -1258,24 +1170,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 </div>
 
                                                 <div class="flex items-center gap-2 min-w-0 pt-2">
-                                                    <div v-if="hasCustomBank(payout)" class="text-base-content/70 shrink-0">
-                                                        <BankManualIcon class="w-8 h-8 sm:w-10 sm:h-10" />
-                                                    </div>
-                                                    <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative shrink-0">
-                                                        <img src="/images/sbp.svg" alt="" class="w-8 h-8 sm:w-10 sm:h-10">
-                                                        <GatewayLogo
-                                                            :img_path="payout.payment_gateway?.logo"
-                                                            :name="payout.payment_gateway?.name"
-                                                            class="absolute right-[-2px] bottom-[-2px] w-4 h-4 sm:w-5 sm:h-5 bg-base-100 border border-base-300 rounded-full"
-                                                        />
-                                                    </div>
-                                                    <div v-else class="shrink-0">
-                                                        <GatewayLogo
-                                                            :img_path="payout.payment_gateway?.logo"
-                                                            :name="payout.payment_gateway?.name"
-                                                            class="w-8 h-8 sm:w-10 sm:h-10"
-                                                        />
-                                                    </div>
                                                     <div class="min-w-0 flex-1">
                                                         <div class="text-xs font-medium text-base-content leading-snug break-words">
                                                             {{ displayAvailablePayoutRequisites(payout) }}
@@ -1410,32 +1304,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                         <CopyableOrderUid :uuid="payout.uuid ?? ''" />
                                     </td>
                                     <td>
-                                        <div class="flex items-center gap-3">
-                                            <div v-if="hasCustomBank(payout)" class="text-base-content/70">
-                                                <BankManualIcon class="w-8 h-8" />
+                                        <div>
+                                            <div class="text-nowrap text-base-content">
+                                                {{ payout.requisites }}
                                             </div>
-                                            <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative">
-                                                <img src="/images/sbp.svg" class="w-8 h-8">
-                                                <GatewayLogo
-                                                    :img_path="payout.payment_gateway?.logo"
-                                                    :name="payout.payment_gateway?.name"
-                                                    class="absolute right-[-3px] bottom-[-3px] w-5 h-5 bg-base-100 border border-base-300 rounded-full"
-                                                />
-                                            </div>
-                                            <div v-else>
-                                                <GatewayLogo
-                                                    :img_path="payout.payment_gateway?.logo"
-                                                    :name="payout.payment_gateway?.name"
-                                                    class="w-10 h-10"
-                                                />
-                                            </div>
-                                            <div>
-                                                <div class="text-nowrap text-base-content">
-                                                    {{ payout.requisites }}
-                                                </div>
-                                                <div class="text-xs text-base-content/60">
-                                                    {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
-                                                </div>
+                                            <div class="text-xs text-base-content/60">
+                                                {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
                                             </div>
                                         </div>
                                     </td>
@@ -1506,24 +1380,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </div>
 
                                         <div class="flex items-center gap-2 min-w-0 pt-2">
-                                            <div v-if="hasCustomBank(payout)" class="text-base-content/70 shrink-0">
-                                                <BankManualIcon class="w-8 h-8 sm:w-10 sm:h-10" />
-                                            </div>
-                                            <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative shrink-0">
-                                                <img src="/images/sbp.svg" alt="" class="w-8 h-8 sm:w-10 sm:h-10">
-                                                <GatewayLogo
-                                                    :img_path="payout.payment_gateway?.logo"
-                                                    :name="payout.payment_gateway?.name"
-                                                    class="absolute right-[-2px] bottom-[-2px] w-4 h-4 sm:w-5 sm:h-5 bg-base-100 border border-base-300 rounded-full"
-                                                />
-                                            </div>
-                                            <div v-else class="shrink-0">
-                                                <GatewayLogo
-                                                    :img_path="payout.payment_gateway?.logo"
-                                                    :name="payout.payment_gateway?.name"
-                                                    class="w-8 h-8 sm:w-10 sm:h-10"
-                                                />
-                                            </div>
                                             <div class="min-w-0 flex-1">
                                                 <div class="text-xs font-medium text-base-content leading-snug break-words">
                                                     {{ payout.requisites }}

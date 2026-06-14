@@ -9,7 +9,6 @@ use App\Enums\PayoutStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\User\StoreRequest;
 use App\Http\Requests\Admin\User\UpdateRequest;
-use App\Http\Requests\Admin\User\UpdateTeamRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Order;
 use App\Models\Payout\Payout;
@@ -27,7 +26,7 @@ class UserController extends Controller
         $fromArchive = request()->tab === 'archived';
 
         $users = User::query()
-            ->with(['roles', 'wallet', 'userTeam', 'bannedBy:id,email'])
+            ->with(['roles', 'wallet', 'bannedBy:id,email'])
             ->when($fromArchive, function ($query) {
                 $query->whereNotNull('archived_at');
             }, function ($query) {
@@ -89,20 +88,6 @@ class UserController extends Controller
         ]);
     }
 
-    public function agents()
-    {
-        $agents = User::query()
-            ->role('Agent')
-            ->select('id', 'email')
-            ->orderBy('email')
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'data' => $agents,
-        ]);
-    }
-
     public function store(StoreRequest $request)
     {
         $dto = UserCreateDTO::makeFromRequest($request->validated());
@@ -121,7 +106,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load('roles', 'meta', 'teamLeader', 'agent', 'userTeam', 'bannedBy:id,email');
+        $user->load('roles', 'meta', 'teamLeader', 'bannedBy:id,email');
         $user = UserResource::make($user)->resolve();
 
         return response()->json([
@@ -142,17 +127,6 @@ class UserController extends Controller
         }
 
         return redirect()->route('admin.users.index');
-    }
-
-    public function updateTeam(UpdateTeamRequest $request, User $user)
-    {
-        $user->update([
-            'user_team_id' => $request->validated('user_team_id'),
-        ]);
-
-        return response()->json([
-            'success' => true,
-        ]);
     }
 
     public function toggleOnline(Request $request, User $user)
@@ -248,21 +222,5 @@ class UserController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Двухфакторная аутентификация успешно сброшена');
-    }
-
-    public function tempVipHistory(User $user)
-    {
-        $history = $user->tempVipActivations()
-            ->orderByDesc('activated_at')
-            ->get(['activated_at', 'expires_at'])
-            ->map(fn ($item) => [
-                'activated_at' => $item->activated_at?->toDateTimeString(),
-                'expires_at' => $item->expires_at?->toDateTimeString(),
-            ]);
-
-        return response()->json([
-            'success' => true,
-            'data' => $history,
-        ]);
     }
 }

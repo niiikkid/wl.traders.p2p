@@ -8,7 +8,6 @@ import { useModalStore } from "@/store/modal.js";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
-import NumberInput from "@/Components/NumberInput.vue";
 import Select from "@/Components/Select.vue";
 import {computed, ref, watch} from "vue";
 import { router } from '@inertiajs/vue3';
@@ -20,7 +19,6 @@ const { userCreateModal } = storeToRefs(modalStore);
 
 const roles = ref([]);
 const teamLeaders = ref([]);
-const agents = ref([]);
 const loading = ref(false);
 const processing = ref(false);
 const errors = ref({});
@@ -32,13 +30,10 @@ const form = ref({
     password_confirmation: '',
     role_id: 0,
     team_leader_id: [],
-    agent_id: [],
-    agent_commission_percentage: 0.2,
     team_leader_insurance_mode: 'trader_reserve',
     team_leader_trader_limit: null,
     team_leader_reserve_balance_limit: null,
     team_leader_reserve_stop_threshold: null,
-    trader_economy_enabled: false,
 });
 
 const selectedRoleName = computed(() => {
@@ -53,13 +48,10 @@ const resetForm = () => {
         password_confirmation: '',
         role_id: 0,
         team_leader_id: [],
-        agent_id: [],
-        agent_commission_percentage: 0.2,
         team_leader_insurance_mode: 'trader_reserve',
         team_leader_trader_limit: null,
         team_leader_reserve_balance_limit: null,
         team_leader_reserve_stop_threshold: null,
-        trader_economy_enabled: false,
     };
     errors.value = {};
 };
@@ -73,15 +65,11 @@ const loadRoles = () => {
     Promise.all([
         axios.get(route('admin.users.roles')),
         axios.get(route('admin.users.team-leaders')),
-        axios.get(route('admin.users.agents')),
     ])
-    .then(([rolesResponse, leadersResponse, agentsResponse]) => {
-        roles.value = rolesResponse.data?.data || rolesResponse.data || [];
+    .then(([rolesResponse, leadersResponse]) => {
+        roles.value = (rolesResponse.data?.data || rolesResponse.data || [])
+            .filter((role) => !['Analyst', 'Agent'].includes(role.name));
         teamLeaders.value = (leadersResponse.data?.data || leadersResponse.data || []).map(item => ({
-            value: item.id,
-            label: item.email,
-        }));
-        agents.value = (agentsResponse.data?.data || agentsResponse.data || []).map(item => ({
             value: item.id,
             label: item.email,
         }));
@@ -98,7 +86,6 @@ const submit = () => {
     const payload = {
         ...form.value,
         team_leader_id: Array.isArray(form.value.team_leader_id) ? form.value.team_leader_id[0] ?? null : form.value.team_leader_id,
-        agent_id: Array.isArray(form.value.agent_id) ? form.value.agent_id[0] ?? null : form.value.agent_id,
     };
 
     axios.post(route('admin.users.store'), payload, {
@@ -130,7 +117,6 @@ watch(
         } else {
             resetForm();
             roles.value = [];
-            agents.value = [];
         }
     }
 );
@@ -240,23 +226,6 @@ watch(
                 </div>
 
                 <div v-if="selectedRoleName === 'Trader'">
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.trader_economy_enabled"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Экономика включена</span>
-                        </label>
-                    </div>
-                    <p class="mt-1 text-xs text-base-content/70">
-                        Трейдер увидит страницу «Экономика» в меню и сможет вести учёт.
-                    </p>
-                </div>
-
-                <div v-if="selectedRoleName === 'Trader'">
                     <InputLabel
                         for="team_leader_id"
                         value="Team Leader"
@@ -276,29 +245,6 @@ watch(
                     <InputError class="mt-1" :message="errors.team_leader_id?.[0]" />
                 </div>
 
-                <div v-if="selectedRoleName === 'Merchant'">
-                    <InputLabel
-                        for="agent_id"
-                        value="Агент"
-                        :error="!!errors.agent_id?.[0]"
-                    />
-                    <Multiselect
-                        v-model="form.agent_id"
-                        :options="agents"
-                        :enable-search="true"
-                        :single-select="true"
-                        label-key="label"
-                        value-key="value"
-                        placeholder="Выберите агента"
-                        :disabled="processing"
-                        @change="errors.agent_id = null"
-                    />
-                    <InputError class="mt-1" :message="errors.agent_id?.[0]" />
-                    <p class="mt-1 text-xs text-base-content/70">
-                        Необязательно. Агент будет получать комиссию с новых успешных сделок мерчанта.
-                    </p>
-                </div>
-
                 <TeamLeaderInsuranceFields
                     v-if="selectedRoleName === 'Team Leader'"
                     :form="form"
@@ -306,28 +252,6 @@ watch(
                     :processing="processing"
                 />
 
-                <div v-if="selectedRoleName === 'Agent'">
-                    <InputLabel
-                        for="agent_commission_percentage"
-                        value="Комиссия агента (%)"
-                        :error="!!errors.agent_commission_percentage?.[0]"
-                    />
-                    <NumberInput
-                        id="agent_commission_percentage"
-                        v-model="form.agent_commission_percentage"
-                        class="mt-1 block w-full"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        :error="!!errors.agent_commission_percentage?.[0]"
-                        :disabled="processing"
-                        @input="errors.agent_commission_percentage = null"
-                    />
-                    <InputError class="mt-1" :message="errors.agent_commission_percentage?.[0]" />
-                    <p class="mt-1 text-xs text-base-content/70">
-                        Комиссия будет применяться к новым сделкам мерчантов, привязанных к этому агенту.
-                    </p>
-                </div>
             </form>
         </ModalBody>
 

@@ -27,7 +27,6 @@ import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
 import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
 import PaymentDetailInfoDropdown from "@/Components/PaymentDetailInfoDropdown.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
-import TraderTrafficCategoriesRow from "@/Components/Order/TraderTrafficCategoriesRow.vue";
 //import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
 
 const viewStore = useViewStore();
@@ -339,8 +338,6 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
             <template v-slot:body>
                 <div class="relative">
-                    <TraderTrafficCategoriesRow v-if="viewStore.isTraderViewMode" />
-
                     <!-- Desktop/tablet view (table) -->
                     <div class="hidden xl:block rounded-table relative">
                         <div
@@ -477,7 +474,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </svg>
                                             </button>
                                             <button
-                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode && !viewStore.isAnalystViewMode"
+                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
                                                 @click.prevent="confirmAcceptOrder(order)"
                                                 type="button"
                                                 class="btn btn-success btn-outline btn-xs"
@@ -570,7 +567,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </svg>
                                             </button>
                                             <button
-                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode && !viewStore.isAnalystViewMode"
+                                                v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
                                                 type="button"
                                                 class="btn btn-square btn-success btn-outline btn-xs"
                                                 @click.prevent="confirmAcceptOrder(order)"
@@ -638,7 +635,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </svg>
                                                 </button>
                                                 <button
-                                                    v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode && !viewStore.isAnalystViewMode"
+                                                    v-if="!order.has_dispute && (order.status === 'pending' || order.status === 'fail') && !viewStore.isSupportViewMode"
                                                     type="button"
                                                     class="btn btn-square btn-success btn-outline btn-xs"
                                                     @click.prevent="confirmAcceptOrder(order)"

@@ -65,15 +65,6 @@ class MerchantResource extends JsonResource
             'max_order_wait_time' => $this->max_order_wait_time,
             'max_payout_wait_time' => $this->max_payout_wait_time,
             'min_order_amounts' => ! empty($this->min_order_amounts) ? $this->min_order_amounts : null,
-            'categories' => $this->whenLoaded('categories', function () {
-                return $this->categories?->pluck('id')->toArray();
-            }),
-            'traffic_categories' => $this->whenLoaded('categories', function () {
-                return $this->categories?->map(fn ($category) => [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                ])->values();
-            }),
             'validated_at' => $this->validated_at?->toDateTimeString(),
             'banned_at' => $this->banned_at?->toDateTimeString(),
             'created_at' => $this->created_at->toDateTimeString(),

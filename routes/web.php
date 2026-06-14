@@ -15,7 +15,6 @@ use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\MerchantCascadeSettingController;
 use App\Http\Controllers\Admin\MerchantResendCallbackController;
-use App\Http\Controllers\Admin\MerchantTrafficCategoryController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\OpenAiSettingController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
@@ -30,18 +29,8 @@ use App\Http\Controllers\Admin\TelegramChatAttachmentController;
 use App\Http\Controllers\Admin\TelegramChatController;
 use App\Http\Controllers\Admin\TelegramChatTraderController;
 use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
-use App\Http\Controllers\Admin\UserNoteController;
-use App\Http\Controllers\Admin\UserTeamController;
 use App\Http\Controllers\Admin\UserWalletController;
 use App\Http\Controllers\Admin\WithdrawalController;
-use App\Http\Controllers\Analyst\DepositController as AnalystDepositController;
-use App\Http\Controllers\Analyst\DisputeController as AnalystDisputeController;
-use App\Http\Controllers\Analyst\EnabledCardsController as AnalystEnabledCardsController;
-use App\Http\Controllers\Analyst\FilterController as AnalystFilterController;
-use App\Http\Controllers\Analyst\OrderController as AnalystOrderController;
-use App\Http\Controllers\Analyst\PayoutController as AnalystPayoutController;
-use App\Http\Controllers\Analyst\TraderAnalyticsController as AnalystTraderAnalyticsController;
-use App\Http\Controllers\Analyst\UserController as AnalystUserController;
 use App\Http\Controllers\ApiIntegrationController;
 use App\Http\Controllers\ApkController;
 use App\Http\Controllers\AppHomeController;
@@ -65,8 +54,6 @@ use App\Http\Controllers\PaymentDetailLimitResetController;
 use App\Http\Controllers\PaymentDetailScheduleController;
 use App\Http\Controllers\PaymentDetailTagAssignmentController;
 use App\Http\Controllers\PaymentDetailTagController;
-use App\Http\Controllers\PaymentDetailVolumeStatisticsController;
-use App\Http\Controllers\PaymentLinkController;
 use App\Http\Controllers\PayoutReceiptController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProviderLiquidity\DashboardController as ProviderLiquidityDashboardController;
@@ -74,7 +61,6 @@ use App\Http\Controllers\SmsLogController;
 use App\Http\Controllers\Support\DepositController;
 use App\Http\Controllers\Support\EnabledCardsController;
 use App\Http\Controllers\Support\FilterController;
-use App\Http\Controllers\Support\TraderAnalyticsController;
 use App\Http\Controllers\Support\UserController;
 use App\Http\Controllers\TeamLeader\DepositInvoiceController as TeamLeaderDepositInvoiceController;
 use App\Http\Controllers\TeamLeader\ReferralController;
@@ -87,13 +73,10 @@ use App\Http\Controllers\TelegramChatAutomationWebhookController;
 use App\Http\Controllers\TelegramSettingsController;
 use App\Http\Controllers\TelegramWebhookController;
 use App\Http\Controllers\Trader\DepositInvoiceController;
-use App\Http\Controllers\Trader\EconomyController;
 use App\Http\Controllers\Trader\ExportController;
 use App\Http\Controllers\Trader\NotificationController as TraderNotificationController;
 use App\Http\Controllers\Trader\PayoutController;
-use App\Http\Controllers\Trader\TempVipController;
 use App\Http\Controllers\Trader\TraderLeaderboardController;
-use App\Http\Controllers\Trader\TrafficCategoryController;
 use App\Http\Controllers\UserDeviceController;
 use App\Http\Controllers\UserDevicePingController;
 use App\Http\Controllers\UserOnlineController;
@@ -112,16 +95,6 @@ Route::post('/payment/demo/dispute', [PaymentDemoController::class, 'storeDisput
 Route::post('/payment/demo/payment-detail/{paymentGateway}', [PaymentDemoController::class, 'storePaymentDetail'])
     ->middleware('payment.domain')
     ->name('payment.demo.payment-detail.store');
-Route::get('/payment/{order:uuid}', [PaymentLinkController::class, 'show'])
-    ->middleware('payment.domain')
-    ->name('payment.show');
-Route::post('/payment/{order:uuid}/dispute', [PaymentLinkController::class, 'storeDispute'])
-    ->middleware('payment.domain')
-    ->name('payment.dispute.store');
-Route::post('/payment/{order:uuid}/payment-detail/{paymentGateway}', [PaymentLinkController::class, 'storePaymentDetail'])
-    ->middleware('payment.domain')
-    ->name('payment.payment-detail.store');
-
 Route::post('/telegram/webhook', TelegramWebhookController::class)
     ->middleware(['telegram.secret', 'backoffice.domain'])
     ->name('telegram.webhook');
@@ -189,12 +162,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/traders/{trader}/finances', [TraderFinanceController::class, 'index'])->name('traders.finances.index');
     });
 
-    Route::group(['prefix' => 'agent', 'as' => 'agent.', 'middleware' => ['auth', 'banned', 'role:Agent|Super Admin']], function () {
-        Route::get('/main', [MainPageController::class, 'agent'])->name('main.index');
-        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-        Route::get('/finances', [WalletController::class, 'index'])->name('finances.index');
-    });
-
     Route::group(['prefix' => 'provider-liquidity', 'as' => 'provider-liquidity.', 'middleware' => ['auth', 'banned', 'role:Provider Liquidity|Super Admin']], function () {
         Route::get('/main', [MainPageController::class, 'providerLiquidity'])->name('main.index');
         Route::get('/services', [ProviderLiquidityDashboardController::class, 'services'])->name('services.index');
@@ -203,13 +170,13 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/logs', [ProviderLiquidityDashboardController::class, 'logs'])->name('logs.index');
     });
 
-    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Super Admin']], function () {
+    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Super Admin']], function () {
         Route::resource('/orders', OrderController::class)->only(['show']);
         Route::get('/disputes/{dispute}/receipt', [DisputeController::class, 'receipt'])->name('disputes.receipt');
         Route::get('/disputes/{dispute}/bank-statement', [DisputeController::class, 'bankStatement'])->name('disputes.bank-statement');
     });
 
-    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Analyst|Team Leader|Agent|Super Admin']], function () {
+    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Team Leader|Super Admin']], function () {
         Route::post('/news/views', [NewsController::class, 'trackViews'])->name('news.views.store');
         Route::post('/news/reactions', [NewsController::class, 'react'])->name('news.reactions.store');
     });
@@ -218,14 +185,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/trader/main', [MainPageController::class, 'trader'])->name('trader.main.index');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/trader/main/filter-options/{type}', [MainPageController::class, 'traderFilterOptions'])->name('trader.main.filter-options');
-        Route::post('/trader/temp-vip/activate', [TempVipController::class, 'activate'])->name('trader.temp-vip.activate');
-
-        Route::get('/trader/economy', [EconomyController::class, 'index'])->name('trader.economy.index');
-        Route::post('/trader/economy', [EconomyController::class, 'store'])->name('trader.economy.store');
-        Route::delete('/trader/economy/{month}', [EconomyController::class, 'destroy'])->name('trader.economy.destroy');
-        Route::patch('/trader/economy/{month}/days/{day}', [EconomyController::class, 'updateDay'])
-            ->whereNumber('day')
-            ->name('trader.economy.days.update');
 
         Route::get('/notifications', [TraderNotificationController::class, 'index'])->name('notifications.index');
 
@@ -248,7 +207,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/payment-details/{paymentDetail}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.toggle-active');
         Route::patch('/payment-details/bulk-update', [PaymentDetailController::class, 'bulkUpdate'])->name('payment-details.bulk-update');
         Route::resource('/payment-details', PaymentDetailController::class)->only(['index', 'store', 'update']);
-        Route::get('/payment-details/{paymentDetail}/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'show'])->name('payment-details.volume-statistics');
         Route::get('/payment-details/create-data', [PaymentDetailController::class, 'createData'])->name('payment-details.create-data');
         Route::get('/payment-details/{paymentDetail}', [PaymentDetailController::class, 'show'])->name('payment-details.show');
         Route::patch('/payment-details/{paymentDetail}/tags', [PaymentDetailTagAssignmentController::class, 'update'])->name('payment-details.tags.update');
@@ -256,11 +214,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'store'])->name('payment-detail-schedules.store');
         Route::patch('/payment-detail-schedules/{paymentDetailSchedule}', [PaymentDetailScheduleController::class, 'update'])->name('payment-detail-schedules.update');
         Route::post('/payment-detail-schedules/{paymentDetailSchedule}/copy', [PaymentDetailScheduleController::class, 'copy'])->name('payment-detail-schedules.copy');
-
-        Route::prefix('traffic-categories')->name('traffic-categories.')->group(function () {
-            Route::get('/', [TrafficCategoryController::class, 'index'])->name('index');
-            Route::patch('/{category}/enabled', [TrafficCategoryController::class, 'updateEnabled'])->name('enabled.update');
-        });
 
         Route::post('/payment-detail-tags', [PaymentDetailTagController::class, 'store'])->name('payment-detail-tags.store');
         Route::patch('/payment-detail-tags/{paymentDetailTag}', [PaymentDetailTagController::class, 'update'])->name('payment-detail-tags.update');
@@ -306,14 +259,10 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     // Группа маршрутов для Support
     Route::group(['prefix' => 'support', 'as' => 'support.', 'middleware' => ['auth', 'banned', 'role:Support|Super Admin']], function () {
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::patch('/users/{user}/toggle-traffic', [UserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
         Route::get('/enabled-cards', [EnabledCardsController::class, 'index'])->name('enabled-cards.index');
         Route::post('/enabled-cards/limit-levels', [EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
         Route::delete('/enabled-cards/limit-levels', [EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
-        Route::get('/traders/analytics', [TraderAnalyticsController::class, 'index'])->name('traders-analytics.index');
-        Route::patch('/traders/analytics/operations-threshold', [TraderAnalyticsController::class, 'updateOperationsThreshold'])->name('traders-analytics.operations-threshold.update');
-        Route::get('/traders/analytics/traders/search', [TraderAnalyticsController::class, 'searchTraders'])->name('traders-analytics.traders.search');
         Route::get('/orders', [App\Http\Controllers\Support\OrderController::class, 'index'])->name('orders.index');
         Route::patch('/orders/{order}/accept', [App\Http\Controllers\Support\OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::patch('/orders/{order}/amount', [App\Http\Controllers\Support\OrderController::class, 'updateAmount'])->name('orders.update.amount');
@@ -337,46 +286,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/filters/detail-types', [FilterController::class, 'getDetailTypes']);
         Route::get('/filters/payment-gateways', [FilterController::class, 'searchPaymentGateways']);
         Route::get('/filters/users', [FilterController::class, 'searchUsers']);
-    });
-
-    Route::group(['prefix' => 'analyst', 'as' => 'analyst.', 'middleware' => ['auth', 'banned', 'role:Analyst|Super Admin']], function () {
-        Route::get('/main', [MainPageController::class, 'analyst'])->name('main.index');
-        Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
-        Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant-api-logs.index');
-        Route::get('/merchant-api-logs/amount-distribution', [MerchantApiLogController::class, 'amountDistribution'])->name('merchant-api-logs.amount-distribution');
-
-        Route::get('/users', [AnalystUserController::class, 'index'])->name('users.index');
-        Route::get('/users/{user}/payment-details', [AnalystUserController::class, 'paymentDetails'])->name('users.payment-details.index');
-        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-        Route::patch('/users/{user}/toggle-traffic', [AnalystUserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
-        Route::get('/enabled-cards', [AnalystEnabledCardsController::class, 'index'])->name('enabled-cards.index');
-        Route::post('/enabled-cards/limit-levels', [AnalystEnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
-        Route::delete('/enabled-cards/limit-levels', [AnalystEnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
-        Route::get('/traders/analytics', [AnalystTraderAnalyticsController::class, 'index'])->name('traders-analytics.index');
-        Route::patch('/traders/analytics/operations-threshold', [AnalystTraderAnalyticsController::class, 'updateOperationsThreshold'])->name('traders-analytics.operations-threshold.update');
-        Route::get('/traders/analytics/traders/search', [AnalystTraderAnalyticsController::class, 'searchTraders'])->name('traders-analytics.traders.search');
-        Route::get('/orders', [AnalystOrderController::class, 'index'])->name('orders.index');
-        Route::patch('/orders/{order}/accept', [AnalystOrderController::class, 'acceptOrder'])->name('orders.accept');
-        Route::patch('/orders/{order}/amount', [AnalystOrderController::class, 'updateAmount'])->name('orders.update.amount');
-        Route::get('/manual-control-acq', [ManualControlAcqController::class, 'show'])->name('manual-control-acq.show');
-        Route::get('/manual-control-acq/state', [ManualControlAcqController::class, 'state'])->name('manual-control-acq.state');
-        Route::post('/manual-control-acq/work-status', [ManualControlAcqController::class, 'setWorkStatus'])->name('manual-control-acq.work-status');
-        Route::patch('/manual-control-acq/sound-settings', [ManualControlAcqController::class, 'updateSoundSettings'])->name('manual-control-acq.sound-settings.update');
-        Route::post('/manual-control-acq/orders/{order}/take', [ManualControlAcqController::class, 'take'])->name('manual-control-acq.take');
-        Route::post('/manual-control-acq/orders/{order}/confirmation-type', [ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
-        Route::post('/manual-control-acq/orders/{order}/confirm', [ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
-        Route::post('/manual-control-acq/orders/{order}/reject', [ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
-        Route::get('/deposits', [AnalystDepositController::class, 'index'])->name('deposits.index');
-        Route::get('/disputes', [AnalystDisputeController::class, 'index'])->name('disputes.index');
-        Route::post('/disputes/{order}', [AnalystDisputeController::class, 'store'])->name('disputes.store');
-        Route::patch('/disputes/{dispute}/accept', [AnalystDisputeController::class, 'accept'])->name('disputes.accept');
-        Route::patch('/disputes/{dispute}/cancel', [AnalystDisputeController::class, 'cancel'])->name('disputes.cancel');
-        Route::patch('/disputes/{dispute}/rollback', [AnalystDisputeController::class, 'rollback'])->name('disputes.rollback');
-        Route::get('/payouts', [AnalystPayoutController::class, 'index'])->name('payouts.index');
-
-        Route::get('/filters/detail-types', [AnalystFilterController::class, 'getDetailTypes']);
-        Route::get('/filters/payment-gateways', [AnalystFilterController::class, 'searchPaymentGateways']);
-        Route::get('/filters/users', [AnalystFilterController::class, 'searchUsers']);
     });
 
     // common
@@ -410,7 +319,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
     Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Super Admin']], function () {
         Route::get('/integration/v2', [ApiIntegrationController::class, 'v2'])->name('integration.v2');
         Route::get('/integration', [ApiIntegrationController::class, 'index'])->name('integration.index');
-        Route::get('/integration/receipt-template', [ApiIntegrationController::class, 'receiptTemplate'])->name('integration.receipt-template');
         Route::post('/integration/regenerate-token', [ApiIntegrationController::class, 'regenerateToken'])
             ->name('integration.regenerate-token');
     });
@@ -425,7 +333,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/manual-control-acq/orders/{order}/confirmation-type', [ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
         Route::post('/manual-control-acq/orders/{order}/confirm', [ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
         Route::post('/manual-control-acq/orders/{order}/reject', [ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
-        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');
         Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
@@ -467,9 +374,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::get('/enabled-cards', [App\Http\Controllers\Admin\EnabledCardsController::class, 'index'])->name('enabled-cards.index');
         Route::post('/enabled-cards/limit-levels', [App\Http\Controllers\Admin\EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
         Route::delete('/enabled-cards/limit-levels', [App\Http\Controllers\Admin\EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
-        Route::get('/traders/analytics', [App\Http\Controllers\Admin\TraderAnalyticsController::class, 'index'])->name('traders-analytics.index');
-        Route::patch('/traders/analytics/operations-threshold', [App\Http\Controllers\Admin\TraderAnalyticsController::class, 'updateOperationsThreshold'])->name('traders-analytics.operations-threshold.update');
-        Route::get('/traders/analytics/traders/search', [App\Http\Controllers\Admin\TraderAnalyticsController::class, 'searchTraders'])->name('traders-analytics.traders.search');
 
         // Маршруты для фильтрации
         Route::get('/filters/detail-types', [App\Http\Controllers\Admin\FilterController::class, 'getDetailTypes']);
@@ -479,17 +383,10 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/users/{user}/toggle-online', [App\Http\Controllers\Admin\UserController::class, 'toggleOnline'])->name('users.toggle-online');
         Route::post('/users/{user}/archive', [App\Http\Controllers\Admin\UserController::class, 'archive'])->name('users.archive');
         Route::delete('/users/{user}/unarchive', [App\Http\Controllers\Admin\UserController::class, 'unarchive'])->name('users.unarchive');
-        Route::patch('/users/{user}/team', [App\Http\Controllers\Admin\UserController::class, 'updateTeam'])->name('users.team.update');
         Route::get('/users/roles', [App\Http\Controllers\Admin\UserController::class, 'roles'])->name('users.roles');
         Route::get('/users/team-leaders', [App\Http\Controllers\Admin\UserController::class, 'teamLeaders'])->name('users.team-leaders');
-        Route::get('/users/agents', [App\Http\Controllers\Admin\UserController::class, 'agents'])->name('users.agents');
-        Route::get('/users/{user}/temp-vip-history', [App\Http\Controllers\Admin\UserController::class, 'tempVipHistory'])->name('users.temp-vip-history');
         Route::get('/users/{user}', [App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
         Route::resource('/users', App\Http\Controllers\Admin\UserController::class)->only(['index', 'store', 'update']);
-        Route::get('/user-teams', [UserTeamController::class, 'index'])->name('user-teams.index');
-        Route::post('/user-teams', [UserTeamController::class, 'store'])->name('user-teams.store');
-        Route::patch('/user-teams/{userTeam}', [UserTeamController::class, 'update'])->name('user-teams.update');
-        Route::delete('/user-teams/{userTeam}', [UserTeamController::class, 'destroy'])->name('user-teams.destroy');
         Route::delete('/users/{user}/reset-2fa', [App\Http\Controllers\Admin\UserController::class, 'reset2fa'])->name('users.reset-2fa');
         Route::get('/payment-gateways', [PaymentGatewayController::class, 'index'])->name('payment-gateways.index');
         Route::get('/payment-gateways/create-data', [PaymentGatewayController::class, 'createData'])->name('payment-gateways.create-data');
@@ -518,7 +415,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/payouts/{payout}/status', [App\Http\Controllers\Admin\PayoutController::class, 'updateStatus'])->name('payouts.status.update');
         Route::get('/payouts/settings-data', [App\Http\Controllers\Admin\PayoutController::class, 'settingsData'])->name('payouts.settings-data');
         Route::patch('/payouts/settings', [App\Http\Controllers\Admin\PayoutController::class, 'updateSettings'])->name('payouts.settings.update');
-        Route::post('/payouts/priority-access/release', [App\Http\Controllers\Admin\PayoutController::class, 'releasePriorityAccess'])->name('payouts.priority-access.release');
 
         Route::get('/deposits', [App\Http\Controllers\Admin\DepositController::class, 'index'])->name('deposits.index');
         Route::get('/withdrawals', [WithdrawalController::class, 'index'])->name('withdrawals.index');
@@ -544,8 +440,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/sms-stop-word', [SmsStopWordController::class, 'store'])->name('sms-stop-word.store');
         Route::delete('/sms-stop-word/{smsStopWord}', [SmsStopWordController::class, 'destroy'])->name('sms-stop-word.destroy');
 
-        Route::get('/payment-details/statistics', [App\Http\Controllers\Admin\PaymentDetailController::class, 'statistics'])->name('payment-details.statistics');
-        Route::get('/payment-details/{paymentDetail}/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'show'])->name('payment-details.volume-statistics');
         Route::get('/payment-details', [App\Http\Controllers\Admin\PaymentDetailController::class, 'index'])->name('payment-details.index');
 
         Route::get('/disputes', [App\Http\Controllers\Admin\DisputeController::class, 'index'])->name('disputes.index');
@@ -556,9 +450,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::post('/users/{user}/wallet/deposit', [UserWalletController::class, 'deposit'])->name('users.wallet.deposit');
         Route::post('/users/{user}/wallet/withdraw', [UserWalletController::class, 'withdraw'])->name('users.wallet.withdraw');
 
-        Route::get('/users/{user}/notes', [UserNoteController::class, 'index'])->name('users.notes.index');
-        Route::post('/users/{user}/notes', [UserNoteController::class, 'store'])->name('users.notes.store');
-
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::patch('/settings/update/app-slogan', [SettingsController::class, 'updateAppSlogan'])->name('settings.update.app-slogan');
         Route::patch('/settings/update/prime-time-bonus', [SettingsController::class, 'updatePrimeTimeBonus'])->name('settings.update.prime-time-bonus');
@@ -566,7 +457,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/settings/update/funds-on-hold', [SettingsController::class, 'updateFundsOnHold'])->name('settings.update.funds-on-hold');
         Route::patch('/settings/update/max-pending-disputes', [SettingsController::class, 'updateMaxPendingDisputes'])->name('settings.update.max-pending-disputes');
         Route::patch('/settings/update/max-rejected-disputes', [SettingsController::class, 'updateMaxRejectedDisputes'])->name('settings.update.max-rejected-disputes');
-        Route::patch('/settings/update/temp-vip', [SettingsController::class, 'updateTempVip'])->name('settings.update.temp-vip');
         Route::patch('/settings/update/default-reserve-balance-limit', [SettingsController::class, 'updateDefaultReserveBalanceLimit'])->name('settings.update.default-reserve-balance-limit');
 
         Route::get('/merchants', [App\Http\Controllers\Admin\MerchantController::class, 'index'])->name('merchants.index');
@@ -579,22 +469,6 @@ Route::group(['middleware' => ['backoffice.domain', '2fa']], function () {
         Route::patch('/merchants/{merchant}/geo', [App\Http\Controllers\Admin\MerchantController::class, 'updateGeo'])->name('merchants.geo.update');
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
         Route::post('/merchants/{merchant}/resend-callback', [MerchantResendCallbackController::class, 'resendByDateRange'])->name('merchants.resend-callback');
-        Route::patch('/merchants/{merchant}/categories', [MerchantTrafficCategoryController::class, 'syncMerchantCategories'])
-            ->name('merchants.categories.update');
-
-        Route::prefix('traffic-categories')->name('traffic-categories.')->group(function () {
-            Route::get('/', [MerchantTrafficCategoryController::class, 'index'])->name('index');
-            Route::post('/', [MerchantTrafficCategoryController::class, 'store'])->name('store');
-            Route::patch('/settings/enabled', [MerchantTrafficCategoryController::class, 'updateEnabled'])
-                ->name('settings.enabled.update');
-            Route::patch('/{category}', [MerchantTrafficCategoryController::class, 'update'])->name('update');
-            Route::delete('/{category}', [MerchantTrafficCategoryController::class, 'destroy'])->name('destroy');
-            Route::post('/{category}/apply-to-all-traders', [MerchantTrafficCategoryController::class, 'applyToAllTraders'])
-                ->name('apply-to-all-traders');
-        });
-
-        // Route::resource('/categories', \App\Http\Controllers\Admin\CategoryController::class);
-
         // Вход под другим пользователем
         Route::post('/impersonate/{user}', function (User $user) {
             $currentUser = request()->user();

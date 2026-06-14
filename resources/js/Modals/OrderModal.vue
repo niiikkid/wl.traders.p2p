@@ -31,10 +31,6 @@ const ordersIndexRouteName = () => {
         return 'admin.orders.index';
     }
 
-    if (viewStore.isAnalystViewMode) {
-        return 'analyst.orders.index';
-    }
-
     if (viewStore.isSupportViewMode) {
         return 'support.orders.index';
     }
@@ -47,10 +43,6 @@ const disputesIndexRouteName = () => {
         return 'admin.disputes.index';
     }
 
-    if (viewStore.isAnalystViewMode) {
-        return 'analyst.disputes.index';
-    }
-
     if (viewStore.isSupportViewMode) {
         return 'support.disputes.index';
     }
@@ -59,10 +51,6 @@ const disputesIndexRouteName = () => {
 };
 
 const acceptOrderRouteName = () => {
-    if (viewStore.isAnalystViewMode) {
-        return 'analyst.orders.accept';
-    }
-
     if (viewStore.isSupportViewMode) {
         return 'support.orders.accept';
     }
@@ -71,10 +59,6 @@ const acceptOrderRouteName = () => {
 };
 
 const createDisputeRouteName = () => {
-    if (viewStore.isAnalystViewMode) {
-        return 'analyst.disputes.store';
-    }
-
     if (viewStore.isSupportViewMode) {
         return 'support.disputes.store';
     }
@@ -113,7 +97,7 @@ const canEditOrderAmountInCurrentView = computed(() => {
         return true;
     }
 
-    if (viewStore.isSupportViewMode || viewStore.isAnalystViewMode) {
+    if (viewStore.isSupportViewMode) {
         return !!user?.support_can_edit_order_amount;
     }
 
@@ -139,12 +123,10 @@ const formattedManualControlExpiry = computed(() => {
 
 const merchantWalletTransactions = computed(() => order.value?.wallet_transactions?.merchant ?? []);
 const teamLeaderWalletTransactions = computed(() => order.value?.wallet_transactions?.team_leader ?? []);
-const agentWalletTransactions = computed(() => order.value?.wallet_transactions?.agent ?? []);
 const traderWalletTransactions = computed(() => order.value?.wallet_transactions?.trader ?? []);
 const walletTransactionsCount = computed(() => {
     return merchantWalletTransactions.value.length
         + teamLeaderWalletTransactions.value.length
-        + agentWalletTransactions.value.length
         + traderWalletTransactions.value.length;
 });
 /** Транзакции кошельков по сделке — только в админском режиме (Super Admin). */
@@ -189,14 +171,6 @@ const displayPercent = (value) => {
 };
 
 const walletTransactionTypeLabel = (transaction) => {
-    if (transaction?.type === 'income_from_referrals_successful_order' && transaction?.balance_type === 'agent') {
-        return 'Зачисление агенту';
-    }
-
-    if (transaction?.type === 'rollback_income_from_referrals_successful_order' && transaction?.balance_type === 'agent') {
-        return 'Списание агента (rollback)';
-    }
-
     return ({
         income_from_a_successful_order: 'Зачисление мерчанту',
         rollback_income_from_a_successful_order: 'Списание мерчанта (rollback)',
@@ -280,7 +254,7 @@ const show = () => {
         params: {
             view_mode: viewStore.isAdminViewMode
                 ? 'admin'
-                : ((viewStore.isSupportViewMode || viewStore.isAnalystViewMode) ? 'support' : 'default'),
+                : (viewStore.isSupportViewMode ? 'support' : 'default'),
         },
     })
         .then(response => {
@@ -291,10 +265,6 @@ const show = () => {
             }
         });
 };
-
-const orderPaymentLink = (payment_link) => {
-    window.open(payment_link, '_blank')
-}
 
 const copyCallbackUrl = async (callback_url) => {
     try {
@@ -484,7 +454,7 @@ const copyCallbackUrl = async (callback_url) => {
                                         [&>dl>dt]:shrink-0 [&>dl>dt]:text-[10px] [&>dl>dt]:font-semibold [&>dl>dt]:uppercase [&>dl>dt]:tracking-wider [&>dl>dt]:text-base-content/50 sm:[&>dl>dt]:text-xs
                                         [&>dl>dd]:min-w-0 [&>dl>dd]:text-end [&>dl>dd]:text-xs sm:[&>dl>dd]:text-sm"
                                     >
-                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode" class="block sm:flex items-center justify-between gap-4">
+                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Мерчант</dt>
                                             <dd class="font-medium text-base-content"><span class="truncate">{{ order.merchant?.name ?? '—' }}</span> (id:{{ order.merchant?.id ?? '—' }})</dd>
                                         </dl>
@@ -494,7 +464,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                 <CopyableOrderUid :uuid="order.uuid"/>
                                             </dd>
                                         </dl>
-                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode" class="block sm:flex items-center justify-between gap-4">
+                                        <dl v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Внешний ID</dt>
                                             <dd class="font-medium text-base-content">
                                                 <CopyableExternalId :id="order.external_id" />
@@ -520,7 +490,7 @@ const copyCallbackUrl = async (callback_url) => {
                                                 </div>
                                             </dd>
                                         </dl>
-                                        <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode) && order.amount_updates_history">
+                                        <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode) && order.amount_updates_history">
                                             <div class="overflow-x-auto card bg-base-100">
                                                 <table class="w-full table bg-base-200/50 table-xs">
                                                     <thead class="text-xs bg-base-300">
@@ -566,7 +536,7 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Тело</dt>
                                             <dd class="font-medium text-base-content">{{ order.total_profit }} {{order.base_currency.toUpperCase()}}</dd>
                                         </dl>
-                                        <template v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode">
+                                        <template v-if="viewStore.isAdminViewMode || viewStore.isSupportViewMode">
                                             <dl class="block sm:flex items-center justify-between gap-4">
                                                 <dt class="text-base-content/70">Комиссия всего</dt>
                                                 <dd class="font-medium text-base-content">{{ displayMoney(order.total_fee, order.base_currency) }}</dd>
@@ -583,10 +553,6 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dl class="block sm:flex items-center justify-between gap-4">
                                                 <dt class="text-base-content/70">Комиссия тимлида</dt>
                                                 <dd class="font-medium text-base-content">{{ displayMoney(order.team_leader_profit, order.base_currency) }}</dd>
-                                            </dl>
-                                            <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
-                                                <dt class="text-base-content/70">Комиссия агента</dt>
-                                                <dd class="font-medium text-base-content">{{ displayMoney(order.agent_profit, order.base_currency) }}</dd>
                                             </dl>
 
                                             <dl class="block sm:flex items-center justify-between gap-4">
@@ -630,10 +596,6 @@ const copyCallbackUrl = async (callback_url) => {
                                             <dt class="text-base-content/70">Комиссия тимлида, %</dt>
                                             <dd class="font-medium text-base-content">{{ displayPercent(order.team_leader_commission_rate) }}</dd>
                                         </dl>
-                                        <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
-                                            <dt class="text-base-content/70">Комиссия агента, %</dt>
-                                            <dd class="font-medium text-base-content">{{ displayPercent(order.agent_commission_rate) }}</dd>
-                                        </dl>
 
                                         <dl v-if="viewStore.isAdminViewMode" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Сплит тимлида (платит сервис), %</dt>
@@ -650,10 +612,6 @@ const copyCallbackUrl = async (callback_url) => {
                                         <dl v-if="viewStore.isAdminViewMode && order.team_leader" class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Тимлидер</dt>
                                             <dd class="font-medium text-base-content">{{ order.team_leader.email }}</dd>
-                                        </dl>
-                                        <dl v-if="viewStore.isAdminViewMode && order.agent" class="block sm:flex items-center justify-between gap-4">
-                                            <dt class="text-base-content/70">Агент</dt>
-                                            <dd class="font-medium text-base-content">{{ order.agent.email }}</dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
                                             <dt class="text-base-content/70">Метод</dt>
@@ -681,22 +639,6 @@ const copyCallbackUrl = async (callback_url) => {
                                                         </button>
                                                     </AppTooltip>
                                                 </div>
-                                            </dd>
-                                        </dl>
-                                        <dl v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode) && ! order.is_h2h" class="block sm:flex items-center justify-between gap-4">
-                                            <dt class="text-base-content/70">Страница оплаты</dt>
-                                            <dd class="font-medium text-base-content">
-                                                <AppTooltip tip="Перейти" placement="left">
-                                                    <button
-                                                        @click="orderPaymentLink(order.payment_link)"
-                                                        type="button"
-                                                        class="btn btn-ghost btn-xs text-primary inline-flex items-center"
-                                                    >
-                                                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 3v4a1 1 0 0 1-1 1H5m8-2h3m-3 3h3m-4 3v6m4-3H8M19 4v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1ZM8 12v6h8v-6H8Z"/>
-                                                        </svg>
-                                                    </button>
-                                                </AppTooltip>
                                             </dd>
                                         </dl>
                                         <dl class="block sm:flex items-center justify-between gap-4">
@@ -776,41 +718,6 @@ const copyCallbackUrl = async (callback_url) => {
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="transaction in teamLeaderWalletTransactions" :key="`teamleader-${transaction.id}`">
-                                                            <td>
-                                                                <div class="flex items-center gap-1.5 flex-wrap">
-                                                                    <span :class="['badge badge-sm shrink-0', walletTransactionDirectionBadgeClass(transaction.direction)]">
-                                                                        {{ transaction.direction ?? '—' }}
-                                                                    </span>
-                                                                    <span>{{ walletTransactionTypeLabel(transaction) }}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td>{{ displayMoney(transaction.amount, transaction.currency) }}</td>
-                                                            <td><DateTime :data="transaction.created_at" :simple="true" /></td>
-                                                        </tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-
-                                        <div class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm">
-                                            <div class="mb-2 flex items-center justify-between gap-2">
-                                                <h4 class="font-semibold text-base-content">Кошелёк агента</h4>
-                                                <span class="badge badge-secondary badge-outline badge-sm">{{ agentWalletTransactions.length }}</span>
-                                            </div>
-                                            <div v-if="!agentWalletTransactions.length" class="rounded-box border border-dashed border-base-300 bg-base-100 p-3 text-xs text-base-content/60">
-                                                Операций не найдено.
-                                            </div>
-                                            <div v-else class="overflow-x-auto rounded-box border border-base-300 bg-base-100">
-                                                <table class="table table-xs">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Тип</th>
-                                                            <th>Сумма</th>
-                                                            <th>Дата</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <tr v-for="transaction in agentWalletTransactions" :key="`agent-${transaction.id}`">
                                                             <td>
                                                                 <div class="flex items-center gap-1.5 flex-wrap">
                                                                     <span :class="['badge badge-sm shrink-0', walletTransactionDirectionBadgeClass(transaction.direction)]">
@@ -1037,7 +944,7 @@ const copyCallbackUrl = async (callback_url) => {
 
             <ModalFooterNext>
                 <div
-                    v-if="order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode"
+                    v-if="order.status === 'pending' || order.status === 'fail' || viewStore.isAdminViewMode || viewStore.isSupportViewMode"
                     class="flex w-full flex-wrap items-center justify-center gap-1.5 sm:gap-2"
                 >
                     <template v-if="!order.has_dispute">
@@ -1053,7 +960,7 @@ const copyCallbackUrl = async (callback_url) => {
                             Оплачен
                         </button>
                         <button
-                            v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode || viewStore.isAnalystViewMode) && order.can_open_internal_dispute"
+                            v-if="(viewStore.isAdminViewMode || viewStore.isSupportViewMode) && order.can_open_internal_dispute"
                             @click.prevent="confirmCreateDispute(order)"
                             type="button"
                             class="btn btn-xs btn-warning btn-outline touch-manipulation sm:btn-sm"

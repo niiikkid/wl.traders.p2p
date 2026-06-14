@@ -148,15 +148,7 @@ class OrderMaker
     protected function resolveGeoMarket(): MarketEnum
     {
         $currency = $this->data->amount->getCurrency();
-        $geoMap = $this->data->merchant->getGeoMap();
-
-        $marketValue = $geoMap[$currency->getCode()] ?? $geoMap[strtolower($currency->getCode())] ?? null;
-
-        if (! $marketValue) {
-            throw OrderException::geoNotConfigured(strtoupper($currency->getCode()));
-        }
-
-        $market = MarketEnum::tryFrom($marketValue);
+        $market = $this->data->merchant->getGeoMarket($currency);
 
         if (! $market) {
             throw OrderException::geoNotConfigured(strtoupper($currency->getCode()));

@@ -15,7 +15,6 @@ export function walletBalanceTypeLabel(balanceType, options = {}) {
         merchant: 'Мерчант',
         teamleader: sharedReserveContext ? 'Доход тимлидера' : 'Тимлид',
         provider: 'Провайдер',
-        agent: 'Агент',
         reserve: sharedReserveContext ? 'Страховой резерв' : 'Резерв',
     };
 

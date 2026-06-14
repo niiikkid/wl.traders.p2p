@@ -43,7 +43,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Money|null $usdt_amount Внешний провайдер: сумма после конвертации по курсу в USDT. Внутренний: {@see Order::$total_profit} в USDT.
  * @property Money|null $fee Комиссия, забираемая у мерчанта в USDT
  * @property float|null $fee_rate Комиссия в процентах, забираемая у мерчанта
- * @property MarketEnum $market Рынок (bybit, binance, rapira)
+ * @property MarketEnum $market Рынок (bybit, binance, manual, merchant_api; rapira — архив)
  * @property Money $conversion_price Курс обмена
  * @property Carbon|null $rate_fixed_at Дата фиксации курса
  * @property CascadeDealStatus $status Статус сделки

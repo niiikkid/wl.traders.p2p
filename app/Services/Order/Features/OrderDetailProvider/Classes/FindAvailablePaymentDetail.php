@@ -163,7 +163,6 @@ class FindAvailablePaymentDetail
             ->where('stop_traffic', false)
             ->whereNull('banned_at')
             ->whereNull('archived_at')
-            ->tap(fn (Builder $query) => services()->merchantTrafficCategory()->constrainEligibleTradersForMerchant($query, $this->merchant))
             ->tap(fn (Builder $query) => app(TeamLeaderInsuranceService::class)->constrainEligibleTradersForOrderIssuing($query))
             ->whereHas('wallet', function ($q) {
                 $requiredUnits = $this->approximateTotalProfit->toUnitsInt();

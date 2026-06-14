@@ -127,10 +127,7 @@ onUnmounted(() => {
                         <div class="text-xs text-base-content/70">{{ props.user.role?.name || '—' }}</div>
                     </div>
                     <div class="ml-auto flex flex-col items-center">
-                        <div>
-                            <span class="badge badge-soft badge-primary">{{ props.user.user_team?.name || '—' }}</span>
-                        </div>
-                        <div class="mt-1 text-xs">
+                        <div class="text-xs">
                             <div v-if="telegramTag" class="flex items-center justify-center min-w-[96px]">
                                 <button
                                     type="button"

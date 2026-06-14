@@ -15,7 +15,7 @@ const page = usePage();
 const routePrefix = computed(() => route().current('support.*') ? 'support' : 'admin');
 const filtersBasePath = computed(() => routePrefix.value === 'support' ? '/support/filters' : '/admin/filters');
 
-/** Список реквизитов есть только в админке; support/analyst к этой странице приходят отдельными пунктами меню. */
+/** Список реквизитов есть только в админке; support приходит к этой странице отдельным пунктом меню. */
 const showPaymentDetailsLink = computed(() => route().current('admin.enabled-cards.*'));
 
 // Имя для куки

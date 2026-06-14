@@ -17,9 +17,6 @@ class SettingsController extends Controller
         $fundsOnHoldTime = services()->settings()->getFundsOnHoldTime();
         $maxPendingDisputes = services()->settings()->getMaxPendingDisputes();
         $maxRejectedDisputes = services()->settings()->getMaxRejectedDisputes();
-        $tempVipRequiredDeals = services()->settings()->getTempVipRequiredDeals();
-        $tempVipDurationMinutes = services()->settings()->getTempVipDurationMinutes();
-        $tempVipEnabled = services()->settings()->isTempVipEnabled();
         $defaultReserveBalanceLimit = services()->settings()->getDefaultReserveBalanceLimit();
 
         return Inertia::render('Settings/Index', compact(
@@ -29,9 +26,6 @@ class SettingsController extends Controller
             'fundsOnHoldTime',
             'maxPendingDisputes',
             'maxRejectedDisputes',
-            'tempVipRequiredDeals',
-            'tempVipDurationMinutes',
-            'tempVipEnabled',
             'defaultReserveBalanceLimit'
         ));
     }
@@ -96,23 +90,6 @@ class SettingsController extends Controller
             count: $request->count,
             period: $request->period
         );
-
-        return redirect()->route('admin.settings.index');
-    }
-
-    public function updateTempVip(Request $request)
-    {
-        $validated = $request->validate([
-            'enabled' => ['nullable', 'boolean'],
-            'required_deals' => ['required', 'integer', 'min:1'],
-            'duration_minutes' => ['required', 'integer', 'min:1'],
-        ]);
-
-        if (array_key_exists('enabled', $validated)) {
-            services()->settings()->updateTempVipEnabled((bool) $validated['enabled']);
-        }
-        services()->settings()->updateTempVipRequiredDeals($validated['required_deals']);
-        services()->settings()->updateTempVipDurationMinutes($validated['duration_minutes']);
 
         return redirect()->route('admin.settings.index');
     }

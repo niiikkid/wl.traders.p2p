@@ -14,7 +14,7 @@ class CurrencyController extends Controller
         $markets = [];
 
         foreach (MarketEnum::cases() as $market) {
-            if ($market->equals(MarketEnum::MERCHANT_API)) {
+            if ($market->isDeprecated() || $market->equals(MarketEnum::MERCHANT_API)) {
                 continue;
             }
 

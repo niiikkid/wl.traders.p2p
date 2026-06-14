@@ -15,7 +15,6 @@ const {merchantSettingsModal} = storeToRefs(modalStore);
 
 const merchant = ref(null);
 const markets = ref([]);
-const categories = ref([]);
 const currencies = ref([]);
 const detailTypes = ref([]);
 const commissionSettings = ref([]);
@@ -38,7 +37,6 @@ const close = () => {
 const resetState = () => {
     merchant.value = null;
     markets.value = [];
-    categories.value = [];
     currencies.value = [];
     detailTypes.value = [];
     commissionSettings.value = [];
@@ -64,7 +62,6 @@ const fetchSettings = async () => {
 
         merchant.value = data.merchant ?? null;
         markets.value = data.markets ?? [];
-        categories.value = data.categories ?? [];
         currencies.value = data.currencies ?? [];
         detailTypes.value = data.detail_types ?? [];
         commissionSettings.value = data.commission_settings ?? [];
@@ -114,7 +111,6 @@ watch(
                 v-else-if="merchant"
                 :merchant="merchant"
                 :markets="markets"
-                :categories="categories"
                 :currencies="currencies"
                 :detail-types="detailTypes"
                 :commission-settings="commissionSettings"

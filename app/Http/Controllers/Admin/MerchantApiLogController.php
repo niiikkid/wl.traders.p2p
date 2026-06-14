@@ -97,8 +97,7 @@ class MerchantApiLogController extends Controller
         // Распаковываем переменные
         extract($statistics);
 
-        $can_manage_merchant_api_log_deletion = $user->hasRole('Super Admin')
-            && ! $request->routeIs('analyst.*');
+        $can_manage_merchant_api_log_deletion = $user->hasRole('Super Admin');
 
         return Inertia::render('MerchantApiLogs/Index', [
             'logs' => MerchantApiLogResource::collection($logs),

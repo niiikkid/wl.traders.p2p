@@ -15,18 +15,18 @@ class UserController extends Controller
         $filters = $this->getTableFilters();
 
         $users = User::query()
-            ->with(['roles', 'wallet', 'userTeam'])
+            ->with(['roles', 'wallet'])
             ->whereNull('archived_at')
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
-                    $query->where('email', 'like', '%' . $filters->user . '%');
-                    $query->orWhere('name', 'like', '%' . $filters->user . '%');
+                    $query->where('email', 'like', '%'.$filters->user.'%');
+                    $query->orWhere('name', 'like', '%'.$filters->user.'%');
                 });
             })
-            ->when($filters->online, function ($query) use ($filters) {
+            ->when($filters->online, function ($query) {
                 $query->where('is_online', true);
             })
-            ->when($filters->traffic_disabled, function ($query) use ($filters) {
+            ->when($filters->traffic_disabled, function ($query) {
                 $query->where('stop_traffic', true);
             })
             ->orderByDesc('id')
@@ -39,14 +39,14 @@ class UserController extends Controller
 
     public function toggleTraffic(Request $request, User $user)
     {
-        $stopTraffic = !$user->stop_traffic;
+        $stopTraffic = ! $user->stop_traffic;
 
         $data = [
-            'stop_traffic' => $stopTraffic
+            'stop_traffic' => $stopTraffic,
         ];
 
         // Если включаем трафик, устанавливаем время включения
-        if (!$stopTraffic) {
+        if (! $stopTraffic) {
             $data['traffic_enabled_at'] = now();
         }
 

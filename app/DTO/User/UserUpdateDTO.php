@@ -16,8 +16,6 @@ readonly class UserUpdateDTO extends BaseDTO
         public bool $can_work_without_device = false,
         public bool $is_vip = false,
         public bool $payouts_enabled = true,
-        public bool $trader_economy_enabled = false,
-        public bool $priority_payout_access_enabled = false,
         public bool $payout_hold_enabled = true,
         public ?int $payout_hold_minutes = null,
         public ?int $payout_active_payouts_limit = null,
@@ -27,8 +25,6 @@ readonly class UserUpdateDTO extends BaseDTO
         public ?float $payout_team_leader_split_from_service_percent = null,
         public ?int $reserve_balance_limit = null,
         public ?int $team_leader_id = null,
-        public ?int $agent_id = null,
-        public float $agent_commission_percentage = 0.20,
         public bool $team_leader_extended_access_enabled = false,
         public bool $team_leader_flexible_trader_commission_enabled = false,
         public ?float $team_leader_flexible_trader_commission_min = null,
@@ -53,8 +49,6 @@ readonly class UserUpdateDTO extends BaseDTO
             can_work_without_device: (bool) ($data['can_work_without_device'] ?? false),
             is_vip: (bool) ($data['is_vip'] ?? false),
             payouts_enabled: (bool) ($data['payouts_enabled'] ?? true),
-            trader_economy_enabled: (bool) ($data['trader_economy_enabled'] ?? false),
-            priority_payout_access_enabled: (bool) ($data['priority_payout_access_enabled'] ?? false),
             payout_hold_enabled: (bool) ($data['payout_hold_enabled'] ?? true),
             payout_hold_minutes: isset($data['payout_hold_minutes']) ? (int) $data['payout_hold_minutes'] : null,
             payout_active_payouts_limit: isset($data['payout_active_payouts_limit']) ? (int) $data['payout_active_payouts_limit'] : null,
@@ -73,10 +67,6 @@ readonly class UserUpdateDTO extends BaseDTO
             reserve_balance_limit: isset($data['reserve_balance_limit']) ? (int) $data['reserve_balance_limit'] : null,
             role_id: (int) $data['role_id'],
             team_leader_id: $data['team_leader_id'] ?? null,
-            agent_id: $data['agent_id'] ?? null,
-            agent_commission_percentage: isset($data['agent_commission_percentage'])
-                ? (float) $data['agent_commission_percentage']
-                : 0.20,
             team_leader_extended_access_enabled: (bool) ($data['team_leader_extended_access_enabled'] ?? false),
             team_leader_flexible_trader_commission_enabled: (bool) ($data['team_leader_flexible_trader_commission_enabled'] ?? false),
             team_leader_flexible_trader_commission_min: isset($data['team_leader_flexible_trader_commission_min'])

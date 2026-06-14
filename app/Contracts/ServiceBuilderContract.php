@@ -38,8 +38,6 @@ interface ServiceBuilderContract
 
     public function merchant(): MerchantServiceContract;
 
-    public function merchantTrafficCategory(): MerchantTrafficCategoryServiceContract;
-
     public function payout(): PayoutServiceContract;
 
     public function profit(): ProfitServiceContract;

@@ -29,7 +29,7 @@ class MarketService implements MarketServiceContract
     public function loadAllPrices(): void
     {
         foreach (MarketEnum::cases() as $market) {
-            if ($market->equals(MarketEnum::MERCHANT_API)) {
+            if ($market->isDeprecated() || $market->equals(MarketEnum::MERCHANT_API)) {
                 continue;
             }
 
@@ -40,6 +40,10 @@ class MarketService implements MarketServiceContract
 
     public function loadPricesFor(Currency $currency, MarketEnum $market = MarketEnum::BYBIT): void
     {
+        if ($market->isDeprecated()) {
+            return;
+        }
+
         if (! $this->supportsCurrency($market, $currency)) {
             return;
         }
@@ -114,6 +118,10 @@ class MarketService implements MarketServiceContract
     public function loadFilterConditions(): void
     {
         foreach (MarketEnum::cases() as $market) {
+            if ($market->isDeprecated()) {
+                continue;
+            }
+
             try {
                 if ($market->equals(MarketEnum::BYBIT)) {
                     $methods = (new ByBitParser)->parsePaymentMethodsList();
@@ -176,7 +184,6 @@ class MarketService implements MarketServiceContract
         $rubCode = Currency::RUB()->getCode();
 
         return match ($market) {
-            MarketEnum::RAPIRA => collect([Currency::RUB()]),
             MarketEnum::BYBIT => Currency::getAll()->values(),
             MarketEnum::BINANCE => Currency::getAll()
                 ->filter(fn (Currency $currency) => $currency->getCode() !== $rubCode)
@@ -252,7 +259,7 @@ class MarketService implements MarketServiceContract
         return array_values(array_filter(
             MarketEnum::cases(),
             function (MarketEnum $market) use ($current, $currency) {
-                if ($market->equals($current)) {
+                if ($market->equals($current) || $market->isDeprecated()) {
                     return false;
                 }
 

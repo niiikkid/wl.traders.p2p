@@ -23,10 +23,6 @@ const toggleExpand = (id) => {
     expandedCards.value[id] = !expandedCards.value[id];
 };
 
-const orderPaymentLink = (payment_link) => {
-    window.open(payment_link, '_blank')
-}
-
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
 })
@@ -182,9 +178,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </td>
                                     <td class="text-right">
                                         <TableActionsDropdown>
-                                            <TableAction v-if="!order.is_h2h" @click="orderPaymentLink(order.payment_link)">
-                                                Платежная страница
-                                            </TableAction>
                                             <TableAction @click="router.post(route('payment.callback.resend', order.id))">
                                                 Отправить Callback
                                             </TableAction>
@@ -274,13 +267,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <span class="text-primary/70">{{ order.currency.toUpperCase() }}</span>
                                                 </div>
                                             </div>
-                                            <button
-                                                v-if="!order.is_h2h"
-                                                class="btn btn-sm btn-outline w-full"
-                                                @click="orderPaymentLink(order.payment_link)"
-                                            >
-                                                Платежная страница
-                                            </button>
                                             <button
                                                 class="btn btn-sm btn-outline w-full"
                                                 @click="router.post(route('payment.callback.resend', order.id))"

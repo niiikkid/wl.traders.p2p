@@ -36,7 +36,7 @@ const isVipUser = computed(() => {
         return true;
     }
 
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1 || currentUser?.is_temp_vip_active;
+    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
 });
 
 const scope = ref('all');

@@ -12,9 +12,8 @@ class Parser
     public function getPrices(Currency $currency, MarketEnum $market): MarketPrices
     {
         return match (true) {
-            $market->equals(MarketEnum::RAPIRA) => (new RapiraParser())->getPrices($currency),
-            $market->equals(MarketEnum::BYBIT) => (new ByBitParser())->getPrices($currency),
-            $market->equals(MarketEnum::BINANCE) => (new BinanceParser())->getPrices($currency),
+            $market->equals(MarketEnum::BYBIT) => (new ByBitParser)->getPrices($currency),
+            $market->equals(MarketEnum::BINANCE) => (new BinanceParser)->getPrices($currency),
             default => throw new Exception('Error: Market not found.'),
         };
     }

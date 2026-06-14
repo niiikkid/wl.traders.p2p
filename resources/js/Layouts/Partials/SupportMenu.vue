@@ -32,22 +32,6 @@ router.on('success', (event) => {
                 </span>
             </span>
         </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.news.*') }]">
-            <span
-                @click="router.visit(route('support.news.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('support.news.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" class="size-5 opacity-30" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 0 1-2.25 2.25M16.5 7.5V18a2.25 2.25 0 0 0 2.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 0 0 2.25 2.25h13.5M6 7.5h3v3H6v-3Z" />
-                </svg>
-                Новости
-                <span v-if="menu.newsUnreadCount" class="badge badge-primary badge-sm justify-self-end">
-                    {{ menu.newsUnreadCount }}
-                </span>
-            </span>
-        </li>
         <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.orders.*') }]">
             <span
                 @click="router.visit(route('support.orders.index'), { preserveScroll: true })"
@@ -75,20 +59,6 @@ router.on('success', (event) => {
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 8h10M9 12h10M9 16h10M5 8h0m0 4h0m0 4h0"/>
                 </svg>
                 Вкл. реквизиты
-            </span>
-        </li>
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.traders-analytics.*') }]">
-            <span
-                @click="router.visit(route('support.traders-analytics.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('support.traders-analytics.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
-                </svg>
-                Аналитика трейдеров
             </span>
         </li>
         <li v-if="canViewDeposits" :class="[{ 'bg-base-content/10 rounded-lg': route().current('support.deposits.*') }]">

@@ -22,7 +22,6 @@ const { userEditModal } = storeToRefs(modalStore);
 
 const roles = ref([]);
 const teamLeaders = ref([]);
-const agents = ref([]);
 const loading = ref(false);
 const processing = ref(false);
 const errors = ref({});
@@ -38,8 +37,6 @@ const form = ref({
     can_work_without_device: false,
     is_vip: false,
     payouts_enabled: true,
-    trader_economy_enabled: false,
-    priority_payout_access_enabled: false,
     payout_hold_enabled: true,
     payout_hold_minutes: 60,
     payout_active_payouts_limit: 1,
@@ -56,8 +53,6 @@ const form = ref({
     support_can_edit_order_amount: false,
     support_can_use_manual_control_acq: false,
     team_leader_id: [],
-    agent_id: [],
-    agent_commission_percentage: 0.2,
     team_leader_insurance_mode: 'trader_reserve',
     team_leader_trader_limit: null,
     team_leader_reserve_balance_limit: null,
@@ -72,7 +67,6 @@ const isTeamLeader = (roleId) => roleId === 5;
 const selectedRoleName = computed(() => {
     return roles.value.find((role) => Number(role.id) === Number(form.value.role_id))?.name ?? null;
 });
-const isAgent = () => selectedRoleName.value === 'Agent';
 const hasPayoutsToggle = (roleId) => isTrader(roleId) || isMerchant(roleId) || isAdmin(roleId);
 const canManageSupportFeatures = (roleId) => isSupport(roleId) || isAdmin(roleId);
 
@@ -94,8 +88,6 @@ const resetState = () => {
         can_work_without_device: false,
         is_vip: false,
         payouts_enabled: true,
-        trader_economy_enabled: false,
-        priority_payout_access_enabled: false,
         payout_hold_enabled: true,
         payout_hold_minutes: 60,
         payout_active_payouts_limit: 1,
@@ -112,8 +104,6 @@ const resetState = () => {
         support_can_edit_order_amount: false,
         support_can_use_manual_control_acq: false,
         team_leader_id: [],
-        agent_id: [],
-        agent_commission_percentage: 0.2,
         team_leader_insurance_mode: 'trader_reserve',
         team_leader_trader_limit: null,
         team_leader_reserve_balance_limit: null,
@@ -125,14 +115,10 @@ const loadRoles = () => {
     return Promise.all([
         axios.get(route('admin.users.roles')),
         axios.get(route('admin.users.team-leaders')),
-        axios.get(route('admin.users.agents')),
-    ]).then(([rolesResponse, leadersResponse, agentsResponse]) => {
-        roles.value = rolesResponse.data?.data || rolesResponse.data || [];
+    ]).then(([rolesResponse, leadersResponse]) => {
+        roles.value = (rolesResponse.data?.data || rolesResponse.data || [])
+            .filter((role) => !['Analyst', 'Agent'].includes(role.name));
         teamLeaders.value = (leadersResponse.data?.data || leadersResponse.data || []).map(item => ({
-            value: item.id,
-            label: item.email,
-        }));
-        agents.value = (agentsResponse.data?.data || agentsResponse.data || []).map(item => ({
             value: item.id,
             label: item.email,
         }));
@@ -154,8 +140,6 @@ const loadUser = () => {
             form.value.can_work_without_device = !!data.can_work_without_device;
             form.value.is_vip = !!data.is_vip;
             form.value.payouts_enabled = data.payouts_enabled ?? true;
-            form.value.trader_economy_enabled = !!data.trader_economy_enabled;
-            form.value.priority_payout_access_enabled = !!data.priority_payout_access_enabled;
             form.value.payout_hold_enabled = data.payout_hold_enabled ?? true;
             form.value.payout_hold_minutes = data.payout_hold_minutes ?? 60;
             form.value.payout_active_payouts_limit = data.payout_active_payouts_limit ?? 1;
@@ -176,8 +160,6 @@ const loadUser = () => {
             form.value.support_can_edit_order_amount = !!data.support_can_edit_order_amount;
             form.value.support_can_use_manual_control_acq = !!data.support_can_use_manual_control_acq;
             form.value.team_leader_id = data.team_leader_id ? [data.team_leader_id] : [];
-            form.value.agent_id = data.agent_id ? [data.agent_id] : [];
-            form.value.agent_commission_percentage = data.agent_commission_percentage ?? 0.2;
             form.value.team_leader_insurance_mode = data.team_leader_insurance_mode ?? 'trader_reserve';
             form.value.team_leader_trader_limit = data.team_leader_trader_limit;
             form.value.team_leader_reserve_balance_limit = data.team_leader_reserve_balance_limit;
@@ -277,8 +259,8 @@ const submit = () => {
 
     const payload = {
         ...form.value,
+        priority_payout_access_enabled: !!user.value?.priority_payout_access_enabled,
         team_leader_id: Array.isArray(form.value.team_leader_id) ? form.value.team_leader_id[0] ?? null : form.value.team_leader_id,
-        agent_id: Array.isArray(form.value.agent_id) ? form.value.agent_id[0] ?? null : form.value.agent_id,
     };
 
     axios.patch(route('admin.users.update', user.value.id), payload, {
@@ -444,23 +426,6 @@ watch(
                     </div>
                 </div>
 
-                <div v-if="isTrader(form.role_id)">
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.trader_economy_enabled"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Экономика включена</span>
-                        </label>
-                    </div>
-                    <div class="mt-1 text-xs opacity-70">
-                        Трейдер увидит страницу «Экономика» в меню и сможет вести учёт.
-                    </div>
-                </div>
-
                 <div v-if="hasPayoutsToggle(form.role_id)">
                     <div class="form-control w-fit">
                         <label class="label cursor-pointer gap-3">
@@ -472,27 +437,6 @@ watch(
                             >
                             <span class="label-text">Выплаты включены</span>
                         </label>
-                    </div>
-
-                    <div
-                        class="form-control w-fit mt-2"
-                        v-if="form.payouts_enabled && (isTrader(form.role_id) || isAdmin(form.role_id))"
-                    >
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-warning"
-                                v-model="form.priority_payout_access_enabled"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Приоритетный доступ к выплатам</span>
-                        </label>
-                    </div>
-                    <div
-                        v-if="form.payouts_enabled && (isTrader(form.role_id) || isAdmin(form.role_id))"
-                        class="mt-1 text-xs opacity-70"
-                    >
-                        Пользователь будет видеть подходящие новые выплаты раньше остальных.
                     </div>
 
                     <div
@@ -935,52 +879,6 @@ watch(
                     <div class="mt-1 text-sm opacity-70">
                         Team Leader уже назначен и не может быть изменен.
                     </div>
-                </div>
-
-                <div v-if="isMerchant(form.role_id)">
-                    <InputLabel
-                        for="agent_id"
-                        value="Агент"
-                        :error="!!errors.agent_id?.[0]"
-                    />
-                    <Multiselect
-                        v-model="form.agent_id"
-                        :options="agents"
-                        :enable-search="true"
-                        :single-select="true"
-                        label-key="label"
-                        value-key="value"
-                        placeholder="Выберите агента"
-                        :disabled="processing"
-                        @change="errors.agent_id = null"
-                    />
-                    <InputError class="mt-1" :message="errors.agent_id?.[0]" />
-                    <p class="mt-1 text-xs text-base-content/70">
-                        Необязательно. Агент будет получать комиссию с новых успешных сделок мерчанта.
-                    </p>
-                </div>
-
-                <div v-if="isAgent()">
-                    <InputLabel
-                        for="agent_commission_percentage"
-                        value="Комиссия агента (%)"
-                        :error="!!errors.agent_commission_percentage?.[0]"
-                    />
-                    <NumberInput
-                        id="agent_commission_percentage"
-                        v-model="form.agent_commission_percentage"
-                        class="mt-1 block w-full"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        :error="!!errors.agent_commission_percentage?.[0]"
-                        :disabled="processing"
-                        @input="errors.agent_commission_percentage = null"
-                    />
-                    <InputError class="mt-1" :message="errors.agent_commission_percentage?.[0]" />
-                    <p class="mt-1 text-xs text-base-content/70">
-                        Новое значение будет применяться только к новым сделкам.
-                    </p>
                 </div>
             </form>
 

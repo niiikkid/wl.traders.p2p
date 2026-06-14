@@ -6,23 +6,20 @@ use App\Contracts\InvoiceServiceContract;
 use App\Enums\BalanceType;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
-use App\Enums\NetworkEnum;
 use App\Enums\TransactionType;
 use App\Exceptions\InvoiceException;
 use App\Models\Invoice;
 use App\Models\Wallet;
-use App\Models\User;
 use App\Services\External\InvoiceApiClient;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Utils\Transaction;
-use Illuminate\Support\Facades\Http;
 
 class InvoiceService implements InvoiceServiceContract
 {
     public function createWithdrawal(int $walletID, Money $amount, ?string $address, BalanceType $balanceType): Invoice
     {
-        return Transaction::run(function() use ($walletID, $amount, $address, $balanceType) {
+        return Transaction::run(function () use ($walletID, $amount, $address, $balanceType) {
             $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
 
             $totalAvailableBalance = services()->wallet()->getTotalAvailableBalance($wallet, $balanceType);
@@ -53,65 +50,9 @@ class InvoiceService implements InvoiceServiceContract
         });
     }
 
-    public function createAutoWithdrawal(int $walletID, Money $amount, string $address, NetworkEnum $network): Invoice
-    {
-        return Transaction::run(function() use ($walletID, $amount, $address, $network) {
-            $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
-
-            $totalAvailableBalance = services()->wallet()->getTotalAvailableBalance($wallet, BalanceType::MERCHANT);
-
-            if ($amount->greaterThan($totalAvailableBalance)) {
-                throw InvoiceException::insufficientBalance();
-            }
-
-            $invoice = Invoice::create([
-                'amount' => $amount,
-                'currency' => $amount->getCurrency(),
-                'address' => $address,
-                'network' => $network,
-                'type' => InvoiceType::WITHDRAWAL,
-                'balance_type' => BalanceType::MERCHANT,
-                'status' => InvoiceStatus::PENDING,
-                'wallet_id' => $wallet->id,
-            ]);
-
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'X-API-Key' => config('api.withdrawal_service_x_api_key'),
-            ])->post(config('api.withdrawal_service_host'), [
-                'payment_id' => $invoice->id,
-                'email' => $wallet->user->email,
-                'user_id' => $wallet->user->id,
-                'network' => $network->value,
-                'address' => $address,
-                'amount' => $amount->toBeauty(),
-            ]);
-
-            if (!$response->successful() || !isset($response->json()['success']) || $response->json()['success'] !== true || !isset($response->json()['status']) || $response->json()['status'] !== 'pending') {
-                throw InvoiceException::unableToWithdrawByService();
-            }
-
-            $data = $response->json();
-
-            $invoice->update([
-                'external_id' => $data['transaction_id'],
-            ]);
-
-            services()->wallet()
-                ->takeFromBalance(
-                    walletID: $wallet->id,
-                    amount: $amount,
-                    transactionType: TransactionType::WITHDRAWAL_BY_USER,
-                    balanceType: BalanceType::MERCHANT
-                );
-
-            return $invoice;
-        });
-    }
-
     public function finishAutoWithdrawal(int $paymentID, string $status, ?string $txHash = null): Invoice
     {
-        return Transaction::run(function() use ($paymentID, $status, $txHash) {
+        return Transaction::run(function () use ($paymentID, $status, $txHash) {
             $invoice = Invoice::where('id', $paymentID)->lockForUpdate()->first();
 
             if (! $invoice->external_id) {
@@ -151,7 +92,7 @@ class InvoiceService implements InvoiceServiceContract
 
     public function finishWithdrawal(int $invoiceID): void
     {
-        Transaction::run(function() use ($invoiceID) {
+        Transaction::run(function () use ($invoiceID) {
             $invoice = Invoice::where('id', $invoiceID)->lockForUpdate()->first();
 
             if ($invoice->type->notEquals(InvoiceType::WITHDRAWAL)) {
@@ -168,7 +109,7 @@ class InvoiceService implements InvoiceServiceContract
 
     public function cancelWithdrawal(int $invoiceID): void
     {
-        Transaction::run(function() use ($invoiceID) {
+        Transaction::run(function () use ($invoiceID) {
             $invoice = Invoice::where('id', $invoiceID)->lockForUpdate()->first();
 
             if ($invoice->type->notEquals(InvoiceType::WITHDRAWAL)) {
@@ -190,9 +131,9 @@ class InvoiceService implements InvoiceServiceContract
         });
     }
 
-    public function deposit(int $walletID, Money $amount, BalanceType $balanceType, string $transactionID = null, string $txHash = null): void
+    public function deposit(int $walletID, Money $amount, BalanceType $balanceType, ?string $transactionID = null, ?string $txHash = null): void
     {
-        Transaction::run(function() use ($walletID, $amount, $balanceType, $transactionID, $txHash) {
+        Transaction::run(function () use ($walletID, $amount, $balanceType, $transactionID, $txHash) {
             $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
 
             if ($transactionID && Invoice::where('transaction_id', $transactionID)->exists()) {
@@ -223,7 +164,7 @@ class InvoiceService implements InvoiceServiceContract
 
     public function withdraw(int $walletID, Money $amount, BalanceType $balanceType): void
     {
-        Transaction::run(function() use ($walletID, $amount, $balanceType) {
+        Transaction::run(function () use ($walletID, $amount, $balanceType) {
             $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
 
             $totalAvailableBalance = services()->wallet()->getTotalAvailableBalance($wallet, $balanceType);
@@ -258,7 +199,7 @@ class InvoiceService implements InvoiceServiceContract
      */
     public function createExternalDeposit(int $walletID, Money $amount, BalanceType $balanceType): array
     {
-        return Transaction::run(function() use ($walletID, $amount, $balanceType) {
+        return Transaction::run(function () use ($walletID, $amount, $balanceType) {
             $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
 
             // Создаём локальный инвойс в ожидании оплаты
@@ -273,7 +214,7 @@ class InvoiceService implements InvoiceServiceContract
             ]);
 
             // Вызываем внешний сервис: external_invoice_id = наш ID
-            $client = new InvoiceApiClient();
+            $client = new InvoiceApiClient;
             $callbackUrl = route('api.external.invoice.callback');
             $external = $client->createInvoice(
                 currency: 'usdt',
@@ -305,7 +246,7 @@ class InvoiceService implements InvoiceServiceContract
      */
     public function finishExternalDeposit(int $invoiceID, ?Money $amountReceived = null, ?string $txHash = null): Invoice
     {
-        return Transaction::run(function() use ($invoiceID, $amountReceived, $txHash) {
+        return Transaction::run(function () use ($invoiceID, $amountReceived, $txHash) {
             $invoice = Invoice::where('id', $invoiceID)->lockForUpdate()->first();
 
             if ($invoice->type->notEquals(InvoiceType::DEPOSIT)) {
@@ -340,7 +281,7 @@ class InvoiceService implements InvoiceServiceContract
      */
     public function cancelExternalDeposit(int $invoiceID): Invoice
     {
-        return Transaction::run(function() use ($invoiceID) {
+        return Transaction::run(function () use ($invoiceID) {
             $invoice = Invoice::where('id', $invoiceID)->lockForUpdate()->first();
 
             if ($invoice->type->notEquals(InvoiceType::DEPOSIT)) {
@@ -355,41 +296,5 @@ class InvoiceService implements InvoiceServiceContract
 
             return $invoice->fresh();
         });
-    }
-
-    /**
-     * Возвращает массив доступных сетей для вывода средств в зависимости от роли пользователя
-     */
-    public function getAvailableNetworks(User $user): array
-    {
-        // Для мерчантов доступны все сети
-        if ($user->hasRole('Merchant')) {
-            return [
-                NetworkEnum::TRX,
-                NetworkEnum::BSC,
-                NetworkEnum::ETH,
-                NetworkEnum::ARB,
-                NetworkEnum::AVAX,
-                NetworkEnum::MATIC,
-            ];
-        }
-
-        // Для трейдеров и тимлидеров доступны только TRX и BSC
-        if ($user->hasRole('Trader') || $user->hasRole('Team Leader')) {
-            return [
-                NetworkEnum::TRX,
-                NetworkEnum::BSC,
-            ];
-        }
-
-        // Для всех остальных пользователей доступны все сети
-        return [
-            NetworkEnum::TRX,
-            NetworkEnum::BSC,
-            NetworkEnum::ETH,
-            NetworkEnum::ARB,
-            NetworkEnum::AVAX,
-            NetworkEnum::MATIC,
-        ];
     }
 }

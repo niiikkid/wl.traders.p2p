@@ -27,11 +27,7 @@ class CallbackService implements CallbackServiceContract
             return;
         }
 
-        if ($order->is_h2h) {
-            $data = OrderResource::make($order)->resolve();
-        } else {
-            $data = \App\Http\Resources\API\Merchant\OrderResource::make($order)->resolve();
-        }
+        $data = OrderResource::make($order)->resolve();
 
         $token = $order->merchant->user->api_access_token;
 

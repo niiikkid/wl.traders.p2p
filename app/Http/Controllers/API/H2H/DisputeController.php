@@ -16,7 +16,7 @@ class DisputeController extends Controller
     public function show(Order $order): JsonResponse
     {
         if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+            return response()->failWithMessage('Сделка не предназначена для H2H API.');
         }
         if (! $order->dispute) {
             return response()->failWithMessage('По сделке пока что небыло споров.');
@@ -32,7 +32,7 @@ class DisputeController extends Controller
     public function store(StoreRequest $request, Order $order): JsonResponse
     {
         if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка предназначена не для H2H API, а для Merchant API.');
+            return response()->failWithMessage('Сделка не предназначена для H2H API.');
         }
 
         Gate::authorize('access-to-order', $order);

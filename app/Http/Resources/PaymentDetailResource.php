@@ -75,9 +75,6 @@ class PaymentDetailResource extends JsonResource
                     'owner_email' => $user->email,
                     'owner_is_vip' => (bool) $user->is_vip,
                     'owner_can_work_without_device' => (bool) $user->can_work_without_device,
-                    'owner_is_temp_vip_active' => services()->settings()->isTempVipEnabled() && $user->temp_vip_active_until
-                        ? now()->lt($user->temp_vip_active_until)
-                        : false,
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('userDevice'), function () {

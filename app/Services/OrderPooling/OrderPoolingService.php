@@ -6,9 +6,7 @@ use App\Contracts\OrderPoolingServiceContract;
 use App\Exceptions\AntiFraudException;
 use App\Exceptions\OrderException;
 use App\Http\Requests\API\H2H\Order\StoreRequest as H2HRequest;
-use App\Http\Requests\API\Merchant\Order\StoreRequest as MerchantRequest;
 use App\Http\Resources\API\H2H\OrderResource as H2HOrderResource;
-use App\Http\Resources\API\Merchant\OrderResource as MOrderResource;
 use App\Jobs\OrderPoolingJob;
 use App\Models\Order;
 use Illuminate\Http\JsonResponse;
@@ -20,7 +18,7 @@ class OrderPoolingService implements OrderPoolingServiceContract
     /**
      * Обрабатывает запрос на создание сделки через OrderPooling
      */
-    public function processOrderPooling(H2HRequest|MerchantRequest $request): JsonResponse
+    public function processOrderPooling(H2HRequest $request): JsonResponse
     {
         if (services()->settings()->isTrafficPaused()) {
             return response()->failWithMessage(OrderException::trafficPaused()->getMessage());
@@ -64,9 +62,7 @@ class OrderPoolingService implements OrderPoolingServiceContract
         ]), 60);
 
         $payload = $request->validated();
-        if ($request instanceof H2HRequest) {
-            $payload['h2h'] = true;
-        }
+        $payload['h2h'] = true;
         OrderPoolingJob::dispatch($jobID, $createdAt, $payload, $maxWaitMs);
 
         while ($waited < $maxWaitMs) {
@@ -95,11 +91,7 @@ class OrderPoolingService implements OrderPoolingServiceContract
                      */
                     $order = Order::withoutGlobalScopes()->find($data['order_id']);
 
-                    if ($request instanceof H2HRequest) {
-                        $resource = H2HOrderResource::make($order);
-                    } else {
-                        $resource = MOrderResource::make($order);
-                    }
+                    $resource = H2HOrderResource::make($order);
 
                     // Обновляем лог с успешным ответом
                     $response = response()->success($resource);

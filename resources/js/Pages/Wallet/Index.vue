@@ -16,16 +16,12 @@ import TrustBalance from "@/Pages/Wallet/Partials/TrustBalance.vue";
 import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import TeamLeaderSharedReserveBalance from "@/Pages/Wallet/Partials/TeamLeaderSharedReserveBalance.vue";
 import ProviderBalance from "@/Pages/Wallet/Partials/ProviderBalance.vue";
-import AgentBalance from "@/Pages/Wallet/Partials/AgentBalance.vue";
-import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
 import TraderBalanceTransferModal from "@/Modals/Wallet/TraderBalanceTransferModal.vue";
-import {useModalStore} from "@/store/modal.js";
 
 const page = usePage();
 const user = page.props.user;
 const walletStats = page.props.walletStats;
 const viewStore = useViewStore();
-const modalStore = useModalStore();
 
 /** На admin.users.wallet приходит из бэка; на своём кошельке отсутствует — используем только viewStore. */
 const walletSurfaces = computed(() => page.props.walletSurfaces ?? null);
@@ -75,14 +71,6 @@ const showProviderBalanceCard = computed(() => {
     return false;
 });
 
-const showAgentBalanceCard = computed(() => {
-    const ws = walletSurfaces.value;
-    if (ws) {
-        return ws.agent;
-    }
-    return viewStore.isAgentViewMode || viewStore.isAdminViewMode;
-});
-
 /** У админа на кошельке пользователя — «баланс провайдера»; у самого провайдера в финансах — «баланс». */
 const providerBalanceCardTitle = computed(() =>
     viewStore.isAdminViewMode ? 'Баланс провайдера' : 'Баланс',
@@ -119,10 +107,6 @@ const availableFiatCurrencies = computed(() => {
 const setBalanceType = (type) => {
     balanceType.value = type;
 }
-
-const openUserNotesModal = () => {
-    modalStore.openUserNotesModal({user});
-};
 
 const updateFiatCurrency = () => {
     fiatCurrencyForm.patch(route('wallet.fiat-currency.update'), {
@@ -171,21 +155,11 @@ defineOptions({ layout: AuthenticatedLayout })
 
         <div
             v-if="viewStore.isAdminViewMode"
-            class="flex items-center justify-between mb-3"
+            class="mb-3"
         >
             <h2 class="text-xl text-base-content sm:text-2xl">
                 Пользователь: <span class="text-primary">{{user.email}}</span>
             </h2>
-
-            <button
-                @click="openUserNotesModal"
-                type="button"
-                class="btn btn-primary btn-circle"
-            >
-                <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5h8m-8 5h8m-8 5h4.5M5 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4Z"/>
-                </svg>
-            </button>
         </div>
 
         <div
@@ -251,7 +225,6 @@ defineOptions({ layout: AuthenticatedLayout })
                 :title="providerBalanceCardTitle"
                 @setBalanceType="setBalanceType"
             />
-            <AgentBalance v-show="showAgentBalanceCard" @setBalanceType="setBalanceType"/>
             <EscrowBalance v-show="showEscrowBalanceCard" @setBalanceType="setBalanceType"/>
             <DisputeBalance v-show="showDisputeBalanceCard" @setBalanceType="setBalanceType"/>
         </div>
@@ -263,7 +236,6 @@ defineOptions({ layout: AuthenticatedLayout })
         <LeaderReserveDepositModal />
         <TraderBalanceTransferModal />
         <WithdrawalModal :balanceType="balanceType"/>
-        <UserNotesModal />
     </div>
 </template>
 

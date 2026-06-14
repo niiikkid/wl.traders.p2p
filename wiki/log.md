@@ -2,6 +2,9 @@
 
 ## [2026-06-15] query | Archived: Legacy Feature Removal Technical Specification
 
+## [2026-06-15] ingest | Legacy Feature Removal Technical Specification (focused exploration sync)
+- Updated: Legacy Feature Removal Technical Specification
+
 ## [2026-06-06] ingest | Telegram Chat Types and Trader Team Notifications Specification (Phases 6–7 shipped)
 - Updated: Telegram Chat Types and Trader Team Notifications Specification
 - Updated: Telegram Chat Dispute Automation Plan

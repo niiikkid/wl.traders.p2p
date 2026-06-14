@@ -186,7 +186,6 @@ abstract class Controller
             'paymentGateway' => $paymentGateway,
             'payoutStatuses' => array_values($payoutStatuses),
             'payoutMethodTypes' => array_values($payoutMethodTypes),
-            'priorityAccessOnly' => request()->input('filters.priorityAccessOnly') === 'true',
             'login' => request()->input('filters.login'),
             'deviceName' => request()->input('filters.deviceName'),
             'searchSender' => request()->input('filters.searchSender'),
@@ -228,7 +227,6 @@ abstract class Controller
             paymentGateway: $currentFilters['paymentGateway'],
             payoutStatuses: $currentFilters['payoutStatuses'],
             payoutMethodTypes: $currentFilters['payoutMethodTypes'],
-            priorityAccessOnly: $currentFilters['priorityAccessOnly'],
             login: $currentFilters['login'],
             deviceName: $currentFilters['deviceName'],
             searchSender: $currentFilters['searchSender'],
@@ -300,7 +298,7 @@ abstract class Controller
         if ($user) {
             if ($user->hasRole('Super Admin')) {
                 $merchantQuery = Merchant::query();
-            } elseif ($user->hasRole('Support') || $user->hasRole('Analyst')) {
+            } elseif ($user->hasRole('Support')) {
                 $merchantQuery = $user->merchants();
             } else {
                 $merchantQuery = Merchant::query()->where('user_id', $user->id);

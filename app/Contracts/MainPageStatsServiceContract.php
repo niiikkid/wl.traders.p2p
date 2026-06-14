@@ -12,8 +12,6 @@ interface MainPageStatsServiceContract
 
     public function buildLeaderStats(User $user): array;
 
-    public function buildAgentStats(User $user): array;
-
     public function buildAdminStats(
         User $user,
         ?int $merchantId = null,

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Enums\OrderStatus;
 use App\Enums\TeamLeaderInsuranceMode;
 use App\Observers\UserObserver;
 use Carbon\Carbon;
@@ -37,7 +36,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Collection<int, SmsLog> $smsLogs
  * @property Collection<int, UserLoginHistory> $loginHistories
  * @property Collection<int, UserDevice> $devices
- * @property Collection<int, UserNote> $notes
  * @property Collection<int, Merchant> $merchants Мерчанты (магазины), к которым имеет доступ саппорт
  * @property Wallet $wallet
  * @property UserMeta $meta
@@ -45,16 +43,11 @@ use Spatie\Permission\Traits\HasRoles;
  * @property User $merchant
  * @property bool $is_online
  * @property bool $is_vip
- * @property Carbon|null $temp_vip_active_until
- * @property bool $temp_vip_can_activate
- * @property Carbon|null $temp_vip_progress_start_at
  * @property bool $stop_traffic
  * @property bool $hide_name_in_trader_top
  * @property bool $can_work_without_device
  * @property bool $sms_auto_close_orders_enabled
  * @property bool $payouts_enabled
- * @property bool $trader_economy_enabled
- * @property bool $priority_payout_access_enabled
  * @property bool $payout_hold_enabled
  * @property int $payout_hold_minutes
  * @property int $payout_active_payouts_limit
@@ -72,7 +65,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property int|null $team_leader_id
  * @property int|null $agent_id
  * @property float $agent_commission_percentage
- * @property int|null $user_team_id
  * @property bool $team_leader_extended_access_enabled
  * @property bool $team_leader_flexible_trader_commission_enabled
  * @property float|null $team_leader_flexible_trader_commission_min
@@ -90,7 +82,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property User|null $teamLeader
  * @property User|null $agent
  * @property Collection<int, User> $agentMerchants
- * @property UserTeam|null $userTeam
  * @property Carbon $banned_at
  * @property string|null $ban_reason
  * @property int|null $banned_by_user_id
@@ -118,16 +109,11 @@ class User extends Authenticatable
         'api_access_token',
         'is_online',
         'is_vip',
-        'temp_vip_active_until',
-        'temp_vip_can_activate',
-        'temp_vip_progress_start_at',
         'stop_traffic',
         'hide_name_in_trader_top',
         'can_work_without_device',
         'sms_auto_close_orders_enabled',
         'payouts_enabled',
-        'trader_economy_enabled',
-        'priority_payout_access_enabled',
         'payout_hold_enabled',
         'payout_hold_minutes',
         'payout_active_payouts_limit',
@@ -143,9 +129,6 @@ class User extends Authenticatable
         'google2fa_secret',
         'login_history_logging_enabled',
         'team_leader_id',
-        'agent_id',
-        'agent_commission_percentage',
-        'user_team_id',
         'team_leader_extended_access_enabled',
         'team_leader_flexible_trader_commission_enabled',
         'team_leader_flexible_trader_commission_min',
@@ -192,14 +175,9 @@ class User extends Authenticatable
             'banned_at' => 'datetime',
             'archived_at' => 'datetime',
             'traffic_enabled_at' => 'datetime',
-            'temp_vip_active_until' => 'datetime',
-            'temp_vip_progress_start_at' => 'datetime',
-            'temp_vip_can_activate' => 'boolean',
             'can_work_without_device' => 'boolean',
             'sms_auto_close_orders_enabled' => 'boolean',
             'payouts_enabled' => 'boolean',
-            'trader_economy_enabled' => 'boolean',
-            'priority_payout_access_enabled' => 'boolean',
             'payout_hold_enabled' => 'boolean',
             'payout_active_payouts_limit' => 'integer',
             'referral_commission_percentage' => 'float',
@@ -325,16 +303,6 @@ class User extends Authenticatable
         return $this->hasOne(UserMeta::class);
     }
 
-    /**
-     * Категории трафика мерчантов: явный выбор трейдера (enabled в pivot).
-     */
-    public function trafficCategories(): BelongsToMany
-    {
-        return $this->belongsToMany(Category::class, 'category_user')
-            ->withPivot('enabled')
-            ->withTimestamps();
-    }
-
     public function telegramAccount(): HasOne
     {
         return $this->hasOne(TelegramAccount::class);
@@ -357,11 +325,6 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'banned_by_user_id');
     }
 
-    public function userTeam(): BelongsTo
-    {
-        return $this->belongsTo(UserTeam::class, 'user_team_id');
-    }
-
     public function referrals(): HasMany
     {
         return $this->hasMany(User::class, 'team_leader_id');
@@ -370,14 +333,6 @@ class User extends Authenticatable
     public function agentMerchants(): HasMany
     {
         return $this->hasMany(User::class, 'agent_id');
-    }
-
-    /**
-     * Get the notes for the user.
-     */
-    public function notes(): HasMany
-    {
-        return $this->hasMany(UserNote::class);
     }
 
     /**
@@ -413,78 +368,8 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
-    public function tempVipActivations(): HasMany
-    {
-        return $this->hasMany(UserTempVipActivation::class);
-    }
-
     public function onlinePeriods(): HasMany
     {
         return $this->hasMany(UserOnlinePeriod::class);
-    }
-
-    /**
-     * Рассчитать данные прогресса временного VIP.
-     */
-    public function getTempVipProgressData(): array
-    {
-        if (! services()->settings()->isTempVipEnabled()) {
-            return [
-                'enabled' => false,
-                'active' => false,
-                'active_until' => null,
-                'required' => 0,
-                'count' => 0,
-                'remaining' => 0,
-                'can_activate' => false,
-                'start_from' => null,
-            ];
-        }
-
-        if ($this->is_vip) {
-            return [
-                'enabled' => false,
-                'active' => false,
-                'active_until' => null,
-                'required' => 0,
-                'count' => 0,
-                'remaining' => 0,
-                'can_activate' => false,
-                'start_from' => null,
-            ];
-        }
-
-        $activeUntil = $this->temp_vip_active_until;
-        $isActive = $activeUntil && now()->lt($activeUntil);
-
-        $lastActivationEnd = $this->tempVipActivations()
-            ->latest('expires_at')
-            ->value('expires_at');
-
-        $startAt = $this->temp_vip_progress_start_at
-            ?? ($lastActivationEnd ? Carbon::parse($lastActivationEnd) : $this->created_at);
-
-        $required = services()->settings()->getTempVipRequiredDeals();
-
-        $count = Order::query()
-            ->where('status', OrderStatus::SUCCESS)
-            ->whereRelation('paymentDetail', 'user_id', $this->id)
-            ->when($startAt, function ($query) use ($startAt) {
-                $query->where('created_at', '>=', $startAt);
-            })
-            ->count();
-
-        $remaining = max($required - $count, 0);
-
-        return [
-            'enabled' => true,
-            'active' => $isActive,
-            'active_until' => $activeUntil?->toIso8601String(),
-            'required' => $required,
-            'count' => $count,
-            'remaining' => $remaining,
-            'can_activate' => ! $isActive && $count >= $required,
-            'start_from' => $startAt?->toIso8601String(),
-        ];
     }
 }

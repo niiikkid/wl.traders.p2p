@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\Money\Currency;
-use App\Support\PaymentLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -44,7 +43,6 @@ class OrderResource extends JsonResource
             'total_profit' => $this->total_profit->toBeauty(),
             'trader_profit' => $this->trader_profit->toBeauty(),
             'team_leader_profit' => $this->team_leader_profit->toBeauty(),
-            'agent_profit' => $this->agent_profit?->toBeauty(),
             'merchant_profit' => $this->merchant_profit->toBeauty(),
             'service_profit' => $this->service_profit->toBeauty(),
             'trader_paid_for_order' => $this->trader_paid_for_order?->toBeauty(),
@@ -52,7 +50,6 @@ class OrderResource extends JsonResource
             'conversion_price' => $this->conversion_price->toBeauty(),
             'trader_commission_rate' => $this->trader_commission_rate,
             'team_leader_commission_rate' => $this->team_leader_commission_rate,
-            'agent_commission_rate' => $this->agent_commission_rate,
             'total_service_commission_rate' => $this->total_service_commission_rate,
             'service_commission_amount_total' => (float) $this->total_profit
                 ->mul($this->total_service_commission_rate / 100)
@@ -119,15 +116,6 @@ class OrderResource extends JsonResource
                     ],
                 ];
             }),
-            $this->mergeWhen($this->resource->relationLoaded('agent') && $this->agent, function () {
-                return [
-                    'agent' => [
-                        'id' => $this->agent->id,
-                        'name' => $this->agent->name,
-                        'email' => $this->agent->email,
-                    ],
-                ];
-            }),
             $this->mergeWhen($this->resource->relationLoaded('smsLog') && $this->smsLog, function () {
                 return [
                     'sms_log' => [
@@ -184,14 +172,12 @@ class OrderResource extends JsonResource
                 'wallet_transactions' => [
                     'merchant' => $this->resolveMerchantWalletTransactions(),
                     'team_leader' => $this->resolveTeamLeaderWalletTransactions(),
-                    'agent' => $this->resolveAgentWalletTransactions(),
                     'trader' => $this->resolveTraderWalletTransactions(),
                 ],
             ]),
             'finished_at' => $this->finished_at?->toISOString(),
             'expires_at' => $this->expires_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
-            'payment_link' => PaymentLink::order($this->uuid),
             'canEditAmount' => $this->status->equals(OrderStatus::PENDING) && $this->dispute_exists && $this->trader_paid_for_order,
         ];
     }
@@ -210,14 +196,6 @@ class OrderResource extends JsonResource
     private function resolveTeamLeaderWalletTransactions(): array
     {
         return $this->resolveWalletTransactionsByBalanceType('teamleader');
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    private function resolveAgentWalletTransactions(): array
-    {
-        return $this->resolveWalletTransactionsByBalanceType('agent');
     }
 
     /**

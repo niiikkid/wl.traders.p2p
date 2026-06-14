@@ -5,9 +5,7 @@ namespace App\Services\Settings;
 use App\Contracts\SettingsServiceContract;
 use App\Enums\MarketEnum;
 use App\Exceptions\SettingsException;
-use App\Models\PaymentDetail;
 use App\Models\Setting;
-use App\Models\User;
 use App\Models\ValueObjects\Settings\BinancePriceParserSettings;
 use App\Models\ValueObjects\Settings\CurrencyPriceParserSettings;
 use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
@@ -34,12 +32,6 @@ class SettingsService implements SettingsServiceContract
 
     const MAX_REJECTED_DISPUTES = 'max_rejected_disputes';
 
-    const TEMP_VIP_REQUIRED_DEALS = 'temp_vip_required_deals';
-
-    const TEMP_VIP_DURATION_MINUTES = 'temp_vip_duration_minutes';
-
-    const TEMP_VIP_ENABLED = 'temp_vip_enabled';
-
     const TRAFFIC_PAUSED = 'traffic_paused';
 
     const TRAFFIC_PAUSED_CACHE_KEY = 'settings_traffic_paused';
@@ -48,21 +40,9 @@ class SettingsService implements SettingsServiceContract
 
     const SHADOW_SMS_LOG_ENABLED_CACHE_KEY = 'settings_shadow_sms_log_enabled';
 
-    const MERCHANT_TRAFFIC_CATEGORIES_ENABLED = 'merchant_traffic_categories_enabled';
-
-    const MERCHANT_TRAFFIC_CATEGORIES_ENABLED_CACHE_KEY = 'settings_merchant_traffic_categories_enabled';
-
     const DEFAULT_RESERVE_BALANCE_LIMIT = 'default_reserve_balance_limit';
 
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
-
-    const PAYOUT_PRIORITY_ACCESS_ENABLED = 'payout_priority_access_enabled';
-
-    const PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES = 'payout_priority_access_delay_minutes';
-
-    const PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS = 'payout_priority_access_release_without_online_traders';
-
-    const TRADER_ANALYTICS_OPERATION_THRESHOLDS = 'trader_analytics_operation_thresholds';
 
     protected $settings = null;
 
@@ -195,57 +175,6 @@ class SettingsService implements SettingsServiceContract
         $this->updateParam(self::MAX_REJECTED_DISPUTES, json_encode(['count' => $count, 'period' => $period]));
     }
 
-    public function getTempVipRequiredDeals(): int
-    {
-        return (int) $this->getParam(self::TEMP_VIP_REQUIRED_DEALS);
-    }
-
-    public function updateTempVipRequiredDeals(int $value): void
-    {
-        $this->updateParam(self::TEMP_VIP_REQUIRED_DEALS, $value);
-    }
-
-    public function getTempVipDurationMinutes(): int
-    {
-        return (int) $this->getParam(self::TEMP_VIP_DURATION_MINUTES);
-    }
-
-    public function updateTempVipDurationMinutes(int $value): void
-    {
-        $this->updateParam(self::TEMP_VIP_DURATION_MINUTES, $value);
-    }
-
-    public function isTempVipEnabled(): bool
-    {
-        return (bool) (int) $this->getParam(self::TEMP_VIP_ENABLED);
-    }
-
-    public function updateTempVipEnabled(bool $enabled): void
-    {
-        $this->updateParam(self::TEMP_VIP_ENABLED, $enabled ? 1 : 0);
-
-        if (! $enabled) {
-            // Полное выключение функционала: сбрасываем временный VIP и прогресс для всех non-VIP пользователей,
-            // и отключаем VIP-лимиты на реквизитах (перманентный VIP при этом не затрагиваем).
-            $now = now();
-
-            User::query()
-                ->where('is_vip', false)
-                ->update([
-                    'temp_vip_active_until' => null,
-                    'temp_vip_can_activate' => false,
-                    'temp_vip_progress_start_at' => $now,
-                ]);
-
-            PaymentDetail::query()
-                ->whereIn('user_id', User::query()->where('is_vip', false)->select('id'))
-                ->update([
-                    'min_order_amount' => null,
-                    'max_order_amount' => null,
-                ]);
-        }
-    }
-
     public function isTrafficPaused(): bool
     {
         return (bool) cache()->remember(self::TRAFFIC_PAUSED_CACHE_KEY, now()->addMinute(), function () {
@@ -282,21 +211,6 @@ class SettingsService implements SettingsServiceContract
         $this->settings = null;
     }
 
-    public function isMerchantTrafficCategoriesEnabled(): bool
-    {
-        return (bool) cache()->remember(self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED_CACHE_KEY, now()->addMinute(), function () {
-            return (int) Setting::query()
-                ->where('key', self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED)
-                ->value('value') === 1;
-        });
-    }
-
-    public function updateMerchantTrafficCategoriesEnabled(bool $enabled): void
-    {
-        $this->updateParam(self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED, $enabled ? 1 : 0);
-        cache()->put(self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED_CACHE_KEY, $enabled, now()->addMinute());
-    }
-
     public function getDefaultReserveBalanceLimit(): int
     {
         return (int) $this->getParam(self::DEFAULT_RESERVE_BALANCE_LIMIT);
@@ -331,59 +245,6 @@ class SettingsService implements SettingsServiceContract
         $this->updateParam(
             self::PAYOUT_CURRENCY_SETTINGS,
             json_encode($this->normalizePayoutCurrencySettings($settings))
-        );
-    }
-
-    public function getPayoutPriorityAccessSettings(): array
-    {
-        return [
-            'enabled' => (bool) (int) $this->getParam(self::PAYOUT_PRIORITY_ACCESS_ENABLED),
-            'delay_minutes' => max(1, (int) $this->getParam(self::PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES)),
-            'release_without_online_traders' => (bool) (int) $this->getParam(self::PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS),
-        ];
-    }
-
-    public function updatePayoutPriorityAccessSettings(
-        bool $enabled,
-        int $delayMinutes,
-        bool $releaseWithoutOnlineTraders
-    ): void {
-        $this->updateParam(self::PAYOUT_PRIORITY_ACCESS_ENABLED, $enabled ? 1 : 0);
-        $this->updateParam(self::PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES, max(1, $delayMinutes));
-        $this->updateParam(
-            self::PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS,
-            $releaseWithoutOnlineTraders ? 1 : 0
-        );
-    }
-
-    public function getTraderAnalyticsOperationThresholds(): array
-    {
-        $value = $this->getParam(self::TRADER_ANALYTICS_OPERATION_THRESHOLDS);
-        $thresholds = json_decode($value, true);
-
-        if (! is_array($thresholds)) {
-            $thresholds = [];
-        }
-
-        return $this->normalizeTraderAnalyticsOperationThresholds($thresholds);
-    }
-
-    public function getTraderAnalyticsOperationThresholdForCurrency(Currency $currency): string
-    {
-        $thresholds = $this->getTraderAnalyticsOperationThresholds();
-
-        return (string) ($thresholds[$currency->getCode()] ?? '300');
-    }
-
-    public function updateTraderAnalyticsOperationThreshold(string $currencyCode, string $threshold): void
-    {
-        $currency = Currency::make($currencyCode);
-        $thresholds = $this->getTraderAnalyticsOperationThresholds();
-        $thresholds[$currency->getCode()] = $threshold;
-
-        $this->updateParam(
-            self::TRADER_ANALYTICS_OPERATION_THRESHOLDS,
-            json_encode($this->normalizeTraderAnalyticsOperationThresholds($thresholds))
         );
     }
 
@@ -427,21 +288,6 @@ class SettingsService implements SettingsServiceContract
         ]);
 
         Setting::firstOrCreate([
-            'key' => self::TEMP_VIP_REQUIRED_DEALS,
-            'value' => 30,
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::TEMP_VIP_DURATION_MINUTES,
-            'value' => 120,
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::TEMP_VIP_ENABLED,
-            'value' => 1,
-        ]);
-
-        Setting::firstOrCreate([
             'key' => self::TRAFFIC_PAUSED,
             'value' => 0,
         ]);
@@ -452,11 +298,6 @@ class SettingsService implements SettingsServiceContract
         ]);
 
         Setting::firstOrCreate([
-            'key' => self::MERCHANT_TRAFFIC_CATEGORIES_ENABLED,
-            'value' => 0,
-        ]);
-
-        Setting::firstOrCreate([
             'key' => self::DEFAULT_RESERVE_BALANCE_LIMIT,
             'value' => 500,
         ]);
@@ -464,26 +305,6 @@ class SettingsService implements SettingsServiceContract
         Setting::firstOrCreate([
             'key' => self::PAYOUT_CURRENCY_SETTINGS,
             'value' => json_encode($this->normalizePayoutCurrencySettings([])),
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::PAYOUT_PRIORITY_ACCESS_ENABLED,
-            'value' => 0,
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::PAYOUT_PRIORITY_ACCESS_DELAY_MINUTES,
-            'value' => 10,
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::PAYOUT_PRIORITY_ACCESS_RELEASE_WITHOUT_ONLINE_TRADERS,
-            'value' => 1,
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::TRADER_ANALYTICS_OPERATION_THRESHOLDS,
-            'value' => json_encode($this->normalizeTraderAnalyticsOperationThresholds([])),
         ]);
 
         $currenciesJson = $this->getParam(self::CURRENCY_PRICE_PARSER_SETTINGS);
@@ -574,12 +395,6 @@ class SettingsService implements SettingsServiceContract
                 'reservation_time_for_payouts' => isset($current['reservation_time_for_payouts'])
                     ? (int) $current['reservation_time_for_payouts']
                     : (int) $defaults['reservation_time_for_payouts'],
-                'priority_access_min_amount' => $this->normalizeNullableAmount(
-                    $current['priority_access_min_amount'] ?? null
-                ),
-                'priority_access_max_amount' => $this->normalizeNullableAmount(
-                    $current['priority_access_max_amount'] ?? null
-                ),
             ];
         });
 
@@ -592,34 +407,6 @@ class SettingsService implements SettingsServiceContract
             'total_commission_rate' => 5,
             'trader_commission_rate' => 4,
             'reservation_time_for_payouts' => 20,
-            'priority_access_min_amount' => null,
-            'priority_access_max_amount' => null,
         ];
-    }
-
-    protected function normalizeNullableAmount(mixed $value): ?string
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        $normalized = str_replace([' ', ','], ['', '.'], trim((string) $value));
-
-        return is_numeric($normalized) ? $normalized : null;
-    }
-
-    protected function normalizeTraderAnalyticsOperationThresholds(array $thresholds): array
-    {
-        $normalized = [];
-
-        Currency::getAll()->each(function (Currency $currency) use (&$normalized, $thresholds) {
-            $code = $currency->getCode();
-            $current = $thresholds[$code] ?? $thresholds[strtoupper($code)] ?? null;
-            $value = is_numeric($current) ? (string) $current : '300';
-
-            $normalized[$code] = $value;
-        });
-
-        return $normalized;
     }
 }

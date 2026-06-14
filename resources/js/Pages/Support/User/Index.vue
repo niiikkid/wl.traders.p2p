@@ -105,7 +105,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </div>
                                                     <div class="whitespace-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
                                                         <span>{{ user.role.name }}</span>
-                                                        <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
                                                     </div>
                                                 </div>
                                                 <span v-if="user.banned_at" class="badge badge-error badge-sm" title="Пользователь заблокирован">Ban</span>
@@ -182,7 +181,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </div>
                                                         <div class="inline-flex items-center gap-2 text-xs text-base-content/70">
                                                             <span>{{ user.role.name }}</span>
-                                                            <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -203,10 +201,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex items-center justify-between">
                                             <div class="text-base-content/70 text-sm">Баланс</div>
                                             <div class="text-base-content font-medium">{{ user.balance }} $</div>
-                                        </div>
-                                        <div class="flex items-center justify-between">
-                                            <div class="text-base-content/70 text-sm">Команда</div>
-                                            <div class="text-base-content">{{ user.user_team?.name || '—' }}</div>
                                         </div>
                                         <div v-if="user.apk_latest_ping_at" class="flex items-center justify-between">
                                             <div class="text-base-content/70 text-sm">Пинг</div>

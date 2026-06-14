@@ -6,7 +6,6 @@ use App\Enums\PayoutMethodType;
 use App\Enums\PayoutOperationType;
 use App\Enums\PayoutStatus;
 use App\Models\Payout\Payout;
-use App\Models\Payout\PayoutOperation;
 use App\Services\Money\Money;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -50,7 +49,6 @@ class MerchantPayoutResource extends JsonResource
                 'id' => $this->payment_gateway_id,
                 'name' => $this->paymentGateway?->name,
                 'code' => $this->paymentGateway?->code,
-                'logo' => $this->paymentGateway?->logo ? asset('storage/logos/'.$this->paymentGateway?->logo) : null,
                 'currency' => $this->paymentGateway?->currency?->getCode()
                     ? strtoupper($this->paymentGateway?->currency?->getCode())
                     : null,
@@ -157,4 +155,3 @@ class MerchantPayoutResource extends JsonResource
         ]];
     }
 }
-

@@ -1,17 +1,14 @@
 <script setup>
 import {Head, router, usePage} from '@inertiajs/vue3';
-import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue';
+import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
 import DateFilter from '@/Components/Filters/Pertials/DateFilter.vue';
 import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
-import FilterCheckbox from '@/Components/Filters/Pertials/FilterCheckbox.vue';
 import DropdownFilter from '@/Components/Filters/Pertials/DropdownFilter.vue';
 import SearchableDropdownFilter from '@/Components/Filters/Pertials/SearchableDropdownFilter.vue';
 import RefreshTableData from '@/Components/Table/RefreshTableData.vue';
-import GatewayLogo from '@/Components/GatewayLogo.vue';
-import BankManualIcon from '@/Components/BankManualIcon.vue';
 import DisplayUUID from '@/Components/DisplayUUID.vue';
 import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
@@ -29,10 +26,7 @@ const tableFiltersStore = useTableFiltersStore();
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const traders = computed(() => usePage().props.traders ?? []);
-const priorityAccessSettings = computed(() => usePage().props.priorityAccessSettings ?? {});
-const priorityAccessActiveCount = computed(() => usePage().props.priorityAccessActiveCount ?? 0);
 const reloadingTableData = ref(false);
-const releasingPriorityAccess = ref(false);
 const expandedRows = ref({});
 const statusUpdatingId = ref(null);
 const modalStore = useModalStore();
@@ -44,7 +38,6 @@ const traderModal = ref({
     traderId: null,
     error: null,
 });
-const priorityAccessReleaseTimer = ref(null);
 
 const toggleRow = (id) => {
     expandedRows.value[id] = !expandedRows.value[id];
@@ -62,7 +55,6 @@ const statusClasses = {
 
 const statusBadge = (status) => statusClasses[status] ?? 'badge-ghost';
 
-const hasCustomBank = (payout) => !!payout?.bank_name;
 const resolveBankName = (payout) => payout?.bank_name ?? payout?.payment_gateway?.name ?? '—';
 
 const statusOptions = [
@@ -267,74 +259,6 @@ const openAdminPayoutsExport = () => {
     window.open(url, '_blank');
 };
 
-const releasePriorityAccess = () => {
-    if (releasingPriorityAccess.value) {
-        return;
-    }
-
-    releasingPriorityAccess.value = true;
-
-    axios.post(route('admin.payouts.priority-access.release'), {}, {
-        headers: { 'Accept': 'application/json' },
-    })
-        .then(() => {
-            router.reload({
-                only: ['payouts', 'priorityAccessActiveCount'],
-                preserveScroll: true,
-            });
-        })
-        .finally(() => {
-            releasingPriorityAccess.value = false;
-        });
-};
-
-const reloadPriorityAccessData = () => {
-    router.reload({
-        only: ['payouts', 'priorityAccessActiveCount'],
-        preserveScroll: true,
-    });
-};
-
-const clearPriorityAccessReleaseTimer = () => {
-    if (priorityAccessReleaseTimer.value) {
-        clearTimeout(priorityAccessReleaseTimer.value);
-        priorityAccessReleaseTimer.value = null;
-    }
-};
-
-const schedulePriorityAccessReleaseReload = () => {
-    clearPriorityAccessReleaseTimer();
-
-    const nearestUntil = payoutItems.value
-        .filter((payout) => payout.priority_access?.is_active && payout.priority_access?.until)
-        .map((payout) => new Date(payout.priority_access.until).getTime())
-        .filter((timestamp) => !Number.isNaN(timestamp))
-        .sort((left, right) => left - right)[0];
-
-    if (!nearestUntil) {
-        return;
-    }
-
-    priorityAccessReleaseTimer.value = setTimeout(() => {
-        reloadPriorityAccessData();
-    }, Math.max(nearestUntil - Date.now(), 0) + 1000);
-};
-
-watch(payoutItems, schedulePriorityAccessReleaseReload, {deep: true});
-
-onMounted(schedulePriorityAccessReleaseReload);
-onBeforeUnmount(clearPriorityAccessReleaseTimer);
-
-const confirmReleasePriorityAccess = () => {
-    modalStore.openConfirmModal({
-        title: 'Отправить текущие приоритетные выплаты в общий доступ?',
-        body: 'Все открытые выплаты, которые сейчас видны только трейдерам с приоритетным доступом, сразу станут доступны всем трейдерам.',
-        confirm_button_name: 'Отправить в общий доступ',
-        cancel_button_name: 'Отмена',
-        confirm: releasePriorityAccess,
-    });
-};
-
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -366,44 +290,6 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
             <template #header>
                 <div class="space-y-4">
-                    <div class="card bg-base-100 shadow-sm border border-base-200">
-                        <div class="card-body p-4">
-                            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                                <div class="space-y-2">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <h2 class="text-base font-semibold">Приоритетный доступ к выплатам</h2>
-                                        <span
-                                            class="badge badge-sm"
-                                            :class="priorityAccessSettings.enabled ? 'badge-success' : 'badge-ghost'"
-                                        >
-                                            {{ priorityAccessSettings.enabled ? 'Включён' : 'Выключен' }}
-                                        </span>
-                                    </div>
-                                    <div class="text-sm text-base-content/70">
-                                        Задержка: {{ priorityAccessSettings.delay_minutes ?? 0 }} мин.
-                                        Сразу в общий доступ без онлайн-трейдеров с приоритетом:
-                                        {{ priorityAccessSettings.release_without_online_traders ? 'включён' : 'выключен' }}.
-                                    </div>
-                                </div>
-
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="badge badge-warning badge-outline">
-                                        Сейчас в приоритете: {{ priorityAccessActiveCount }}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-warning"
-                                        :disabled="releasingPriorityAccess || priorityAccessActiveCount === 0"
-                                        @click="confirmReleasePriorityAccess"
-                                    >
-                                        <span v-if="releasingPriorityAccess" class="loading loading-spinner loading-xs"></span>
-                                        Отправить текущие в общий доступ
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <FiltersPanel name="admin-payouts">
                         <DateFilter name="startDate" title="Создано с" />
                         <DateFilter name="endDate" title="Создано по" />
@@ -426,7 +312,6 @@ defineOptions({ layout: AuthenticatedLayout });
                         <InputFilter name="minAmount" placeholder="Мин. сумма" />
                         <InputFilter name="maxAmount" placeholder="Макс. сумма" />
                         <InputFilter name="currency" placeholder="Валюта (например, RUB)" />
-                        <FilterCheckbox name="priorityAccessOnly" title="Только приоритетные" />
                     </FiltersPanel>
 
                     <div class="flex items-center justify-between">
@@ -481,31 +366,10 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <DisplayUUID :uuid="payout.uuid" class="text-sm font-semibold" />
                                         </td>
                                         <td>
-                                            <div class="flex items-center gap-3">
-                                                <div v-if="hasCustomBank(payout)" class="text-base-content/70">
-                                                    <BankManualIcon class="w-10 h-10" />
-                                                </div>
-                                                <div v-else-if="payout.payout_method_type.value === 'sbp'" class="relative">
-                                                    <img src="/images/sbp.svg" class="w-10 h-10" alt="СБП">
-                                                    <GatewayLogo
-                                                        v-if="payout.payment_gateway?.logo"
-                                                        :img_path="payout.payment_gateway?.logo"
-                                                        :name="payout.payment_gateway?.name"
-                                                        class="absolute right-[-4px] bottom-[-4px] w-5 h-5 bg-base-100 border border-base-300 rounded-full"
-                                                    />
-                                                </div>
-                                                <div v-else>
-                                                    <GatewayLogo
-                                                        :img_path="payout.payment_gateway?.logo"
-                                                        :name="payout.payment_gateway?.name"
-                                                        class="w-10 h-10"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <div class="font-semibold text-base-content">{{ payout.requisites }}</div>
-                                                    <div class="text-xs text-base-content/60">
-                                                        {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
-                                                    </div>
+                                            <div>
+                                                <div class="font-semibold text-base-content">{{ payout.requisites }}</div>
+                                                <div class="text-xs text-base-content/60">
+                                                    {{ resolveBankName(payout) }} · {{ payout.payout_method_type.label }}
                                                 </div>
                                             </div>
                                         </td>
@@ -524,12 +388,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="space-y-1">
                                                 <div class="badge badge-sm" :class="statusBadge(payout.status)">
                                                     {{ payout.status_label }}
-                                                </div>
-                                                <div
-                                                    v-if="payout.priority_access?.is_active"
-                                                    class="badge badge-sm badge-warning badge-outline"
-                                                >
-                                                    Приоритет
                                                 </div>
                                             </div>
                                         </td>
@@ -813,12 +671,6 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 <div class="badge badge-sm" :class="statusBadge(payout.status)">
                                                     {{ payout.status_label }}
                                                 </div>
-                                                <div
-                                                    v-if="payout.priority_access?.is_active"
-                                                    class="badge badge-sm badge-warning badge-outline"
-                                                >
-                                                    Приоритет
-                                                </div>
                                             </div>
                                             <TableActionsDropdown>
                                                 <TableAction
@@ -836,16 +688,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </div>
 
                                     <div class="flex flex-wrap items-start gap-3 border border-dashed border-base-200 rounded-box p-3">
-                                        <div class="flex items-center gap-3 flex-1 min-w-[180px]">
-                                            <div v-if="hasCustomBank(payout)" class="text-base-content/70">
-                                                <BankManualIcon class="w-12 h-12" />
-                                            </div>
-                                            <GatewayLogo
-                                                v-else
-                                                :img_path="payout.payment_gateway?.logo"
-                                                :name="payout.payment_gateway?.name"
-                                                class="w-12 h-12"
-                                            />
+                                        <div class="flex-1 min-w-[180px]">
                                             <div class="text-sm">
                                                 <div class="text-[10px] uppercase text-base-content/50">Реквизит</div>
                                                 <div class="font-semibold break-all">{{ payout.requisites }}</div>

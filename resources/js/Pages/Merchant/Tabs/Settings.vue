@@ -10,6 +10,7 @@ import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
 import DatepickerInput from "@/Pages/Merchant/Tabs/Partials/DatepickerInput.vue";
 import DUUID from "@/Components/DUUID.vue";
+import {DEFAULT_RUB_MARKET, filterMarketOptions} from "@/utils/market.js";
 
 const viewStore = useViewStore();
 const emit = defineEmits(['updated']);
@@ -21,10 +22,6 @@ const props = defineProps({
         default: null,
     },
     markets: {
-        type: Array,
-        default: () => [],
-    },
-    categories: {
         type: Array,
         default: () => [],
     },
@@ -62,7 +59,7 @@ const deepClone = (value, fallback = undefined) => {
 
 const merchant = ref(deepClone(props.merchant ?? page?.props?.merchant ?? null));
 const markets = ref(deepClone(props.markets?.length ? props.markets : page?.props?.markets ?? []));
-const categories = ref(deepClone(props.categories?.length ? props.categories : page?.props?.categories ?? []));
+const selectableMarkets = computed(() => filterMarketOptions(markets.value));
 const currencies = ref(deepClone(props.currencies?.length ? props.currencies : page?.props?.currencies ?? []));
 const detailTypes = ref(deepClone(props.detailTypes?.length ? props.detailTypes : page?.props?.detailTypes ?? []));
 const commissionSettings = ref(deepClone(props.commissionSettings ?? page?.props?.commissionSettings ?? [], []));
@@ -78,7 +75,7 @@ const normalizeGeoItems = (items) => {
     if (!source || source.length === 0) {
         return [{
             currency: 'rub',
-            market: 'rapira',
+            market: DEFAULT_RUB_MARKET,
             order_reference_rate: null,
             payout_reference_rate: null,
             max_deviation_percent: null,
@@ -122,7 +119,6 @@ const geoForm = reactive({
 });
 
 const formSettings = reactive({
-    categories: merchant.value?.categories ?? [],
     max_order_wait_time: merchant.value?.max_order_wait_time ?? null,
     max_payout_wait_time: merchant.value?.max_payout_wait_time ?? null,
     errors: {},
@@ -182,7 +178,6 @@ const resetFormsFromMerchant = (value) => {
 
     formCallback.callback_url = value.callback_url ?? '';
     formCallback.payout_callback_url = value.payout_callback_url ?? '';
-    formSettings.categories = value.categories ?? [];
     formSettings.max_order_wait_time = value.max_order_wait_time ?? null;
     formSettings.max_payout_wait_time = value.max_payout_wait_time ?? null;
     minOrderAmounts.value = value.min_order_amounts ? {...value.min_order_amounts} : {};
@@ -246,26 +241,6 @@ watch(
     (value) => {
         if (value !== undefined && (!props.markets || !props.markets.length)) {
             markets.value = deepClone(value ?? [], []);
-        }
-    },
-    { immediate: true }
-);
-
-watch(
-    () => props.categories,
-    (value) => {
-        if (value !== undefined) {
-            categories.value = deepClone(value ?? [], []);
-        }
-    },
-    { immediate: false }
-);
-
-watch(
-    () => page.props?.categories,
-    (value) => {
-        if (value !== undefined && (!props.categories || !props.categories.length)) {
-            categories.value = deepClone(value ?? [], []);
         }
     },
     { immediate: true }
@@ -411,7 +386,6 @@ const submitSettings = () => {
     formSettings.errors = {};
 
     axios.patch(route('admin.merchants.settings.update', merchant.value.id), {
-        categories: formSettings.categories,
         max_order_wait_time: formSettings.max_order_wait_time,
         max_payout_wait_time: formSettings.max_payout_wait_time,
         min_order_amounts: minOrderAmounts.value,
@@ -881,7 +855,7 @@ const merchantStatus = computed(() => {
                                     <Select
                                         id="geo_market"
                                         v-model="geoForm.market"
-                                        :items="markets"
+                                        :items="selectableMarkets"
                                         value="value"
                                         name="name"
                                         default_title="Выберите маркет"

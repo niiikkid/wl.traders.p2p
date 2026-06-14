@@ -28,7 +28,7 @@ class StoreRequest extends FormRequest
             'cover_image' => ['nullable', 'file', 'extensions:jpg,jpeg,png,webp', 'max:4096'],
             'visibility_type' => ['required', 'in:all,roles'],
             'visible_roles' => ['required_if:visibility_type,roles', 'array'],
-            'visible_roles.*' => ['required', 'string', 'distinct', 'in:Trader,Support,Team Leader,Agent'],
+            'visible_roles.*' => ['required', 'string', 'distinct', 'in:Trader,Team Leader'],
         ];
     }
 

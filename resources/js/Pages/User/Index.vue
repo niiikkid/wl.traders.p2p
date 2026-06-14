@@ -8,18 +8,13 @@ import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import {ref, onUnmounted, computed, onMounted} from "vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
-import UserNotesModal from "@/Modals/User/UserNotesModal.vue";
 import UserCreateModal from "@/Modals/User/UserCreateModal.vue";
 import UserEditModal from "@/Modals/User/UserEditModal.vue";
-import UserTempVipHistoryModal from "@/Modals/User/UserTempVipHistoryModal.vue";
-import UserTeamManageModal from "@/Modals/User/UserTeamManageModal.vue";
-import UserChangeTeamModal from "@/Modals/User/UserChangeTeamModal.vue";
 import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
 import {useModalStore} from "@/store/modal.js";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
-import CountdownTimer from "@/Components/CountdownTimer.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 
@@ -73,28 +68,12 @@ const impersonate = (user) => {
     useForm().post(route('admin.impersonate.start', { user: user.id }));
 };
 
-const openUserNotesModal = (user) => {
-    modalStore.openUserNotesModal({user});
-};
-
 const openUserCreateModal = () => {
     modalStore.openUserCreateModal();
 };
 
 const openUserEditModal = (user) => {
     modalStore.openUserEditModal({ user });
-};
-
-const openUserTempVipHistoryModal = (user) => {
-    modalStore.openUserTempVipHistoryModal({ user });
-};
-
-const openUserTeamManageModal = () => {
-    modalStore.openUserTeamManageModal();
-};
-
-const openUserTeamChangeModal = (user) => {
-    modalStore.openUserTeamChangeModal({ user });
 };
 
 const openPage = (tab) => {
@@ -111,7 +90,7 @@ const openPage = (tab) => {
 const isTraderRole = (user) => user.role?.name === 'Trader';
 
 /** Баланс и переход в кошелёк — только для ролей с финансовым кошельком в админке. */
-const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Agent', 'Super Admin'];
+const ADMIN_WALLET_ROLES = ['Trader', 'Merchant', 'Team Leader', 'Super Admin'];
 
 const userShowsWalletBalanceAndLink = (user) => {
     const role_name = user?.role?.name;
@@ -160,12 +139,8 @@ defineOptions({ layout: AuthenticatedLayout })
     <div>
         <Head title="Пользователи" />
 
-        <UserNotesModal />
         <UserCreateModal />
         <UserEditModal />
-        <UserTempVipHistoryModal />
-        <UserTeamManageModal />
-        <UserChangeTeamModal />
         <ConfirmModal />
 
         <MainTableSection
@@ -174,13 +149,6 @@ defineOptions({ layout: AuthenticatedLayout })
         >
             <template v-slot:button>
                 <div class="hidden md:flex items-center justify-end gap-2">
-                    <button
-                        @click="openUserTeamManageModal"
-                        type="button"
-                        class="btn btn-sm btn-outline"
-                    >
-                        Команды
-                    </button>
                     <button
                         @click="openUserCreateModal"
                         type="button"
@@ -251,9 +219,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col" class="px-6 py-3">
                                         Создан
                                     </th>
-<!--                                    <th scope="col" class="px-6 py-3">
-                                        Временный VIP
-                                    </th>-->
                                     <th scope="col" class="px-6 py-3">
                                         Работает
                                     </th>
@@ -277,7 +242,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </div>
                                                 <div class="text-nowrap text-xs inline-flex items-center gap-2">
                                                     <span>{{ user.role.name }}</span>
-                                                    <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
                                                 </div>
                                             </div>
                                             <span
@@ -312,13 +276,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path fill-rule="evenodd" d="M10.788 3.103c.495-1.004 1.926-1.004 2.421 0l2.358 4.777 5.273.766c1.107.16 1.55 1.522.748 2.303l-3.816 3.72.9 5.25c.19 1.104-.968 1.945-1.959 1.424l-4.716-2.48-4.715 2.48c-.99.52-2.148-.32-1.96-1.424l.9-5.25-3.815-3.72c-.8-.78-.36-2.142.748-2.303l5.274-.766 2.358-4.777Z" clip-rule="evenodd"/>
                                                 </svg>
                                             </span>
-                                            <span
-                                                v-if="user.priority_payout_access_enabled"
-                                                class="badge badge-warning badge-outline badge-xs"
-                                                title="Приоритетный доступ к выплатам"
-                                            >
-                                                Payout
-                                            </span>
                                             </div>
                                         </UserSummaryPopover>
                                     </td>
@@ -332,20 +289,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <td class="px-6 py-3 text-nowrap">
                                         <DateTime :data="user.created_at" :plural="true"/>
                                     </td>
-<!--                                    <td class="px-6 py-3 text-nowrap">
-                                        <div v-if="user.temp_vip_progress?.active" class="flex items-center gap-2">
-                                            <CountdownTimer :end="user.temp_vip_progress?.active_until" />
-                                            <span class="badge badge-success badge-outline">Активен</span>
-                                        </div>
-                                        <div v-else class="space-y-1">
-                                            <div class="text-sm font-semibold">
-                                                {{ user.temp_vip_progress?.count ?? 0 }} / {{ user.temp_vip_progress?.required ?? 0 }}
-                                            </div>
-                                            <div class="text-xs opacity-70">
-                                                Осталось: {{ user.temp_vip_progress?.remaining ?? 0 }}
-                                            </div>
-                                        </div>
-                                    </td>-->
                                     <td class="px-6 py-3 text-nowrap">
                                         <div class="space-y-1">
                                             <div class="flex items-center">
@@ -365,26 +308,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 >
                                                     Финансы
                                                 </TableAction>
-                                                <TableAction @click="openUserNotesModal(user)">
-                                                    Заметки
-                                                </TableAction>
                                                 <TableAction @click="openUserEditModal(user)">
                                                     Редактировать
-                                                </TableAction>
-                                                <TableAction @click="openUserTeamChangeModal(user)">
-                                                    Изменить команду
-                                                </TableAction>
-                                                <TableAction @click="openUserTempVipHistoryModal(user)">
-                                                    История VIP
                                                 </TableAction>
                                                 <TableAction v-if="isTraderRole(user)" @click="confirmArchiveUser(user)">
                                                     Архивировать
                                                 </TableAction>
                                             </template>
                                             <template v-else-if="isTraderRole(user)">
-                                                <TableAction @click="openUserTeamChangeModal(user)">
-                                                    Изменить команду
-                                                </TableAction>
                                                 <TableAction @click="confirmUnarchiveUser(user)">
                                                     Вернуть из архива
                                                 </TableAction>
@@ -431,7 +362,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </div>
                                                         <div class="text-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
                                                             <span>{{ user.role.name }}</span>
-                                                            <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
                                                         </div>
                                                     </div>
                                                     </div>
@@ -489,15 +419,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <template v-else>—</template>
                                                     </span>
                                                 </div>
-                                                <div class="inline-flex items-center">
-                                                    <span>Временный VIP:</span>
-                                                    <span class="text-base-content ml-1" v-if="user.temp_vip_progress?.active">
-                                                        <CountdownTimer :end="user.temp_vip_progress?.active_until" :muted="true" />
-                                                    </span>
-                                                    <span class="text-base-content ml-1" v-else>
-                                                        {{ user.temp_vip_progress?.count ?? 0 }} / {{ user.temp_vip_progress?.required ?? 0 }}
-                                                    </span>
-                                                </div>
                                             </div>
                                             <div class="flex items-center gap-2">
                                                 <div class="flex items-center gap-2">
@@ -515,26 +436,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         >
                                                             Финансы
                                                         </TableAction>
-                                                        <TableAction @click="openUserNotesModal(user)">
-                                                            Заметки
-                                                        </TableAction>
                                                         <TableAction @click="openUserEditModal(user)">
                                                             Редактировать
-                                                        </TableAction>
-                                                        <TableAction @click="openUserTeamChangeModal(user)">
-                                                            Изменить команду
-                                                        </TableAction>
-                                                        <TableAction @click="openUserTempVipHistoryModal(user)">
-                                                            История VIP
                                                         </TableAction>
                                                         <TableAction v-if="isTraderRole(user)" @click="confirmArchiveUser(user)">
                                                             Архивировать
                                                         </TableAction>
                                                     </template>
                                                     <template v-else-if="isTraderRole(user)">
-                                                        <TableAction @click="openUserTeamChangeModal(user)">
-                                                            Изменить команду
-                                                        </TableAction>
                                                         <TableAction @click="confirmUnarchiveUser(user)">
                                                             Вернуть из архива
                                                         </TableAction>
@@ -555,7 +464,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </div>
                                                     <div class="text-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
                                                         <span>{{ user.role.name }}</span>
-                                                        <span class="badge badge-soft badge-xs">{{ user.user_team?.name || '—' }}</span>
                                                     </div>
                                                 </div>
                                             </UserSummaryPopover>
@@ -603,15 +511,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <template v-else>—</template>
                                                 </span>
                                             </div>
-                                            <div>
-                                                <span>Временный VIP:</span>
-                                                <span class="text-base-content ml-1" v-if="user.temp_vip_progress?.active">
-                                                    <CountdownTimer :end="user.temp_vip_progress?.active_until" :muted="true" />
-                                                </span>
-                                                <span class="text-base-content ml-1" v-else>
-                                                    {{ user.temp_vip_progress?.count ?? 0 }} / {{ user.temp_vip_progress?.required ?? 0 }}
-                                                </span>
-                                            </div>
                                             <div class="flex items-center">
                                                 <span class="tex-xs text-base-content/70">Заходил:</span>
                                                 <span class="text-base-content ml-1">
@@ -637,26 +536,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     >
                                                         Финансы
                                                     </TableAction>
-                                                    <TableAction @click="openUserNotesModal(user)">
-                                                        Заметки
-                                                    </TableAction>
                                                     <TableAction @click="openUserEditModal(user)">
                                                         Редактировать
-                                                    </TableAction>
-                                                    <TableAction @click="openUserTeamChangeModal(user)">
-                                                        Изменить команду
-                                                    </TableAction>
-                                                    <TableAction @click="openUserTempVipHistoryModal(user)">
-                                                        История VIP
                                                     </TableAction>
                                                     <TableAction v-if="isTraderRole(user)" @click="confirmArchiveUser(user)">
                                                         Архивировать
                                                     </TableAction>
                                                 </template>
                                                 <template v-else-if="isTraderRole(user)">
-                                                    <TableAction @click="openUserTeamChangeModal(user)">
-                                                        Изменить команду
-                                                    </TableAction>
                                                     <TableAction @click="confirmUnarchiveUser(user)">
                                                         Вернуть из архива
                                                     </TableAction>

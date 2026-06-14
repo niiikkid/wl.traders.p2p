@@ -9,9 +9,6 @@ const menu = ref(usePage().props.menu);
 const userStore = useUserStore();
 const page = usePage();
 const payoutsEnabled = computed(() => !!page.props.auth?.user?.payouts_enabled);
-const traderEconomyEnabled = computed(() => (
-    !!page.props.auth?.is_admin || !!page.props.auth?.user?.trader_economy_enabled
-));
 
 router.on('success', (event) => {
     menu.value = usePage().props.menu;
@@ -160,22 +157,6 @@ router.on('success', (event) => {
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
                 </svg>
                 Автоматика
-            </span>
-        </li>
-        <li
-            v-if="traderEconomyEnabled"
-            :class="[{ 'bg-base-content/10 rounded-lg': route().current('trader.economy.*') }]"
-        >
-            <span
-                @click="router.visit(route('trader.economy.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('trader.economy.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m7 12 3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4" />
-                </svg>
-                Экономика
             </span>
         </li>
     </ul>

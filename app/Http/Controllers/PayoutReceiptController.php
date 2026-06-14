@@ -75,7 +75,7 @@ class PayoutReceiptController extends Controller
             return false;
         }
 
-        if ($user->hasRole('Super Admin') || $user->hasRole('Support') || $user->hasRole('Analyst')) {
+        if ($user->hasRole('Super Admin') || $user->hasRole('Support')) {
             return true;
         }
 

@@ -8,7 +8,6 @@ import SupportLink from '@/Pages/Settings/Partials/SupportLink.vue';
 import FundsOnHold from '@/Pages/Settings/Partials/FundsOnHold.vue';
 import MaxPendingDisputes from '@/Pages/Settings/Partials/MaxPendingDisputes.vue';
 import MaxRejectedDisputes from '@/Pages/Settings/Partials/MaxRejectedDisputes.vue';
-import TempVip from '@/Pages/Settings/Partials/TempVip.vue';
 import DefaultReserveBalanceLimit from '@/Pages/Settings/Partials/DefaultReserveBalanceLimit.vue';
 
 defineOptions({ layout: AuthenticatedLayout })
@@ -31,9 +30,6 @@ defineOptions({ layout: AuthenticatedLayout })
             </SettingsPanel>
             <SettingsPanel>
                 <PrimeTimeBonus />
-            </SettingsPanel>
-            <SettingsPanel>
-                <TempVip />
             </SettingsPanel>
             <SettingsPanel>
                 <DefaultReserveBalanceLimit />

@@ -8,10 +8,8 @@ use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Http\Requests\Merchant\StoreRequest;
 use App\Http\Requests\Merchant\UpdateCommissionSettingsRequest;
-use App\Http\Resources\CategoryResource;
 use App\Http\Resources\MerchantResource;
 use App\Http\Resources\PaymentGatewayResource;
-use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\Order;
 use App\Services\Money\Currency;
@@ -86,8 +84,6 @@ class MerchantController extends Controller
     {
         Gate::authorize('access-to-merchant', $merchant);
 
-        $merchant->load('categories');
-
         $paymentGateways = [
             'data' => PaymentGatewayResource::collection(
                 queries()->paymentGateway()->getAllActive()
@@ -99,7 +95,6 @@ class MerchantController extends Controller
             'commission_settings' => $merchant->getCommissionSettings(),
             'payment_gateways' => $paymentGateways,
             'markets' => $this->getMarkets(),
-            'categories' => CategoryResource::collection(Category::orderBy('name')->get())->resolve(),
             'currencies' => $this->getCurrencies(),
             'detail_types' => $this->getDetailTypes(),
         ]);
@@ -217,7 +212,7 @@ class MerchantController extends Controller
     {
         $markets = [];
 
-        foreach (MarketEnum::cases() as $market) {
+        foreach (MarketEnum::selectableCases() as $market) {
             $markets[] = [
                 'name' => trans("market.name.{$market->value}"),
                 'value' => $market->value,

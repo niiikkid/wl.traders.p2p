@@ -42,9 +42,6 @@ const manual_control_route_prefix = computed(() => {
     if (route().current('support.*')) {
         return 'support';
     }
-    if (route().current('analyst.*')) {
-        return 'analyst';
-    }
 
     return 'admin';
 });

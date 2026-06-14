@@ -93,10 +93,6 @@ const close = () => {
 
 /** Trader and Super Admin (admin UI) share PATCH disputes/{dispute}/cancel — no admin.disputes.cancel route. */
 const cancelDisputeRouteName = computed(() => {
-    if (viewStore.isAnalystViewMode) {
-        return 'analyst.disputes.cancel';
-    }
-
     if (viewStore.isSupportViewMode) {
         return 'support.disputes.cancel';
     }

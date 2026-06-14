@@ -21,21 +21,15 @@ class UserService implements UserServiceContract
 
     private const DEFAULT_TEAM_LEADER_COMMISSION_PERCENTAGE = 0.20;
 
-    private const DEFAULT_AGENT_COMMISSION_PERCENTAGE = 0.20;
-
     public function create(UserCreateDTO $data): User
     {
         return $this->transaction(function () use ($data) {
             $roleName = Role::find($data->role_id)?->name;
             $teamLeaderId = $this->resolveTeamLeaderIdForTrader($data->team_leader_id, $roleName);
-            $agentId = $this->resolveAgentIdForMerchant($data->agent_id, $roleName);
 
             $referralCommissionPercentage = $roleName === 'Team Leader'
                 ? self::DEFAULT_TEAM_LEADER_COMMISSION_PERCENTAGE
                 : 0.00;
-            $agentCommissionPercentage = $roleName === 'Agent'
-                ? $data->agent_commission_percentage
-                : self::DEFAULT_AGENT_COMMISSION_PERCENTAGE;
 
             $userAttributes = [
                 'name' => '',
@@ -49,8 +43,6 @@ class UserService implements UserServiceContract
                 'traffic_enabled_at' => now(),
                 'reserve_balance_limit' => services()->settings()->getDefaultReserveBalanceLimit(),
                 'team_leader_id' => $teamLeaderId,
-                'agent_id' => $agentId,
-                'agent_commission_percentage' => $agentCommissionPercentage,
                 'team_leader_extended_access_enabled' => false,
                 'referral_commission_percentage' => $referralCommissionPercentage,
                 // Настройки выплат по умолчанию для всех новых пользователей
@@ -58,7 +50,6 @@ class UserService implements UserServiceContract
                 'payout_hold_enabled' => true,
                 'payout_hold_minutes' => 60,
                 'payout_active_payouts_limit' => 1,
-                'trader_economy_enabled' => $roleName === 'Trader' ? $data->trader_economy_enabled : false,
             ];
 
             if ($roleName === 'Team Leader') {
@@ -79,8 +70,6 @@ class UserService implements UserServiceContract
 
             services()->wallet()->create($user);
 
-            services()->merchantTrafficCategory()->initializeDefaultsForTrader($user);
-
             return $user;
         });
     }
@@ -95,7 +84,6 @@ class UserService implements UserServiceContract
             if (! $user->team_leader_id) {
                 $teamLeaderId = $this->resolveTeamLeaderIdForTrader($data->team_leader_id, $roleName);
             }
-            $agentId = $this->resolveAgentIdForMerchant($data->agent_id, $roleName);
 
             $extendedAccessEnabled = in_array($roleName, ['Team Leader', 'Super Admin'], true)
                 ? $data->team_leader_extended_access_enabled
@@ -105,9 +93,6 @@ class UserService implements UserServiceContract
                 : false;
             $supportFeatureAllowed = in_array($roleName, ['Support', 'Super Admin'], true);
             $manualControlAcqAllowed = in_array($roleName, ['Support', 'Super Admin'], true);
-            $agentCommissionPercentage = $roleName === 'Agent'
-                ? $data->agent_commission_percentage
-                : self::DEFAULT_AGENT_COMMISSION_PERCENTAGE;
 
             $wasBanned = $user->banned_at !== null;
             $isBanned = (bool) $data->banned;
@@ -120,10 +105,6 @@ class UserService implements UserServiceContract
                 'can_work_without_device' => $data->can_work_without_device,
                 'is_vip' => $data->is_vip,
                 'payouts_enabled' => $data->payouts_enabled,
-                'trader_economy_enabled' => $roleName === 'Trader' ? $data->trader_economy_enabled : false,
-                'priority_payout_access_enabled' => in_array($roleName, ['Trader', 'Super Admin'], true)
-                    ? $data->priority_payout_access_enabled
-                    : false,
                 'payout_hold_enabled' => $data->payout_hold_enabled,
                 'payout_hold_minutes' => $data->payout_hold_minutes ?? $user->payout_hold_minutes,
                 'payout_active_payouts_limit' => $data->payout_active_payouts_limit ?? $user->payout_active_payouts_limit,
@@ -135,8 +116,6 @@ class UserService implements UserServiceContract
                 'reserve_balance_limit' => $this->teamLeaderInsuranceService->shouldIgnoreTraderReserveLimit($roleName, $user)
                     ? $user->reserve_balance_limit
                     : $data->reserve_balance_limit,
-                'agent_id' => $agentId,
-                'agent_commission_percentage' => $agentCommissionPercentage,
                 'traffic_enabled_at' => $wasTrafficStopped && ! $data->stop_traffic ? now() : $user->traffic_enabled_at,
                 'team_leader_extended_access_enabled' => $extendedAccessEnabled,
                 'team_leader_flexible_trader_commission_enabled' => $flexibleTraderCommissionEnabled,
@@ -212,24 +191,6 @@ class UserService implements UserServiceContract
             ->first();
 
         return $teamLeader?->id;
-    }
-
-    private function resolveAgentIdForMerchant(?int $agentId, ?string $roleName): ?int
-    {
-        if (! $agentId) {
-            return null;
-        }
-
-        if ($roleName !== 'Merchant') {
-            return null;
-        }
-
-        $agent = User::query()
-            ->where('id', $agentId)
-            ->role('Agent')
-            ->first();
-
-        return $agent?->id;
     }
 
     /**

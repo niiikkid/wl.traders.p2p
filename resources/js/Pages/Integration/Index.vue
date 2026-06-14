@@ -2,50 +2,20 @@
 import {Head, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useAppClipboard } from '@/composables/useAppClipboard.js';
-import {ref, onMounted, onBeforeUnmount, nextTick, unref} from 'vue';
+import {ref, onMounted, onBeforeUnmount, nextTick} from 'vue';
 import axios from 'axios';
 import ApiDocumentation from '@/Pages/Integration/Components/ApiDocumentation.vue';
-import MerchantApi from '@/Pages/Integration/Components/MerchantApi.vue';
-import H2HApi from '@/Pages/Integration/Components/H2HApi.vue';
-import WalletApi from '@/Pages/Integration/Components/WalletApi.vue';
-import CommonApi from '@/Pages/Integration/Components/CommonApi.vue';
-import PayoutApi from '@/Pages/Integration/Components/PayoutApi.vue';
-import StatementApi from '@/Pages/Integration/Components/StatementApi.vue';
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal.js";
 
 const pageProps = usePage().props;
-const user = pageProps.auth.user;
 const token = ref(pageProps.token ?? '');
-const merchantId = pageProps.merchantId;
-const merchants = pageProps.merchants ?? [];
 
-const { text, copy, copied } = useAppClipboard();
+const { copy, copied } = useAppClipboard();
 const modalStore = useModalStore();
 
-const DEFAULT_TAB = 'merchant';
-const VALID_TABS = ['merchant', 'h2h', 'payouts', 'statements', 'wallet', 'common', 'docs'];
 const hasWindow = typeof window !== 'undefined';
 
-const getTabFromUrl = () => {
-    if (!hasWindow) {
-        return DEFAULT_TAB;
-    }
-
-    const hash = window.location.hash;
-    if (hash) {
-        return 'docs';
-    }
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
-
-    return VALID_TABS.includes(tabParam) ? tabParam : DEFAULT_TAB;
-};
-
-const activeTab = ref(getTabFromUrl());
-const loading = ref(false);
-const receiptTemplate = ref('');
 const regenerating = ref(false);
 const downloadingDocumentation = ref(false);
 
@@ -68,49 +38,16 @@ const scrollToHash = (hashOverride = null) => {
     }
 };
 
-const updateUrl = (tab, hashValue = null) => {
+const normalizeDocumentationUrl = () => {
     if (!hasWindow) {
         return;
     }
 
     const url = new URL(window.location.href);
 
-    if (tab === DEFAULT_TAB) {
+    if (url.searchParams.has('tab')) {
         url.searchParams.delete('tab');
-    } else {
-        url.searchParams.set('tab', tab);
-    }
-
-    if (tab === 'docs') {
-        if (hashValue) {
-            url.hash = hashValue.startsWith('#') ? hashValue : `#${hashValue.replace('#', '')}`;
-        } else if (window.location.hash) {
-            url.hash = window.location.hash;
-        }
-    } else {
-        url.hash = '';
-    }
-
-    window.history.replaceState({}, '', url.toString());
-};
-
-const setActiveTab = (tab) => {
-    if (!VALID_TABS.includes(tab)) {
-        return;
-    }
-
-    if (activeTab.value === tab) {
-        if (tab === 'docs') {
-            scrollToHash();
-        }
-        return;
-    }
-
-    activeTab.value = tab;
-    updateUrl(tab);
-
-    if (tab === 'docs') {
-        nextTick(() => scrollToHash());
+        window.history.replaceState({}, '', url.toString());
     }
 };
 
@@ -119,40 +56,14 @@ const handleHashChange = () => {
         return;
     }
 
-    if (window.location.hash) {
-        if (activeTab.value !== 'docs') {
-            activeTab.value = 'docs';
-        }
-        updateUrl('docs', window.location.hash);
-        nextTick(() => scrollToHash());
-    }
-};
-
-const handlePopState = () => {
-    const newTab = getTabFromUrl();
-    if (newTab !== activeTab.value) {
-        activeTab.value = newTab;
-    }
-
-    updateUrl(newTab);
-
-    if (newTab === 'docs') {
-        nextTick(() => scrollToHash());
-    }
+    nextTick(() => scrollToHash());
 };
 
 onMounted(() => {
-    activeTab.value = getTabFromUrl();
-    updateUrl(activeTab.value);
-
-    if (activeTab.value === 'docs') {
-        nextTick(() => scrollToHash());
-    }
-
-    loadReceiptTemplate();
+    normalizeDocumentationUrl();
+    nextTick(() => scrollToHash());
 
     window.addEventListener('hashchange', handleHashChange);
-    window.addEventListener('popstate', handlePopState);
 });
 
 onBeforeUnmount(() => {
@@ -160,148 +71,7 @@ onBeforeUnmount(() => {
         return;
     }
     window.removeEventListener('hashchange', handleHashChange);
-    window.removeEventListener('popstate', handlePopState);
 });
-
-const sanitizeObject = (source) => {
-    const raw = unref(source);
-
-    if (!raw || typeof raw !== 'object') {
-        return {};
-    }
-
-    return Object.fromEntries(
-        Object.entries(raw).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
-    );
-};
-
-const buildEndpointUrl = (endpoint) => {
-    const normalized = (endpoint || '').toString().trim();
-
-    if (!normalized) {
-        throw new Error('Endpoint не указан');
-    }
-
-    if (/^https?:\/\//i.test(normalized)) {
-        return normalized;
-    }
-
-    if (normalized.startsWith('/api/')) {
-        return normalized;
-    }
-
-    if (normalized.startsWith('api/')) {
-        return `/${normalized}`;
-    }
-
-    return `/api/${normalized.replace(/^\/+/, '')}`;
-};
-
-const loadReceiptTemplate = async () => {
-    try {
-        const response = await axios.get('/integration/receipt-template', {
-            headers: {
-                Accept: 'application/json',
-                ...(token.value ? { 'Access-Token': token.value } : {}),
-            },
-        });
-
-        const base64Value = response?.data?.data?.base64;
-        if (typeof base64Value === 'string' && base64Value.trim()) {
-            receiptTemplate.value = base64Value;
-        }
-    } catch (error) {
-        console.error('Не удалось загрузить шаблон чека:', error);
-    }
-};
-
-const getRawResponseBody = (axiosResponse) => {
-    if (!axiosResponse) {
-        return '';
-    }
-
-    const request = axiosResponse.request;
-
-    if (request) {
-        if (typeof request.responseText === 'string' && request.responseText.length > 0) {
-            return request.responseText;
-        }
-
-        if (typeof request.response === 'string' && request.response.length > 0) {
-            return request.response;
-        }
-    }
-
-    if (typeof axiosResponse.data === 'string') {
-        return axiosResponse.data;
-    }
-
-    try {
-        return JSON.stringify(axiosResponse.data ?? '');
-    } catch (error) {
-        return '';
-    }
-};
-
-const executeRequest = async (method, endpoint, data = {}, headers = {}) => {
-    loading.value = true;
-
-    try {
-        const url = buildEndpointUrl(endpoint);
-        const requestMethod = (method || 'GET').toUpperCase();
-        const cleanData = sanitizeObject(data);
-        const cleanHeaders = sanitizeObject(headers);
-
-        const baseHeaders = {
-            Accept: 'application/json',
-            ...cleanHeaders
-        };
-
-        if (token.value) {
-            baseHeaders['Access-Token'] = token.value;
-        }
-
-        const axiosConfig = {
-            method: requestMethod,
-            url,
-            headers: baseHeaders
-        };
-
-        if (requestMethod === 'GET' || requestMethod === 'DELETE') {
-            axiosConfig.params = cleanData;
-        } else {
-            axiosConfig.data = cleanData;
-        }
-
-        const response = await axios.request(axiosConfig);
-        const rawBody = getRawResponseBody(response);
-
-        return {
-            success: true,
-            data: {
-                status: response.status,
-                data: response.data,
-                headers: response.headers,
-                rawBody
-            }
-        };
-    } catch (error) {
-        const response = error.response;
-        const rawBody = getRawResponseBody(response);
-
-        return {
-            success: false,
-            error: {
-                status: response?.status,
-                message: response?.data?.message || error.message || 'Ошибка при выполнении запроса',
-                errors: response?.data?.errors || {},
-                rawBody
-            }
-        };
-    } finally {
-        loading.value = false;
-    }
-};
 
 const regenerateToken = async () => {
     if (regenerating.value) {
@@ -525,11 +295,8 @@ const downloadDocumentation = async () => {
     downloadingDocumentation.value = true;
 
     try {
-        if (activeTab.value !== 'docs') {
-            setActiveTab('docs');
-            await nextTick();
-            await new Promise((resolve) => requestAnimationFrame(resolve));
-        }
+        await nextTick();
+        await new Promise((resolve) => requestAnimationFrame(resolve));
 
         const markdown = buildDocumentationMarkdown();
         if (!markdown) {
@@ -554,7 +321,7 @@ defineOptions({ layout: AuthenticatedLayout });
 </script>
 
 <template>
-    <Head title="API Интеграция — Legacy"/>
+    <Head title="API Интеграция"/>
 
     <div class="antialiased">
         <div class="mx-auto max-w-7xl">
@@ -571,7 +338,6 @@ defineOptions({ layout: AuthenticatedLayout });
                 </button>
             </div>
 
-            <!-- Блок с токеном -->
             <div class="card w-full bg-base-100 shadow mb-6">
                 <div class="card-body">
                     <label for="api-key" class="text-sm font-medium text-base-content mb-2 block">API токен:</label>
@@ -619,86 +385,26 @@ defineOptions({ layout: AuthenticatedLayout });
                 </div>
             </div>
 
-            <!-- Табы для разделов API -->
-            <div class="tabs tabs-boxed mb-6">
-                <a class="tab" :class="{ 'tab-active': activeTab === 'merchant' }" @click="setActiveTab('merchant')">
-                    Merchant API
-                </a>
-                <a class="tab" :class="{ 'tab-active': activeTab === 'h2h' }" @click="setActiveTab('h2h')">
-                    H2H API
-                </a>
-                <a class="tab" :class="{ 'tab-active': activeTab === 'payouts' }" @click="setActiveTab('payouts')">
-                    Выплаты
-                </a>
-                <a class="tab" :class="{ 'tab-active': activeTab === 'statements' }" @click="setActiveTab('statements')">
-                    Выписки
-                </a>
-                <a class="tab" :class="{ 'tab-active': activeTab === 'wallet' }" @click="setActiveTab('wallet')">
-                    Авто вывод
-                </a>
-                <a class="tab" :class="{ 'tab-active': activeTab === 'common' }" @click="setActiveTab('common')">
-                    Общие методы
-                </a>
-                <a class="tab" :class="{ 'tab-active': activeTab === 'docs' }" @click="setActiveTab('docs')">
-                    Документация
-                </a>
+            <div class="card bg-base-100 shadow mb-6">
+                <div class="card-body">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="badge badge-primary badge-outline">DEMO</div>
+                            <div class="text-base font-medium text-base-content">Демонстрационная платежная форма</div>
+                        </div>
+                        <a
+                            :href="route('payment.demo.show')"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="btn btn-primary btn-sm"
+                        >
+                            Открыть демо
+                        </a>
+                    </div>
+                </div>
             </div>
 
-            <!-- Merchant API -->
-            <MerchantApi
-                v-if="activeTab === 'merchant'"
-                :execute-request="executeRequest"
-                :loading="loading"
-                :merchant-id="merchantId"
-                :merchants="merchants"
-            />
-
-            <!-- H2H API -->
-            <H2HApi
-                v-if="activeTab === 'h2h'"
-                :execute-request="executeRequest"
-                :loading="loading"
-                :merchant-id="merchantId"
-                :merchants="merchants"
-                :receipt-template="receiptTemplate"
-            />
-
-            <!-- Payout API -->
-            <PayoutApi
-                v-if="activeTab === 'payouts'"
-                :execute-request="executeRequest"
-                :loading="loading"
-                :merchant-id="merchantId"
-                :merchants="merchants"
-            />
-
-            <!-- Statements API -->
-            <StatementApi
-                v-if="activeTab === 'statements'"
-                :execute-request="executeRequest"
-                :loading="loading"
-                :merchant-id="merchantId"
-                :merchants="merchants"
-            />
-
-            <!-- Wallet API -->
-            <WalletApi
-                v-if="activeTab === 'wallet'"
-                :execute-request="executeRequest"
-                :loading="loading"
-            />
-
-            <!-- Общие методы -->
-            <CommonApi
-                v-if="activeTab === 'common'"
-                :execute-request="executeRequest"
-                :loading="loading"
-            />
-
-            <!-- Документация -->
-            <div v-if="activeTab === 'docs'">
-                <ApiDocumentation />
-            </div>
+            <ApiDocumentation />
         </div>
     </div>
 

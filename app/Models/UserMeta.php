@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property array $allowed_markets
- * @property array $allowed_categories
  * @property Carbon|null $news_last_read_at
  * @property bool $manual_control_acq_new_offer_sound_enabled
  * @property string|null $manual_control_acq_new_offer_sound_track
@@ -31,7 +30,6 @@ class UserMeta extends Model
 
     protected $fillable = [
         'allowed_markets',
-        'allowed_categories',
         'news_last_read_at',
         'manual_control_acq_new_offer_sound_enabled',
         'manual_control_acq_new_offer_sound_track',
@@ -47,7 +45,6 @@ class UserMeta extends Model
 
     protected $casts = [
         'allowed_markets' => 'array',
-        'allowed_categories' => 'array',
         'news_last_read_at' => 'datetime',
         'manual_control_acq_new_offer_sound_enabled' => 'boolean',
         'manual_control_acq_confirm_code_sound_enabled' => 'boolean',

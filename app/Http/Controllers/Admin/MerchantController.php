@@ -18,7 +18,7 @@ class MerchantController extends Controller
     public function index()
     {
         $merchants = Merchant::query()
-            ->with(['user', 'categories'])
+            ->with(['user'])
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
 
@@ -30,7 +30,7 @@ class MerchantController extends Controller
     public function indexData(Request $request): JsonResponse
     {
         $merchants = Merchant::query()
-            ->with(['user', 'categories'])
+            ->with(['user'])
             ->orderByDesc('id')
             ->paginate($request->get('per_page', 10));
 
@@ -48,7 +48,7 @@ class MerchantController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh('categories'))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh())->resolve(),
             ]);
         }
 
@@ -64,7 +64,7 @@ class MerchantController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh('categories'))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh())->resolve(),
             ]);
         }
 
@@ -79,7 +79,7 @@ class MerchantController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh('categories'))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh())->resolve(),
             ]);
         }
 
@@ -89,8 +89,6 @@ class MerchantController extends Controller
     public function updateSettings(Request $request, Merchant $merchant)
     {
         $request->validate([
-            'categories' => 'nullable|array',
-            'categories.*' => 'exists:categories,id',
             'max_order_wait_time' => 'nullable|integer|min:1000',
             'max_payout_wait_time' => 'nullable|integer|min:1000',
             'min_order_amounts' => 'nullable|array',
@@ -103,21 +101,14 @@ class MerchantController extends Controller
             'min_order_amounts' => $request->min_order_amounts,
         ]);
 
-        if ($request->has('categories')) {
-            services()->merchantTrafficCategory()->syncMerchantCategories(
-                $merchant,
-                $request->categories ?? [],
-            );
-        }
-
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh()->load('categories'))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh())->resolve(),
             ]);
         }
 
         return back()->with([
-            'merchant' => new MerchantResource($merchant->fresh()->load('categories')),
+            'merchant' => new MerchantResource($merchant->fresh()),
         ]);
     }
 
@@ -131,7 +122,7 @@ class MerchantController extends Controller
         $validator = validator($request->all(), [
             'geos' => ['required', 'array', 'min:1'],
             'geos.*.currency' => ['required', 'string', Rule::in(Currency::getAllCodes())],
-            'geos.*.market' => ['required', Rule::enum(MarketEnum::class)],
+            'geos.*.market' => ['required', Rule::in(MarketEnum::selectableValues())],
             'geos.*.order_reference_rate' => ['nullable', 'numeric', 'gt:0'],
             'geos.*.payout_reference_rate' => ['nullable', 'numeric', 'gt:0'],
             'geos.*.max_deviation_percent' => ['nullable', 'numeric', 'gt:0', 'decimal:0,2'],
@@ -153,6 +144,12 @@ class MerchantController extends Controller
                 $marketEnum = MarketEnum::tryFrom($marketValue);
                 if (! $marketEnum) {
                     $validator->errors()->add('geos', "Маркет {$marketValue} не поддерживается.");
+
+                    continue;
+                }
+
+                if ($marketEnum->isDeprecated()) {
+                    $validator->errors()->add('geos', "Маркет {$marketEnum->value} больше не поддерживается.");
 
                     continue;
                 }
@@ -254,7 +251,7 @@ class MerchantController extends Controller
         $merchant->save();
 
         return response()->json([
-            'merchant' => MerchantResource::make($merchant->fresh()->load('categories'))->resolve(),
+            'merchant' => MerchantResource::make($merchant->fresh())->resolve(),
         ]);
     }
 

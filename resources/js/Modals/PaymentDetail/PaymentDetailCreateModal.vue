@@ -38,7 +38,7 @@ const devices = ref([]);
 const canWorkWithoutDevice = ref(usePage().props.auth?.user?.can_work_without_device ?? false);
 const currentUser = usePage().props.auth?.user;
 const isVipUser = computed(() => {
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1 || currentUser?.is_temp_vip_active;
+    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
 });
 
 const form = ref({

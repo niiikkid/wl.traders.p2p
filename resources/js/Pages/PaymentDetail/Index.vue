@@ -23,7 +23,6 @@ import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import PaymentDetailCreateModal from "@/Modals/PaymentDetail/PaymentDetailCreateModal.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
-import PaymentDetailVolumeStatisticsModal from "@/Modals/PaymentDetail/PaymentDetailVolumeStatisticsModal.vue";
 import PaymentDetailResetLimitsModal from "@/Modals/PaymentDetail/PaymentDetailResetLimitsModal.vue";
 import PaymentDetailTagCreateModal from "@/Modals/PaymentDetailTag/PaymentDetailTagCreateModal.vue";
 import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
@@ -40,9 +39,6 @@ const openCreateModal = () => {
 };
 const openEditModal = (paymentDetail) => {
     modalStore.openPaymentDetailEditModal({ paymentDetail });
-};
-const openVolumeStatisticsModal = (paymentDetail) => {
-    modalStore.openPaymentDetailVolumeStatisticsModal({ id: paymentDetail.id, paymentDetail });
 };
 const openResetLimitsModal = (paymentDetail) => {
     modalStore.openPaymentDetailResetLimitsModal({ paymentDetail });
@@ -186,7 +182,7 @@ const currentUser = usePage().props.auth?.user;
 
 // Определяем, является ли текущий пользователь VIP
 const isVipUser = computed(() => {
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1 || currentUser?.is_temp_vip_active;
+    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
 });
 
 const normalizeNumber = (value) => {
@@ -539,21 +535,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                     title="Есть применённые фильтры"
                                 />
                             </div>
-
-                            <button
-                                v-if="viewStore.isAdminViewMode"
-                                type="button"
-                                class="btn btn-sm btn-square btn-secondary btn-outline shrink-0 rounded-lg"
-                                title="Статистика реквизитов"
-                                aria-label="Статистика реквизитов"
-                                @click="router.visit(route('admin.payment-details.statistics'), { preserveScroll: true })"
-                            >
-                                <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                    <path d="M12 3.5A8.5 8.5 0 1 0 20.5 12H12V3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-                                    <path d="M14.5 3.85A8.52 8.52 0 0 1 20.15 9.5H14.5V3.85Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-                                    <path d="M14.5 12H21A8.47 8.47 0 0 1 18.6 17.9L14.5 12Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
-                                </svg>
-                            </button>
 
                             <button
                                 v-if="viewStore.isAdminViewMode"
@@ -1093,9 +1074,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </div>
                                                     </TableInfoDropdown>
                                                     <TableActionsDropdown v-if="currentTab === 'active'">
-                                                        <TableAction @click="openVolumeStatisticsModal(payment_detail)">
-                                                            Статистика
-                                                        </TableAction>
                                                         <TableAction @click="openEditModal(payment_detail)">
                                                             Редактировать
                                                         </TableAction>
@@ -1107,9 +1085,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </TableAction>
                                                     </TableActionsDropdown>
                                                     <TableActionsDropdown v-else>
-                                                        <TableAction @click="openVolumeStatisticsModal(payment_detail)">
-                                                            Статистика
-                                                        </TableAction>
                                                         <TableAction @click="confirmUnarchiveDetail(payment_detail)">
                                                             Вернуть из архива
                                                         </TableAction>
@@ -1143,9 +1118,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </label>
                                             <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
                                                 <template v-if="currentTab === 'active'">
-                                                    <TableAction @click="openVolumeStatisticsModal(payment_detail)">
-                                                        Статистика
-                                                    </TableAction>
                                                     <TableAction @click="openEditModal(payment_detail)">
                                                         Редактировать
                                                     </TableAction>
@@ -1157,9 +1129,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </TableAction>
                                                 </template>
                                                 <template v-else>
-                                                    <TableAction @click="openVolumeStatisticsModal(payment_detail)">
-                                                        Статистика
-                                                    </TableAction>
                                                     <TableAction @click="confirmUnarchiveDetail(payment_detail)">
                                                         Вернуть из архива
                                                     </TableAction>
@@ -1425,7 +1394,6 @@ defineOptions({ layout: AuthenticatedLayout })
         <PaymentDetailCreateModal />
         <PaymentDetailEditModal />
         <PaymentDetailBulkEditModal :tags="paymentDetailTags" />
-        <PaymentDetailVolumeStatisticsModal />
         <PaymentDetailResetLimitsModal />
         <PaymentDetailTagCreateModal />
         <PaymentDetailTagManageModal :tags="paymentDetailTags" />

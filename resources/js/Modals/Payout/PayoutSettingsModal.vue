@@ -37,8 +37,6 @@ const errorMessage = (code, field) => {
     return errors.value?.[key]?.[0] ?? null;
 };
 
-const priorityAccessError = (field) => errors.value?.[`priority_access.${field}`]?.[0] ?? null;
-
 const resolveCode = (currency) => (currency?.code || '').toLowerCase();
 
 const setDefaults = (payload) => {
@@ -96,7 +94,7 @@ const submit = () => {
             if (response.data?.success || response.status === 200) {
                 close();
                 router.reload({
-                    only: ['payouts', 'priorityAccessSettings', 'priorityAccessActiveCount'],
+                    only: ['payouts'],
                     preserveScroll: true,
                 });
             }
@@ -154,63 +152,7 @@ watch(
                 </div>
 
                 <div class="text-sm text-base-content/70">
-                    Комиссии используются только если платежный метод не выбран. Настройки приоритетного доступа применяются ко всем новым выплатам.
-                </div>
-
-                <div class="rounded-box border border-base-300 bg-base-100/60 p-4 space-y-4">
-                    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                        <div>
-                            <div class="text-sm font-semibold text-base-content">Приоритетный доступ к выплатам</div>
-                            <div class="mt-1 text-xs text-base-content/70">
-                                Пока режим включён, подходящие выплаты сначала видят только трейдеры с отдельным доступом.
-                            </div>
-                        </div>
-                        <label class="label cursor-pointer gap-3 justify-start">
-                            <span class="label-text">
-                                {{ form.priority_access.enabled ? 'Включён' : 'Выключен' }}
-                            </span>
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.priority_access.enabled"
-                                :disabled="processing"
-                            >
-                        </label>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-4">
-                        <div>
-                            <InputLabel
-                                for="priority-access-delay"
-                                value="Задержка перед общим доступом (мин)"
-                                :error="!!priorityAccessError('delay_minutes')"
-                            />
-                            <NumberInput
-                                id="priority-access-delay"
-                                v-model="form.priority_access.delay_minutes"
-                                class="mt-1 block w-full"
-                                min="1"
-                                step="1"
-                                placeholder="10"
-                                :disabled="processing"
-                            />
-                            <InputError :message="priorityAccessError('delay_minutes')" class="mt-2" />
-                        </div>
-
-                        <div class="flex items-center">
-                            <label class="label cursor-pointer gap-3 justify-start">
-                                <input
-                                    type="checkbox"
-                                    class="toggle toggle-primary"
-                                    v-model="form.priority_access.release_without_online_traders"
-                                    :disabled="processing"
-                                >
-                                <span class="label-text">
-                                    Сразу отправлять в общий доступ, если нет онлайн трейдеров с приоритетным доступом
-                                </span>
-                            </label>
-                        </div>
-                    </div>
+                    Комиссии используются только если платежный метод не выбран.
                 </div>
 
                 <div class="space-y-4">
@@ -276,46 +218,6 @@ watch(
                                     model-value="Сколько минут даётся трейдеру на отправку."
                                 />
                             </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel
-                                    :for="`priority-min-${item.code}`"
-                                    value="Приоритетный доступ от суммы"
-                                    :error="!!errorMessage(item.code, 'priority_access_min_amount')"
-                                />
-                                <NumberInput
-                                    :id="`priority-min-${item.code}`"
-                                    v-model="form.settings[item.code].priority_access_min_amount"
-                                    class="mt-1 block w-full"
-                                    step="0.01"
-                                    placeholder="Не ограничено"
-                                />
-                                <InputError :message="errorMessage(item.code, 'priority_access_min_amount')" class="mt-2" />
-                            </div>
-
-                            <div>
-                                <InputLabel
-                                    :for="`priority-max-${item.code}`"
-                                    value="Приоритетный доступ до суммы"
-                                    :error="!!errorMessage(item.code, 'priority_access_max_amount')"
-                                />
-                                <NumberInput
-                                    :id="`priority-max-${item.code}`"
-                                    v-model="form.settings[item.code].priority_access_max_amount"
-                                    class="mt-1 block w-full"
-                                    step="0.01"
-                                    placeholder="Не ограничено"
-                                />
-                                <InputError :message="errorMessage(item.code, 'priority_access_max_amount')" class="mt-2" />
-
-                            </div>
-                            <InputHelper
-                            class="col-span-full"
-                                    v-if="!errorMessage(item.code, 'priority_access_max_amount')"
-                                    model-value="Если оба поля пустые, сумма для этой валюты не ограничивает приоритетный доступ."
-                                />
                         </div>
                     </div>
                 </div>

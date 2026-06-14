@@ -5,10 +5,11 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {computed, ref, watch} from "vue";
 import { useModalStore } from "@/store/modal.js";
 import PriceParserEditModal from "@/Modals/Currency/PriceParserEditModal.vue";
+import {filterMarketGroupKeys} from "@/utils/market.js";
 
 const markets = usePage().props.markets;
 
-const marketKeys = computed(() => Object.keys(markets ?? {}));
+const marketKeys = computed(() => filterMarketGroupKeys(markets));
 
 const getMarketFromUrl = () => {
     if (typeof window === 'undefined') {
@@ -65,7 +66,6 @@ const currencies = computed(() => {
 const MARKET_LABELS = {
     bybit: 'ByBit',
     binance: 'Binance',
-    rapira: 'Rapira',
     manual: 'Ручной',
 };
 
@@ -79,15 +79,6 @@ const MARKET_INFO = {
         {
             text: 'Bybit P2P',
             href: 'https://www.bybit.com/en/p2p/buy/USDT/RUB'
-        },
-    ],
-    rapira: [
-        { text: 'Данные берём напрямую из торгового стакана Rapira.' },
-        { text: 'Цена покупки (зелёный стакан) — используем самую верхнюю, первую запись.' },
-        { text: 'Цена продажи (красный стакан) — берём самую нижнюю запись стакана.' },
-        {
-            text: 'Стакан USDT/RUB на Rapira',
-            href: 'https://rapira.net/exchange/USDT_RUB',
         },
     ],
     binance: [

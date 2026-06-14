@@ -20,7 +20,6 @@ use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
-use App\Support\AgentCommission;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -199,63 +198,6 @@ class MainPageStatsService implements MainPageStatsServiceContract
                 'labels' => $labels,
                 'data' => $data,
             ],
-        ];
-    }
-
-    public function buildAgentStats(User $user): array
-    {
-        $merchantUsers = User::query()
-            ->where('agent_id', $user->id)
-            ->select(['id'])
-            ->orderBy('id')
-            ->get();
-        $merchantUserIds = $merchantUsers->pluck('id');
-
-        $query = Order::query()
-            ->where('agent_id', $user->id)
-            ->where('status', OrderStatus::SUCCESS);
-
-        $totalTurnover = Money::fromUnits($query->clone()->sum('total_profit'), Currency::USDT());
-        $totalProfit = Money::fromUnits($query->clone()->sum('agent_profit'), Currency::USDT());
-        $balance = $user->wallet
-            ? services()->wallet()->getTotalAvailableBalance($user->wallet, BalanceType::AGENT)
-            : Money::fromUnits(0, Currency::USDT());
-
-        $merchantStats = Order::query()
-            ->join('merchants', 'orders.merchant_id', '=', 'merchants.id')
-            ->whereIn('merchants.user_id', $merchantUserIds)
-            ->where('orders.agent_id', $user->id)
-            ->where('orders.status', OrderStatus::SUCCESS)
-            ->groupBy('merchants.user_id')
-            ->select([
-                'merchants.user_id',
-                DB::raw('SUM(orders.total_profit) as successful_turnover'),
-                DB::raw('SUM(orders.agent_profit) as agent_profit'),
-            ])
-            ->get()
-            ->keyBy('user_id');
-
-        $merchantUsers = $merchantUsers
-            ->map(function (User $merchantUser) use ($merchantStats) {
-                $stats = $merchantStats->get($merchantUser->id);
-
-                return [
-                    'id' => $merchantUser->id,
-                    'turnover' => Money::fromUnits($stats->successful_turnover ?? 0, Currency::USDT())->toBeauty(),
-                    'agent_profit' => Money::fromUnits($stats->agent_profit ?? 0, Currency::USDT())->toBeauty(),
-                ];
-            })
-            ->values();
-
-        return [
-            'statistics' => [
-                'merchantsCount' => $merchantUserIds->count(),
-                'totalTurnover' => $totalTurnover->toBeauty(),
-                'totalProfit' => $totalProfit->toBeauty(),
-                'balance' => $balance->toBeauty(),
-                'agentRate' => round((float) ($user->agent_commission_percentage ?? AgentCommission::DEFAULT_RATE), 2),
-            ],
-            'merchantUsers' => $merchantUsers,
         ];
     }
 

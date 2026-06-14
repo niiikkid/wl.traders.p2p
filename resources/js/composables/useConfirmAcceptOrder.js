@@ -28,10 +28,6 @@ export function useConfirmAcceptOrder(options = {}) {
     const viewStore = useViewStore();
 
     const defaultAcceptRouteName = () => {
-        if (viewStore.isAnalystViewMode) {
-            return 'analyst.orders.accept';
-        }
-
         if (viewStore.isSupportViewMode) {
             return 'support.orders.accept';
         }
@@ -40,10 +36,6 @@ export function useConfirmAcceptOrder(options = {}) {
     };
 
     const defaultIndexRouteName = () => {
-        if (viewStore.isAnalystViewMode) {
-            return 'analyst.orders.index';
-        }
-
         if (viewStore.isSupportViewMode) {
             return 'support.orders.index';
         }

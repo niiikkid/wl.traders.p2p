@@ -35,11 +35,6 @@ const boolToText = (value) => value ? 'Да' : 'Нет';
                                 ID: {{ user.id }}
                             </div>
                         </div>
-                        <div class="ml-auto">
-                            <span class="badge badge-outline">
-                                {{ user.user_team?.name || '—' }}
-                            </span>
-                        </div>
                     </div>
                 </div>
 
@@ -47,7 +42,6 @@ const boolToText = (value) => value ? 'Да' : 'Нет';
                     <div class="rounded-box border border-base-300 p-3">
                         <div class="text-base-content/70 mb-1">Основное</div>
                         <div>Email: <span class="font-medium">{{ user.email }}</span></div>
-                        <div>Команда: <span class="font-medium">{{ user.user_team?.name || '—' }}</span></div>
                     </div>
 
                     <div class="rounded-box border border-base-300 p-3">
