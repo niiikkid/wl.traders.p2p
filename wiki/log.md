@@ -1,5 +1,8 @@
 # Wiki Log
 
+## [2026-06-15] ingest | Legacy Feature Removal Technical Specification (deep backlog expansion)
+- Updated: Legacy Feature Removal Technical Specification
+
 ## [2026-06-15] ingest | Legacy Feature Removal Technical Specification (additional removal backlog)
 - Updated: Legacy Feature Removal Technical Specification
 
