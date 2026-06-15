@@ -8,7 +8,6 @@ import {computed, reactive, ref, watch} from "vue";
 import {useViewStore} from "@/store/view.js";
 import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
-import DatepickerInput from "@/Pages/Merchant/Tabs/Partials/DatepickerInput.vue";
 import DUUID from "@/Components/DUUID.vue";
 import {DEFAULT_RUB_MARKET, filterMarketOptions} from "@/utils/market.js";
 
@@ -129,15 +128,6 @@ const formSettings = reactive({
 
 const formStatus = reactive({
     processing: false,
-});
-
-const formResendCallback = reactive({
-    start_date: '',
-    end_date: '',
-    errors: {},
-    processing: false,
-    recentlySuccessful: false,
-    _successTimer: null,
 });
 
 const availableCurrencies = computed(() => {
@@ -515,28 +505,6 @@ const submitBan = () => performStatusAction('admin.merchants.ban');
 const submitUnban = () => performStatusAction('admin.merchants.unban');
 const submitValidated = () => performStatusAction('admin.merchants.validated');
 
-const submitResendCallback = () => {
-    if (!merchant.value || formResendCallback.processing) {
-        return;
-    }
-
-    formResendCallback.processing = true;
-    formResendCallback.errors = {};
-
-    axios.post(route('admin.merchants.resend-callback', merchant.value.id), {
-        start_date: formResendCallback.start_date,
-        end_date: formResendCallback.end_date,
-    }, {
-        headers: {Accept: 'application/json'},
-    }).then(() => {
-        markRecentlySuccessful(formResendCallback);
-    }).catch((error) => {
-        handleValidationError(error, formResendCallback);
-    }).finally(() => {
-        formResendCallback.processing = false;
-    });
-};
-
 const addMinOrderAmount = () => {
     if (!selectedCurrency.value) {
         return;
@@ -577,7 +545,6 @@ const adminTabs = [
     {id: 'moderation', title: 'Модерация', description: 'Статус доступа'},
     {id: 'geo', title: 'Гео', description: 'Валюты и маркеты'},
     {id: 'settings', title: 'Лимиты', description: 'Время и суммы'},
-    {id: 'resend', title: 'Callback resend', description: 'Повторная отправка'},
 ];
 
 const tabs = computed(() => {
@@ -1118,60 +1085,6 @@ const merchantStatus = computed(() => {
                                 :disabled="formSettings.processing"
                                 :saved="formSettings.recentlySuccessful"
                                 size="xs"
-                            />
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Таб: Повторная отправка callback (только для админа) -->
-            <div v-if="activeTab === 'resend' && viewStore.isAdminViewMode" class="space-y-3">
-                <div v-if="merchant">
-                    <div class="rounded-lg bg-base-200/60 p-2.5 sm:p-3">
-                        <p class="mb-3 text-xs text-base-content/70">
-                            Выберите период дат для повторной отправки callback по всем сделкам мерчанта за указанный период.
-                        </p>
-                        <form class="space-y-3" @submit.prevent="submitResendCallback">
-                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <div>
-                                    <InputLabel
-                                        for="start_date"
-                                        value="Дата начала"
-                                        :error="!!formResendCallback.errors.start_date"
-                                    />
-                                    <DatepickerInput
-                                        id="start_date"
-                                        v-model="formResendCallback.start_date"
-                                        placeholder="дд/мм/гггг"
-                                        :error="!!formResendCallback.errors.start_date"
-                                        size="sm"
-                                        @change="clearFormError(formResendCallback, 'start_date')"
-                                    />
-                                    <InputError :message="formResendCallback.errors.start_date" class="mt-1" />
-                                </div>
-                                <div>
-                                    <InputLabel
-                                        for="end_date"
-                                        value="Дата окончания"
-                                        :error="!!formResendCallback.errors.end_date"
-                                    />
-                                    <DatepickerInput
-                                        id="end_date"
-                                        v-model="formResendCallback.end_date"
-                                        placeholder="дд/мм/гггг"
-                                        :error="!!formResendCallback.errors.end_date"
-                                        size="sm"
-                                        @change="clearFormError(formResendCallback, 'end_date')"
-                                    />
-                                    <InputError :message="formResendCallback.errors.end_date" class="mt-1" />
-                                </div>
-                            </div>
-                            <InputError :message="formResendCallback.errors.date_range" class="mt-1" />
-                            <SaveButton
-                                :disabled="formResendCallback.processing"
-                                :saved="formResendCallback.recentlySuccessful"
-                                button-text="Отправить callback"
-                                size="sm"
                             />
                         </form>
                     </div>

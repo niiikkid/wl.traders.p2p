@@ -16,6 +16,9 @@ import TextInputBlock from "@/Components/Form/TextInputBlock.vue";
 import Dropzone from "@/Components/Form/Dropzone.vue";
 import { computed, ref, watch } from "vue";
 import { router } from '@inertiajs/vue3';
+import { isRemovedDetailType, stripRemovedDetailTypes } from "@/utils/paymentDetail.js";
+
+const filterDetailTypeOptions = (items) => (items || []).filter((item) => !isRemovedDetailType(item.code));
 
 const modalStore = useModalStore();
 const { paymentGatewayCreateModal, paymentGatewayEditModal } = storeToRefs(modalStore);
@@ -29,7 +32,6 @@ const detail_types = ref([]);
 const primeTimeCommissionRate = ref(0);
 
 const paymentGateway = ref(null);
-const sms_sender = ref(null);
 
 const isEditMode = computed(() => paymentGatewayEditModal.value.showed);
 const isCreateMode = computed(() => paymentGatewayCreateModal.value.showed && !paymentGatewayEditModal.value.showed);
@@ -179,13 +181,11 @@ const form = ref({
     trader_commission_rate_for_payouts: 2,
     total_service_commission_rate_for_payouts: 3,
     is_active: true,
-    is_payouts_enabled: true,
     is_intrabank: false,
     reservation_time_for_orders: null,
     reservation_time_for_payouts: null,
     currency: 'RUB',
     detail_types: [],
-    sms_senders: [],
     logo: null,
     use_flexible_trader_commission_for_orders: false,
     trader_commission_tiers_for_orders: [],
@@ -193,7 +193,6 @@ const form = ref({
 });
 
 const resetCommonState = () => {
-    sms_sender.value = null;
     splitPoint.value = null;
     errors.value = {};
     paymentGateway.value = null;
@@ -210,13 +209,11 @@ const resetFormForCreate = () => {
         trader_commission_rate_for_payouts: 7,
         total_service_commission_rate_for_payouts: 10,
         is_active: true,
-        is_payouts_enabled: true,
         is_intrabank: false,
         reservation_time_for_orders: 10,
         reservation_time_for_payouts: 10,
         currency: 'RUB',
         detail_types: [],
-        sms_senders: [],
         logo: null,
         use_flexible_trader_commission_for_orders: false,
         trader_commission_tiers_for_orders: [],
@@ -236,13 +233,11 @@ const resetFormForEdit = () => {
         trader_commission_rate_for_payouts: null,
         total_service_commission_rate_for_payouts: null,
         is_active: true,
-        is_payouts_enabled: true,
         is_intrabank: false,
         reservation_time_for_orders: null,
         reservation_time_for_payouts: null,
         currency: 'RUB',
         detail_types: [],
-        sms_senders: [],
         logo: null,
         use_flexible_trader_commission_for_orders: false,
         trader_commission_tiers_for_orders: [],
@@ -262,7 +257,7 @@ const loadCreateData = () => {
         .then(response => {
             const data = response.data?.data || response.data || {};
             currencies.value = data.currencies || [];
-            detail_types.value = data.detailTypes || [];
+            detail_types.value = filterDetailTypeOptions(data.detailTypes || []);
             primeTimeCommissionRate.value = data.primeTimeCommissionRate || 0;
             loading.value = false;
         })
@@ -278,7 +273,7 @@ const loadEditData = () => {
         .then(response => {
             const data = response.data?.data || response.data || {};
             currencies.value = data.currencies || [];
-            detail_types.value = data.detailTypes || [];
+            detail_types.value = filterDetailTypeOptions(data.detailTypes || []);
             paymentGateway.value = data.paymentGateway;
             form.value.name = paymentGateway.value.original_name;
             form.value.code = paymentGateway.value.code;
@@ -287,7 +282,6 @@ const loadEditData = () => {
             form.value.trader_commission_rate_for_orders = paymentGateway.value.trader_commission_rate_for_orders;
             form.value.total_service_commission_rate_for_orders = paymentGateway.value.total_service_commission_rate_for_orders;
             form.value.is_active = !!paymentGateway.value.is_active;
-            form.value.is_payouts_enabled = paymentGateway.value.is_payouts_enabled === undefined ? true : !!paymentGateway.value.is_payouts_enabled;
             form.value.is_intrabank = !!paymentGateway.value.is_intrabank;
             form.value.reservation_time_for_orders = paymentGateway.value.reservation_time_for_orders;
             form.value.trader_commission_rate_for_payouts = paymentGateway.value.trader_commission_rate_for_payouts;
@@ -300,26 +294,12 @@ const loadEditData = () => {
                 alignAllFlexibleTiersWithLimits();
             }
             form.value.currency = (paymentGateway.value.currency || 'RUB').toUpperCase();
-            form.value.detail_types = paymentGateway.value.detail_types ?? [];
-            form.value.sms_senders = paymentGateway.value.sms_senders ?? [];
+            form.value.detail_types = stripRemovedDetailTypes(paymentGateway.value.detail_types ?? []);
             loading.value = false;
         })
         .catch(() => {
             loading.value = false;
         });
-};
-
-const addSender = () => {
-    if (!sms_sender.value) {
-        return;
-    }
-    form.value.sms_senders.push(sms_sender.value);
-    form.value.sms_senders = form.value.sms_senders.filter((value, index, array) => array.indexOf(value) === index);
-    sms_sender.value = null;
-};
-
-const removeSender = (sender) => {
-    form.value.sms_senders = form.value.sms_senders.filter((item) => item !== sender);
 };
 
 const fillSingleTierByLimits = () => {
@@ -466,13 +446,15 @@ const toFormData = (is_edit) => {
     fd.append('trader_commission_rate_for_payouts', form.value.trader_commission_rate_for_payouts ?? '');
     fd.append('total_service_commission_rate_for_payouts', form.value.total_service_commission_rate_for_payouts ?? '');
     fd.append('is_active', form.value.is_active ? '1' : '0');
-    fd.append('is_payouts_enabled', form.value.is_payouts_enabled ? '1' : '0');
+    const payoutsEnabled = is_edit && paymentGateway.value
+        ? (paymentGateway.value.is_payouts_enabled === undefined || paymentGateway.value.is_payouts_enabled)
+        : true;
+    fd.append('is_payouts_enabled', payoutsEnabled ? '1' : '0');
     fd.append('is_intrabank', form.value.is_intrabank ? '1' : '0');
     fd.append('reservation_time_for_orders', form.value.reservation_time_for_orders ?? '');
     fd.append('reservation_time_for_payouts', form.value.reservation_time_for_payouts ?? '');
     fd.append('currency', (form.value.currency || 'RUB').toString().toUpperCase());
-    (form.value.detail_types || []).forEach(v => fd.append('detail_types[]', v));
-    (form.value.sms_senders || []).forEach(v => fd.append('sms_senders[]', v));
+    stripRemovedDetailTypes(form.value.detail_types || []).forEach(v => fd.append('detail_types[]', v));
     if (form.value.logo) {
         fd.append('logo', form.value.logo);
     }
@@ -1096,63 +1078,6 @@ watch(
                     </template>
 
                     <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-1">
-                            Отправители уведомлений
-                        </div>
-                        <div class="text-xs text-base-content/70 mb-3">
-                            Используются для распознавания SMS и push‑уведомлений по платежам.
-                        </div>
-
-                        <InputLabel
-                            for="sms_senders"
-                            value="Отправители смс/push"
-                            :error="!!errors.sms_senders?.[0]"
-                            class="mb-1"
-                        />
-
-                        <div class="relative">
-                            <TextInput
-                                id="sms_senders"
-                                v-model="sms_sender"
-                                class="block w-full"
-                                :error="!!errors.sms_senders?.[0]"
-                                @input="errors.sms_senders = null"
-                            />
-
-                            <button
-                                v-if="isCreateMode"
-                                @click.prevent="addSender"
-                                type="button"
-                                class="z-10 btn btn-primary btn-sm absolute end-1.5 bottom-1"
-                            >
-                                Добавить
-                            </button>
-                            <button
-                                v-else
-                                @click.prevent="addSender"
-                                type="button"
-                                class="btn btn-primary btn-sm absolute end-1.5 sm:bottom-1 bottom-1.5"
-                            >
-                                Добавить
-                            </button>
-                        </div>
-
-                        <InputError :message="errors.sms_senders?.[0]" class="mt-2" />
-                        <InputHelper v-if="! errors.sms_senders" model-value="Например: 900, Alfabank"></InputHelper>
-
-                        <div class="flex flex-wrap gap-0.5 mt-2">
-                            <div v-for="sender in form.sms_senders" :key="sender">
-                                <span class="badge badge-ghost inline-flex items-center me-2">
-                                    {{ sender }}
-                                    <svg @click="removeSender(sender)" class="w-3 h-3 ml-1.5 cursor-pointer" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
-                                    </svg>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-box border border-base-300 p-4">
                         <div class="text-sm font-medium mb-3">
                             Логотип метода
                         </div>
@@ -1202,13 +1127,6 @@ watch(
                                 <label class="label cursor-pointer justify-start gap-3">
                                     <input type="checkbox" class="toggle toggle-primary" v-model="form.is_active">
                                     <span class="label-text text-sm">Метод активен</span>
-                                </label>
-                            </div>
-
-                            <div>
-                                <label class="label cursor-pointer justify-start gap-3">
-                                    <input type="checkbox" class="toggle toggle-primary" v-model="form.is_payouts_enabled">
-                                    <span class="label-text text-sm">Выплаты доступны по методу</span>
                                 </label>
                             </div>
                         </div>

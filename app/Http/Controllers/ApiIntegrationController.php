@@ -17,12 +17,7 @@ class ApiIntegrationController extends Controller
 
     public function v2()
     {
-        $user = Auth::user();
-        if ($user instanceof User && $user->hasRole('Merchant') && ! $user->hasRole('Super Admin')) {
-            abort(404);
-        }
-
-        return Inertia::render('Integration/V2');
+        abort(404);
     }
 
     /**

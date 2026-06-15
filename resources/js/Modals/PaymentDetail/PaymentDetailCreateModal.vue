@@ -20,6 +20,7 @@ import {
     paymentDetailSectionHints,
     paymentDetailTypeHints,
 } from "@/utils/paymentDetailHints.js";
+import { isRemovedDetailType } from "@/utils/paymentDetail.js";
 import { storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
@@ -69,7 +70,6 @@ const details = ref({
     'mobile_commerce': '',
     'account_number': '',
     'iban_uah': '',
-    'nspk': '',
     'e-com': '',
 });
 
@@ -91,7 +91,6 @@ const detail_type_names = {
     'mobile_commerce': 'Моб. коммерция',
     'account_number': 'Номер счета',
     'iban_uah': 'IBAN UAH',
-    'nspk': 'NSPK (ссылка)',
     'e-com': 'E-COM',
 };
 
@@ -103,9 +102,11 @@ const availableDetailTypes = computed(() => {
         .forEach(pg => {
             (pg.detail_types || []).forEach(type => types.add(type));
         });
-    return Array.from(types).map(type => ({
+    return Array.from(types)
+        .filter(type => !isRemovedDetailType(type))
+        .map(type => ({
         id: type,
-        name: detail_type_names[type]
+        name: detail_type_names[type] ?? type
     }));
 });
 
@@ -324,7 +325,6 @@ const resetState = () => {
         'mobile_commerce': '',
         'account_number': '',
         'iban_uah': '',
-        'nspk': '',
         'e-com': '',
     };
     selectedDetailType.value = null;
@@ -658,27 +658,6 @@ watch(
                                 type="text"
                                 class="mt-1 block w-full"
                                 placeholder="UA543220010000026200353789635"
-                                :error="!!errors.detail?.[0]"
-                                @input="errors.detail = null"
-                                :disabled="processing"
-                            />
-                            <InputError :message="errors.detail?.[0]" class="mt-2" />
-                        </div>
-
-                        <div v-if="selectedDetailType === 'nspk'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
-                            <InputLabel
-                                for="detail"
-                                value="Ссылка NSPK/SBP"
-                                :error="!!errors.detail?.[0]"
-                                :hint="currentDetailHint"
-                                :hint-class="desktopHintClass"
-                            />
-                            <TextInput
-                                id="detail"
-                                v-model="details['nspk']"
-                                type="url"
-                                class="mt-1 block w-full"
-                                placeholder="https://example.com/pay"
                                 :error="!!errors.detail?.[0]"
                                 @input="errors.detail = null"
                                 :disabled="processing"

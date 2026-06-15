@@ -5,7 +5,6 @@ import OrderStatus from "@/Components/OrderStatus.vue";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
-import OrderModal from "@/Modals/OrderModal.vue";
 import {useModalStore} from "@/store/modal.js";
 import DateTime from "@/Components/DateTime.vue";
 import {ref} from "vue";
@@ -15,7 +14,6 @@ import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import DateFilter from "@/Components/Filters/Pertials/DateFilter.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
-import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
@@ -31,13 +29,6 @@ router.on('success', (event) => {
 })
 
 const reloadingTableData = ref(false);
-
-const openOrderModal = (order) => {
-    if (reloadingTableData.value) {
-        return;
-    }
-    modalStore.openOrderModal({order_id: order.id})
-}
 
 const confirmAcceptDispute = (dispute) => {
     modalStore.openConfirmModal({
@@ -259,11 +250,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                             </button>
-                                            <OrderDetailsOpenButton
-                                                :has-order-sms="order.has_order_sms"
-                                                :disabled="reloadingTableData"
-                                                @click="openOrderModal(order)"
-                                            />
                                         </div>
                                     </td>
                                 </tr>
@@ -337,11 +323,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                     </svg>
                                                 </button>
-                                                <OrderDetailsOpenButton
-                                                    :has-order-sms="order.has_order_sms"
-                                                    :disabled="reloadingTableData"
-                                                    @click="openOrderModal(order)"
-                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -396,11 +377,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                         </svg>
                                                     </button>
-                                                    <OrderDetailsOpenButton
-                                                        :has-order-sms="order.has_order_sms"
-                                                        :disabled="reloadingTableData"
-                                                        @click="openOrderModal(order)"
-                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -413,7 +389,6 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
         </MainTableSection>
 
-        <OrderModal/>
         <DisputeModal
             @accept="confirmAcceptDispute"
             @cancel="modalStore.openDisputeCancelModal({dispute:$event})"

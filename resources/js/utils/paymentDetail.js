@@ -1,3 +1,13 @@
+export const removedDetailTypes = ['nspk'];
+
+export function isRemovedDetailType(type) {
+    return removedDetailTypes.includes(type);
+}
+
+export function stripRemovedDetailTypes(types) {
+    return (types || []).filter((type) => !isRemovedDetailType(type));
+}
+
 export function useFormatPaymentDetail(detail, type) {
     if (type === 'card') {
         return detail.match(/.{1,4}/g).join(' ');
@@ -13,7 +23,7 @@ export function useFormatPaymentDetail(detail, type) {
     if (type === 'iban_uah') {
         return detail;
     }
-    if (['nspk', 'e-com'].includes(type)) {
+    if (type === 'e-com') {
         return detail;
     }
 

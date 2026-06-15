@@ -72,9 +72,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                             UUID сущности
                                         </th>
                                         <th scope="col">
-                                            URL
-                                        </th>
-                                        <th scope="col">
                                             HTTP код
                                         </th>
                                         <th scope="col">
@@ -101,9 +98,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <DisplayUUID v-if="log.callbackable" :uuid="log.callbackable.uuid" />
                                                 <span v-else>-</span>
                                             </td>
-                                            <td class="max-w-64 truncate">
-                                                {{ log.url }}
-                                            </td>
                                             <td>
                                                 <span :class="log.status_code && log.status_code >= 200 && log.status_code < 300 ? 'badge badge-xs badge-success' : 'badge badge-xs badge-error'">
                                                     {{ log.status_code || '-' }}
@@ -121,8 +115,12 @@ defineOptions({ layout: AuthenticatedLayout })
 
                                         <!-- Развернутая информация -->
                                         <tr v-if="expandedRows[log.id]" class="bg-base-200">
-                                            <td colspan="7" class="px-6 py-4">
+                                            <td colspan="6" class="px-6 py-4">
                                                 <h4 class="font-semibold mb-2">Детали</h4>
+                                                <div v-if="log.url" class="flex items-start gap-2 text-sm mb-4">
+                                                    <span class="text-base-content/80 shrink-0">URL:</span>
+                                                    <span class="text-base-content/60 break-all break-words">{{ log.url }}</span>
+                                                </div>
                                                 <div class="grid grid-cols-2 gap-4">
                                                     <div v-if="log.request_data" class="mb-4">
                                                         <div class="opacity-70 mb-1">Данные запроса:</div>

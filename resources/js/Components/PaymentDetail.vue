@@ -79,7 +79,7 @@ const processingIndicatorIconClass = computed(() => {
 
 <template>
     <div>
-        <template v-if="['nspk', 'e-com'].includes(type)">
+        <template v-if="type === 'e-com'">
             <div class="flex items-center gap-2">
                 <a
                     :href="detail"
@@ -87,7 +87,7 @@ const processingIndicatorIconClass = computed(() => {
                     rel="noreferrer"
                     class="text-base-content no-underline hover:text-primary"
                 >
-                    {{ type === 'nspk' ? 'NSPK ссылка' : 'E-COM ссылка' }}
+                    E-COM ссылка
                 </a>
                 <AppTooltip
                     v-if="showProcessingIndicator"
@@ -164,6 +164,9 @@ const processingIndicatorIconClass = computed(() => {
                                 {{ detail }}
                             </template>
                         </template>
+                        <template v-if="type === 'nspk'">
+                            {{ detail }}
+                        </template>
                     </a>
                 </AppTooltip>
                 <AppTooltip
@@ -234,6 +237,9 @@ const processingIndicatorIconClass = computed(() => {
                         <template v-else>
                             {{ detail }}
                         </template>
+                    </template>
+                    <template v-if="type === 'nspk'">
+                        {{ detail }}
                     </template>
                 </span>
                 <AppTooltip

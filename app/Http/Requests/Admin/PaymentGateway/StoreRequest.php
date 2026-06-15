@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin\PaymentGateway;
 use App\Enums\DetailType;
 use App\Services\Money\Currency;
 use App\Support\TraderCommissionTierResolver;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,7 @@ class StoreRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -51,8 +52,6 @@ class StoreRequest extends FormRequest
             'is_intrabank' => ['required', 'boolean'],
             'reservation_time_for_orders' => ['required', 'integer', 'min:1'],
             'reservation_time_for_payouts' => ['required', 'integer', 'min:1'],
-            'sms_senders' => ['nullable', 'array'],
-            'sms_senders.*' => ['required', 'string'],
             'logo' => ['required', 'image', 'mimes:png', 'max:2048', Rule::dimensions()->ratio(1.0)],
         ];
     }
@@ -77,7 +76,6 @@ class StoreRequest extends FormRequest
             'is_intrabank' => __('внутрибанковский перевод'),
             'reservation_time_for_orders' => __('время на сделку'),
             'reservation_time_for_payouts' => __('время на выплату'),
-            'sms_senders' => __('отправители смс/push'),
         ];
     }
 
@@ -130,6 +128,7 @@ class StoreRequest extends FormRequest
                         'trader_commission_tiers_for_orders',
                         'Для гибкой комиссии добавьте хотя бы один уровень.'
                     );
+
                     return;
                 }
 
@@ -139,6 +138,7 @@ class StoreRequest extends FormRequest
                         'total_service_commission_tiers_for_orders',
                         'Для гибкой тотал комиссии добавьте хотя бы один уровень.'
                     );
+
                     return;
                 }
 
@@ -167,6 +167,7 @@ class StoreRequest extends FormRequest
                         'total_service_commission_tiers_for_orders',
                         'Количество уровней для комиссии трейдера и тотал комиссии сервиса должно совпадать.'
                     );
+
                     return;
                 }
 
@@ -191,7 +192,7 @@ class StoreRequest extends FormRequest
                     }
                 }
 
-            }
+            },
         ];
     }
 }

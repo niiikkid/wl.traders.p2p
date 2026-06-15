@@ -13,6 +13,9 @@ import { storeToRefs } from "pinia";
 import { useModalStore } from "@/store/modal.js";
 import { computed, ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
+import { isRemovedDetailType, stripRemovedDetailTypes } from "@/utils/paymentDetail.js";
+
+const filterDetailTypeOptions = (items) => (items || []).filter((item) => !isRemovedDetailType(item.code));
 
 const modalStore = useModalStore();
 const { paymentGatewayBulkSettingsModal } = storeToRefs(modalStore);
@@ -150,7 +153,6 @@ const form = ref({
     reservation_time_for_orders: null,
     reservation_time_for_payouts: null,
     is_active: true,
-    is_payouts_enabled: true,
     apply: {
         detail_types: false,
         min_limit: false,
@@ -165,7 +167,6 @@ const form = ref({
         reservation_time_for_orders: false,
         reservation_time_for_payouts: false,
         is_active: false,
-        is_payouts_enabled: false,
     },
 });
 
@@ -190,7 +191,6 @@ const resetForm = () => {
         reservation_time_for_orders: null,
         reservation_time_for_payouts: null,
         is_active: true,
-        is_payouts_enabled: true,
         apply: {
             detail_types: false,
             min_limit: false,
@@ -205,7 +205,6 @@ const resetForm = () => {
             reservation_time_for_orders: false,
             reservation_time_for_payouts: false,
             is_active: false,
-            is_payouts_enabled: false,
         },
     };
     errors.value = {};
@@ -217,7 +216,7 @@ const loadData = () => {
         .then((response) => {
             const data = response.data?.data || response.data || {};
             currencies.value = data.currencies || [];
-            detail_types.value = data.detailTypes || [];
+            detail_types.value = filterDetailTypeOptions(data.detailTypes || []);
             loading.value = false;
         })
         .catch(() => {
@@ -263,7 +262,9 @@ const submit = () => {
     }
     Object.entries(form.value.apply).forEach(([field, enabled]) => {
         if (enabled) {
-            payload[field] = form.value[field];
+            payload[field] = field === 'detail_types'
+                ? stripRemovedDetailTypes(form.value[field])
+                : form.value[field];
         }
     });
 
@@ -891,28 +892,6 @@ watch(
                                     <span class="label-text text-sm">Метод активен</span>
                                 </label>
                                 <InputError :message="errors.is_active?.[0]" />
-                            </div>
-
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.is_payouts_enabled"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Выплаты доступны по методу</span>
-                                </label>
-                                <label v-if="form.apply.is_payouts_enabled" class="label cursor-pointer justify-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        class="toggle toggle-primary"
-                                        v-model="form.is_payouts_enabled"
-                                        :disabled="!isCurrencySelected || !form.apply.is_payouts_enabled"
-                                    >
-                                    <span class="label-text text-sm">Выплаты доступны по методу</span>
-                                </label>
-                                <InputError :message="errors.is_payouts_enabled?.[0]" />
                             </div>
                         </div>
                     </div>

@@ -1,5 +1,17 @@
 # Wiki Log
 
+## [2026-06-16] correction | Step 20 — shipped; modal config only, runtime sms_senders retained
+- Updated: Legacy Feature Removal Technical Specification
+
+## [2026-06-16] correction | Step 23 — mass resend only; per-order/payout resend retained
+- Updated: Legacy Feature Removal Technical Specification
+
+## [2026-06-15] implementation | Step 20 frontend — Remove Bank Notification Sender Settings
+- Updated: Legacy Feature Removal Technical Specification
+
+## [2026-06-15] implementation | Step 25 frontend — Remove Project Support Link Setting
+- Updated: Legacy Feature Removal Technical Specification
+
 ## [2026-06-15] ingest | Legacy Feature Removal Technical Specification (deep backlog expansion)
 - Updated: Legacy Feature Removal Technical Specification
 
@@ -229,3 +241,9 @@
 
 ## [2026-05-26] ingest | Team Leader Shared Insurance Mode Specification (Phase 5 wiki compile)
 - Updated: Team Leader Shared Insurance Mode Specification
+
+## [2026-06-15] implementation | Step 24 — Callback Log URL column removal (frontend)
+- Updated: Legacy Feature Removal Technical Specification
+
+## [2026-06-16] implementation | Step 22 — Payout commission helper text removal (frontend)
+- Updated: Legacy Feature Removal Technical Specification

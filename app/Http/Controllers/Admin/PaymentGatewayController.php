@@ -76,8 +76,6 @@ class PaymentGatewayController extends Controller
         $logo->move(storage_path('/app/public/logos'), $logo_name);
 
         $data = $request->validated();
-
-        $data['sms_senders'] = $data['sms_senders'] ?? [];
         $data['logo'] = $logo_name;
 
         PaymentGateway::create($data);
@@ -87,6 +85,7 @@ class PaymentGatewayController extends Controller
                 'success' => true,
             ], 201);
         }
+
         return redirect()->route('admin.payment-gateways.index');
     }
 
@@ -115,7 +114,6 @@ class PaymentGatewayController extends Controller
     public function update(UpdateRequest $request, PaymentGateway $paymentGateway)
     {
         $data = $request->validated();
-        $data['sms_senders'] = $data['sms_senders'] ?? [];
 
         $logo = $request->file('logo');
         if ($logo) {
@@ -133,6 +131,7 @@ class PaymentGatewayController extends Controller
                 'success' => true,
             ]);
         }
+
         return redirect()->route('admin.payment-gateways.index');
     }
 

@@ -80,4 +80,4 @@ Legacy feature removal plans for safely deleting deprecated roles, pages, API su
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Legacy Feature Removal Technical Specification](feature-removal/legacy-feature-removal-technical-spec.md) | [Archived] Steps **1–18 shipped**; deeply mapped backlog **19–27** covers bank payout/sender settings, NSPK, payout commissions, callback resend/log UI, support link, order reveal, and safe Cascade removal. | 2026-06-15 |
+| [Legacy Feature Removal Technical Specification](feature-removal/legacy-feature-removal-technical-spec.md) | Steps **1–18**, **19** (frontend), **20**, **22**, **23** (frontend, mass resend only), **24**, **25** (frontend) shipped; backlog **19 backend, 21, 23 backend, 25 backend, 26–27**. | 2026-06-16 |

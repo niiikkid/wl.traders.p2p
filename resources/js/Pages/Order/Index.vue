@@ -5,11 +5,10 @@ import OrderStatus from "@/Components/OrderStatus.vue";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
-import OrderModal from "@/Modals/OrderModal.vue";
 import {useModalStore} from "@/store/modal.js";
 import DateTime from "@/Components/DateTime.vue";
 import {useViewStore} from "@/store/view.js";
-import {computed, ref, unref, watch} from "vue";
+import {computed, ref, unref} from "vue";
 import DisplayUUID from "@/Components/DisplayUUID.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
@@ -24,7 +23,6 @@ import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
 import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import MoneyValue from "@/Components/MoneyValue.vue";
 import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
-import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
 import PaymentDetailInfoDropdown from "@/Components/PaymentDetailInfoDropdown.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 //import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
@@ -36,26 +34,6 @@ const { confirmAcceptOrder } = useConfirmAcceptOrder();
 const trafficPaused = ref(usePage().props.trafficPaused ?? usePage().props.adminTrafficPaused ?? false);
 const trafficPauseForm = useForm({
     paused: trafficPaused.value,
-});
-
-const displayShortDetail = ref(getCookieValue('displayShortDetail', false));
-
-function getCookieValue(name, defaultValue) {
-    const currentRoute = route().current();
-    const cookieName = `${name}_${currentRoute}`;
-    const match = document.cookie.match(new RegExp('(^| )' + cookieName + '=([^;]+)'));
-    return match ? match[2] === 'true' : defaultValue;
-}
-
-function updateDisplayShortDetailCookie() {
-    const currentRoute = route().current();
-    const cookieName = `displayShortDetail_${currentRoute}`;
-    document.cookie = `${cookieName}=${displayShortDetail.value}; path=/; max-age=31536000`; // 1 год
-}
-
-// Следим за изменениями и обновляем cookie
-watch(displayShortDetail, () => {
-    updateDisplayShortDetailCookie();
 });
 
 const filtersVariants = ref(usePage().props.filtersVariants);
@@ -76,13 +54,6 @@ const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilt
 const toggleFiltersFromToolbar = () => {
     filtersPanelRef.value?.toggleFiltersDisplay?.();
 };
-
-const openOrderModal = (order) => {
-    if (reloadingTableData.value) {
-        return;
-    }
-    modalStore.openOrderModal({order_id: order.id})
-}
 
 const confirmAcceptDispute = (dispute) => {
     modalStore.openConfirmModal({
@@ -363,20 +334,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col">
                                             Сумма
                                         </th>
-                                        <th scope="col" class="flex items-center">
+                                        <th scope="col">
                                             Реквизит
-                                            <label class="swap swap-rotate inline-grid place-items-center ml-2 cursor-pointer w-6 h-6">
-                                                <input type="checkbox" v-model="displayShortDetail" class="sr-only" />
-                                                <!-- Коротко (скрываем детали) -->
-                                                <svg class="swap-on w-5 h-5 text-base-content/70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                                </svg>
-                                                <!-- Полностью (показываем), праймари -->
-                                                <svg class="swap-off w-5 h-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                                                </svg>
-                                            </label>
                                         </th>
                                         <th scope="col" v-if="viewStore.isAdminViewMode">
                                             Профиль
@@ -423,7 +382,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 :detail="order.payment_detail"
                                                 :type="order.payment_detail_type"
                                                 :name="order.payment_detail_name"
-                                                :short="displayShortDetail"
                                             >
                                                 <template #actions>
                                                     <PaymentDetailInfoDropdown
@@ -485,11 +443,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                             </button>
-                                            <OrderDetailsOpenButton
-                                                :has-order-sms="order.has_order_sms"
-                                                :disabled="reloadingTableData"
-                                                @click="openOrderModal(order)"
-                                            />
                                         </div>
                                     </td>
                                 </tr>
@@ -578,12 +531,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                             </button>
-                                            <OrderDetailsOpenButton
-                                                square
-                                                :has-order-sms="order.has_order_sms"
-                                                :disabled="reloadingTableData"
-                                                @click="openOrderModal(order)"
-                                            />
                                         </div>
                                     </div>
                                     <!--Для всего что меньше sm size-->
@@ -646,12 +593,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                     </svg>
                                                 </button>
-                                                <OrderDetailsOpenButton
-                                                    square
-                                                    :has-order-sms="order.has_order_sms"
-                                                    :disabled="reloadingTableData"
-                                                    @click="openOrderModal(order)"
-                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -663,7 +604,6 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
         </MainTableSection>
 
-        <OrderModal/>
         <PaymentDetailEditModal/>
         <EditOrderAmountModal/>
         <DisputeModal

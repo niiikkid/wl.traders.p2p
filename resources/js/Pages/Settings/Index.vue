@@ -4,7 +4,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SettingsPanel from '@/Pages/Settings/SettingsPanel.vue';
 import PrimeTimeBonus from '@/Pages/Settings/Partials/PrimeTimeBonus.vue';
 import AppSlogan from '@/Pages/Settings/Partials/AppSlogan.vue';
-import SupportLink from '@/Pages/Settings/Partials/SupportLink.vue';
 import FundsOnHold from '@/Pages/Settings/Partials/FundsOnHold.vue';
 import MaxPendingDisputes from '@/Pages/Settings/Partials/MaxPendingDisputes.vue';
 import MaxRejectedDisputes from '@/Pages/Settings/Partials/MaxRejectedDisputes.vue';
@@ -33,9 +32,6 @@ defineOptions({ layout: AuthenticatedLayout })
             </SettingsPanel>
             <SettingsPanel>
                 <DefaultReserveBalanceLimit />
-            </SettingsPanel>
-            <SettingsPanel>
-                <SupportLink />
             </SettingsPanel>
             <SettingsPanel>
                 <FundsOnHold />

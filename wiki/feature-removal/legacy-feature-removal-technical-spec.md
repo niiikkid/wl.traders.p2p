@@ -2,7 +2,7 @@
 
 > Sources: User conversation, 2026-06-15; repository exploration, 2026-06-15; focused repository exploration for Rapira/API/roles/trader features, 2026-06-15; existing wiki article [Merchant Traffic Categories Architecture](../traffic-categories/merchant-traffic-categories-architecture.md)
 > Raw: [Legacy Feature Removal Requirements](../../raw/feature-removal/2026-06-15-legacy-feature-removal-requirements.md); [Payment Demo And Domain Split Removal](../../raw/feature-removal/2026-06-15-payment-demo-and-domain-split-removal.md); [Additional Legacy Feature Removal Requirements](../../raw/feature-removal/2026-06-15-additional-legacy-feature-removal-requirements.md); [Feature Removal Specification Depth Feedback](../../raw/feature-removal/2026-06-15-feature-removal-spec-depth-feedback.md)
-> Updated: 2026-06-15
+> Updated: 2026-06-16 (Step 20 shipped — modal config only)
 
 ## Overview
 
@@ -22,7 +22,7 @@ Every removal step must be implemented as a small isolated change. Before deleti
 
 ## Implementation Steps
 
-Steps 1–18 are already implemented and should be treated as removed legacy functionality. Steps 19–27 are the new removal backlog and must be implemented separately after this specification. Each new step below is mapped to concrete frontend, backend, data, and verification surfaces found in the repository.
+Steps 1–18 and Step 24 are already implemented and should be treated as removed legacy functionality. Steps 19–23 and 25–27 are the remaining removal backlog and must be implemented separately after this specification. Each step below is mapped to concrete frontend, backend, data, and verification surfaces found in the repository.
 
 ### Step 1 — Remove Analyst Account And Analyst Functionality (**Shipped**)
 
@@ -339,19 +339,19 @@ The real public hosted payment form (`/payment/{order:uuid}`, `PaymentLinkContro
 
 Admin bank/payment-method settings currently contain a separate per-gateway payout availability flag. The runtime field is `payment_gateways.is_payouts_enabled`; it appears in the single gateway modal, bulk gateway settings, resources, validation, and payout pooling. This step removes the ability to configure payout availability per bank/payment gateway, not the entire payout product.
 
-#### Frontend Removal
+#### Frontend Removal (**Shipped**)
 
-- Remove `is_payouts_enabled` from `resources/js/Modals/PaymentGateway/PaymentGatewayModal.vue`:
+- Removed `is_payouts_enabled` from `resources/js/Modals/PaymentGateway/PaymentGatewayModal.vue`:
   - initial `form` defaults, `resetFormForCreate()`, `resetFormForEdit()`;
   - `loadEditData()` hydration from `paymentGateway.is_payouts_enabled`;
-  - `FormData` submit append;
   - the UI toggle near the bottom of the modal.
-- Remove `is_payouts_enabled` from `resources/js/Modals/PaymentGateway/PaymentGatewayBulkSettingsModal.vue`:
+- Removed `is_payouts_enabled` from `resources/js/Modals/PaymentGateway/PaymentGatewayBulkSettingsModal.vue`:
   - form defaults and `apply.is_payouts_enabled`;
   - bulk checkbox/toggle section;
   - submit payload and validation error display.
-- Search payment gateway index/table UI for payout-enabled badges, filters, or columns and remove any display that claims payouts can be enabled/disabled per bank.
-- Keep `is_active` and order/payment detail availability controls. Do not conflate general bank activity with payout-specific availability.
+- Checked `resources/js/Pages/PaymentGateway/Index.vue`: no payout-enabled badges, filters, or columns to remove.
+- Kept `is_active` and order/payment detail availability controls unchanged.
+- **Compatibility shim (until backend step):** `PaymentGatewayModal::toFormData()` still sends `is_payouts_enabled` silently — `true` on create, existing DB value on edit — so `StoreRequest`/`UpdateRequest` validation keeps working without admin UI for the flag.
 
 #### Backend Removal
 
@@ -375,42 +375,40 @@ Admin bank/payment-method settings currently contain a separate per-gateway payo
 - Payout creation, trader payout taking, payout callbacks, and payout admin list still work.
 - `php artisan route:list` and Ziggy contain no stale bulk/settings routes or props for the removed UI.
 
-### Step 20 — Remove Bank Notification Sender Settings
+### Step 20 — Remove Bank Notification Sender Settings From Payment Gateway Modals (**Shipped**)
 
 #### Context
 
-Bank settings also store notification sender aliases in `payment_gateways.sms_senders`. They are edited in the admin payment gateway modal and used outside that modal by sender stop-list helpers and test-data generation. This step removes bank-level sender configuration; it does not remove the SMS/push automation pipeline itself.
+`payment_gateways.sms_senders` stores notification sender aliases used at runtime by SMS/push parsing (`Sms/Parser`), sender stop-list helpers, and test-data generation. **This step does not remove that runtime behavior or the DB column.** It only removes the admin ability to configure senders from payment gateway create/edit modals and from bulk settings (bulk never exposed this field).
 
-#### Frontend Removal
+#### Frontend Removal (**done**)
 
-- Remove the “Отправители уведомлений” block from `resources/js/Modals/PaymentGateway/PaymentGatewayModal.vue`:
+- Removed the “Отправители уведомлений” block from `resources/js/Modals/PaymentGateway/PaymentGatewayModal.vue`:
   - `sms_sender` state;
   - `form.sms_senders` defaults and edit hydration;
   - `addSender()` / `removeSender()`;
   - `FormData` `sms_senders[]` append;
   - sender input, helper text, chips, and errors.
-- Search admin payment gateway index/detail/bulk pages for sender display. Remove any bank-level sender management entry point.
+- Confirmed no sender UI in `PaymentGateway/Index.vue` or `PaymentGatewayBulkSettingsModal.vue`.
 
-#### Backend Removal
+#### Backend Removal (**done**)
 
-- Remove `sms_senders` from:
-  - `StoreRequest`, `UpdateRequest`, attributes and validation;
-  - `PaymentGatewayController::store()` / `update()` defaults;
-  - `PaymentGatewayResource`;
-  - `PaymentGateway` PHPDoc, `$fillable`, casts.
-- Audit and update `app/Http/Controllers/Admin/SenderStopListController.php`. It currently reads `$paymentGateway->sms_senders` to offer sender values. After removal, it must either:
-  - accept manually entered sender strings;
-  - use senders discovered from SMS logs;
-  - or be removed if sender stop-list management itself becomes invalid.
-- Update `app/Console/Commands/GenerateTestDataCommand.php` paths that choose random `sms_senders` from payment gateways. Replace with fixed synthetic sender names or remove that test-data branch if no longer meaningful.
-- Search SMS/push parsing services for `sms_senders` and bank matching. If any production parser depends on gateway sender aliases, migrate that logic before dropping the column.
-- Drop `payment_gateways.sms_senders` later, after sender stop-list/test-data/runtime parsing references are removed.
+- Removed `sms_senders` validation and attribute labels from `StoreRequest` and `UpdateRequest`.
+- Removed `sms_senders` assignment from `PaymentGatewayController::store()` and `update()`. Create/update no longer accept or overwrite sender aliases; existing DB values on edit are preserved.
+- `bulkUpdate()` already did not include `sms_senders` in allowed bulk fields.
+
+#### Retained (not in scope)
+
+- `payment_gateways.sms_senders` column, model cast/fillable, and `PaymentGatewayResource` read payload.
+- `Sms/Parser` bank matching by gateway senders.
+- `SenderStopListController` reading gateway senders.
+- `GenerateTestDataCommand` synthetic sender selection from gateways.
 
 #### Verification
 
-- Admin payment gateway create/edit works without `sms_senders`.
-- Sender stop-list page/API still works or is explicitly removed by a separate step.
-- SMS ingestion, shadow SMS logs, order matching, and push/SMS automation do not throw missing attribute errors.
+- Admin can create/edit/bulk-edit payment gateways without sender fields.
+- Editing a gateway does not clear existing `sms_senders` in DB.
+- SMS ingestion, parsing, shadow SMS logs, order matching, and sender stop-list still work with existing data.
 
 ### Step 21 — Remove NSPK Payment Detail Type
 
@@ -454,125 +452,99 @@ Bank settings also store notification sender aliases in `payment_gateways.sms_se
 - API docs no longer advertise `nspk`.
 - No runtime enum cast fails on existing DB rows.
 
-### Step 22 — Remove Editable Payout Commission Settings
+### Step 22 — Remove Payout Commission Helper Text (**Shipped**)
 
 #### Context
 
-There are two payout commission surfaces:
+Raw requirement #4 was misread during initial spec drafting. The actual product request is to **remove** the helper text `Комиссии используются только если платежный метод не выбран.` from admin payout settings — not to delete payout commission fields or backend settings.
 
-- Global/fallback payout currency settings in `PayoutSettingsModal.vue` and `SettingsService::normalizePayoutCurrencySettings()` (`total_commission_rate`, `trader_commission_rate`, `reservation_time_for_payouts`).
-- Payment-gateway-specific payout commissions in `PaymentGatewayModal.vue`, `PaymentGatewayBulkSettingsModal.vue`, `payment_gateways.trader_commission_rate_for_payouts`, and `payment_gateways.total_service_commission_rate_for_payouts`.
+Global/fallback payout commission settings in `PayoutSettingsModal.vue` and payment-gateway-specific payout commissions in `PaymentGatewayModal.vue` / `PaymentGatewayBulkSettingsModal.vue` **remain**. Runtime behavior in `PayoutService` is unchanged: gateway rates when a payment method is selected, global settings fallback when not.
 
-The user request targets “настройки выплат комиссии” and mentions unified wording “если платёжный метод не выбран”. Safe interpretation: remove editable global fallback commission fields first, keep method-specific payout commissions unless business confirms they must also be deleted.
+#### Frontend Removal (**done**)
 
-#### Frontend Removal
+- Removed the helper `<div>` with text `Комиссии используются только если платежный метод не выбран.` from `resources/js/Modals/Payout/PayoutSettingsModal.vue`.
+- **Retained** `total_commission_rate`, `trader_commission_rate`, and `reservation_time_for_payouts` fields in the modal form and submit payload.
+- **Retained** payout commission fields in `PaymentGatewayModal.vue` and `PaymentGatewayBulkSettingsModal.vue`.
 
-- In `resources/js/Modals/Payout/PayoutSettingsModal.vue`:
-  - remove `total_commission_rate` and `trader_commission_rate` from `setDefaults()` form state;
-  - remove the two NumberInput fields from each currency card;
-  - keep `reservation_time_for_payouts` if payout time remains configurable;
-  - keep or replace helper text with unified text: `Комиссии применяются только если платёжный метод не выбран.` only where fallback commission information remains useful.
-- Do not remove `PaymentGatewayModal.vue` payout commission fields in this step unless product explicitly decides method-specific payout rates are also obsolete. If removed, that becomes a second-stage change touching `payment_gateways` columns and `PayoutService` rate resolution.
-- Audit `PaymentGatewayBulkSettingsModal.vue` for payout commission bulk fields. If method-specific payout commissions are retained, leave them; if not, remove both single and bulk gateway surfaces together.
+#### Backend Removal (**unchanged by design**)
 
-#### Backend Removal
+- No backend changes. Keep `UpdateCurrencySettingsRequest`, `SettingsService::normalizePayoutCurrencySettings()`, gateway payout commission columns, and `PayoutService` rate resolution as-is.
 
-- Remove global fallback commission settings from:
-  - `app/Http/Requests/Admin/Payout/UpdateCurrencySettingsRequest.php`;
-  - `app/Services/Settings/SettingsService.php::normalizePayoutCurrencySettings()`;
-  - `SettingsService::defaultPayoutCurrencySettings()`;
-  - settings service contract methods if any expose payout currency settings shape;
-  - installation/default settings if `app:install-settings` persists them.
-- Audit `app/Services/Payout/PayoutService.php`. Known behavior uses payment gateway payout rates when a payment method is selected and falls back to settings when not selected. Preserve this invariant explicitly:
-  - selected payment method → use gateway payout commission rates;
-  - no payment method → use approved fallback rule or a fixed default defined in code/config;
-  - do not create payouts with null commission rates.
-- Do not alter financial history columns on `payouts` (`total_commission_rate`, `trader_commission_rate`, `total_fee`, `trader_fee`, `teamlead_fee`, `service_fee`). Those are historical accounting fields, not settings UI.
-- If second-stage deletion of gateway-specific payout commissions is approved, separately remove:
-  - `payment_gateways.trader_commission_rate_for_payouts`;
-  - `payment_gateways.total_service_commission_rate_for_payouts`;
-  - `PaymentGatewayResource`, requests, model fields, bulk settings, and migrations.
+#### Verification (**done**)
 
-#### Verification
+- Admin payout settings modal opens without the removed helper text.
+- Commission fields still render, save, and load per currency.
+- Payout creation with and without payment method still uses the same commission resolution rules.
 
-- Admin payout settings modal saves without commission fields.
-- Creating payouts with and without payment method produces deterministic commission values.
-- Existing payout lists, exports, wallet movements, and callback payloads still show historical fees.
-
-### Step 23 — Remove Merchant Callback Resend Actions
+### Step 23 — Remove Mass Merchant Callback Resend (frontend **Shipped**; backend pending)
 
 #### Context
 
 Manual callback resend exists in three paths:
 
-- Admin mass resend by merchant/date range: `Admin\MerchantResendCallbackController::resendByDateRange()` and `admin.merchants.resend-callback`.
-- Merchant/order manual resend: `Merchant\ResendCallbackController::resend()` and route `payment.callback.resend`.
-- Merchant payout manual resend: `Merchant\PayoutCallbackController::resend()` and route `merchant.payouts.callback.resend`.
+- **Mass** admin resend by merchant/date range: `Admin\MerchantResendCallbackController::resendByDateRange()` and `admin.merchants.resend-callback` — **remove in this step**.
+- Per-order manual resend: `Merchant\ResendCallbackController::resend()` and route `payment.callback.resend` — **retain**.
+- Per-payout manual resend: `Merchant\PayoutCallbackController::resend()` and route `merchant.payouts.callback.resend` — **retain**.
 
-There is also `Merchant\ResendCallbackController::resendCascade()`, which is cascade-specific and should disappear with Step 27 or be removed here if reachable.
+There is also `Merchant\ResendCallbackController::resendCascade()`, which is cascade-specific and should disappear with Step 27.
 
-#### Frontend Removal
+#### Frontend Removal (**done**)
 
-- Remove “Callback resend” from `resources/js/Pages/Merchant/Tabs/Settings.vue`:
+- Removed mass “Callback resend” tab from `resources/js/Pages/Merchant/Tabs/Settings.vue`:
   - `formResendCallback` reactive object;
   - `submitResendCallback()`;
   - tabs entry `{id: 'resend', title: 'Callback resend'}`;
-  - date fields, submit button, validation errors, and success state.
-- Remove per-order callback resend actions from `resources/js/Pages/Payment/Index.vue` for desktop and mobile buttons using `route('payment.callback.resend', order.id)`.
-- Remove per-payout callback resend action from `resources/js/Pages/Payout/Merchant/Index.vue`:
-  - `resendPayoutCallback()`;
-  - desktop/mobile table actions calling `merchant.payouts.callback.resend`.
-- Search `TableAction` labels and route names for `callback.resend` to remove stale buttons and dropdown entries.
+  - date fields, submit button, validation errors, and success state;
+  - unused `DatepickerInput` import.
+- **Retained** per-order callback resend in `resources/js/Pages/Payment/Index.vue` (desktop dropdown + mobile button → `payment.callback.resend`).
+- **Retained** per-payout callback resend in `resources/js/Pages/Payout/Merchant/Index.vue` (`resendPayoutCallback()` → `merchant.payouts.callback.resend`).
 
 #### Backend Removal
 
-- Remove web routes and imports from `routes/web.php`:
-  - `POST /merchant/payouts/{payout:uuid}/callback/resend` → `merchant.payouts.callback.resend`;
-  - `POST /payment/{order}/callback/resend` → `payment.callback.resend`;
+- Remove only the mass-resend web route and import from `routes/web.php`:
   - `POST /merchants/{merchant}/resend-callback` → `admin.merchants.resend-callback`.
-- Delete controllers/methods that exist only for manual resend:
-  - `app/Http/Controllers/Admin/MerchantResendCallbackController.php`;
-  - `app/Http/Controllers/Merchant/ResendCallbackController.php` after confirming `resendCascade()` has no route or is removed with Cascade;
-  - `Merchant\PayoutCallbackController::resend()` or the full controller if no other methods remain.
+- Delete `app/Http/Controllers/Admin/MerchantResendCallbackController.php` if it has no other methods.
+- **Do not remove** per-order or per-payout resend routes/controllers while their UI remains:
+  - `POST /payment/{order}/callback/resend` → `payment.callback.resend`;
+  - `POST /merchant/payouts/{payout:uuid}/callback/resend` → `merchant.payouts.callback.resend`.
 - Keep automatic delivery jobs and services:
   - `SendOrderCallbackJob`;
   - `SendPayoutCallbackJob`;
   - `OrderCallback\CallbackService`.
-- Remove only manual retry entry points. Do not remove callback logs, merchant callback URLs, payout callback URLs, or normal lifecycle callback sending.
 - Remove validation/messages and permissions used only by mass resend. `MerchantResendCallbackController` currently has explicit Super Admin check; no replacement endpoint should keep the same capability accidentally.
 
 #### Verification
 
-- No route named `*.callback.resend` or `admin.merchants.resend-callback` remains.
-- Merchant settings page has no resend tab.
-- Merchant order/payout pages have no resend actions.
+- No route named `admin.merchants.resend-callback` remains after backend removal.
+- Merchant settings page has no mass-resend tab.
+- Per-order and per-payout resend actions still work on `Payment/Index` and `Payout/Merchant/Index`.
 - Normal callbacks are still sent on order/payout status changes and logged.
 
-### Step 24 — Move Callback Log URL Out Of The Main Table Column
+### Step 24 — Move Callback Log URL Out Of The Main Table Column (**Shipped**)
 
 #### Context
 
-`resources/js/Pages/CallbackLogs/Index.vue` shows URL as a desktop table column and already shows it inside mobile expanded details. The requested change is UI layout only: keep URL data in logs, but remove the main table column.
+`resources/js/Pages/CallbackLogs/Index.vue` showed URL as a desktop table column and already showed it inside mobile expanded details. The change is UI layout only: keep URL data in logs, but remove the main table column.
 
-#### Frontend Removal
+#### Frontend Removal (**done**)
 
 - In `CallbackLogs/Index.vue` desktop table:
-  - remove the `URL` `<th>`;
-  - remove the row `<td class="max-w-64 truncate">{{ log.url }}</td>`;
-  - change expanded details `colspan` from `7` to `6`.
-- Add URL to the desktop expanded details block, before request/response payloads, matching mobile expanded card behavior:
+  - removed the `URL` `<th>`;
+  - removed the row `<td class="max-w-64 truncate">{{ log.url }}</td>`;
+  - changed expanded details `colspan` from `7` to `6`.
+- Added URL to the desktop expanded details block, before request/response payloads, matching mobile expanded card behavior:
   - show only when `log.url` exists;
-  - use `break-all`/`break-words` styling so long URLs do not break the layout.
-- Keep mobile URL display in the expanded card.
-- Keep current filters (`uuid`, `merchant`) as-is; `CallbackLogQueriesEloquent` does not currently search URL, so no filter behavior needs to change.
+  - `break-all`/`break-words` styling for long URLs.
+- Mobile URL display in the expanded card unchanged.
+- Filters (`uuid`, `merchant`) unchanged.
 
-#### Backend Removal
+#### Backend Removal (**unchanged by design**)
 
 - Keep `app/Http/Resources/CallbackLogResource.php::url` because the expanded details still use it.
 - Keep `callback_logs.url` and log writes in `OrderCallback\CallbackService`, `SendCascadeDealCallbackJob` until Cascade is removed, and payout callback jobs. This is audit data.
 - No migration required.
 
-#### Verification
+#### Verification (**done**)
 
 - Desktop callback logs table has no URL column.
 - Expanding a row shows URL, request data, and response data.
@@ -584,11 +556,11 @@ There is also `Merchant\ResendCallbackController::resendCascade()`, which is cas
 
 The support link setting is a global project setting key `support_link` managed from admin settings. It is rendered by `SupportLink.vue`, passed as an Inertia prop, and installed through `SettingsService` defaults.
 
-#### Frontend Removal
+#### Frontend Removal (**done**)
 
-- Remove `import SupportLink from '@/Pages/Settings/Partials/SupportLink.vue';` and `<SupportLink />` from `resources/js/Pages/Settings/Index.vue`.
-- Delete `resources/js/Pages/Settings/Partials/SupportLink.vue` after confirming it is unused.
-- Remove UI validation references and any Russian text “Ссылка на техподдержку”.
+- Removed `import SupportLink from '@/Pages/Settings/Partials/SupportLink.vue';` and `<SupportLink />` from `resources/js/Pages/Settings/Index.vue`.
+- Deleted `resources/js/Pages/Settings/Partials/SupportLink.vue`.
+- No other frontend references to `supportLink`, `support_link`, or route `admin.settings.update.support-link` remain in `resources/`.
 
 #### Backend Removal
 
@@ -866,8 +838,6 @@ Tables/columns to inventory before drop:
 
 ## Open Decisions Before Implementation
 
-- Whether Step 22 removes only global fallback payout commission settings or also payment-gateway-specific payout commission columns.
-- Replacement source for bank notification sender aliases after removing `payment_gateways.sms_senders` (manual input, SMS-log discovery, or removing sender stop-list helpers).
 - Whether SMS presence from `has_order_sms` should remain visible after deleting the order eye button, and where it should be displayed if retained.
 - Data policy for existing NSPK payment details and payment gateway `detail_types` JSON values before enum removal.
 - Data-retention/export policy for historical cascade deals, transactions, events, provider logs, merchant logs, and unsettled holds before Step 27 schema removal.

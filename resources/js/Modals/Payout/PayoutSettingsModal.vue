@@ -151,10 +151,6 @@ watch(
                     {{ errors.message?.[0] }}
                 </div>
 
-                <div class="text-sm text-base-content/70">
-                    Комиссии используются только если платежный метод не выбран.
-                </div>
-
                 <div class="space-y-4">
                     <div
                         v-for="item in settingsList"
