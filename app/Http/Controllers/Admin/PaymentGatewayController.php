@@ -153,7 +153,6 @@ class PaymentGatewayController extends Controller
             'reservation_time_for_orders',
             'reservation_time_for_payouts',
             'is_active',
-            'is_payouts_enabled',
         ];
 
         $payload = [];

@@ -4,18 +4,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\DetailType;
 use App\Http\Controllers\Controller;
-use App\Models\PaymentDetail;
 use App\Models\PaymentGateway;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class FilterController extends Controller
 {
     /**
      * Возвращает список типов реквизитов
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function getDetailTypes()
     {
@@ -30,10 +29,9 @@ class FilterController extends Controller
                     DetailType::MOBILE_COMMERCE => 'Моб. коммерция',
                     DetailType::ACCOUNT_NUMBER => 'Номер счета',
                     DetailType::IBAN_UAH => 'IBAN UAH',
-                    DetailType::NSPK => 'NSPK (ссылка)',
                     DetailType::E_COM => 'E-COM',
                     default => $type->value,
-                }
+                },
             ];
         }
 
@@ -43,8 +41,7 @@ class FilterController extends Controller
     /**
      * Поиск платежных методов для фильтрации
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function searchPaymentGateways(Request $request)
     {
@@ -60,7 +57,7 @@ class FilterController extends Controller
             ->map(function ($gateway) {
                 return [
                     'value' => $gateway->id,
-                    'label' => $gateway->name . ' (' . $gateway->code . ')'
+                    'label' => $gateway->name.' ('.$gateway->code.')',
                 ];
             });
 
@@ -70,8 +67,7 @@ class FilterController extends Controller
     /**
      * Поиск пользователей для фильтрации
      *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function searchUsers(Request $request)
     {
@@ -87,7 +83,7 @@ class FilterController extends Controller
             ->map(function ($user) {
                 return [
                     'value' => $user->id,
-                    'label' => $user->name . ' (' . $user->email . ')'
+                    'label' => $user->name.' ('.$user->email.')',
                 ];
             });
 

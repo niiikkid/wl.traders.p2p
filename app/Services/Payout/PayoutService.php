@@ -649,10 +649,6 @@ class PayoutService implements PayoutServiceContract
         if (! (bool) $gateway->is_active) {
             throw PayoutException::gatewayInactive();
         }
-
-        if (! $gateway->is_payouts_enabled) {
-            throw PayoutException::gatewayPayoutsDisabled();
-        }
     }
 
     /**

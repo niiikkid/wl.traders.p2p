@@ -1,5 +1,8 @@
 # Wiki Log
 
+## [2026-06-15] implementation | Step 26 — Remove Order Details Eye Button / Full Requisite Reveal
+- Updated: Legacy Feature Removal Technical Specification
+
 ## [2026-06-16] correction | Step 20 — shipped; modal config only, runtime sms_senders retained
 - Updated: Legacy Feature Removal Technical Specification
 

@@ -9,11 +9,6 @@ class PayoutException extends BaseException
         return new self('Выбранный банк недоступен.');
     }
 
-    public static function gatewayPayoutsDisabled(): self
-    {
-        return new self('Для выбранного банка выплаты отключены.');
-    }
-
     public static function merchantIsUnderModeration(): self
     {
         return new self('Мерчант находится на модерации.');
@@ -122,11 +117,10 @@ class PayoutException extends BaseException
         string $allowedMaxRate,
     ): self {
         return new self(
-            "Недопустимый курс выплаты для {$currency}. " .
-            "Передан: {$requestedRate}. " .
-            "Опорный курс выплат: {$referenceRate}, допустимое отклонение: ±{$deviationPercent}% " .
+            "Недопустимый курс выплаты для {$currency}. ".
+            "Передан: {$requestedRate}. ".
+            "Опорный курс выплат: {$referenceRate}, допустимое отклонение: ±{$deviationPercent}% ".
             "(допустимый диапазон: {$allowedMinRate} - {$allowedMaxRate})."
         );
     }
 }
-

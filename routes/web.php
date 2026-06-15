@@ -14,7 +14,6 @@ use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\MerchantCascadeSettingController;
-use App\Http\Controllers\Admin\MerchantResendCallbackController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\OpenAiSettingController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
@@ -443,7 +442,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::patch('/settings/update/app-slogan', [SettingsController::class, 'updateAppSlogan'])->name('settings.update.app-slogan');
         Route::patch('/settings/update/prime-time-bonus', [SettingsController::class, 'updatePrimeTimeBonus'])->name('settings.update.prime-time-bonus');
-        Route::patch('/settings/update/support-link', [SettingsController::class, 'updateSupportLink'])->name('settings.update.support-link');
         Route::patch('/settings/update/funds-on-hold', [SettingsController::class, 'updateFundsOnHold'])->name('settings.update.funds-on-hold');
         Route::patch('/settings/update/max-pending-disputes', [SettingsController::class, 'updateMaxPendingDisputes'])->name('settings.update.max-pending-disputes');
         Route::patch('/settings/update/max-rejected-disputes', [SettingsController::class, 'updateMaxRejectedDisputes'])->name('settings.update.max-rejected-disputes');
@@ -458,7 +456,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/merchants/{merchant}/settings', [App\Http\Controllers\Admin\MerchantController::class, 'updateSettings'])->name('merchants.settings.update');
         Route::patch('/merchants/{merchant}/geo', [App\Http\Controllers\Admin\MerchantController::class, 'updateGeo'])->name('merchants.geo.update');
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
-        Route::post('/merchants/{merchant}/resend-callback', [MerchantResendCallbackController::class, 'resendByDateRange'])->name('merchants.resend-callback');
         // Вход под другим пользователем
         Route::post('/impersonate/{user}', function (User $user) {
             $currentUser = request()->user();

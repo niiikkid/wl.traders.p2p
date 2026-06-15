@@ -111,7 +111,6 @@ class PayoutPoolingJob implements ShouldQueue
 
         return PaymentGateway::query()
             ->where('code', $gatewayCode)
-            ->where('is_payouts_enabled', true)
             ->active()
             ->firstOrFail();
     }

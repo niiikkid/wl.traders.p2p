@@ -5,6 +5,7 @@ namespace App\Http\Requests\Admin\PaymentGateway;
 use App\Enums\DetailType;
 use App\Services\Money\Currency;
 use App\Support\TraderCommissionTierResolver;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,7 @@ class BulkSettingsRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -47,7 +48,6 @@ class BulkSettingsRequest extends FormRequest
             'reservation_time_for_orders' => ['sometimes', 'required', 'integer', 'min:1'],
             'reservation_time_for_payouts' => ['sometimes', 'required', 'integer', 'min:1'],
             'is_active' => ['sometimes', 'required', 'boolean'],
-            'is_payouts_enabled' => ['sometimes', 'required', 'boolean'],
         ];
     }
 
@@ -85,6 +85,7 @@ class BulkSettingsRequest extends FormRequest
                             );
                         }
                     }
+
                     return;
                 }
 
@@ -104,6 +105,7 @@ class BulkSettingsRequest extends FormRequest
                             );
                         }
                     }
+
                     return;
                 }
 
@@ -112,6 +114,7 @@ class BulkSettingsRequest extends FormRequest
                         'trader_commission_tiers_for_orders',
                         'Для массовой гибкой комиссии нужно одновременно указать min_limit и max_limit.'
                     );
+
                     return;
                 }
 
@@ -121,6 +124,7 @@ class BulkSettingsRequest extends FormRequest
                         'trader_commission_tiers_for_orders',
                         'Для гибкой комиссии добавьте хотя бы один уровень.'
                     );
+
                     return;
                 }
 
@@ -130,6 +134,7 @@ class BulkSettingsRequest extends FormRequest
                         'total_service_commission_tiers_for_orders',
                         'Для гибкой тотал комиссии добавьте хотя бы один уровень.'
                     );
+
                     return;
                 }
 
@@ -158,6 +163,7 @@ class BulkSettingsRequest extends FormRequest
                         'total_service_commission_tiers_for_orders',
                         'Количество уровней для комиссии трейдера и тотал комиссии сервиса должно совпадать.'
                     );
+
                     return;
                 }
 
@@ -183,7 +189,7 @@ class BulkSettingsRequest extends FormRequest
                     }
                 }
 
-            }
+            },
         ];
     }
 }

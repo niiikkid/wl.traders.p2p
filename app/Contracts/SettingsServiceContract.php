@@ -38,8 +38,6 @@ interface SettingsServiceContract
         CurrencyPriceParserSettings|BinancePriceParserSettings|ManualPriceParserSettings $settings
     ): void;
 
-    public function getSupportLink(): ?string;
-
     public function getFundsOnHoldTime(): int;
 
     public function updateFundsOnHoldTime(int $minutes);
@@ -51,8 +49,6 @@ interface SettingsServiceContract
     public function getMaxRejectedDisputes(): array;
 
     public function updateMaxRejectedDisputes(int $count, int $period): void;
-
-    public function updateSupportLink(string $link): void;
 
     public function getDefaultReserveBalanceLimit(): int;
 

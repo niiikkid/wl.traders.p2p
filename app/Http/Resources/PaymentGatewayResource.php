@@ -36,7 +36,6 @@ class PaymentGatewayResource extends JsonResource
             'trader_commission_rate_for_payouts' => $this->trader_commission_rate_for_payouts,
             'total_service_commission_rate_for_payouts' => $this->total_service_commission_rate_for_payouts,
             'is_active' => $this->is_active,
-            'is_payouts_enabled' => (bool) $this->is_payouts_enabled,
             'is_intrabank' => $this->is_intrabank,
             'reservation_time_for_orders' => $this->reservation_time_for_orders,
             'reservation_time_for_payouts' => $this->reservation_time_for_payouts,

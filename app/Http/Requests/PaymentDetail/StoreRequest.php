@@ -57,7 +57,7 @@ class StoreRequest extends FormRequest
                 'digits:16',
                 new UniquePaymentDetail,
             ];
-        } elseif (in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
+        } elseif (DetailType::E_COM->equals($this->detail_type)) {
             $detail = [
                 'required',
                 'string',
@@ -239,7 +239,7 @@ class StoreRequest extends FormRequest
         if ($this->detail_type === DetailType::IBAN_UAH->value) {
             $detail = strtoupper(trim((string) $detail));
             $detail = preg_replace('/\s+/', '', $detail);
-        } elseif (! in_array($this->detail_type, [DetailType::NSPK->value, DetailType::E_COM->value], true)) {
+        } elseif (! DetailType::E_COM->equals($this->detail_type)) {
             $detail = preg_replace('~\D+~', '', $detail);
         }
         if ($additionalInfo === '' || $additionalInfo === null) {

@@ -13,6 +13,5 @@ enum DetailType: string
     case MOBILE_COMMERCE = 'mobile_commerce';
     case ACCOUNT_NUMBER = 'account_number';
     case IBAN_UAH = 'iban_uah';
-    case NSPK = 'nspk';
     case E_COM = 'e-com';
 }

@@ -25,7 +25,7 @@ class StoreRequest extends FormRequest
         $merchant = is_string($merchantUuid) && $merchantUuid !== ''
             ? queries()->merchant()->findByUUID($merchantUuid)
             : null;
-            
+
         return [
             'merchant_id' => ['required', 'exists:merchants,uuid'],
             'external_id' => [
@@ -69,8 +69,7 @@ class StoreRequest extends FormRequest
                 'nullable',
                 'string',
                 Rule::exists('payment_gateways', 'code')
-                    ->where('is_active', 1)
-                    ->where('is_payouts_enabled', true),
+                    ->where('is_active', 1),
                 'required_without:currency',
             ],
             'currency' => [

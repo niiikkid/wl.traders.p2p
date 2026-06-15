@@ -13,7 +13,6 @@ class SettingsController extends Controller
     {
         $appSlogan = services()->settings()->getAppSlogan();
         $primeTimeBonus = services()->settings()->getPrimeTimeBonus()->toArray();
-        $supportLink = services()->settings()->getSupportLink();
         $fundsOnHoldTime = services()->settings()->getFundsOnHoldTime();
         $maxPendingDisputes = services()->settings()->getMaxPendingDisputes();
         $maxRejectedDisputes = services()->settings()->getMaxRejectedDisputes();
@@ -22,7 +21,6 @@ class SettingsController extends Controller
         return Inertia::render('Settings/Index', compact(
             'appSlogan',
             'primeTimeBonus',
-            'supportLink',
             'fundsOnHoldTime',
             'maxPendingDisputes',
             'maxRejectedDisputes',
@@ -48,15 +46,6 @@ class SettingsController extends Controller
             ends: $request->ends,
             rate: $request->rate,
         );
-
-        return redirect()->route('admin.settings.index');
-    }
-
-    public function updateSupportLink(Request $request)
-    {
-        $request->validate(['support_link' => 'required', 'url:https']);
-
-        services()->settings()->updateSupportLink($request->support_link);
 
         return redirect()->route('admin.settings.index');
     }

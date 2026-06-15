@@ -446,10 +446,6 @@ const toFormData = (is_edit) => {
     fd.append('trader_commission_rate_for_payouts', form.value.trader_commission_rate_for_payouts ?? '');
     fd.append('total_service_commission_rate_for_payouts', form.value.total_service_commission_rate_for_payouts ?? '');
     fd.append('is_active', form.value.is_active ? '1' : '0');
-    const payoutsEnabled = is_edit && paymentGateway.value
-        ? (paymentGateway.value.is_payouts_enabled === undefined || paymentGateway.value.is_payouts_enabled)
-        : true;
-    fd.append('is_payouts_enabled', payoutsEnabled ? '1' : '0');
     fd.append('is_intrabank', form.value.is_intrabank ? '1' : '0');
     fd.append('reservation_time_for_orders', form.value.reservation_time_for_orders ?? '');
     fd.append('reservation_time_for_payouts', form.value.reservation_time_for_payouts ?? '');

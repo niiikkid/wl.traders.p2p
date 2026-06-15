@@ -80,4 +80,4 @@ Legacy feature removal plans for safely deleting deprecated roles, pages, API su
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Legacy Feature Removal Technical Specification](feature-removal/legacy-feature-removal-technical-spec.md) | Steps **1–18**, **19** (frontend), **20**, **22**, **23** (frontend, mass resend only), **24**, **25** (frontend) shipped; backlog **19 backend, 21, 23 backend, 25 backend, 26–27**. | 2026-06-16 |
+| [Legacy Feature Removal Technical Specification](feature-removal/legacy-feature-removal-technical-spec.md) | Steps **1–18**, **19** (frontend), **20**, **22**, **23** (frontend, mass resend only), **24**, **25** (frontend), **26** shipped; backlog **19 backend, 21, 23 backend, 25 backend, 27**. | 2026-06-15 |

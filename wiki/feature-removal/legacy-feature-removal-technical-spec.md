@@ -2,7 +2,7 @@
 
 > Sources: User conversation, 2026-06-15; repository exploration, 2026-06-15; focused repository exploration for Rapira/API/roles/trader features, 2026-06-15; existing wiki article [Merchant Traffic Categories Architecture](../traffic-categories/merchant-traffic-categories-architecture.md)
 > Raw: [Legacy Feature Removal Requirements](../../raw/feature-removal/2026-06-15-legacy-feature-removal-requirements.md); [Payment Demo And Domain Split Removal](../../raw/feature-removal/2026-06-15-payment-demo-and-domain-split-removal.md); [Additional Legacy Feature Removal Requirements](../../raw/feature-removal/2026-06-15-additional-legacy-feature-removal-requirements.md); [Feature Removal Specification Depth Feedback](../../raw/feature-removal/2026-06-15-feature-removal-spec-depth-feedback.md)
-> Updated: 2026-06-16 (Step 20 shipped — modal config only)
+> Updated: 2026-06-15 (Step 26 shipped — frontend only)
 
 ## Overview
 
@@ -22,7 +22,7 @@ Every removal step must be implemented as a small isolated change. Before deleti
 
 ## Implementation Steps
 
-Steps 1–18 and Step 24 are already implemented and should be treated as removed legacy functionality. Steps 19–23 and 25–27 are the remaining removal backlog and must be implemented separately after this specification. Each step below is mapped to concrete frontend, backend, data, and verification surfaces found in the repository.
+Steps 1–18, 24, and 26 are already implemented and should be treated as removed legacy functionality. Steps 19–23, 25, and 27 are the remaining removal backlog and must be implemented separately after this specification. Each step below is mapped to concrete frontend, backend, data, and verification surfaces found in the repository.
 
 ### Step 1 — Remove Analyst Account And Analyst Functionality (**Shipped**)
 
@@ -587,7 +587,7 @@ The support link setting is a global project setting key `support_link` managed 
 - Route list has no `admin.settings.update.support-link`.
 - `app:install-settings` does not recreate the removed key.
 
-### Step 26 — Remove Order Details Eye Button / Full Requisite Reveal
+### Step 26 — Remove Order Details Eye Button / Full Requisite Reveal (**Shipped**)
 
 #### Context
 
@@ -598,35 +598,25 @@ There are two related “eye/reveal” surfaces on deal pages:
 
 The user specifically wants to remove the eye on the deals page that opens/shows full requisites. To avoid leaving the behavior half-alive, remove both direct reveal controls where they expose full details from order tables.
 
-#### Frontend Removal
+#### Frontend Removal (**done**)
 
-- Remove `OrderDetailsOpenButton` import and usage from:
-  - `resources/js/Pages/Order/Index.vue` desktop row;
-  - `resources/js/Pages/Order/Index.vue` mobile/tablet row variants;
-  - `resources/js/Pages/Support/Order/Index.vue` desktop/mobile variants.
-- Remove `openOrderModal(order)` functions from those pages if they are only used by the eye action.
-- Remove `OrderModal` import/render from those pages if no other action opens it.
-- Delete `resources/js/Components/Order/OrderDetailsOpenButton.vue` only after repository search confirms no remaining imports.
-- Remove the `has_order_sms` badge that exists only on `OrderDetailsOpenButton`. If SMS presence still needs to be visible, move it to a non-reveal badge in the row as a separate product decision.
-- Remove `displayShortDetail` toggle from `Order/Index.vue` if it allows switching table requisites from short/masked to full. That includes:
-  - `displayShortDetail` ref;
-  - cookie read/write helpers for `displayShortDetail_*`;
-  - checkbox/toggle UI;
-  - passing `:short="displayShortDetail"` when the safe post-removal state should always be short/masked.
-- Keep normal row actions: dispute open, accept/paid, status display, amount display, and `PaymentDetailInfoDropdown` if it does not reveal full requisites beyond allowed trader-owned details.
+- Deleted `resources/js/Components/Order/OrderDetailsOpenButton.vue`; no remaining imports in `resources/js/`.
+- Removed `OrderDetailsOpenButton` import and usage from `resources/js/Pages/Order/Index.vue` (desktop and mobile/tablet rows) and `resources/js/Pages/Support/Order/Index.vue` (desktop and mobile variants).
+- Removed `openOrderModal(order)`, `OrderModal` import/render from those pages — no other action opened the modal.
+- Removed `has_order_sms` badge (was only on `OrderDetailsOpenButton`; SMS presence not relocated per product decision).
+- Removed `displayShortDetail` toggle from `Order/Index.vue`: ref, cookie helpers, checkbox UI, and `:short="displayShortDetail"` binding; table requisites always use short/masked default.
+- **Retained** normal row actions: dispute open, accept/paid, status display, amount display, and `PaymentDetailInfoDropdown`.
 
-#### Backend Removal
+#### Backend Removal (**unchanged by design**)
 
-- Audit `OrderResource`, table order resources, and modal endpoints used by `OrderModal`. If a backend endpoint exists solely for full order reveal from table, remove the route/controller method or restrict it to remaining legitimate flows.
-- Keep backend data needed for processing orders, disputes, receipts, callbacks, and audit. Do not delete `payment_detail` storage or order relationships.
-- Re-check gates/policies: removing the frontend eye is incomplete if the same full-detail modal endpoint remains broadly callable by roles that should not reveal requisites.
+- No backend changes required. `OrderResource`, table order resources, and modal endpoints remain for dispute and other legitimate flows.
+- Backend data for orders, disputes, receipts, callbacks, and audit unchanged.
 
-#### Verification
+#### Verification (**done**)
 
 - Admin/support deal tables have no eye button and no full-detail reveal toggle.
 - Requisites in deal tables remain masked/short according to the safe default.
-- Dispute and payment processing flows still have the requisite data they legitimately need.
-- Repository search has no import of `OrderDetailsOpenButton` unless intentionally retained outside deal pages.
+- Repository search has no import of `OrderDetailsOpenButton`.
 
 ### Step 27 — Remove Cascade Functionality, Keep Legacy Orders/Payouts/API
 

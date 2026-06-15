@@ -24,8 +24,6 @@ class SettingsService implements SettingsServiceContract
 
     const CURRENCY_PRICE_PARSER_SETTINGS = 'currency_price_parser_settings';
 
-    const SUPPORT_LINK = 'support_link';
-
     const FUNDS_ON_HOLD_TIME = 'funds_on_hold_time';
 
     const MAX_PENDING_DISPUTES = 'max_pending_disputes';
@@ -128,16 +126,6 @@ class SettingsService implements SettingsServiceContract
         $param[$code] = $current;
 
         $this->updateParam(self::CURRENCY_PRICE_PARSER_SETTINGS, $param);
-    }
-
-    public function getSupportLink(): ?string
-    {
-        return $this->getParam(self::SUPPORT_LINK);
-    }
-
-    public function updateSupportLink(string $link): void
-    {
-        $this->updateParam(self::SUPPORT_LINK, $link);
     }
 
     public function getFundsOnHoldTime(): int
@@ -267,10 +255,6 @@ class SettingsService implements SettingsServiceContract
         Setting::firstOrCreate([
             'key' => self::PRIME_TIME_BONUS_RATE,
             'value' => '1.2',
-        ]);
-        Setting::firstOrCreate([
-            'key' => self::SUPPORT_LINK,
-            'value' => null,
         ]);
         Setting::firstOrCreate([
             'key' => self::FUNDS_ON_HOLD_TIME,

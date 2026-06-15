@@ -51,7 +51,6 @@ class PayoutController extends Controller
         if ($gatewayCode) {
             $paymentGateway = PaymentGateway::query()
                 ->where('code', $gatewayCode)
-                ->where('is_payouts_enabled', true)
                 ->active()
                 ->firstOrFail();
         }
