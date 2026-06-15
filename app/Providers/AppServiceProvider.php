@@ -111,6 +111,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Telegram\Bot\BotsManager;
 use Telegram\Bot\HttpClients\GuzzleHttpClient;
@@ -308,6 +309,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
+
         Queue::failing(function (JobFailed $event) {
             if ($event->job->getQueue() === 'conversion-prices-parser') {
                 // Удаляем задачу, чтобы она не сохранялась в failed_jobs

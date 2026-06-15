@@ -338,7 +338,6 @@ class HandleInertiaRequests extends Middleware
                 'is_impersonated' => $authUser?->isImpersonated(),
             ],
             'ziggy' => fn () => [
-                // ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
             'flash' => [
