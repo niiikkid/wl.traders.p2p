@@ -80,4 +80,4 @@ Legacy feature removal plans for safely deleting deprecated roles, pages, API su
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Legacy Feature Removal Technical Specification](feature-removal/legacy-feature-removal-technical-spec.md) | [Archived] Step-by-step removal spec; **Step 18 shipped:** demo payment page, `PaymentLink` UI, `PAYMENT_FORM_URL`, domain-split middleware. | 2026-06-15 |
+| [Legacy Feature Removal Technical Specification](feature-removal/legacy-feature-removal-technical-spec.md) | [Archived] Steps **1–18 shipped**; new detailed removal backlog **19–27** covers bank settings, NSPK, callback resend/log UI, support link, order eye reveal, and Cascade removal. | 2026-06-15 |
