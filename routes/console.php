@@ -10,7 +10,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('app:update-p2p-prices')->everyThreeMinutes();
-Schedule::command('app:close-manually-orders')->everyMinute();
 Schedule::command('app:execute-funds-on-hold')->everyMinute();
 Schedule::command('app:prune-user-device-pings')->everyMinute();
 Schedule::command('app:prune-user-online-periods')->daily();
