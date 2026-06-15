@@ -274,34 +274,4 @@ class Order extends Model
     {
         return $this->morphMany(Transaction::class, 'transactionable');
     }
-
-    /**
-     * Колбеки мерчанту по внутреннему ордеру (SendOrderCallbackJob / CallbackService) не должны
-     * уходить, если сделка ведётся через каскад: уведомления идут через SendCascadeDealCallbackJob.
-     *
-     * Учитывается окно до привязки {@see CascadeDeal::$order_id} (например, до завершения транзакции
-     * после создания ордера внутренним провайдером каскада).
-     */
-    public function shouldSkipMerchantOrderCallbackForCascade(): bool
-    {
-        if (! $this->exists) {
-            return false;
-        }
-
-        if (CascadeDeal::query()->where('order_id', $this->id)->exists()) {
-            return true;
-        }
-
-        if ($this->external_id === null || $this->external_id === '') {
-            return false;
-        }
-
-        return CascadeDeal::query()
-            ->where('merchant_id', $this->merchant_id)
-            ->where('external_id', (string) $this->external_id)
-            ->where(function ($query): void {
-                $query->where('order_id', $this->id)->orWhereNull('order_id');
-            })
-            ->exists();
-    }
 }

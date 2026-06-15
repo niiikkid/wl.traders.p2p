@@ -15,11 +15,6 @@ class ApiIntegrationController extends Controller
         return Inertia::render('Integration/Index', $this->integrationPageProps());
     }
 
-    public function v2()
-    {
-        abort(404);
-    }
-
     /**
      * @return array{token: string|null}
      */

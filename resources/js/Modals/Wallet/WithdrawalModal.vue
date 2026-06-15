@@ -11,7 +11,6 @@ import NumberInput from "@/Components/NumberInput.vue";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import {router, useForm, usePage} from "@inertiajs/vue3";
-import {computed} from "vue";
 import {useViewStore} from "@/store/view.js";
 import TextInput from "@/Components/TextInput.vue";
 
@@ -26,10 +25,6 @@ const total_merchant_withdrawable_amount = usePage().props.total_merchant_withdr
 const modalStore = useModalStore();
 const { withdrawalModal } = storeToRefs(modalStore);
 const viewStore = useViewStore();
-
-const providerWithdrawalModalTitle = computed(() =>
-    viewStore.isAdminViewMode ? 'Вывод с баланса провайдера' : 'Вывод с баланса',
-);
 
 const close = () => {
     modalStore.closeModal('withdrawal')
@@ -57,7 +52,7 @@ const withdraw = () => {
                 },
             });
     }
-    if (viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode || viewStore.isProviderLiquidityViewMode) {
+    if (viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode) {
         form
             .transform((data) => {
                 data.balance_type = props.balanceType;
@@ -103,7 +98,7 @@ const withdraw = () => {
         </template>
         <template v-if="balanceType === 'provider'">
             <ModalHeader
-                :title="providerWithdrawalModalTitle"
+                title="Вывод с баланса провайдера"
                 @close="close"
             />
         </template>
@@ -138,7 +133,7 @@ const withdraw = () => {
                                 <InputHelper v-if="! form.errors.amount" :model-value="'Максимум: ' + total_merchant_withdrawable_amount + ' USDT'"></InputHelper>
                             </template>
                         </div>
-                        <div class="mt-3" v-if="viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode || viewStore.isProviderLiquidityViewMode">
+                        <div class="mt-3" v-if="viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode">
                             <InputLabel
                                 for="address"
                                 value="Адрес"

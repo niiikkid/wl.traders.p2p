@@ -7,7 +7,6 @@ use App\Enums\MarketEnum;
 use App\Enums\PayoutMethodType;
 use App\Enums\PayoutStatus;
 use App\Models\CallbackLog;
-use App\Models\CascadeMerchantLog;
 use App\Models\Merchant;
 use App\Models\PaymentGateway;
 use App\Models\User;
@@ -26,7 +25,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property int $id
  * @property string $uuid
  * @property string|null $external_id
- * @property int $api_version
  * @property int $merchant_id
  * @property int|null $trader_id
  * @property int|null $payment_gateway_id
@@ -57,8 +55,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property float|null $trader_commission_rate
  * @property float|null $teamlead_commission_rate
  * @property string|null $callback_url
- * @property int $callback_payload_revision
- * @property int $last_callback_delivered_revision
  * @property string|null $receipt_path
  * @property Merchant $merchant
  * @property User|null $trader
@@ -76,7 +72,6 @@ class Payout extends Model
     protected $fillable = [
         'uuid',
         'external_id',
-        'api_version',
         'merchant_id',
         'trader_id',
         'payment_gateway_id',
@@ -85,8 +80,6 @@ class Payout extends Model
         'requisites',
         'initials',
         'callback_url',
-        'callback_payload_revision',
-        'last_callback_delivered_revision',
         'amount_fiat',
         'amount_fiat_currency',
         'usdt_body',
@@ -150,9 +143,6 @@ class Payout extends Model
         'receipt_path' => 'string',
         'callback_url' => 'string',
         'external_id' => 'string',
-        'api_version' => 'integer',
-        'callback_payload_revision' => 'integer',
-        'last_callback_delivered_revision' => 'integer',
     ];
 
     public function merchant(): BelongsTo
@@ -185,10 +175,5 @@ class Payout extends Model
     public function callbackLogs(): MorphMany
     {
         return $this->morphMany(CallbackLog::class, 'callbackable');
-    }
-
-    public function merchantLogs(): HasMany
-    {
-        return $this->hasMany(CascadeMerchantLog::class);
     }
 }

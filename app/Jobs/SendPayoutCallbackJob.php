@@ -14,13 +14,13 @@ class SendPayoutCallbackJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable;
 
     public int $tries = 8;
+
     public int $timeout = 10;
 
     private const LOCK_TTL = 120;
 
     public function __construct(
         private Payout $payout,
-        private ?int $callbackRevision = null,
     ) {
         $this->onQueue('callback');
         $this->afterCommit();
@@ -36,23 +36,11 @@ class SendPayoutCallbackJob implements ShouldQueue
 
         $this->payout = $payout;
 
-        if ($this->payout->api_version === 2 && $this->callbackRevision === null) {
-            return;
-        }
-
-        if (
-            $this->payout->api_version === 2
-            && $this->callbackRevision !== null
-            && $this->payout->last_callback_delivered_revision >= $this->callbackRevision
-        ) {
-            return;
-        }
-
         $lockKey = $this->getLockKey();
 
         if ($this->acquireLock($lockKey)) {
             try {
-                services()->callback()->sendForPayout($this->payout, $this->callbackRevision);
+                services()->callback()->sendForPayout($this->payout);
             } finally {
                 $this->releaseLock($lockKey);
             }
@@ -63,7 +51,7 @@ class SendPayoutCallbackJob implements ShouldQueue
 
     private function getLockKey(): string
     {
-        return 'payout_callback_lock:' . $this->payout->id;
+        return 'payout_callback_lock:'.$this->payout->id;
     }
 
     private function acquireLock(string $key): bool
@@ -81,5 +69,3 @@ class SendPayoutCallbackJob implements ShouldQueue
         return [10, 60, 120, 240, 480, 1800, 3600, 7200];
     }
 }
-
-

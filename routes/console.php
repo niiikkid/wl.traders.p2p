@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\CascadeInternalTimeoutCleanupJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -24,4 +23,3 @@ Schedule::command('app:notify-traders-about-available-payouts')->everyMinute()->
 // Обновление статистики API логов мерчанта каждые 5 минут (включая вчерашний день)
 Schedule::command('api-stats:update')->everyFiveMinutes();
 Schedule::command('app:cache-main-page-stats')->everyFifteenMinutes();
-// Schedule::job(new CascadeInternalTimeoutCleanupJob)->everyTenSeconds()->withoutOverlapping();

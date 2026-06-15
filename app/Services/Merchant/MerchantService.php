@@ -30,8 +30,6 @@ class MerchantService implements MerchantServiceContract
             'gateway_settings' => [],
         ]);
 
-        $merchant->apiCredentialOrCreate();
-
         return $merchant;
     }
 }

@@ -101,17 +101,6 @@ class WalletController extends Controller
         }
 
         $walletSurfaces = null;
-        if ($request->route()->action['as'] === 'provider-liquidity.wallet.index') {
-            $walletSurfaces = [
-                'trust' => false,
-                'merchant' => false,
-                'teamleader' => false,
-                'provider' => true,
-                'agent' => false,
-                'escrow' => false,
-                'dispute' => false,
-            ];
-        }
 
         $traderBalanceTransfer = $this->traderBalanceTransferProps($request, $wallet);
         $teamLeaderInsurance = $this->teamLeaderInsuranceProps($request);
@@ -193,7 +182,6 @@ class WalletController extends Controller
             'wallet.index' => BalanceType::TRUST,
             'merchant.finances.index' => BalanceType::MERCHANT,
             'leader.finances.index' => BalanceType::TEAMLEADER,
-            'provider-liquidity.wallet.index' => BalanceType::PROVIDER,
         };
     }
 

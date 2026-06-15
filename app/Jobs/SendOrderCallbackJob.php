@@ -29,10 +29,6 @@ class SendOrderCallbackJob implements ShouldQueue
 
     public function handle(): void
     {
-        if ($this->order->shouldSkipMerchantOrderCallbackForCascade()) {
-            return;
-        }
-
         $lockKey = $this->getLockKey();
 
         // Пытаемся получить блокировку

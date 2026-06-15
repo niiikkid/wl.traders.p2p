@@ -344,19 +344,6 @@ class UserWalletController extends Controller
             ];
         }
 
-        if ($user->hasRole('Provider Liquidity')) {
-            return [
-                'trust' => false,
-                'merchant' => false,
-                'teamleader' => false,
-                'reserve' => false,
-                'provider' => true,
-                'agent' => false,
-                'escrow' => false,
-                'dispute' => false,
-            ];
-        }
-
         if ($user->hasRole('Support')) {
             return [
                 'trust' => true,
@@ -395,9 +382,6 @@ class UserWalletController extends Controller
         }
         if ($user->hasRole('Team Leader')) {
             return BalanceType::TEAMLEADER;
-        }
-        if ($user->hasRole('Provider Liquidity')) {
-            return BalanceType::PROVIDER;
         }
         if ($user->hasRole('Support')) {
             return BalanceType::TRUST;

@@ -10,7 +10,6 @@ import {useViewStore} from "@/store/view.js";
 import TeamLeaderMenu from "@/Layouts/Partials/TeamLeaderMenu.vue";
 import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
 import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
-import ProviderLiquidityMenu from "@/Layouts/Partials/ProviderLiquidityMenu.vue";
 import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 import PaymentDetailScheduleManagerModal from '@/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue';
 
@@ -274,9 +273,6 @@ const roleToMode = (roleName) => {
     if (roleName === 'Support') {
         return 'support';
     }
-    if (roleName === 'Provider Liquidity') {
-        return 'provider-liquidity';
-    }
     return 'trader';
 };
 
@@ -299,10 +295,6 @@ const setViewMode = (mode) => {
     }
     if (mode === 'support') {
         viewStore.setSupportViewMode();
-        return;
-    }
-    if (mode === 'provider-liquidity') {
-        viewStore.setProviderLiquidityViewMode();
         return;
     }
     viewStore.setTraderViewMode();
@@ -331,10 +323,6 @@ const resolveViewMode = () => {
 
     if (route().current('support.*')) {
         return 'support';
-    }
-
-    if (route().current('provider-liquidity.*')) {
-        return 'provider-liquidity';
     }
 
     if (
@@ -441,7 +429,6 @@ const openDocs = () => {
                             <TeamLeaderMenu v-show="viewStore.isTeamLeaderViewMode" />
                             <AdminMenu v-show="viewStore.isAdminViewMode" />
                             <SupportMenu v-show="viewStore.isSupportViewMode" />
-                            <ProviderLiquidityMenu v-show="viewStore.isProviderLiquidityViewMode" />
                         </div>
                     </div>
 
@@ -451,7 +438,7 @@ const openDocs = () => {
                         </div>
                     </div>
 
-                    <div v-show="!viewStore.isProviderLiquidityViewMode" class="card bg-base-100">
+                    <div class="card bg-base-100">
                         <div class="card-body">
                             <div class="flex items-center mb-2">
                                 <span class="text-xs text-base-content/70">Курс Tether TRC-20</span>
@@ -504,7 +491,6 @@ const openDocs = () => {
                             <TeamLeaderMenu v-show="viewStore.isTeamLeaderViewMode" />
                             <AdminMenu v-show="viewStore.isAdminViewMode" />
                             <SupportMenu v-show="viewStore.isSupportViewMode" />
-                            <ProviderLiquidityMenu v-show="viewStore.isProviderLiquidityViewMode" />
                         </div>
 
                         <div v-show="viewStore.isAdminViewMode" class="card bg-base-100 shadow w-60">
@@ -513,7 +499,7 @@ const openDocs = () => {
                             </div>
                         </div>
 
-                        <div v-show="!viewStore.isProviderLiquidityViewMode" class="card bg-base-100 shadow">
+                        <div class="card bg-base-100 shadow">
                             <div class="w-full p-6 pb-3">
                                 <div class="flex items-center mb-2">
                                     <span class="text-xs text-base-content font-semibold">Курс Tether TRC-20</span>

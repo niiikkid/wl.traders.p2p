@@ -14,14 +14,7 @@ class PayoutCallbackController extends Controller
     {
         Gate::authorize('access-to-merchant', $payout->merchant);
 
-        $callbackRevision = null;
-
-        if ($payout->api_version === 2) {
-            $callbackRevision = $payout->callback_payload_revision + 1;
-            $payout->forceFill(['callback_payload_revision' => $callbackRevision])->save();
-        }
-
-        SendPayoutCallbackJob::dispatch($payout, $callbackRevision);
+        SendPayoutCallbackJob::dispatch($payout);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -32,6 +25,3 @@ class PayoutCallbackController extends Controller
         return back()->with('message', 'Callback о текущем статусе выплаты повторно отправлен.');
     }
 }
-
-
-

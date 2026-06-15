@@ -14,8 +14,6 @@ class CallbackLog extends Model
 
     public const TYPE_PAYOUT = 'payout';
 
-    public const TYPE_CASCADE_PAYIN = 'cascade_payin';
-
     /**
      * Атрибуты, которые можно массово присваивать.
      *

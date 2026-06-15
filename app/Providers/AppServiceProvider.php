@@ -5,8 +5,6 @@ namespace App\Providers;
 use App\Contracts\AntiFraudServiceContract;
 use App\Contracts\AntiFraudSettingServiceContract;
 use App\Contracts\CallbackServiceContract;
-use App\Contracts\CascadeProviderServiceContract;
-use App\Contracts\CascadeServiceContract;
 use App\Contracts\DeviceServiceContract;
 use App\Contracts\DisputeServiceContract;
 use App\Contracts\FundsHolderServiceContract;
@@ -36,11 +34,8 @@ use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
 use App\Mixins\ResponseMixins;
-use App\Models\CascadeDeal;
-use App\Models\CascadeProvider;
 use App\Models\Dispute;
 use App\Models\Merchant;
-use App\Models\MerchantApiCredential;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\Payout\Payout as PayoutModel;
@@ -70,8 +65,6 @@ use App\Queries\QueriesBuilder;
 use App\Services\AntiFraud\AntiFraudService;
 use App\Services\AntiFraud\AntiFraudSettingService;
 use App\Services\Auth\LoginHistoryService;
-use App\Services\Cascade\CascadeProviderService;
-use App\Services\Cascade\CascadeService;
 use App\Services\Device\DeviceService;
 use App\Services\Dispute\DisputeService;
 use App\Services\Invoice\InvoiceService;
@@ -253,13 +246,6 @@ class AppServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(CascadeProviderServiceContract::class, function () {
-            return new CascadeProviderService;
-        });
-        $this->app->singleton(CascadeServiceContract::class, function () {
-            return new CascadeService;
-        });
-
         // Регистрация LoginLogger
         $this->app->singleton('login-logger', function () {
             return new LoginLogger;
@@ -335,10 +321,6 @@ class AppServiceProvider extends ServiceProvider
                 || $user->hasRole('Super Admin')
                 || $user->hasRole('Support');
         });
-        Gate::define('access-to-cascade-deal', function (User $user, CascadeDeal $cascadeDeal) {
-            return $user->id === $cascadeDeal->merchant->user_id
-                || $user->hasRole('Super Admin');
-        });
         Gate::define('access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id || $user->hasRole('Super Admin');
         });
@@ -360,14 +342,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('api-access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id;
         });
-        Gate::define('api-v2-access-to-merchant', function (User $user, Merchant $merchant) {
-            $credential = request()->attributes->get('merchant_api_credential');
-
-            return $credential instanceof MerchantApiCredential
-                && $credential->merchant_id === $merchant->id
-                && $user->id === $merchant->user_id;
-        });
-
         Route::bind('order', function ($id, \Illuminate\Routing\Route $route) {
             if ($route->bindingFieldFor('order') === 'uuid') {
                 return Order::withoutGlobalScopes()->where('uuid', $id)->firstOrFail();
@@ -384,22 +358,5 @@ class AppServiceProvider extends ServiceProvider
             return PayoutModel::query()->findOrFail($id);
         });
 
-        Route::bind('cascadeProvider', function (string $value): CascadeProvider {
-            $query = CascadeProvider::query();
-
-            // Admin routes and new callback URLs use {id}. Legacy callback URLs may still use {code}
-            // while there is exactly one integration with that implementation code.
-            if (ctype_digit($value)) {
-                return $query->findOrFail((int) $value);
-            }
-
-            $providers = $query->where('code', $value)->limit(2)->get();
-
-            if ($providers->count() === 1) {
-                return $providers->first();
-            }
-
-            abort(404);
-        });
     }
 }

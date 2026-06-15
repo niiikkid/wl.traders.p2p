@@ -5,8 +5,6 @@ namespace App\Services;
 use App\Contracts\AntiFraudServiceContract;
 use App\Contracts\AntiFraudSettingServiceContract;
 use App\Contracts\CallbackServiceContract;
-use App\Contracts\CascadeProviderServiceContract;
-use App\Contracts\CascadeServiceContract;
 use App\Contracts\DeviceServiceContract;
 use App\Contracts\DisputeServiceContract;
 use App\Contracts\FundsHolderServiceContract;
@@ -156,15 +154,5 @@ class ServiceBuilder implements ServiceBuilderContract
     public function telegramChatBot(): TelegramChatBotServiceContract
     {
         return app(TelegramChatBotServiceContract::class);
-    }
-
-    public function cascadeProvider(): CascadeProviderServiceContract
-    {
-        return make(CascadeProviderServiceContract::class);
-    }
-
-    public function cascade(): CascadeServiceContract
-    {
-        return make(CascadeServiceContract::class);
     }
 }

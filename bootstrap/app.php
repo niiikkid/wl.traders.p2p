@@ -3,7 +3,6 @@
 use App\Http\Middleware\ApiAccessToken;
 use App\Http\Middleware\ApiBotAccessToken;
 use App\Http\Middleware\ApiDepositsAccessToken;
-use App\Http\Middleware\ApiV2AccessToken;
 use App\Http\Middleware\ApiWithdrawalsAccessToken;
 use App\Http\Middleware\Banned;
 use App\Http\Middleware\DeviceAccessToken;
@@ -42,7 +41,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'banned' => Banned::class,
             'api-access-token' => ApiAccessToken::class,
-            'api-v2-access-token' => ApiV2AccessToken::class,
             'integration-infrastructure-api-access-token' => IntegrationInfrastructureApiAccessToken::class,
             'api-bot-access-token' => ApiBotAccessToken::class,
             'api-deposits-access-token' => ApiDepositsAccessToken::class,

@@ -49,7 +49,6 @@ const walletFormated = computed(() => {
     return {
         merchant_balance: formatNumber(wallet.value.merchant_balance),
         trust_balance: formatNumber(wallet.value.trust_balance),
-        provider_balance: formatNumber(wallet.value.provider_balance),
         reserve_balance: formatNumber(wallet.value.reserve_balance),
     }
 });
@@ -83,18 +82,12 @@ const activeFinanceRoute = computed(() => {
     if (viewStore.isMerchantViewMode) {
         return route('merchant.finances.index');
     }
-    if (viewStore.isProviderLiquidityViewMode) {
-        return route('provider-liquidity.wallet.index');
-    }
     return route('wallet.index');
 });
 
 const activeFinanceTitle = computed(() => {
     if (viewStore.isMerchantViewMode) {
         return 'Финансы мерчанта';
-    }
-    if (viewStore.isProviderLiquidityViewMode) {
-        return 'Финансы провайдера';
     }
     return 'Финансы трейдера';
 });
@@ -412,38 +405,6 @@ onMounted(async () => {
                         </div>
                     </div>
                 </div>
-                <div v-show="viewStore.isProviderLiquidityViewMode" class="lg:block hidden">
-                    <div class="dropdown dropdown-end">
-                        <button
-                            tabindex="0"
-                            type="button"
-                            role="button"
-                            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
-                        >
-                            <div class="flex items-center justify-center gap-2">
-                                <svg class="w-6 h-6 text-primary shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8H5m12 0a1 1 0 0 1 1 1v2.6M17 8l-4-4M5 8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.6M5 8l4-4 4 4m6 4h-4a2 2 0 1 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1Z"/>
-                                </svg>
-                                <div class="font-semibold text-base-content text-nowrap flex items-center gap-2">
-                                    <span class="text-lg leading-none">{{ walletFormated.provider_balance }}</span>
-                                    <span class="badge badge-ghost">USDT</span>
-                                </div>
-                            </div>
-                        </button>
-                        <div tabindex="0" class="dropdown-content z-[60] mt-2 w-80 max-w-[calc(100vw-2rem)] card bg-base-100 border border-base-300 shadow">
-                            <div class="card-body p-4 space-y-3">
-                                <div class="flex items-center justify-between gap-2">
-                                    <h3 class="font-semibold text-sm">{{ activeFinanceTitle }}</h3>
-                                    <button type="button" class="btn btn-xs btn-primary" @click="openFinancePage">Открыть</button>
-                                </div>
-                                <div class="rounded-lg bg-base-200 p-3">
-                                    <p class="text-xs text-base-content/70">Доступный баланс</p>
-                                    <p class="text-lg font-semibold">{{ walletFormated.provider_balance }} USDT</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <div v-show="viewStore.isTraderViewMode" class="lg:flex items-center hidden text-nowrap">
                     <div ref="traderTopDropdownRef" class="dropdown dropdown-end" :class="isTraderTopOpen ? 'dropdown-open' : ''">
                         <button
@@ -740,15 +701,6 @@ onMounted(async () => {
                                         </svg>
                                         <div class="font-semibold flex items-center gap-2">
                                             <span class="text-base text-base-content mr-1">{{ walletFormated.merchant_balance }}</span>
-                                            <span class="badge badge-ghost badge-sm">USDT</span>
-                                        </div>
-                                    </div>
-                                    <div v-show="viewStore.isProviderLiquidityViewMode" class="flex items-center">
-                                        <svg class="w-5 h-5 text-primary mr-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8H5m12 0a1 1 0 0 1 1 1v2.6M17 8l-4-4M5 8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.6M5 8l4-4 4 4m6 4h-4a2 2 0 1 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1Z"/>
-                                        </svg>
-                                        <div class="font-semibold flex items-center gap-2">
-                                            <span class="text-base text-base-content mr-1">{{ walletFormated.provider_balance }}</span>
                                             <span class="badge badge-ghost badge-sm">USDT</span>
                                         </div>
                                     </div>

@@ -28,7 +28,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property Collection<int, Order> $orders
  * @property Collection<int, User> $supports Саппорты, имеющие доступ к этому мерчанту
  * @property AntiFraudSetting|null $antiFraudSetting
- * @property MerchantApiCredential|null $apiCredential
  * @property array $settings
  * @property array $gateway_settings
  * @property int|null $max_order_wait_time
@@ -78,27 +77,6 @@ class Merchant extends Model
     public function antiFraudSetting(): HasOne
     {
         return $this->hasOne(AntiFraudSetting::class);
-    }
-
-    public function cascadeSetting(): HasOne
-    {
-        return $this->hasOne(MerchantCascadeSetting::class);
-    }
-
-    public function apiCredential(): HasOne
-    {
-        return $this->hasOne(MerchantApiCredential::class);
-    }
-
-    public function apiCredentialOrCreate(): MerchantApiCredential
-    {
-        return $this->apiCredential()->firstOrCreate(
-            ['merchant_id' => $this->id],
-            [
-                'api_token' => MerchantApiCredential::generateUniqueToken('api_token'),
-                'callback_token' => MerchantApiCredential::generateUniqueToken('callback_token'),
-            ],
-        );
     }
 
     public function user(): BelongsTo

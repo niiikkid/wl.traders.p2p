@@ -36,12 +36,6 @@ class MerchantResource extends JsonResource
             ],
             'callback_url' => $this->callback_url,
             'payout_callback_url' => $this->payout_callback_url,
-            'api_credentials' => $this->whenLoaded('apiCredential', function () {
-                return [
-                    'api_token' => $this->apiCredential?->api_token,
-                    'callback_token' => $this->apiCredential?->callback_token,
-                ];
-            }),
             'geos' => collect($this->settings['geos'] ?? [])
                 ->map(function ($market, $currency) {
                     $currencyCode = strtolower($currency);

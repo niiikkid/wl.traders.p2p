@@ -109,7 +109,6 @@ class PayoutService implements PayoutServiceContract
             $payout = Payout::query()->create([
                 'uuid' => (string) Str::uuid(),
                 'external_id' => $data->externalId,
-                'api_version' => $data->apiVersion,
                 'merchant_id' => $data->merchant->id,
                 'payment_gateway_id' => $data->paymentGateway?->id,
                 'bank_name' => $data->bankName,
@@ -144,7 +143,6 @@ class PayoutService implements PayoutServiceContract
                 'total_commission_rate' => $totalRate,
                 'trader_commission_rate' => $traderRate,
                 'teamlead_commission_rate' => $teamLeaderRate,
-                'callback_payload_revision' => $data->apiVersion === 2 ? 1 : 0,
             ]);
 
             services()->wallet()->takeFromBalance(
@@ -166,10 +164,7 @@ class PayoutService implements PayoutServiceContract
                 ExpiresPayoutJob::dispatch($payout)->delay($expiresAt)->afterCommit();
             }
 
-            SendPayoutCallbackJob::dispatch(
-                $payout,
-                $payout->api_version === 2 ? $payout->callback_payload_revision : null,
-            )->afterCommit();
+            SendPayoutCallbackJob::dispatch($payout)->afterCommit();
 
             $payout->load('merchant', 'paymentGateway');
 

@@ -4,9 +4,7 @@ namespace App\Observers;
 
 use App\Enums\OrderStatus;
 use App\Events\OrderSucceeded;
-use App\Jobs\CascadeInternalProviderCallbackJob;
 use App\Jobs\SendOrderCallbackJob;
-use App\Models\CascadeDeal;
 use App\Models\Order;
 
 class OrderObserver
@@ -28,16 +26,7 @@ class OrderObserver
         }
 
         if ($order->wasChanged('status') || $order->isDirty('status')) {
-
-            $cascadeDealExists = CascadeDeal::query()
-            ->where('order_id', $order->id)
-            ->exists();
-
-            if ($cascadeDealExists) {
-                CascadeInternalProviderCallbackJob::dispatch($order->id);
-            } else {
-                SendOrderCallbackJob::dispatch($order);
-            }
+            SendOrderCallbackJob::dispatch($order);
         }
     }
 

@@ -15,7 +15,6 @@ import DisputeBalance from "@/Pages/Wallet/Partials/DisputeBalance.vue";
 import TrustBalance from "@/Pages/Wallet/Partials/TrustBalance.vue";
 import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import TeamLeaderSharedReserveBalance from "@/Pages/Wallet/Partials/TeamLeaderSharedReserveBalance.vue";
-import ProviderBalance from "@/Pages/Wallet/Partials/ProviderBalance.vue";
 import TraderBalanceTransferModal from "@/Modals/Wallet/TraderBalanceTransferModal.vue";
 
 const page = usePage();
@@ -62,19 +61,6 @@ const showTeamLeaderSharedReserveCard = computed(() => {
     return teamLeaderInsurance.value?.uses_shared_reserve === true
         && teamLeaderInsurance.value?.role === 'team_leader';
 });
-
-const showProviderBalanceCard = computed(() => {
-    const ws = walletSurfaces.value;
-    if (ws) {
-        return ws.provider;
-    }
-    return false;
-});
-
-/** У админа на кошельке пользователя — «баланс провайдера»; у самого провайдера в финансах — «баланс». */
-const providerBalanceCardTitle = computed(() =>
-    viewStore.isAdminViewMode ? 'Баланс провайдера' : 'Баланс',
-);
 
 const showEscrowBalanceCard = computed(() => {
     const ws = walletSurfaces.value;
@@ -218,11 +204,6 @@ defineOptions({ layout: AuthenticatedLayout })
             <TeamLeaderSharedReserveBalance
                 v-if="teamLeaderInsurance && showTeamLeaderSharedReserveCard"
                 :team-leader-insurance="teamLeaderInsurance"
-                @setBalanceType="setBalanceType"
-            />
-            <ProviderBalance
-                v-show="showProviderBalanceCard"
-                :title="providerBalanceCardTitle"
                 @setBalanceType="setBalanceType"
             />
             <EscrowBalance v-show="showEscrowBalanceCard" @setBalanceType="setBalanceType"/>

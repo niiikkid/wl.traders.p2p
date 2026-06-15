@@ -73,7 +73,7 @@ class MerchantController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'merchant' => MerchantResource::make($merchant->fresh(['categories', 'apiCredential']))->resolve(),
+                'merchant' => MerchantResource::make($merchant->fresh(['categories']))->resolve(),
             ]);
         }
 
@@ -98,11 +98,6 @@ class MerchantController extends Controller
             'currencies' => $this->getCurrencies(),
             'detail_types' => $this->getDetailTypes(),
         ]);
-    }
-
-    public function regenerateApiCredential(Merchant $merchant, string $tokenType): JsonResponse
-    {
-        abort(404);
     }
 
     public function updateCommissionSettings(
@@ -150,7 +145,7 @@ class MerchantController extends Controller
         $merchant->save();
 
         return response()->json([
-            'merchant' => MerchantResource::make($merchant->fresh(['categories', 'apiCredential']))->resolve(),
+            'merchant' => MerchantResource::make($merchant->fresh(['categories']))->resolve(),
             'commission_settings' => $merchant->fresh()->getCommissionSettings(),
         ]);
     }

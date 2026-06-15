@@ -5,15 +5,10 @@ use App\Http\Controllers\Admin\AntiFraudClientController;
 use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
 use App\Http\Controllers\Admin\CallbackLogController;
-use App\Http\Controllers\Admin\CascadeDealController;
-use App\Http\Controllers\Admin\CascadeMerchantLogController;
-use App\Http\Controllers\Admin\CascadeProviderController;
-use App\Http\Controllers\Admin\CascadeProviderLogController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
-use App\Http\Controllers\Admin\MerchantCascadeSettingController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\OpenAiSettingController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
@@ -36,7 +31,6 @@ use App\Http\Controllers\AppHomeController;
 use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MainPageController;
-use App\Http\Controllers\Merchant\CascadeMerchantLogController as MerchantCascadeMerchantLogController;
 use App\Http\Controllers\Merchant\PayoutCallbackController;
 use App\Http\Controllers\Merchant\ResendCallbackController;
 use App\Http\Controllers\MerchantController;
@@ -54,7 +48,6 @@ use App\Http\Controllers\PaymentDetailTagAssignmentController;
 use App\Http\Controllers\PaymentDetailTagController;
 use App\Http\Controllers\PayoutReceiptController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ProviderLiquidity\DashboardController as ProviderLiquidityDashboardController;
 use App\Http\Controllers\SmsLogController;
 use App\Http\Controllers\Support\DepositController;
 use App\Http\Controllers\Support\EnabledCardsController;
@@ -149,14 +142,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/traders/{trader}/orders', [TraderOrderController::class, 'index'])->name('traders.orders.index');
         Route::get('/traders/{trader}/disputes', [TraderDisputeController::class, 'index'])->name('traders.disputes.index');
         Route::get('/traders/{trader}/finances', [TraderFinanceController::class, 'index'])->name('traders.finances.index');
-    });
-
-    Route::group(['prefix' => 'provider-liquidity', 'as' => 'provider-liquidity.', 'middleware' => ['auth', 'banned', 'role:Provider Liquidity|Super Admin']], function () {
-        Route::get('/main', [MainPageController::class, 'providerLiquidity'])->name('main.index');
-        Route::get('/services', [ProviderLiquidityDashboardController::class, 'services'])->name('services.index');
-        Route::get('/deals', [ProviderLiquidityDashboardController::class, 'deals'])->name('deals.index');
-        Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
-        Route::get('/logs', [ProviderLiquidityDashboardController::class, 'logs'])->name('logs.index');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Super Admin']], function () {
@@ -290,11 +275,9 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/merchants/data', [MerchantController::class, 'indexData'])->name('merchants.data');
         Route::get('/merchants/{merchant}/settings', [MerchantController::class, 'settings'])->name('merchants.settings');
         Route::patch('/merchants/{merchant}/callback', [MerchantController::class, 'updateCallbackURL'])->name('merchants.callback.update');
-        Route::post('/merchants/{merchant}/api-credentials/{tokenType}/regenerate', [MerchantController::class, 'regenerateApiCredential'])->name('merchants.api-credentials.regenerate');
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
 
         Route::get('/merchant/finances', [WalletController::class, 'index'])->name('merchant.finances.index');
-        Route::get('/merchant/cascade-merchant-logs', [MerchantCascadeMerchantLogController::class, 'index'])->name('merchant.cascade-merchant-logs.index');
 
         Route::get('/merchant/payouts', [App\Http\Controllers\Merchant\PayoutController::class, 'index'])->name('merchant.payouts.index');
         Route::post('/merchant/payouts/{payout:uuid}/callback/resend', [PayoutCallbackController::class, 'resend'])->name('merchant.payouts.callback.resend');
@@ -306,7 +289,6 @@ Route::group(['middleware' => ['2fa']], function () {
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Super Admin']], function () {
-        Route::get('/integration/v2', [ApiIntegrationController::class, 'v2'])->name('integration.v2');
         Route::get('/integration', [ApiIntegrationController::class, 'index'])->name('integration.index');
         Route::post('/integration/regenerate-token', [ApiIntegrationController::class, 'regenerateToken'])
             ->name('integration.regenerate-token');
@@ -384,19 +366,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/payment-gateways/{paymentGateway}/edit-data', [PaymentGatewayController::class, 'editData'])->name('payment-gateways.edit-data');
         Route::patch('/payment-gateways/bulk-settings', [PaymentGatewayController::class, 'bulkUpdate'])->name('payment-gateways.bulk-settings.update');
         Route::patch('/payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
-        Route::get('/cascade-providers', [CascadeProviderController::class, 'index'])->name('cascade-providers.index');
-        Route::post('/cascade-providers', [CascadeProviderController::class, 'store'])->name('cascade-providers.store');
-        Route::patch('/cascade-providers/reorder', [CascadeProviderController::class, 'reorder'])->name('cascade-providers.reorder');
-        Route::patch('/cascade-providers/{cascadeProvider}', [CascadeProviderController::class, 'update'])->name('cascade-providers.update');
-        Route::get('/cascade-deals', [CascadeDealController::class, 'index'])->name('cascade-deals.index');
-        Route::post('/cascade-deals/{cascadeDeal}/dispute', [CascadeDealController::class, 'openDispute'])->name('cascade-deals.dispute.store');
-        Route::get('/cascade-deals/{cascadeDeal}/dispute/receipts/{receipt}', [CascadeDealController::class, 'receipt'])
-            ->whereNumber('receipt')
-            ->name('cascade-deals.dispute.receipts.show');
-        Route::get('/cascade-merchant-settings', [MerchantCascadeSettingController::class, 'index'])->name('cascade-merchant-settings.index');
-        Route::patch('/cascade-merchant-settings/{merchant}', [MerchantCascadeSettingController::class, 'update'])->name('cascade-merchant-settings.update');
-        Route::get('/cascade-provider-logs', [CascadeProviderLogController::class, 'index'])->name('cascade-provider-logs.index');
-        Route::get('/cascade-merchant-logs', [CascadeMerchantLogController::class, 'index'])->name('cascade-merchant-logs.index');
         Route::get('/orders', [App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
         Route::patch('/orders/traffic-paused', [App\Http\Controllers\Admin\OrderController::class, 'updateTrafficPaused'])->name('orders.traffic-paused.update');
         Route::get('/payouts', [App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('payouts.index');

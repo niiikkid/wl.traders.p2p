@@ -62,10 +62,6 @@ Route::group(['middleware' => ['api-access-token']], function () {
 
 });
 
-Route::group(['prefix' => 'v2'], function () {
-    Route::any('{path}', fn () => abort(404))->where('path', '.*');
-});
-
 Route::group(['prefix' => 'deposit', 'middleware' => ['api-deposits-access-token']], function () {
     Route::post('webhook', [DepositController::class, 'webhook']);
 });
