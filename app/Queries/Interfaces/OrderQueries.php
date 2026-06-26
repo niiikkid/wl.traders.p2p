@@ -16,6 +16,13 @@ interface OrderQueries
 {
     public function findPending(Money $amount, User $user, PaymentGateway $paymentGateway, UserDevice $device): ?Order;
 
+    /**
+     * Активные (ожидающие оплату, без открытого спора) сделки на реквизитах указанного устройства.
+     *
+     * @return Collection<int, Order>
+     */
+    public function pendingForDevice(int $deviceId, int $traderId): Collection;
+
     public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator;
 
     public function paginateForUser(User $user, TableFiltersValue $filters): LengthAwarePaginator;

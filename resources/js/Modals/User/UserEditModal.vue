@@ -45,6 +45,7 @@ const form = ref({
     payout_referral_commission_percentage: 0,
     payout_team_leader_split_from_service_percent: 0,
     reserve_balance_limit: null,
+    max_min_order_amount: null,
     team_leader_extended_access_enabled: false,
     team_leader_flexible_trader_commission_enabled: false,
     team_leader_flexible_trader_commission_min: null,
@@ -96,6 +97,7 @@ const resetState = () => {
         payout_referral_commission_percentage: 0,
         payout_team_leader_split_from_service_percent: 0,
         reserve_balance_limit: null,
+        max_min_order_amount: null,
         team_leader_extended_access_enabled: false,
         team_leader_flexible_trader_commission_enabled: false,
         team_leader_flexible_trader_commission_min: null,
@@ -152,6 +154,7 @@ const loadUser = () => {
                 ?? data.team_leader_split_from_service_percent
                 ?? 0;
             form.value.reserve_balance_limit = data.reserve_balance_limit;
+            form.value.max_min_order_amount = data.max_min_order_amount;
             form.value.team_leader_extended_access_enabled = !!data.team_leader_extended_access_enabled;
             form.value.team_leader_flexible_trader_commission_enabled = !!data.team_leader_flexible_trader_commission_enabled;
             form.value.team_leader_flexible_trader_commission_min = data.team_leader_flexible_trader_commission_min;
@@ -538,6 +541,28 @@ watch(
                     <InputError class="mt-1" :message="errors.reserve_balance_limit?.[0]" />
                     <div class="mt-1 text-xs opacity-70">
                         Сумма, до которой пополнения сначала идут в резервный баланс (страховой депозит).
+                    </div>
+                </div>
+
+                <div v-if="isTrader(form.role_id)">
+                    <InputLabel
+                        for="max_min_order_amount"
+                        value="Максимальная минимальная сумма сделки"
+                        :error="!!errors.max_min_order_amount?.[0]"
+                    />
+                    <NumberInput
+                        id="max_min_order_amount"
+                        v-model="form.max_min_order_amount"
+                        class="mt-1 block w-full max-w-xs"
+                        step="1"
+                        min="0"
+                        :error="!!errors.max_min_order_amount?.[0]"
+                        @input="errors.max_min_order_amount = null"
+                        :disabled="processing"
+                    />
+                    <InputError class="mt-1" :message="errors.max_min_order_amount?.[0]" />
+                    <div class="mt-1 text-xs opacity-70">
+                        Потолок для поля «Минимум» в лимитах реквизита. Если не указано или 0 — ограничение не применяется.
                     </div>
                 </div>
 

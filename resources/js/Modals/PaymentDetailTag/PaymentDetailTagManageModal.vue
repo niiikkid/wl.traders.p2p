@@ -25,6 +25,22 @@ const processingIds = ref({});
 const errors = ref({});
 const tags = ref([]);
 
+const createProcessing = ref(false);
+const createErrors = ref({});
+const createForm = ref({
+    name: '',
+    color: '#6366f1',
+});
+
+const resetCreateForm = () => {
+    createProcessing.value = false;
+    createErrors.value = {};
+    createForm.value = {
+        name: '',
+        color: '#6366f1',
+    };
+};
+
 const resetState = () => {
     processingIds.value = {};
     errors.value = {};
@@ -33,6 +49,29 @@ const resetState = () => {
         name: tag.name,
         color: tag.color,
     }));
+    resetCreateForm();
+};
+
+const createTag = () => {
+    createProcessing.value = true;
+    createErrors.value = {};
+
+    axios.post(route('payment-detail-tags.store'), createForm.value, {
+        headers: { 'Accept': 'application/json' }
+    })
+        .then((res) => {
+            createProcessing.value = false;
+            if (res.data?.success || res.status === 200 || res.status === 201) {
+                resetCreateForm();
+                router.reload({ only: ['paymentDetails', 'paymentDetailTags'] });
+            }
+        })
+        .catch((error) => {
+            createProcessing.value = false;
+            if (error.response && error.response.data && error.response.data.errors) {
+                createErrors.value = error.response.data.errors;
+            }
+        });
 };
 
 const close = () => {
@@ -104,12 +143,80 @@ watch(
         }
     }
 );
+
+watch(
+    () => props.tags,
+    (newTags) => {
+        if (!paymentDetailTagManageModal.value.showed) {
+            return;
+        }
+
+        tags.value = (newTags || []).map((tag) => ({
+            id: tag.id,
+            name: tag.name,
+            color: tag.color,
+        }));
+    }
+);
 </script>
 
 <template>
     <Modal :show="paymentDetailTagManageModal.showed" @close="close" maxWidth="lg">
-        <ModalHeader @close="close" title="Управление тегами" />
+        <ModalHeader @close="close" title="Теги" />
         <ModalBody>
+            <div class="rounded-box border border-base-300 p-3 mb-4">
+                <div class="text-xs font-semibold uppercase tracking-wide text-base-content/60 mb-2">
+                    Новый тег
+                </div>
+                <form @submit.prevent="createTag" class="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-end">
+                    <div>
+                        <InputLabel
+                            for="create_tag_name"
+                            value="Название (до 10 символов)"
+                            :error="!!createErrors.name?.[0]"
+                            class="mb-1"
+                        />
+                        <TextInput
+                            id="create_tag_name"
+                            v-model="createForm.name"
+                            type="text"
+                            maxlength="10"
+                            class="w-full"
+                            :error="!!createErrors.name?.[0]"
+                            @input="createErrors.name = null"
+                            :disabled="createProcessing"
+                        />
+                        <InputError :message="createErrors.name?.[0]" class="mt-2" />
+                    </div>
+                    <div>
+                        <InputLabel
+                            for="create_tag_color"
+                            value="Цвет"
+                            :error="!!createErrors.color?.[0]"
+                            class="mb-1 mr-3"
+                        />
+                        <input
+                            id="create_tag_color"
+                            v-model="createForm.color"
+                            type="color"
+                            class="input input-bordered w-10 h-10 p-1"
+                            :disabled="createProcessing"
+                        />
+                        <InputError :message="createErrors.color?.[0]" class="mt-2" />
+                    </div>
+                    <div class="flex items-center md:justify-end">
+                        <button
+                            type="submit"
+                            class="btn btn-sm btn-primary"
+                            :class="{ 'btn-disabled': createProcessing }"
+                            :disabled="createProcessing"
+                        >
+                            Создать
+                        </button>
+                    </div>
+                </form>
+            </div>
+
             <div v-if="!tags.length" class="text-center text-sm text-base-content/70 py-6">
                 Теги пока не созданы
             </div>

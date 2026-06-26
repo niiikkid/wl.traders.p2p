@@ -36,6 +36,7 @@ readonly class UserUpdateDTO extends BaseDTO
         public ?int $team_leader_trader_limit = null,
         public ?int $team_leader_reserve_balance_limit = null,
         public ?int $team_leader_reserve_stop_threshold = null,
+        public ?int $max_min_order_amount = null,
     ) {}
 
     public static function makeFromRequest(array $data): static
@@ -82,7 +83,19 @@ readonly class UserUpdateDTO extends BaseDTO
             team_leader_trader_limit: isset($data['team_leader_trader_limit']) ? (int) $data['team_leader_trader_limit'] : null,
             team_leader_reserve_balance_limit: isset($data['team_leader_reserve_balance_limit']) ? (int) $data['team_leader_reserve_balance_limit'] : null,
             team_leader_reserve_stop_threshold: isset($data['team_leader_reserve_stop_threshold']) ? (int) $data['team_leader_reserve_stop_threshold'] : null,
+            max_min_order_amount: self::normalizeMaxMinOrderAmount($data['max_min_order_amount'] ?? null),
         );
+    }
+
+    private static function normalizeMaxMinOrderAmount(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = (int) $value;
+
+        return $normalized > 0 ? $normalized : null;
     }
 
     private static function normalizeBanReason(?string $value): ?string

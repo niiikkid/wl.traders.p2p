@@ -40,6 +40,7 @@ class StoreRequest extends FormRequest
                 Rule::exists('roles', 'id')->where(fn ($query) => $query->where('name', '!=', 'Provider Liquidity')),
             ],
             'team_leader_id' => ['nullable', 'integer', 'exists:users,id'],
+            'max_min_order_amount' => ['nullable', 'integer', 'min:0'],
             ...app(TeamLeaderInsuranceService::class)->teamLeaderConfigurationRules($roleName === 'Team Leader'),
         ];
     }
@@ -64,6 +65,7 @@ class StoreRequest extends FormRequest
         return [
             'role_id' => __('роль'),
             'team_leader_id' => __('тим лидер'),
+            'max_min_order_amount' => __('максимальная минимальная сумма сделки'),
             'telegram_username' => __('telegram'),
             ...app(TeamLeaderInsuranceService::class)->teamLeaderConfigurationAttributes(),
         ];

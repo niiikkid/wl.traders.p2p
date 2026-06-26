@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\IncomingSmsLogController;
 use App\Http\Resources\TableOrderResource;
 use App\Models\Order;
 use App\Services\Money\Money;
@@ -20,8 +21,9 @@ class OrderController extends Controller
 
         $orders = queries()->order()->paginateForAdmin($filters);
         $orders = TableOrderResource::collection($orders);
+        $incomingSmsLogsUnlinkedCount = IncomingSmsLogController::unlinkedCountForUser(auth()->user(), forAdmin: true);
 
-        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants', 'trafficPaused'));
+        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants', 'trafficPaused', 'incomingSmsLogsUnlinkedCount'));
     }
 
     public function updateTrafficPaused(Request $request)

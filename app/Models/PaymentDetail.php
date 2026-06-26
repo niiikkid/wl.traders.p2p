@@ -28,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $initials
  * @property string|null $additional_info
  * @property bool $is_active
- * @property Money $daily_limit
+ * @property Money|null $daily_limit
  * @property Money $current_daily_limit
  * @property Money|null $monthly_limit
  * @property Money $current_monthly_limit
@@ -52,6 +52,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Collection<int, PaymentGateway> $paymentGateways
  * @property Collection<int, PaymentDetailTag> $tags
  * @property Collection<int, Order> $orders
+ * @property Collection<int, PaymentDetailAmountTierUsage> $amountTierUsages
  * @property Carbon $archived_at
  * @property Carbon $last_used_at
  * @property Carbon $created_at
@@ -137,6 +138,11 @@ class PaymentDetail extends Model
     public function paymentGateways(): BelongsToMany
     {
         return $this->belongsToMany(PaymentGateway::class);
+    }
+
+    public function amountTierUsages(): HasMany
+    {
+        return $this->hasMany(PaymentDetailAmountTierUsage::class);
     }
 
     public function tags(): BelongsToMany

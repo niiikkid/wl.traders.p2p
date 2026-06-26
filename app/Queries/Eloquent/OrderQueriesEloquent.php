@@ -14,6 +14,7 @@ use App\Queries\Interfaces\OrderQueries;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class OrderQueriesEloquent implements OrderQueries
@@ -29,6 +30,22 @@ class OrderQueriesEloquent implements OrderQueries
             ->whereRelation('paymentDetail', 'user_device_id', $device->id)
             ->where('payment_gateway_id', $paymentGateway->id)
             ->first();
+    }
+
+    public function pendingForDevice(int $deviceId, int $traderId): Collection
+    {
+        return Order::query()
+            ->where('status', OrderStatus::PENDING)
+            ->where('trader_id', $traderId)
+            ->whereDoesntHave('dispute')
+            ->whereHas('paymentDetail', function (Builder $query) use ($deviceId): void {
+                $query->where('user_device_id', $deviceId);
+            })
+            ->with([
+                'paymentDetail:id,detail,detail_type,user_device_id,user_id',
+                'paymentGateway:id,name,code',
+            ])
+            ->get();
     }
 
     public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator

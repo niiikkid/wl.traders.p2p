@@ -191,6 +191,7 @@ abstract class Controller
             'searchSender' => request()->input('filters.searchSender'),
             'searchMessage' => request()->input('filters.searchMessage'),
             'smsOperationTypes' => $smsOperationTypes,
+            'onlyUnlinkedIncoming' => request()->input('filters.onlyUnlinkedIncoming') === 'true',
         ];
 
         return new TableFiltersValue(
@@ -232,6 +233,7 @@ abstract class Controller
             searchSender: $currentFilters['searchSender'],
             searchMessage: $currentFilters['searchMessage'],
             smsOperationTypes: $currentFilters['smsOperationTypes'],
+            onlyUnlinkedIncoming: $currentFilters['onlyUnlinkedIncoming'],
         );
     }
 

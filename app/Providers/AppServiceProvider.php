@@ -39,6 +39,7 @@ use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\Payout\Payout as PayoutModel;
+use App\Models\SmsLog;
 use App\Models\User;
 use App\Queries\Cache\MerchantQueriesCache;
 use App\Queries\Eloquent\CallbackLogQueriesEloquent;
@@ -316,10 +317,14 @@ class AppServiceProvider extends ServiceProvider
             return $user->id === $paymentDetail->user_id || $user->hasRole('Super Admin');
         });
         Gate::define('access-to-order', function (User $user, Order $order) {
-            return $user->id === $order->paymentDetail?->user_id
+            return $user->id === $order->trader_id
+                || $user->id === $order->paymentDetail?->user_id
                 || $user->id === $order->merchant->user_id
                 || $user->hasRole('Super Admin')
                 || $user->hasRole('Support');
+        });
+        Gate::define('access-to-sms-log', function (User $user, SmsLog $smsLog) {
+            return $user->id === $smsLog->user_id || $user->hasRole('Super Admin');
         });
         Gate::define('access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id || $user->hasRole('Super Admin');

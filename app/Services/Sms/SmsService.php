@@ -9,6 +9,8 @@ use App\Models\SmsLog;
 use App\Models\User;
 use App\Models\UserDevice;
 use App\Services\Notification\Events\MessageReceivedNotificationEvent;
+use App\Services\Sms\AutoClose\SmsAutoCloseService;
+use Throwable;
 
 class SmsService implements SmsServiceContract
 {
@@ -34,38 +36,30 @@ class SmsService implements SmsServiceContract
         $result = $parser->parse($sms->sender, $sms->message, $sms->type);
         $smsLog = $this->logSms($sms, $device, $user, $result);
 
-        $order = null;
-
         $smsLog->loadMissing('user', 'device');
 
         services()->notification()->dispatch(
-            new MessageReceivedNotificationEvent($smsLog, null, $order)
+            new MessageReceivedNotificationEvent($smsLog, null, null)
         );
 
-        // TODO: Rework order matching for the new AI-based SMS parsing flow.
-        // if (! empty($result)) {
-        //     $order = queries()
-        //         ->order()
-        //         ->findPending($result->amount, $user, $result->paymentGateway, $device);
-        // }
-        //
-        // if ($order) {
-        //     $smsLog->update([
-        //         'order_id' => $order->id,
-        //     ]);
-        // }
-        //
-        // if (! $order) {
-        //     return;
-        // }
-        //
-        // if (! $user->sms_auto_close_orders_enabled) {
-        //     return;
-        // }
-        //
-        // if ($order->status->equals(OrderStatus::PENDING)) {
-        //     services()->order()->finishOrderAsSuccessful($order->id, OrderSubStatus::SUCCESSFULLY_PAID);
-        // }
+        if ($user->sms_auto_close_orders_enabled && is_array($result)) {
+            $this->autoCloseOrder($smsLog, $device, $user, $result);
+        }
+    }
+
+    /**
+     * Попытка безопасного автоматического закрытия сделки по поступлению.
+     * Ошибки не должны прерывать приём сообщений.
+     *
+     * @param  array{operation_type: string, amount: string, card: ?string, balance: ?string, bank: ?string}  $result
+     */
+    protected function autoCloseOrder(SmsLog $smsLog, UserDevice $device, User $user, array $result): void
+    {
+        try {
+            app(SmsAutoCloseService::class)->attempt($smsLog, $device, $user, $result);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
     }
 
     /**

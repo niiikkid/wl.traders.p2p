@@ -3,6 +3,7 @@
 namespace App\Http\Requests\PaymentDetail;
 
 use App\Rules\OwnedPaymentDetailSchedule;
+use App\Rules\TraderMaxMinOrderAmount;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -69,7 +70,7 @@ class BulkUpdateRequest extends FormRequest
                 'boolean',
             ],
             'daily_limit' => [
-                Rule::requiredIf(in_array('daily_limit', $fields, true)),
+                'nullable',
                 'numeric',
                 'min:0',
             ],
@@ -92,7 +93,12 @@ class BulkUpdateRequest extends FormRequest
                 'min:1',
                 'max:100000000',
             ],
-            'min_order_amount' => ['nullable', 'integer', 'min:0'],
+            'min_order_amount' => [
+                'nullable',
+                'integer',
+                'min:0',
+                new TraderMaxMinOrderAmount($this->user(), $this->user()),
+            ],
             'max_order_amount' => ['nullable', 'integer', 'min:0', 'gte:min_order_amount'],
             'order_interval_minutes' => ['nullable', 'integer', 'min:1'],
             'payment_detail_schedule_id' => [
@@ -127,6 +133,7 @@ class BulkUpdateRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $nullableFields = [
+            'daily_limit',
             'monthly_limit',
             'monthly_limit_reset_day',
             'monthly_successful_orders_limit',

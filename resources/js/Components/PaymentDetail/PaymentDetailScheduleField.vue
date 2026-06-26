@@ -38,7 +38,20 @@ const {
 
 const scheduleItems = computed(() => scheduleOptions());
 
-const selectedSchedule = computed(() => findScheduleById(model.value));
+const selectedScheduleId = computed({
+    get: () => {
+        if (model.value === '' || model.value === '0') {
+            return null;
+        }
+
+        return model.value;
+    },
+    set: (value) => {
+        model.value = value === '' || value === '0' ? null : value;
+    },
+});
+
+const selectedSchedule = computed(() => findScheduleById(selectedScheduleId.value));
 
 const selectedSchedulePreview = computed(() => {
     const schedule = selectedSchedule.value;
@@ -86,13 +99,6 @@ const openCreateSchedule = () => {
     });
 };
 
-const openScheduleManager = () => {
-    modalStore.openPaymentDetailScheduleManagerModal({
-        ...scheduleManagerParams(),
-        scheduleId: model.value || null,
-    });
-};
-
 onMounted(() => {
     fetchSchedules();
 });
@@ -136,11 +142,13 @@ refreshSchedulesAfterModal('paymentDetailScheduleManager');
             />
             <Select
                 id="payment_detail_schedule_id"
-                v-model="model"
+                v-model="selectedScheduleId"
                 :items="scheduleItems"
                 value="id"
                 name="name"
                 default_title="Без расписания"
+                :default_value="null"
+                :required="false"
                 :error="!!errors.payment_detail_schedule_id?.[0]"
                 :disabled="disabled || loading"
                 @change="emit('clear-error', 'payment_detail_schedule_id')"
@@ -163,9 +171,9 @@ refreshSchedulesAfterModal('paymentDetailScheduleManager');
 
         <div class="flex flex-wrap gap-2">
             <button
-                v-if="model"
+                v-if="selectedScheduleId"
                 type="button"
-                class="btn btn-sm btn-ghost"
+                class="btn btn-sm btn-outline btn-error"
                 :disabled="disabled || loading"
                 @click="clearSchedule"
             >
@@ -179,14 +187,6 @@ refreshSchedulesAfterModal('paymentDetailScheduleManager');
                 @click="openCreateSchedule"
             >
                 Создать расписание
-            </button>
-            <button
-                type="button"
-                class="btn btn-sm btn-outline"
-                :disabled="disabled || loading"
-                @click="openScheduleManager"
-            >
-                Управлять расписаниями
             </button>
         </div>
     </div>

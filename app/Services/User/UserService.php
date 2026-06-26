@@ -50,6 +50,7 @@ class UserService implements UserServiceContract
                 'payout_hold_enabled' => true,
                 'payout_hold_minutes' => 60,
                 'payout_active_payouts_limit' => 1,
+                'max_min_order_amount' => $roleName === 'Trader' ? $data->max_min_order_amount : null,
             ];
 
             if ($roleName === 'Team Leader') {
@@ -134,6 +135,7 @@ class UserService implements UserServiceContract
                 'support_can_use_manual_control_acq' => $manualControlAcqAllowed
                     ? $data->support_can_use_manual_control_acq
                     : false,
+                'max_min_order_amount' => $roleName === 'Trader' ? $data->max_min_order_amount : null,
             ];
 
             if ($roleName === 'Team Leader') {

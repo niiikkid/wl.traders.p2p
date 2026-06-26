@@ -13,6 +13,7 @@ import DateTime from "@/Components/DateTime.vue";
 import DUUID from "@/Components/DUUID.vue";
 import CopyableExternalId from "@/Components/CopyableExternalId.vue";
 import EditOrderAmountModal from "@/Modals/Order/EditOrderAmountModal.vue";
+import LinkOrderSmsModal from "@/Modals/Order/LinkOrderSmsModal.vue";
 import AppTooltip from '@/Components/AppTooltip.vue';
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
@@ -23,6 +24,7 @@ const { orderModal } = storeToRefs(modalStore);
 const user = usePage().props.auth.user;
 
 const closeModal = () => {
+    linkOrderSmsModalOpen.value = false;
     modalStore.closeModal('order');
 };
 
@@ -92,6 +94,7 @@ const confirmCreateDispute = (order) => {
 const order = ref(null);
 const callbackCopied = ref(false);
 const detailsTab = ref('main');
+const linkOrderSmsModalOpen = ref(false);
 const canEditOrderAmountInCurrentView = computed(() => {
     if (viewStore.isAdminViewMode) {
         return true;
@@ -135,6 +138,33 @@ const canSeeOrderWalletTransactions = computed(() => viewStore.isAdminViewMode &
 const hasOrderDetailTabs = computed(() => {
     return isAdminManualControlOrder.value || canSeeOrderWalletTransactions.value;
 });
+
+const canShowSmsSection = computed(() => {
+    return !hasOrderDetailTabs.value || detailsTab.value !== 'wallets';
+});
+
+const canLinkOrderSms = computed(() => {
+    return Boolean(order.value && !order.value.sms_log && canShowSmsSection.value);
+});
+
+const openLinkOrderSmsModal = () => {
+    linkOrderSmsModalOpen.value = true;
+};
+
+const closeLinkOrderSmsModal = () => {
+    linkOrderSmsModalOpen.value = false;
+};
+
+const handleOrderSmsLinked = (smsLog) => {
+    if (!order.value) {
+        return;
+    }
+
+    order.value = {
+        ...order.value,
+        sms_log: smsLog,
+    };
+};
 
 /** С бэка — от новых к старым; в списке так же: сначала новые. */
 const manualControlConfirmationCodesOrdered = computed(() => {
@@ -915,8 +945,33 @@ const copyCallbackUrl = async (callback_url) => {
                                             </dd>
                                         </dl>
                                     </div>
+                                    <button
+                                        v-if="canLinkOrderSms"
+                                        type="button"
+                                        class="group w-full rounded-box border border-dashed border-primary/35 bg-primary/5 p-3 text-left transition hover:border-primary/55 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:p-3.5"
+                                        @click="openLinkOrderSmsModal"
+                                    >
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex size-9 shrink-0 items-center justify-center rounded-box bg-primary/15 text-primary transition group-hover:bg-primary/20">
+                                                <svg class="size-4.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                                                </svg>
+                                            </div>
+                                            <div class="min-w-0 flex-1">
+                                                <p class="text-sm font-medium text-base-content">
+                                                    Сообщение не привязано
+                                                </p>
+                                                <p class="text-xs text-base-content/60">
+                                                    Выбрать поступление из непривязанных
+                                                </p>
+                                            </div>
+                                            <svg class="size-4 shrink-0 text-base-content/40 transition group-hover:text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7-7 7" />
+                                            </svg>
+                                        </div>
+                                    </button>
                                     <div
-                                        v-if="order.sms_log && (!hasOrderDetailTabs || detailsTab !== 'wallets')"
+                                        v-else-if="order.sms_log && canShowSmsSection"
                                         class="rounded-box border border-base-300/80 bg-base-300/50 p-2.5 text-xs shadow-sm sm:p-3 sm:text-sm"
                                     >
                                         <div class="flex justify-between items-center mb-2">
@@ -993,6 +1048,12 @@ const copyCallbackUrl = async (callback_url) => {
         </template>
     </ModalNext>
     <EditOrderAmountModal />
+    <LinkOrderSmsModal
+        :show="linkOrderSmsModalOpen"
+        :order="order"
+        @close="closeLinkOrderSmsModal"
+        @linked="handleOrderSmsLinked"
+    />
 </template>
 
 <style scoped>

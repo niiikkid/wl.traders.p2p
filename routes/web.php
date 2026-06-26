@@ -29,6 +29,7 @@ use App\Http\Controllers\ApiIntegrationController;
 use App\Http\Controllers\ApkController;
 use App\Http\Controllers\AppHomeController;
 use App\Http\Controllers\DisputeController;
+use App\Http\Controllers\IncomingSmsLogController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MainPageController;
 use App\Http\Controllers\Merchant\PayoutCallbackController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\NewsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationRuleController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\OrderSmsLogController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentDetailArchiveController;
 use App\Http\Controllers\PaymentDetailController;
@@ -49,6 +51,8 @@ use App\Http\Controllers\PaymentDetailTagController;
 use App\Http\Controllers\PayoutReceiptController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SmsLogController;
+use App\Http\Controllers\SmsLogOrderController;
+use App\Http\Controllers\SmsLogRejectController;
 use App\Http\Controllers\Support\DepositController;
 use App\Http\Controllers\Support\EnabledCardsController;
 use App\Http\Controllers\Support\FilterController;
@@ -146,6 +150,11 @@ Route::group(['middleware' => ['2fa']], function () {
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Support|Super Admin']], function () {
         Route::resource('/orders', OrderController::class)->only(['show']);
+        Route::get('/orders/{order}/unlinked-sms-logs', [OrderSmsLogController::class, 'index'])->name('orders.unlinked-sms-logs.index');
+        Route::post('/orders/{order}/link-sms-log', [OrderSmsLogController::class, 'store'])->name('orders.link-sms-log.store');
+        Route::get('/sms-logs/{smsLog}/unlinked-orders', [SmsLogOrderController::class, 'index'])->name('sms-logs.unlinked-orders.index');
+        Route::post('/sms-logs/{smsLog}/link-order', [SmsLogOrderController::class, 'store'])->name('sms-logs.link-order.store');
+        Route::post('/sms-logs/{smsLog}/reject', [SmsLogRejectController::class, 'store'])->name('sms-logs.reject.store');
         Route::get('/disputes/{dispute}/receipt', [DisputeController::class, 'receipt'])->name('disputes.receipt');
         Route::get('/disputes/{dispute}/bank-statement', [DisputeController::class, 'bankStatement'])->name('disputes.bank-statement');
     });
@@ -218,6 +227,7 @@ Route::group(['middleware' => ['2fa']], function () {
         });
 
         Route::get('/sms-logs', [SmsLogController::class, 'index'])->name('sms-logs.index');
+        Route::get('/incoming-sms-logs', [IncomingSmsLogController::class, 'index'])->name('incoming-sms-logs.index');
 
         // Создание инвойса для пополнения через внешний сервис
         Route::post('/trader/deposit/invoices', [DepositInvoiceController::class, 'store'])->name('trader.deposit.invoices.store');
@@ -385,6 +395,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('currencies/{currency}/price-parsers', [PriceParserController::class, 'update'])->name('currencies.price-parsers.update');
 
         Route::get('/sms-logs', [App\Http\Controllers\Admin\SmsLogController::class, 'index'])->name('sms-logs.index');
+        Route::get('/incoming-sms-logs', [IncomingSmsLogController::class, 'index'])->name('incoming-sms-logs.index');
         Route::get('/shadow-sms-logs', [ShadowSmsLogController::class, 'index'])->name('shadow-sms-logs.index');
         Route::patch('/shadow-sms-logs/enabled', [ShadowSmsLogController::class, 'updateEnabled'])->name('shadow-sms-logs.enabled.update');
         Route::delete('/shadow-sms-logs', [ShadowSmsLogController::class, 'destroyAll'])->name('shadow-sms-logs.destroy-all');

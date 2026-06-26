@@ -9,6 +9,14 @@ defineProps({
         type: Boolean,
         default: false,
     },
+    min: {
+        type: [Number, String],
+        default: null,
+    },
+    max: {
+        type: [Number, String],
+        default: null,
+    },
 });
 
 const input = ref(null);
@@ -30,5 +38,7 @@ defineExpose({ focus: () => input.value.focus() });
         v-model="model"
         ref="input"
         type="number"
+        :min="min"
+        :max="max"
     />
 </template>

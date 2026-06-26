@@ -25,6 +25,7 @@ import MoneyValue from "@/Components/MoneyValue.vue";
 import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
 import PaymentDetailInfoDropdown from "@/Components/PaymentDetailInfoDropdown.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
+import IncomingSmsLogsModal from "@/Modals/Order/IncomingSmsLogsModal.vue";
 //import MoneyTreeGame from "@/Components/AprilFools/MoneyTreeGame.vue";
 
 const viewStore = useViewStore();
@@ -38,11 +39,14 @@ const trafficPauseForm = useForm({
 
 const filtersVariants = ref(usePage().props.filtersVariants);
 const showExportModal = ref(false);
+const incomingSmsLogsModalOpen = ref(false);
+const incomingSmsLogsUnlinkedCount = ref(usePage().props.incomingSmsLogsUnlinkedCount ?? 0);
 
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
     trafficPaused.value = usePage().props.trafficPaused ?? usePage().props.adminTrafficPaused ?? false;
     trafficPauseForm.paused = trafficPaused.value;
+    incomingSmsLogsUnlinkedCount.value = usePage().props.incomingSmsLogsUnlinkedCount ?? incomingSmsLogsUnlinkedCount.value;
 })
 
 const reloadingTableData = ref(false);
@@ -105,6 +109,22 @@ const openManualControlAcqPage = () => {
     window.open(route('admin.manual-control-acq.show'), '_blank', 'noopener');
 };
 
+const openIncomingSmsLogsModal = () => {
+    incomingSmsLogsModalOpen.value = true;
+};
+
+const closeIncomingSmsLogsModal = () => {
+    incomingSmsLogsModalOpen.value = false;
+};
+
+const handleIncomingSmsLogsCountUpdated = (count) => {
+    incomingSmsLogsUnlinkedCount.value = count;
+    router.reload({
+        only: ['orders', 'incomingSmsLogsUnlinkedCount'],
+        preserveScroll: true,
+    });
+};
+
 const confirmToggleTraffic = () => {
     const nextPaused = !trafficPaused.value;
 
@@ -152,6 +172,30 @@ defineOptions({ layout: AuthenticatedLayout })
                         <span class="loading loading-spinner loading-sm text-primary" role="status" aria-label="Загрузка" />
                         <span class="hidden sm:inline">Загрузка данных…</span>
                         <span class="sm:hidden">Загрузка…</span>
+                    </div>
+
+                    <div
+                        v-if="viewStore.isTraderViewMode || viewStore.isAdminViewMode"
+                        class="inline-flex shrink-0 items-center rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
+                    >
+                        <button
+                            type="button"
+                            class="btn btn-sm h-8 min-h-8 gap-2 rounded-lg px-3 btn-primary btn-outline"
+                            title="Сообщения"
+                            aria-label="Открыть поступления"
+                            @click="openIncomingSmsLogsModal"
+                        >
+                            <svg class="h-4 w-4 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                            </svg>
+                            <span class="hidden sm:inline">Сообщения</span>
+                            <span
+                                v-if="incomingSmsLogsUnlinkedCount > 0"
+                                class="badge badge-warning badge-xs"
+                            >
+                                {{ incomingSmsLogsUnlinkedCount }}
+                            </span>
+                        </button>
                     </div>
 
                     <div
@@ -618,6 +662,11 @@ defineOptions({ layout: AuthenticatedLayout })
             route-name="trader.export.orders"
             entity-label="сделки"
             @close="closeExportModal"
+        />
+        <IncomingSmsLogsModal
+            :show="incomingSmsLogsModalOpen"
+            @close="closeIncomingSmsLogsModal"
+            @count-updated="handleIncomingSmsLogsCountUpdated"
         />
     </div>
 </template>

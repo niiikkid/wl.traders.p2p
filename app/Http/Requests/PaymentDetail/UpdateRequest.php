@@ -5,7 +5,9 @@ namespace App\Http\Requests\PaymentDetail;
 use App\Enums\DetailType;
 use App\Models\PaymentDetail;
 use App\Models\PaymentGateway;
+use App\Models\User;
 use App\Rules\OwnedPaymentDetailSchedule;
+use App\Rules\TraderMaxMinOrderAmount;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Collection;
@@ -47,7 +49,7 @@ class UpdateRequest extends FormRequest
                 },
             ],
             'is_active' => ['required', 'boolean'],
-            'daily_limit' => ['required', 'numeric', 'min:0'],
+            'daily_limit' => ['nullable', 'numeric', 'min:0'],
             'monthly_limit' => [
                 'nullable',
                 'integer',
@@ -71,6 +73,7 @@ class UpdateRequest extends FormRequest
                 'nullable',
                 'integer',
                 'min:0',
+                new TraderMaxMinOrderAmount($this->paymentDetailOwner(), $this->user()),
                 function ($attribute, $value, $fail) {
                     if ($value === null || $value === '') {
                         return;
@@ -124,7 +127,7 @@ class UpdateRequest extends FormRequest
             'payment_gateway_ids.*' => ['required', 'exists:payment_gateways,id'],
         ];
 
-        if ($this->canUpdateSchedule()) {
+        if ($this->has('payment_detail_schedule_id')) {
             $rules['payment_detail_schedule_id'] = [
                 'nullable',
                 'integer',
@@ -165,6 +168,7 @@ class UpdateRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $dailyLimit = $this->daily_limit;
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
         $monthlyLimit = $this->monthly_limit;
         $monthlyLimitResetDay = $this->monthly_limit_reset_day;
@@ -178,6 +182,9 @@ class UpdateRequest extends FormRequest
             $paymentDetailScheduleId = null;
         }
 
+        if ($dailyLimit === '' || $dailyLimit === null) {
+            $dailyLimit = null;
+        }
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
             $dailySuccessfulOrdersLimit = null;
         }
@@ -201,6 +208,7 @@ class UpdateRequest extends FormRequest
         }
 
         $this->merge([
+            'daily_limit' => $dailyLimit,
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
             'monthly_limit' => $monthlyLimit,
             'monthly_limit_reset_day' => $monthlyLimitResetDay,
@@ -212,17 +220,6 @@ class UpdateRequest extends FormRequest
         ]);
     }
 
-    private function canUpdateSchedule(): bool
-    {
-        $paymentDetail = $this->route('paymentDetail');
-
-        if (! $paymentDetail instanceof PaymentDetail) {
-            return false;
-        }
-
-        return $this->user()?->id === $paymentDetail->user_id;
-    }
-
     private function scheduleOwnerId(): ?int
     {
         $paymentDetail = $this->route('paymentDetail');
@@ -232,6 +229,19 @@ class UpdateRequest extends FormRequest
         }
 
         return $paymentDetail->user_id;
+    }
+
+    private function paymentDetailOwner(): ?User
+    {
+        $paymentDetail = $this->route('paymentDetail');
+
+        if (! $paymentDetail instanceof PaymentDetail) {
+            return $this->user();
+        }
+
+        return $paymentDetail->relationLoaded('user')
+            ? $paymentDetail->user
+            : $paymentDetail->user()->first();
     }
 
     private function additionalInfoIsRequired(): bool

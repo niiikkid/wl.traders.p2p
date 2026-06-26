@@ -8,6 +8,7 @@ import { useModalStore } from "@/store/modal.js";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
+import NumberInput from "@/Components/NumberInput.vue";
 import Select from "@/Components/Select.vue";
 import {computed, ref, watch} from "vue";
 import { router } from '@inertiajs/vue3';
@@ -34,6 +35,7 @@ const form = ref({
     team_leader_trader_limit: null,
     team_leader_reserve_balance_limit: null,
     team_leader_reserve_stop_threshold: null,
+    max_min_order_amount: null,
 });
 
 const selectedRoleName = computed(() => {
@@ -52,6 +54,7 @@ const resetForm = () => {
         team_leader_trader_limit: null,
         team_leader_reserve_balance_limit: null,
         team_leader_reserve_stop_threshold: null,
+        max_min_order_amount: null,
     };
     errors.value = {};
 };
@@ -223,6 +226,28 @@ watch(
                         :disabled="processing"
                     ></Select>
                     <InputError class="mt-1" :message="errors.role_id?.[0]" />
+                </div>
+
+                <div v-if="selectedRoleName === 'Trader'">
+                    <InputLabel
+                        for="max_min_order_amount"
+                        value="Максимальная минимальная сумма сделки"
+                        :error="!!errors.max_min_order_amount?.[0]"
+                    />
+                    <NumberInput
+                        id="max_min_order_amount"
+                        v-model="form.max_min_order_amount"
+                        class="mt-1 block w-full max-w-xs"
+                        step="1"
+                        min="0"
+                        :error="!!errors.max_min_order_amount?.[0]"
+                        @input="errors.max_min_order_amount = null"
+                        :disabled="processing"
+                    />
+                    <InputError class="mt-1" :message="errors.max_min_order_amount?.[0]" />
+                    <p class="mt-1 text-xs text-base-content/70">
+                        Потолок для поля «Минимум» в лимитах реквизита. Если не указано или 0 — ограничение не применяется.
+                    </p>
                 </div>
 
                 <div v-if="selectedRoleName === 'Trader'">

@@ -21,12 +21,15 @@ class OrderController extends Controller
 
         $orders = queries()->order()->paginateForUser(auth()->user(), $filters);
         $orders = TableOrderResource::collection($orders);
+        $incomingSmsLogsUnlinkedCount = IncomingSmsLogController::unlinkedCountForUser(auth()->user());
 
-        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants'));
+        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants', 'incomingSmsLogsUnlinkedCount'));
     }
 
     public function show(Order $order)
     {
+        Gate::authorize('access-to-order', $order);
+
         $authUser = auth()->user();
         $loadWalletRelations = $authUser?->hasRole('Super Admin')
             && request()->input('view_mode') === 'admin';

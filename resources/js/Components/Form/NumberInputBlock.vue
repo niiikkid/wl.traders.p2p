@@ -38,6 +38,14 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    min: {
+        type: [Number, String],
+        default: null,
+    },
+    max: {
+        type: [Number, String],
+        default: null,
+    },
 });
 
 const model = defineModel({
@@ -79,6 +87,8 @@ const clearErrors = (field) => {
                 class="block w-full"
                 :placeholder="placeholder"
                 :error="!!errorsMap[field]"
+                :min="min"
+                :max="max"
                 @input="clearErrors(field)"
             />
         </InputBlock>

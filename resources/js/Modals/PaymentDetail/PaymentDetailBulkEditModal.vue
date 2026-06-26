@@ -13,6 +13,7 @@ import { storeToRefs } from "pinia";
 import { computed, ref, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { usePaymentDetailSchedules } from "@/composables/usePaymentDetailSchedules.js";
+import { useTraderMaxMinOrderAmount } from "@/composables/useTraderMaxMinOrderAmount.js";
 
 const props = defineProps({
     tags: {
@@ -37,6 +38,11 @@ const isVipUser = computed(() => {
     }
 
     return currentUser?.is_vip === true || currentUser?.is_vip === 1;
+});
+
+const shouldBypassTraderMinLimit = computed(() => isAdminUser.value && viewStore.isAdminViewMode);
+const { traderMaxMinOrderAmount, minOrderAmountHelperText } = useTraderMaxMinOrderAmount({
+    bypassForAdmin: shouldBypassTraderMinLimit,
 });
 
 const scope = ref('all');
@@ -327,6 +333,8 @@ watch(
                                         :on-clear="(field) => (errors[field] = null)"
                                         field="min_order_amount"
                                         label="Минимум"
+                                        :helper="minOrderAmountHelperText"
+                                        :max="traderMaxMinOrderAmount"
                                     />
                                 </div>
                             </div>
@@ -349,6 +357,15 @@ watch(
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
                             Оставьте пустым для отключения лимита
+                        </div>
+                        <div
+                            v-if="traderMaxMinOrderAmount !== null"
+                            class="alert alert-warning mt-3 py-2 text-sm"
+                        >
+                            <span>
+                                Максимально допустимая минимальная сумма сделки: <strong>{{ traderMaxMinOrderAmount }}</strong>.
+                                Чтобы указать больше, обратитесь в поддержку.
+                            </span>
                         </div>
                     </div>
                     <div v-else class="rounded-box border border-base-300 p-4">

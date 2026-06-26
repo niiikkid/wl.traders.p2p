@@ -14,7 +14,7 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
         public string $initials,
         public ?string $additional_info,
         public bool $is_active,
-        public int $daily_limit,
+        public ?int $daily_limit,
         public ?int $monthly_limit,
         public ?int $monthly_limit_reset_day,
         public ?int $monthly_successful_orders_limit,
@@ -40,7 +40,7 @@ readonly class PaymentDetailCreateDTO extends BaseDTO
             initials: $data['initials'],
             additional_info: $data['additional_info'] ?? null,
             is_active: (bool) $data['is_active'],
-            daily_limit: (int) $data['daily_limit'],
+            daily_limit: isset($data['daily_limit']) ? (int) $data['daily_limit'] : null,
             monthly_limit: isset($data['monthly_limit']) ? (int) $data['monthly_limit'] : null,
             monthly_limit_reset_day: isset($data['monthly_limit_reset_day']) ? (int) $data['monthly_limit_reset_day'] : null,
             monthly_successful_orders_limit: isset($data['monthly_successful_orders_limit'])

@@ -47,6 +47,7 @@ class TableFiltersValue implements Arrayable
         public ?string $searchSender = null,
         public ?string $searchMessage = null,
         public array $smsOperationTypes = [],
+        public bool $onlyUnlinkedIncoming = false,
     ) {}
 
     public function toArray(): array
@@ -91,6 +92,7 @@ class TableFiltersValue implements Arrayable
             'searchSender' => $this->searchSender,
             'searchMessage' => $this->searchMessage,
             'smsOperationTypes' => implode(',', $this->smsOperationTypes),
+            'onlyUnlinkedIncoming' => $this->onlyUnlinkedIncoming,
         ];
     }
 }

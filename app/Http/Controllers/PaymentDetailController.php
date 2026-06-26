@@ -231,8 +231,9 @@ class PaymentDetailController extends Controller
             ]);
         }
 
-        $updatesSchedule = $request->user()?->id === $paymentDetail->user_id;
-        $dto = PaymentDetailUpdateDTO::makeFromRequest($request->validated(), $updatesSchedule);
+        $validated = $request->validated();
+        $updatesSchedule = array_key_exists('payment_detail_schedule_id', $validated);
+        $dto = PaymentDetailUpdateDTO::makeFromRequest($validated, $updatesSchedule);
         services()->paymentDetail()->update($dto, $paymentDetail);
 
         if ($request->expectsJson()) {
@@ -309,7 +310,7 @@ class PaymentDetailController extends Controller
             'initials' => $detail->initials,
             'additional_info' => $detail->additional_info,
             'is_active' => (bool) $detail->is_active,
-            'daily_limit' => (int) $detail->daily_limit->toPrecision(),
+            'daily_limit' => $detail->daily_limit ? (int) $detail->daily_limit->toPrecision() : null,
             'monthly_limit' => $detail->monthly_limit ? (int) $detail->monthly_limit->toPrecision() : null,
             'monthly_limit_reset_day' => $detail->monthly_limit_reset_day,
             'monthly_successful_orders_limit' => $detail->monthly_successful_orders_limit,

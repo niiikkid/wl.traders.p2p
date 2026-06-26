@@ -7,26 +7,33 @@ const props = defineProps({
         default: '',
     },
     current_daily_limit: {
-        type: String,
+        type: [Number, String],
+        default: 0,
     },
     daily_limit: {
-        type: String,
+        type: [Number, String, null],
+        default: null,
     },
 });
 
-const percent = computed(() => {
-    return props.current_daily_limit / (props.daily_limit/100);
-});
+const hasLimit = computed(() => props.daily_limit !== null && props.daily_limit !== '');
 
-const color = computed(() => {
-    if (percent.value < 40) {
-        return 'bg-green-400';
-    } else if (percent.value > 40 && percent.value < 80) {
-        return 'bg-yellow-400';
-    } else if (percent.value > 80) {
-        return 'bg-red-600';
+const normalizeNumber = (value) => {
+    return Number(String(value ?? 0).replace(/\s/g, '').replace(',', '.')) || 0;
+};
+
+const percent = computed(() => {
+    if (!hasLimit.value) {
+        return 0;
     }
-})
+
+    const limit = normalizeNumber(props.daily_limit);
+    if (limit <= 0) {
+        return 0;
+    }
+
+    return Math.min(100, (normalizeNumber(props.current_daily_limit) / limit) * 100);
+});
 
 </script>
 
@@ -36,29 +43,30 @@ const color = computed(() => {
             {{ label }}
         </div>
         <div class="relative shrink-0 text-nowrap">
-            <span
-                class="text-xs font-semibold"
-                :class="{
-                    'text-success': current_daily_limit / daily_limit < 0.4,
-                    'text-warning': current_daily_limit / daily_limit >= 0.4 && current_daily_limit / daily_limit < 0.8,
-                    'text-error': current_daily_limit / daily_limit >= 0.8
-                }"
-            >
-                {{current_daily_limit}}
-            </span>
-            <span class="mx-1 opacity-70">из</span>
-            <span class="text-xs font-semibold">
-                {{daily_limit}}
-            </span>
+            <template v-if="hasLimit">
+                <span
+                    class="text-xs font-semibold"
+                    :class="{
+                        'text-success': percent < 40,
+                        'text-warning': percent >= 40 && percent < 80,
+                        'text-error': percent >= 80
+                    }"
+                >
+                    {{current_daily_limit}}
+                </span>
+                <span class="mx-1 opacity-70">из</span>
+                <span class="text-xs font-semibold">
+                    {{daily_limit}}
+                </span>
+            </template>
+            <template v-else>
+                <span class="text-xs text-base-content/70">Без лимита</span>
+            </template>
         </div>
     </div>
     <progress class="progress w-full" :class="{
         'progress-success': percent < 40,
         'progress-warning': percent >= 40 && percent < 80,
         'progress-error': percent >= 80
-    }" :value="percent" max="100"></progress>
+    }" :value="percent" max="100" :aria-hidden="!hasLimit"></progress>
 </template>
-
-<style scoped>
-
-</style>

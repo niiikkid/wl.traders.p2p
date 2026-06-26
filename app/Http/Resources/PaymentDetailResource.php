@@ -28,7 +28,7 @@ class PaymentDetailResource extends JsonResource
             'initials' => $this->initials,
             'additional_info' => $this->additional_info,
             'is_active' => $this->is_active,
-            'daily_limit' => $this->daily_limit->toBeauty(),
+            'daily_limit' => $this->daily_limit?->toBeauty(),
             'current_daily_limit' => $this->current_daily_limit->toBeauty(),
             'monthly_limit' => $this->monthly_limit?->toBeauty(),
             'current_monthly_limit' => $this->current_monthly_limit->toBeauty(),
@@ -75,6 +75,7 @@ class PaymentDetailResource extends JsonResource
                     'owner_email' => $user->email,
                     'owner_is_vip' => (bool) $user->is_vip,
                     'owner_can_work_without_device' => (bool) $user->can_work_without_device,
+                    'owner_max_min_order_amount' => $user->effectiveMaxMinOrderAmount(),
                 ];
             }),
             $this->mergeWhen($this->resource->relationLoaded('userDevice'), function () {

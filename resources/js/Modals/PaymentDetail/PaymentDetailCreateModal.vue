@@ -24,6 +24,7 @@ import { isRemovedDetailType } from "@/utils/paymentDetail.js";
 import { storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
+import { useTraderMaxMinOrderAmount } from "@/composables/useTraderMaxMinOrderAmount.js";
 
 const modalStore = useModalStore();
 const viewStore = useViewStore();
@@ -40,6 +41,10 @@ const canWorkWithoutDevice = ref(usePage().props.auth?.user?.can_work_without_de
 const currentUser = usePage().props.auth?.user;
 const isVipUser = computed(() => {
     return currentUser?.is_vip === true || currentUser?.is_vip === 1;
+});
+
+const { traderMaxMinOrderAmount, clampMinOrderAmount } = useTraderMaxMinOrderAmount({
+    bypassForAdmin: false,
 });
 
 const form = ref({
@@ -254,7 +259,8 @@ const clampVipOrderRangeToGatewayLimits = () => {
     const currentMax = form.value.max_order_amount === '' ? null : Number(form.value.max_order_amount);
 
     if (Number.isFinite(currentMin)) {
-        form.value.min_order_amount = Math.min(gatewayMax, Math.max(gatewayMin, currentMin));
+        const clampedMin = Math.min(gatewayMax, Math.max(gatewayMin, currentMin));
+        form.value.min_order_amount = clampMinOrderAmount(clampedMin);
     }
 
     if (Number.isFinite(currentMax)) {
@@ -772,6 +778,7 @@ watch(
                                 label="Минимум"
                                 :label-tooltip="paymentDetailFieldHints.min_order_amount"
                                 :label-tooltip-class="desktopHintClass"
+                                :max="traderMaxMinOrderAmount"
                                 @mouseenter="setActiveHelp('min_order_amount')"
                                 @focusin="setActiveHelp('min_order_amount')"
                             />
@@ -790,6 +797,15 @@ watch(
                         </div>
                         <div class="text-xs text-base-content/70 mt-2">
                             Оставьте пустым для отключения лимита
+                        </div>
+                        <div
+                            v-if="traderMaxMinOrderAmount !== null"
+                            class="alert alert-warning mt-3 py-2 text-sm"
+                        >
+                            <span>
+                                Максимально допустимая минимальная сумма сделки: <strong>{{ traderMaxMinOrderAmount }}</strong>.
+                                Чтобы указать больше, обратитесь в поддержку.
+                            </span>
                         </div>
 
                         <TraderCommissionRangePreview

@@ -18,42 +18,20 @@ class SmsLogController extends Controller
         $filtersVariants = $this->getFiltersData();
 
         $query = SmsLog::query()
-            ->with('user', 'device', 'order')
+            ->with([
+                'user',
+                'device',
+                'order.paymentDetail',
+                'order.paymentGateway',
+            ])
             ->when($filters->search, function ($query) use ($filters) {
                 $query->where('message', 'like', '%'.strtolower($filters->search).'%');
             })
             ->when($filters->onlySuccessParsing, function ($query) {
                 $query->whereNotNull('parsing_result');
             })
-            ->when(! empty($filters->smsOperationTypes), function ($query) use ($filters) {
-                $query->where(function ($query) use ($filters) {
-                    foreach ($filters->smsOperationTypes as $operationType) {
-                        if ($operationType === 'in') {
-                            $query->orWhereRaw(
-                                "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) = 'in'"
-                            );
-
-                            continue;
-                        }
-
-                        if ($operationType === 'out') {
-                            $query->orWhereRaw(
-                                "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) = 'out'"
-                            );
-
-                            continue;
-                        }
-
-                        $query->orWhere(function ($query) {
-                            $query->whereNull('parsing_result')
-                                ->orWhereRaw("JSON_EXTRACT(parsing_result, '$.operation_type') IS NULL")
-                                ->orWhereRaw(
-                                    "LOWER(JSON_UNQUOTE(JSON_EXTRACT(parsing_result, '$.operation_type'))) NOT IN ('in', 'out')"
-                                );
-                        });
-                    }
-                });
-            });
+            ->whereSmsOperationTypes($filters->smsOperationTypes)
+            ->whereOnlyUnlinkedIncoming($filters->onlyUnlinkedIncoming);
 
         $smsLogs = $query->clone()
             ->orderByDesc('id')

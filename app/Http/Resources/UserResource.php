@@ -121,6 +121,7 @@ class UserResource extends JsonResource
             'payout_referral_commission_percentage' => $this->payout_referral_commission_percentage,
             'payout_team_leader_split_from_service_percent' => $this->payout_team_leader_split_from_service_percent,
             'reserve_balance_limit' => $this->reserve_balance_limit,
+            'max_min_order_amount' => $this->max_min_order_amount,
             'fiat_currency' => $this->fiat_currency,
             'payouts_enabled' => (bool) $this->payouts_enabled,
             'payout_hold_enabled' => (bool) $this->payout_hold_enabled,

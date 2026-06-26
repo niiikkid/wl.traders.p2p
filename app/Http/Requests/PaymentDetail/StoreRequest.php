@@ -5,6 +5,7 @@ namespace App\Http\Requests\PaymentDetail;
 use App\Enums\DetailType;
 use App\Models\PaymentGateway;
 use App\Rules\OwnedPaymentDetailSchedule;
+use App\Rules\TraderMaxMinOrderAmount;
 use App\Rules\UniquePaymentDetail;
 use App\Rules\UniquePhonePaymentDetail;
 use App\Services\Money\Currency;
@@ -106,7 +107,7 @@ class StoreRequest extends FormRequest
                 },
             ],
             'is_active' => ['required', 'boolean'],
-            'daily_limit' => ['required', 'integer', 'min:1', 'max:100000000'],
+            'daily_limit' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'monthly_limit' => [
                 'nullable',
                 'integer',
@@ -129,6 +130,7 @@ class StoreRequest extends FormRequest
                 'nullable',
                 'integer',
                 'min:0',
+                new TraderMaxMinOrderAmount($this->user(), $this->user()),
                 function ($attribute, $value, $fail) {
                     if ($value === null || $value === '') {
                         return;
@@ -224,6 +226,7 @@ class StoreRequest extends FormRequest
     {
         $detail = $this->detail;
         $additionalInfo = $this->additional_info;
+        $dailyLimit = $this->daily_limit;
         $dailySuccessfulOrdersLimit = $this->daily_successful_orders_limit;
         $monthlyLimit = $this->monthly_limit;
         $monthlyLimitResetDay = $this->monthly_limit_reset_day;
@@ -244,6 +247,9 @@ class StoreRequest extends FormRequest
         }
         if ($additionalInfo === '' || $additionalInfo === null) {
             $additionalInfo = null;
+        }
+        if ($dailyLimit === '' || $dailyLimit === null) {
+            $dailyLimit = null;
         }
         if ($dailySuccessfulOrdersLimit === '' || $dailySuccessfulOrdersLimit === null) {
             $dailySuccessfulOrdersLimit = null;
@@ -268,6 +274,7 @@ class StoreRequest extends FormRequest
             'detail' => $detail,
             'additional_info' => $additionalInfo,
             'currency' => strtolower($this->currency),
+            'daily_limit' => $dailyLimit,
             'daily_successful_orders_limit' => $dailySuccessfulOrdersLimit,
             'monthly_limit' => $monthlyLimit,
             'monthly_limit_reset_day' => $monthlyLimitResetDay,

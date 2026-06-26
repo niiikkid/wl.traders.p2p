@@ -86,6 +86,24 @@ PROMPT;
 13. Не добавляй дополнительных полей.
 PROMPT;
 
+    private const BANK_ATTRIBUTION_PROMPT = <<<'PROMPT'
+Ты определяешь, относится ли сообщение о финансовой операции к конкретному банку или платёжному методу.
+
+Тебе дают сообщение, а также данные банка/метода: название (bank_name) и код (bank_code).
+
+Возвращай только валидный JSON без пояснений:
+
+{
+  "belongs": "yes" | "unknown"
+}
+
+Правила:
+1. Отвечай "yes" ТОЛЬКО если ты абсолютно уверен, что сообщение относится именно к этому банку или методу.
+2. При малейших сомнениях отвечай "unknown".
+3. Учитывай название банка, бренд, домен или имя приложения и любые явные признаки в тексте.
+4. Не добавляй дополнительных полей.
+PROMPT;
+
     protected ?PaymentGateway $paymentGateway = null;
 
     public function __construct(
@@ -348,6 +366,31 @@ PROMPT;
     }
 
     /**
+     * Подтверждает принадлежность сообщения банку/методу через ИИ.
+     * Возвращает true только при однозначном ответе модели ("yes").
+     */
+    public function messageBelongsToBank(
+        string $sender,
+        string $message,
+        SmsType $messageType,
+        string $bankName,
+        string $bankCode,
+    ): bool {
+        $response = $this->askOpenAi(
+            self::BANK_ATTRIBUTION_PROMPT,
+            $sender,
+            $message,
+            $messageType,
+            [
+                'bank_name' => $bankName,
+                'bank_code' => $bankCode,
+            ],
+        );
+
+        return ($response['belongs'] ?? null) === 'yes';
+    }
+
+    /**
      * @return array{amount?: mixed, card?: mixed, balance?: mixed, bank?: mixed}
      */
     protected function extractPaymentDetails(string $sender, string $message, SmsType $messageType): array
@@ -355,7 +398,10 @@ PROMPT;
         return $this->askOpenAi(self::PAYMENT_DETAILS_EXTRACTION_PROMPT, $sender, $message, $messageType) ?? [];
     }
 
-    protected function askOpenAi(string $systemPrompt, string $sender, string $message, SmsType $messageType): ?array
+    /**
+     * @param  array<string, string>  $extraContext  Дополнительные строки контекста для user-промпта.
+     */
+    protected function askOpenAi(string $systemPrompt, string $sender, string $message, SmsType $messageType, array $extraContext = []): ?array
     {
         try {
             $openAi = app(OpenAiServiceContract::class);
@@ -368,6 +414,10 @@ PROMPT;
 
             $typeLine = $this->formatMessageTypeForPrompt($messageType);
             $userPrompt = "Тип сообщения: {$typeLine}\nsender: {$sender}\nmessage: {$message}";
+
+            foreach ($extraContext as $label => $value) {
+                $userPrompt .= "\n{$label}: {$value}";
+            }
 
             $response = $openAi->prompt(
                 prompt: $userPrompt,

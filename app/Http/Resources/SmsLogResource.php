@@ -30,9 +30,27 @@ class SmsLogResource extends JsonResource
                 ];
             }),
             'order' => $this->whenLoaded('order', function () {
+                if ($this->order === null) {
+                    return null;
+                }
+
+                $order = $this->order;
+
                 return [
-                    'id' => $this->order->id,
-                    'uuid' => $this->order->uuid,
+                    'id' => $order->id,
+                    'uuid' => $order->uuid,
+                    'amount' => $order->amount->toBeauty(),
+                    'currency' => $order->currency->getCode(),
+                    'status' => $order->status->value,
+                    'status_name' => $order->status_name,
+                    'created_at' => $order->created_at->toISOString(),
+                    'payment_gateway_name' => $order->paymentGateway?->name,
+                    'payment_gateway_logo_path' => $order->paymentGateway?->logo
+                        ? asset('storage/logos/'.$order->paymentGateway->logo)
+                        : null,
+                    'payment_detail' => $order->paymentDetail?->detail,
+                    'payment_detail_type' => $order->paymentDetail?->detail_type?->value,
+                    'payment_detail_name' => $order->paymentDetail?->name,
                 ];
             }),
             'sender' => $this->sender,
@@ -43,6 +61,8 @@ class SmsLogResource extends JsonResource
             'timestamp' => Carbon::createFromTimestamp($this->timestamp)->toDateTimeString(),
             'type' => $this->type->value,
             'created_at' => $this->created_at->toDateTimeString(),
+            'rejected_at' => $this->rejected_at?->toDateTimeString(),
+            'is_rejected' => $this->rejected_at !== null,
             'user' => $this->whenLoaded('user', function () {
                 return [
                     'id' => $this->user->id,

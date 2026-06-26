@@ -24,7 +24,9 @@ class UserDeviceController extends Controller
             ->get();
         $devices = UserDeviceResource::collection($devices);
 
-        return Inertia::render('UserDevice/Index', compact('devices'));
+        $smsAutoCloseEnabled = (bool) Auth::user()->sms_auto_close_orders_enabled;
+
+        return Inertia::render('UserDevice/Index', compact('devices', 'smsAutoCloseEnabled'));
     }
 
     /**
@@ -49,16 +51,8 @@ class UserDeviceController extends Controller
             'sms_auto_close_orders_enabled' => ['required', 'boolean'],
         ]);
 
-        if ((bool) $validated['sms_auto_close_orders_enabled']) {
-            return redirect()
-                ->route('trader.devices.index')
-                ->withErrors([
-                    'sms_auto_close_orders_enabled' => 'Автоматический режим временно недоступен. Используйте полуавтоматический.',
-                ]);
-        }
-
         Auth::user()->update([
-            'sms_auto_close_orders_enabled' => false,
+            'sms_auto_close_orders_enabled' => (bool) $validated['sms_auto_close_orders_enabled'],
         ]);
 
         return redirect()

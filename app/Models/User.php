@@ -52,6 +52,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property int $payout_hold_minutes
  * @property int $payout_active_payouts_limit
  * @property int|null $reserve_balance_limit
+ * @property int|null $max_min_order_amount
  * @property string|null $fiat_currency
  * @property float $referral_commission_percentage
  * @property float $team_leader_split_from_service_percent
@@ -118,6 +119,7 @@ class User extends Authenticatable
         'payout_hold_minutes',
         'payout_active_payouts_limit',
         'reserve_balance_limit',
+        'max_min_order_amount',
         'fiat_currency',
         'referral_commission_percentage',
         'team_leader_split_from_service_percent',
@@ -201,6 +203,15 @@ class User extends Authenticatable
             'hide_name_in_trader_top' => 'boolean',
             'login_history_logging_enabled' => 'boolean',
         ];
+    }
+
+    public function effectiveMaxMinOrderAmount(): ?int
+    {
+        if ($this->max_min_order_amount === null || $this->max_min_order_amount <= 0) {
+            return null;
+        }
+
+        return $this->max_min_order_amount;
     }
 
     public function usesTeamLeaderSharedReserve(): bool

@@ -7,9 +7,11 @@ use App\Enums\DisputeStatus;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\TeamLeaderInsuranceMode;
+use App\Enums\UahAmountTier;
 use App\Exceptions\OrderException;
 use App\Models\Merchant;
 use App\Models\PaymentDetail;
+use App\Models\PaymentDetailAmountTierUsage;
 use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Models\ValueObjects\Settings\PrimeTimeSettings;
@@ -41,6 +43,10 @@ class FindAvailablePaymentDetail
     protected int $maxPendingDisputes;
 
     protected Money $approximateTotalProfit;
+
+    protected bool $useUahAmountTierQueue = false;
+
+    protected ?UahAmountTier $uahAmountTier = null;
 
     public function __construct(
         protected Merchant $merchant,
@@ -78,6 +84,13 @@ class FindAvailablePaymentDetail
 
         $this->maxPendingDisputes = services()->settings()->getMaxPendingDisputes();
         $this->approximateTotalProfit = $amount->convert($this->exchangePrice, Currency::USDT());
+
+        // Для гривны очередь "кому давно не выдавали" строится отдельно по диапазону суммы,
+        // чтобы поток мелких сумм не вытеснял справедливую выдачу крупных. Остальные валюты не меняются.
+        if ($this->amount->getCurrency()->getCode() === Currency::UAH()->getCode()) {
+            $this->useUahAmountTierQueue = true;
+            $this->uahAmountTier = UahAmountTier::fromAmount((int) $this->amount->toBeauty());
+        }
     }
 
     public function get(): ?Detail
@@ -93,6 +106,19 @@ class FindAvailablePaymentDetail
         $paymentDetail->update([
             'last_used_at' => now(),
         ]);
+
+        if ($this->useUahAmountTierQueue) {
+            // Двигаем очередь именно того диапазона, по которому выдали сделку.
+            PaymentDetailAmountTierUsage::updateOrCreate(
+                [
+                    'payment_detail_id' => $paymentDetail->id,
+                    'tier' => $this->uahAmountTier->value,
+                ],
+                [
+                    'last_used_at' => now(),
+                ]
+            );
+        }
 
         $randomGatewayID = $paymentDetail->paymentGateways->pluck('id')->random();
         $paymentGateway = PaymentGateway::find($randomGatewayID);
@@ -211,7 +237,10 @@ class FindAvailablePaymentDetail
                         $subQuery->where('can_work_without_device', true);
                     });
             })
-            ->whereRaw('(daily_limit - current_daily_limit) >= ?', [$this->amount->toUnitsInt()])
+            ->where(function (Builder $query) {
+                $query->whereNull('daily_limit')
+                    ->orWhereRaw('(daily_limit - current_daily_limit) >= ?', [$this->amount->toUnitsInt()]);
+            })
             ->where(function (Builder $query) {
                 $query->whereNull('monthly_limit')
                     ->orWhere('monthly_limit', 0)
@@ -299,7 +328,20 @@ class FindAvailablePaymentDetail
             })
             ->active()
             ->availableBySchedule()
-            ->orderBy('last_used_at')
+            ->when($this->useUahAmountTierQueue, function (Builder $query) {
+                // Очередь по диапазону суммы: реквизит, которому дольше всего не выдавали
+                // сделку в этом диапазоне, идёт первым. Реквизиты без выдачи в этом
+                // диапазоне (NULL) сортируются первыми — как и при пустом last_used_at.
+                $query->orderByRaw(
+                    '(SELECT pdatu.last_used_at
+                        FROM payment_detail_amount_tier_usages AS pdatu
+                        WHERE pdatu.payment_detail_id = payment_details.id
+                            AND pdatu.tier = ?) ASC',
+                    [$this->uahAmountTier->value]
+                );
+            }, function (Builder $query) {
+                $query->orderBy('last_used_at');
+            })
             ->when(! is_local(), function (Builder $query) {
                 $query->lock('FOR UPDATE SKIP LOCKED');
             });
