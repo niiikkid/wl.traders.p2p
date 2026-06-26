@@ -1,0 +1,38 @@
+---
+description: Vue 3 component conventions — script setup, styling, forms, processing, icons, i18n
+globs: resources/js/**/*.vue
+alwaysApply: false
+---
+
+# 65 Vue Conventions
+
+## Component structure
+
+- Use Vue 3 Composition API with `<script setup>`. **Put `<script>` above `<template>`** (project convention; the only known exception is `Pagination.vue`).
+- A component has a single root element. Set the page layout with `defineOptions({ layout: AuthenticatedLayout })`.
+- Keep templates readable: move complex conditions, transforms, and formatting into `computed` or small functions. Prefer small, focused components over page-sized ones (see the giant-file warning in `60-frontend-architecture.mdc`).
+- Import `router`, `useForm`, `usePage`, `Link` from `@inertiajs/vue3`. Use `route(...)` (Ziggy) for URLs. Never use `$router.visit` — import and call `router.visit`.
+
+## Styling
+
+- **Do not write CSS in components.** Style with **DaisyUI 5 components + Tailwind v4 utility classes** inline in the template. Avoid `<style scoped>` blocks (the codebase has many empty/legacy ones — don't add more). Genuinely unavoidable custom CSS goes in `resources/css/app.css`.
+- The active DaisyUI theme is `dim`. Use DaisyUI semantic classes (`btn`, `badge`, `card`, `join`, `menu`, `drawer`, ...) and Tailwind tokens rather than hardcoded grays/hex colors (some legacy components like `ExchangeRateMarkup.vue` still do — don't copy that).
+- When unsure of a DaisyUI class name, variant, or Tailwind v4 syntax, check current docs via **Context7 MCP** before guessing.
+
+## Forms & submission
+
+- For Inertia-backed submits use `useForm(...)` and bind submit buttons to `form.processing` so they're disabled while in flight. **Always block the submit button during a request** (`:disabled="form.processing"` / a local `processing` ref for axios flows). This is a hard rule — never leave a submit button clickable mid-request.
+- Map server validation errors to fields via Inertia's `form.errors` (or the modal's error handling for axios flows). Don't silently swallow API/validation errors — surface them.
+- Use the existing modal flow (`modal` store + `Modals/*`) for create/edit; many of those use `axios` + a local `processing` ref — follow the surrounding modal's approach rather than mixing paradigms in one file.
+
+## Icons, charts, editors, dates
+
+- **Icons:** inline SVG (the project does not use Iconify or an icon library). Reuse existing icon components/markup.
+- **Charts:** `apexcharts` directly on dashboard pages.
+- **Rich text:** TipTap (`@tiptap/vue-3`) is available for news/editor content.
+- **Dates:** render via the `Components/DateTime` component; date inputs use Pikaday (in filters). Don't hand-format ISO strings in templates.
+
+## Localization / copy
+
+- There is **no vue-i18n**; UI text is **Russian, hardcoded** in templates. Write new user-facing copy in clear, simple Russian. (Some legacy English fragments exist in `Pagination` and old pages — don't propagate them.)
+- Keep copy human and task-oriented: clear success/error/empty/loading/confirmation messages. Don't put internal/technical terms or spec wording into the UI.

@@ -1,0 +1,49 @@
+---
+description: Reference for how key packages and external integrations are actually used in this project (Horizon, Telescope, Pulse, Spatie, 2FA, impersonate, idempotency, Excel, Telegram, Sanctum, Sentry, etc.). Consult when working with any of these libraries or integrations.
+alwaysApply: false
+---
+
+# 90 Libraries & Integrations
+
+How the installed packages are actually used here. Don't add new dependencies without proposing them first (see `00-project.mdc`). For library API details, use **Context7 MCP**.
+
+## Queues & observability
+- **laravel/horizon** — the only queue runtime that matters; all workers/queues are configured in `config/horizon.php` (12 supervisors, named queues). Add a supervisor when you add a queue (see `35-queues-jobs.mdc`). Dashboard gated by `viewHorizon` (Super Admin).
+- **laravel/telescope** — local/admin debugging; gated by `viewTelescope` (Super Admin).
+- **laravel/pulse** — app monitoring; `config/pulse.php`, gated by `viewPulse` (Super Admin).
+- **sentry/sentry-laravel** — error reporting, wired in `bootstrap/app.php` (`Sentry\Laravel\Integration::handles`). Don't send secrets/PII into Sentry context.
+- **laravel/nightwatch** — installed and auto-discovered; no explicit app code references.
+
+## Auth, roles, access
+- **spatie/laravel-permission** — roles only (no granular permissions in use). `User` uses `HasRoles`. Authorize via `hasRole()` + `role:` middleware + Gates. Config in `config/permission.php`.
+- **pragmarx/google2fa-laravel** — 2FA enforced by the `2fa` middleware; guards profile and trader balance transfers. QR codes via **bacon/bacon-qr-code**.
+- **lab404/laravel-impersonate** — Super Admin only; `auth.is_impersonated` is shared to the UI.
+- **laravel/sanctum** — minimal: only a debug `GET /api/user`. The merchant API uses the custom `Access-Token` header instead (see `40-api.mdc`).
+- **laravel/breeze** — auth scaffolding origin (login/2FA/logout in `routes/auth.php`; registration is disabled).
+
+## API, idempotency, routing
+- **square1/laravel-idempotency** — middleware aliases `idempotency` / `idempotency_for_app` exist (`config/idempotency.php`, header `Idempotency-Key`), but are **not attached to any route**; real dedup is `external_id` uniqueness. Don't assume it's active.
+- **tightenco/ziggy** — exposes named routes to the frontend; regenerate with `php artisan ziggy:generate resources/js/ziggy-routes.js` after route changes (`config/ziggy.php`).
+
+## Money, data, exports
+- **ext-bcmath / ext-gmp** — required by `App\Services\Money\Money` arithmetic. Never use float for money.
+- **maatwebsite/excel** — Excel exports in `app/Exports/*` (wallet transactions, trader/admin payouts).
+- **propaganistas/laravel-phone**, **laravel-validation-rules/credit-card** — phone and card validation in requests (notably PaymentDetail).
+
+## Telegram & content
+- **irazasyed/telegram-bot-sdk** — Telegram bot, webhooks, and chat automation (`config/telegram.php`, `app/Telegram/*`, dispute notifications/automation; documented in `wiki/telegram/`).
+- **ueberdosis/tiptap-php** + **@tiptap/* (frontend)** — rich text for news/editor content.
+
+## External services (config/services.php)
+- **deposit_provider** — external deposit provider (`base_url`, `api_key`, `webhook_key`, `merchant_id`); deposit/withdraw webhooks come in on dedicated token middleware.
+- **ipgeolocation** — IP geolocation.
+
+## Installed but effectively unused (don't build on these without checking)
+- **socialiteproviders/telegram**, **socialiteproviders/zoho** (+ laravel/socialite) — present in composer, no OAuth flow wired in `app/`.
+- **jenssegers/agent** — present; verify usage before relying on it.
+- `App\Services\FundsHolder*` / `FundsOnHold` — code exists but is largely not wired into core order/payout flows.
+
+## Frontend libraries
+- **DaisyUI 5 + Tailwind v4** — all styling (theme `dim`); see `65-vue-conventions.mdc`.
+- **pinia** — client state stores (`view`, `user`, `modal`, `tableFilters`).
+- **apexcharts** — dashboard charts. **pikaday** — date inputs in filters. **@vueuse/core**, **lodash**, **date-fns** (rarely), **sortablejs/vuedraggable** (ordering UIs), **tailwind-merge**, **vue-flagpack** (country flags), **vue-tg** (Telegram web app helpers).

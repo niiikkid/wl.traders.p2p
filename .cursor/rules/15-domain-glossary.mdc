@@ -1,0 +1,57 @@
+---
+description: Domain entities, roles, statuses, money flows, and critical invariants of the P2P platform
+alwaysApply: true
+---
+
+# 15 Domain Glossary
+
+Concise map of the business domain. Almost every task touches these. For deeper, feature-level knowledge use the project wiki (`karpathy-llm-wiki`); for matching/profit logic read the actual code under `app/Services/Order`, `app/Services/Profit`, `app/Services/Wallet`, `app/Services/Dispute`.
+
+## Core entities
+
+- **Order** — a **pay-in**: merchant's client pays fiat into a trader's requisite; merchant is credited USDT. Holds fiat fields (`base_amount`, `amount`, `currency`) and USDT profit fields (`total_profit`, `trader_profit`, `merchant_profit`, `service_profit`, `team_leader_profit`, `trader_paid_for_order`), FX (`conversion_price`, `market`, `rate_fixed_at`), flags (`is_h2h`, `manual_control_acquiring`), and links to `merchant`, `paymentGateway`, `paymentDetail`, `trader`, `teamLeader`.
+- **Payout** — a **pay-out**: merchant pays fiat out to a client via a trader; trader earns USDT. Own namespace (`app/Models/Payout`), own service (`PayoutService`), own pooling/jobs.
+- **PaymentDetail** — a trader's requisite (card / phone / account / iban / e-com / mobile commerce, via `DetailType`). Carries limits (daily/monthly amount, success count, min/max order, max pending, interval), optional work schedule and device binding, M2M to gateways.
+- **PaymentGateway** — a payment method / bank: commissions (tiered), limits, reservation times, supported detail types, SMS senders.
+- **Merchant** — a "shop" entity (NOT a user): `uuid` (the API id), `user_id` (owner User with role Merchant), tokens, callback URLs, geo→market map, anti-fraud settings.
+- **User** — single auth model for all roles (Spatie `HasRoles`). `email` is the human-readable display identifier (the `name` field is not used for display). Holds `api_access_token` (H2H API), `apk_access_token` (device app), `team_leader_id`, `stop_traffic`, payout/insurance settings.
+- **Wallet / Transaction** — see money flows below. Transactions form an append-only ledger.
+- **Dispute** — reopen/resolve mechanism attached to an order (receipt, bank statement, reason code).
+
+## Roles (Spatie roles; permissions are effectively unused)
+
+Active: **Super Admin, Trader, Merchant, Team Leader, Support, Analyst** (Analyst has no route group yet), **Provider Liquidity**. Removed: **Merchant Support** and **Agent** (but `agent_id` / `agent_*` columns still linger on models — legacy). Authorization uses `hasRole()` + `role:` route middleware, not granular permissions.
+
+## Wallet balances (all USDT, `BaseCurrencyMoneyCast`)
+
+`trust_balance` (trader working liquidity), `reserve_balance` (trader or Team Leader shared insurance), `merchant_balance`, `teamleader_balance`, `agent_balance` (legacy), `commission_balance` (service), `provider_balance`. Each wallet has 7 typed balances; `BalanceType` enum identifies them.
+
+## Status enums (string-backed; `Enumable` trait)
+
+- **`OrderStatus`**: `pending`, `success`, `fail` (coarse outcome).
+- **`OrderSubStatus`**: detailed lifecycle — `waiting_details_to_be_selected` → `waiting_for_payment` → `successfully_paid` / `accepted` / `expired` / `cancelled` / `canceled_by_dispute` / `waiting_for_dispute_to_be_resolved` / `successfully_paid_by_resolved_dispute`. **Always read both `status` and `sub_status`.**
+- **`DisputeStatus`**: `pending`, `accepted`, `canceled`.
+- **`PayoutStatus`**: `open`, `taken`, `sent`, `completed`, `canceled`.
+- Others: `InvoiceStatus`, `FundsOnHoldStatus`, `ManualControlProcessingStatus`, `PaymentDetailScheduleStatus`, `MarketEnum` (`bybit`, `binance`, `manual`, `merchant_api`; `rapira` deprecated), `TransactionType`, `BalanceType`.
+
+## Money flow summary
+
+- Fiat → USDT via `conversion_price` (market chosen by merchant geo map; `merchant_api` means merchant passes its own rate within an allowed deviation).
+- **Pay-in:** when requisites are assigned (`OrderDetailAssigner`), the trader is **debited** USDT from `trust_balance` (optionally split with Team Leader `reserve_balance` in shared insurance mode — always via `OrderTraderDebitService`, never raw balance ops). On **success**, the merchant (and team leader) are **credited**; on **fail**, the trader debit is **refunded** (in queued listeners). The trader's real earning is the spread (fiat received vs USDT debited), not a wallet credit on success.
+- `service_profit` is an accounting/stats figure, **not** an automatic wallet credit on success.
+- **Pay-out** mirrors this: merchant balance is reserved on creation; trader is credited USDT after sending fiat (often after a hold).
+- Profit math lives in `App\Services\Profit\ProfitService` (`calculateInBody` / `calculateOutBody`).
+
+## Critical invariants & quirks (don't get burned)
+
+1. **`Order` has a global scope** `whereNotNull('payment_detail_id')` — unassigned orders are hidden from normal queries. Use `Order::withoutGlobalScopes()` in pooling/admin paths that must see them.
+2. **Trader is debited at assignment, credited nothing extra at success** (merchant + team leader get the credit). Don't add a "trader credit on success".
+3. **H2H `PATCH .../finish`** marks an order **success** but with `OrderSubStatus::CANCELED` — counterintuitive; don't "fix" it without checking the API contract.
+4. **`OrderSubStatus::CANCELED` value is `'cancelled'`** (British spelling) while `CANCELED` is the case name — a typo trap in DB queries.
+5. **H2H dispute API** rejects orders in `PENDING`/`SUCCESS`, unlike the internal `DisputeService` which can cancel-first.
+6. **`email` ≠ name** — use `email` as the display identifier everywhere.
+7. **Merchant ≠ User** — the API `merchant_id` is `merchants.uuid`; the authenticated API user is the shop owner (`api-access-to-merchant` Gate).
+8. **Traffic control:** global pause (`SettingsService::isTrafficPaused`), per-trader `stop_traffic`, rejected-dispute limits can auto-stop a trader's traffic.
+9. **SMS auto-close of orders is currently disabled** (commented TODO in `SmsService`); shadow SMS logging is a separate pipeline.
+10. **`FundsHolderService` / `FundsOnHold`** exist but are largely not wired into the core order/payout flow — don't assume they run.
+11. **Legacy removal is in progress** (Agent, Analyst, Rapira, temp VIP). Check `wiki/feature-removal/` before touching those areas.

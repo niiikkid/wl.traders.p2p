@@ -1,0 +1,65 @@
+---
+description: End-to-end table filters system (Inertia + TableFilters store + Queries) — adding/changing/extending filters
+globs: resources/js/Components/Filters/**/*.vue,resources/js/store/tableFilters.js,resources/js/Wrappers/MainTableSection.vue,resources/js/Pages/**/Index.vue,app/Http/Controllers/**/*.php,app/ObjectValues/TableFilters/**/*.php,app/Queries/**/*.php
+alwaysApply: false
+---
+
+# 70 Table Filters
+
+Apply this **every time** you add filters to a new table page, extend/change existing filters (Orders/Disputes/Payouts/Withdrawals/Users/PaymentDetails/PaymentGateways, ...), or change a filter's value format, select options, or how it's applied in queries.
+
+This is a tightly coupled, end-to-end system. A mismatch between frontend and backend keys silently breaks filtering or pagination.
+
+## How it works (source of truth)
+
+### Frontend
+- Filter/pagination state lives in `resources/js/store/tableFilters.js` (`page`, `per_page`, `tab`, `filters`, `filtersVariants`).
+- `FiltersPanel` applies them: `router.visit(route(route().current()), { data: { ...tableFiltersStore.getQueryData, ...props.query } })`.
+- `Wrappers/MainTableSection` initializes the store from Inertia props (`filters`, `filtersVariants`, `data.meta`).
+- Filter inputs in `resources/js/Components/Filters/Pertials/*` write into `tableFiltersStore.filters[<name>]`.
+
+### Backend
+- Parsing/normalization of incoming values: `app/Http/Controllers/Controller.php::getTableFilters()`.
+- Output shape into Inertia/URL: `app/ObjectValues/TableFilters/TableFiltersValue.php::toArray()` (strings / booleans / CSV / dates).
+- Select/checklist options: `Controller::getFiltersData()` → Inertia prop `filtersVariants`.
+- Application in queries: `app/Queries/**/paginateFor*()` via `->when($filters->..., fn ($q) => ...)`.
+
+## The "correct" table page pattern
+
+- **Controller `index`** always passes `filters` and `filtersVariants`:
+  - `$filters = $this->getTableFilters();`
+  - `$filtersVariants = $this->getFiltersData();`
+  - `return Inertia::render('X/Index', compact('data', 'filters', 'filtersVariants'));`
+- **Vue `Index`**:
+  - wrap in `MainTableSection`;
+  - put filters in the `#header` or `#table-filters` slot;
+  - use `<FiltersPanel name="...">` with `InputFilter` / `DateFilter` / `DropdownFilter` / `FilterCheckbox` inside.
+
+## Checklist: add/change a filter (end-to-end)
+
+### 1) Choose filter type and value format
+- **Text/number:** string (`request()->input('filters.xxx')`).
+- **Date:** `DD/MM/YYYY` string on the frontend → parsed to `Carbon` on the backend (see `startDate`/`endDate`).
+- **Multiselect (DropdownFilter):** CSV string (`"a,b,c"`) in URL/filters → `explode(',')` + value validation on the backend.
+- **Checkbox:** boolean — backend usually compares the query string strictly (`request()->input('filters.xxx') === 'true'`).
+
+### 2) Backend: support the filter
+- **`TableFiltersValue`:** add the property to the constructor (`public ?string|bool|array ...`) and to `toArray()` (it must output exactly what the frontend puts into the query).
+- **`Controller::getTableFilters()`:** read `request()->input('filters.<name>')`; normalize (CSV→array, date→Carbon, bool→strict compare); add to `$currentFilters[...]`; pass into `new TableFiltersValue(...)`.
+- **`Controller::getFiltersData()`** (if it needs a dropdown/options): return options as `[{ name: '...', value: '...' }, ...]` under a key matching the filter name.
+- **Queries:** apply only when "not empty": `->when($filters->name, ...)` or `->when(!empty($filters->name), ...)`. For relations use `whereRelation` / `orWhereRelation` like the existing examples.
+
+### 3) Frontend: UI + binding
+- Inside `<FiltersPanel name="...">` add the matching component: `InputFilter`, `DateFilter name="startDate|endDate"`, `DropdownFilter` (options from `tableFiltersStore.filtersVariants[name]`), `FilterCheckbox`.
+- **The frontend filter `name` must match 1:1** the key in `TableFiltersValue` and in `Controller::getTableFilters()` (`filters.<name>`).
+
+## Common mistakes (don't break the system)
+
+- Don't add "local" filter state in the page — filters must live in the `tableFilters` store.
+- Don't break the URL format: changing a value format requires editing `TableFiltersValue::toArray()`, `Controller::getTableFilters()`, **and** the specific `Queries` together.
+- For a DropdownFilter, options must be in `filtersVariants` (Inertia props → `MainTableSection` → store).
+- Extra query params (e.g. "archive/mode") go through `FiltersPanel :query="{ ... }"` (merged into `router.visit`).
+
+## Quick check after changes
+
+- Open the page, set filters, click "Фильтровать", reload: filters should restore (session/URL), pagination should respect current filters, and reset should clear `filters` and reload.

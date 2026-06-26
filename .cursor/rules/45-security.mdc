@@ -1,0 +1,40 @@
+---
+description: Security — roles, gates, auth middleware, 2FA, secrets, input trust, money safety
+globs: app/**/*.php,routes/**/*.php,config/**/*.php
+alwaysApply: false
+---
+
+# 45 Security
+
+This is a fintech app. Treat all external input as hostile and protect money/balances first.
+
+## Full security audit
+
+If the user asks for a backend security audit, OWASP ASVS / API Security review, BOLA/IDOR review, webhook/integration review, race-condition or privilege-escalation analysis, or financial-integrity audit, first read and follow the project skill `.cursor/skills/backend-security-audit/SKILL.md`. For an audit, map the attack surface and report findings with evidence and a prioritized fix plan — don't change code unless asked.
+
+## Authentication & authorization
+
+- Roles via **Spatie laravel-permission** (`HasRoles`). Active roles: Super Admin, Trader, Merchant, Team Leader, Support, Analyst, Provider Liquidity. Granular permissions are effectively unused — authorization is `hasRole()` + route `role:` middleware + Gates.
+- Web routes are protected by stacked middleware: `auth`, `banned`, `2fa`, and `role:<roles>`. Don't add a protected page without the correct `role:` middleware — it also drives UI context via `isRouteFor()` (see `75-routing-roles-ui.mdc`).
+- Entity-level access uses Gates (`access-to-order`, `access-to-merchant`, ...). Use `Gate::authorize(...)`; never rely on "the URL is unknown". A merchant/trader must only see their own data.
+- **2FA** is enforced via the `2fa` middleware (`pragmarx/google2fa-laravel`) and guards sensitive actions (profile, trader balance transfers). Keep sensitive money actions behind it.
+- **Impersonation** (`lab404/laravel-impersonate`): only Super Admin can impersonate, and Super Admin cannot be impersonated. Shared Inertia props expose `auth.is_impersonated`.
+
+## Input & mass assignment
+
+- Validate everything from requests, webhooks, and external APIs via Form Requests; pass only validated data into services.
+- Don't trust amounts, currencies, statuses, or rates from a provider/merchant without checking them against the deal context (merchant, currency, allowed rate deviation, external id).
+- Keep explicit `$fillable`/`$guarded`. Use Eloquent / query bindings — never build SQL with user input.
+- For uploaded files (dispute receipts, bank statements) validate type/size (`ReceiptFileRule`); store outside the public web root.
+
+## Secrets & logging
+
+- No secrets in code. Use `config()` outside config files; `env()` only inside `config/*`.
+- Never log or return API tokens, `api_access_token`/`apk_access_token`, request signatures, passwords, 2FA secrets, or full card/requisite data. Strip sensitive fields before logging a payload.
+- Don't expose internal causes (provider tokens, SQL errors, stack traces) in API error messages.
+
+## Webhooks & external calls
+
+- Make incoming webhooks safe to receive multiple times; verify a trusted signal/signature when the provider supports it. Store the external operation id to detect duplicates.
+- Set timeouts and bounded retries on outgoing calls. Apply rate limiting on public endpoints/webhooks where appropriate.
+- Never auto-move a payment's final status backwards without an explicit business rule.

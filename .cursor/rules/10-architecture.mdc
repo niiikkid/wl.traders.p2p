@@ -1,0 +1,74 @@
+---
+description: Actual backend architecture, layers, and the services()/queries() rails
+alwaysApply: true
+---
+
+# 10 Architecture
+
+This describes the **real** architecture of the project. It is intentionally pragmatic Laravel, not DDD. Follow it for new code; don't invent extra layers.
+
+## The request flow (the rails)
+
+```
+Route (web.php / api.php, with role:/auth/banned/2fa middleware)
+  → Controller (thin: authorize + delegate)
+    → services()->domain()   (writes / business operations)
+    → queries()->entity()    (reads / paginated lists)
+  → API Resource  (shape the output)
+  → Inertia::render(...)  or  response()->success(...)
+```
+
+- **Controllers are thin.** A method should: authorize (`Gate::authorize(...)`), call a service/query, return a Resource or `Inertia::render`. No profit math, provider selection, or status transitions inside controllers.
+- **Business operations live in Services**, accessed through the `services()` builder.
+- **Reads / list queries live in Query classes**, accessed through the `queries()` builder.
+
+## Service & Query builders (use these, not manual `new`)
+
+- `services()` returns `App\Contracts\ServiceBuilderContract` (e.g. `services()->order()`, `services()->dispute()`, `services()->wallet()`, `services()->payout()`, `services()->settings()`, `services()->profit()`, `services()->notification()`, ...). Implementations are bound in `App\Providers\AppServiceProvider::register()` (contract → implementation, usually 1:1).
+- `queries()` returns `App\Contracts\QueriesBuilderContract` for read/list logic (e.g. `queries()->order()->paginateForAdmin($filters)`). One read implementation (`MerchantQueries`) is wrapped in a cache decorator (`MerchantQueriesCache`).
+- `make($abstract)` is a thin alias for `app()->make()`.
+- When adding a new service: create a `*Contract` in `app/Contracts`, the implementation in `app/Services/<Domain>/`, bind it in `AppServiceProvider`, and add an accessor to the relevant builder contract + implementation.
+
+## Service internals
+
+- A service is a **thin facade**; complex multi-step logic is decomposed into **feature classes** under `app/Services/<Domain>/Features/` (and `Handlers/`). Canonical example: `App\Services\Order\OrderService` delegates to `OrderMaker`, `OrderDetailAssigner`, `OrderOperator`, etc.
+- Feature classes are instantiated with `new` inside the service (intentional; they are not container-managed). This is fine — don't "fix" it with DI.
+- Wrap money/status/balance operations in transactions via `App\Utils\Transaction::run(fn () => ...)` (nested-safe) and use `lockForUpdate()` when reading rows you are about to mutate. Pattern:
+
+```php
+return Transaction::run(function () use ($orderID) {
+    $order = Order::where('id', $orderID)->lockForUpdate()->first();
+    if ($order->status->notEquals(OrderStatus::PENDING)) {
+        throw new OrderException('...');
+    }
+    // mutate, then dispatch events
+});
+```
+
+## Status changes, events, and side effects
+
+- Status transitions are **explicit, guarded, ad-hoc** (there is no formal state-machine package). Always guard with the enum helpers (`->equals()`, `->notEquals()`) before transitioning, and `throw` a domain exception on an illegal transition.
+- Terminal order transitions go through `OrderOperator` (`finishOrderAsSuccessful`, `finishOrderAsFailed`, `reopenFinishedOrder`, `updateAmount`).
+- **Domain events are facts** (`OrderFinishedAsSuccessfulEvent`, `DisputeOpenedEvent`). Financial events implement `ShouldDispatchAfterCommit`. Side effects (wallet credit, notifications, callbacks) happen in **queued listeners**, discovered automatically from `app/Listeners` (see `bootstrap/app.php`). Wallet settlement on order success happens in a listener, not in an Observer.
+- Merchant callbacks are triggered from `OrderObserver` → `SendOrderCallbackJob` (with a Redis lock). See `35-queues-jobs.mdc`.
+
+## Authorization: Gates, not Policies
+
+- There are **no Policy classes**. All authorization is `Gate::define(...)` in `AppServiceProvider::boot()`: `access-to-order`, `access-to-dispute`, `access-to-dispute-receipt`, `access-to-payment-detail`, `access-to-merchant`, `access-to-self`, `api-access-to-merchant`, plus `viewHorizon` / `viewPulse` / `viewTelescope` (Super Admin).
+- In controllers, authorize with `Gate::authorize('access-to-order', $order)`. Add new access checks as Gates in the same place and style — do not write ad-hoc `if` role checks scattered in controllers.
+
+## Directory map (what exists)
+
+`app/`: `Casts`, `Console/Commands`, `Contracts`, `DTO`, `Enums`, `Events`, `Exceptions`, `Exports`, `Facades`, `Http/{Controllers,Middleware,Requests,Resources}`, `Jobs`, `Listeners`, `Mixins`, `Models`, `Observers`, `ObjectValues`, `Providers`, `Queries`, `Rules`, `Services`, `Support`, `Telegram`, `Traits`, `Utils`, plus `helpers.php`.
+
+- **There is no `app/Actions/` and no `app/Domain/`. Do not create them.** Business operations go in `Services` (+ `Features`), data shaping in `DTO` / `ObjectValues`, reads in `Queries`.
+- Controllers are grouped **by role and API surface**: root (shared Inertia pages like `OrderController`), `Admin/`, `Trader/`, `Merchant/`, `Support/`, `TeamLeader/`, `API/H2H/`, `API/...`. One Inertia page (e.g. `Order/Index`) is often rendered by several role controllers via `role:` middleware.
+
+## Known legacy / anti-patterns — be aware, don't copy
+
+- **God classes:** `MainPageStatsService` (~2.8k lines, lots of raw SQL aggregations) and `PayoutService` (~1k lines). Don't pile more onto them; for new logic prefer a focused service/feature class. Refactor only if explicitly asked.
+- **Fat base `Controller`** holds `getTableFilters()` / `getFiltersData()` for all tables (see `70-tables-filters.mdc`); there is duplicated filter-parsing inside it.
+- **Duplicated controllers** (`Admin\DisputeController` vs `Support\DisputeController`); a Trader route reuses `Admin\OrderController::updateAmount`.
+- **Dead/orphaned code:** `OrderSucceeded` / `NewWalletTransactionCreatedEvent` (no live listeners), some legacy Inertia endpoints `abort(404)`, empty dirs (`Analyst/`, `ProviderLiquidity/`, `Concerns/`, `Models/Praout/`), empty `API/V2/` controllers folder.
+- **Naming traps:** `SettingsService` (not `SettingService`); event typo `OrderReopenedFromSucessfulEvent`; `format_card` guarded by `mask_card`.
+- Don't replicate these. When writing new code, follow the clean rails above.

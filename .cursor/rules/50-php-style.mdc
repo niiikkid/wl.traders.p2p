@@ -1,0 +1,39 @@
+---
+description: PHP code style, naming, and readability conventions
+globs: **/*.php
+alwaysApply: false
+---
+
+# 50 PHP Style
+
+## Baseline
+
+- Follow PSR-12 and the style of neighboring files first. Format with `vendor/bin/pint --dirty --format agent` after editing PHP (this is formatting, not tests). Don't run `pint --test`.
+- Use type hints on all parameters and return types. Use constructor property promotion. Prefer modern PHP 8.3 features (`match`, enums, readonly where it fits, named args for clarity).
+- Always use curly braces for control structures, even single-line bodies.
+- Add PHPDoc for non-trivial methods and array shapes; keep existing PHPDoc blocks.
+
+## Naming (match the codebase)
+
+- Classes: `PascalCase`. Methods: `camelCase`. Enum cases: `PascalCase` (string-backed values are lowercase/snake as in DB).
+- Local variables & properties: **`camelCase`** is the dominant, preferred convention (`$conversionPrice`, `$activeOrdersCount`). Some legacy code uses `snake_case` locals (`$receipt_name`) — match the file you're in, but write new variables in `camelCase`.
+- Database columns: `snake_case`.
+- Constants: `SCREAMING_SNAKE_CASE`.
+- Names must express intent: `isProfitable()`, `finishOrderAsSuccessful()`, not `check()` / `process()`.
+
+## Readability
+
+- Reduce nesting with early returns and guard clauses (`if ($x->notEquals(...)) { throw ... }`).
+- One method, one job. Don't grow new god methods (the codebase already has a few — don't add to them).
+- No magic strings for statuses/types/currencies — use enums or `Currency` objects.
+- Remove debug leftovers (`dd()`, `dump()`, `ray()`, stray `var_dump`). Don't leave new `//TODO` without a reason.
+
+## Comments
+
+- Comments explain **why**, not **what**. Don't narrate code or restate the method name.
+- Prefer a clear class/method name over a long explanatory comment. Write comments in English.
+
+## Laravel-isms
+
+- Use `config()` (not `env()`) outside config files. Use collections and helpers where they make code simpler.
+- Use the project helpers `services()`, `queries()`, `make()` instead of manual container juggling, and `Transaction::run()` for transactional blocks.

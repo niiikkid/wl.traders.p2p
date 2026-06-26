@@ -1,0 +1,45 @@
+---
+description: Migrations, schema conventions, money/rate columns, indexes, integrity, and idempotency
+globs: database/**/*.php,app/Models/**/*.php
+alwaysApply: false
+---
+
+# 30 Database
+
+## Migrations
+
+- Create migrations with `php artisan make:migration --no-interaction`. One clear change per migration.
+- **Do not edit already-applied migrations** (other environments and the production DB depend on them). Add a new migration instead. When modifying a column, restate **all** of its previous attributes (Laravel drops unspecified ones).
+- This project ships an initial schema dump: `php artisan app:install` drops all tables, restores `basedb.sql`, then runs `migrate --force`. **Never run that yourself.** Incremental migrations live in `database/migrations/` (~300 files).
+- Make `down()` genuinely reversible only when safe. For large/production changes, go step by step (add column → backfill → switch code → drop old).
+
+## Column conventions (match existing tables)
+
+- **Money:** `string` column holding integer **units** (see `25-money.mdc`). Not decimal, not float.
+- **Rates / percentages / commissions:** `float` columns.
+- **Statuses:** `string` columns backed by PHP string enums (`OrderStatus`, `OrderSubStatus`, `DisputeStatus`, `PayoutStatus`, ...). Store the enum's string value.
+- **Identifiers:** public-facing entities use a `uuid` (orders, payouts, merchants) in addition to the numeric `id`. API ids are uuids.
+- `settings` table is a simple `key`/`value` string store with **no timestamps** (see `SettingsService`).
+
+## Integrity & concurrency
+
+- Protect money rules in the DB, not just PHP: foreign keys, unique indexes, and constraints where appropriate. (Older migrations often use nullable `foreignId()` without `constrained()` — match the table you're touching, but prefer explicit constraints for new tables.)
+- Wrap multi-row money/status mutations in `App\Utils\Transaction::run()` and read rows you will mutate with `lockForUpdate()`.
+- Use atomic updates / locks for concurrent balance and status changes. A unique index is more reliable than a PHP existence check.
+
+## Indexes
+
+- Index columns used in `WHERE`, `JOIN`, `ORDER BY`: statuses, `merchant_id`, `payment_detail_id`, `external_id`, `uuid`, dates. The project adds these in dedicated `add_indexes_to_*` migrations — follow that pattern.
+- Don't add indexes blindly; they speed reads but slow writes.
+
+## Eloquent usage
+
+- Avoid N+1: use `with()`, `load()`, `withCount()`. No queries inside loops.
+- For large sets use `chunkById()` / `lazyById()` / cursors; don't load whole tables into memory.
+- Reads/list queries belong in `app/Queries/*` via `queries()` (see `10-architecture.mdc`), not inline in controllers.
+- Never return Eloquent models directly from the API — go through a Resource.
+
+## Idempotency at the data layer
+
+- Merchant orders/payouts are deduplicated by **`external_id` unique per merchant**, plus a short-lived cache lock during async pooling (`pending_order_external_id_{id}_merchant_{id}`). Preserve both when touching create flows (see `40-api.mdc`).
+- For external callbacks/webhooks, store the external operation id and make reprocessing safe — a repeated webhook must not duplicate a payment or move a final status backwards.

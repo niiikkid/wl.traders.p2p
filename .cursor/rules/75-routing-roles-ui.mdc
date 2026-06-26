@@ -1,0 +1,52 @@
+---
+description: Coupling of routing, roles, and UI context (menus, viewMode, shared props) — use when touching routes/access/menus or adding role pages
+globs: routes/web.php,app/Http/Middleware/HandleInertiaRequests.php,app/Providers/AppServiceProvider.php,resources/js/Layouts/**/*.vue,resources/js/store/view.js
+alwaysApply: false
+---
+
+# 75 Routing ↔ Roles ↔ UI
+
+Use this whenever you change **routes/access/controllers** or **layout/menu/UI switching**, or add a new page for a role. In this project these parts are coupled: a mistake in one place causes "wrong menu", "wrong counters", or "wrong access".
+
+## Key idea
+
+- **The UI context (which interface to show) is determined by the route name and its `role:` middleware**, not just the user's role.
+- The frontend picks the menu by `route().current('admin.*')` / `merchant.*` / `support.*` / etc.
+- The backend uses `isRouteFor($role)` (checks the current route's `role:` middleware) to compute shared props / menu counters.
+
+## Backend: roles / access / routing
+
+- **Roles:** Spatie Permission, `role:` middleware. Active roles: `Super Admin`, `Trader`, `Merchant`, `Support`, `Analyst`, `Team Leader`, `Provider Liquidity` (`Merchant Support` and `Agent` were removed).
+- **Role routing** in `routes/web.php`: groups with `middleware: [auth, banned, 2fa, role:...]` and name namespaces:
+  - `admin.*` (prefix `admin`) — `role:Super Admin`
+  - `support.*` (prefix `support`) — `role:Support|Super Admin`
+  - `leader.*` (prefix `leader`) — `role:Team Leader|Super Admin`
+  - `merchant.*`, `merchants.*`, `integration.*` — `role:Merchant|Super Admin`
+  - `trader.*`, `wallet.*` and shared resources (`orders.*`, `disputes.*`, `payment-details.*`) — `role:Trader|Super Admin` (some shared with Merchant)
+  - `Analyst` currently has **no** route group yet.
+- **`isRouteFor($role)`** (`app/helpers.php`) checks whether the current route has `role:` middleware containing the role. It's used in `HandleInertiaRequests` to compute "userRole" and menu counters. If you add a page and forget the `role:` middleware, the backend computes the wrong context/counters.
+- **Entity access:** Gates in `AppServiceProvider` (`access-to-order`, `access-to-dispute`, `access-to-payment-detail`, `access-to-merchant`, ...). For new actions touching `Order/Dispute/PaymentDetail/Merchant`, use a Gate check in the same style, not hand-rolled `if`s.
+
+## Inertia shared props (source of truth for UI data)
+
+`app/Http/Middleware/HandleInertiaRequests.php` shares:
+- `auth.user`, `auth.role`, `auth.is_admin`, `auth.is_impersonated`
+- `data.rates`, `data.wallet`, `data.hasPendingDisputes`
+- `app.name`, `app.slogan` (from `SettingsService`)
+- `menu.*` (counters/indicators for menus)
+
+**Rule:** top-level counters/data belong in shared props, not recomputed on the frontend.
+
+## Frontend: viewMode & menus
+
+- **State:** `resources/js/store/view.js` holds `viewMode`.
+- **Switching:** `resources/js/Layouts/AuthenticatedLayout.vue` sets `viewMode` on `onMounted` and on `router.on('success')`.
+- **How the mode is resolved:** mainly via `route().current('admin.*')` / `leader.*` / `support.*` / `merchant.*` / `trader.*` (+ branches for `integration.*`, `payments.*`, `merchants.*`). Super Admin can manually switch via `ViewModeSwitcher`. There's a special branch for `profile.*` that uses `usePage().props.auth.role.name`.
+- One menu component per context: `TraderMenu`, `AdminMenu`, `MerchantMenu`, `TeamLeaderMenu`, `SupportMenu` (+ `AdminMenuApp` for Horizon/Pulse). Menus refresh counters via `router.on('success')`.
+
+## Practical checklist when adding a page/section
+
+- Make sure the **route name** falls into the correct namespace (`admin.*`, `support.*`, ...), otherwise the menu/layout may stay "trader".
+- Make sure the route/group has the correct `role:` middleware — it affects both access and `isRouteFor()` → shared props.
+- If the page introduces new menu counters/indicators, add them in `HandleInertiaRequests`.
+- After editing routes: `php artisan optimize` and `php artisan ziggy:generate resources/js/ziggy-routes.js`.

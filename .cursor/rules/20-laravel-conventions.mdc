@@ -1,0 +1,94 @@
+---
+description: Laravel conventions for controllers, form requests, models, resources, enums, exceptions, helpers, routes
+globs: app/**/*.php,routes/**/*.php,bootstrap/app.php
+alwaysApply: false
+---
+
+# 20 Laravel Conventions
+
+## Controllers
+
+- Keep them thin: authorize → delegate to `services()` / `queries()` → return Resource / `Inertia::render` / `response()->success()`.
+- Authorize with Gates: `Gate::authorize('access-to-order', $order)` (see `10-architecture.mdc`).
+- For list/index pages, pass `filters` and `filtersVariants` from the base controller helpers (see `70-tables-filters.mdc`):
+
+```php
+public function index()
+{
+    $filters = $this->getTableFilters();
+    $filtersVariants = $this->getFiltersData();
+    $orders = TableOrderResource::collection(queries()->order()->paginateForAdmin($filters));
+
+    return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants'));
+}
+```
+
+- No profit math, provider/requisite selection, status transitions, or heavy queries in controllers. Push them into services/queries.
+- Fat legacy controllers exist (`PaymentDetailController`, `MainPageController`, ...). Don't extend the fat pattern; new logic goes into a service.
+
+## Form Requests
+
+- Validate input with Form Requests, one per action, mirroring the controller namespace (`app/Http/Requests/<Role|Api>/...`).
+- `authorize()` is often `return true` because access is enforced by a `Gate` in the controller — follow that convention unless a request truly owns the check.
+- Pass only `$request->validated()` (or a DTO built from it) into services.
+- Expose typed accessors on the request when it helps (e.g. `validatedReasonCode()`), following existing requests.
+- For money inputs, convert at the boundary: `Money::fromPrecision($request->input('amount'), $currency)` (see `25-money.mdc`).
+
+## Models
+
+- A model describes a table: relationships, `casts`, scopes, accessors. **No business operations** (no `$order->finish()`); those live in services.
+- Casts: most models use the `protected $casts` array; newer/refactored models use a `casts()` method. Follow the neighboring model. Use string-backed enums and the money casts (`MoneyCast`, `BaseCurrencyMoneyCast`, `CurrencyCast`).
+- Be explicit about mass assignment (`$fillable` / `$guarded`).
+- Use local scopes for repeated filters. Remember the `Order` global scope hides unassigned orders (use `withoutGlobalScopes()` where needed).
+- Custom route binding exists for `order` and `payout` (resolve by `uuid` or `id`) — reuse it for new related routes.
+
+## API Resources
+
+- Shape every API/JSON and Inertia payload through a Resource; **never return a raw Eloquent model** from the API.
+- **`->resolve()` rule:** when passing a `Resource::collection(...)` that is **not** a paginated collection into Inertia props or a JSON array, call `->resolve()`, otherwise the data gets wrapped in a `data` key and the frontend breaks:
+
+```php
+$tags = PaymentDetailTagResource::collection($tags)->resolve();
+```
+
+- H2H/merchant-facing resources live under `app/Http/Resources/API/...` and have their own shape — don't leak internal fields, provider secrets, raw payloads, or internal IDs into them.
+
+## JSON API responses (response mixins)
+
+- For JSON endpoints use the response mixins (defined by `App\Mixins\ResponseMixins`, documented in `_ide_helper_custom.php`):
+  - `response()->success($data = [], $status = 200)`
+  - `response()->successWithMessage($message, $data = [], $status = 200)`
+  - `response()->fail($status = 400)`
+  - `response()->failWithMessage($message, $status = 400)`
+- Format is `{ success: true|false, data?, message? }`. A collection passed to `success()` merges its pagination meta automatically.
+
+## Enums
+
+- String-backed enums using the `App\Traits\Enumable` trait (gives `values()`, `options()`, `equals()`, `notEquals()`, `notEqualsAny()`). Use these helpers for comparisons and guards.
+- **Labels/colors are NOT stored in the enum.** User-facing labels come from translations (e.g. `trans("order.status.{$status}")`). Keep enums data-only.
+- Create new enums with `php artisan make:enum` and the project's `Enumable` trait.
+
+## Exceptions
+
+- Domain errors are typed exception classes (e.g. `OrderException`, `DisputeException`) extending the project `BaseException`, usually with **static factory methods** carrying the user-facing message:
+
+```php
+throw OrderException::merchantBlocked();
+throw OrderException::make('Параметр manual_control_acquiring доступен только для H2H API.');
+```
+
+- Don't swallow errors with empty `catch`. Don't put secrets/tokens/full payloads into exception messages (they may reach the client).
+
+## Helpers (app/helpers.php)
+
+- `services()`, `queries()`, `make()` — primary access points (see `10-architecture.mdc`).
+- `is_local()` / `is_production()` — environment checks.
+- `isRouteFor($role)` — true if the current route's middleware contains `role:<role>`; used to derive UI context and menu counters (see `75-routing-roles-ui.mdc`).
+- `sign_request()`, `nestedLowercase()`, `convertBytes()`, `format_card()` (note: guarded by `mask_card`).
+
+## Routes & Artisan
+
+- Prefer `php artisan make:* --no-interaction` for new classes; mirror the structure/style of sibling files.
+- Routes are grouped by `auth` + `banned` + `2fa` + `role:` middleware with name namespaces (`admin.*`, `support.*`, `leader.*`, `merchant.*`, `trader.*`). See `75-routing-roles-ui.mdc`.
+- **After any route change run:** `php artisan optimize` and `php artisan ziggy:generate resources/js/ziggy-routes.js`.
+- Use named routes + `route()` for URL generation.

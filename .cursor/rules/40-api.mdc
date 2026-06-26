@@ -1,0 +1,41 @@
+---
+description: Merchant H2H API, token auth, pooling, idempotency, callbacks, and integration surfaces
+globs: routes/api.php,app/Http/Controllers/API/**/*.php,app/Http/Controllers/Merchant/**/*.php,app/Http/Resources/API/**/*.php,app/Http/Requests/API/**/*.php,app/Http/Middleware/**/*.php
+alwaysApply: false
+---
+
+# 40 API & Integrations
+
+The merchant API is a **contract**. Breaking it can cost merchants real payments. Change it carefully, with backward compatibility in mind, and only when needed.
+
+## Authentication (token-based, mostly not Sanctum)
+
+- The H2H merchant API authenticates via the **`Access-Token` header** matching `users.api_access_token` (middleware `ApiAccessToken`, alias `api-access-token`). This is **not** Sanctum — Sanctum is used only for a debug `GET /api/user`.
+- A merchant request must target a `Merchant` **owned by the authenticated user**, enforced by the `api-access-to-merchant` Gate. Remember `merchant_id` in the API is `merchants.uuid`, not the numeric id.
+- Other surfaces use their own token middleware: `api-deposits-access-token`, `api-withdrawals-access-token`, `device-access-token` (mobile app SMS/device), `integration-infrastructure-api-access-token` (read-only infra API). Use the matching middleware for the surface you touch; don't mix them.
+
+## H2H Order endpoints (prefix `/api`)
+
+`POST /h2h/order` (create via pooling), `GET /h2h/order/{uuid}`, `GET /h2h/order/{merchant_id}/{external_id}`, `PATCH /h2h/order/{uuid}/cancel` (fail), `PATCH /h2h/order/{uuid}/finish` (success — note: sets `OrderSubStatus::CANCELED`, see `15-domain-glossary.mdc`), `POST /h2h/order/{uuid}/dispute`, `POST /h2h/order/{uuid}/confirmation-code` (manual control acquiring). Also `/api/payment-gateways`, `/api/currencies`, `/api/wallet/balance`, `/api/payouts/*`, `/api/statements/*`.
+
+## Order creation: pooling + idempotency
+
+- Creation is **asynchronous via pooling**: the controller dispatches an `OrderPoolingJob` and the client polls for the assigned requisites/rate. Payouts follow the same pooling pattern.
+- **`external_id` is required and unique per merchant.** The store request validates DB uniqueness **and** sets a cache lock (`pending_order_external_id_{value}_merchant_{id}`) to block concurrent in-flight creation. Preserve both checks.
+- A repeated create for the same `external_id` must return a clear result, never a second order.
+
+## Callbacks
+
+- `CallbackService` POSTs to `order.callback_url ?? merchant.callback_url` with header `Access-Token: <merchant owner api_access_token>`. Delivery runs through `SendOrderCallbackJob` / `SendPayoutCallbackJob` on the `callback` queue with a Redis lock and retries (see `35-queues-jobs.mdc`).
+- Incoming provider webhooks (`/api/deposit/webhook`, `/api/withdraw/webhook`) must be safe to receive twice and must not move a final status backwards.
+
+## Responses & errors
+
+- Use the response mixins (`response()->success(...)`, `failWithMessage(...)`); format is `{ success, data?, message? }` (see `20-laravel-conventions.mdc`).
+- Shape output through `app/Http/Resources/API/...` Resources. Never leak internal IDs, provider secrets, raw payloads, or stack traces. Error messages should help the merchant fix the request, not expose internals.
+- Use correct HTTP status codes (`200/201/204`, `401/403/404`, `422` validation, `429` rate limit, `500` generic).
+
+## Versioning & idempotency middleware
+
+- `Http/Requests/API/V2/` exists but `Http/Controllers/API/V2/` is empty — there is no live V2 yet. If you introduce a new version, add it explicitly and keep the old contract intact.
+- `square1/laravel-idempotency` is installed and wired as middleware aliases (`idempotency`, `idempotency_for_app`, header `Idempotency-Key`, replay-on-duplicate), but **currently not attached to any route**. The active dedup mechanism is `external_id` uniqueness (above). Don't assume idempotency middleware is running unless you attach it.

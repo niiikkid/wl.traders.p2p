@@ -1,0 +1,45 @@
+---
+description: Frontend architecture — Inertia + Vue 3 + DaisyUI structure, data flow, and reusable building blocks
+globs: resources/js/**/*.vue,resources/js/**/*.js
+alwaysApply: false
+---
+
+# 60 Frontend Architecture
+
+The frontend is a **server-driven Inertia.js v2 app**, not a standalone SPA. Vue 3 (`<script setup>`) + DaisyUI 5 + Tailwind v4 + Pinia + Ziggy. There is **no** vue-router, TanStack Query/Table, vee-validate, zod, or Reka UI — don't add them.
+
+## Structure (`resources/js`)
+
+- `app.js` — Inertia app: `resolvePageComponent('./Pages/...')`, Pinia, Ziggy. `ssr.js` — SSR entry. `bootstrap.js` — `window.axios` + CSRF.
+- `Pages/` — Inertia pages, organized **by resource with role subfolders** (`Order/`, `Dispute/`, `PaymentDetail/`, `Wallet/`, dashboards `MainPage/{Admin,Trader,Merchant,Leader}`, `Support/...`, `Leader/...`, `Payout/{Admin,Merchant,Trader}`). A page sets its layout with `defineOptions({ layout: AuthenticatedLayout })`.
+- `Wrappers/` — page-level wrappers (note: path is `resources/js/Wrappers/`, **not** `Components/Wrappers`).
+- `Components/` — UI components (buttons, inputs, table, filters, status badges, alerts, DateTime, Pagination).
+- `Modals/` — modal forms (create/edit lives here, not on dedicated pages). `Modals/Next/*` is a newer modal style.
+- `Layouts/` — `AuthenticatedLayout` (drawer + role menus), `GuestLayout`, `ManualControlLayout`.
+- `store/` — Pinia: `view` (UI context / `viewMode`), `user`, `modal` (modal orchestration), `tableFilters` (filters + pagination state).
+- `composables/`, `utils/` — small reusable helpers. `ziggy-routes.js` — generated, refreshed via `php artisan ziggy:generate resources/js/ziggy-routes.js`.
+- Path alias: `@/*` → `resources/js/*`.
+
+## Data flow
+
+- **Primary: Inertia props.** Pages receive server props; lists arrive paginated as `{ data, meta }`. Navigation, filtering, and pagination use `router.visit(...)` (import `router` from `@inertiajs/vue3`, don't use `$router`). Mutations use Inertia `useForm().post/patch/put/delete`.
+- **Secondary: axios** (`window.axios`) for modal CRUD (PaymentDetail/Gateway/User modals), polling (notifications ping), async filter dropdowns, and partial refreshes. There is **no central API client** — axios calls are ad-hoc and hit named routes via `route(...)`. Keep this pattern; don't introduce a new API layer for one feature.
+- Keep top-level data (auth, menu counters, rates, wallet) in **Inertia shared props** (`HandleInertiaRequests`), not recomputed on the client. See `75-routing-roles-ui.mdc`.
+
+## Reusable building blocks (use these, don't reinvent)
+
+- **List/table pages → `Wrappers/MainTableSection.vue`.** Props: `title`, `data`, `paginate`, `displayPagination`, `info`, `visitExtraData`; slots: `#button`, `#header`, `#table-filters`, `#body`. It initializes the `tableFilters` store from Inertia props and handles pagination + empty/flash states.
+- **Filters → `Components/Filters/FiltersPanel` + partials** (`InputFilter`, `DateFilter`, `DropdownFilter`, `FilterCheckbox`; note the folder is misspelled `Pertials/`). Full end-to-end pattern is in `70-tables-filters.mdc`.
+- **Pagination → `Components/Pagination/Pagination.vue`.**
+- **Create/Edit → modals via the `modal` store** (e.g. `modalStore.openPaymentGatewayCreateModal()`), components in `Modals/`. (`Wrappers/SecondaryPageSection.vue` exists but is **unused** — don't rely on it; the old rule that referenced it for create/edit pages was inaccurate.)
+- **Confirmations → `ConfirmModal`** via `modalStore.openConfirmModal()`. Caveat: it currently closes synchronously in `finally`; if you await an async action, make sure the UX still makes sense.
+- **Tables → `Components/Table`**: `TableActionsDropdown` + `TableAction`, and ready-made `EditAction` / `ShowAction` / `SuccessAction` / `FailAction`, plus `RefreshTableData`.
+- **Dates → `Components/DateTime`** (custom RU relative/absolute formatting; not `date-fns`). Status badges: `OrderStatus`, `DisputeStatus`, `IsActiveStatus`. Alerts: `AlertError/Info/Warning`.
+- **Base form controls** live in `Components/Form/*` and root inputs (`TextInput`, `NumberInput`, `Select`, `Checkbox`, `InputLabel`, `InputError`) and buttons (`PrimaryButton`, `SecondaryButton`, `SaveButton`, `GoBackButton`).
+
+## Known legacy / anti-patterns — be aware, don't copy
+
+- **Giant page/modal files** (`MainPage/Admin/Index.vue` ~1.9k lines, `TelegramChats/Index.vue`, `Payout/Trader/Index.vue`, `PaymentDetail/Index.vue`, modals 1000+ lines). Don't make new files like this — extract components/composables.
+- **Mixed form approaches** (Inertia `useForm` vs `ref` + axios vs inline). For new forms prefer `useForm` for Inertia-backed submits; use axios only where the existing modal flow already does.
+- **Two modal systems** (`Modal.vue` vs `Modals/Next/*`), near-duplicate components (`DisplayUUID` vs `DUUID`), local filter systems bypassing `FiltersPanel` (`EnabledCards/Index`), axios-paginated lists (`Merchant/Index`). Prefer the standard blocks above for new work.
+- `jsconfig.json` excludes `Pages/Payout/**` even though those files exist — a stale config quirk, not a signal to avoid the folder.

@@ -1,0 +1,67 @@
+---
+description: Core project context, stack, working principles, and legacy policy for the P2P payment platform
+alwaysApply: true
+---
+
+# 00 Project
+
+## Your role
+
+- You help develop a **production**, high-load P2P payment platform built on Laravel 11 + Vue 3 (Inertia.js).
+- Talk to the user in **Russian**. Write code, comments, commit messages, and identifiers in **English**. UI copy is in **Russian**.
+- Be concise. Explain simply, but never water down rules that protect money, balances, statuses, or the public API.
+
+## What this project is
+
+- A P2P fiat payment intermediary that connects **merchants** and **traders**, settling in **USDT**.
+- **Pay-in (`Order`):** a merchant's client pays fiat into a trader's payment requisite; the merchant is credited in USDT, the trader provides liquidity.
+- **Pay-out (`Payout`):** a merchant pays fiat out to its client through a trader; the trader sends fiat and earns USDT.
+- The biggest risk is always: **money, balances, exchange rates, payment statuses, disputes, and external merchant/device integrations.**
+- See `15-domain-glossary.mdc` for entities, statuses, and invariants.
+
+## Fixed stack (don't fight it)
+
+- **Backend:** PHP 8.3+, Laravel 11, MySQL 8, Redis, Horizon (queues), Telescope + Pulse + Sentry + Nightwatch (observability).
+- **Frontend:** Vue 3 (`<script setup>`), Inertia.js v2, DaisyUI 5 + Tailwind CSS v4, Pinia, Ziggy. No separate SPA, no TanStack, no vee-validate/zod, no Reka UI — those are a different project.
+- **Money:** `App\Services\Money\Money` + BCMath. Never `float` for amounts. See `25-money.mdc`.
+- Match the actual stack in `composer.json` and `package.json`. **Do not add new dependencies by default** — if one is genuinely needed, propose it first and explain the trade-off.
+
+## Legacy & "second life" policy (read this carefully)
+
+This is a real, working product that grew organically (hand-written, then AI-assisted) and accumulated clutter. The goal of these rules is to put development **back on rails** without breaking what works.
+
+- **For new code:** follow the rails described in these rules (the patterns that are already the project's intended direction).
+- **For existing legacy code:** treat it as working until proven otherwise. **Do not rewrite, "improve", or re-architect legacy code unless the user explicitly asks.** Make the smallest safe change that fits the surrounding style.
+- **When the user explicitly asks to refactor / rework / modernize** a piece: then you may confidently rewrite it to follow the modern rails in these rules.
+- **Do not over-engineer.** This project intentionally does **not** use Actions/Domain layers, DDD, or heavy abstractions. Do not introduce them. The real architecture is "thin controllers → `services()` / `queries()` → Resources/Inertia" (see `10-architecture.mdc`).
+- Some legacy nuances cannot be cleanly refactored — they are documented in the rules so you know how to work with them safely (e.g. the `Order` global scope, the H2H `finish` quirk, `OrderSubStatus::CANCELED` = `'cancelled'`). Respect them.
+- When you spot clutter, dead code, or a known anti-pattern (see lists in `10-architecture.mdc` and `60-frontend-architecture.mdc`), **don't copy it into new code**, but only clean it up if it's part of the task.
+
+## Documentation sources
+
+- **Library / framework / API questions** (Laravel, Inertia, DaisyUI, Tailwind, Horizon, Spatie, etc.): use **Context7 MCP** first (`resolve-library-id` → `query-docs`), not memory. This matters especially for DaisyUI/Tailwind v4 class names and Inertia v2 features.
+- **Project domain knowledge** (business rules, money flows, statuses, providers, recent features): consult the **project wiki** via the `karpathy-llm-wiki` skill before changing domain logic. The wiki lives in `wiki/` (compiled articles + `index.md` + `log.md`) with sources in `raw/`. It currently documents recent features (Telegram automation, traffic categories, schedules, insurance mode, balance transfers, legacy removal). When you make a meaningful domain change that the wiki covers, update the relevant article and `log.md` per the skill workflow.
+
+## What NOT to do without an explicit request
+
+- **Never run tests or CI** (`php artisan test`, `phpunit`, `npm test`, etc.) unless the user explicitly asks in the current message. Not "to verify", not "to be safe". See `55-testing.mdc`.
+- **Never write or extend tests / factories / fixtures** unless explicitly asked.
+- Don't add dependencies.
+- Don't change the public merchant API contract (see `40-api.mdc`).
+- Don't delete tests, migrations, or important comments.
+- Don't touch `.env`, secrets, or production settings unless required by the task.
+- Don't run `php artisan migrate:fresh` / `app:install` (the latter drops all tables and restores `basedb.sql`).
+
+## How to make decisions
+
+- First understand the existing code; follow the style of neighboring files.
+- Prefer Laravel built-ins and project helpers (`services()`, `queries()`, `Transaction::run()`) over hand-rolled solutions.
+- For anything touching money, balances, statuses, disputes, or external calls: think about **retries, failures, and race conditions** first.
+- Don't abstract early. Add abstraction only when it removes real, repeated complexity.
+
+## After making changes
+
+- Briefly state what changed and any risk or assumption.
+- After editing PHP, run `vendor/bin/pint --dirty --format agent` (this is formatting, not tests).
+- After changing routes, run `php artisan optimize` and `php artisan ziggy:generate resources/js/ziggy-routes.js`.
+- After adding settings to `SettingsService`, run `php artisan app:install-settings`.

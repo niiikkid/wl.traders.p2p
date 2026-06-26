@@ -1,0 +1,57 @@
+---
+description: How money is represented, stored, cast, computed, and displayed (App\Services\Money)
+globs: app/**/*.php
+alwaysApply: false
+---
+
+# 25 Money
+
+Money is the highest-risk part of this platform. Never use `float` for amounts, balances, or profit. Use `App\Services\Money\Money` and the money casts.
+
+## The Money value object — `App\Services\Money\Money`
+
+- Immutable value object wrapping a string `amount` in **units** plus a `Currency`. Arithmetic uses **BCMath** (`bcadd`, `bcsub`, `bcmul`, `bcdiv`, `bccomp`) at high scale — never native float math.
+- **Construct:**
+  - `Money::fromPrecision('100.50', $currency)` — from a human/API decimal string (use this at HTTP/API boundaries).
+  - `Money::fromUnits($value, $currency)` — from DB units (used by the cast).
+  - `Money::zero($currency)`.
+- **Read:**
+  - `->toUnits()` / `->toUnitsInt()` — integer-units string/int (what gets stored in DB).
+  - `->toPrecision()` — full decimal string (for exact comparisons/exports).
+  - `->toBeauty()` — display string with `display_precision` (≈2), trailing zeros trimmed — use in API Resources.
+  - `->toArray()` → `['amount' => units, 'currency' => code]`.
+- **Compute:** `->add()`, `->sub()`, `->mul()`, `->div()`, comparisons — all return new `Money` / use BCMath. Operands can be `Money` or a precision string.
+- `Currency` is config-driven (`config/money.php`): `precision = 8`, `display_precision = 2`. USDT is the base currency (`Currency::USDT()`); fiats include RUB, KZT, EUR, TJS, KGS, UAH, USD, AZN, TRY, IDR, PLN. Requires `ext-bcmath` and `ext-gmp`.
+
+## Storage
+
+- Money columns are **`string` columns holding integer units** (NOT decimal, NOT minor-unit integers). Example: `$table->string('amount')->nullable();`.
+- **Rates / percentages / commission rates are `float` columns** (e.g. `trader_commission_rate`, `commission_rate`, `conversion` markups). Money amounts are never float.
+- A money column needs a currency source: either a sibling `currency` column, a `{field}_currency` column, or it's a fixed-USDT field.
+
+## Casts
+
+- **`MoneyCast`** — fiat amounts that vary by currency; reads currency from `{field}_currency` or the model's `currency` attribute. Used on `Order` (`base_amount`, `amount`, `conversion_price`), `PaymentDetail`, `Payout`, `Invoice`, `FundsOnHold`, `PayoutOperation`.
+- **`BaseCurrencyMoneyCast`** — USDT fields without a currency column (always `Currency::USDT()`): wallet balances, order profit fields (`total_profit`, `trader_profit`, ...), `Transaction.amount`.
+- **`CurrencyCast`** — turns a `currency` string column into a `Currency` object.
+
+## Rules of use
+
+- **On create/update, assign a `Money` object** to a cast attribute; the cast serializes it to units. Don't write raw ints to a money column.
+
+```php
+Order::create([
+    'amount'        => $dto->amount,                       // Money (fiat)
+    'total_profit'  => Money::fromPrecision(0, Currency::USDT()),
+    'currency'      => $dto->amount->getCurrency(),
+]);
+```
+
+- **At the HTTP/API boundary**, convert request input to `Money` immediately: `Money::fromPrecision($request->input('amount'), $currency)`.
+- **For display**, use `->toBeauty()` in API Resources; payout resources use `{ value: toBeauty(), currency: 'USDT' }`. Exports use `->toPrecision()` for exactness.
+- **For exact equality / thresholds**, compare via `Money` methods (BCMath), never by casting to float.
+- Keep profit/settlement reproducible: derive from stored amounts, rates, and commissions; don't re-price a finished order at the current rate unless the business explicitly requires it. Profit math belongs in `App\Services\Profit\ProfitService`.
+
+## Frontend note
+
+Backend already sends formatted strings (`toBeauty()`); on the frontend prefer those over re-deriving amounts. Local formatting uses `Intl.NumberFormat('ru-RU')`. Never do money arithmetic in JavaScript floats.

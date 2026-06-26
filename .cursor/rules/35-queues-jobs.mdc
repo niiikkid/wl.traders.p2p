@@ -1,0 +1,36 @@
+---
+description: Queues, Horizon supervisors, jobs, events and listeners conventions
+globs: app/Jobs/**/*.php,app/Events/**/*.php,app/Listeners/**/*.php,app/Observers/**/*.php,config/horizon.php,config/queue.php
+alwaysApply: false
+---
+
+# 35 Queues, Jobs, Events, Listeners
+
+Queues run on **Redis via Horizon**. Workers are organized into named queues, each served by a Horizon supervisor in `config/horizon.php`.
+
+## Named queues & Horizon
+
+- Each job runs on a specific named queue (set `$this->onQueue('...')` or the job's `$queue`). Existing queues include: `default`, `logging`, `sms`, `notifications`, `conversion-prices-parser`, `order`, `callback`, `order-pooling`, `payout`, `payout-pooling`, `main-page-cache`, `telegram-chat-automation`, `test-data`.
+- **When you add a new queue name, you must add/extend a supervisor in `config/horizon.php`** (queues list, `maxProcesses`, `timeout`, balancing), otherwise nothing processes it. Split a job onto its own queue only when it differs meaningfully in importance or speed.
+- Match `timeout` to the work: e.g. `callback` is fast (10s, 5 procs), `payout`/`main-page-cache` are slow (120s). `retry_after` must exceed the job timeout.
+
+## Job reliability
+
+- **Jobs must be idempotent.** A re-run must not double-credit, double-charge, double-callback, or move a final status backwards.
+- Most jobs use `tries = 1`; callback jobs use multiple tries + backoff. Set `tries`, `timeout`, and `backoff` deliberately for anything calling an external system, and implement `failed()` for important jobs.
+- **Pass IDs in the payload, not models.** Re-fetch the model inside `handle()` and re-check it's still in the expected state before acting (don't trust stale payload data for money/status).
+- Use `$this->afterCommit()` (or dispatch after commit) for jobs/events tied to a transaction, so they don't fire before the data is persisted. Callback and pooling jobs already do this.
+- Concurrency: callback dispatch uses a Redis lock (`order_callback_lock:{id}`). Reuse this locking style for operations that must not run twice in parallel.
+
+## Events & Listeners
+
+- Events are **facts** in past tense: `OrderFinishedAsSuccessfulEvent`, `OrderFinishedAsFailedEvent`, `DisputeOpenedEvent`, `DetailsAssignedToOrderEvent`. Financial events implement `ShouldDispatchAfterCommit`.
+- Listeners are auto-discovered from `app/Listeners` (`bootstrap/app.php` `withEvents(discover: ...)`) — no manual registration. They run **queued** and perform side effects: wallet settlement, notifications, Telegram, callbacks.
+- **Wallet settlement on order success/fail lives in queued listeners** (`HandleOrderFinishedAsSuccessfulListener`, `HandleOrderFinishedAsFailedListener`), not in observers. Keep this split.
+- Don't hide a mandatory part of a business operation in a listener if the operation must not be considered complete without it — keep required steps inside the service/transaction, and use listeners for genuinely secondary effects.
+- Observers exist (e.g. `OrderObserver` dispatches `SendOrderCallbackJob` on status change). There is dead event code (`OrderSucceeded`, `NewWalletTransactionCreatedEvent`) with no live listeners — don't wire new logic onto those.
+
+## Logging
+
+- Log start / success / retry / failure for important jobs, including the relevant IDs (order id/uuid, merchant id, payout id, external id).
+- Never log secrets, API tokens, signatures, or full sensitive payloads (card data, requisites).

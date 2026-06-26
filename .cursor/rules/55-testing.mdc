@@ -1,0 +1,24 @@
+---
+description: Testing policy and conventions (PHPUnit) — do not run or write tests unless asked
+globs: tests/**/*.php
+alwaysApply: false
+---
+
+# 55 Testing
+
+## Hard policy (project-specific, strict)
+
+- **Never run tests or any test runner / CI** (`php artisan test`, `phpunit`, `npm test`, ...) unless the user explicitly asks in the current message. Not "to verify", not "after a change", not "to be safe".
+- **Never create or extend tests, factories, or fixtures-for-tests** unless the user explicitly asks for test coverage or new tests.
+- Don't propose running tests in every reply. If a verification command is genuinely useful, mention it once at the end — without running it.
+- Never delete existing tests or test files without explicit approval.
+
+## When the user does ask for tests
+
+- The project uses **PHPUnit 11** (not Pest). Create tests with `php artisan make:test --no-interaction {name}` (add `--unit` for unit tests). Convert any stray Pest-style test to PHPUnit.
+- Most tests should be **feature tests** (HTTP/API, auth, validation, jobs through the queue). Use **unit tests** for pure logic: profit/commission math, money arithmetic, status guards.
+- Prioritize coverage where money or contracts are at risk: profit & commission calculation, requisite matching and rejection, order/payout/dispute status transitions, `external_id` idempotency, wallet credits/debits and refunds, API validation and error shape, behavior on external/provider failure.
+- Use factories and factory states instead of building large arrays by hand. Use `fake()`/Faker per existing convention.
+- Never hit real external APIs: fake/mocks for HTTP, providers, events, queue, notifications. Assert that retries/failures don't create duplicates.
+- For a bug fix, first add a test that fails before the fix and passes after (only when the user asked for tests).
+- Run the **minimal** relevant set: `php artisan test --compact --filter=Name` or a single file — and only when asked.
