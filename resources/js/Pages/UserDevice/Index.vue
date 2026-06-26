@@ -13,12 +13,14 @@ import TableAction from '@/Components/Table/TableAction.vue';
 
 const devices = ref(usePage().props.devices.data);
 
+const smsAutoCloseEnabled = ref(!!usePage().props.smsAutoCloseEnabled);
+
 const form = useForm({
     name: '',
 });
 
 const smsProcessingModeForm = useForm({
-    sms_auto_close_orders_enabled: false,
+    sms_auto_close_orders_enabled: smsAutoCloseEnabled.value,
 });
 
 const submit = () => {
@@ -33,7 +35,7 @@ const updateSmsProcessingMode = (isEnabled) => {
         return;
     }
 
-    if (isEnabled) {
+    if (smsAutoCloseEnabled.value === isEnabled) {
         return;
     }
 
@@ -41,11 +43,18 @@ const updateSmsProcessingMode = (isEnabled) => {
     smsProcessingModeForm.patch(route('trader.devices.sms-processing-mode.update'), {
         preserveScroll: true,
         preserveState: true,
+        onSuccess: () => {
+            smsAutoCloseEnabled.value = !!isEnabled;
+        },
+        onError: () => {
+            smsProcessingModeForm.sms_auto_close_orders_enabled = smsAutoCloseEnabled.value;
+        },
     });
 };
 
 router.on('success', () => {
     devices.value = usePage().props.devices.data;
+    smsAutoCloseEnabled.value = !!usePage().props.smsAutoCloseEnabled;
 })
 
 const copyToClipboard = async (text) => {
@@ -192,12 +201,18 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                             <div>
                                 <h3 class="card-title">Режим обработки СМС</h3>
                                 <p class="text-sm text-base-content/70 mt-1">
-                                    Сейчас доступен только полуавтоматический режим: СМС привязывается к сделке, а закрываете ее вы вручную.
+                                    В автоматическом режиме система сама закрывает сделки по входящим поступлениям. В полуавтоматическом — СМС привязывается к сделке, а закрываете ее вы вручную.
                                 </p>
                             </div>
 
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                <label class="card bg-base-200 border border-base-300 cursor-not-allowed opacity-70">
+                                <label
+                                    :class="[
+                                        'card border',
+                                        smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
+                                        smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
+                                    ]"
+                                >
                                     <div class="card-body p-3">
                                         <div class="flex items-center justify-between gap-3">
                                             <div class="font-medium text-xs">Автоматический</div>
@@ -205,15 +220,21 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                                 type="radio"
                                                 name="sms-processing-mode"
                                                 class="radio radio-xs radio-primary"
-                                                :checked="false"
-                                                disabled
+                                                :checked="smsAutoCloseEnabled"
+                                                :disabled="smsProcessingModeForm.processing"
                                                 @change="updateSmsProcessingMode(true)"
                                             >
                                         </div>
                                     </div>
                                 </label>
 
-                                <label class="card bg-base-200 border border-base-300 cursor-pointer">
+                                <label
+                                    :class="[
+                                        'card border',
+                                        !smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
+                                        smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
+                                    ]"
+                                >
                                     <div class="card-body p-3">
                                         <div class="flex items-center justify-between gap-3">
                                             <div class="font-medium text-xs">Полуавтоматический</div>
@@ -221,7 +242,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                                 type="radio"
                                                 name="sms-processing-mode"
                                                 class="radio radio-xs radio-primary"
-                                                :checked="true"
+                                                :checked="!smsAutoCloseEnabled"
                                                 :disabled="smsProcessingModeForm.processing"
                                                 @change="updateSmsProcessingMode(false)"
                                             >
@@ -232,9 +253,19 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
 
                             <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
 
-                            <div role="alert" class="alert alert-info alert-soft text-sm">
+                            <div
+                                v-if="smsAutoCloseEnabled"
+                                role="alert"
+                                class="alert alert-error text-sm"
+                            >
                                 <span>
-                                    Автоматика сейчас в бета-версии. Cообщения пока не закрывают сделки/выплаты автоматически, но если система распознает списание или пополнение, вы получите звуковое уведомление. Если у вас подключен Telegram, то вы получите уведомление и туда. Уведомления можно настроить на странице уведомлений.
+                                    Автоматика находится в бета-режиме. Используйте на свой страх и риск, под свою ответственность.
+                                </span>
+                            </div>
+
+                            <div v-else role="alert" class="alert alert-info alert-soft text-sm">
+                                <span>
+                                    В автоматическом режиме сделка закрывается только при однозначном совпадении платежа. Если систему не удаётся определить, для какой сделки пришёл платёж, вы получите уведомление в Telegram, чтобы разобраться вручную. Для этого подключите Telegram на странице уведомлений.
                                 </span>
                             </div>
                         </div>

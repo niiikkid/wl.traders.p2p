@@ -6,13 +6,23 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal.js";
-import {computed, onMounted, ref} from "vue";
+import {computed, onMounted, ref, unref} from "vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
+import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
+import SmsLogLinkedOrderCell from "@/Components/SmsLog/SmsLogLinkedOrderCell.vue";
+import OrderModal from "@/Modals/OrderModal.vue";
+import LinkSmsOrderModal from "@/Modals/SmsLog/LinkSmsOrderModal.vue";
+import {
+    isSmsLogLinkable,
+    isSmsLogRejectable,
+    isSmsLogRejected,
+    rejectSmsLogRequest,
+} from '@/composables/useSmsLogOrderLinkActions.js';
 
 const modalStore = useModalStore();
 const viewStore = useViewStore();
@@ -26,6 +36,23 @@ const expandedCards = ref({});
 const currentTab = ref('logs');
 const newStopWord = ref('');
 const tableFiltersStore = useTableFiltersStore();
+const filtersPanelRef = ref(null);
+const hasActiveSmsLogFilters = useHasActiveTableFilters();
+const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
+const linkSmsOrderModalOpen = ref(false);
+const selectedSmsLogForLink = ref(null);
+
+const showSmsLogFilters = computed(() => {
+    if (viewStore.isAdminViewMode) {
+        return currentTab.value === 'logs';
+    }
+
+    return true;
+});
+
+const toggleFiltersFromToolbar = () => {
+    filtersPanelRef.value?.toggleFiltersDisplay?.();
+};
 
 const toggleExpand = (id) => {
     expandedCards.value[id] = !expandedCards.value[id];
@@ -122,6 +149,52 @@ const messageTypeBadgeClass = (type) => {
     return type === 'push' ? 'badge-info' : 'badge-accent';
 }
 
+const openOrderModal = (order) => {
+    modalStore.openOrderModal({order_id: order.id});
+};
+
+const openLinkSmsOrderModal = (smsLog) => {
+    selectedSmsLogForLink.value = smsLog;
+    linkSmsOrderModalOpen.value = true;
+};
+
+const closeLinkSmsOrderModal = () => {
+    linkSmsOrderModalOpen.value = false;
+    selectedSmsLogForLink.value = null;
+};
+
+const handleSmsOrderLinked = () => {
+    closeLinkSmsOrderModal();
+    router.reload({
+        only: viewStore.isAdminViewMode ? ['smsLogs', 'smsLogsTotalCount'] : ['smsLogs'],
+        preserveScroll: true,
+    });
+};
+
+const confirmRejectSmsLog = (smsLog) => {
+    modalStore.openConfirmModal({
+        title: 'Отклонить сообщение?',
+        body: 'Сообщение не будет привязано к сделке и исчезнет из списка ожидающих обработки.',
+        confirm_button_name: 'Отклонить',
+        confirm: async () => {
+            try {
+                await rejectSmsLogRequest(smsLog.id);
+                router.reload({
+                    only: viewStore.isAdminViewMode ? ['smsLogs', 'smsLogsTotalCount'] : ['smsLogs'],
+                    preserveScroll: true,
+                });
+            } catch (error) {
+                modalStore.openConfirmModal({
+                    title: 'Не удалось отклонить',
+                    body: error?.response?.data?.message ?? 'Попробуйте ещё раз позже.',
+                    confirm_button_name: 'Понятно',
+                    confirm: () => {},
+                });
+            }
+        },
+    });
+};
+
 onMounted(() => {
     if (tableFiltersStore.getTab === '') {
         tableFiltersStore.setTab('logs');
@@ -143,18 +216,61 @@ defineOptions({ layout: AuthenticatedLayout })
             :display-pagination="currentTab === 'logs'"
         >
             <template #button>
-                <AutomationNavButtons v-if="viewStore.isAdminViewMode" current="messages" />
-                <button
-                    v-else
-                    type="button"
-                    class="btn btn-outline btn-sm shrink-0"
-                    @click="router.visit(route('trader.devices.index'), { preserveScroll: true })"
-                >
-                    Устройства
-                </button>
+                <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+                    <div
+                        v-if="showSmsLogFilters"
+                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
+                    >
+                        <div class="relative inline-flex shrink-0">
+                            <button
+                                type="button"
+                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
+                                :class="{ 'btn-active': filtersPanelOpen }"
+                                title="Фильтры"
+                                aria-label="Показать или скрыть фильтры"
+                                @click.prevent="toggleFiltersFromToolbar"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                                </svg>
+                            </button>
+                            <span
+                                v-if="hasActiveSmsLogFilters"
+                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
+                                aria-hidden="true"
+                                title="Есть применённые фильтры"
+                            />
+                        </div>
+
+                        <button
+                            v-if="viewStore.isTraderViewMode"
+                            type="button"
+                            class="btn btn-sm btn-square btn-primary btn-outline shrink-0 rounded-lg"
+                            :class="{ 'btn-active': route().current('trader.devices.*') }"
+                            title="Устройства"
+                            aria-label="Устройства"
+                            @click="router.visit(route('trader.devices.index'), { preserveScroll: true })"
+                        >
+                            <svg
+                                class="h-5 w-5"
+                                aria-hidden="true"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.5"
+                                stroke="currentColor"
+                            >
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <AutomationNavButtons v-if="viewStore.isAdminViewMode" current="messages" />
+                </div>
             </template>
             <template v-slot:header>
-                <ul v-if="viewStore.isAdminViewMode" class="flex flex-wrap text-sm font-medium text-center">
+                <div class="space-y-4">
+                    <ul v-if="viewStore.isAdminViewMode" class="flex flex-wrap text-sm font-medium text-center">
                     <li class="me-2">
                         <a @click.prevent="openPage('logs')" href="#" :class="currentTab === 'logs' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
                             <svg class="w-4 h-4 sm:mr-2 mr-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
@@ -179,24 +295,36 @@ defineOptions({ layout: AuthenticatedLayout })
                             <span class="sm:block hidden">Стоп-слова</span>
                         </a>
                     </li>
-                </ul>
-            </template>
-            <template v-slot:table-filters>
-                <FiltersPanel v-if="viewStore.isAdminViewMode && currentTab === 'logs'" name="sms-logs">
-                    <InputFilter
-                        name="search"
-                        placeholder="Поиск"
-                        class="w-64"
-                    />
-                    <FilterCheckbox
-                        name="onlySuccessParsing"
-                        title="Только зачисления"
-                    />
-                    <DropdownFilter
-                        name="smsOperationTypes"
-                        title="Операция"
-                    />
-                </FiltersPanel>
+                    </ul>
+
+                    <FiltersPanel
+                        v-if="showSmsLogFilters"
+                        ref="filtersPanelRef"
+                        name="sms-logs"
+                        omit-default-toggle-button
+                    >
+                        <template v-if="viewStore.isAdminViewMode">
+                            <InputFilter
+                                name="search"
+                                placeholder="Поиск"
+                                class="w-64"
+                            />
+                            <FilterCheckbox
+                                name="onlySuccessParsing"
+                                title="Только зачисления"
+                            />
+                        </template>
+                        <DropdownFilter
+                            name="smsOperationTypes"
+                            title="Операция"
+                        />
+                        <FilterCheckbox
+                            v-if="viewStore.isTraderViewMode"
+                            name="onlyUnlinkedIncoming"
+                            title="Поступление без сделки"
+                        />
+                    </FiltersPanel>
+                </div>
             </template>
             <template v-slot:body>
                 <template v-if="currentTab === 'logs'">
@@ -223,6 +351,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </th>
                                         <th scope="col">
                                             Операции
+                                        </th>
+                                        <th scope="col">
+                                            Сделка
                                         </th>
                                         <th scope="col">
                                             Приложение
@@ -283,6 +414,17 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     </div>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td>
+                                            <SmsLogLinkedOrderCell
+                                                :order="sms_log.order"
+                                                :linkable="isSmsLogLinkable(sms_log)"
+                                                :rejectable="isSmsLogRejectable(sms_log)"
+                                                :rejected="isSmsLogRejected(sms_log)"
+                                                @open-order="openOrderModal"
+                                                @link="openLinkSmsOrderModal(sms_log)"
+                                                @reject="confirmRejectSmsLog(sms_log)"
+                                            />
                                         </td>
                                         <td class="text-nowrap">
                                             <div>
@@ -382,6 +524,19 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </span>
                                     </div>
 
+                                    <div class="rounded-box border border-base-300/60 bg-base-200/30 p-2">
+                                        <div class="mb-1 text-[0.65rem] uppercase tracking-wide text-base-content/50">Сделка</div>
+                                        <SmsLogLinkedOrderCell
+                                            :order="sms_log.order"
+                                            :linkable="isSmsLogLinkable(sms_log)"
+                                            :rejectable="isSmsLogRejectable(sms_log)"
+                                            :rejected="isSmsLogRejected(sms_log)"
+                                            @open-order="openOrderModal"
+                                            @link="openLinkSmsOrderModal(sms_log)"
+                                            @reject="confirmRejectSmsLog(sms_log)"
+                                        />
+                                    </div>
+
                                     <div v-if="['in', 'out'].includes(sms_log?.parsing_result?.operation_type)" class="text-xs space-y-0.5 pt-1 text-base-content/90">
                                         <div v-if="sms_log.parsing_result?.bank">
                                             Банк: {{ sms_log.parsing_result.bank }}
@@ -456,5 +611,12 @@ defineOptions({ layout: AuthenticatedLayout })
         </MainTableSection>
 
         <ConfirmModal/>
+        <OrderModal/>
+        <LinkSmsOrderModal
+            :show="linkSmsOrderModalOpen"
+            :sms-log="selectedSmsLogForLink"
+            @close="closeLinkSmsOrderModal"
+            @linked="handleSmsOrderLinked"
+        />
     </div>
 </template>
