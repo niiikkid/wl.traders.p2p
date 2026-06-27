@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\MarketEnum;
 use App\Http\Controllers\Controller;
 use App\Services\Money\Currency;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class CurrencyController extends Controller
 {
-    public function index()
+    public function index(Request $request): Response
     {
         $markets = [];
 
@@ -38,6 +40,13 @@ class CurrencyController extends Controller
             $markets[$market->value] = $currencies;
         }
 
-        return Inertia::render('Currency/Index', compact('markets'));
+        $marketKeys = array_keys($markets);
+        $market = $request->query('market');
+
+        if (! is_string($market) || ! in_array($market, $marketKeys, true)) {
+            $market = $marketKeys[0] ?? null;
+        }
+
+        return Inertia::render('Currency/Index', compact('markets', 'market'));
     }
 }

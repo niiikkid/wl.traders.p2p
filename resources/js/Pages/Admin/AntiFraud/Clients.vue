@@ -1,6 +1,7 @@
 <script setup>
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import AntiFraudNav from '@/Components/Admin/AntiFraudNav.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
@@ -39,23 +40,8 @@ const openOrdersModal = (client) => {
             title="Клиенты антифрода"
             :data="clients"
         >
-            <template v-slot:button>
-                <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline"
-                        @click="router.visit(route('admin.anti-fraud.history.index'), { preserveScroll: true })"
-                    >
-                        История
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline"
-                        @click="router.visit(route('admin.anti-fraud.settings.index'), { preserveScroll: true })"
-                    >
-                        Настройки
-                    </button>
-                </div>
+            <template v-slot:header>
+                <AntiFraudNav current="clients" />
             </template>
             <template v-slot:table-filters>
                 <FiltersPanel name="anti-fraud-clients">

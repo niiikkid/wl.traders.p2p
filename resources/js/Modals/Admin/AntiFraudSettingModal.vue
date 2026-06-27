@@ -1,17 +1,19 @@
 <script setup>
-import Modal from "@/Components/Modals/Modal.vue";
-import ModalHeader from "@/Components/Modals/Components/ModalHeader.vue";
-import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
-import ModalFooter from "@/Components/Modals/Components/ModalFooter.vue";
-import InputError from "@/Components/InputError.vue";
-import InputLabel from "@/Components/InputLabel.vue";
-import NumberInput from "@/Components/NumberInput.vue";
-import Select from "@/Components/Select.vue";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import { useForm } from "@inertiajs/vue3";
-import { computed, watch } from "vue";
-import { useModalStore } from "@/store/modal.js";
-import { storeToRefs } from "pinia";
+import Modal from '@/Components/Modals/Modal.vue';
+import ModalHeader from '@/Components/Modals/Components/ModalHeader.vue';
+import ModalBody from '@/Components/Modals/Components/ModalBody.vue';
+import ModalFooter from '@/Components/Modals/Components/ModalFooter.vue';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import Select from '@/Components/Select.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import UserFormSection from '@/Modals/User/Partials/UserFormSection.vue';
+import UserFormToggle from '@/Modals/User/Partials/UserFormToggle.vue';
+import AntiFraudTrafficFields from '@/Modals/Admin/Partials/AntiFraudTrafficFields.vue';
+import { useForm } from '@inertiajs/vue3';
+import { computed, watch } from 'vue';
+import { useModalStore } from '@/store/modal.js';
+import { storeToRefs } from 'pinia';
 
 const props = defineProps({
     merchants: {
@@ -48,6 +50,21 @@ const merchantOptions = computed(() => {
             value: merchant.id,
             name: merchant.name || merchant.uuid || `#${merchant.id}`,
         }));
+});
+
+const isEditing = computed(() => !!form.id);
+
+const modalTitle = computed(() => {
+    if (isEditing.value) {
+        const merchant = props.merchants.find((item) => item.id === Number(form.merchant_id));
+        const merchantName = merchant?.name || merchant?.uuid;
+
+        return merchantName
+            ? `Антифрод — ${merchantName}`
+            : 'Антифрод — редактирование';
+    }
+
+    return 'Антифрод — новая настройка';
 });
 
 const buildRateLimits = (limits) => {
@@ -181,13 +198,17 @@ const submit = () => {
 </script>
 
 <template>
-    <Modal :show="antiFraudSettingModal.showed" maxWidth="7xl" @close="close">
-        <ModalHeader title="Антифрод — настройки" @close="close" />
+    <Modal :show="antiFraudSettingModal.showed" maxWidth="5xl" @close="close">
+        <ModalHeader :title="modalTitle" @close="close" />
 
         <ModalBody>
-            <form class="space-y-6" @submit.prevent="submit">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="space-y-4">
+            <form class="space-y-4" @submit.prevent="submit">
+                <UserFormSection
+                    title="Общие"
+                    description="Один мерчант — один набор настроек. Первичный трафик — клиент без успешных сделок, вторичный — с хотя бы одной успешной."
+                    compact
+                >
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                             <InputLabel
                                 value="Мерчант"
@@ -203,222 +224,52 @@ const submit = () => {
                                 :error="!!form.errors.merchant_id"
                                 class="mt-1"
                             />
-                            <InputError class="mt-2" :message="form.errors.merchant_id" />
-                            <p class="text-xs text-base-content/60 mt-2">
-                                Один мерчант — один набор настроек.
-                            </p>
+                            <InputError class="mt-1" :message="form.errors.merchant_id" />
                         </div>
 
-                        <label class="label cursor-pointer justify-start gap-3">
-                            <span class="label-text">Антифрод включен</span>
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.enabled"
+                        <UserFormToggle
+                            v-model="form.enabled"
+                            label="Антифрод включен"
+                            hint="Если выключить — правила не применяются."
+                            :disabled="form.processing"
+                        />
+                    </div>
+                </UserFormSection>
+
+                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <UserFormSection
+                        title="Первичный трафик"
+                        compact
+                    >
+                        <AntiFraudTrafficFields
+                            type="primary"
+                            :form="form"
+                            @add-rate-limit="addRateLimit"
+                            @remove-rate-limit="removeRateLimit"
+                        />
+                    </UserFormSection>
+
+                    <UserFormSection
+                        title="Вторичный трафик"
+                        compact
+                    >
+                        <div class="space-y-3">
+                            <UserFormToggle
+                                v-model="form.secondary_enabled"
+                                label="Фильтры включены"
+                                hint="Если выключить, ограничения для вторичного трафика не применяются."
                                 :disabled="form.processing"
                             />
-                        </label>
-                        <p class="text-xs text-base-content/60">
-                            Если выключить — правила не применяются.
-                        </p>
-                    </div>
 
-                    <div class="space-y-4">
-                        <div class="rounded-lg bg-base-200 p-4 text-sm text-base-content/70">
-                            <p>Первичный трафик — клиент без успешных сделок.</p>
-                            <p class="mt-1">Вторичный — клиент с хотя бы одной успешной сделкой.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <h4 class="font-semibold">Первичный трафик</h4>
-                        <div>
-                            <InputLabel value="Макс. активных сделок" :error="!!form.errors.primary_max_pending" />
-                            <NumberInput
-                                v-model="form.primary_max_pending"
-                                class="mt-1 block w-full"
-                                min="0"
-                                :error="!!form.errors.primary_max_pending"
+                            <AntiFraudTrafficFields
+                                v-if="form.secondary_enabled"
+                                type="secondary"
+                                :form="form"
+                                @add-rate-limit="addRateLimit"
+                                @remove-rate-limit="removeRateLimit"
                             />
-                            <InputError class="mt-2" :message="form.errors.primary_max_pending" />
-                            <p class="text-xs text-base-content/60 mt-2">
-                                Сколько pending-сделок может быть одновременно.
-                            </p>
                         </div>
-
-                        <div>
-                            <InputLabel value="Лимиты по интервалам" />
-                            <div class="space-y-2 mt-2">
-                                <div
-                                    v-for="(limit, index) in form.primary_rate_limits"
-                                    :key="`primary-${index}`"
-                                    class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end"
-                                >
-                                    <NumberInput
-                                        v-model="limit.count"
-                                        min="1"
-                                        class="block w-full"
-                                        placeholder="Кол-во"
-                                    />
-                                    <NumberInput
-                                        v-model="limit.minutes"
-                                        min="1"
-                                        class="block w-full"
-                                        placeholder="Минут"
-                                    />
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-ghost text-error"
-                                        @click="removeRateLimit('primary', index)"
-                                        :disabled="form.primary_rate_limits.length <= 1"
-                                    >
-                                        Удалить
-                                    </button>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline" @click="addRateLimit('primary')">
-                                    Добавить интервал
-                                </button>
-                            </div>
-                            <InputError class="mt-2" :message="form.errors.primary_rate_limits" />
-                            <p class="text-xs text-base-content/60 mt-2">
-                                Лимит означает: не более N созданных сделок за M минут (N / M).
-                                Пример: 3 / 1м, 10 / 5м, 20 / 60м.
-                            </p>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <InputLabel value="Лимит неуспешных подряд" :error="!!form.errors.primary_failed_limit" />
-                                <NumberInput
-                                    v-model="form.primary_failed_limit"
-                                    class="mt-1 block w-full"
-                                    min="0"
-                                    :error="!!form.errors.primary_failed_limit"
-                                />
-                                <InputError class="mt-2" :message="form.errors.primary_failed_limit" />
-                                <p class="text-xs text-base-content/60 mt-2">
-                                    После этого числа неуспешных подряд клиент блокируется.
-                                </p>
-                            </div>
-                            <div>
-                                <InputLabel value="Блокировка (дней)" :error="!!form.errors.primary_block_days" />
-                                <NumberInput
-                                    v-model="form.primary_block_days"
-                                    class="mt-1 block w-full"
-                                    min="0"
-                                    :error="!!form.errors.primary_block_days"
-                                />
-                                <InputError class="mt-2" :message="form.errors.primary_block_days" />
-                                <p class="text-xs text-base-content/60 mt-2">
-                                    Сколько дней клиент будет заблокирован.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div class="flex items-center justify-between gap-3">
-                            <h4 class="font-semibold">Вторичный трафик</h4>
-                            <label class="label cursor-pointer gap-3">
-                                <span class="label-text text-sm">Фильтры включены</span>
-                                <input
-                                    type="checkbox"
-                                    class="toggle toggle-primary toggle-sm"
-                                    v-model="form.secondary_enabled"
-                                    :disabled="form.processing"
-                                />
-                            </label>
-                        </div>
-                        <p class="text-xs text-base-content/60">
-                            Если выключить, ограничения для вторичного трафика не применяются.
-                        </p>
-                        <div v-if="form.secondary_enabled" class="space-y-4">
-                        <div>
-                            <InputLabel value="Макс. активных сделок" :error="!!form.errors.secondary_max_pending" />
-                            <NumberInput
-                                v-model="form.secondary_max_pending"
-                                class="mt-1 block w-full"
-                                min="0"
-                                :error="!!form.errors.secondary_max_pending"
-                            />
-                            <InputError class="mt-2" :message="form.errors.secondary_max_pending" />
-                            <p class="text-xs text-base-content/60 mt-2">
-                                Отдельный лимит pending-сделок для вторичного трафика.
-                            </p>
-                        </div>
-
-                        <div>
-                            <InputLabel value="Лимиты по интервалам" />
-                            <div class="space-y-2 mt-2">
-                                <div
-                                    v-for="(limit, index) in form.secondary_rate_limits"
-                                    :key="`secondary-${index}`"
-                                    class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end"
-                                >
-                                    <NumberInput
-                                        v-model="limit.count"
-                                        min="1"
-                                        class="block w-full"
-                                        placeholder="Кол-во"
-                                    />
-                                    <NumberInput
-                                        v-model="limit.minutes"
-                                        min="1"
-                                        class="block w-full"
-                                        placeholder="Минут"
-                                    />
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm btn-ghost text-error"
-                                        @click="removeRateLimit('secondary', index)"
-                                        :disabled="form.secondary_rate_limits.length <= 1"
-                                    >
-                                        Удалить
-                                    </button>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-outline" @click="addRateLimit('secondary')">
-                                    Добавить интервал
-                                </button>
-                            </div>
-                            <InputError class="mt-2" :message="form.errors.secondary_rate_limits" />
-                            <p class="text-xs text-base-content/60 mt-2">
-                                Лимит означает: не более N созданных сделок за M минут (N / M).
-                                Можно задавать несколько ограничений одновременно.
-                            </p>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <InputLabel value="Лимит неуспешных подряд" :error="!!form.errors.secondary_failed_limit" />
-                                <NumberInput
-                                    v-model="form.secondary_failed_limit"
-                                    class="mt-1 block w-full"
-                                    min="0"
-                                    :error="!!form.errors.secondary_failed_limit"
-                                />
-                                <InputError class="mt-2" :message="form.errors.secondary_failed_limit" />
-                                <p class="text-xs text-base-content/60 mt-2">
-                                    Блокируем только если неуспешные сделки идут подряд.
-                                </p>
-                            </div>
-                            <div>
-                                <InputLabel value="Блокировка (дней)" :error="!!form.errors.secondary_block_days" />
-                                <NumberInput
-                                    v-model="form.secondary_block_days"
-                                    class="mt-1 block w-full"
-                                    min="0"
-                                    :error="!!form.errors.secondary_block_days"
-                                />
-                                <InputError class="mt-2" :message="form.errors.secondary_block_days" />
-                                <p class="text-xs text-base-content/60 mt-2">
-                                    Период блокировки для вторичного трафика.
-                                </p>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
+                    </UserFormSection>
                 </div>
             </form>
         </ModalBody>

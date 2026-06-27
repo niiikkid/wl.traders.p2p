@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
 use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\EnabledCardsController;
+use App\Http\Controllers\Admin\FinancesController;
 use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
@@ -363,8 +364,19 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/payouts/settings-data', [App\Http\Controllers\Admin\PayoutController::class, 'settingsData'])->name('payouts.settings-data');
         Route::patch('/payouts/settings', [App\Http\Controllers\Admin\PayoutController::class, 'updateSettings'])->name('payouts.settings.update');
 
-        Route::get('/deposits', [App\Http\Controllers\Admin\DepositController::class, 'index'])->name('deposits.index');
-        Route::get('/withdrawals', [WithdrawalController::class, 'index'])->name('withdrawals.index');
+        Route::get('/finances', [FinancesController::class, 'index'])->name('finances.index');
+        Route::get('/deposits', function () {
+            return redirect()->route('admin.finances.index', array_merge(
+                request()->except('tab'),
+                ['tab' => 'deposits'],
+            ));
+        })->name('deposits.index');
+        Route::get('/withdrawals', function () {
+            return redirect()->route('admin.finances.index', array_merge(
+                request()->except('tab'),
+                ['tab' => 'withdrawals'],
+            ));
+        })->name('withdrawals.index');
         Route::get('/withdrawals/address/whitelist', [AddressWhitelistController::class, 'index'])->name('withdrawals.address.whitelist.index');
         Route::patch('/withdrawals/{invoice}/success', [WithdrawalController::class, 'success'])->name('withdrawals.success');
         Route::patch('/withdrawals/{invoice}/fail', [WithdrawalController::class, 'fail'])->name('withdrawals.fail');

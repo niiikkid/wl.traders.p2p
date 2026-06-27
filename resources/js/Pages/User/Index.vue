@@ -5,7 +5,8 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import {ref, onUnmounted, computed, onMounted} from "vue";
+import {ref, onUnmounted, computed} from "vue";
+import UsersNav from '@/Components/Admin/UsersNav.vue';
 import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import UserCreateModal from "@/Modals/User/UserCreateModal.vue";
@@ -26,7 +27,7 @@ const page = usePage();
 const users = computed(() => page.props.users);
 const modalStore = useModalStore();
 const tableFiltersStore = useTableFiltersStore();
-const currentTab = ref('active');
+const currentTab = computed(() => tableFiltersStore.getTab || 'active');
 
 const isCooldown = ref(false);
 let cooldownTimer = null;
@@ -80,17 +81,6 @@ const openUserEditModal = (user) => {
     modalStore.openUserEditModal({ user });
 };
 
-const openPage = (tab) => {
-    currentTab.value = tab;
-    tableFiltersStore.setTab(tab);
-    tableFiltersStore.setCurrentPage(1);
-
-    router.visit(route(route().current()), {
-        preserveScroll: true,
-        data: tableFiltersStore.getQueryData,
-    });
-};
-
 const isTraderRole = (user) => user.role?.name === 'Trader';
 
 /** Баланс и переход в кошелёк — только для ролей с финансовым кошельком в админке. */
@@ -131,11 +121,6 @@ const confirmUnarchiveUser = (user) => {
     });
 };
 
-onMounted(() => {
-    currentTab.value = tableFiltersStore.getTab || 'active';
-    tableFiltersStore.setTab(currentTab.value);
-});
-
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -165,21 +150,10 @@ defineOptions({ layout: AuthenticatedLayout })
                     @click="openUserCreateModal"
                 />
             </template>
+            <template #header>
+                <UsersNav :current="currentTab" />
+            </template>
             <template v-slot:table-filters>
-                <div class="flex items-center justify-between gap-3 mb-3">
-                    <ul class="flex flex-wrap text-sm font-medium text-center">
-                        <li class="me-2">
-                            <a @click.prevent="openPage('active')" href="#" :class="currentTab === 'active' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
-                                <span>Активные</span>
-                            </a>
-                        </li>
-                        <li class="me-2">
-                            <a @click.prevent="openPage('archived')" href="#" :class="currentTab === 'archived' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
-                                <span>Архив</span>
-                            </a>
-                        </li>
-                    </ul>
-                </div>
                 <FiltersPanel name="users">
                     <InputFilter
                         name="user"

@@ -11,6 +11,7 @@ import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from "@/Components/DisplayID.vue";
 import MerchantApiLogAmountDistributionModal from "@/Modals/MerchantApiLogs/MerchantApiLogAmountDistributionModal.vue";
 import CallbackLogsTable from "@/Pages/MerchantApiLogs/Partials/CallbackLogsTable.vue";
+import LogsNav from '@/Components/Admin/LogsNav.vue';
 import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
@@ -452,41 +453,17 @@ onBeforeUnmount(() => {
             </template>
 
             <template #header>
-                <div role="tablist" class="tabs tabs-border mb-4">
-                    <button
-                        type="button"
-                        role="tab"
-                        class="tab"
-                        :class="{ 'tab-active': activeApiLogTab === 'orders' }"
-                        @click="switchApiLogTab('orders')"
-                    >
-                        Сделки
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        class="tab"
-                        :class="{ 'tab-active': activeApiLogTab === 'payouts' }"
-                        @click="switchApiLogTab('payouts')"
-                    >
-                        Выплаты
-                    </button>
-                    <button
-                        v-if="isAdminLogsPage"
-                        type="button"
-                        role="tab"
-                        class="tab"
-                        :class="{ 'tab-active': activeApiLogTab === 'callbacks' }"
-                        @click="switchApiLogTab('callbacks')"
-                    >
-                        Callback
-                    </button>
-                </div>
+                <div class="space-y-4">
+                    <LogsNav
+                        :current="activeApiLogTab"
+                        :show-callbacks="isAdminLogsPage"
+                        @switch="switchApiLogTab"
+                    />
 
-                <FiltersPanel
-                    :name="isCallbackLogsTab ? 'callback-logs' : 'merchant-api-logs'"
-                    :query="{ tab: activeApiLogTab }"
-                >
+                    <FiltersPanel
+                        :name="isCallbackLogsTab ? 'callback-logs' : 'merchant-api-logs'"
+                        :query="{ tab: activeApiLogTab }"
+                    >
                     <template v-if="isCallbackLogsTab">
                         <InputFilter
                             name="uuid"
@@ -531,9 +508,9 @@ onBeforeUnmount(() => {
                         title="Статусы"
                     />
                     </template>
-                </FiltersPanel>
+                    </FiltersPanel>
 
-                <section v-if="activeApiLogTab === 'orders'" class="mt-2 space-y-2">
+                    <section v-if="activeApiLogTab === 'orders'" class="space-y-2">
                     <button
                         type="button"
                         class="group flex w-full items-center gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm transition-colors hover:border-primary/50 focus:outline-none"
@@ -833,6 +810,7 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </section>
+                </div>
             </template>
 
             <template v-slot:body>

@@ -1,16 +1,19 @@
 <script setup>
-import {Head, router} from '@inertiajs/vue3';
-import {computed} from 'vue';
+import { Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
+import AntiFraudNav from '@/Components/Admin/AntiFraudNav.vue';
+import MainTableSection from '@/Wrappers/MainTableSection.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 import AntiFraudSettingModal from '@/Modals/Admin/AntiFraudSettingModal.vue';
-import {useModalStore} from '@/store/modal.js';
+import { useModalStore } from '@/store/modal.js';
 
 defineOptions({ layout: AuthenticatedLayout });
 
 const modalStore = useModalStore();
 
-const props = defineProps({
+defineProps({
     merchants: {
         type: Array,
         default: () => [],
@@ -21,19 +24,6 @@ const props = defineProps({
     },
 });
 
-const confirmDelete = (setting) => {
-    modalStore.openConfirmModal({
-        title: `Удалить антифрод-настройки для "${setting?.merchant?.name ?? 'мерчанта'}"?`,
-        body: 'Настройки будут удалены, антифрод перестанет применяться.',
-        confirm_button_name: 'Удалить',
-        confirm: () => {
-            router.delete(route('admin.anti-fraud-settings.destroy', setting.id), {
-                preserveScroll: true,
-            });
-        },
-    });
-};
-
 const createSetting = () => {
     modalStore.openAntiFraudSettingModal({});
 };
@@ -41,6 +31,8 @@ const createSetting = () => {
 const editSetting = (setting) => {
     modalStore.openAntiFraudSettingModal({ setting });
 };
+
+const merchantLabel = (setting) => setting.merchant?.name || setting.merchant?.uuid || `#${setting.merchant_id}`;
 
 const formatRateLimits = (limits) => {
     if (!limits || !limits.length) {
@@ -55,95 +47,115 @@ const formatRateLimits = (limits) => {
     <div>
         <Head title="Антифрод" />
 
-        <div class="space-y-6">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-                <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Антифрод</h2>
-                <div class="flex flex-wrap items-center justify-between gap-2 w-full sm:w-auto sm:justify-end">
-                    <button type="button" class="btn btn-sm btn-primary" @click="createSetting">
-                        Создать настройки
-                    </button>
-                    <div class="flex flex-wrap items-center justify-end gap-2 sm:ml-2">
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-outline"
-                            @click="router.visit(route('admin.anti-fraud.history.index'), { preserveScroll: true })"
-                        >
-                            История
-                        </button>
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-outline"
-                            @click="router.visit(route('admin.anti-fraud.clients.index'), { preserveScroll: true })"
-                        >
-                            Клиенты
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <MainTableSection
+            title="Антифрод"
+            :data="settings"
+            :paginate="false"
+            :display-pagination="false"
+        >
+            <template #button>
+                <button type="button" class="btn btn-sm btn-primary shrink-0" @click="createSetting">
+                    Создать настройки
+                </button>
+            </template>
 
-            <div class="card bg-base-100 shadow">
-                <div class="card-body space-y-6">
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Список настроек</h3>
-                        <div class="overflow-x-auto">
-                            <table class="table table-zebra w-full">
-                                <thead>
-                                <tr>
-                                    <th>Мерчант</th>
-                                    <th>Статус</th>
-                                    <th>Primary</th>
-                                    <th>Secondary</th>
-                                    <th class="text-right">Действия</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr v-for="setting in settings" :key="setting.id">
-                                    <td>
-                                        <div class="font-medium">{{ setting.merchant?.name || setting.merchant?.uuid || `#${setting.merchant_id}` }}</div>
-                                    </td>
-                                    <td>
-                                        <span v-if="setting.enabled" class="badge badge-success badge-sm">Включен</span>
-                                        <span v-else class="badge badge-ghost badge-sm">Выключен</span>
-                                    </td>
-                                    <td class="text-sm">
-                                        <div>Pending: {{ setting.primary_max_pending ?? '—' }}</div>
-                                        <div>Лимиты: {{ formatRateLimits(setting.primary_rate_limits) }}</div>
-                                        <div>Fail подряд: {{ setting.primary_failed_limit ?? '—' }}</div>
-                                        <div>Блок: {{ setting.primary_block_days ?? '—' }} дн.</div>
-                                    </td>
-                                    <td class="text-sm">
-                                        <div v-if="setting.secondary_enabled === false" class="text-base-content/60">
-                                            Фильтры отключены
-                                        </div>
-                                        <template v-else>
-                                            <div>Pending: {{ setting.secondary_max_pending ?? '—' }}</div>
-                                            <div>Лимиты: {{ formatRateLimits(setting.secondary_rate_limits) }}</div>
-                                            <div>Fail подряд: {{ setting.secondary_failed_limit ?? '—' }}</div>
-                                            <div>Блок: {{ setting.secondary_block_days ?? '—' }} дн.</div>
-                                        </template>
-                                    </td>
-                                    <td class="text-right">
-                                        <div class="flex justify-end gap-2">
-                                            <button type="button" class="btn btn-xs btn-outline" @click="editSetting(setting)">
-                                                Редактировать
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr v-if="!settings.length">
-                                    <td colspan="5" class="text-center text-sm text-base-content/60 py-6">
-                                        Настройки антифрода еще не созданы.
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <template #header>
+                <AntiFraudNav current="settings" />
+            </template>
 
-        <ConfirmModal />
+            <template #body>
+                <div class="relative">
+                    <DataTable>
+                        <template #head>
+                            <th>Мерчант</th>
+                            <th>Статус</th>
+                            <th>Primary</th>
+                            <th>Secondary</th>
+                            <th class="text-right">
+                                <span class="sr-only">Действия</span>
+                            </th>
+                        </template>
+
+                        <tr v-for="setting in settings" :key="setting.id">
+                            <td class="align-top">
+                                <div class="font-medium">{{ merchantLabel(setting) }}</div>
+                            </td>
+                            <td class="align-top whitespace-nowrap">
+                                <span v-if="setting.enabled" class="badge badge-success badge-sm">Включен</span>
+                                <span v-else class="badge badge-ghost badge-sm">Выключен</span>
+                            </td>
+                            <td class="align-top text-sm">
+                                <div>Pending: {{ setting.primary_max_pending ?? '—' }}</div>
+                                <div>Лимиты: {{ formatRateLimits(setting.primary_rate_limits) }}</div>
+                                <div>Fail подряд: {{ setting.primary_failed_limit ?? '—' }}</div>
+                                <div>Блок: {{ setting.primary_block_days ?? '—' }} дн.</div>
+                            </td>
+                            <td class="align-top text-sm">
+                                <div v-if="setting.secondary_enabled === false" class="text-base-content/60">
+                                    Фильтры отключены
+                                </div>
+                                <template v-else>
+                                    <div>Pending: {{ setting.secondary_max_pending ?? '—' }}</div>
+                                    <div>Лимиты: {{ formatRateLimits(setting.secondary_rate_limits) }}</div>
+                                    <div>Fail подряд: {{ setting.secondary_failed_limit ?? '—' }}</div>
+                                    <div>Блок: {{ setting.secondary_block_days ?? '—' }} дн.</div>
+                                </template>
+                            </td>
+                            <td class="align-top text-right whitespace-nowrap">
+                                <button type="button" class="btn btn-xs btn-outline" @click="editSetting(setting)">
+                                    Редактировать
+                                </button>
+                            </td>
+                        </tr>
+                    </DataTable>
+
+                    <DataCardList>
+                        <DataCard
+                            v-for="setting in settings"
+                            :key="`mobile-${setting.id}`"
+                        >
+                            <div class="flex items-center justify-between gap-2 border-b border-base-content/10 pb-2">
+                                <div class="min-w-0 font-medium text-sm break-words">
+                                    {{ merchantLabel(setting) }}
+                                </div>
+                                <span v-if="setting.enabled" class="badge badge-success badge-sm shrink-0">Включен</span>
+                                <span v-else class="badge badge-ghost badge-sm shrink-0">Выключен</span>
+                            </div>
+
+                            <div class="pt-2 space-y-3 text-sm">
+                                <div>
+                                    <div class="text-xs text-base-content/50 mb-1">Primary</div>
+                                    <div>Pending: {{ setting.primary_max_pending ?? '—' }}</div>
+                                    <div>Лимиты: {{ formatRateLimits(setting.primary_rate_limits) }}</div>
+                                    <div>Fail подряд: {{ setting.primary_failed_limit ?? '—' }}</div>
+                                    <div>Блок: {{ setting.primary_block_days ?? '—' }} дн.</div>
+                                </div>
+
+                                <div>
+                                    <div class="text-xs text-base-content/50 mb-1">Secondary</div>
+                                    <div v-if="setting.secondary_enabled === false" class="text-base-content/60">
+                                        Фильтры отключены
+                                    </div>
+                                    <template v-else>
+                                        <div>Pending: {{ setting.secondary_max_pending ?? '—' }}</div>
+                                        <div>Лимиты: {{ formatRateLimits(setting.secondary_rate_limits) }}</div>
+                                        <div>Fail подряд: {{ setting.secondary_failed_limit ?? '—' }}</div>
+                                        <div>Блок: {{ setting.secondary_block_days ?? '—' }} дн.</div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="pt-3 border-t border-base-content/10 mt-3">
+                                <button type="button" class="btn btn-xs btn-outline w-full" @click="editSetting(setting)">
+                                    Редактировать
+                                </button>
+                            </div>
+                        </DataCard>
+                    </DataCardList>
+                </div>
+            </template>
+        </MainTableSection>
+
         <AntiFraudSettingModal :merchants="merchants" :settings="settings" />
     </div>
 </template>

@@ -2,7 +2,7 @@
 import {Head, useForm} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import AutomationNavButtons from '@/Components/Automation/AutomationNavButtons.vue';
+import AutomationNav from '@/Components/Admin/AutomationNav.vue';
 import DateTime from '@/Components/DateTime.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 
@@ -71,14 +71,15 @@ const submit = () => {
             :paginate="false"
             :display-pagination="false"
         >
-            <template #button>
-                <AutomationNavButtons current="app" />
-            </template>
             <template #header>
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-sm text-base-content/70">Управление APK для трейдера</p>
-                    <div class="badge px-4 py-3 text-sm shrink-0" :class="props.isUploaded ? 'badge-success' : 'badge-neutral'">
-                        {{ props.isUploaded ? 'Загружено' : 'Не загружено' }}
+                <div class="space-y-4">
+                    <AutomationNav current="app" />
+
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <p class="text-sm text-base-content/70">Управление APK для трейдера</p>
+                        <div class="badge px-4 py-3 text-sm shrink-0" :class="props.isUploaded ? 'badge-success' : 'badge-neutral'">
+                            {{ props.isUploaded ? 'Загружено' : 'Не загружено' }}
+                        </div>
                     </div>
                 </div>
             </template>

@@ -7,7 +7,8 @@ import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue"
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
-import {computed, onBeforeUnmount, onMounted, ref, watch} from "vue";
+import {computed, onBeforeUnmount, ref, watch} from "vue";
+import PaymentDetailsNav from '@/Components/Admin/PaymentDetailsNav.vue';
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
@@ -66,7 +67,7 @@ const scheduleServerClock = ref(usePage().props.scheduleServerClock)
 const scheduleSummary = ref(usePage().props.scheduleSummary)
 usePaymentDetailScheduleTableTick(paymentDetails, scheduleServerClock);
 const detailActiveToggleForm = useForm({});
-const currentTab = ref('active');
+const currentTab = computed(() => tableFiltersStore.getTab || 'active');
 const tableFiltersStore = useTableFiltersStore();
 const toggleBlocked = ref(false);
 const isTraderView = computed(() => viewStore.isTraderViewMode);
@@ -285,16 +286,6 @@ const confirmUnarchiveDetail = (detail) => {
     });
 };
 
-const openPage = (tab) => {
-    tableFiltersStore.setTab(tab);
-    tableFiltersStore.setCurrentPage(1);
-
-    router.visit(route(route().current()), {
-        preserveScroll: true,
-        data: tableFiltersStore.getQueryData,
-    })
-}
-
 const openScheduleManagerModal = () => {
     modalStore.openPaymentDetailScheduleManagerModal();
 };
@@ -368,13 +359,6 @@ const toggleDetailSelection = (detailId) => {
     selectedDetailIds.value = [...selectedDetailIds.value, normalizedId];
 };
 
-onMounted(() => {
-    if (tableFiltersStore.getTab === '') {
-        tableFiltersStore.setTab('active');
-    }
-    currentTab.value = tableFiltersStore.getTab
-})
-
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -388,24 +372,7 @@ defineOptions({ layout: AuthenticatedLayout })
         >
             <template v-slot:header>
                 <div class="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                    <ul class="flex flex-wrap text-sm font-medium text-center">
-                        <li class="me-2">
-                            <a @click.prevent="openPage('active')" href="#" :class="currentTab === 'active' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
-                                <svg class="w-4 h-4 sm:mr-2 mr-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.03v13m0-13c-2.819-.831-4.715-1.076-8.029-1.023A.99.99 0 0 0 3 6v11c0 .563.466 1.014 1.03 1.007 3.122-.043 5.018.212 7.97 1.023m0-13c2.819-.831 4.715-1.076 8.029-1.023A.99.99 0 0 1 21 6v11c0 .563-.466 1.014-1.03 1.007-3.122-.043-5.018.212-7.97 1.023"/>
-                                </svg>
-                                <span class="sm:block hidden">Активные</span>
-                            </a>
-                        </li>
-                        <li class="me-2">
-                            <a @click.prevent="openPage('archived')" href="#" :class="currentTab === 'archived' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
-                                <svg class="w-4 h-4 sm:mr-2 mr-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linejoin="round" stroke-width="2" d="M10 12v1h4v-1m4 7H6a1 1 0 0 1-1-1V9h14v9a1 1 0 0 1-1 1ZM4 5h16a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/>
-                                </svg>
-                                <span class="sm:block hidden">Архив</span>
-                            </a>
-                        </li>
-                    </ul>
+                    <PaymentDetailsNav :current="currentTab" />
 
                     <div class="flex w-full max-w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:ms-auto sm:w-auto">
                         <div

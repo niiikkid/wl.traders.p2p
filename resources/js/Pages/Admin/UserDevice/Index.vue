@@ -2,7 +2,7 @@
 import {Head, usePage} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import AutomationNavButtons from '@/Components/Automation/AutomationNavButtons.vue';
+import AutomationNav from '@/Components/Admin/AutomationNav.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
 import DeviceConnectSnapshotModal from '@/Modals/DeviceConnectSnapshotModal.vue';
@@ -91,8 +91,8 @@ const copyToClipboard = async (text) => {
         <Head title="Устройства" />
 
         <MainTableSection title="Устройства" :data="devices">
-            <template #button>
-                <AutomationNavButtons current="devices" />
+            <template #header>
+                <AutomationNav current="devices" />
             </template>
 
             <template #body>

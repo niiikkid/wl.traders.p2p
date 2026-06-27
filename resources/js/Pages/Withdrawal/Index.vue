@@ -2,6 +2,7 @@
 import {Head, router, useForm} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { usePage } from '@inertiajs/vue3';
+import FinancesNav from '@/Components/Admin/FinancesNav.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import InvoiceStatus from "@/Components/InvoiceStatus.vue";
 import SuccessAction from "@/Components/Table/SuccessAction.vue";
@@ -60,22 +61,16 @@ defineOptions({ layout: AuthenticatedLayout })
 
 <template>
     <div>
-        <Head title="Заявки на вывод средств" />
+        <Head title="Финансы" />
 
         <MainTableSection
-            title="Заявки на вывод средств"
+            title="Финансы"
             :data="invoices"
         >
-            <template #button>
-                <button
-                    type="button"
-                    class="btn btn-outline btn-sm shrink-0"
-                    @click="router.visit(route('admin.deposits.index'), { preserveScroll: true })"
-                >
-                    Депозиты средств
-                </button>
-            </template>
             <template v-slot:header>
+                <FinancesNav current="withdrawals" />
+            </template>
+            <template v-slot:table-filters>
                 <FiltersPanel name="withdrawals">
                     <DropdownFilter
                         name="invoiceStatuses"

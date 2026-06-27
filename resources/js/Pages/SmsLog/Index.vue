@@ -1,7 +1,8 @@
 <script setup>
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import AutomationNavButtons from "@/Components/Automation/AutomationNavButtons.vue";
+import AutomationNav from '@/Components/Admin/AutomationNav.vue';
+import AutomationMessagesSubNav from '@/Components/Admin/AutomationMessagesSubNav.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -35,7 +36,7 @@ const smsLogsTotalCount = computed(() => page.props.smsLogsTotalCount);
 const senderStopList = computed(() => page.props.senderStopList);
 const smsStopWords = computed(() => page.props.smsStopWords);
 const expandedCards = ref({});
-const currentTab = ref('logs');
+const currentTab = computed(() => tableFiltersStore.getTab || 'logs');
 const newStopWord = ref('');
 const tableFiltersStore = useTableFiltersStore();
 const linkSmsOrderModalOpen = ref(false);
@@ -194,8 +195,6 @@ onMounted(() => {
     if (tableFiltersStore.getTab === '') {
         tableFiltersStore.setTab('logs');
     }
-
-    currentTab.value = tableFiltersStore.getTab
 })
 
 defineOptions({ layout: AuthenticatedLayout })
@@ -238,38 +237,17 @@ defineOptions({ layout: AuthenticatedLayout })
                             </svg>
                         </button>
                     </div>
-
-                    <AutomationNavButtons v-if="viewStore.isAdminViewMode" current="messages" />
                 </div>
             </template>
             <template v-slot:header>
                 <div class="space-y-4">
-                    <ul v-if="viewStore.isAdminViewMode" class="flex flex-wrap text-sm font-medium text-center">
-                    <li class="me-2">
-                        <a @click.prevent="openPage('logs')" href="#" :class="currentTab === 'logs' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
-                            <svg class="w-4 h-4 sm:mr-2 mr-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.556 8.5h8m-8 3.5H12m7.111-7H4.89a.896.896 0 0 0-.629.256.868.868 0 0 0-.26.619v9.25c0 .232.094.455.26.619A.896.896 0 0 0 4.89 16H9l3 4 3-4h4.111a.896.896 0 0 0 .629-.256.868.868 0 0 0 .26-.619v-9.25a.868.868 0 0 0-.26-.619.896.896 0 0 0-.63-.256Z"/>
-                            </svg>
-                            <span class="sm:block hidden">Сообщения</span>
-                        </a>
-                    </li>
-                    <li class="me-2">
-                        <a @click.prevent="openPage('stop-list')" href="#" :class="currentTab === 'stop-list' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
-                            <svg class="w-4 h-4 sm:mr-2 mr-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="m6 6 12 12m3-6a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                            </svg>
-                            <span class="sm:block hidden">Стоп-лист (отправители)</span>
-                        </a>
-                    </li>
-                    <li class="me-2">
-                        <a @click.prevent="openPage('stop-words')" href="#" :class="currentTab === 'stop-words' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'" aria-current="page">
-                            <svg class="w-4 h-4 sm:mr-2 mr-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6H6m12 4H6m12 4H6m12 4H6"/>
-                            </svg>
-                            <span class="sm:block hidden">Стоп-слова</span>
-                        </a>
-                    </li>
-                    </ul>
+                    <AutomationNav v-if="viewStore.isAdminViewMode" current="messages" />
+
+                    <AutomationMessagesSubNav
+                        v-if="viewStore.isAdminViewMode"
+                        :current="currentTab"
+                        @change="openPage"
+                    />
 
                     <FiltersPanel
                         v-if="showSmsLogFilters"
@@ -538,6 +516,23 @@ defineOptions({ layout: AuthenticatedLayout })
                     </div>
                 </template>
                 <template v-else-if="currentTab === 'stop-list'">
+                    <div role="alert" class="alert alert-info alert-soft text-sm mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                        </svg>
+                        <div class="space-y-1">
+                            <p class="font-medium">Стоп-лист отправителей</p>
+                            <p>
+                                Здесь перечислены имена отправителей СМС и push-уведомлений, которые система полностью игнорирует.
+                                Это помогает отсечь спам, рекламу и служебные сообщения, не связанные с платежами.
+                            </p>
+                            <p class="text-base-content/70">
+                                Добавить отправителя можно на вкладке «Сообщения» — кнопка ✕ рядом с именем.
+                                Все его сообщения удалятся, а новые не будут сохраняться.
+                                Чтобы снова принимать сообщения, удалите отправителя из списка.
+                            </p>
+                        </div>
+                    </div>
                     <div class="flex flex-wrap gap-2">
                         <span v-for="(item, key) in senderStopList" :id="`sender-stop-list-${key}`" class="badge badge-primary gap-1">
                             {{ item.sender }}
@@ -548,6 +543,22 @@ defineOptions({ layout: AuthenticatedLayout })
                     </div>
                 </template>
                 <template v-else-if="currentTab === 'stop-words'">
+                    <div role="alert" class="alert alert-info alert-soft text-sm mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+                        </svg>
+                        <div class="space-y-1">
+                            <p class="font-medium">Стоп-слова</p>
+                            <p>
+                                Здесь задаются слова и фразы, по которым система отбрасывает сообщения по содержимому текста.
+                                Это удобно для рекламы, промо и других уведомлений, которые не относятся к поступлениям.
+                            </p>
+                            <p class="text-base-content/70">
+                                Если в тексте СМС или push есть стоп-слово, сообщение не сохраняется и не участвует в автоматике.
+                                Добавьте слово в поле ниже или удалите его кнопкой ✕ в списке.
+                            </p>
+                        </div>
+                    </div>
                     <div class="mb-5">
                         <div class="flex items-center gap-2 mb-4">
                             <input
@@ -558,9 +569,6 @@ defineOptions({ layout: AuthenticatedLayout })
                             >
                             <button @click="addSmsStopWord" class="btn btn-primary">Добавить</button>
                         </div>
-                        <p class="text-sm opacity-70 mb-4">
-                            Стоп-слова используются для фильтрации SMS сообщений. Сообщения, содержащие эти слова, будут игнорироваться при парсинге.
-                        </p>
                     </div>
                     <div class="flex flex-wrap gap-2">
                         <span v-for="(item, key) in smsStopWords" :id="`sms-stop-word-${key}`" class="badge badge-success gap-1">

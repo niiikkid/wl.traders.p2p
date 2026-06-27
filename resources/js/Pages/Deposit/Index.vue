@@ -1,7 +1,8 @@
 <script setup>
-import {Head, router, usePage} from '@inertiajs/vue3';
+import {Head, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
+import FinancesNav from '@/Components/Admin/FinancesNav.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import InvoiceStatus from "@/Components/InvoiceStatus.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -26,22 +27,16 @@ defineOptions({ layout: AuthenticatedLayout })
 
 <template>
     <div>
-        <Head title="Депозиты средств" />
+        <Head title="Финансы" />
 
         <MainTableSection
-            title="Депозиты средств"
+            title="Финансы"
             :data="invoices"
         >
-            <template #button>
-                <button
-                    type="button"
-                    class="btn btn-outline btn-sm shrink-0"
-                    @click="router.visit(route('admin.withdrawals.index'), { preserveScroll: true })"
-                >
-                    Заявки на вывод средств
-                </button>
-            </template>
             <template v-slot:header>
+                <FinancesNav current="deposits" />
+            </template>
+            <template v-slot:table-filters>
                 <FiltersPanel name="deposits">
                     <DropdownFilter
                         name="invoiceStatuses"
@@ -66,12 +61,16 @@ defineOptions({ layout: AuthenticatedLayout })
                     <!-- Desktop/tablet view (table) -->
                     <DataTable>
                         <template #head>
+                                    <th scope="col">ID</th>
                                     <th scope="col">Сумма</th>
                                     <th scope="col">Пользователь</th>
                                     <th scope="col">Статус</th>
                                     <th scope="col">Дата создания</th>
                         </template>
-                                <tr v-for="invoice in invoices.data" class="bg-base-100 border-b last:border-none border-base-200">
+                                <tr v-for="invoice in invoices.data" :key="invoice.id" class="bg-base-100 border-b last:border-none border-base-200">
+                                    <th scope="row" class="font-medium whitespace-nowrap">
+                                        {{ invoice.id }}
+                                    </th>
                                     <td>
                                         <div class="text-nowrap">{{ invoice.amount }} {{invoice.currency.toUpperCase()}}</div>
                                         <div v-show="invoice.balance_type === 'trust'" class="text-xs opacity-70">Траст</div>
@@ -95,8 +94,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                 v-for="invoice in invoices.data"
                                 :key="invoice.id"
                             >
-                                    <!-- Компактная шапка: ID и дата -->
-                                    <div class="flex justify-between items-center border-b border-base-content/10 mb-2">
+                                    <div class="flex justify-between items-center border-b border-base-content/10 mb-2 pb-2">
+                                        <div class="inline-flex items-center gap-2">
+                                            <span class="text-base-content/70">ID:</span>
+                                            <span class="font-medium text-base-content">{{ invoice.id }}</span>
+                                        </div>
                                         <div class="inline-flex items-center">
                                             <DateTime class="justify-start" :data="invoice.created_at"/>
                                         </div>
