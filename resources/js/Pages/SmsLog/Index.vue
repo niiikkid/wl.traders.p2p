@@ -3,6 +3,7 @@ import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AutomationNav from '@/Components/Admin/AutomationNav.vue';
 import AutomationMessagesSubNav from '@/Components/Admin/AutomationMessagesSubNav.vue';
+import TraderAutomationNav from '@/Components/Trader/AutomationNav.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -209,39 +210,10 @@ defineOptions({ layout: AuthenticatedLayout })
             :data="smsLogs"
             :display-pagination="currentTab === 'logs'"
         >
-            <template #button>
-                <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
-                    <div
-                        v-if="viewStore.isTraderViewMode"
-                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
-                    >
-                        <button
-                            v-if="viewStore.isTraderViewMode"
-                            type="button"
-                            class="btn btn-sm btn-square btn-primary btn-outline shrink-0 rounded-lg"
-                            :class="{ 'btn-active': route().current('trader.devices.*') }"
-                            title="Устройства"
-                            aria-label="Устройства"
-                            @click="router.visit(route('trader.devices.index'), { preserveScroll: true })"
-                        >
-                            <svg
-                                class="h-5 w-5"
-                                aria-hidden="true"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 15h12M6 6h12m-6 12h.01M7 21h10a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1Z"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </template>
             <template v-slot:header>
                 <div class="space-y-4">
                     <AutomationNav v-if="viewStore.isAdminViewMode" current="messages" />
+                    <TraderAutomationNav v-if="viewStore.isTraderViewMode" current="messages" />
 
                     <AutomationMessagesSubNav
                         v-if="viewStore.isAdminViewMode"

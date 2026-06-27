@@ -19,6 +19,7 @@ import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailS
 import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
+import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 
 const page = usePage();
 const tableFiltersStore = useTableFiltersStore();
@@ -172,7 +173,7 @@ defineOptions({layout: AuthenticatedLayout});
                 <FiltersPanel name="leader-trader-payment-details">
                     <InputFilter
                         name="id"
-                        placeholder="ID реквизита"
+                        placeholder="UUID реквизита"
                     />
                     <InputFilter
                         name="name"
@@ -201,7 +202,7 @@ defineOptions({layout: AuthenticatedLayout});
                 <div class="relative">
                     <DataTable>
                         <template #head>
-                            <th>ID</th>
+                            <th>UUID</th>
                             <th>Реквизит</th>
                             <th>Тип</th>
                             <th>Лимиты</th>
@@ -209,8 +210,10 @@ defineOptions({layout: AuthenticatedLayout});
                             <th>Статус</th>
                             <th><span class="sr-only">Настройки</span></th>
                         </template>
-                                    <tr v-for="detail in paymentDetails.data" :key="detail.id" class="hover">
-                                        <th class="font-medium whitespace-nowrap">{{ detail.id }}</th>
+                                    <tr v-for="detail in paymentDetails.data" :key="detail.uuid" class="hover">
+                                        <th class="font-medium whitespace-nowrap">
+                                            <CopyableOrderUid :uuid="detail.uuid ?? ''" />
+                                        </th>
                                         <td>
                                             <div class="flex items-center gap-3">
                                                 <GatewayLogo :img_path="detail.payment_gateway.logo_path" :name="detail.payment_gateway.name" class="w-10 h-10" />
@@ -369,11 +372,11 @@ defineOptions({layout: AuthenticatedLayout});
                     </DataTable>
 
                     <DataCardList>
-                        <DataCard v-for="detail in paymentDetails.data" :key="detail.id">
+                        <DataCard v-for="detail in paymentDetails.data" :key="detail.uuid">
                                 <div class="flex justify-between items-center border-b border-base-content/10 mb-2 pb-2">
                                     <div class="inline-flex items-center gap-2">
-                                        <span class="text-base-content/70">ID:</span>
-                                        <span class="font-medium">{{ detail.id }}</span>
+                                        <span class="text-base-content/70">UUID:</span>
+                                        <CopyableOrderUid :uuid="detail.uuid ?? ''" />
                                     </div>
                                     <span class="badge badge-success badge-sm" v-if="detail.is_active">Активен</span>
                                     <span class="badge badge-ghost badge-sm" v-else>Выключен</span>

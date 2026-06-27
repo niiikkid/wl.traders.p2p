@@ -26,7 +26,7 @@ const modalTitle = computed(() => {
 
     const name = paymentDetail.value.name ? ` — ${paymentDetail.value.name}` : '';
 
-    return `Сбросить лимиты #${paymentDetail.value.id}${name}`;
+    return `Сбросить лимиты ${paymentDetail.value.uuid_short ?? paymentDetail.value.uuid?.slice(0, 8) ?? ''}${name}`;
 });
 
 const resetDescription = computed(() => {
@@ -48,7 +48,7 @@ const close = () => {
 };
 
 const submit = () => {
-    if (!paymentDetail.value?.id) {
+    if (!paymentDetail.value?.uuid) {
         return;
     }
 
@@ -56,7 +56,7 @@ const submit = () => {
     errors.value = {};
 
     axios.post(
-        route('payment-details.reset-limits', paymentDetail.value.id),
+        route('payment-details.reset-limits', paymentDetail.value.uuid),
         { type: limitType.value },
         { headers: { Accept: 'application/json' } },
     )

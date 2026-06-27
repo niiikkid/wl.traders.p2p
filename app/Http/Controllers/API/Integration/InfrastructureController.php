@@ -71,6 +71,7 @@ class InfrastructureController extends Controller
 
         return $this->respondPaginated($request, $query, static fn (PaymentDetail $detail): array => [
             'id' => $detail->id,
+            'uuid' => $detail->uuid,
             'name' => $detail->name,
             'detail' => $detail->detail,
             'detail_type' => $detail->detail_type?->value,
@@ -96,6 +97,7 @@ class InfrastructureController extends Controller
         return response()->json([
             'data' => [
                 'id' => $paymentDetail->id,
+                'uuid' => $paymentDetail->uuid,
                 'name' => $paymentDetail->name,
                 'detail' => $paymentDetail->detail,
                 'detail_type' => $paymentDetail->detail_type?->value,
@@ -147,6 +149,7 @@ class InfrastructureController extends Controller
 
         return $this->respondPaginated($request, $query, static fn (Dispute $dispute): array => [
             'id' => $dispute->id,
+            'uuid' => $dispute->uuid,
             'status' => $dispute->status?->value,
             'reason' => $dispute->reason,
             'trader' => [
@@ -169,6 +172,7 @@ class InfrastructureController extends Controller
         return response()->json([
             'data' => [
                 'id' => $dispute->id,
+                'uuid' => $dispute->uuid,
                 'status' => $dispute->status?->value,
                 'reason' => $dispute->reason,
                 'receipt' => $dispute->receipt,

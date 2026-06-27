@@ -4,8 +4,8 @@ import {usePage} from "@inertiajs/vue3";
 import {useModalStore} from "@/store/modal.js";
 
 const props = defineProps({
-    paymentDetailId: {
-        type: [Number, String],
+    paymentDetailUuid: {
+        type: String,
         required: true,
     },
 });
@@ -150,7 +150,7 @@ const loadPaymentDetail = async () => {
     error.value = null;
 
     try {
-        const response = await axios.get(route('payment-details.show', props.paymentDetailId), {
+        const response = await axios.get(route('payment-details.show', props.paymentDetailUuid), {
             headers: {'Accept': 'application/json'},
         });
         paymentDetail.value = response.data?.data || response.data;

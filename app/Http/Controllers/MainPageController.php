@@ -93,7 +93,7 @@ class MainPageController extends Controller
         } else {
             $filters = [
                 'paymentMethodIds' => request()->input('payment_method_ids', []),
-                'paymentDetailIds' => request()->input('payment_detail_ids', []),
+                'paymentDetailIds' => $this->resolvePaymentDetailIdsFromUuids((array) request()->input('payment_detail_ids', [])),
             ];
 
             $stats = $this->mainPageStatsService->buildTraderMainPageStats(
@@ -102,6 +102,10 @@ class MainPageController extends Controller
                 $dateFrom !== null ? (string) $dateFrom : null,
                 $dateTo !== null ? (string) $dateTo : null,
                 $filters,
+            );
+
+            $stats['selectedFilters']['paymentDetailIds'] = $this->paymentDetailIdsToUuids(
+                $stats['selectedFilters']['paymentDetailIds'] ?? []
             );
         }
 
@@ -135,7 +139,7 @@ class MainPageController extends Controller
         $filters = [
             'traderIds' => request()->input('trader_ids', []),
             'paymentMethodIds' => request()->input('payment_method_ids', []),
-            'paymentDetailIds' => request()->input('payment_detail_ids', []),
+            'paymentDetailIds' => $this->resolvePaymentDetailIdsFromUuids((array) request()->input('payment_detail_ids', [])),
             'merchantIds' => request()->input('merchant_ids', []),
         ];
 
@@ -161,6 +165,10 @@ class MainPageController extends Controller
             );
         }
 
+        $stats['selectedFilters']['paymentDetailIds'] = $this->paymentDetailIdsToUuids(
+            $stats['selectedFilters']['paymentDetailIds'] ?? []
+        );
+
         return Inertia::render('MainPage/Admin/Index', [
             ...$stats,
             'activeStatsMode' => $activeStatsMode,
@@ -172,12 +180,14 @@ class MainPageController extends Controller
         $search = trim((string) $request->get('query', ''));
         $statsMode = (string) $request->get('mode', 'deals');
         $fromPayouts = $statsMode === 'payouts';
-        $selectedIds = collect($request->input('selected_ids', []))
-            ->filter(fn ($id) => is_numeric($id))
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->toArray();
+        $selectedIds = $type === 'payment_detail'
+            ? $this->parsePaymentDetailSelectedValues((array) $request->input('selected_ids', []))
+            : collect($request->input('selected_ids', []))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->toArray();
 
         $options = match ($type) {
             'trader' => $fromPayouts
@@ -198,12 +208,14 @@ class MainPageController extends Controller
     {
         $user = auth()->user();
         $search = trim((string) $request->get('query', ''));
-        $selectedIds = collect($request->input('selected_ids', []))
-            ->filter(fn ($id) => is_numeric($id))
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->toArray();
+        $selectedIds = $type === 'payment_detail'
+            ? $this->parsePaymentDetailSelectedValues((array) $request->input('selected_ids', []))
+            : collect($request->input('selected_ids', []))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->toArray();
 
         $options = match ($type) {
             'payment_method' => $this->searchTraderPaymentMethods($user, $search, $selectedIds),
@@ -218,12 +230,14 @@ class MainPageController extends Controller
     {
         $user = auth()->user();
         $search = trim((string) $request->get('query', ''));
-        $selectedIds = collect($request->input('selected_ids', []))
-            ->filter(fn ($id) => is_numeric($id))
-            ->map(fn ($id) => (int) $id)
-            ->unique()
-            ->values()
-            ->toArray();
+        $selectedIds = $type === 'payment_detail'
+            ? $this->parsePaymentDetailSelectedValues((array) $request->input('selected_ids', []))
+            : collect($request->input('selected_ids', []))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values()
+                ->toArray();
         $merchantIds = collect($request->input('merchant_ids', []))
             ->filter(fn ($id) => is_numeric($id))
             ->map(fn ($id) => (int) $id)
@@ -349,28 +363,28 @@ class MainPageController extends Controller
         );
     }
 
-    private function searchPaymentDetails(string $search, array $selectedIds): Collection
+    private function searchPaymentDetails(string $search, array $selectedUuids): Collection
     {
         $query = PaymentDetail::query()
             ->whereIn('id', Order::query()->select('payment_detail_id')->distinct())
-            ->select(['id', 'name', 'detail', 'detail_type']);
+            ->select(['id', 'uuid', 'name', 'detail', 'detail_type']);
 
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
                 $builder->where('name', 'like', "%{$search}%")
                     ->orWhere('detail', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
+                    ->orWhere('uuid', 'like', "{$search}%");
             });
         }
 
         return $this->mergeSelectedFirst(
             $query->limit(10)->get()->map(fn (PaymentDetail $detail) => [
-                'value' => $detail->id,
+                'value' => $detail->uuid,
                 'label' => $detail->name,
                 'subtitle' => $this->formatPaymentDetailSubtitle($detail),
             ]),
-            PaymentDetail::query()->whereIn('id', $selectedIds)->get()->map(fn (PaymentDetail $detail) => [
-                'value' => $detail->id,
+            PaymentDetail::query()->whereIn('uuid', $selectedUuids)->get()->map(fn (PaymentDetail $detail) => [
+                'value' => $detail->uuid,
                 'label' => $detail->name,
                 'subtitle' => $this->formatPaymentDetailSubtitle($detail),
             ]),
@@ -445,11 +459,11 @@ class MainPageController extends Controller
         );
     }
 
-    private function searchTraderPaymentDetails(User $user, string $search, array $selectedIds): Collection
+    private function searchTraderPaymentDetails(User $user, string $search, array $selectedUuids): Collection
     {
         $query = PaymentDetail::query()
             ->where('user_id', $user->id)
-            ->select(['id', 'name', 'detail', 'detail_type', 'archived_at'])
+            ->select(['id', 'uuid', 'name', 'detail', 'detail_type', 'archived_at'])
             ->orderBy('name')
             ->orderBy('id');
 
@@ -457,7 +471,7 @@ class MainPageController extends Controller
             $query->where(function ($builder) use ($search) {
                 $builder->where('name', 'like', "%{$search}%")
                     ->orWhere('detail', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
+                    ->orWhere('uuid', 'like', "{$search}%");
             });
         }
 
@@ -465,20 +479,20 @@ class MainPageController extends Controller
             $query->get()->map(fn (PaymentDetail $detail) => $this->mapTraderPaymentDetailFilterOption($detail)),
             PaymentDetail::query()
                 ->where('user_id', $user->id)
-                ->whereIn('id', $selectedIds)
-                ->select(['id', 'name', 'detail', 'detail_type', 'archived_at'])
+                ->whereIn('uuid', $selectedUuids)
+                ->select(['id', 'uuid', 'name', 'detail', 'detail_type', 'archived_at'])
                 ->get()
                 ->map(fn (PaymentDetail $detail) => $this->mapTraderPaymentDetailFilterOption($detail)),
         );
     }
 
     /**
-     * @return array{value: int, label: string, subtitle: string, is_archived: bool}
+     * @return array{value: string, label: string, subtitle: string, is_archived: bool}
      */
     private function mapTraderPaymentDetailFilterOption(PaymentDetail $detail): array
     {
         return [
-            'value' => $detail->id,
+            'value' => $detail->uuid,
             'label' => $detail->name,
             'subtitle' => $this->formatPaymentDetailSubtitle($detail),
             'is_archived' => $detail->archived_at !== null,
@@ -637,5 +651,61 @@ class MainPageController extends Controller
         $middle = str_repeat('•', max($length - 4, 3));
 
         return "{$firstPart}{$middle}{$lastPart}";
+    }
+
+    /**
+     * @param  array<int, string>  $values
+     * @return array<int, int>
+     */
+    private function resolvePaymentDetailIdsFromUuids(array $values): array
+    {
+        $uuids = collect($values)
+            ->map(static fn (mixed $value): string => trim((string) $value))
+            ->filter(static fn (string $value): bool => Str::isUuid($value))
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($uuids === []) {
+            return [];
+        }
+
+        return PaymentDetail::query()
+            ->whereIn('uuid', $uuids)
+            ->pluck('id')
+            ->map(static fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, int>  $ids
+     * @return array<int, string>
+     */
+    private function paymentDetailIdsToUuids(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return PaymentDetail::query()
+            ->whereIn('id', $ids)
+            ->pluck('uuid')
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, mixed>  $selected
+     * @return array<int, string>
+     */
+    private function parsePaymentDetailSelectedValues(array $selected): array
+    {
+        return collect($selected)
+            ->map(static fn (mixed $value): string => trim((string) $value))
+            ->filter(static fn (string $value): bool => Str::isUuid($value))
+            ->unique()
+            ->values()
+            ->all();
     }
 }

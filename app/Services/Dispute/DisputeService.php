@@ -52,6 +52,7 @@ class DisputeService implements DisputeServiceContract
             }
 
             $dispute = Dispute::create([
+                'uuid' => (string) Str::uuid(),
                 'receipt' => $receipt_name,
                 'order_id' => $order->id,
                 'trader_id' => $order->paymentDetail->user_id,

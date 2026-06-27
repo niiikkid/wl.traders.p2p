@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class PaymentDetailController extends Controller
@@ -242,13 +243,14 @@ class PaymentDetailController extends Controller
             ->with('paymentGateways');
 
         if ($scope === 'selected') {
-            $selectedIds = collect((array) $request->input('selected_ids', []))
-                ->map(static fn (mixed $id) => (int) $id)
-                ->filter(static fn (int $id) => $id > 0)
+            $selectedUuids = collect((array) $request->input('selected_ids', []))
+                ->map(static fn (mixed $value): string => trim((string) $value))
+                ->filter(static fn (string $value): bool => Str::isUuid($value))
+                ->unique()
                 ->values()
                 ->all();
 
-            $query->whereIn('id', $selectedIds);
+            $query->whereIn('uuid', $selectedUuids);
         }
 
         $paymentDetails = $query->get();

@@ -9,6 +9,8 @@ use App\Models\User;
 use App\ObjectValues\TableFilters\TableFiltersValue;
 use App\Queries\Interfaces\PaymentDetailQueries;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
 class PaymentDetailQueriesEloquent implements PaymentDetailQueries
 {
@@ -25,9 +27,7 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
             ->when($fromArchive, function ($query) {
                 $query->whereNotNull('archived_at');
             })
-            ->when($filters->id, function ($query) use ($filters) {
-                $query->where('id', $filters->id);
-            })
+            ->when($filters->id, fn ($query) => $this->applyIdentifierFilter($query, (string) $filters->id))
             ->when($filters->name, function ($query) use ($filters) {
                 $query->where('name', 'LIKE', '%'.$filters->name.'%');
             })
@@ -82,9 +82,7 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
             ->when($fromArchive, function ($query) {
                 $query->whereNotNull('archived_at');
             })
-            ->when($filters->id, function ($query) use ($filters) {
-                $query->where('id', $filters->id);
-            })
+            ->when($filters->id, fn ($query) => $this->applyIdentifierFilter($query, (string) $filters->id))
             ->when($filters->name, function ($query) use ($filters) {
                 $query->where('name', 'LIKE', '%'.$filters->name.'%');
             })
@@ -121,9 +119,7 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
             ->when($fromArchive, function ($query) {
                 $query->whereNotNull('archived_at');
             })
-            ->when($filters->id, function ($query) use ($filters) {
-                $query->where('id', $filters->id);
-            })
+            ->when($filters->id, fn ($query) => $this->applyIdentifierFilter($query, (string) $filters->id))
             ->when($filters->name, function ($query) use ($filters) {
                 $query->where('name', 'LIKE', '%'.$filters->name.'%');
             })
@@ -161,9 +157,7 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
             ->when($fromArchive, function ($query) {
                 $query->whereNotNull('archived_at');
             })
-            ->when($filters->id, function ($query) use ($filters) {
-                $query->where('id', $filters->id);
-            })
+            ->when($filters->id, fn ($query) => $this->applyIdentifierFilter($query, (string) $filters->id))
             ->when($filters->name, function ($query) use ($filters) {
                 $query->where('name', 'LIKE', '%'.$filters->name.'%');
             })
@@ -184,5 +178,31 @@ class PaymentDetailQueriesEloquent implements PaymentDetailQueries
             })
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
+    }
+
+    private function applyIdentifierFilter(Builder $query, string $value): void
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return;
+        }
+
+        if (ctype_digit($value)) {
+            $query->where(function (Builder $builder) use ($value): void {
+                $builder->where('id', (int) $value)
+                    ->orWhere('uuid', 'like', $value.'%');
+            });
+
+            return;
+        }
+
+        if (Str::isUuid($value)) {
+            $query->where('uuid', $value);
+
+            return;
+        }
+
+        $query->where('uuid', 'like', $value.'%');
     }
 }

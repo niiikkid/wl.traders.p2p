@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
+ * @property string $uuid
  * @property string $name
  * @property string $detail
  * @property DetailType $detail_type
@@ -63,6 +64,7 @@ class PaymentDetail extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'name',
         'detail',
         'detail_type',

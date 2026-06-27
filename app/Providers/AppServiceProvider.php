@@ -363,5 +363,21 @@ class AppServiceProvider extends ServiceProvider
             return PayoutModel::query()->findOrFail($id);
         });
 
+        Route::bind('dispute', function ($id, \Illuminate\Routing\Route $route) {
+            if ($route->bindingFieldFor('dispute') === 'uuid') {
+                return Dispute::query()->where('uuid', $id)->firstOrFail();
+            }
+
+            return Dispute::query()->findOrFail($id);
+        });
+
+        Route::bind('paymentDetail', function ($id, \Illuminate\Routing\Route $route) {
+            if ($route->bindingFieldFor('paymentDetail') === 'uuid') {
+                return PaymentDetail::query()->where('uuid', $id)->firstOrFail();
+            }
+
+            return PaymentDetail::query()->findOrFail($id);
+        });
+
     }
 }

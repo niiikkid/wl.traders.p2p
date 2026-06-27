@@ -33,6 +33,9 @@ import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailS
 import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
+import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
+
+const detailUuidLabel = (detail) => detail?.uuid_short ?? detail?.uuid?.slice(0, 8) ?? '';
 
 const modalStore = useModalStore();
 const openCreateModal = () => {
@@ -47,8 +50,8 @@ const openResetLimitsModal = (paymentDetail) => {
 const openBulkEditModal = () => {
     if (selectionModeEnabled.value && selectedDetailIds.value.length) {
         const selectedPreview = paymentDetails.value.data
-            .filter((detail) => selectedDetailIds.value.includes(Number(detail.id)))
-            .map((detail) => `#${detail.id} ${detail.name || detail.detail || ''}`.trim());
+            .filter((detail) => selectedDetailIds.value.includes(detail.uuid))
+            .map((detail) => `${detailUuidLabel(detail)} ${detail.name || detail.detail || ''}`.trim());
 
         modalStore.openPaymentDetailBulkEditModal({
             scope: 'selected',
@@ -239,8 +242,8 @@ const radialStyle = (value) => {
     };
 };
 
-const toggleActive = (detail_id) => {
-    detailActiveToggleForm.patch(route('payment-details.toggle-active', detail_id), {
+const toggleActive = (detailUuid) => {
+    detailActiveToggleForm.patch(route('payment-details.toggle-active', detailUuid), {
         preserveScroll: true,
         onSuccess: (result) => {
             paymentDetails.value = result.props.paymentDetails;
@@ -262,11 +265,11 @@ router.on('success', (event) => {
 
 const confirmArchiveDetail = (detail) => {
     modalStore.openConfirmModal({
-        title: 'Вы уверены что хотите архивировать реквизит #' + detail.id + '?',
+        title: 'Вы уверены что хотите архивировать реквизит ' + detailUuidLabel(detail) + '?',
         body: 'Действие можно отменить.',
         confirm_button_name: 'Архивировать',
         confirm: () => {
-            router.post(route('payment-details.archive', detail.id), {}, {
+            router.post(route('payment-details.archive', detail.uuid), {}, {
                 preserveScroll: true
             });
         }
@@ -275,11 +278,11 @@ const confirmArchiveDetail = (detail) => {
 
 const confirmUnarchiveDetail = (detail) => {
     modalStore.openConfirmModal({
-        title: 'Вы уверены что хотите вернуть реквизит из архива #' + detail.id + '?',
+        title: 'Вы уверены что хотите вернуть реквизит из архива ' + detailUuidLabel(detail) + '?',
         body: 'Действие можно отменить.',
         confirm_button_name: 'Вернуть',
         confirm: () => {
-            router.delete(route('payment-details.unarchive', detail.id), {}, {
+            router.delete(route('payment-details.unarchive', detail.uuid), {}, {
                 preserveScroll: true
             });
         }
@@ -310,8 +313,8 @@ const processingModeLabel = (paymentDetail) => {
 
 const currentPageDetailIds = computed(() => {
     return (paymentDetails.value?.data || [])
-        .map((detail) => Number(detail.id))
-        .filter((id) => Number.isFinite(id));
+        .map((detail) => detail.uuid)
+        .filter((uuid) => typeof uuid === 'string' && uuid.length > 0);
 });
 
 const allCurrentPageSelected = computed(() => {
@@ -345,18 +348,18 @@ const toggleSelectAllOnPage = () => {
     ]));
 };
 
-const toggleDetailSelection = (detailId) => {
-    const normalizedId = Number(detailId);
-    if (!Number.isFinite(normalizedId)) {
+const toggleDetailSelection = (detailUuid) => {
+    const normalizedUuid = String(detailUuid ?? '').trim();
+    if (!normalizedUuid) {
         return;
     }
 
-    if (selectedDetailIds.value.includes(normalizedId)) {
-        selectedDetailIds.value = selectedDetailIds.value.filter((id) => id !== normalizedId);
+    if (selectedDetailIds.value.includes(normalizedUuid)) {
+        selectedDetailIds.value = selectedDetailIds.value.filter((uuid) => uuid !== normalizedUuid);
         return;
     }
 
-    selectedDetailIds.value = [...selectedDetailIds.value, normalizedId];
+    selectedDetailIds.value = [...selectedDetailIds.value, normalizedUuid];
 };
 
 defineOptions({ layout: AuthenticatedLayout })
@@ -417,7 +420,7 @@ defineOptions({ layout: AuthenticatedLayout })
                 <FiltersPanel name="payment-details">
                     <InputFilter
                         name="id"
-                        placeholder="ID реквизита"
+                        placeholder="UUID реквизита"
                     />
                     <InputFilter
                         name="name"
@@ -524,7 +527,7 @@ defineOptions({ layout: AuthenticatedLayout })
                         </template>
                         <template #head>
                                         <th scope="col">
-                                            ID
+                                            UUID
                                         </th>
                                         <th v-if="selectionModeEnabled" scope="col" class="w-10">
                                             <label class="label cursor-pointer justify-center p-0">
@@ -589,16 +592,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                         </th>
                         </template>
-                                    <template v-for="payment_detail in paymentDetails.data" :key="payment_detail.id">
+                                    <template v-for="payment_detail in paymentDetails.data" :key="payment_detail.uuid">
                                         <tr>
-                                            <th scope="row" class="font-medium whitespace-nowrap">{{ payment_detail.id }}</th>
+                                            <th scope="row" class="font-medium whitespace-nowrap">
+                                                <CopyableOrderUid :uuid="payment_detail.uuid ?? ''" />
+                                            </th>
                                             <td v-if="selectionModeEnabled">
                                                 <label class="label cursor-pointer justify-center p-0">
                                                     <input
                                                         type="checkbox"
                                                         class="checkbox checkbox-xs"
-                                                        :checked="selectedDetailIds.includes(Number(payment_detail.id))"
-                                                        @change="toggleDetailSelection(payment_detail.id)"
+                                                        :checked="selectedDetailIds.includes(payment_detail.uuid)"
+                                                        @change="toggleDetailSelection(payment_detail.uuid)"
                                                     />
                                                 </label>
                                             </td>
@@ -759,7 +764,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <td>
                                                 <div class="flex items-center">
                                                     <label class="label cursor-pointer justify-start gap-2 py-0 min-h-0">
-                                                        <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-sm" @change="toggleActive(payment_detail.id)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
+                                                        <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-sm" @change="toggleActive(payment_detail.uuid)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
                                                     </label>
                                                 </div>
                                             </td>
@@ -850,16 +855,16 @@ defineOptions({ layout: AuthenticatedLayout })
                     <DataCardList>
                             <DataCard
                                 v-for="payment_detail in paymentDetails.data"
-                                :key="payment_detail.id"
+                                :key="payment_detail.uuid"
                             >
                                     <div class="flex justify-between items-center gap-2">
                                         <div class="inline-flex items-center gap-2 min-w-0 text-xs">
-                                            <span class="text-base-content/70 shrink-0">ID:</span>
-                                            <span class="font-medium text-base-content truncate">{{ payment_detail.id }}</span>
+                                            <span class="text-base-content/70 shrink-0">UUID:</span>
+                                            <CopyableOrderUid :uuid="payment_detail.uuid ?? ''" class="truncate" />
                                         </div>
                                         <div class="inline-flex items-center gap-0 shrink-0 gap-3">
                                             <label class="label cursor-pointer justify-start gap-2 p-0">
-                                                <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-xs" @change="toggleActive(payment_detail.id)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
+                                                <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-xs" @change="toggleActive(payment_detail.uuid)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
                                             </label>
                                             <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
                                                 <template v-if="currentTab === 'active'">

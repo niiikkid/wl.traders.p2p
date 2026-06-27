@@ -31,10 +31,12 @@ class TableOrderResource extends JsonResource
             'has_dispute' => (bool) $this->dispute_exists,
             'dispute' => $this->dispute ? [
                 'id' => $this->dispute->id,
+                'uuid' => $this->dispute->uuid,
+                'uuid_short' => mb_substr($this->dispute->uuid, 0, 8),
                 'receipt' => $this->dispute->receipt,
-                'receipt_url' => $this->dispute->receipt ? route('disputes.receipt', $this->dispute->id) : null,
+                'receipt_url' => $this->dispute->receipt ? route('disputes.receipt', $this->dispute->uuid) : null,
                 'bank_statement' => $this->dispute->bank_statement,
-                'bank_statement_url' => $this->dispute->bank_statement ? route('disputes.bank-statement', $this->dispute->id) : null,
+                'bank_statement_url' => $this->dispute->bank_statement ? route('disputes.bank-statement', $this->dispute->uuid) : null,
                 'order' => [
                     'id' => $this->id,
                     'uuid' => $this->uuid,
@@ -48,6 +50,7 @@ class TableOrderResource extends JsonResource
                 ],
                 'payment_detail' => [
                     'id' => $this->paymentDetail->id,
+                    'uuid' => $this->paymentDetail->uuid,
                     'detail' => $this->paymentDetail->detail,
                     'type' => $this->paymentDetail->detail_type->value,
                     'name' => $this->paymentDetail->name,
@@ -68,7 +71,7 @@ class TableOrderResource extends JsonResource
             ] : null,
             'payment_gateway_name' => $this->paymentGateway->name,
             'payment_gateway_logo_path' => asset('storage/logos/'.$this->paymentGateway->logo),
-            ...(isRouteFor('Trader') ? ['payment_detail_id' => $this->paymentDetail->id] : []),
+            ...(isRouteFor('Trader') ? ['payment_detail_uuid' => $this->paymentDetail->uuid] : []),
             'payment_detail' => $this->paymentDetail->detail,
             'payment_detail_type' => $this->paymentDetail->detail_type->value,
             'payment_detail_name' => $this->paymentDetail->name,

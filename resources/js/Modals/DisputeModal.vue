@@ -219,7 +219,7 @@ const dispute_footer_actions_visible = computed(
                         <div class="flex flex-row items-center justify-between gap-2 px-2.5 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
                             <dt class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-base-content/50 sm:text-xs">
                                 Реквизит
-                                <span class="font-normal text-primary/70">#{{ dispute.payment_detail.id }}</span>
+                                <span class="font-normal text-primary/70"><CopyableOrderUid :uuid="dispute.payment_detail.uuid ?? ''" :copyable="false" /></span>
                             </dt>
                             <dd class="min-w-0 text-end">
                                 <PaymentDetail

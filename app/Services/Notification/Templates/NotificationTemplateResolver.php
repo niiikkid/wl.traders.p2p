@@ -98,7 +98,7 @@ class NotificationTemplateResolver
         if (! empty($payload['has_order'])) {
             $lines[] = '';
             $lines[] = '<b>Сделка</b>';
-            $lines[] = '<b>UID:</b> <code>'.$this->e((string) ($payload['order_uid'] ?? '-')).'</code>';
+            $lines[] = '<b>UUID:</b> <code>'.$this->e((string) ($payload['order_uid'] ?? '-')).'</code>';
             $lines[] = '<b>Создана:</b> '.$this->e((string) ($payload['order_created_at'] ?? '-'));
             $lines[] = '<b>Реквизит:</b> '.$this->e((string) ($payload['payment_detail'] ?? '-'));
             $lines[] = '<b>Название:</b> '.$this->e((string) ($payload['payment_detail_name'] ?? '-'));

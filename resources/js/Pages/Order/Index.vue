@@ -318,8 +318,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             >
                                                 <template #actions>
                                                     <PaymentDetailInfoDropdown
-                                                        v-if="viewStore.isTraderViewMode && order.payment_detail_id"
-                                                        :payment-detail-id="order.payment_detail_id"
+                                                        v-if="viewStore.isTraderViewMode && order.payment_detail_uuid"
+                                                        :payment-detail-uuid="order.payment_detail_uuid"
                                                     />
                                                 </template>
                                             </PaymentDetail>
@@ -419,8 +419,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             >
                                                 <template #actions>
                                                     <PaymentDetailInfoDropdown
-                                                        v-if="viewStore.isTraderViewMode && order.payment_detail_id"
-                                                        :payment-detail-id="order.payment_detail_id"
+                                                        v-if="viewStore.isTraderViewMode && order.payment_detail_uuid"
+                                                        :payment-detail-uuid="order.payment_detail_uuid"
                                                     />
                                                 </template>
                                             </PaymentDetail>
@@ -483,8 +483,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 >
                                                     <template #actions>
                                                         <PaymentDetailInfoDropdown
-                                                            v-if="viewStore.isTraderViewMode && order.payment_detail_id"
-                                                            :payment-detail-id="order.payment_detail_id"
+                                                            v-if="viewStore.isTraderViewMode && order.payment_detail_uuid"
+                                                            :payment-detail-uuid="order.payment_detail_uuid"
                                                         />
                                                     </template>
                                                 </PaymentDetail>

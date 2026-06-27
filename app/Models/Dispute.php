@@ -9,9 +9,11 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
+ * @property string $uuid
  * @property string $receipt
  * @property string|null $bank_statement
  * @property int $order_id
@@ -29,6 +31,7 @@ class Dispute extends Model
     use HasFactory;
 
     protected $fillable = [
+        'uuid',
         'receipt',
         'order_id',
         'trader_id',
@@ -42,6 +45,15 @@ class Dispute extends Model
         'status' => DisputeStatus::class,
         'reason_code' => DisputeCancelReasonCode::class,
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Dispute $dispute): void {
+            if (empty($dispute->uuid)) {
+                $dispute->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     /**
      * Pending disputes first, then newest by creation time (admin/trader index tables).

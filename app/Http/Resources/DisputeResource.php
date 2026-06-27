@@ -21,10 +21,12 @@ class DisputeResource extends JsonResource
          */
         return [
             'id' => $this->id,
+            'uuid' => $this->uuid,
+            'uuid_short' => mb_substr($this->uuid, 0, 8),
             'receipt' => $this->receipt,
-            'receipt_url' => $this->receipt ? route('disputes.receipt', $this->id) : null,
+            'receipt_url' => $this->receipt ? route('disputes.receipt', $this->uuid) : null,
             'bank_statement' => $this->bank_statement,
-            'bank_statement_url' => $this->bank_statement ? route('disputes.bank-statement', $this->id) : null,
+            'bank_statement_url' => $this->bank_statement ? route('disputes.bank-statement', $this->uuid) : null,
             'order' => [
                 'id' => $this->order->id,
                 'uuid' => $this->order->uuid,
@@ -38,6 +40,7 @@ class DisputeResource extends JsonResource
             ],
             'payment_detail' => [
                 'id' => $this->order->paymentDetail->id,
+                'uuid' => $this->order->paymentDetail->uuid,
                 'detail' => $this->order->paymentDetail->detail,
                 'type' => $this->order->paymentDetail->detail_type->value,
                 'name' => $this->order->paymentDetail->name,

@@ -237,7 +237,7 @@ return [
         'preview' => 'предпросмотр',
         'price' => 'стоимость',
         'product_id' => 'ID продукта',
-        'product_uid' => 'UID продукта',
+        'product_uid' => 'UUID продукта',
         'product_uuid' => 'UUID продукта',
         'province' => 'провинция',
         'quantity' => 'количество',

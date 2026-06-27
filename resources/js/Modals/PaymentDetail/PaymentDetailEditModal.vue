@@ -336,7 +336,9 @@ const loadData = async () => {
     loading.value = true;
     errors.value = {};
     try {
-        const id = paymentDetailEditModal.value.params?.paymentDetail?.id ?? paymentDetailEditModal.value.params?.id;
+        const id = paymentDetailEditModal.value.params?.paymentDetail?.uuid
+            ?? paymentDetailEditModal.value.params?.paymentDetail?.id
+            ?? paymentDetailEditModal.value.params?.id;
         const ownerIdFromParams = paymentDetailEditModal.value.params?.paymentDetail?.owner_id
             ?? paymentDetailEditModal.value.params?.paymentDetail?.user_id
             ?? null;
@@ -372,7 +374,7 @@ const submit = () => {
         payload.payment_detail_schedule_id = null;
     }
 
-    axios.patch(route('payment-details.update', payment_detail.value.id), payload, {
+    axios.patch(route('payment-details.update', payment_detail.value.uuid), payload, {
         headers: { 'Accept': 'application/json' }
     })
         .then((res) => {

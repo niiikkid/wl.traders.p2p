@@ -2,17 +2,17 @@
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
-import {ref, reactive} from "vue";
-import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
-import TableAction from '@/Components/Table/TableAction.vue';
+import {ref} from "vue";
 import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
+import TraderAutomationNav from '@/Components/Trader/AutomationNav.vue';
+import DeviceTokenCopy from '@/Components/Trader/DeviceTokenCopy.vue';
+import DevicePingHistoryModal from '@/Modals/DevicePingHistoryModal.vue';
 
 const devices = ref(usePage().props.devices.data);
 
@@ -60,62 +60,20 @@ router.on('success', () => {
     smsAutoCloseEnabled.value = !!usePage().props.smsAutoCloseEnabled;
 })
 
-const copyToClipboard = async (text) => {
-    const notifyOk = () => alert('Токен скопирован в буфер обмена');
-
-    try {
-        if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(text);
-            notifyOk();
-            return;
-        }
-    } catch {
-        // права / политика — пробуем legacy
-    }
-
-    try {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.setAttribute('readonly', '');
-        ta.style.position = 'fixed';
-        ta.style.left = '-9999px';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        const ok = document.execCommand('copy');
-        document.body.removeChild(ta);
-        if (ok) {
-            notifyOk();
-        } else {
-            alert('Не удалось скопировать.');
-        }
-    } catch {
-        alert('Не удалось скопировать.');
-    }
-};
-
 defineOptions({ layout: AuthenticatedLayout })
 
-const expanded = reactive({});
-const pings = reactive({});
-const loading = reactive({});
+const pingModalOpen = ref(false);
+const pingModalDevice = ref(null);
 
-const toggleDeviceRow = async (deviceId) => {
-    expanded[deviceId] = !expanded[deviceId];
-    if (expanded[deviceId] && !pings[deviceId] && !loading[deviceId]) {
-        loading[deviceId] = true;
-        try {
-            const { data } = await window.axios.get(route('trader.devices.pings', { device: deviceId }));
-            // Преобразуем ответ к массиву объектов { ok: boolean }
-            const items = Array.isArray(data.data?.items) ? data.data.items : [];
-            pings[deviceId] = items.map(it => ({ ok: !!it.ok }));
-        } finally {
-            loading[deviceId] = false;
-        }
-    }
+const openPingModal = (device) => {
+    pingModalDevice.value = device;
+    pingModalOpen.value = true;
 };
 
-const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
+const closePingModal = () => {
+    pingModalOpen.value = false;
+    pingModalDevice.value = null;
+};
 </script>
 
 <template>
@@ -123,143 +81,212 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
         <Head title="Устройства" />
 
         <MainTableSection title="Устройства" :data="devices" :paginate="false">
-            <template #button>
-                <button
-                    type="button"
-                    class="btn btn-outline btn-sm shrink-0"
-                    @click="router.visit(route('sms-logs.index'), { preserveScroll: true })"
-                >
-                    Сообщения
-                </button>
-            </template>
             <template v-slot:header>
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-                    <div class="space-y-6">
-                        <div class="card bg-base-100 shadow-md">
-                            <div class="card-body p-4 sm:p-6">
-                                <h3 class="card-title mb-1.5">Скачайте и установите APK</h3>
-                                <p class="text-base-content/70">
-                                    Для получения СМС нужно приложение, которое доступно только для Android —
-                                    <a :href="route('app.download')" class="link link-primary">Скачать</a>
-                                </p>
-                            </div>
-                        </div>
+                <div class="space-y-4 mb-6">
+                    <TraderAutomationNav current="devices" />
 
-                        <div class="card bg-base-100 shadow-md">
-                            <div class="card-body p-4 sm:p-6">
-                                <section>
-                                    <header>
-                                        <h2 class="card-title">
-                                            Создать новый токен для устройства
-                                        </h2>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <section
+                            class="card bg-base-100 shadow-md"
+                            aria-labelledby="apk-download-title"
+                        >
+                            <div class="card-body gap-4 p-4 sm:p-6">
+                                <div class="flex items-start gap-4">
+                                    <div class="rounded-2xl bg-primary/15 p-3 text-primary ring-1 ring-primary/20 shrink-0">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="size-8"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M17 1H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2m0 18H7V5h10zm-1-6h-3V8h-2v5H8l4 4z" />
+                                        </svg>
+                                    </div>
 
-                                        <p class="mt-1 text-sm text-base-content/70">
-                                            Создайте новый токен для подключения устройства. Один токен может быть использован только для одного устройства.
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h3 id="apk-download-title" class="card-title text-base sm:text-lg">
+                                                Скачайте и установите APK
+                                            </h3>
+                                            <span class="badge badge-primary badge-outline badge-sm gap-1">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="size-3"
+                                                    viewBox="0 0 24 24"
+                                                    fill="currentColor"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path d="M16.61 15.15c-.46 0-.84-.37-.84-.83s.38-.82.84-.82s.84.36.84.82s-.38.83-.84.83m-9.2 0c-.46 0-.84-.37-.84-.83s.38-.82.84-.82s.83.36.83.82s-.37.83-.83.83m9.5-5.01l1.67-2.88c.09-.17.03-.38-.13-.47c-.17-.1-.38-.04-.45.13l-1.71 2.91A10.15 10.15 0 0 0 12 8.91c-1.53 0-3 .33-4.27.91L6.04 6.91a.334.334 0 0 0-.47-.13c-.17.09-.22.3-.13.47l1.66 2.88C4.25 11.69 2.29 14.58 2 18h20c-.28-3.41-2.23-6.3-5.09-7.86" />
+                                                </svg>
+                                                Android
+                                            </span>
+                                        </div>
+                                        <p class="mt-1.5 text-sm text-base-content/70">
+                                            Для получения СМС нужно приложение на вашем телефоне — установите APK и подключите устройство созданным токеном.
                                         </p>
-                                    </header>
+                                    </div>
+                                </div>
 
-                                    <form @submit.prevent="submit" class="mt-6 space-y-6">
-                                        <div class="form-control">
-                                            <InputLabel for="name" value="Название устройства" class="label">
-                                                <span class="label-text">Название устройства</span>
-                                            </InputLabel>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <a
+                                        :href="route('app.download')"
+                                        class="btn btn-primary btn-sm sm:btn-md gap-2 shadow-sm"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="size-4"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M5 20h14v-2H5m14-9h-4V3H9v6H5l7 7z" />
+                                        </svg>
+                                        Скачать APK
+                                    </a>
+                                    <span class="text-xs text-base-content/50">
+                                        Только для Android
+                                    </span>
+                                </div>
+                            </div>
+                        </section>
 
-                                            <TextInput
-                                                id="name"
-                                                type="text"
-                                                class="input input-bordered w-full"
-                                                v-model="form.name"
-                                                required
-                                                autofocus
-                                                placeholder="Например: Samsung Galaxy S21"
-                                            />
+                        <div class="card bg-base-100 shadow-md">
+                            <div class="card-body p-4 sm:p-6 gap-4">
+                                <div>
+                                    <h3 class="card-title">Режим обработки СМС</h3>
+                                    <p class="text-sm text-base-content/70 mt-1">
+                                        В автоматическом режиме система сама закрывает сделки по входящим поступлениям. В полуавтоматическом — СМС привязывается к сделке, а закрываете ее вы вручную.
+                                    </p>
+                                </div>
 
-                                            <InputError class="mt-2 text-error" :message="form.errors.name" />
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <label
+                                        :class="[
+                                            'card border',
+                                            smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
+                                            smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
+                                        ]"
+                                    >
+                                        <div class="card-body p-3">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <div class="font-medium text-xs">Автоматический</div>
+                                                <input
+                                                    type="radio"
+                                                    name="sms-processing-mode"
+                                                    class="radio radio-xs radio-primary"
+                                                    :checked="smsAutoCloseEnabled"
+                                                    :disabled="smsProcessingModeForm.processing"
+                                                    @change="updateSmsProcessingMode(true)"
+                                                >
+                                            </div>
                                         </div>
+                                    </label>
 
-                                        <div class="sm:flex items-center gap-4 space-y-2 sm:space-y-0">
-                                            <PrimaryButton type="submit" class="btn btn-primary" :disabled="form.processing">
-                                                Создать токен
-                                            </PrimaryButton>
-
-                                            <Transition
-                                                enter-active-class="transition ease-in-out"
-                                                enter-from-class="opacity-0"
-                                                leave-active-class="transition ease-in-out"
-                                                leave-to-class="opacity-0"
-                                            >
-                                                <div v-if="form.recentlySuccessful" class="alert alert-success py-2 px-3 text-sm">
-                                                    <span>Токен создан.</span>
-                                                </div>
-                                            </Transition>
+                                    <label
+                                        :class="[
+                                            'card border',
+                                            !smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
+                                            smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
+                                        ]"
+                                    >
+                                        <div class="card-body p-3">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <div class="font-medium text-xs">Полуавтоматический</div>
+                                                <input
+                                                    type="radio"
+                                                    name="sms-processing-mode"
+                                                    class="radio radio-xs radio-primary"
+                                                    :checked="!smsAutoCloseEnabled"
+                                                    :disabled="smsProcessingModeForm.processing"
+                                                    @change="updateSmsProcessingMode(false)"
+                                                >
+                                            </div>
                                         </div>
-                                    </form>
-                                </section>
+                                    </label>
+                                </div>
+
+                                <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
                             </div>
                         </div>
-                    </div>
 
-                    <div class="card bg-base-100 shadow-md">
-                        <div class="card-body p-4 sm:p-6 gap-4">
-                            <div>
-                                <h3 class="card-title">Режим обработки СМС</h3>
-                                <p class="text-sm text-base-content/70 mt-1">
-                                    В автоматическом режиме система сама закрывает сделки по входящим поступлениям. В полуавтоматическом — СМС привязывается к сделке, а закрываете ее вы вручную.
-                                </p>
-                            </div>
-
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                <label
-                                    :class="[
-                                        'card border',
-                                        smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
-                                        smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
-                                    ]"
-                                >
-                                    <div class="card-body p-3">
-                                        <div class="flex items-center justify-between gap-3">
-                                            <div class="font-medium text-xs">Автоматический</div>
-                                            <input
-                                                type="radio"
-                                                name="sms-processing-mode"
-                                                class="radio radio-xs radio-primary"
-                                                :checked="smsAutoCloseEnabled"
-                                                :disabled="smsProcessingModeForm.processing"
-                                                @change="updateSmsProcessingMode(true)"
-                                            >
-                                        </div>
+                        <div class="card bg-base-100 shadow-md">
+                            <div class="card-body gap-3 p-4 sm:p-5">
+                                <div class="flex items-start gap-3">
+                                    <div class="rounded-2xl bg-primary/15 p-2.5 text-primary ring-1 ring-primary/20 shrink-0">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="size-7"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M22 17h-4v-7h4m1-2h-6a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1M4 6h18V4H4a2 2 0 0 0-2 2v11H0v3h14v-3H4z" />
+                                        </svg>
                                     </div>
-                                </label>
 
-                                <label
-                                    :class="[
-                                        'card border',
-                                        !smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
-                                        smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
-                                    ]"
-                                >
-                                    <div class="card-body p-3">
-                                        <div class="flex items-center justify-between gap-3">
-                                            <div class="font-medium text-xs">Полуавтоматический</div>
-                                            <input
-                                                type="radio"
-                                                name="sms-processing-mode"
-                                                class="radio radio-xs radio-primary"
-                                                :checked="!smsAutoCloseEnabled"
-                                                :disabled="smsProcessingModeForm.processing"
-                                                @change="updateSmsProcessingMode(false)"
-                                            >
-                                        </div>
+                                    <div class="min-w-0 flex-1">
+                                        <h2 class="card-title text-base sm:text-lg">
+                                            Новый токен устройства
+                                        </h2>
+                                        <p class="text-xs sm:text-sm text-base-content/60 mt-0.5">
+                                            Один токен — одно устройство. Укажите название и создайте.
+                                        </p>
                                     </div>
-                                </label>
-                            </div>
+                                </div>
 
-                            <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
+                                <form @submit.prevent="submit" class="space-y-2">
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <TextInput
+                                            id="name"
+                                            type="text"
+                                            class="input input-bordered input-sm w-full sm:flex-1 min-w-0"
+                                            v-model="form.name"
+                                            required
+                                            autofocus
+                                            placeholder="Например: Samsung Galaxy S21"
+                                            aria-label="Название устройства"
+                                        />
 
-                            <div v-if="!smsAutoCloseEnabled" role="alert" class="alert alert-info alert-soft text-sm">
-                                <span>
-                                    СМС привязывается к сделке — закрытие вручную.
-                                </span>
+                                        <PrimaryButton
+                                            type="submit"
+                                            class="btn btn-primary btn-sm shrink-0 gap-1.5 shadow-sm"
+                                            :disabled="form.processing"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="size-4"
+                                                viewBox="0 0 24 24"
+                                                fill="currentColor"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
+                                            </svg>
+                                            Создать токен
+                                        </PrimaryButton>
+                                    </div>
+
+                                    <InputError class="text-error text-xs" :message="form.errors.name" />
+
+                                    <p
+                                        v-if="form.recentlySuccessful"
+                                        class="flex items-center gap-1.5 text-xs text-success"
+                                        role="status"
+                                    >
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="size-3.5 shrink-0"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke-width="2"
+                                            stroke="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                        </svg>
+                                        Токен создан
+                                    </p>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -293,18 +320,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                         {{ device.name }}
                                     </th>
                                     <td class="px-6 py-3">
-                                        <div class="flex items-center">
-                                            <span class="truncate max-w-36 text-base-content">{{ device.token }}</span>
-                                            <button
-                                                @click="copyToClipboard(device.token)"
-                                                class="ml-2 btn btn-ghost btn-xs"
-                                                title="Копировать токен"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                                </svg>
-                                            </button>
-                                        </div>
+                                        <DeviceTokenCopy :token="device.token" />
                                     </td>
                                     <td class="px-6 py-3">
                                         <span :class="['badge', device.android_id ? 'badge-success' : 'badge-warning']" class="badge-sm text-nowrap">
@@ -315,34 +331,27 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                         <DateTime v-if="device.latest_ping_at" :data="device.latest_ping_at" :plural="true" />
                                         <span v-else>нет данных</span>
                                     </td>
-                                    <td class="px-6 py-3 text-right relative">
-                                        <TableActionsDropdown>
-                                            <TableAction @click="toggleDeviceRow(device.id)">
-                                                Показать историю пингов
-                                            </TableAction>
-                                        </TableActionsDropdown>
-                                    </td>
-                                </tr>
-                                <tr v-if="expanded[device.id]" :key="`expand-${device.id}`" class="bg-base-200">
-                                    <td :colspan="7" class="px-6 py-4">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <div class="text-sm">Пинги за последний час, шаг 5с</div>
-                                            <div class="text-sm text-base-content/70 text-nowrap">Последний пинг: <span class="font-medium">{{ device.latest_ping_at ?? '—' }}</span></div>
-                                        </div>
-                                        <div v-if="loading[device.id]" class="text-sm opacity-70">Загрузка…</div>
-                                        <div v-else class="flex gap-[2px] flex-wrap">
-                                            <template v-for="(cell, idx) in (pings[device.id] || Array.from({length: 720}, () => ({ ok: false })))" :key="cell.bucket ?? idx">
-                                                <div :class="['w-3 h-3 rounded-[2px]', cellClass(cell.ok)]" :title="cell.ok ? 'был пинг' : 'нет пинга'"></div>
-                                            </template>
-                                        </div>
-                                        <div class="flex gap-6 mt-2">
-                                            <div class="text-sm text-base-content/70 text-nowrap flex">Создан:
-                                                <DateTime class="justify-start font-medium ml-2" :data="device.created_at"/>
-                                            </div>
-                                            <div class="text-sm text-base-content/70 text-nowrap flex">Подключен:
-                                                <DateTime class="font-medium ml-2" v-if="device.connected_at" :data="device.connected_at" /><span v-else class="font-medium">нет данных</span>
-                                            </div>
-                                        </div>
+                                    <td class="px-6 py-3 text-right">
+                                        <button
+                                            type="button"
+                                            class="btn btn-ghost btn-sm btn-square"
+                                            aria-label="История пингов"
+                                            @click="openPingModal(device)"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                class="size-4"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="2"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+                                            </svg>
+                                        </button>
                                     </td>
                                 </tr>
                                 </template>
@@ -374,18 +383,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                     <div class="hidden sm:flex items-center justify-between gap-2">
                                         <div class="min-w-0">
                                             <div class="text-xs text-base-content/70">Токен</div>
-                                            <div class="flex items-center gap-2">
-                                                <span class="truncate max-w-40 text-base-content">{{ device.token }}</span>
-                                                <button
-                                                    @click="copyToClipboard(device.token)"
-                                                    class="btn btn-ghost btn-xs"
-                                                    title="Копировать токен"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                            <DeviceTokenCopy :token="device.token" truncate-class="w-40" />
                                         </div>
                                         <div>
                                             <DateTime v-if="device.latest_ping_at" class="justify-start" :data="device.latest_ping_at" :plural="true"/>
@@ -393,17 +391,23 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                         </div>
                                         <div>
                                             <button
-                                                class="btn btn-primary btn-xs"
-                                                @click.stop="toggleDeviceRow(device.id)"
-                                                :aria-expanded="!!expanded[device.id]"
-                                                :aria-label="!!expanded[device.id] ? 'Скрыть' : 'Показать детали'"
-                                                :disabled="!!loading[device.id]"
+                                                type="button"
+                                                class="btn btn-ghost btn-xs btn-square"
+                                                aria-label="История пингов"
+                                                @click.stop="openPingModal(device)"
                                             >
                                                 <svg
-                                                    :class="['w-4 h-4 transition-transform', {'rotate-180': !!expanded[device.id]}]"
-                                                    xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                    stroke-width="1.5" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="size-4"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    aria-hidden="true"
+                                                >
+                                                    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -411,70 +415,35 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
 
                                     <!-- Для xs -->
                                     <div class="sm:hidden">
-                                        <div class="flex items-center justify-between">
+                                        <div class="flex items-center justify-between gap-2">
                                             <div class="min-w-0">
                                                 <div class="text-xs text-base-content/70">Токен</div>
-                                                <div class="flex items-center gap-2">
-                                                    <span class="truncate max-w-40 text-base-content">{{ device.token }}</span>
-                                                    <button
-                                                        @click="copyToClipboard(device.token)"
-                                                        class="btn btn-ghost btn-xs"
-                                                        title="Копировать токен"
-                                                    >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
+                                                <DeviceTokenCopy :token="device.token" truncate-class="w-40" />
                                             </div>
-                                            <div>
-                                                <button
-                                                    class="btn btn-primary btn-xs"
-                                                    @click.stop="toggleDeviceRow(device.id)"
-                                                    :aria-expanded="!!expanded[device.id]"
-                                                    :aria-label="!!expanded[device.id] ? 'Скрыть' : 'Показать детали'"
-                                                    :disabled="!!loading[device.id]"
+                                            <button
+                                                type="button"
+                                                class="btn btn-ghost btn-xs btn-square shrink-0"
+                                                aria-label="История пингов"
+                                                @click.stop="openPingModal(device)"
+                                            >
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    class="size-4"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    aria-hidden="true"
                                                 >
-                                                    <svg
-                                                        :class="['w-4 h-4 transition-transform', {'rotate-180': !!expanded[device.id]}]"
-                                                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                                        stroke-width="1.5" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5"/>
-                                                    </svg>
-                                                </button>
-                                            </div>
+                                                    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+                                                </svg>
+                                            </button>
                                         </div>
-                                    </div>
-
-                                    <!-- Раскрываемая часть -->
-                                    <div v-show="!!expanded[device.id]" class="mt-3 grid gap-2 bg-base-300/50 rounded-box p-2">
-                                        <div class="sm:hidden">
+                                        <div class="mt-2">
                                             <DateTime v-if="device.latest_ping_at" class="justify-start" :data="device.latest_ping_at" :plural="true"/>
                                             <span v-else class="opacity-70">нет данных</span>
-                                        </div>
-                                        <div class="flex items-center justify-between mb-1">
-                                            <div class="text-sm">Пинги за последний час, шаг 5с</div>
-                                            <div class="text-sm text-base-content/70 text-nowrap">
-                                                Последний пинг:
-                                                <span class="font-medium">{{ device.latest_ping_at ?? '—' }}</span>
-                                            </div>
-                                        </div>
-                                        <div v-if="loading[device.id]" class="text-sm opacity-70">Загрузка…</div>
-                                        <div v-else class="flex gap-[2px] flex-wrap">
-                                            <template v-for="(cell, idx) in (pings[device.id] || Array.from({length: 720}, () => ({ ok: false })))" :key="cell.bucket ?? idx">
-                                                <div :class="['w-3 h-3 rounded-[2px]', cellClass(cell.ok)]" :title="cell.ok ? 'был пинг' : 'нет пинга'"></div>
-                                            </template>
-                                        </div>
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-                                            <div class="text-sm text-base-content/70 text-nowrap flex items-center">
-                                                <span>Создан:</span>
-                                                <DateTime class="justify-start font-medium ml-2" :data="device.created_at"/>
-                                            </div>
-                                            <div class="text-sm text-base-content/70 text-nowrap flex items-center">
-                                                <span>Подключен:</span>
-                                                <DateTime class="font-medium ml-2" v-if="device.connected_at" :data="device.connected_at" />
-                                                <span v-else class="font-medium ml-2">нет данных</span>
-                                            </div>
                                         </div>
                                     </div>
                             </DataCard>
@@ -482,5 +451,11 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                 </div>
             </template>
         </MainTableSection>
+
+        <DevicePingHistoryModal
+            :open="pingModalOpen"
+            :device="pingModalDevice"
+            @close="closePingModal"
+        />
     </div>
 </template>

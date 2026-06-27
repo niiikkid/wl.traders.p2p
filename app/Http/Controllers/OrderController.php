@@ -41,7 +41,7 @@ class OrderController extends Controller
             'trader:id,name,email',
             'smsLog:id,sender,message,created_at,order_id',
             'paymentGateway:id,name,code,logo,currency',
-            'paymentDetail:id,detail,detail_type,name,additional_info,currency,created_at,user_device_id',
+            'paymentDetail:id,uuid,detail,detail_type,name,additional_info,currency,created_at,user_device_id',
             'paymentDetail.userDevice:id,name',
             'merchant:id,name',
             'teamLeader:id,name,email',

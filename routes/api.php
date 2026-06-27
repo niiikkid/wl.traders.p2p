@@ -83,13 +83,13 @@ Route::group([
     Route::get('users/{user}/offers', [IntegrationInfrastructureController::class, 'userOffers']);
 
     Route::get('payment-details', [IntegrationInfrastructureController::class, 'paymentDetails']);
-    Route::get('payment-details/{paymentDetail}', [IntegrationInfrastructureController::class, 'paymentDetail']);
+    Route::get('payment-details/{paymentDetail:uuid}', [IntegrationInfrastructureController::class, 'paymentDetail']);
 
     Route::get('orders', [IntegrationInfrastructureController::class, 'orders']);
     Route::get('orders/{order:uuid}', [IntegrationInfrastructureController::class, 'order']);
 
     Route::get('disputes', [IntegrationInfrastructureController::class, 'disputes']);
-    Route::get('disputes/{dispute}', [IntegrationInfrastructureController::class, 'dispute']);
+    Route::get('disputes/{dispute:uuid}', [IntegrationInfrastructureController::class, 'dispute']);
 
     Route::get('invoices', [IntegrationInfrastructureController::class, 'invoices']);
     Route::get('invoices/{invoice}', [IntegrationInfrastructureController::class, 'invoice']);

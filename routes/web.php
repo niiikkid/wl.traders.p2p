@@ -144,8 +144,8 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/sms-logs/{smsLog}/unlinked-orders', [SmsLogOrderController::class, 'index'])->name('sms-logs.unlinked-orders.index');
         Route::post('/sms-logs/{smsLog}/link-order', [SmsLogOrderController::class, 'store'])->name('sms-logs.link-order.store');
         Route::post('/sms-logs/{smsLog}/reject', [SmsLogRejectController::class, 'store'])->name('sms-logs.reject.store');
-        Route::get('/disputes/{dispute}/receipt', [DisputeController::class, 'receipt'])->name('disputes.receipt');
-        Route::get('/disputes/{dispute}/bank-statement', [DisputeController::class, 'bankStatement'])->name('disputes.bank-statement');
+        Route::get('/disputes/{dispute:uuid}/receipt', [DisputeController::class, 'receipt'])->name('disputes.receipt');
+        Route::get('/disputes/{dispute:uuid}/bank-statement', [DisputeController::class, 'bankStatement'])->name('disputes.bank-statement');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Team Leader|Super Admin']], function () {
@@ -172,15 +172,17 @@ Route::group(['middleware' => ['2fa']], function () {
             ->name('trader.devices.sms-processing-mode.update');
         Route::get('/trader/devices/{device}/pings', [UserDevicePingController::class, 'index'])->name('trader.devices.pings');
 
-        Route::post('/payment-details/{paymentDetail}/reset-limits', [PaymentDetailLimitResetController::class, 'store'])->name('payment-details.reset-limits');
-        Route::post('/payment-details/{paymentDetail}/archive', [PaymentDetailArchiveController::class, 'store'])->name('payment-details.archive');
-        Route::delete('/payment-details/{paymentDetail}/unarchive', [PaymentDetailArchiveController::class, 'destroy'])->name('payment-details.unarchive');
-        Route::patch('/payment-details/{paymentDetail}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.unarchive');
-        Route::patch('/payment-details/{paymentDetail}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.toggle-active');
+        Route::post('/payment-details/{paymentDetail:uuid}/reset-limits', [PaymentDetailLimitResetController::class, 'store'])->name('payment-details.reset-limits');
+        Route::post('/payment-details/{paymentDetail:uuid}/archive', [PaymentDetailArchiveController::class, 'store'])->name('payment-details.archive');
+        Route::delete('/payment-details/{paymentDetail:uuid}/unarchive', [PaymentDetailArchiveController::class, 'destroy'])->name('payment-details.unarchive');
+        Route::patch('/payment-details/{paymentDetail:uuid}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.unarchive');
+        Route::patch('/payment-details/{paymentDetail:uuid}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.toggle-active');
         Route::patch('/payment-details/bulk-update', [PaymentDetailController::class, 'bulkUpdate'])->name('payment-details.bulk-update');
-        Route::resource('/payment-details', PaymentDetailController::class)->only(['index', 'store', 'update']);
+        Route::resource('/payment-details', PaymentDetailController::class)
+            ->only(['index', 'store', 'update'])
+            ->parameters(['payment-details' => 'paymentDetail:uuid']);
         Route::get('/payment-details/create-data', [PaymentDetailController::class, 'createData'])->name('payment-details.create-data');
-        Route::get('/payment-details/{paymentDetail}', [PaymentDetailController::class, 'show'])->name('payment-details.show');
+        Route::get('/payment-details/{paymentDetail:uuid}', [PaymentDetailController::class, 'show'])->name('payment-details.show');
         Route::get('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'index'])->name('payment-detail-schedules.index');
         Route::post('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'store'])->name('payment-detail-schedules.store');
         Route::patch('/payment-detail-schedules/{paymentDetailSchedule}', [PaymentDetailScheduleController::class, 'update'])->name('payment-detail-schedules.update');
@@ -193,9 +195,9 @@ Route::group(['middleware' => ['2fa']], function () {
 
         // disputes
         Route::get('/disputes', [DisputeController::class, 'index'])->name('disputes.index');
-        Route::patch('/disputes/{dispute}/accept', [DisputeController::class, 'accept'])->name('disputes.accept');
-        Route::patch('/disputes/{dispute}/cancel', [DisputeController::class, 'cancel'])->name('disputes.cancel');
-        Route::patch('/disputes/{dispute}/rollback', [DisputeController::class, 'rollback'])->name('disputes.rollback');
+        Route::patch('/disputes/{dispute:uuid}/accept', [DisputeController::class, 'accept'])->name('disputes.accept');
+        Route::patch('/disputes/{dispute:uuid}/cancel', [DisputeController::class, 'cancel'])->name('disputes.cancel');
+        Route::patch('/disputes/{dispute:uuid}/rollback', [DisputeController::class, 'rollback'])->name('disputes.rollback');
 
         // app
         Route::get('/bridge.apk', [ApkController::class, 'download'])->name('app.download');
@@ -239,9 +241,9 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/deposits', [DepositController::class, 'index'])->name('deposits.index');
         Route::get('/disputes', [App\Http\Controllers\Support\DisputeController::class, 'index'])->name('disputes.index');
         Route::post('/disputes/{order}', [App\Http\Controllers\Support\DisputeController::class, 'store'])->name('disputes.store');
-        Route::patch('/disputes/{dispute}/accept', [App\Http\Controllers\Support\DisputeController::class, 'accept'])->name('disputes.accept');
-        Route::patch('/disputes/{dispute}/cancel', [App\Http\Controllers\Support\DisputeController::class, 'cancel'])->name('disputes.cancel');
-        Route::patch('/disputes/{dispute}/rollback', [App\Http\Controllers\Support\DisputeController::class, 'rollback'])->name('disputes.rollback');
+        Route::patch('/disputes/{dispute:uuid}/accept', [App\Http\Controllers\Support\DisputeController::class, 'accept'])->name('disputes.accept');
+        Route::patch('/disputes/{dispute:uuid}/cancel', [App\Http\Controllers\Support\DisputeController::class, 'cancel'])->name('disputes.cancel');
+        Route::patch('/disputes/{dispute:uuid}/rollback', [App\Http\Controllers\Support\DisputeController::class, 'rollback'])->name('disputes.rollback');
         Route::get('/payouts', [App\Http\Controllers\Support\PayoutController::class, 'index'])->name('payouts.index');
 
         // Маршруты для фильтрации

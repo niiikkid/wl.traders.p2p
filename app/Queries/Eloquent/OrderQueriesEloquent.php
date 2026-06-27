@@ -42,7 +42,7 @@ class OrderQueriesEloquent implements OrderQueries
                 $query->where('user_device_id', $deviceId);
             })
             ->with([
-                'paymentDetail:id,detail,detail_type,user_device_id,user_id',
+                'paymentDetail:id,uuid,detail,detail_type,user_device_id,user_id',
                 'paymentGateway:id,name,code',
             ])
             ->get();
@@ -55,7 +55,7 @@ class OrderQueriesEloquent implements OrderQueries
             ->with([
                 'trader:id,email,name',
                 'paymentGateway:id,logo,name',
-                'paymentDetail:id,detail,detail_type,name,additional_info,user_device_id,user_id',
+                'paymentDetail:id,uuid,detail,detail_type,name,additional_info,user_device_id,user_id',
                 'paymentDetail.userDevice:id,name',
                 'paymentDetail.user:id,name,email',
                 'dispute' => function ($query) {
@@ -131,7 +131,7 @@ class OrderQueriesEloquent implements OrderQueries
             ->with([
                 'trader:id,email',
                 'paymentGateway:id,logo,name',
-                'paymentDetail:id,detail,detail_type,name,additional_info,user_device_id,user_id',
+                'paymentDetail:id,uuid,detail,detail_type,name,additional_info,user_device_id,user_id',
                 'paymentDetail.userDevice:id,name',
                 'paymentDetail.user:id,name,email',
                 'dispute' => function ($query) {
@@ -199,7 +199,7 @@ class OrderQueriesEloquent implements OrderQueries
             ->with([
                 'trader:id,email',
                 'paymentGateway:id,logo,name',
-                'paymentDetail:id,detail,detail_type,name,additional_info,user_device_id,user_id',
+                'paymentDetail:id,uuid,detail,detail_type,name,additional_info,user_device_id,user_id',
                 'paymentDetail.userDevice:id,name',
                 'paymentDetail.user:id,name,email',
                 'dispute' => function ($query) {

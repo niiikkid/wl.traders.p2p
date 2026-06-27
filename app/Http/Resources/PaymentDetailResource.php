@@ -21,6 +21,8 @@ class PaymentDetailResource extends JsonResource
          */
         return [
             'id' => $this->id,
+            'uuid' => $this->uuid,
+            'uuid_short' => mb_substr((string) $this->uuid, 0, 8),
             'user_id' => $this->user_id,
             'name' => $this->name,
             'detail' => $this->detail,

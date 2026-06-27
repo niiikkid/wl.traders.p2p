@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Utils\Transaction;
+use Illuminate\Support\Str;
 
 class PaymentDetailService implements PaymentDetailServiceContract
 {
@@ -17,6 +18,7 @@ class PaymentDetailService implements PaymentDetailServiceContract
     {
         return $this->transaction(function () use ($data) {
             $paymentDetail = PaymentDetail::create([
+                'uuid' => (string) Str::uuid(),
                 'name' => $data->name,
                 'detail' => $data->detail,
                 'detail_type' => $data->detail_type,
