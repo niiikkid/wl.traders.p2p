@@ -58,7 +58,7 @@ const tocSections = [
                                 </p>
                                 <ul class="list-disc list-inside space-y-2 mt-3 text-base-content/80 ml-2">
                                     <li><strong>Accept: application/json</strong> — формат ответа.</li>
-                                    <li><strong>Access-Token: token</strong> — ключ авторизации из раздела «API Интеграция».</li>
+                                    <li><strong>Access-Token: token</strong> — API токен из раздела «API Интеграция». Токен показывается только один раз после генерации или ротации.</li>
                                 </ul>
                             </div>
 
@@ -193,6 +193,46 @@ const tocSections = [
                         <div class="list-disc list-inside space-y-2 text-base-content/80 ml-2">
                             POST-уведомление отправляется на ссылку из настроек магазина (или указанную в callback_url при создании сделки) каждый раз при изменении статуса сделки.
                         </div>
+                        <p class="text-base-content/80">
+                            Callback подписывается отдельным Webhook secret из раздела «API Интеграция». Secret показывается только один раз после генерации или ротации.
+                            Не используйте API токен для проверки callback’ов.
+                        </p>
+                        <section class="space-y-3">
+                            <h3 class="text-xl font-semibold">Заголовки callback-запроса</h3>
+                            <div class="overflow-x-auto">
+                                <table class="table table-zebra w-full">
+                                    <thead>
+                                    <tr>
+                                        <th>Заголовок</th>
+                                        <th>Описание</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr>
+                                        <td><code class="bg-base-200 px-1 rounded">X-Webhook-Signature</code></td>
+                                        <td>HMAC SHA-256 подпись сырого JSON body callback’а, рассчитанная через Webhook secret.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code class="bg-base-200 px-1 rounded">X-Webhook-Signature-Algorithm</code></td>
+                                        <td>Значение <code class="bg-base-200 px-1 rounded">HMAC-SHA256</code>.</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                        <section class="space-y-3">
+                            <h3 class="text-xl font-semibold">Пример проверки подписи</h3>
+                            <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>const rawBody = request.rawBody;
+const signature = request.headers['x-webhook-signature'];
+const expected = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
+
+if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    throw new Error('Invalid webhook signature');
+}</code></pre>
+                        </section>
                     </div>
                 </article>
 
@@ -427,17 +467,6 @@ const tocSections = [
                                     <h4 class="font-semibold mb-2">Ответ сервера</h4>
                                     <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({ success: true, data: { order_id: "3db07a16...", status: "pending", cancel_reason: null } }) }}</code></pre>
                                 </div>
-                            </div>
-
-                            <div class="border border-base-200 rounded-xl p-4 space-y-2 overflow-x-auto">
-                                <div class="grid gap-3">
-                                    <h3 class="text-xl font-semibold">Получить спор</h3>
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <span class="badge badge-primary badge-lg">GET</span>
-                                        <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/h2h/order/{order_id}/dispute</code>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-base-content/80">Ответ такой же, как при открытии спора.</p>
                             </div>
                         </section>
                     </div>
@@ -747,49 +776,6 @@ const tocSections = [
                                 </p>
                             </div>
 
-                            <div class="border border-base-200 rounded-xl p-4 space-y-2 overflow-x-auto">
-                                <div class="grid gap-3">
-                                    <h3 class="text-xl font-semibold">Подтвердить оплату и снять холд</h3>
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <span class="badge badge-warning badge-lg text-white">PATCH</span>
-                                        <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/payouts/{payout_id}/confirm-paid</code>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-base-content/80">
-                                    Используйте, когда трейдер уже отправил деньги и выплата находится в статусе
-                                    <code class="bg-base-200 px-1 rounded text-xs">sent</code>. Эндпоинт снимает холд и мгновенно
-                                    зачисляет USDT трейдеру. Повторный вызов безопасен — если выплата уже завершена,
-                                    сервер вернёт актуальное состояние без повторного зачисления.
-                                </p>
-                            </div>
-
-                            <div class="border border-base-200 rounded-xl p-4 space-y-3 overflow-x-auto">
-                                <div class="grid gap-3">
-                                    <h3 class="text-xl font-semibold">Получить чек выплаты (legacy)</h3>
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <span class="badge badge-primary badge-lg">GET</span>
-                                        <code class="bg-base-200 px-2 py-1 rounded text-sm">/api/payouts/{payout_id}/receipt</code>
-                                    </div>
-                                </div>
-                                <p class="text-sm text-base-content/80">
-                                    Старый endpoint, сохранён для обратной совместимости. Возвращает первый чек выплаты
-                                    с метаданными файла и base64-содержимым.
-                                </p>
-                                <div>
-                                    <h4 class="font-semibold mb-2">Ответ сервера</h4>
-                                    <pre class="bg-base-200 p-4 rounded-lg overflow-x-auto text-sm"><code>{{ formatJSON({
-                                        success: true,
-                                        data: {
-                                            payout_id: "af8d6a20-...",
-                                            filename: "receipt-af8d6a20.pdf",
-                                            mime_type: "application/pdf",
-                                            size: 102400,
-                                            base64: "JVBERi0xLjQKJ..."
-                                        }
-                                    }) }}</code></pre>
-                                </div>
-                            </div>
-
                             <div class="border border-base-200 rounded-xl p-4 space-y-3 overflow-x-auto">
                                 <div class="grid gap-3">
                                     <h3 class="text-xl font-semibold">Получить все чеки выплаты</h3>
@@ -799,7 +785,7 @@ const tocSections = [
                                     </div>
                                 </div>
                                 <p class="text-sm text-base-content/80">
-                                    Новый endpoint возвращает массив чеков (до 5 шт.) в формате base64.
+                                    Возвращает массив чеков (до 5 шт.) в формате base64.
                                     Каждый элемент содержит <code class="bg-base-200 px-1 rounded text-xs">filename</code>,
                                     <code class="bg-base-200 px-1 rounded text-xs">mime_type</code>,
                                     <code class="bg-base-200 px-1 rounded text-xs">size</code> и
@@ -854,7 +840,7 @@ const tocSections = [
                                         </tr>
                                         <tr>
                                             <td><code class="bg-base-200 px-1 rounded">sent</code></td>
-                                            <td>Трейдер отметил отправку средств.</td>
+                                            <td>Трейдер отметил отправку средств. Если у трейдера включён холд, зачисление произойдёт автоматически по истечении времени ожидания или после подтверждения в личном кабинете мерчанта.</td>
                                         </tr>
                                         <tr>
                                             <td><code class="bg-base-200 px-1 rounded">completed</code></td>

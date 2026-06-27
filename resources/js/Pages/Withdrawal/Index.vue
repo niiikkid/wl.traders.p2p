@@ -14,6 +14,9 @@ import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import {ref} from "vue";
 import DateTime from "@/Components/DateTime.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 const modalStore = useModalStore();
 
@@ -99,11 +102,8 @@ defineOptions({ layout: AuthenticatedLayout })
             <template v-slot:body>
                 <div class="relative">
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block rounded-table relative">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable>
+                        <template #head>
                                     <th scope="col">ID</th>
                                     <th scope="col">Сумма</th>
                                     <th scope="col">Пользователь</th>
@@ -113,9 +113,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col">
                                         
                                     </th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <tr v-for="invoice in invoices.data" class="bg-base-100 border-b last:border-none border-base-200">
                                     <th scope="row" class="font-medium whitespace-nowrap">
                                         {{ invoice.id }}
@@ -151,20 +149,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </template>
                                     </td>
                                 </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
+                    <DataCardList>
+                            <DataCard
                                 v-for="invoice in invoices.data"
                                 :key="invoice.id"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <!-- Компактная шапка: ID и дата -->
                                     <div class="flex justify-between items-center border-b border-base-content/10 mb-1 pb-2">
                                         <div class="inline-flex items-center gap-2">
@@ -269,10 +261,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

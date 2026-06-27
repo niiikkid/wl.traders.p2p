@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ApiIntegrationController extends Controller
@@ -16,7 +15,7 @@ class ApiIntegrationController extends Controller
     }
 
     /**
-     * @return array{token: string|null}
+     * @return array{hasApiToken: bool, hasWebhookSecret: bool}
      */
     private function integrationPageProps(): array
     {
@@ -26,7 +25,8 @@ class ApiIntegrationController extends Controller
         }
 
         return [
-            'token' => $user->api_access_token,
+            'hasApiToken' => filled($user->api_access_token_hash),
+            'hasWebhookSecret' => filled($user->webhook_secret),
         ];
     }
 
@@ -36,11 +36,7 @@ class ApiIntegrationController extends Controller
         if (! $user instanceof User) {
             abort(403);
         }
-        $token = $this->generateApiAccessToken();
-
-        $user->update([
-            'api_access_token' => $token,
-        ]);
+        $token = $user->rotateApiAccessToken();
 
         return response()->json([
             'success' => true,
@@ -50,12 +46,20 @@ class ApiIntegrationController extends Controller
         ]);
     }
 
-    private function generateApiAccessToken(): string
+    public function regenerateWebhookSecret(): JsonResponse
     {
-        do {
-            $token = strtolower(Str::random(32));
-        } while (User::query()->where('api_access_token', $token)->exists());
+        $user = Auth::user();
+        if (! $user instanceof User) {
+            abort(403);
+        }
 
-        return $token;
+        $secret = $user->rotateWebhookSecret();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'webhook_secret' => $secret,
+            ],
+        ]);
     }
 }

@@ -77,39 +77,6 @@ class PayoutController extends Controller
         return $response;
     }
 
-    public function confirmPaid(Request $request, Payout $payout): JsonResponse
-    {
-        Gate::authorize('api-access-to-merchant', $payout->merchant);
-
-        $requestId = $this->logPayoutRequest($request, $payout->merchant, $this->payoutRequestData($payout, 'confirm_paid'));
-
-        try {
-            $payout = services()->payout()->confirmPaid($payout);
-        } catch (PayoutException $exception) {
-            $response = response()->failWithMessage($exception->getMessage());
-            $this->updatePayoutLog(
-                $payout->merchant,
-                $payout->external_id,
-                $requestId,
-                $response,
-                $payout,
-                get_class($exception),
-                $exception->getMessage(),
-            );
-
-            return $response;
-        }
-
-        $response = response()->successWithMessage(
-            'Выплата подтверждена и холд снят.',
-            PayoutResource::make($payout->loadMissing('merchant', 'paymentGateway'))
-        );
-
-        $this->updatePayoutLog($payout->merchant, $payout->external_id, $requestId, $response, $payout);
-
-        return $response;
-    }
-
     private function processPayoutPooling(StoreRequest $request, Merchant $merchant): JsonResponse
     {
         $validated = $request->validated();

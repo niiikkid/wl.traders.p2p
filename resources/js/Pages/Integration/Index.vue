@@ -9,7 +9,10 @@ import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal.js";
 
 const pageProps = usePage().props;
-const token = ref(pageProps.token ?? '');
+const apiToken = ref('');
+const webhookSecret = ref('');
+const hasApiToken = ref(Boolean(pageProps.hasApiToken));
+const hasWebhookSecret = ref(Boolean(pageProps.hasWebhookSecret));
 
 const { copy, copied } = useAppClipboard();
 const modalStore = useModalStore();
@@ -17,6 +20,7 @@ const modalStore = useModalStore();
 const hasWindow = typeof window !== 'undefined';
 
 const regenerating = ref(false);
+const regeneratingWebhookSecret = ref(false);
 const downloadingDocumentation = ref(false);
 
 const scrollToHash = (hashOverride = null) => {
@@ -85,12 +89,35 @@ const regenerateToken = async () => {
         const newToken = response?.data?.data?.token;
 
         if (typeof newToken === 'string' && newToken.length > 0) {
-            token.value = newToken;
+            apiToken.value = newToken;
+            hasApiToken.value = true;
         }
     } catch (error) {
         console.error('Не удалось перегенерировать токен:', error);
     } finally {
         regenerating.value = false;
+    }
+};
+
+const regenerateWebhookSecret = async () => {
+    if (regeneratingWebhookSecret.value) {
+        return;
+    }
+
+    regeneratingWebhookSecret.value = true;
+
+    try {
+        const response = await axios.post(route('integration.regenerate-webhook-secret'));
+        const newSecret = response?.data?.data?.webhook_secret;
+
+        if (typeof newSecret === 'string' && newSecret.length > 0) {
+            webhookSecret.value = newSecret;
+            hasWebhookSecret.value = true;
+        }
+    } catch (error) {
+        console.error('Не удалось перегенерировать webhook secret:', error);
+    } finally {
+        regeneratingWebhookSecret.value = false;
     }
 };
 
@@ -101,6 +128,16 @@ const openRegenerateConfirm = () => {
         confirm_button_name: 'Перегенерировать',
         cancel_button_name: 'Отмена',
         confirm: regenerateToken,
+    });
+};
+
+const openRegenerateWebhookSecretConfirm = () => {
+    modalStore.openConfirmModal({
+        title: 'Перегенерировать Webhook secret?',
+        body: 'Старый секрет перестанет подходить для проверки подписи callback’ов. Действие невозможно отменить.',
+        confirm_button_name: 'Перегенерировать',
+        cancel_button_name: 'Отмена',
+        confirm: regenerateWebhookSecret,
     });
 };
 
@@ -338,48 +375,131 @@ defineOptions({ layout: AuthenticatedLayout });
                 </button>
             </div>
 
-            <div class="card w-full bg-base-100 shadow mb-6">
-                <div class="card-body">
-                    <label for="api-key" class="text-sm font-medium text-base-content mb-2 block">API токен:</label>
-                    <div class="relative">
-                        <input
-                            id="api-key"
-                            type="text"
-                            class="col-span-6 bg-base-200 border border-base-300 text-base-content/70 text-sm rounded-xl focus:ring-primary focus:border-primary block w-full p-2.5 pr-24"
-                            :value="token"
-                            disabled
-                            readonly
-                        >
-                        <div class="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                            <button
-                                @click="copy(token)"
-                                class="text-base-content/70 hover:bg-base-200 rounded-xl p-2 inline-flex items-center justify-center"
-                                type="button"
-                                aria-label="Скопировать токен"
+            <div class="grid gap-6 mb-6 lg:grid-cols-2">
+                <div class="card w-full bg-base-100 shadow">
+                    <div class="card-body gap-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="card-title">API токен</h3>
+                                <p class="text-sm text-base-content/70">
+                                    Используется в заголовке <code class="bg-base-200 px-1 rounded">Access-Token</code> для запросов к API.
+                                </p>
+                            </div>
+                            <span class="badge" :class="hasApiToken ? 'badge-success' : 'badge-warning'">
+                                {{ hasApiToken ? 'создан' : 'не создан' }}
+                            </span>
+                        </div>
+
+                        <div v-if="apiToken" class="alert alert-warning text-sm">
+                            Скопируйте токен сейчас. После обновления страницы он больше не будет показан.
+                        </div>
+
+                        <div class="relative">
+                            <input
+                                id="api-key"
+                                type="text"
+                                class="bg-base-200 border border-base-300 text-base-content/70 text-sm rounded-xl focus:ring-primary focus:border-primary block w-full p-2.5 pr-24"
+                                :value="apiToken || 'Скрыт из соображений безопасности'"
+                                disabled
+                                readonly
                             >
-                                <span v-if="!copied">
-                                    <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 20">
-                                        <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2Zm-3 14H5a1 1 0 0 1 0-2h8a1 1 0 0 1 0 2Zm0-4H5a1 1 0 0 1 0-2h8a1 1 0 1 1 0 2Zm0-5H5a1 1 0 0 1 0-2h2V2h4v2h2a1 1 0 1 1 0 2Z"/>
+                            <div class="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                <button
+                                    @click="copy(apiToken)"
+                                    class="text-base-content/70 hover:bg-base-200 rounded-xl p-2 inline-flex items-center justify-center"
+                                    :class="{ 'opacity-50 pointer-events-none': !apiToken }"
+                                    :disabled="!apiToken"
+                                    type="button"
+                                    aria-label="Скопировать API токен"
+                                >
+                                    <span v-if="!copied">
+                                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 20">
+                                            <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2Zm-3 14H5a1 1 0 0 1 0-2h8a1 1 0 0 1 0 2Zm0-4H5a1 1 0 0 1 0-2h8a1 1 0 1 1 0 2Zm0-5H5a1 1 0 0 1 0-2h2V2h4v2h2a1 1 0 1 1 0 2Z"/>
+                                        </svg>
+                                    </span>
+                                    <span v-else class="inline-flex items-center">
+                                        <svg class="w-4 h-4 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 12">
+                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5.917 5.724 10.5 15 1.5"/>
+                                        </svg>
+                                    </span>
+                                </button>
+                                <button
+                                    @click="openRegenerateConfirm"
+                                    class="text-base-content/70 hover:bg-base-200 rounded-xl p-2 inline-flex items-center justify-center"
+                                    :class="{ 'opacity-50 pointer-events-none': regenerating }"
+                                    :disabled="regenerating"
+                                    type="button"
+                                    aria-label="Перегенерировать API токен"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                                     </svg>
-                                </span>
-                                <span v-else class="inline-flex items-center">
-                                    <svg class="w-4 h-4 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 12">
-                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5.917 5.724 10.5 15 1.5"/>
-                                    </svg>
-                                </span>
-                            </button>
-                            <button
-                                @click="openRegenerateConfirm"
-                                class="text-base-content/70 hover:bg-base-200 rounded-xl p-2 inline-flex items-center justify-center"
-                                :class="{ 'opacity-50 pointer-events-none': regenerating }"
-                                :disabled="regenerating"
-                                type="button"
-                                aria-label="Перегенерировать токен"
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card w-full bg-base-100 shadow">
+                    <div class="card-body gap-4">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 class="card-title">Webhook secret</h3>
+                                <p class="text-sm text-base-content/70">
+                                    Используется для проверки HMAC-подписи callback’ов.
+                                </p>
+                            </div>
+                            <span class="badge" :class="hasWebhookSecret ? 'badge-success' : 'badge-warning'">
+                                {{ hasWebhookSecret ? 'создан' : 'не создан' }}
+                            </span>
+                        </div>
+
+                        <div v-if="webhookSecret" class="alert alert-warning text-sm">
+                            Скопируйте secret сейчас. После обновления страницы он больше не будет показан.
+                        </div>
+
+                        <div class="relative">
+                            <input
+                                id="webhook-secret"
+                                type="text"
+                                class="bg-base-200 border border-base-300 text-base-content/70 text-sm rounded-xl focus:ring-primary focus:border-primary block w-full p-2.5 pr-24"
+                                :value="webhookSecret || 'Скрыт из соображений безопасности'"
+                                disabled
+                                readonly
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                                </svg>
-                            </button>
+                            <div class="absolute end-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                                <button
+                                    @click="copy(webhookSecret)"
+                                    class="text-base-content/70 hover:bg-base-200 rounded-xl p-2 inline-flex items-center justify-center"
+                                    :class="{ 'opacity-50 pointer-events-none': !webhookSecret }"
+                                    :disabled="!webhookSecret"
+                                    type="button"
+                                    aria-label="Скопировать Webhook secret"
+                                >
+                                    <span v-if="!copied">
+                                        <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 18 20">
+                                            <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2Zm-3 14H5a1 1 0 0 1 0-2h8a1 1 0 0 1 0 2Zm0-4H5a1 1 0 0 1 0-2h8a1 1 0 1 1 0 2Zm0-5H5a1 1 0 0 1 0-2h2V2h4v2h2a1 1 0 1 1 0 2Z"/>
+                                        </svg>
+                                    </span>
+                                    <span v-else class="inline-flex items-center">
+                                        <svg class="w-4 h-4 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 12">
+                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5.917 5.724 10.5 15 1.5"/>
+                                        </svg>
+                                    </span>
+                                </button>
+                                <button
+                                    @click="openRegenerateWebhookSecretConfirm"
+                                    class="text-base-content/70 hover:bg-base-200 rounded-xl p-2 inline-flex items-center justify-center"
+                                    :class="{ 'opacity-50 pointer-events-none': regeneratingWebhookSecret }"
+                                    :disabled="regeneratingWebhookSecret"
+                                    type="button"
+                                    aria-label="Перегенерировать Webhook secret"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

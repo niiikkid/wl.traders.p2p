@@ -18,6 +18,9 @@ import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 const page = usePage();
 const users = computed(() => page.props.users);
@@ -200,11 +203,8 @@ defineOptions({ layout: AuthenticatedLayout })
             <template v-slot:body>
                 <div class="relative">
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable>
+                        <template #head>
                                     <th scope="col" class="px-6 py-3">
                                         ID
                                     </th>
@@ -223,9 +223,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col" class="px-6 py-3 flex justify-center">
                                         <span class="sr-only">Действия</span>
                                     </th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <tr v-for="user in users.data" class="hover">
                                     <th scope="row" class="px-6 py-3 font-medium whitespace-nowrap">
                                         {{ user.id }}
@@ -313,20 +311,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </TableActionsDropdown>
                                     </td>
                                 </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
+                    <DataCardList>
+                            <DataCard
                                 v-for="user in users.data"
                                 :key="user.id"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <!-- Шапка: ID -->
                                     <div class="flex justify-between items-center border-b border-base-content/10 mb-0 pb-2">
                                         <div class="inline-flex gap-3">
@@ -528,10 +520,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </TableActionsDropdown>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

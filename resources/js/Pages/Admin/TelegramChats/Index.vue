@@ -10,6 +10,9 @@ import Modal from '@/Components/Modals/Modal.vue';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
 import TableAction from '@/Components/Table/TableAction.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 import AppTooltip from '@/Components/AppTooltip.vue';
 import { useModalStore } from '@/store/modal.js';
 
@@ -758,22 +761,17 @@ watch(
             </template>
 
             <template #body>
-                <div v-if="!chatDetailOpen" class="overflow-x-auto">
-                    <div class="shadow-md rounded-table relative">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
-                                        <th scope="col">Чат</th>
-                                        <th scope="col">Функция</th>
-                                        <th scope="col">Статус</th>
-                                        <th scope="col">Debug</th>
-                                        <th scope="col">Сообщений</th>
-                                        <th scope="col">Последнее</th>
-                                        <th scope="col"><span class="sr-only">Действия</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                <div v-if="!chatDetailOpen">
+                    <DataTable>
+                        <template #head>
+                            <th scope="col">Чат</th>
+                            <th scope="col">Функция</th>
+                            <th scope="col">Статус</th>
+                            <th scope="col">Debug</th>
+                            <th scope="col">Сообщений</th>
+                            <th scope="col">Последнее</th>
+                            <th scope="col"><span class="sr-only">Действия</span></th>
+                        </template>
                                     <tr
                                         v-for="chat in chatList"
                                         :key="chat.id"
@@ -852,10 +850,97 @@ watch(
                                             Чаты не найдены.
                                         </td>
                                     </tr>
-                                </tbody>
-                            </table>
+                    </DataTable>
+
+                    <DataCardList>
+                        <DataCard
+                            v-for="chat in chatList"
+                            :key="chat.id"
+                        >
+                            <div class="flex justify-between items-start gap-2 border-b border-base-content/10 pb-2 mb-1 min-w-0">
+                                <div class="min-w-0 flex-1">
+                                    <div class="font-medium text-base-content leading-snug break-words">
+                                        {{ chat.display_title }}
+                                    </div>
+                                    <span
+                                        class="badge badge-sm badge-outline whitespace-nowrap mt-1"
+                                        :class="chat.chat_type ? 'badge-primary' : 'badge-ghost'"
+                                    >
+                                        {{ chatTypeLabel(chat.chat_type) }}
+                                    </span>
+                                </div>
+                                <div class="shrink-0">
+                                    <span class="badge badge-sm" :class="statusBadgeClass(chat.status)">
+                                        {{ statusLabels[chat.status] ?? chat.status }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
+                                <div>
+                                    <div class="text-[10px] text-base-content/50 uppercase">Debug</div>
+                                    <div class="font-medium text-xs">
+                                        <span class="badge badge-xs" :class="chat.debug_enabled ? 'badge-info' : 'badge-ghost'">
+                                            {{ chat.debug_enabled ? 'Вкл' : 'Выкл' }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="text-[10px] text-base-content/50 uppercase">Сообщений</div>
+                                    <div class="font-medium text-xs text-base-content">{{ chat.messages_count ?? 0 }}</div>
+                                </div>
+                                <div class="col-span-2">
+                                    <div class="text-[10px] text-base-content/50 uppercase">Последнее</div>
+                                    <div class="font-medium text-xs text-base-content inline-flex flex-wrap items-center gap-1">
+                                        <DateTime v-if="chat.last_message_at" :data="chat.last_message_at" simple class="justify-start" />
+                                        <span v-else class="text-base-content/50">—</span>
+                                        <span v-if="chat.last_message_status" class="text-base-content/60">
+                                            · {{ messageStatusLabels[chat.last_message_status] ?? chat.last_message_status }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="border-b border-base-content/10 my-2"></div>
+
+                            <div class="flex items-center justify-end gap-1">
+                                <button
+                                    type="button"
+                                    class="btn btn-xs btn-primary btn-outline"
+                                    @click="selectChat(chat)"
+                                >
+                                    Открыть
+                                </button>
+                                <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
+                                    <template v-if="tab === 'archived'">
+                                        <TableAction @click="restoreChat(chat)">
+                                            Восстановить
+                                        </TableAction>
+                                    </template>
+                                    <template v-else>
+                                        <TableAction
+                                            v-if="chat.status !== 'active'"
+                                            @click="activateChat(chat)"
+                                        >
+                                            Активировать
+                                        </TableAction>
+                                        <TableAction
+                                            v-if="chat.status === 'active'"
+                                            @click="disableChat(chat)"
+                                        >
+                                            Отключить
+                                        </TableAction>
+                                        <TableAction @click="archiveChat(chat)">
+                                            Архивировать
+                                        </TableAction>
+                                    </template>
+                                </TableActionsDropdown>
+                            </div>
+                        </DataCard>
+                        <div v-if="!chatList.length" class="py-8 text-center text-base-content/60">
+                            Чаты не найдены.
                         </div>
-                    </div>
+                    </DataCardList>
                 </div>
 
                 <div v-else class="grid items-start gap-4 lg:grid-cols-[minmax(12rem,16rem)_1fr]">

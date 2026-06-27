@@ -5,6 +5,9 @@ import {computed, ref, watch} from "vue";
 import Pagination from "@/Components/Pagination/Pagination.vue";
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import AmountModifiedIndicator from "@/Components/AmountModifiedIndicator.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 const emit = defineEmits(['openPage']);
 
@@ -47,13 +50,10 @@ const openPage = (pageNumber) => {
     <div>
         <h2 class="text-xs text-base-content/60 mb-3">Здесь отображаются только оплаченные сделки</h2>
 
-        <div class="overflow-x-auto card bg-base-100 shadow mb-5">
-            <div v-if="loading" class="p-6 text-center text-sm text-base-content/60">
-                Загрузка оплаченных сделок...
-            </div>
-            <table class="table table-sm">
-                <thead class="text-xs uppercase bg-base-300">
-                <tr>
+        <div class="mb-5">
+            <!-- Desktop/tablet view (table) -->
+            <DataTable :loading="loading" loading-text="Загрузка оплаченных сделок...">
+                <template #head>
                     <th scope="col">
                         UUID
                     </th>
@@ -69,9 +69,7 @@ const openPage = (pageNumber) => {
                     <th scope="col">
                         Создан
                     </th>
-                </tr>
-                </thead>
-                <tbody>
+                </template>
                 <tr v-if="!loading && ordersData.length === 0">
                     <td colspan="5" class="text-center text-sm text-base-content/60 py-6">
                         Сделок пока нет.
@@ -98,8 +96,57 @@ const openPage = (pageNumber) => {
                         <DateTime class="justify-center" :data="order.created_at"/>
                     </td>
                 </tr>
-                </tbody>
-            </table>
+            </DataTable>
+
+            <!-- Mobile view (cards list) -->
+            <DataCardList>
+                <DataCard
+                    v-for="order in ordersData"
+                    :key="order.id"
+                >
+                    <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
+                        <div class="min-w-0 flex-1 text-[11px]">
+                            <div class="inline-flex items-center gap-1 pl-1 min-w-0">
+                                <span class="text-base-content/70">UUID:</span>
+                                <CopyableOrderUid :uuid="order.uuid ?? ''" />
+                            </div>
+                        </div>
+                        <div class="shrink-0 text-right leading-tight">
+                            <div class="text-[10px] text-base-content/50 uppercase">Создан</div>
+                            <DateTime
+                                :data="order.created_at"
+                                class="justify-end text-[11px]"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="flex items-baseline gap-2 min-w-0 pt-2">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-nowrap items-baseline gap-1.5">
+                                <div class="text-xs font-medium text-base-content text-nowrap">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
+                                <AmountModifiedIndicator :modified="order.amount_was_modified" />
+                            </div>
+                            <div class="text-[11px] text-base-content/60 leading-snug text-nowrap">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                        </div>
+                    </div>
+
+                    <div class="border-b border-base-content/10 my-2 mb-1"></div>
+
+                    <div class="grid grid-cols-2 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
+                        <div>
+                            <div class="text-[10px] text-base-content/50 uppercase">Прибыль</div>
+                            <div class="font-medium text-xs text-base-content text-nowrap">{{ order.merchant_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-base-content/50 uppercase">Комиссия</div>
+                            <div class="font-medium text-xs text-base-content text-nowrap">{{ order.service_commission_amount_total }} {{ order.base_currency.toUpperCase() }}</div>
+                        </div>
+                    </div>
+                </DataCard>
+                <div v-if="!loading && ordersData.length === 0" class="py-6 text-center text-sm text-base-content/60">
+                    Сделок пока нет.
+                </div>
+            </DataCardList>
         </div>
 
         <Pagination
@@ -113,7 +160,3 @@ const openPage = (pageNumber) => {
         ></Pagination>
     </div>
 </template>
-
-<style scoped>
-
-</style>

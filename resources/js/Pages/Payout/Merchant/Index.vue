@@ -12,10 +12,16 @@ import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
 import TableAction from '@/Components/Table/TableAction.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
+import {useModalStore} from '@/store/modal.js';
 
+const modalStore = useModalStore();
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const expandedRows = ref({});
+const confirmingPayoutId = ref(null);
 
 const toggleRow = (id) => {
     expandedRows.value[id] = !expandedRows.value[id];
@@ -75,6 +81,32 @@ const resendPayoutCallback = (payoutUUID) => {
     router.post(route('merchant.payouts.callback.resend', payoutUUID));
 };
 
+const confirmPayoutPaid = (payout) => {
+    if (!payout?.uuid || confirmingPayoutId.value === payout.id) {
+        return;
+    }
+
+    modalStore.openConfirmModal({
+        title: 'Подтвердить оплату',
+        body: 'Снять холд и зачислить USDT трейдеру? Действие доступно, пока выплата в статусе «Отправлено».',
+        confirm_button_name: 'Подтвердить',
+        cancel_button_name: 'Отмена',
+        confirm: () => {
+            confirmingPayoutId.value = payout.id;
+
+            router.post(route('merchant.payouts.confirm-paid', payout.uuid), {}, {
+                preserveScroll: true,
+                onFinish: () => {
+                    confirmingPayoutId.value = null;
+                },
+                onError: () => {
+                    confirmingPayoutId.value = null;
+                },
+            });
+        },
+    });
+};
+
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -107,11 +139,8 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
             <template #body>
                 <div class="relative">
-                    <div class="hidden xl:block rounded-table relative">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable>
+                        <template #head>
                                     <th scope="col">
                                         <span class="ml-2">UUID</span>
                                     </th>
@@ -123,9 +152,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <th>Мерчант</th>
                                     <th class="w-24">Подробнее</th>
                                     <th class="w-16 text-right"></th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <template v-for="payout in payoutItems" :key="payout.id">
                                     <tr class="bg-base-100 border-base-200 border-b last:border-none">
                                         <th scope="row" class="font-medium whitespace-nowrap text-base-content">
@@ -202,6 +229,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </td>
                                         <td class="text-right align-top">
                                             <TableActionsDropdown>
+                                                <TableAction
+                                                    v-if="payout.can_confirm_paid"
+                                                    :disabled="confirmingPayoutId === payout.id"
+                                                    @click="confirmPayoutPaid(payout)"
+                                                >
+                                                    Подтвердить оплату
+                                                </TableAction>
                                                 <TableAction @click="resendPayoutCallback(payout.uuid)">
                                                     Отправить callback
                                                 </TableAction>
@@ -302,19 +336,13 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </td>
                                     </tr>
                                 </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <article
+                    <DataCardList>
+                            <DataCard
                                 v-for="payout in payoutItems"
                                 :key="`mobile-${payout.id}`"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                         <div class="min-w-0 flex-1 text-[11px]">
                                             <div class="flex min-w-0 max-w-full flex-nowrap items-start gap-3">
@@ -438,13 +466,24 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </div>
 
                                     <div class="flex items-center justify-between gap-2 border-t border-base-content/10 pt-2 mt-2">
-                                        <button
-                                            class="btn btn-secondary btn-outline btn-xs min-h-0 h-6 px-2"
-                                            type="button"
-                                            @click="resendPayoutCallback(payout.uuid)"
-                                        >
-                                            Отправить callback
-                                        </button>
+                                        <div class="flex flex-wrap gap-2">
+                                            <button
+                                                v-if="payout.can_confirm_paid"
+                                                class="btn btn-success btn-outline btn-xs min-h-0 h-6 px-2"
+                                                type="button"
+                                                :disabled="confirmingPayoutId === payout.id"
+                                                @click="confirmPayoutPaid(payout)"
+                                            >
+                                                Подтвердить оплату
+                                            </button>
+                                            <button
+                                                class="btn btn-secondary btn-outline btn-xs min-h-0 h-6 px-2"
+                                                type="button"
+                                                @click="resendPayoutCallback(payout.uuid)"
+                                            >
+                                                Отправить callback
+                                            </button>
+                                        </div>
                                         <button
                                             class="btn btn-primary btn-xs"
                                             type="button"
@@ -541,10 +580,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                             Чек недоступен.
                                         </div>
                                     </div>
-                                </div>
-                            </article>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

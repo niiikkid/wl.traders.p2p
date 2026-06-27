@@ -6,6 +6,9 @@ import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
 import InputFilter from '@/Components/Filters/Partials/InputFilter.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import ApexCharts from 'apexcharts';
 
@@ -246,18 +249,15 @@ onBeforeUnmount(() => {
 
             <template v-slot:body>
                 <div class="relative">
-                    <div class="overflow-x-auto card bg-base-100 shadow">
-                        <table class="table table-sm">
-                            <thead class="text-xs uppercase bg-base-300">
-                            <tr>
+                    <!-- Desktop/tablet view (table) -->
+                    <DataTable>
+                        <template #head>
                                 <th>Мерчант</th>
                                 <th>Client ID</th>
                                 <th>Решение</th>
                                 <th>Сообщение</th>
                                 <th class="text-right">Дата</th>
-                            </tr>
-                            </thead>
-                            <tbody>
+                        </template>
                             <tr v-for="log in logs.data" :key="log.id">
                                 <td>
                                     {{ log.merchant?.name || log.merchant?.uuid || `#${log.merchant_id}` }}
@@ -276,9 +276,50 @@ onBeforeUnmount(() => {
                                     <DateTime :data="log.created_at" />
                                 </td>
                             </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                    </DataTable>
+
+                    <!-- Mobile view (cards list) -->
+                    <DataCardList>
+                        <DataCard
+                            v-for="log in logs.data"
+                            :key="log.id"
+                        >
+                            <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-[10px] text-base-content/50 uppercase">Client ID</div>
+                                    <div class="font-medium text-xs text-base-content break-words">{{ log.client_id || '—' }}</div>
+                                </div>
+                                <div class="shrink-0 text-right leading-tight">
+                                    <div class="text-[10px] text-base-content/50 uppercase">Дата</div>
+                                    <DateTime
+                                        :data="log.created_at"
+                                        class="justify-end text-[11px]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 min-w-0 pt-2">
+                                <div class="min-w-0 flex-1">
+                                    <div class="text-xs font-medium text-base-content leading-snug break-words">
+                                        {{ log.merchant?.name || log.merchant?.uuid || `#${log.merchant_id}` }}
+                                    </div>
+                                </div>
+                                <div class="shrink-0">
+                                    <span v-if="log.decision === 'allow'" class="badge badge-success badge-sm">Разрешено</span>
+                                    <span v-else class="badge badge-error badge-sm">Отклонено</span>
+                                </div>
+                            </div>
+
+                            <div class="border-b border-base-content/10 my-2 mb-1"></div>
+
+                            <div class="grid grid-cols-1 gap-x-2 gap-y-1.5 text-[11px] leading-tight">
+                                <div>
+                                    <div class="text-[10px] text-base-content/50 uppercase">Сообщение</div>
+                                    <div class="font-medium text-xs text-base-content/80 break-words">{{ log.message || '—' }}</div>
+                                </div>
+                            </div>
+                        </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

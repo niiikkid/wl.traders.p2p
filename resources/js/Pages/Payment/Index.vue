@@ -13,6 +13,9 @@ import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 import { ref } from "vue";
 
 const orders = ref(usePage().props.orders);
@@ -66,11 +69,8 @@ defineOptions({ layout: AuthenticatedLayout })
             <template v-slot:body>
                 <div class="relative">
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable>
+                        <template #head>
                                     <th scope="col">
                                         <span class="ml-2">UUID</span>
                                     </th>
@@ -98,9 +98,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col">
                                         
                                     </th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <tr v-for="order in orders.data" class="bg-base-100 border-b last:border-none">
                                     <th scope="row" class="font-medium whitespace-nowrap text-base-content">
                                         <div class="flex max-w-full flex-nowrap items-center gap-3 ml-2">
@@ -143,20 +141,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </TableActionsDropdown>
                                     </td>
                                 </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
+                    <DataCardList>
+                            <DataCard
                                 v-for="order in orders.data"
                                 :key="order.id"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <!-- Шапка: UUID и дата создания -->
                                     <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 border-b border-base-content/10 mb-2">
                                         <div class="flex min-w-0 max-w-full flex-nowrap items-start gap-3">
@@ -234,10 +226,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

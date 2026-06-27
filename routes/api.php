@@ -36,7 +36,6 @@ Route::group(['middleware' => ['api-access-token']], function () {
         // Route::patch('order/{order:uuid}/confirm-paid', [\App\Http\Controllers\API\H2H\OrderController::class, 'cancel']);
 
         Route::post('order/{order:uuid}/dispute', [DisputeController::class, 'store'])->name('api.dispute');
-        Route::get('order/{order:uuid}/dispute', [DisputeController::class, 'show']);
         Route::get('order/{merchant_id}/{external_id}', [OrderController::class, 'showByExternal']);
     });
 
@@ -48,8 +47,6 @@ Route::group(['middleware' => ['api-access-token']], function () {
         Route::post('/', [PayoutController::class, 'store'])->name('api.payouts.store');
         Route::get('{payout:uuid}', [PayoutController::class, 'show'])->name('api.payouts.show');
         Route::patch('{payout:uuid}/cancel', [PayoutController::class, 'cancel'])->name('api.payouts.cancel');
-        Route::patch('{payout:uuid}/confirm-paid', [PayoutController::class, 'confirmPaid'])->name('api.payouts.confirm-paid');
-        Route::get('{payout:uuid}/receipt', [PayoutReceiptController::class, 'show'])->name('api.payouts.receipt');
         Route::get('{payout:uuid}/receipts', [PayoutReceiptController::class, 'index'])->name('api.payouts.receipts');
     });
 

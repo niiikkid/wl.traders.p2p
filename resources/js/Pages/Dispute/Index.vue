@@ -15,6 +15,9 @@ import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import MoneyValue from "@/Components/MoneyValue.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 const viewStore = useViewStore();
 const modalStore = useModalStore();
@@ -121,21 +124,16 @@ defineOptions({ layout: AuthenticatedLayout })
                 <div class="overflow-x-auto">
                     <div class="relative">
                         <!-- Desktop/tablet view (table) -->
-                        <div class="hidden xl:block shadow-md rounded-table relative">
-                            <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
-                                        <th scope="col">ID</th>
-                                        <th scope="col">Сумма</th>
-                                        <th scope="col">Реквизит</th>
-                                        <th scope="col" v-if="viewStore.isAdminViewMode">Трейдер</th>
-                                        <th scope="col">Статус</th>
-                                        <th scope="col">Создан</th>
-                                        <th scope="col"><span class="sr-only">Действия</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        <DataTable>
+                            <template #head>
+                                <th scope="col">ID</th>
+                                <th scope="col">Сумма</th>
+                                <th scope="col">Реквизит</th>
+                                <th scope="col" v-if="viewStore.isAdminViewMode">Трейдер</th>
+                                <th scope="col">Статус</th>
+                                <th scope="col">Создан</th>
+                                <th scope="col"><span class="sr-only">Действия</span></th>
+                            </template>
                                     <tr v-for="dispute in disputes.data" class="bg-base-100 border-b last:border-none border-base-200">
                                         <th scope="row" class="font-medium whitespace-nowrap text-base-content">
                                             {{ dispute.id }}
@@ -213,20 +211,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                         </td>
                                     </tr>
-                                </tbody>
-                            </table>
-                            </div>
-                        </div>
+                        </DataTable>
 
                         <!-- Mobile view (cards list) -->
-                        <div class="xl:hidden space-y-3">
-                            <div class="space-y-2">
-                                <div
-                                    v-for="dispute in disputes.data"
-                                    :key="dispute.id"
-                                    class="card bg-base-100 shadow-sm"
-                                >
-                                    <div class="card-body p-4 pt-2 pb-3">
+                        <DataCardList>
+                            <DataCard
+                                v-for="dispute in disputes.data"
+                                :key="dispute.id"
+                            >
                                         <!-- Компактная шапка: ID и дата -->
                                         <div class="flex justify-between items-center border-b border-base-content/10 p-1.5 mb-2">
                                             <div class="inline-flex items-center gap-2">
@@ -364,10 +356,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            </DataCard>
+                        </DataCardList>
                     </div>
                 </div>
             </template>
@@ -382,7 +372,3 @@ defineOptions({ layout: AuthenticatedLayout })
         <ConfirmModal/>
     </div>
 </template>
-
-<style scoped>
-
-</style>

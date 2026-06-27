@@ -70,8 +70,11 @@ class MerchantPayoutResource extends JsonResource
             ],
             'timings' => [
                 'created_at' => $this->created_at?->toIso8601String(),
+                'sent_at' => $this->sent_at?->toIso8601String(),
+                'hold_until' => $this->hold_until?->toIso8601String(),
                 'completed_at' => $this->completed_at?->toIso8601String(),
             ],
+            'can_confirm_paid' => $this->status->equals(PayoutStatus::SENT),
         ];
     }
 

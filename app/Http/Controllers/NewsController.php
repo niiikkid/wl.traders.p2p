@@ -19,6 +19,8 @@ use Tiptap\Editor;
 
 class NewsController extends Controller
 {
+    private const SELECTABLE_VISIBLE_ROLE_NAMES = ['Trader', 'Support', 'Team Leader'];
+
     private const VIEW_TRACK_COOLDOWN_MINUTES = 30;
 
     public function index(): Response
@@ -47,6 +49,11 @@ class NewsController extends Controller
 
         return Inertia::render('News/Index', [
             'news' => $news,
+            'canManageNews' => request()->routeIs('admin.news.*'),
+            'newsRoleOptions' => collect(self::SELECTABLE_VISIBLE_ROLE_NAMES)
+                ->map(fn (string $roleName) => ['value' => $roleName, 'label' => $roleName])
+                ->values()
+                ->toArray(),
         ]);
     }
 

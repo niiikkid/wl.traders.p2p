@@ -18,6 +18,9 @@ import OrderModal from "@/Modals/OrderModal.vue";
 import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 import DateFilter from "@/Components/Filters/Partials/DateFilter.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
@@ -258,24 +261,8 @@ defineOptions({ layout: AuthenticatedLayout })
             <template v-slot:body>
                 <div class="relative">
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block rounded-table relative">
-                        <div
-                            class="card sticky top-0 left-0 bg-base-100/50 z-10 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ease-in-out opacity-0 pointer-events-none"
-                            :class="{'opacity-0 pointer-events-none': !reloadingTableData, 'opacity-100': reloadingTableData}"
-                            style="position: absolute; inset: 0; width: 100%; height: 100%;"
-                        >
-                            <div class="flex flex-col items-center transition-transform duration-300" :class="{'scale-90 opacity-0': !reloadingTableData, 'scale-100 opacity-100': reloadingTableData}">
-                                <div class="animate-spin inline-block w-8 h-8 border-[3px] border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading">
-                                    <span class="sr-only">Загрузка...</span>
-                                </div>
-                                <div class="mt-2 text-sm font-medium text-base-content">Загрузка данных...</div>
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm" :class="{'pointer-events-none': reloadingTableData}">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
+                    <DataTable :loading="reloadingTableData">
+                        <template #head>
                                         <th scope="col">
                                             UUID
                                         </th>
@@ -297,9 +284,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col">
                                            
                                         </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                     <tr v-for="order in orders.data" class="bg-base-100 border-b last:border-none border-base-200">
                                     <th scope="row" class="font-medium whitespace-nowrap text-gray-900 dark:text-gray-200">
                                         <div class="inline-flex items-center gap-1.5">
@@ -399,20 +384,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </td>
                                 </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
+                    <DataCardList>
+                            <DataCard
                                 v-for="order in orders.data"
                                 :key="order.id"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <!-- Компактная шапка: логотип, короткий реквизит, сумма и переключатель -->
                                     <div class="flex justify-between items-center border-b border-base-content/10">
                                         <div class="inline-flex items-center">
@@ -561,10 +540,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

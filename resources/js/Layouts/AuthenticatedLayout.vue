@@ -1,24 +1,20 @@
 <script setup>
-import {usePage, router, useForm} from '@inertiajs/vue3';
+import {usePage, router} from '@inertiajs/vue3';
 import {computed, onMounted, onUnmounted, ref} from 'vue'
-import ViewModeSwitcher from "@/Layouts/Partials/ViewModeSwitcher.vue";
-import TraderMenu from "@/Layouts/Partials/TraderMenu.vue";
-import AdminMenu from "@/Layouts/Partials/AdminMenu.vue";
 import NavBar from "@/Layouts/Partials/NavBar.vue";
-import MerchantMenu from "@/Layouts/Partials/MerchantMenu.vue";
 import {useViewStore} from "@/store/view.js";
-import TeamLeaderMenu from "@/Layouts/Partials/TeamLeaderMenu.vue";
-import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
-import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
+import RoleMenu from "@/Layouts/Partials/Sidebar/RoleMenu.vue";
+import RatesCard from "@/Layouts/Partials/Sidebar/RatesCard.vue";
+import ImpersonateButton from "@/Layouts/Partials/Sidebar/ImpersonateButton.vue";
 import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 import PaymentDetailScheduleManagerModal from '@/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue';
 import ModalsHost from '@/Components/Modal/ModalsHost.vue';
+import AppFooter from '@/Layouts/Partials/AppFooter.vue';
 
 const viewStore = useViewStore();
 
 const rates = ref(usePage().props.data.rates);
 const role = usePage().props.auth.role;
-const showAllRates = ref(false);
 const isImpersonated = ref(usePage().props.auth.is_impersonated);
 const notificationSoundSettings = ref(usePage().props.notificationsSound ?? null);
 const notificationLatestEventIds = ref({
@@ -383,13 +379,6 @@ onUnmounted(() => {
     removeNotificationSoundLeaderIfOwned();
 });
 
-const leaveImpersonate = () => {
-    useForm().post(route('impersonate.leave'));
-};
-
-const openDocs = () => {
-    window.open('/docs', '_blank');
-}
 </script>
 
 <template>
@@ -409,53 +398,14 @@ const openDocs = () => {
                 <div class="h-20"></div>
 
                 <div class="p-4 space-y-4">
-                    <button
-                        v-if="isImpersonated"
-                        @click="leaveImpersonate"
-                        class="btn btn-sm btn-warning rounded-xl w-full"
-                    >
-                        Выйти
-                        <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H8m12 0-4 4m4-4-4-4M9 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h2"/>
-                        </svg>
-                    </button>
+                    <ImpersonateButton v-if="isImpersonated" />
                     <div class="card bg-base-100">
                         <div>
-                            <TraderMenu v-show="viewStore.isTraderViewMode" />
-                            <MerchantMenu v-show="viewStore.isMerchantViewMode" />
-                            <TeamLeaderMenu v-show="viewStore.isTeamLeaderViewMode" />
-                            <AdminMenu v-show="viewStore.isAdminViewMode" />
-                            <SupportMenu v-show="viewStore.isSupportViewMode" />
+                            <RoleMenu />
                         </div>
                     </div>
 
-                    <div v-show="viewStore.isAdminViewMode" class="card bg-base-100">
-                        <div>
-                            <AdminMenuApp/>
-                        </div>
-                    </div>
-
-                    <div class="card bg-base-100">
-                        <div class="card-body">
-                            <div class="flex items-center mb-2">
-                                <span class="text-xs text-base-content/70">Курс Tether TRC-20</span>
-                            </div>
-                            <div class="text-xs">
-                                <ul class="space-y-1">
-                                    <li v-for="(rate, index) in rates" v-show="index < 3 || showAllRates" class="flex justify-between items-center border-b border-base-300 pb-1 last:border-none">
-                                        <span class="text-xs text-base-content">{{ rate.sell_price }}</span>
-                                        <span class="text-xs text-primary">{{ rate.code.toUpperCase() }}</span>
-                                    </li>
-                                </ul>
-                                <div class="flex justify-center mt-3">
-                                    <button @click="showAllRates = !showAllRates" class="btn btn-ghost btn-sm">
-                                        <span v-show="!showAllRates">Показать все</span>
-                                        <span v-show="showAllRates">Спрятать</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <RatesCard :rates="rates" variant="mobile" />
                 </div>
             </aside>
         </div>
@@ -472,54 +422,12 @@ const openDocs = () => {
                 <div class="flex gap-6">
                     <!-- Desktop sidebar -->
                     <aside class="hidden lg:block space-y-4 pt-2 w-60" aria-label="Sidebar">
-                        <button
-                            v-if="isImpersonated"
-                            @click="leaveImpersonate"
-                            class="btn btn-sm btn-warning rounded-xl w-full"
-                        >
-                            Выйти
-                            <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H8m12 0-4 4m4-4-4-4M9 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h2"/>
-                            </svg>
-                        </button>
+                        <ImpersonateButton v-if="isImpersonated" />
                         <div class="card bg-base-100  shadow w-60">
-                            <TraderMenu v-show="viewStore.isTraderViewMode" />
-                            <MerchantMenu v-show="viewStore.isMerchantViewMode" />
-                            <TeamLeaderMenu v-show="viewStore.isTeamLeaderViewMode" />
-                            <AdminMenu v-show="viewStore.isAdminViewMode" />
-                            <SupportMenu v-show="viewStore.isSupportViewMode" />
+                            <RoleMenu />
                         </div>
 
-                        <div v-show="viewStore.isAdminViewMode" class="card bg-base-100 shadow w-60">
-                            <div>
-                                <AdminMenuApp/>
-                            </div>
-                        </div>
-
-                        <div class="card bg-base-100 shadow">
-                            <div class="w-full p-6 pb-3">
-                                <div class="flex items-center mb-2">
-                                    <span class="text-xs text-base-content font-semibold">Курс Tether TRC-20</span>
-                                </div>
-                                <div class="text-xs">
-                                    <ul class="space-y-1">
-                                        <li
-                                            v-for="(rate, index) in rates" v-show="index < 3 || showAllRates"
-                                            class="flex justify-between items-center border-b border-dashed border-primary/50 pb-1 last:border-none"
-                                        >
-                                            <span class="text-xs text-base-content">{{ rate.buy_price }}</span>
-                                            <span class="text-xs text-primary">{{ rate.code.toUpperCase() }}</span>
-                                        </li>
-                                    </ul>
-                                    <div class="flex justify-center mt-3">
-                                        <button @click="showAllRates = !showAllRates" class="btn btn-ghost btn-sm">
-                                            <span v-show="!showAllRates">Показать все</span>
-                                            <span v-show="showAllRates">Спрятать</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <RatesCard :rates="rates" variant="desktop" />
                     </aside>
 
                     <!-- Main content area -->
@@ -528,6 +436,8 @@ const openDocs = () => {
                     </main>
                 </div>
             </div>
+
+            <AppFooter />
         </div>
         </div>
 

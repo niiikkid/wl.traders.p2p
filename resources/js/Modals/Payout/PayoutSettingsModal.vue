@@ -1,16 +1,12 @@
 <script setup>
-import ModalFooter from "@/Components/Modals/Components/ModalFooter.vue";
-import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
-import Modal from "@/Components/Modals/Modal.vue";
-import ModalHeader from "@/Components/Modals/Components/ModalHeader.vue";
-import InputError from "@/Components/InputError.vue";
-import InputLabel from "@/Components/InputLabel.vue";
-import NumberInput from "@/Components/NumberInput.vue";
-import InputHelper from "@/Components/InputHelper.vue";
-import { storeToRefs } from "pinia";
-import { useModalStore } from "@/store/modal.js";
-import { computed, ref, watch } from "vue";
-import { router } from "@inertiajs/vue3";
+import ModalNext from '@/Components/Modals/Next/ModalNext.vue';
+import ModalHeaderNext from '@/Components/Modals/Next/ModalHeaderNext.vue';
+import ModalBodyNext from '@/Components/Modals/Next/ModalBodyNext.vue';
+import ModalFooterNext from '@/Components/Modals/Next/ModalFooterNext.vue';
+import { storeToRefs } from 'pinia';
+import { useModalStore } from '@/store/modal.js';
+import { computed, ref, watch } from 'vue';
+import { router } from '@inertiajs/vue3';
 
 const modalStore = useModalStore();
 const { payoutSettingsModal } = storeToRefs(modalStore);
@@ -21,11 +17,6 @@ const errors = ref({});
 const currencies = ref([]);
 const form = ref({
     settings: {},
-    priority_access: {
-        enabled: false,
-        delay_minutes: 10,
-        release_without_online_traders: true,
-    },
 });
 
 const close = () => {
@@ -37,6 +28,8 @@ const errorMessage = (code, field) => {
     return errors.value?.[key]?.[0] ?? null;
 };
 
+const hasFieldError = (code, field) => !!errorMessage(code, field);
+
 const resolveCode = (currency) => (currency?.code || '').toLowerCase();
 
 const setDefaults = (payload) => {
@@ -44,11 +37,6 @@ const setDefaults = (payload) => {
     const settings = payload?.settings || {};
 
     currencies.value = list;
-    form.value.priority_access = {
-        enabled: !!payload?.priority_access?.enabled,
-        delay_minutes: payload?.priority_access?.delay_minutes ?? 10,
-        release_without_online_traders: payload?.priority_access?.release_without_online_traders ?? true,
-    };
     const nextSettings = {};
 
     list.forEach((currency) => {
@@ -58,8 +46,6 @@ const setDefaults = (payload) => {
             total_commission_rate: current.total_commission_rate ?? 5,
             trader_commission_rate: current.trader_commission_rate ?? 4,
             reservation_time_for_payouts: current.reservation_time_for_payouts ?? 20,
-            priority_access_min_amount: current.priority_access_min_amount ?? null,
-            priority_access_max_amount: current.priority_access_max_amount ?? null,
         };
     });
 
@@ -85,9 +71,8 @@ const submit = () => {
 
     axios.patch(route('admin.payouts.settings.update'), {
         settings: form.value.settings,
-        priority_access: form.value.priority_access,
     }, {
-        headers: { 'Accept': 'application/json' },
+        headers: { Accept: 'application/json' },
     })
         .then((response) => {
             processing.value = false;
@@ -128,111 +113,155 @@ watch(
             errors.value = {};
             currencies.value = [];
             form.value.settings = {};
-            form.value.priority_access = {
-                enabled: false,
-                delay_minutes: 10,
-                release_without_online_traders: true,
-            };
         }
-    }
+    },
 );
 </script>
 
 <template>
-    <Modal :show="payoutSettingsModal.showed" @close="close" maxWidth="4xl">
-        <ModalHeader @close="close" title="Настройки выплат по валютам" />
+    <ModalNext :show="payoutSettingsModal.showed" max-width="3xl" @close="close">
+        <ModalHeaderNext title="Настройки выплат по валютам" @close="close" />
 
-        <ModalBody>
-            <div v-if="loading" class="py-6 text-center">
-                <span class="loading loading-spinner loading-md"></span>
+        <ModalBodyNext>
+            <div v-if="loading" class="flex justify-center py-10">
+                <span class="loading loading-spinner loading-md text-primary" />
             </div>
-            <div v-else class="space-y-4">
-                <div v-if="errors.message?.[0]" class="alert alert-error text-sm">
-                    {{ errors.message?.[0] }}
+
+            <div v-else class="space-y-3">
+                <p class="text-xs leading-snug text-base-content/60">
+                    Глобальные значения по умолчанию, если платёжный метод не указан.
+                </p>
+
+                <div
+                    v-if="errors.message?.[0]"
+                    role="alert"
+                    class="alert alert-error alert-soft py-2 text-xs"
+                >
+                    <span>{{ errors.message[0] }}</span>
                 </div>
 
-                <div class="space-y-4">
-                    <div
-                        v-for="item in settingsList"
-                        :key="item.code"
-                        class="rounded-box border border-base-300 bg-base-100/60 p-4 space-y-4"
-                    >
-                        <div class="flex items-center justify-between">
-                            <div class="text-sm font-semibold text-base-content">
-                                {{ item.currency.code }} — {{ item.currency.name }}
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <InputLabel
-                                    :for="`total-${item.code}`"
-                                    value="Total комиссия (%)"
-                                    :error="!!errorMessage(item.code, 'total_commission_rate')"
-                                />
-                                <NumberInput
-                                    :id="`total-${item.code}`"
-                                    v-model="form.settings[item.code].total_commission_rate"
-                                    class="mt-1 block w-full"
-                                    step="0.1"
-                                    placeholder="5"
-                                />
-                                <InputError :message="errorMessage(item.code, 'total_commission_rate')" class="mt-2" />
-                            </div>
-
-                            <div>
-                                <InputLabel
-                                    :for="`trader-${item.code}`"
-                                    value="Комиссия трейдера (%)"
-                                    :error="!!errorMessage(item.code, 'trader_commission_rate')"
-                                />
-                                <NumberInput
-                                    :id="`trader-${item.code}`"
-                                    v-model="form.settings[item.code].trader_commission_rate"
-                                    class="mt-1 block w-full"
-                                    step="0.1"
-                                    placeholder="4"
-                                />
-                                <InputError :message="errorMessage(item.code, 'trader_commission_rate')" class="mt-2" />
-                            </div>
-
-                            <div>
-                                <InputLabel
-                                    :for="`time-${item.code}`"
-                                    value="Время на выплату (мин)"
-                                    :error="!!errorMessage(item.code, 'reservation_time_for_payouts')"
-                                />
-                                <NumberInput
-                                    :id="`time-${item.code}`"
-                                    v-model="form.settings[item.code].reservation_time_for_payouts"
-                                    class="mt-1 block w-full"
-                                    placeholder="20"
-                                />
-                                <InputError :message="errorMessage(item.code, 'reservation_time_for_payouts')" class="mt-2" />
-                                <InputHelper
-                                    v-if="!errorMessage(item.code, 'reservation_time_for_payouts')"
-                                    model-value="Сколько минут даётся трейдеру на отправку."
-                                />
-                            </div>
-                        </div>
-                    </div>
+                <div
+                    v-if="settingsList.length"
+                    class="overflow-x-auto rounded-box border border-base-300/60 bg-base-100"
+                >
+                    <table class="table table-xs table-pin-rows">
+                        <thead>
+                            <tr class="text-[10px] uppercase tracking-wide text-base-content/50">
+                                <th class="min-w-[8rem] bg-base-200/40 py-2 font-medium">
+                                    Валюта
+                                </th>
+                                <th class="w-24 bg-base-200/40 py-2 text-right font-medium">
+                                    Total, %
+                                </th>
+                                <th class="w-24 bg-base-200/40 py-2 text-right font-medium">
+                                    Трейдер, %
+                                </th>
+                                <th class="w-24 bg-base-200/40 py-2 text-right font-medium">
+                                    Время, мин
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr
+                                v-for="item in settingsList"
+                                :key="item.code"
+                                class="hover:bg-base-200/30"
+                            >
+                                <td class="py-2">
+                                    <div class="flex min-w-0 items-center gap-2">
+                                        <span class="badge badge-neutral badge-sm shrink-0 font-mono tabular-nums">
+                                            {{ item.currency.code }}
+                                        </span>
+                                        <span class="truncate text-xs text-base-content/70">
+                                            {{ item.currency.name }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="py-2 text-right">
+                                    <input
+                                        :id="`total-${item.code}`"
+                                        v-model="form.settings[item.code].total_commission_rate"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        placeholder="5"
+                                        class="input input-bordered input-sm h-7 min-h-7 w-full max-w-[4.5rem] py-0 text-right tabular-nums"
+                                        :class="{ 'input-error': hasFieldError(item.code, 'total_commission_rate') }"
+                                    />
+                                    <p
+                                        v-if="errorMessage(item.code, 'total_commission_rate')"
+                                        class="mt-0.5 text-right text-[10px] text-error"
+                                    >
+                                        {{ errorMessage(item.code, 'total_commission_rate') }}
+                                    </p>
+                                </td>
+                                <td class="py-2 text-right">
+                                    <input
+                                        :id="`trader-${item.code}`"
+                                        v-model="form.settings[item.code].trader_commission_rate"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        placeholder="4"
+                                        class="input input-bordered input-sm h-7 min-h-7 w-full max-w-[4.5rem] py-0 text-right tabular-nums"
+                                        :class="{ 'input-error': hasFieldError(item.code, 'trader_commission_rate') }"
+                                    />
+                                    <p
+                                        v-if="errorMessage(item.code, 'trader_commission_rate')"
+                                        class="mt-0.5 text-right text-[10px] text-error"
+                                    >
+                                        {{ errorMessage(item.code, 'trader_commission_rate') }}
+                                    </p>
+                                </td>
+                                <td class="py-2 text-right">
+                                    <input
+                                        :id="`time-${item.code}`"
+                                        v-model="form.settings[item.code].reservation_time_for_payouts"
+                                        type="number"
+                                        min="1"
+                                        placeholder="20"
+                                        class="input input-bordered input-sm h-7 min-h-7 w-full max-w-[4.5rem] py-0 text-right tabular-nums"
+                                        :class="{ 'input-error': hasFieldError(item.code, 'reservation_time_for_payouts') }"
+                                    />
+                                    <p
+                                        v-if="errorMessage(item.code, 'reservation_time_for_payouts')"
+                                        class="mt-0.5 text-right text-[10px] text-error"
+                                    >
+                                        {{ errorMessage(item.code, 'reservation_time_for_payouts') }}
+                                    </p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </ModalBody>
 
-        <ModalFooter>
-            <button @click="close" type="button" class="btn btn-sm">
+                <p
+                    v-else
+                    class="rounded-box border border-dashed border-base-300/70 py-8 text-center text-xs text-base-content/60"
+                >
+                    Нет доступных валют.
+                </p>
+
+                <p class="text-[11px] leading-snug text-base-content/45">
+                    Время резерва — сколько минут даётся трейдеру на отправку fiat после взятия выплаты.
+                </p>
+            </div>
+        </ModalBodyNext>
+
+        <ModalFooterNext>
+            <button type="button" class="btn btn-sm btn-ghost" @click="close">
                 Отмена
             </button>
             <button
-                @click="submit"
                 type="button"
                 class="btn btn-sm btn-primary"
-                :class="{ 'btn-disabled': processing }"
-                :disabled="processing"
+                :class="{ 'btn-disabled': processing || loading }"
+                :disabled="processing || loading"
+                @click="submit"
             >
+                <span v-if="processing" class="loading loading-spinner loading-xs" />
                 Сохранить
             </button>
-        </ModalFooter>
-    </Modal>
+        </ModalFooterNext>
+    </ModalNext>
 </template>

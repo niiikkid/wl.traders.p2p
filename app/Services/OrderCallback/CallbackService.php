@@ -8,8 +8,10 @@ use App\Http\Resources\API\Payout\PayoutCallbackResource;
 use App\Models\CallbackLog;
 use App\Models\Order;
 use App\Models\Payout\Payout;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
+use JsonException;
 use Throwable;
 
 class CallbackService implements CallbackServiceContract
@@ -26,12 +28,10 @@ class CallbackService implements CallbackServiceContract
 
         $data = OrderResource::make($order)->resolve();
 
-        $token = $order->merchant->user->api_access_token;
-
-        $this->sendCallback($callback_url, $data, $token, $order, CallbackLog::TYPE_ORDER);
+        $this->sendCallback($callback_url, $data, $order->merchant->user, $order, CallbackLog::TYPE_ORDER);
     }
 
-    public function sendForPayout(Payout $payout): void
+    public function sendForPayout(Payout $payout, ?int $callbackRevision = null): void
     {
         $payout->load(['merchant.user', 'paymentGateway', 'trader']);
 
@@ -43,12 +43,10 @@ class CallbackService implements CallbackServiceContract
         }
 
         $data = PayoutCallbackResource::make($payout)->resolve();
-        $token = $payout->merchant->user->api_access_token;
-
         $this->sendCallback(
             url: $callbackUrl,
             payload: $data,
-            token: $token,
+            user: $payout->merchant->user,
             model: $payout,
             type: CallbackLog::TYPE_PAYOUT,
         );
@@ -57,17 +55,32 @@ class CallbackService implements CallbackServiceContract
     private function sendCallback(
         string $url,
         array $payload,
-        ?string $token,
+        User $user,
         Model $model,
         string $type,
     ): bool {
-        $http = Http::withoutVerifying()->acceptJson();
+        try {
+            $jsonPayload = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        } catch (JsonException $exception) {
+            report($exception);
 
-        if ($token) {
-            $http = $http->withHeader('Access-Token', $token);
+            return false;
         }
 
-        $response = $http->post($url, $payload);
+        $http = Http::withoutVerifying()
+            ->acceptJson()
+            ->withBody($jsonPayload, 'application/json');
+
+        $signature = $user->signWebhookPayload($jsonPayload);
+
+        if ($signature) {
+            $http = $http->withHeaders([
+                'X-Webhook-Signature' => $signature,
+                'X-Webhook-Signature-Algorithm' => 'HMAC-SHA256',
+            ]);
+        }
+
+        $response = $http->post($url);
 
         $responsePayload = $response->json() ?: $response->body();
 

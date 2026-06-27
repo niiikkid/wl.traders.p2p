@@ -14,15 +14,16 @@ class ApiAccessToken
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->header('Access-Token');
+        $token = (string) $request->header('Access-Token', '');
+        $tokenHash = User::hashApiAccessToken($token);
 
-        $user = cache()->remember("api-access-token-middleware-$token", 60 * 60 * 24, function () use ($token) {
+        $user = cache()->remember("api-access-token-middleware-$tokenHash", 60 * 60 * 24, function () use ($tokenHash) {
             return User::query()
-                ->where('api_access_token', $token)
+                ->where('api_access_token_hash', $tokenHash)
                 ->whereNull('archived_at')
                 ->first();
         });
@@ -30,7 +31,8 @@ class ApiAccessToken
         $user = $user?->fresh();
 
         if (! $user || $user->archived_at !== null) {
-            cache()->forget("api-access-token-middleware-$token");
+            cache()->forget("api-access-token-middleware-$tokenHash");
+
             return response()->failWithMessage('Invalid Access Token.');
         }
 

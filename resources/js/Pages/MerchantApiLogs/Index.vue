@@ -11,6 +11,9 @@ import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from "@/Components/DisplayID.vue";
 import MerchantApiLogAmountDistributionModal from "@/Modals/MerchantApiLogs/MerchantApiLogAmountDistributionModal.vue";
 import CallbackLogsTable from "@/Pages/MerchantApiLogs/Partials/CallbackLogsTable.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 import ChartBarIcon from "@/Components/Filters/Icons/ChartBarIcon.vue";
 import ChevronDownIcon from "@/Components/Filters/Icons/ChevronDownIcon.vue";
 import ApexCharts from 'apexcharts';
@@ -836,11 +839,8 @@ onBeforeUnmount(() => {
                 <CallbackLogsTable v-if="isCallbackLogsTab" :logs="logs" />
                 <div v-else class="relative">
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block rounded-table relative">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
+                    <DataTable>
+                        <template #head>
                                         <th scope="col">
                                             ID
                                         </th>
@@ -871,9 +871,7 @@ onBeforeUnmount(() => {
                                         <th scope="col">
                                             Создан
                                         </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                     <template v-for="log in logs.data" :key="log.id">
                                         <tr
                                             class="hover cursor-pointer"
@@ -980,20 +978,14 @@ onBeforeUnmount(() => {
                                             </td>
                                         </tr>
                                     </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
+                    <DataCardList>
+                            <DataCard
                                 v-for="log in logs.data"
                                 :key="log.id"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <!-- Компактная шапка: ID и дата -->
                                     <div class="flex justify-between items-center border-b border-base-content/10 mb-1 pb-2">
                                         <div class="inline-flex items-center gap-2">
@@ -1154,10 +1146,8 @@ onBeforeUnmount(() => {
                                             <div class="text-error text-sm break-words">{{ log.exception_message }}</div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

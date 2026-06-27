@@ -12,6 +12,9 @@ import DateTime from "@/Components/DateTime.vue";
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 const modalStore = useModalStore();
 
@@ -108,35 +111,30 @@ defineOptions({ layout: AuthenticatedLayout })
                 </div>
                 <div class="relative">
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
-                                        <th scope="col">
-                                            ID
-                                        </th>
-                                        <th scope="col">
-                                            Реквизит
-                                        </th>
-                                        <th scope="col">
-                                            Сумма
-                                        </th>
-                                        <th scope="col">
-                                            Трейдер
-                                        </th>
-                                        <th scope="col">
-                                            Статус
-                                        </th>
-                                        <th scope="col">
-                                            Создан
-                                        </th>
-                                        <th scope="col" class=" flex justify-center">
-                                            <span class="sr-only">Действия</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                    <DataTable>
+                        <template #head>
+                            <th scope="col">
+                                ID
+                            </th>
+                            <th scope="col">
+                                Реквизит
+                            </th>
+                            <th scope="col">
+                                Сумма
+                            </th>
+                            <th scope="col">
+                                Трейдер
+                            </th>
+                            <th scope="col">
+                                Статус
+                            </th>
+                            <th scope="col">
+                                Создан
+                            </th>
+                            <th scope="col" class=" flex justify-center">
+                                <span class="sr-only">Действия</span>
+                            </th>
+                        </template>
                                     <tr v-for="dispute in disputes.data" class="bg-base-100 border-b last:border-none">
                                         <th scope="row" class=" font-medium whitespace-nowrap">
                                             {{ dispute.id }}
@@ -177,20 +175,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </button>
                                         </td>
                                     </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
-                                v-for="dispute in disputes.data"
-                                :key="dispute.id"
-                                class="card bg-base-100 shadow-sm"
-                            >
-                                <div class="card-body p-4 pt-2 pb-3">
+                    <DataCardList>
+                        <DataCard
+                            v-for="dispute in disputes.data"
+                            :key="dispute.id"
+                        >
                                     <!-- Шапка: ID и дата создания -->
                                     <div class="flex justify-between items-center border-b border-base-content/10 mb-0 pb-1">
                                         <div class="inline-flex gap-3">
@@ -282,10 +274,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                        </DataCardList>
                 </div>
             </template>
         </MainTableSection>

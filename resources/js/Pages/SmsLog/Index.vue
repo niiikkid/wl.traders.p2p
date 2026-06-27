@@ -12,6 +12,9 @@ import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import DateTime from "@/Components/DateTime.vue";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import SmsLogLinkedOrderCell from "@/Components/SmsLog/SmsLogLinkedOrderCell.vue";
 import OrderModal from "@/Modals/OrderModal.vue";
@@ -307,11 +310,8 @@ defineOptions({ layout: AuthenticatedLayout })
                     </div>
                     <div class="relative">
                         <!-- Desktop/tablet view (table) -->
-                        <div class="hidden xl:block rounded-table relative">
-                            <div class="overflow-x-auto card bg-base-100 shadow">
-                                <table class="table table-sm">
-                                    <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
+                        <DataTable>
+                                    <template #head>
                                         <th scope="col">
                                             ID
                                         </th>
@@ -330,9 +330,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col">
                                             Время
                                         </th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
+                                    </template>
                                     <tr v-for="sms_log in smsLogs.data" :key="sms_log.id" class="hover">
                                         <th scope="row" class="font-medium whitespace-nowrap">
                                             {{ sms_log.id }}
@@ -415,19 +413,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <DateTime :data="sms_log.created_at"></DateTime>
                                         </td>
                                     </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        </DataTable>
 
                         <!-- Mobile view (cards list) -->
-                        <div class="xl:hidden space-y-3">
-                            <div
+                        <DataCardList>
+                            <DataCard
                                 v-for="sms_log in smsLogs.data"
                                 :key="sms_log.id"
-                                class="card bg-base-100 shadow-sm"
+                                body-class="p-4 pt-3 pb-3"
                             >
-                                <div class="card-body p-4 pt-3 pb-3">
                                     <div class="flex items-center justify-between border-b border-base-content/10 pb-2 mb-2">
                                         <div class="text-xs text-base-content/70">ID: <span class="font-medium text-base-content">{{ sms_log.id }}</span></div>
                                         <DateTime class="justify-start" :data="sms_log.created_at"/>
@@ -539,9 +533,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
+                            </DataCard>
+                        </DataCardList>
                     </div>
                 </template>
                 <template v-else-if="currentTab === 'stop-list'">

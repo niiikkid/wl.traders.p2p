@@ -29,6 +29,9 @@ import PaymentDetailScheduleServerClock from "@/Components/PaymentDetail/Payment
 import PaymentDetailScheduleSummary from "@/Components/PaymentDetail/PaymentDetailScheduleSummary.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailScheduleTableTick.js";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 const modalStore = useModalStore();
 const openCreateModal = () => {
@@ -530,7 +533,8 @@ defineOptions({ layout: AuthenticatedLayout })
                     />
 
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block rounded-table relative">
+                    <DataTable>
+                        <template #before>
                         <div v-if="selectionModeEnabled" class="mb-3 flex items-center justify-between gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm">
                             <div class="min-w-0">
                                 <div class="text-sm font-medium">
@@ -550,10 +554,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                 Редактировать
                             </button>
                         </div>
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
+                        </template>
+                        <template #head>
                                         <th scope="col">
                                             ID
                                         </th>
@@ -619,9 +621,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 </div>
                                             </div>
                                         </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                     <template v-for="payment_detail in paymentDetails.data" :key="payment_detail.id">
                                         <tr>
                                             <th scope="row" class="font-medium whitespace-nowrap">{{ payment_detail.id }}</th>
@@ -877,20 +877,14 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </td>
                                         </tr>
                                     </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
+                    <DataCardList>
+                            <DataCard
                                 v-for="payment_detail in paymentDetails.data"
                                 :key="payment_detail.id"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <div class="flex justify-between items-center gap-2">
                                         <div class="inline-flex items-center gap-2 min-w-0 text-xs">
                                             <span class="text-base-content/70 shrink-0">ID:</span>
@@ -931,7 +925,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             :name="payment_detail.name"
                                             :show-processing-indicator="shouldShowProcessingIndicator(payment_detail)"
                                             :uses-manual-processing="detailUsesManualProcessing(payment_detail)"
-                                        />
+                                        ></PaymentDetail>
                                     </div>
 
                                     <template v-if="displayDetailSchedule">
@@ -1111,10 +1105,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                         </TableInfoDropdown>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

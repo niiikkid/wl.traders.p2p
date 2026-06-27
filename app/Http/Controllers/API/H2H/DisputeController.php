@@ -13,22 +13,6 @@ use Illuminate\Support\Facades\Gate;
 
 class DisputeController extends Controller
 {
-    public function show(Order $order): JsonResponse
-    {
-        if (! $order->is_h2h) {
-            return response()->failWithMessage('Сделка не предназначена для H2H API.');
-        }
-        if (! $order->dispute) {
-            return response()->failWithMessage('По сделке пока что небыло споров.');
-        }
-
-        Gate::authorize('access-to-order', $order);
-
-        return response()->success(
-            DisputeResource::make($order->dispute)
-        );
-    }
-
     public function store(StoreRequest $request, Order $order): JsonResponse
     {
         if (! $order->is_h2h) {

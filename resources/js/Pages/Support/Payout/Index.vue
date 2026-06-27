@@ -11,6 +11,9 @@ import RefreshTableData from '@/Components/Table/RefreshTableData.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
@@ -99,22 +102,8 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
             <template #body>
                 <div class="relative">
-                    <div class="hidden xl:block rounded-table relative">
-                        <div
-                            class="card sticky top-0 left-0 bg-base-100/40 z-10 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ease-in-out opacity-0 pointer-events-none"
-                            :class="{'opacity-100 pointer-events-auto': reloadingTableData}"
-                            style="position: absolute; inset: 0; width: 100%; height: 100%;"
-                        >
-                            <div class="flex flex-col items-center transition-transform duration-300" :class="{'scale-90 opacity-0': !reloadingTableData, 'scale-100 opacity-100': reloadingTableData}">
-                                <span class="loading loading-spinner loading-lg text-primary" />
-                                <span class="mt-3 text-sm font-medium text-base-content">Загрузка данных...</span>
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm" :class="{'pointer-events-none': reloadingTableData}">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable :loading="reloadingTableData">
+                        <template #head>
                                     <th>UUID</th>
                                     <th>Реквизиты</th>
                                     <th>Сумма</th>
@@ -122,9 +111,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <th>Статус</th>
                                     <th>Стороны сделки</th>
                                     <th class="w-24 text-center">Подробнее</th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <template v-for="payout in payoutItems" :key="payout.id">
                                     <tr class="bg-base-100 border-base-200 border-b last:border-none align-top">
                                         <td>
@@ -295,32 +282,15 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </td>
                                     </tr>
                                 </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden rounded-table relative">
-                        <div
-                            class="card sticky top-0 left-0 bg-base-100/40 z-10 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ease-in-out opacity-0 pointer-events-none"
-                            :class="{'opacity-100 pointer-events-auto': reloadingTableData}"
-                            style="position: absolute; inset: 0; width: 100%; height: 100%;"
-                        >
-                            <div class="flex flex-col items-center transition-transform duration-300" :class="{'scale-90 opacity-0': !reloadingTableData, 'scale-100 opacity-100': reloadingTableData}">
-                                <span class="loading loading-spinner loading-lg text-primary" />
-                                <span class="mt-3 text-sm font-medium text-base-content">Загрузка данных...</span>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3" :class="{'pointer-events-none': reloadingTableData}">
-                            <div class="space-y-2">
-                                <div
-                                    v-for="payout in payoutItems"
-                                    :key="`mobile-${payout.id}`"
-                                    class="card bg-base-100 shadow-sm"
-                                >
-                                    <div class="card-body p-4 pt-2 pb-3 space-y-2">
+                    <DataCardList>
+                            <DataCard
+                                v-for="payout in payoutItems"
+                                :key="`mobile-${payout.id}`"
+                                body-class="p-4 pt-2 pb-3 space-y-2"
+                            >
                                         <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                             <div class="min-w-0 flex-1 text-[11px]">
                                                 <div class="inline-flex items-center gap-1 pl-1 min-w-0">
@@ -486,14 +456,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+                            </DataCard>
                             <div v-if="payoutItems.length === 0" class="py-6 text-center text-sm text-base-content/60">
                                 Выплаты не найдены.
                             </div>
-                        </div>
-                    </div>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

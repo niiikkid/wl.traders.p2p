@@ -6,6 +6,9 @@ import AutomationNavButtons from '@/Components/Automation/AutomationNavButtons.v
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
 import DeviceConnectSnapshotModal from '@/Modals/DeviceConnectSnapshotModal.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 
 defineOptions({ layout: AuthenticatedLayout })
 
@@ -94,11 +97,8 @@ const copyToClipboard = async (text) => {
 
             <template #body>
                 <div class="relative">
-                    <div class="hidden xl:block shadow-md rounded-table relative">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-xs">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable table-class="table-xs">
+                        <template #head>
                                     <th scope="col" class="px-3 py-2">ID</th>
                                     <th scope="col" class="px-3 py-2">Трейдер</th>
                                     <th scope="col" class="px-3 py-2">Название</th>
@@ -108,9 +108,7 @@ const copyToClipboard = async (text) => {
                                     <th scope="col" class="px-3 py-2">Последний пинг</th>
                                     <th scope="col" class="px-3 py-2">Подключен</th>
                                     <th scope="col" class="px-3 py-2 text-right">Снимок</th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <tr v-for="device in devices.data" :key="device.id">
                                     <td class="px-3 py-2 font-medium text-base-content">{{ device.id }}</td>
                                     <td class="px-3 py-2">
@@ -156,18 +154,14 @@ const copyToClipboard = async (text) => {
                                         </button>
                                     </td>
                                 </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
-                    <div class="xl:hidden space-y-3">
-                        <div
-                            v-for="device in devices.data"
-                            :key="device.id"
-                            class="card bg-base-100 shadow-sm"
-                        >
-                            <div class="card-body p-3 gap-2">
+                    <DataCardList>
+                            <DataCard
+                                v-for="device in devices.data"
+                                :key="device.id"
+                                body-class="p-3 gap-2"
+                            >
                                 <div class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="text-xs text-base-content/60">ID: {{ device.id }}</div>
@@ -214,9 +208,8 @@ const copyToClipboard = async (text) => {
                                         Снимок устройства
                                     </button>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

@@ -267,6 +267,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/merchant/finances', [WalletController::class, 'index'])->name('merchant.finances.index');
 
         Route::get('/merchant/payouts', [App\Http\Controllers\Merchant\PayoutController::class, 'index'])->name('merchant.payouts.index');
+        Route::post('/merchant/payouts/{payout:uuid}/confirm-paid', [App\Http\Controllers\Merchant\PayoutController::class, 'confirmPaid'])->name('merchant.payouts.confirm-paid');
         Route::post('/merchant/payouts/{payout:uuid}/callback/resend', [PayoutCallbackController::class, 'resend'])->name('merchant.payouts.callback.resend');
 
         Route::resource('/payments', PaymentController::class)->only(['index']);
@@ -279,6 +280,8 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/integration', [ApiIntegrationController::class, 'index'])->name('integration.index');
         Route::post('/integration/regenerate-token', [ApiIntegrationController::class, 'regenerateToken'])
             ->name('integration.regenerate-token');
+        Route::post('/integration/regenerate-webhook-secret', [ApiIntegrationController::class, 'regenerateWebhookSecret'])
+            ->name('integration.regenerate-webhook-secret');
     });
 
     Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'banned', 'role:Super Admin']], function () {
@@ -291,6 +294,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/manual-control-acq/orders/{order}/confirmation-type', [ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
         Route::post('/manual-control-acq/orders/{order}/confirm', [ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
         Route::post('/manual-control-acq/orders/{order}/reject', [ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
+        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');
         Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');

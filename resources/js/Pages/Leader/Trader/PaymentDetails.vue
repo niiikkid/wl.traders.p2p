@@ -16,6 +16,9 @@ import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
 import TableInfoDropdown from "@/Components/Table/TableInfoDropdown.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
 import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailScheduleTableTick.js";
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 const page = usePage();
 const tableFiltersStore = useTableFiltersStore();
@@ -196,21 +199,16 @@ defineOptions({layout: AuthenticatedLayout});
 
             <template #body>
                 <div class="relative">
-                    <div class="hidden xl:block">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Реквизит</th>
-                                        <th>Тип</th>
-                                        <th>Лимиты</th>
-                                        <th class="text-nowrap">Расписание</th>
-                                        <th>Статус</th>
-                                        <th><span class="sr-only">Настройки</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                    <DataTable>
+                        <template #head>
+                            <th>ID</th>
+                            <th>Реквизит</th>
+                            <th>Тип</th>
+                            <th>Лимиты</th>
+                            <th class="text-nowrap">Расписание</th>
+                            <th>Статус</th>
+                            <th><span class="sr-only">Настройки</span></th>
+                        </template>
                                     <tr v-for="detail in paymentDetails.data" :key="detail.id" class="hover">
                                         <th class="font-medium whitespace-nowrap">{{ detail.id }}</th>
                                         <td>
@@ -368,14 +366,10 @@ defineOptions({layout: AuthenticatedLayout});
                                             </TableInfoDropdown>
                                         </td>
                                     </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
-                    <div class="xl:hidden space-y-2">
-                        <div v-for="detail in paymentDetails.data" :key="detail.id" class="card bg-base-100 shadow-sm">
-                            <div class="card-body p-4 pt-2 pb-3">
+                    <DataCardList>
+                        <DataCard v-for="detail in paymentDetails.data" :key="detail.id">
                                 <div class="flex justify-between items-center border-b border-base-content/10 mb-2 pb-2">
                                     <div class="inline-flex items-center gap-2">
                                         <span class="text-base-content/70">ID:</span>
@@ -436,9 +430,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         <span class="text-right">{{ detail.order_interval_minutes !== null ? detail.order_interval_minutes + ' мин' : '-' }}</span>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+                        </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

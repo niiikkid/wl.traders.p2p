@@ -13,6 +13,9 @@ import TraderExportModal from '@/Components/Export/TraderExportModal.vue';
 import AppTooltip from '@/Components/AppTooltip.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import MoneyValue from '@/Components/MoneyValue.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 
 const PAYOUT_LIST_PER_PAGE = 10;
 
@@ -1048,11 +1051,8 @@ defineOptions({ layout: AuthenticatedLayout });
                             </div>
                             <div class="relative">
                                 <!-- Desktop / tablet (table) -->
-                                <div class="hidden xl:block rounded-table relative">
-                                    <div class="overflow-x-auto card bg-base-100 shadow">
-                                        <table class="table table-sm">
-                                            <thead class="text-xs uppercase bg-base-300">
-                                            <tr>
+                                <DataTable>
+                                        <template #head>
                                                 <th scope="col">
                                                     UUID
                                                 </th>
@@ -1077,9 +1077,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 <th scope="col" class="text-right">
                                                     <span class="sr-only">Действия</span>
                                                 </th>
-                                            </tr>
-                                            </thead>
-                                            <tbody>
+                                        </template>
                                             <template v-if="payoutEmptyState">
                                                 <tr>
                                                     <td colspan="8" class="text-center text-sm text-base-content/60 py-6">Пока нет заявок</td>
@@ -1138,20 +1136,14 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 </td>
                                             </tr>
                                             </template>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                                </DataTable>
 
                                 <!-- Mobile (cards list) — компактно как Order / PaymentDetail -->
-                                <div class="xl:hidden space-y-3">
-                                    <div class="space-y-2">
-                                        <div
+                                <DataCardList>
+                                        <DataCard
                                             v-for="payout in orderBookList"
                                             :key="payout.id"
-                                            class="card bg-base-100 shadow-sm"
                                         >
-                                            <div class="card-body p-4 pt-2 pb-3">
                                                 <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                                     <div class="min-w-0 flex-1 text-[11px]">
                                                         <div class="inline-flex items-center gap-1 pl-1 min-w-0">
@@ -1252,13 +1244,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                        </DataCard>
+                                        <div v-if="payoutEmptyState" class="py-6 text-center text-sm text-base-content/60">
+                                            Пока нет заявок
                                         </div>
-                                    </div>
-                                    <div v-if="payoutEmptyState" class="py-6 text-center text-sm text-base-content/60">
-                                        Пока нет заявок
-                                    </div>
-                                </div>
+                                </DataCardList>
                             </div>
                             <div v-if="showStackPagination" class="flex justify-start mt-2">
                                 <Pagination
@@ -1278,10 +1268,8 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <h2 class="text-xl font-semibold">История выплат</h2>
                             </div>
                             <div class="rounded-table relative">
-                        <div class="hidden xl:block overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                        <DataTable>
+                                <template #head>
                                     <th>UUID</th>
                                     <th>Реквизит</th>
                                     <th>Отправленно</th>
@@ -1290,9 +1278,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <th>Курс</th>
                                     <th>Статус</th>
                                     <th>Завершено</th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                                </template>
                                 <template v-if="historyList.length === 0">
                                     <tr>
                                         <td colspan="8" class="text-center text-sm text-base-content/60 py-6">История пока пуста.</td>
@@ -1351,17 +1337,12 @@ defineOptions({ layout: AuthenticatedLayout });
                                     </td>
                                 </tr>
                                 </template>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="xl:hidden space-y-3">
-                            <div class="space-y-2">
-                                <div
+                        </DataTable>
+                        <DataCardList>
+                                <DataCard
                                     v-for="payout in historyList"
                                     :key="payout.id"
-                                    class="card bg-base-100 shadow-sm"
                                 >
-                                    <div class="card-body p-4 pt-2 pb-3">
                                         <div class="flex justify-between items-center gap-2 border-b border-base-content/10 pb-1 min-w-0">
                                             <div class="min-w-0 flex-1 text-[11px]">
                                                 <div class="inline-flex items-center gap-1 pl-1 min-w-0">
@@ -1496,13 +1477,11 @@ defineOptions({ layout: AuthenticatedLayout });
                                                 </a>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
+                        </DataCard>
                             <div v-if="historyList.length === 0" class="py-6 text-center text-sm text-base-content/60">
                                 История пока пуста.
                             </div>
-                        </div>
+                        </DataCardList>
                             </div>
                             <div v-if="showHistoryPagination" class="flex justify-start mt-2">
                                 <Pagination

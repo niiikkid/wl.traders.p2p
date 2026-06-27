@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Lab404\Impersonate\Models\Impersonate;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -26,7 +27,9 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $telegram_username
  * @property string $login
  * @property string $apk_access_token
- * @property string $api_access_token
+ * @property string|null $api_access_token
+ * @property string|null $api_access_token_hash
+ * @property string|null $webhook_secret
  * @property Collection<int, PaymentDetail> $paymentDetails
  * @property Collection<int, Order> $orders
  * @property Collection<int, Order> $teamLeaderOrders
@@ -104,6 +107,7 @@ class User extends Authenticatable
         'password',
         'apk_access_token',
         'api_access_token',
+        'webhook_secret',
         'is_online',
         'can_set_order_amount_limits',
         'stop_traffic',
@@ -155,6 +159,8 @@ class User extends Authenticatable
         'google2fa_secret',
         'apk_access_token',
         'api_access_token',
+        'api_access_token_hash',
+        'webhook_secret',
     ];
 
     /**
@@ -197,6 +203,56 @@ class User extends Authenticatable
         ];
     }
 
+    public static function generateApiAccessToken(): string
+    {
+        do {
+            $token = strtolower(Str::random(64));
+        } while (static::query()->where('api_access_token_hash', static::hashApiAccessToken($token))->exists());
+
+        return $token;
+    }
+
+    public static function generateWebhookSecret(): string
+    {
+        return 'whsec_'.Str::random(64);
+    }
+
+    public static function hashApiAccessToken(string $token): string
+    {
+        return hash('sha256', $token);
+    }
+
+    public function rotateApiAccessToken(): string
+    {
+        $token = static::generateApiAccessToken();
+
+        $this->forceFill([
+            'api_access_token' => $token,
+        ])->save();
+
+        return $token;
+    }
+
+    public function rotateWebhookSecret(): string
+    {
+        $secret = static::generateWebhookSecret();
+
+        $this->forceFill([
+            'webhook_secret' => $secret,
+        ])->save();
+
+        return $secret;
+    }
+
+    public function signWebhookPayload(string $payload): ?string
+    {
+        if (! $this->webhook_secret) {
+            return null;
+        }
+
+        return hash_hmac('sha256', $payload, $this->webhook_secret);
+    }
+
     public function effectiveMaxMinOrderAmount(): ?int
     {
         if ($this->max_min_order_amount === null || $this->max_min_order_amount <= 0) {
@@ -234,6 +290,28 @@ class User extends Authenticatable
     }
 
     protected function google2faSecret(): Attribute
+    {
+        return new Attribute(
+            get: fn ($value) => $value ? decrypt($value) : null,
+            set: fn ($value) => $value ? encrypt($value) : null,
+        );
+    }
+
+    protected function apiAccessToken(): Attribute
+    {
+        return new Attribute(
+            get: fn ($value) => $value ? decrypt($value) : null,
+            set: fn ($value) => $value ? [
+                'api_access_token' => encrypt($value),
+                'api_access_token_hash' => static::hashApiAccessToken($value),
+            ] : [
+                'api_access_token' => null,
+                'api_access_token_hash' => null,
+            ],
+        );
+    }
+
+    protected function webhookSecret(): Attribute
     {
         return new Attribute(
             get: fn ($value) => $value ? decrypt($value) : null,

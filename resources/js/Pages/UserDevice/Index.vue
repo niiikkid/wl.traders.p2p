@@ -10,6 +10,9 @@ import DateTime from '@/Components/DateTime.vue';
 import {ref, reactive} from "vue";
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
 import TableAction from '@/Components/Table/TableAction.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 
 const devices = ref(usePage().props.devices.data);
 
@@ -266,11 +269,8 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
             <template v-slot:body>
                 <div class="relative">
                     <!-- Desktop/tablet view (table) -->
-                    <div class="hidden xl:block shadow-md rounded-table relative">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable>
+                        <template #head>
                                     <th scope="col" class="px-6 py-3">
                                         Название
                                     </th>
@@ -286,9 +286,7 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                     <th scope="col" class="px-6 py-3 text-right">
 
                                     </th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <template v-for="device in devices" :key="device.id">
                                 <tr>
                                     <th scope="row" class="px-6 py-3 font-medium whitespace-nowrap text-base-content">
@@ -348,20 +346,14 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                     </td>
                                 </tr>
                                 </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
                     <!-- Mobile view (cards list) -->
-                    <div class="xl:hidden space-y-3">
-                        <div class="space-y-2">
-                            <div
+                    <DataCardList>
+                            <DataCard
                                 v-for="device in devices"
                                 :key="device.id"
-                                class="card bg-base-100 shadow-sm"
                             >
-                                <div class="card-body p-4 pt-2 pb-3">
                                     <!-- Шапка: Название и последний пинг -->
                                     <div class="flex justify-between items-center">
                                         <div class="inline-flex items-center gap-2 min-w-0">
@@ -485,10 +477,8 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

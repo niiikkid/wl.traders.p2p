@@ -3,6 +3,9 @@ import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { ref, computed, watch } from 'vue';
 import FiltersSection from './Components/FiltersSection.vue';
+import DataTable from "@/Components/Table/DataTable.vue";
+import DataCardList from "@/Components/Table/DataCardList.vue";
+import DataCard from "@/Components/Table/DataCard.vue";
 
 defineOptions({ layout: AuthenticatedLayout })
 
@@ -377,104 +380,89 @@ const removeLimitLevel = (amount) => {
                 </h3>
 
                 <!-- Desktop/tablet view (table) -->
-                <div class="hidden xl:block">
-                    <div class="overflow-x-auto card bg-base-100 shadow">
-                        <table class="table table-sm">
-                            <thead class="text-xs uppercase bg-base-300">
-                                <tr>
-                                    <th scope="col" class="px-6 py-3">
-                                        Минимальный лимит
-                                    </th>
-                                    <th scope="col" class="px-6 py-3">
-                                        Количество реквизитов
-                                    </th>
-                                    <th scope="col" class="px-6 py-3">
-                                        Свободный лимит
-                                    </th>
-                                    <th scope="col" class="px-6 py-3">
-                                        Потенциальный лимит
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="(stats, key) in minAmountStatsByGroups" :key="key">
-                                    <th scope="row" class="font-medium whitespace-nowrap px-6 py-3">
-                                        {{ stats.title }}
-                                    </th>
-                                    <td class="px-6 py-3">
-                                        {{ stats.count }}
-                                    </td>
-                                    <td class="px-6 py-3">
-                                        {{ selectedCurrencyInfo?.symbol }} {{ stats.free_limit }}
-                                    </td>
-                                    <td class="px-6 py-3">
-                                        {{ selectedCurrencyInfo?.symbol }} {{ stats.potential_limit }}
-                                    </td>
-                                </tr>
-                                <!-- Если нет данных -->
-                                <tr v-if="Object.keys(minAmountStatsByGroups).length === 0" class="text-center px-6 py-3">
-                                    <td colspan="4" class="text-base-content/60">
-                                        Нет данных для выбранной валюты
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <DataTable>
+                    <template #head>
+                        <th scope="col" class="px-6 py-3">
+                            Минимальный лимит
+                        </th>
+                        <th scope="col" class="px-6 py-3">
+                            Количество реквизитов
+                        </th>
+                        <th scope="col" class="px-6 py-3">
+                            Свободный лимит
+                        </th>
+                        <th scope="col" class="px-6 py-3">
+                            Потенциальный лимит
+                        </th>
+                    </template>
+                    <tr v-for="(stats, key) in minAmountStatsByGroups" :key="key">
+                        <th scope="row" class="font-medium whitespace-nowrap px-6 py-3">
+                            {{ stats.title }}
+                        </th>
+                        <td class="px-6 py-3">
+                            {{ stats.count }}
+                        </td>
+                        <td class="px-6 py-3">
+                            {{ selectedCurrencyInfo?.symbol }} {{ stats.free_limit }}
+                        </td>
+                        <td class="px-6 py-3">
+                            {{ selectedCurrencyInfo?.symbol }} {{ stats.potential_limit }}
+                        </td>
+                    </tr>
+                    <!-- Если нет данных -->
+                    <tr v-if="Object.keys(minAmountStatsByGroups).length === 0" class="text-center px-6 py-3">
+                        <td colspan="4" class="text-base-content/60">
+                            Нет данных для выбранной валюты
+                        </td>
+                    </tr>
+                </DataTable>
 
                 <!-- Mobile view (cards list) -->
-                <div class="xl:hidden space-y-3">
-                    <div class="space-y-2">
-                        <div
-                            v-for="(stats, key) in minAmountStatsByGroups"
-                            :key="key"
-                            class="card bg-base-100 shadow-sm"
-                        >
-                            <div class="card-body p-4 pt-2 pb-3">
-                                <!-- Заголовок карточки -->
-                                <div class="flex justify-between items-center border-b border-base-content/10 mb-1 pb-2">
-                                    <div class="font-medium text-base-content">
-                                        {{ stats.title }}
-                                    </div>
-                                </div>
-
-                                <!-- Основная информация -->
-                                <div class="flex flex-col gap-2">
-                                    <div class="flex items-center justify-between">
-                                        <div class="text-base-content/70 text-sm">Количество реквизитов</div>
-                                        <div class="text-base-content font-medium">
-                                            {{ stats.count }}
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center justify-between border-t border-base-content/10 pt-2 mt-2">
-                                        <div class="text-base-content/70 text-sm">Свободный лимит</div>
-                                        <div class="text-base-content font-medium">
-                                            {{ selectedCurrencyInfo?.symbol }} {{ stats.free_limit }}
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <div class="text-base-content/70 text-sm">Потенциальный лимит</div>
-                                        <div class="text-base-content font-medium">
-                                            {{ selectedCurrencyInfo?.symbol }} {{ stats.potential_limit }}
-                                        </div>
-                                    </div>
-                                </div>
+                <DataCardList>
+                    <DataCard
+                        v-for="(stats, key) in minAmountStatsByGroups"
+                        :key="key"
+                    >
+                        <!-- Заголовок карточки -->
+                        <div class="flex justify-between items-center border-b border-base-content/10 mb-1 pb-2">
+                            <div class="font-medium text-base-content">
+                                {{ stats.title }}
                             </div>
                         </div>
 
-                        <!-- Если нет данных -->
-                        <div
-                            v-if="Object.keys(minAmountStatsByGroups).length === 0"
-                            class="card bg-base-100 shadow-sm"
-                        >
-                            <div class="card-body p-4">
-                                <div class="text-center text-base-content/60">
-                                    Нет данных для выбранной валюты
+                        <!-- Основная информация -->
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center justify-between">
+                                <div class="text-base-content/70 text-sm">Количество реквизитов</div>
+                                <div class="text-base-content font-medium">
+                                    {{ stats.count }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-base-content/10 pt-2 mt-2">
+                                <div class="text-base-content/70 text-sm">Свободный лимит</div>
+                                <div class="text-base-content font-medium">
+                                    {{ selectedCurrencyInfo?.symbol }} {{ stats.free_limit }}
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="text-base-content/70 text-sm">Потенциальный лимит</div>
+                                <div class="text-base-content font-medium">
+                                    {{ selectedCurrencyInfo?.symbol }} {{ stats.potential_limit }}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </DataCard>
+
+                    <!-- Если нет данных -->
+                    <DataCard
+                        v-if="Object.keys(minAmountStatsByGroups).length === 0"
+                        body-class="p-4"
+                    >
+                        <div class="text-center text-base-content/60">
+                            Нет данных для выбранной валюты
+                        </div>
+                    </DataCard>
+                </DataCardList>
             </div>
         </div>
     </div>

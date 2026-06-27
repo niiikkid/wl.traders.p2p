@@ -20,6 +20,9 @@ import {useModalStore} from '@/store/modal.js';
 import {useTableFiltersStore} from '@/store/tableFilters.js';
 import PayoutSettingsModal from '@/Modals/Payout/PayoutSettingsModal.vue';
 import MoneyValue from '@/Components/MoneyValue.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 
 const tableFiltersStore = useTableFiltersStore();
 
@@ -333,22 +336,8 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
             <template #body>
                 <div class="relative">
-                    <div class="hidden xl:block rounded-table relative">
-                        <div
-                            class="card sticky top-0 left-0 bg-base-100/40 z-10 flex items-center justify-center backdrop-blur-sm transition-all duration-300 ease-in-out opacity-0 pointer-events-none"
-                            :class="{'opacity-100 pointer-events-auto': reloadingTableData}"
-                            style="position: absolute; inset: 0; width: 100%; height: 100%;"
-                        >
-                            <div class="flex flex-col items-center transition-transform duration-300" :class="{'scale-90 opacity-0': !reloadingTableData, 'scale-100 opacity-100': reloadingTableData}">
-                                <span class="loading loading-spinner loading-lg text-primary" />
-                                <span class="mt-3 text-sm font-medium text-base-content">Загрузка данных...</span>
-                            </div>
-                        </div>
-
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm" :class="{'pointer-events-none': reloadingTableData}">
-                                <thead class="text-xs uppercase bg-base-300">
-                                <tr>
+                    <DataTable :loading="reloadingTableData">
+                        <template #head>
                                     <th>UUID</th>
                                     <th>Реквизиты</th>
                                     <th>Сумма</th>
@@ -357,9 +346,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     <th>Стороны сделки</th>
                                     <th></th>
                                     <th class="w-24">Подробнее</th>
-                                </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                 <template v-for="payout in payoutItems" :key="payout.id">
                                     <tr class="bg-base-100 border-base-200 border-b last:border-none align-top">
                                         <td>
@@ -646,18 +633,14 @@ defineOptions({ layout: AuthenticatedLayout });
                                         </td>
                                     </tr>
                                 </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
-                    <div class="xl:hidden space-y-4">
-                        <div
+                    <DataCardList>
+                        <DataCard
                             v-for="payout in payoutItems"
                             :key="`mobile-${payout.id}`"
-                            class="card bg-base-100 shadow-sm border border-base-200"
+                            body-class="space-y-5 p-4"
                         >
-                            <div class="card-body space-y-5 p-4">
                                 <div class="flex flex-col gap-3">
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="space-y-1">
@@ -923,9 +906,8 @@ defineOptions({ layout: AuthenticatedLayout });
 
                                     </div>
                                 </transition>
-                            </div>
-                        </div>
-                    </div>
+                        </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

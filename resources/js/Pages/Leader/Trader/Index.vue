@@ -11,6 +11,9 @@ import NumberInput from "@/Components/NumberInput.vue";
 import InputError from "@/Components/InputError.vue";
 import UserAvatar from '@/Components/User/UserAvatar.vue';
 import MoneyValue from '@/Components/MoneyValue.vue';
+import DataTable from '@/Components/Table/DataTable.vue';
+import DataCardList from '@/Components/Table/DataCardList.vue';
+import DataCard from '@/Components/Table/DataCard.vue';
 
 const traders = ref(usePage().props.traders);
 const extendedAccessEnabled = ref(usePage().props.extendedAccessEnabled ?? false);
@@ -168,11 +171,8 @@ defineOptions({layout: AuthenticatedLayout});
 
             <template #body>
                 <div class="relative">
-                    <div class="hidden xl:block">
-                        <div class="overflow-x-auto card bg-base-100 shadow">
-                            <table class="table table-sm">
-                                <thead class="text-xs uppercase bg-base-300">
-                                    <tr>
+                    <DataTable>
+                        <template #head>
                                         <th>ID</th>
                                         <th>Трейдер</th>
                                         <th>Сделок</th>
@@ -183,9 +183,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <th v-if="extendedAccessEnabled">Работает</th>
                                         <th>Создан</th>
                                         <th v-if="extendedAccessEnabled" class="text-right">Действия</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        </template>
                                     <tr v-for="trader in traders.data" :key="trader.id" class="hover">
                                         <th class="font-medium whitespace-nowrap">{{ trader.id }}</th>
                                         <td class="whitespace-nowrap">
@@ -248,14 +246,10 @@ defineOptions({layout: AuthenticatedLayout});
                                             </div>
                                         </td>
                                     </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    </DataTable>
 
-                    <div class="xl:hidden space-y-2">
-                        <div v-for="trader in traders.data" :key="trader.id" class="card bg-base-100 shadow-sm">
-                            <div class="card-body p-4 pt-2 pb-3">
+                    <DataCardList>
+                            <DataCard v-for="trader in traders.data" :key="trader.id">
                                 <div class="flex justify-between items-center border-b border-base-content/10 mb-2 pb-2">
                                     <div class="inline-flex items-center gap-2">
                                         <span class="text-base-content/70">ID:</span>
@@ -324,9 +318,8 @@ defineOptions({layout: AuthenticatedLayout});
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+                            </DataCard>
+                    </DataCardList>
                 </div>
             </template>
         </MainTableSection>

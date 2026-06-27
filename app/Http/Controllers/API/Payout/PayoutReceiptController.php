@@ -52,33 +52,6 @@ class PayoutReceiptController extends Controller
         ]);
     }
 
-    public function show(Request $request, Payout $payout): JsonResponse
-    {
-        Gate::authorize('api-access-to-merchant', $payout->merchant);
-        $receiptPath = $payout->receipt_path ?: $payout->receipts()->orderBy('sort_order')->value('path');
-
-        if (! $receiptPath) {
-            return response()->failWithMessage('Чек для этой выплаты отсутствует.', 404);
-        }
-
-        $disk = Storage::disk(self::RECEIPT_DISK);
-
-        if (! $disk->exists($receiptPath)) {
-            return response()->failWithMessage('Файл чека не найден.', 404);
-        }
-
-        $contents = $disk->get($receiptPath);
-        $mime = $disk->mimeType($receiptPath) ?: 'application/octet-stream';
-
-        return response()->success([
-            'payout_id' => $payout->uuid,
-            'filename' => basename($receiptPath),
-            'mime_type' => $mime,
-            'size' => strlen($contents),
-            'base64' => base64_encode($contents),
-        ]);
-    }
-
     /**
      * @return array<int, array{id: int|null, path: string}>
      */
@@ -108,5 +81,3 @@ class PayoutReceiptController extends Controller
         ]];
     }
 }
-
-
