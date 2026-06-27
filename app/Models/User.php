@@ -28,7 +28,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $apk_access_token
  * @property string $api_access_token
  * @property Collection<int, PaymentDetail> $paymentDetails
- * @property Collection<int, PaymentDetailTag> $paymentDetailTags
  * @property Collection<int, Order> $orders
  * @property Collection<int, Order> $teamLeaderOrders
  * @property Collection<int, Order> $agentOrders
@@ -44,7 +43,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property bool $is_online
  * @property bool $is_vip
  * @property bool $stop_traffic
- * @property bool $hide_name_in_trader_top
  * @property bool $can_work_without_device
  * @property bool $sms_auto_close_orders_enabled
  * @property bool $payouts_enabled
@@ -59,8 +57,6 @@ use Spatie\Permission\Traits\HasRoles;
  * @property float $payout_referral_commission_percentage
  * @property float $payout_team_leader_split_from_service_percent
  * @property Carbon $traffic_enabled_at
- * @property string $avatar_uuid
- * @property string $avatar_style
  * @property string $google2fa_secret
  * @property bool $login_history_logging_enabled
  * @property int|null $team_leader_id
@@ -111,7 +107,6 @@ class User extends Authenticatable
         'is_online',
         'is_vip',
         'stop_traffic',
-        'hide_name_in_trader_top',
         'can_work_without_device',
         'sms_auto_close_orders_enabled',
         'payouts_enabled',
@@ -126,8 +121,6 @@ class User extends Authenticatable
         'payout_referral_commission_percentage',
         'payout_team_leader_split_from_service_percent',
         'traffic_enabled_at',
-        'avatar_uuid',
-        'avatar_style',
         'google2fa_secret',
         'login_history_logging_enabled',
         'team_leader_id',
@@ -200,7 +193,6 @@ class User extends Authenticatable
             'team_leader_trader_limit' => 'integer',
             'team_leader_reserve_balance_limit' => 'integer',
             'team_leader_reserve_stop_threshold' => 'integer',
-            'hide_name_in_trader_top' => 'boolean',
             'login_history_logging_enabled' => 'boolean',
         ];
     }
@@ -262,11 +254,6 @@ class User extends Authenticatable
     public function paymentDetails(): HasMany
     {
         return $this->hasMany(PaymentDetail::class);
-    }
-
-    public function paymentDetailTags(): HasMany
-    {
-        return $this->hasMany(PaymentDetailTag::class);
     }
 
     public function orders(): HasMany

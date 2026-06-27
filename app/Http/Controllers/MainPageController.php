@@ -110,12 +110,9 @@ class MainPageController extends Controller
             : Money::fromUnits(0, Currency::USDT());
         $stats['statistics']['balance'] = $balance->toBeauty();
 
-        $walletStats = services()->wallet()->getWalletStats($user->wallet)->toArray();
-
         return Inertia::render('MainPage/Trader/Index', [
             ...$stats,
             'activeStatsMode' => $activeStatsMode,
-            'walletStats' => $walletStats,
         ]);
     }
 

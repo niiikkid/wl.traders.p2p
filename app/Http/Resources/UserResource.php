@@ -30,8 +30,6 @@ class UserResource extends JsonResource
             'telegram_username' => $this->telegram_username,
             'telegram_tag' => $this->telegram_username ? '@'.$this->telegram_username : null,
             'telegram_url' => $this->telegram_username ? 'https://t.me/'.$this->telegram_username : null,
-            'avatar_uuid' => $this->avatar_uuid,
-            'avatar_style' => $this->avatar_style,
             'apk_latest_ping_at' => $this->normalizeCachedDate(cache()->get("user-apk-latest-ping-at-$this->id")),
             'online_at' => $this->normalizeCachedDate(cache()->get("user-online-at-$this->id")),
             'banned_at' => $this->banned_at?->toISOString(),
@@ -110,7 +108,6 @@ class UserResource extends JsonResource
                 ];
             }),
             'stop_traffic' => $this->stop_traffic,
-            'hide_name_in_trader_top' => (bool) $this->hide_name_in_trader_top,
             'can_work_without_device' => (bool) $this->can_work_without_device,
             'sms_auto_close_orders_enabled' => (bool) $this->sms_auto_close_orders_enabled,
             'traffic_enabled_at' => $this->traffic_enabled_at?->toISOString(),

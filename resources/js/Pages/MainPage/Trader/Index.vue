@@ -18,21 +18,6 @@ const selectedDateFromProp = computed(() => page.props.selectedDateFrom || '');
 const selectedDateToProp = computed(() => page.props.selectedDateTo || '');
 const selectedFiltersProp = computed(() => page.props.selectedFilters || {});
 
-const walletStats = computed(() => page.props.walletStats);
-const rates = computed(() => page.props.data?.rates ?? []);
-
-const usesTeamLeaderSharedReserve = computed(() => (
-    page.props.auth.user?.uses_team_leader_shared_reserve === true
-));
-
-const formatNumber = (num) => {
-    const roundedNum = Math.round(num * 100) / 100;
-    return roundedNum.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-};
-
 /** Как у админки: денежные поля уже в формате с бэка (toBeauty), иначе локальный formatNumber ломает строки и маскирует обновления. */
 const statisticsFormated = computed(() => ({
     totalTurnover: statistics.value?.totalTurnover ?? '0.00',
@@ -41,60 +26,6 @@ const statisticsFormated = computed(() => ({
     successOrderCount: statistics.value?.successOrderCount ?? 0,
     successPayoutCount: statistics.value?.successPayoutCount ?? 0,
 }));
-
-const parseAmount = (value) => {
-    if (value === null || value === undefined) {
-        return 0;
-    }
-    if (typeof value === 'number') {
-        return value;
-    }
-    const normalized = String(value).replace(/\s/g, '').replace(',', '.');
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const selectedFiatCurrency = computed(() => {
-    return (walletStats.value?.currency?.secondary ?? 'rub').toLowerCase();
-});
-
-const selectedFiatRate = computed(() => {
-    const fiatRate = rates.value.find((rate) => rate.code === selectedFiatCurrency.value);
-    const parsedRate = parseAmount(fiatRate?.sell_price);
-    return parsedRate > 0 ? parsedRate : 1;
-});
-
-const toSelectedFiatEquivalent = (value) => {
-    return formatNumber(parseAmount(value) * selectedFiatRate.value);
-};
-
-const financeOverview = computed(() => {
-    const trustAmount = walletStats.value?.base?.trustAmount ?? '0';
-    const trustReserveAmount = walletStats.value?.base?.trustReserveAmount ?? '0';
-    const trustWithdrawalAmount = walletStats.value?.lockedForWithdrawalBalances?.trust?.primary ?? '0';
-    const escrowOrdersAmount = walletStats.value?.escrowBalances?.orders?.balance?.primary ?? '0';
-    const escrowOrdersCount = walletStats.value?.escrowBalances?.orders?.count ?? 0;
-    const escrowDisputesAmount = walletStats.value?.escrowBalances?.disputes?.balance?.primary ?? '0';
-    const escrowDisputesCount = walletStats.value?.escrowBalances?.disputes?.count ?? 0;
-    const maxReserveBalance = walletStats.value?.maxReserveBalance ?? 0;
-
-    return {
-        primaryCurrency: (walletStats.value?.currency?.primary ?? 'usdt').toUpperCase(),
-        trustAmount,
-        trustReserveAmount,
-        trustWithdrawalAmount,
-        escrowOrdersAmount,
-        escrowOrdersCount,
-        escrowDisputesAmount,
-        escrowDisputesCount,
-        maxReserveBalance,
-        reserveGoalReached: parseAmount(trustAmount) >= parseAmount(maxReserveBalance),
-        secondaryCurrency: selectedFiatCurrency.value.toUpperCase(),
-        trustAmountSecondary: toSelectedFiatEquivalent(trustAmount),
-        escrowOrdersAmountSecondary: toSelectedFiatEquivalent(escrowOrdersAmount),
-        escrowDisputesAmountSecondary: toSelectedFiatEquivalent(escrowDisputesAmount),
-    };
-});
 
 const processing = ref(false);
 const isMobile = ref(false);
@@ -1388,59 +1319,6 @@ defineOptions({ layout: AuthenticatedLayout });
                             </div>
                         </div>
                         <div ref="chart" class="h-50"></div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-                        <div class="card bg-base-100 shadow px-5 py-3.5">
-                            <div class="text-sm text-base-content/70">Траст баланс</div>
-                            <div class="text-xl font-bold mt-1">
-                                {{ financeOverview.trustAmount }} {{ financeOverview.primaryCurrency }}
-                            </div>
-                            <div class="text-sm text-base-content/60 mt-1">
-                                ≈ {{ financeOverview.trustAmountSecondary }} {{ financeOverview.secondaryCurrency }}
-                            </div>
-                            <div class="text-xs text-base-content/70 mt-2 flex items-center gap-1.5">
-                                <span>Резерв:</span>
-                                <span
-                                    v-if="usesTeamLeaderSharedReserve"
-                                    class="badge badge-neutral badge-xs"
-                                >
-                                    тимлидерский
-                                </span>
-                                <span v-else>
-                                    {{ financeOverview.trustReserveAmount }} {{ financeOverview.primaryCurrency }}
-                                </span>
-                            </div>
-                            <div class="text-xs text-base-content/70">
-                                Вывод: {{ financeOverview.trustWithdrawalAmount }} {{ financeOverview.primaryCurrency }}
-                            </div>
-                        </div>
-
-                        <div class="card bg-base-100 shadow px-5 py-3.5">
-                            <div class="text-sm text-base-content/70">Холд в сделках</div>
-                            <div class="text-xl font-bold mt-1">
-                                {{ financeOverview.escrowOrdersAmount }} {{ financeOverview.primaryCurrency }}
-                            </div>
-                            <div class="text-sm text-base-content/60 mt-1">
-                                ≈ {{ financeOverview.escrowOrdersAmountSecondary }} {{ financeOverview.secondaryCurrency }}
-                            </div>
-                            <div class="text-xs text-base-content/70 mt-2">
-                                Сделок: {{ financeOverview.escrowOrdersCount }}
-                            </div>
-                        </div>
-
-                        <div class="card bg-base-100 shadow px-5 py-3.5">
-                            <div class="text-sm text-base-content/70">Спорные сделки</div>
-                            <div class="text-xl font-bold mt-1">
-                                {{ financeOverview.escrowDisputesAmount }} {{ financeOverview.primaryCurrency }}
-                            </div>
-                            <div class="text-sm text-base-content/60 mt-1">
-                                ≈ {{ financeOverview.escrowDisputesAmountSecondary }} {{ financeOverview.secondaryCurrency }}
-                            </div>
-                            <div class="text-xs text-base-content/70 mt-2">
-                                Споров: {{ financeOverview.escrowDisputesCount }}
-                            </div>
-                        </div>
                     </div>
                 </section>
             </div>

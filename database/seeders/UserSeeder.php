@@ -24,8 +24,6 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'apk_access_token' => strtolower(Str::random(32)),
                 'api_access_token' => strtolower(Str::random(32)),
-                'avatar_uuid' => 'admin@example.com',
-                'avatar_style' => 'adventurer',
                 'is_online' => true,
             ]);
 
@@ -42,8 +40,6 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'apk_access_token' => strtolower(Str::random(32)),
                 'api_access_token' => strtolower(Str::random(32)),
-                'avatar_uuid' => 'trader@example.com',
-                'avatar_style' => 'adventurer',
                 'is_online' => true,
             ]);
 
@@ -60,8 +56,6 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'apk_access_token' => strtolower(Str::random(32)),
                 'api_access_token' => strtolower(Str::random(32)),
-                'avatar_uuid' => 'merchant@example.com',
-                'avatar_style' => 'adventurer',
                 'is_online' => true,
             ]);
 
@@ -79,9 +73,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'apk_access_token' => strtolower(Str::random(32)),
                     'api_access_token' => strtolower(Str::random(32)),
-                    'avatar_uuid' => 'teamleader@example.com',
-                    'avatar_style' => 'adventurer',
-                'is_online' => true,
+                    'is_online' => true,
                 ]);
 
                 $teamLeader->assignRole('Team Leader');
@@ -89,7 +81,7 @@ class UserSeeder extends Seeder
                 services()->wallet()->create($teamLeader);
             });
         }
-        
+
         // Создаем саппорта, если такая роль существует
         if (Role::where('name', 'Support')->exists()) {
             Transaction::run(function () {
@@ -99,9 +91,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'apk_access_token' => strtolower(Str::random(32)),
                     'api_access_token' => strtolower(Str::random(32)),
-                    'avatar_uuid' => 'support@example.com',
-                    'avatar_style' => 'adventurer',
-                'is_online' => true,
+                    'is_online' => true,
                 ]);
 
                 $support->assignRole('Support');
@@ -110,4 +100,4 @@ class UserSeeder extends Seeder
             });
         }
     }
-} 
+}

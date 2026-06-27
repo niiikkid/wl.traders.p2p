@@ -369,8 +369,6 @@ class GenerateTestDataCommand extends Command
                     'password' => Hash::make('password'),
                     'apk_access_token' => strtolower(Str::random(32)),
                     'api_access_token' => strtolower(Str::random(32)),
-                    'avatar_uuid' => strtolower($login),
-                    'avatar_style' => 'adventurer',
                     'traffic_enabled_at' => now(),
                     'referral_commission_percentage' => 0.20,
                 ]);

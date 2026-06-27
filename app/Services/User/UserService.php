@@ -38,8 +38,6 @@ class UserService implements UserServiceContract
                 'password' => Hash::make($data->password),
                 'apk_access_token' => strtolower(Str::random(32)),
                 'api_access_token' => strtolower(Str::random(32)),
-                'avatar_uuid' => $data->login,
-                'avatar_style' => 'adventurer',
                 'traffic_enabled_at' => now(),
                 'reserve_balance_limit' => services()->settings()->getDefaultReserveBalanceLimit(),
                 'team_leader_id' => $teamLeaderId,

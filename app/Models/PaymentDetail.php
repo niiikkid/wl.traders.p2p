@@ -50,7 +50,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property PaymentDetailSchedule|null $schedule
  * @property UserDevice $userDevice
  * @property Collection<int, PaymentGateway> $paymentGateways
- * @property Collection<int, PaymentDetailTag> $tags
  * @property Collection<int, Order> $orders
  * @property Collection<int, PaymentDetailAmountTierUsage> $amountTierUsages
  * @property Carbon $archived_at
@@ -143,12 +142,6 @@ class PaymentDetail extends Model
     public function amountTierUsages(): HasMany
     {
         return $this->hasMany(PaymentDetailAmountTierUsage::class);
-    }
-
-    public function tags(): BelongsToMany
-    {
-        return $this->belongsToMany(PaymentDetailTag::class, 'payment_detail_tag_payment_detail')
-            ->withTimestamps();
     }
 
     public function scopeActive(Builder $query): void

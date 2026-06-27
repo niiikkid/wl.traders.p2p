@@ -3,6 +3,7 @@ import {Head, router, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import DateTime from "@/Components/DateTime.vue";
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 import {ref} from "vue";
 
 const props = defineProps({
@@ -59,11 +60,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </th>
                                         <td class="whitespace-nowrap">
                                             <div class="inline-flex items-center gap-3">
-                                                <div class="avatar">
-                                                    <div class="w-10 rounded-full">
-                                                        <img :src="'https://api.dicebear.com/9.x/'+referral.avatar_style+'/svg?seed='+referral.avatar_uuid" alt="user photo">
-                                                    </div>
-                                                </div>
+                                                <UserAvatar :user="referral" />
                                                 <div class="leading-tight">
                                                     <div class="whitespace-nowrap">
                                                         {{ referral.email }}
@@ -114,11 +111,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex items-start justify-between">
                                             <div class="text-base-content/70 text-sm">Пользователь</div>
                                             <div class="inline-flex items-center gap-2">
-                                                <div class="avatar">
-                                                    <div class="w-8 rounded-full">
-                                                        <img :src="'https://api.dicebear.com/9.x/'+referral.avatar_style+'/svg?seed='+referral.avatar_uuid" alt="user photo">
-                                                    </div>
-                                                </div>
+                                                <UserAvatar :user="referral" />
                                                 <div class="leading-tight text-right">
                                                     <div class="whitespace-nowrap text-sm">
                                                         {{ referral.email }}

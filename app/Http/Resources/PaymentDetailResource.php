@@ -90,11 +90,6 @@ class PaymentDetailResource extends JsonResource
                     'device_android_version' => $device->android_version,
                 ];
             }),
-            $this->mergeWhen($this->resource->relationLoaded('tags'), function () {
-                return [
-                    'tags' => PaymentDetailTagResource::collection($this->tags)->resolve(),
-                ];
-            }),
         ];
     }
 }

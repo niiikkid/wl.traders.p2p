@@ -9,6 +9,7 @@ import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import NumberInput from "@/Components/NumberInput.vue";
 import InputError from "@/Components/InputError.vue";
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 
 const traders = ref(usePage().props.traders);
 const commissionSettings = ref(usePage().props.commissionSettings || {
@@ -180,7 +181,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <th class="font-medium whitespace-nowrap">{{ trader.id }}</th>
                                         <td class="whitespace-nowrap">
                                             <div class="inline-flex items-center gap-2">
-                                                <img :src="'https://api.dicebear.com/9.x/' + trader.avatar_style + '/svg?seed=' + trader.avatar_uuid" class="w-10 h-10 rounded-full" alt="trader photo">
+                                                <UserAvatar :user="trader" />
                                                 <div>
                                                     <div>{{ trader.email }}</div>
                                                     <div class="text-xs text-base-content/70">{{ trader.name }}</div>
@@ -252,7 +253,7 @@ defineOptions({layout: AuthenticatedLayout});
 
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="inline-flex items-center gap-2 min-w-0">
-                                        <img :src="'https://api.dicebear.com/9.x/' + trader.avatar_style + '/svg?seed=' + trader.avatar_uuid" class="w-10 h-10 rounded-full" alt="trader photo">
+                                        <UserAvatar :user="trader" />
                                         <div class="min-w-0">
                                             <div class="truncate">{{ trader.email }}</div>
                                             <div class="text-xs text-base-content/70 truncate">{{ trader.name }}</div>

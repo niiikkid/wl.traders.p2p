@@ -253,19 +253,9 @@ const cellClass = (ok) => ok ? 'bg-success' : 'bg-error';
 
                             <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
 
-                            <div
-                                v-if="smsAutoCloseEnabled"
-                                role="alert"
-                                class="alert alert-error text-sm"
-                            >
+                            <div v-if="!smsAutoCloseEnabled" role="alert" class="alert alert-info alert-soft text-sm">
                                 <span>
-                                    Автоматика находится в бета-режиме. Используйте на свой страх и риск, под свою ответственность.
-                                </span>
-                            </div>
-
-                            <div v-else role="alert" class="alert alert-info alert-soft text-sm">
-                                <span>
-                                    В автоматическом режиме сделка закрывается только при однозначном совпадении платежа. Если систему не удаётся определить, для какой сделки пришёл платёж, вы получите уведомление в Telegram, чтобы разобраться вручную. Для этого подключите Telegram на странице уведомлений.
+                                    СМС привязывается к сделке — закрытие вручную.
                                 </span>
                             </div>
                         </div>

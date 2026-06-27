@@ -1,6 +1,7 @@
 <script setup>
 import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import DateTime from "@/Components/DateTime.vue";
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 import { useAppClipboard } from '@/composables/useAppClipboard.js';
 import { useViewStore } from '@/store/view.js';
 
@@ -121,7 +122,7 @@ onUnmounted(() => {
                 @click.stop
             >
                 <div class="flex items-center gap-3">
-                    <img :src="'https://api.dicebear.com/9.x/'+props.user.avatar_style+'/svg?seed='+props.user.avatar_uuid" class="w-10 h-10 rounded-full" alt="user photo">
+                    <UserAvatar :user="props.user" />
                     <div class="min-w-0">
                         <div class="font-medium truncate">{{ props.user.email }}</div>
                         <div class="text-xs text-base-content/70">{{ props.user.role?.name || '—' }}</div>

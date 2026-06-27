@@ -15,13 +15,6 @@ import { router, usePage } from "@inertiajs/vue3";
 import { usePaymentDetailSchedules } from "@/composables/usePaymentDetailSchedules.js";
 import { useTraderMaxMinOrderAmount } from "@/composables/useTraderMaxMinOrderAmount.js";
 
-const props = defineProps({
-    tags: {
-        type: Array,
-        default: () => [],
-    },
-});
-
 const modalStore = useModalStore();
 const { paymentDetailBulkEditModal } = storeToRefs(modalStore);
 const viewStore = useViewStore();
@@ -46,7 +39,6 @@ const { traderMaxMinOrderAmount, minOrderAmountHelperText } = useTraderMaxMinOrd
 });
 
 const scope = ref('all');
-const tagId = ref(null);
 const selectedFields = ref([]);
 const selectedIds = ref([]);
 const selectedPreview = ref([]);
@@ -67,24 +59,11 @@ const form = ref({
 
 const scopeOptions = computed(() => [
     { id: 'all', name: 'Все реквизиты' },
-    { id: 'tag', name: 'Реквизиты с тегом' },
-    { id: 'without_tags', name: 'Реквизиты без тегов' },
 ]);
-
-const tagOptions = computed(() => {
-    return (props.tags || []).map((tag) => ({
-        id: tag.id,
-        name: tag.name,
-    }));
-});
 
 const canEdit = computed(() => {
     if (scope.value === 'selected') {
         return selectedIds.value.length > 0;
-    }
-
-    if (scope.value === 'tag') {
-        return !!tagId.value;
     }
 
     return true;
@@ -105,7 +84,6 @@ const resetState = () => {
     errors.value = {};
     processing.value = false;
     scope.value = 'all';
-    tagId.value = null;
     selectedFields.value = [];
     selectedIds.value = [];
     selectedPreview.value = [];
@@ -144,7 +122,6 @@ const buildPayload = () => {
 
     const payload = {
         scope: scope.value,
-        tag_id: scope.value === 'tag' ? tagId.value : null,
         fields,
     };
     if (scope.value === 'selected') payload.selected_ids = selectedIds.value;
@@ -163,24 +140,6 @@ const buildPayload = () => {
 
     return payload;
 };
-
-watch(scope, (value) => {
-    if (value === 'selected') {
-        return;
-    }
-
-    if (value !== 'tag') {
-        tagId.value = null;
-        errors.value.tag_id = null;
-        return;
-    }
-
-    if (value === 'tag' && !tagOptions.value.length) {
-        scope.value = 'all';
-        tagId.value = null;
-        errors.value._error = ['Теги не созданы — выберите «Все реквизиты».'];
-    }
-});
 
 const submit = () => {
     errors.value = {};
@@ -277,29 +236,6 @@ watch(
                             name="name"
                             :disabled="processing"
                         />
-                    </div>
-                    <div v-if="scope === 'tag'">
-                        <InputLabel
-                            for="bulk_tag_id"
-                            value="Тег"
-                            :error="!!errors.tag_id?.[0]"
-                            class="mb-1"
-                        />
-                        <Select
-                            id="bulk_tag_id"
-                            v-model="tagId"
-                            :items="tagOptions"
-                            value="id"
-                            name="name"
-                            default_title="Выберите тег"
-                            :error="!!errors.tag_id?.[0]"
-                            :disabled="processing"
-                            @change="errors.tag_id = null"
-                        />
-                        <InputError :message="errors.tag_id?.[0]" class="mt-2" />
-                        <div v-if="!tagOptions.length" class="text-xs text-base-content/70 mt-2">
-                            Теги не созданы — можно выбрать только «Все реквизиты».
-                        </div>
                     </div>
                     <div v-else-if="isSelectedMode" class="text-xs text-base-content/70">
                         Выбрано вручную: {{ selectedIds.length }} шт.

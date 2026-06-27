@@ -2,7 +2,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import { Head } from '@inertiajs/vue3';
-import UpdateAvatarForm from "@/Pages/Profile/Partials/UpdateAvatarForm.vue";
 import Update2faForm from "@/Pages/Profile/Partials/Update2faForm.vue";
 import LoginHistoryForm from "@/Pages/Profile/Partials/LoginHistoryForm.vue";
 import { ref } from 'vue';
@@ -15,12 +14,6 @@ const profileTabs = [
         title: 'Пароль',
         description: 'Обновление доступа',
         icon: 'M16.5 10.5V6.75a4.5 4.5 0 0 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z',
-    },
-    {
-        key: 'avatar',
-        title: 'Аватар',
-        description: 'Внешний вид профиля',
-        icon: 'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
     },
     {
         key: 'security',
@@ -73,7 +66,7 @@ defineOptions({ layout: AuthenticatedLayout })
                 <div class="text-sm font-medium uppercase tracking-wide text-primary">Настройки аккаунта</div>
                 <h2 class="mt-1 text-2xl sm:text-3xl font-bold text-base-content">Профиль</h2>
                 <p class="mt-2 max-w-2xl text-sm text-base-content/70">
-                    Настраивайте пароль, аватар и 2FA и при необходимости проверяйте сессии входа.
+                    Настраивайте пароль, 2FA и при необходимости проверяйте сессии входа.
                 </p>
             </div>
             <slot name="button"></slot>
@@ -84,7 +77,7 @@ defineOptions({ layout: AuthenticatedLayout })
                 <div
                     role="tablist"
                     aria-label="Разделы профиля"
-                    class="flex gap-2 sm:grid sm:grid-cols-2 xl:grid-cols-4"
+                    class="flex gap-2 sm:grid sm:grid-cols-3"
                 >
                     <button
                         v-for="tab in profileTabs"
@@ -121,15 +114,6 @@ defineOptions({ layout: AuthenticatedLayout })
                     class="w-full max-w-sm"
                 >
                     <UpdatePasswordForm class="w-full"/>
-                </section>
-
-                <section
-                    v-show="activeTab === 'avatar'"
-                    role="tabpanel"
-                    aria-label="Редактирование аватара"
-                    class="w-full max-w-4xl"
-                >
-                    <UpdateAvatarForm class="w-full"/>
                 </section>
 
                 <section

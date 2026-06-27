@@ -24,7 +24,6 @@ import PaymentDetailCreateModal from "@/Modals/PaymentDetail/PaymentDetailCreate
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
 import PaymentDetailResetLimitsModal from "@/Modals/PaymentDetail/PaymentDetailResetLimitsModal.vue";
-import PaymentDetailTagManageModal from "@/Modals/PaymentDetailTag/PaymentDetailTagManageModal.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
 import PaymentDetailScheduleServerClock from "@/Components/PaymentDetail/PaymentDetailScheduleServerClock.vue";
 import PaymentDetailScheduleSummary from "@/Components/PaymentDetail/PaymentDetailScheduleSummary.vue";
@@ -64,7 +63,6 @@ const paymentDetails = ref(usePage().props.paymentDetails)
 const scheduleServerClock = ref(usePage().props.scheduleServerClock)
 const scheduleSummary = ref(usePage().props.scheduleSummary)
 usePaymentDetailScheduleTableTick(paymentDetails, scheduleServerClock);
-const paymentDetailTags = ref(usePage().props.paymentDetailTags || [])
 const detailActiveToggleForm = useForm({});
 const currentTab = ref('active');
 const tableFiltersStore = useTableFiltersStore();
@@ -82,7 +80,6 @@ const toggleFiltersFromToolbar = () => {
 };
 
 const displayDetailLastDeal = ref(getCookieValue('displayDetailLastDeal', true));
-const displayDetailTags = ref(getCookieValue('displayDetailTags', false));
 const displayDetailSchedule = ref(getCookieValue('displayDetailSchedule', true));
 const displayScheduleSummary = ref(false);
 
@@ -101,16 +98,6 @@ const updateDisplayDetailLastDealCookie = () => {
 
 watch(displayDetailLastDeal, () => {
     updateDisplayDetailLastDealCookie();
-});
-
-const updateDisplayDetailTagsCookie = () => {
-    const currentRoute = route().current();
-    const cookieName = `displayDetailTags_${currentRoute}`;
-    document.cookie = `${cookieName}=${displayDetailTags.value}; path=/; max-age=31536000`;
-};
-
-watch(displayDetailTags, () => {
-    updateDisplayDetailTagsCookie();
 });
 
 const updateDisplayDetailScheduleCookie = () => {
@@ -275,7 +262,6 @@ router.on('success', (event) => {
     paymentDetails.value = usePage().props.paymentDetails;
     scheduleServerClock.value = usePage().props.scheduleServerClock;
     scheduleSummary.value = usePage().props.scheduleSummary;
-    paymentDetailTags.value = usePage().props.paymentDetailTags || [];
     selectedDetailIds.value = [];
 })
 
@@ -315,34 +301,8 @@ const openPage = (tab) => {
     })
 }
 
-const openTagManageModal = () => {
-    modalStore.openPaymentDetailTagManageModal();
-};
-
 const openScheduleManagerModal = () => {
     modalStore.openPaymentDetailScheduleManagerModal();
-};
-
-const tagSyncProcessing = ref({});
-
-const getDetailTagIds = (paymentDetail) => {
-    return (paymentDetail.tags || []).map((tag) => tag.id);
-};
-
-const isTagSelected = (paymentDetail, tagId) => {
-    return getDetailTagIds(paymentDetail).includes(tagId);
-};
-
-const isTagDisabled = (paymentDetail, tagId) => {
-    const ids = getDetailTagIds(paymentDetail);
-    return !ids.includes(tagId) && ids.length >= 3;
-};
-
-const tagBadgeStyle = (color) => {
-    return {
-        backgroundColor: color,
-        color: '#ffffff',
-    };
 };
 
 const detailUsesManualProcessing = (paymentDetail) => {
@@ -412,47 +372,6 @@ const toggleDetailSelection = (detailId) => {
     }
 
     selectedDetailIds.value = [...selectedDetailIds.value, normalizedId];
-};
-
-const syncDetailTags = (paymentDetail, tagId) => {
-    if (!isTraderView.value) {
-        return;
-    }
-
-    const currentIds = getDetailTagIds(paymentDetail);
-    let nextIds = [];
-
-    if (currentIds.includes(tagId)) {
-        nextIds = currentIds.filter((id) => id !== tagId);
-    } else {
-        nextIds = [...currentIds, tagId];
-    }
-
-    if (nextIds.length > 3) {
-        return;
-    }
-
-    tagSyncProcessing.value = {
-        ...tagSyncProcessing.value,
-        [paymentDetail.id]: true,
-    };
-
-    axios.patch(route('payment-details.tags.update', paymentDetail.id), {
-        tags: nextIds,
-    }, {
-        headers: { 'Accept': 'application/json' }
-    })
-        .then((res) => {
-            if (res.data?.success || res.status === 200) {
-                router.reload({ only: ['paymentDetails', 'paymentDetailTags'] });
-            }
-        })
-        .finally(() => {
-            tagSyncProcessing.value = {
-                ...tagSyncProcessing.value,
-                [paymentDetail.id]: false,
-            };
-        });
 };
 
 onMounted(() => {
@@ -618,16 +537,6 @@ defineOptions({ layout: AuthenticatedLayout })
                             Последняя сделка
                         </button>
                         <button
-                            v-if="isTraderView"
-                            type="button"
-                            class="badge badge-sm cursor-pointer border font-medium transition-colors"
-                            :class="columnToggleBadgeClass(displayDetailTags)"
-                            :title="displayDetailTags ? 'Скрыть колонку тегов' : 'Показать колонку тегов'"
-                            @click="displayDetailTags = !displayDetailTags"
-                        >
-                            Теги
-                        </button>
-                        <button
                             type="button"
                             class="badge badge-sm cursor-pointer border font-medium transition-colors"
                             :class="columnToggleBadgeClass(displayDetailSchedule)"
@@ -695,9 +604,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col">
                                             Реквизит
                                         </th>
-                                        <th v-if="isTraderView && displayDetailTags" scope="col">
-                                            Теги
-                                        </th>
                                         <th scope="col" class="text-nowrap">
                                             Лимиты
                                         </th>
@@ -734,9 +640,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
                                                             </svg>
                                                         </template>
-                                                        <TableAction @click="openTagManageModal">
-                                                            Теги
-                                                        </TableAction>
                                                         <TableAction
                                                             v-if="isTraderView"
                                                             @click="openScheduleManagerModal"
@@ -776,56 +679,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         :show-processing-indicator="shouldShowProcessingIndicator(payment_detail)"
                                                         :uses-manual-processing="detailUsesManualProcessing(payment_detail)"
                                                     ></PaymentDetail>
-                                                </div>
-                                            </td>
-                                            <td v-if="isTraderView && displayDetailTags">
-                                                <div class="flex items-center gap-2">
-                                                    <TableCellPopover>
-                                                        <template #trigger>
-                                                            <span class="badge badge-xs badge-primary badge-outline flex items-center justify-center">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-2.5">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
-                                                                </svg>
-                                                            </span>
-                                                        </template>
-                                                        <div class="grid gap-2 text-sm">
-                                                            <div v-if="!paymentDetailTags.length" class="text-xs text-base-content/60">
-                                                                Теги не созданы
-                                                            </div>
-                                                            <div v-else class="grid gap-2">
-                                                                <label
-                                                                    v-for="tag in paymentDetailTags"
-                                                                    :key="tag.id"
-                                                                    class="label cursor-pointer justify-start gap-2"
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        class="checkbox checkbox-xs"
-                                                                        :checked="isTagSelected(payment_detail, tag.id)"
-                                                                        :disabled="tagSyncProcessing[payment_detail.id] || isTagDisabled(payment_detail, tag.id)"
-                                                                        @change="syncDetailTags(payment_detail, tag.id)"
-                                                                    />
-                                                                    <span class="badge badge-xs border-0" :style="tagBadgeStyle(tag.color)">
-                                                                        {{ tag.name }}
-                                                                    </span>
-                                                                </label>
-                                                            </div>
-                                                            <div class="text-[11px] text-base-content/60">
-                                                                Максимум 3 тега на реквизит
-                                                            </div>
-                                                        </div>
-                                                    </TableCellPopover>
-                                                    <div class="flex items-center gap-1">
-                                                        <span
-                                                            v-for="tag in (payment_detail.tags || [])"
-                                                            :key="tag.id"
-                                                            class="badge badge-xs border-0 w-fit"
-                                                            :style="tagBadgeStyle(tag.color)"
-                                                        >
-                                                            {{ tag.name }}
-                                                        </span>
-                                                    </div>
                                                 </div>
                                             </td>
                                             <td class="text-nowrap">
@@ -1129,62 +982,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </template>
 
-                                    <template v-if="isTraderView && displayDetailTags">
-                                        <div class="border-b border-base-content/10"></div>
-
-                                        <div class="text-xs">
-                                            <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
-                                                Теги
-                                            </div>
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <TableCellPopover>
-                                                    <template #trigger>
-                                                        <span class="badge badge-xs badge-primary badge-outline flex items-center justify-center">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-2.5">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6Z" />
-                                                            </svg>
-                                                        </span>
-                                                    </template>
-                                                    <div class="grid gap-2 text-sm">
-                                                        <div v-if="!paymentDetailTags.length" class="text-xs text-base-content/60">
-                                                            Теги не созданы
-                                                        </div>
-                                                        <div v-else class="grid gap-2">
-                                                            <label
-                                                                v-for="tag in paymentDetailTags"
-                                                                :key="tag.id"
-                                                                class="label cursor-pointer justify-start gap-2"
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    class="checkbox checkbox-xs"
-                                                                    :checked="isTagSelected(payment_detail, tag.id)"
-                                                                    :disabled="tagSyncProcessing[payment_detail.id] || isTagDisabled(payment_detail, tag.id)"
-                                                                    @change="syncDetailTags(payment_detail, tag.id)"
-                                                                />
-                                                                <span class="badge badge-xs border-0" :style="tagBadgeStyle(tag.color)">
-                                                                    {{ tag.name }}
-                                                                </span>
-                                                            </label>
-                                                        </div>
-                                                        <div class="text-[11px] text-base-content/60">
-                                                            Максимум 3 тега на реквизит
-                                                        </div>
-                                                    </div>
-                                                </TableCellPopover>
-                                                <span
-                                                    v-for="tag in (payment_detail.tags || [])"
-                                                    :key="tag.id"
-                                                    class="badge badge-xs border-0 w-fit"
-                                                    :style="tagBadgeStyle(tag.color)"
-                                                >
-                                                    {{ tag.name }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </template>
-
                                     <template v-if="isTraderView && displayDetailLastDeal">
                                         <div class="border-b border-base-content/10"></div>
 
@@ -1358,9 +1155,8 @@ defineOptions({ layout: AuthenticatedLayout })
 
         <PaymentDetailCreateModal />
         <PaymentDetailEditModal />
-        <PaymentDetailBulkEditModal :tags="paymentDetailTags" />
+        <PaymentDetailBulkEditModal />
         <PaymentDetailResetLimitsModal />
-        <PaymentDetailTagManageModal :tags="paymentDetailTags" />
         <ConfirmModal/>
     </div>
 </template>

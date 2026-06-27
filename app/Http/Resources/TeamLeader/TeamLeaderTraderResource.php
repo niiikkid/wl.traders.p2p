@@ -19,8 +19,6 @@ class TeamLeaderTraderResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'avatar_uuid' => $this->avatar_uuid,
-            'avatar_style' => $this->avatar_style,
             'is_online' => (bool) $this->is_online,
             'stop_traffic' => (bool) $this->stop_traffic,
             'online_at' => $this->normalizeCachedDate(cache()->get("user-online-at-$this->id")),
@@ -56,4 +54,3 @@ class TeamLeaderTraderResource extends JsonResource
         }
     }
 }
-

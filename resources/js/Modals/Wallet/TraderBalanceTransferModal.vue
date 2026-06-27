@@ -7,6 +7,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 import { truncateTrustBalanceForTransfer } from '@/utils/truncateTrustBalanceForTransfer.js';
 import { useModalStore } from '@/store/modal.js';
 import { router, usePage } from '@inertiajs/vue3';
@@ -51,10 +52,6 @@ const canSubmit = computed(() => (
     && !checkingRecipient.value
     && !submitting.value
 ));
-
-const avatarUrl = (preview) => (
-    `https://api.dicebear.com/9.x/${preview.avatar_style}/svg?seed=${preview.avatar_uuid}`
-);
 
 const resetRecipientPreview = () => {
     recipientPreview.value = null;
@@ -239,11 +236,7 @@ const confirmTransfer = () => {
                 </div>
 
                 <div v-if="recipientPreview" class="flex items-center gap-3 rounded-lg border border-base-300 p-3">
-                    <img
-                        :src="avatarUrl(recipientPreview)"
-                        class="h-10 w-10 rounded-full"
-                        alt="recipient photo"
-                    >
+                    <UserAvatar :login="recipientPreview.login" />
                     <span class="font-medium text-base-content">{{ recipientPreview.login }}</span>
                 </div>
 

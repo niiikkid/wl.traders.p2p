@@ -9,12 +9,10 @@ use App\Http\Requests\PaymentDetail\BulkUpdateRequest;
 use App\Http\Requests\PaymentDetail\StoreRequest;
 use App\Http\Requests\PaymentDetail\UpdateRequest;
 use App\Http\Resources\PaymentDetailResource;
-use App\Http\Resources\PaymentDetailTagResource;
 use App\Http\Resources\PaymentGatewayResource;
 use App\Http\Resources\UserDeviceResource;
 use App\Models\Order;
 use App\Models\PaymentDetail;
-use App\Models\PaymentDetailTag;
 use App\Models\User;
 use App\Models\UserDevice;
 use App\Services\Money\Currency;
@@ -37,19 +35,7 @@ class PaymentDetailController extends Controller
 
         $paymentDetails = queries()->paymentDetail()->paginateForUser(auth()->user(), $filters, $fromArchive);
 
-        $paymentDetailTags = null;
-        $canSeeTags = isRouteFor('Trader');
         $paymentDetails->getCollection()->load('schedule.intervals');
-
-        if ($canSeeTags) {
-            $paymentDetails->getCollection()->load('tags');
-            $paymentDetailTags = PaymentDetailTagResource::collection(
-                PaymentDetailTag::query()
-                    ->where('user_id', auth()->id())
-                    ->orderBy('name')
-                    ->get()
-            )->resolve();
-        }
 
         $this->appendSuccessfulOrdersStats($paymentDetails->getCollection());
 
@@ -63,7 +49,7 @@ class PaymentDetailController extends Controller
                 ->when($fromArchive, fn ($query) => $query->whereNotNull('archived_at')),
         );
 
-        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants', 'paymentDetailTags', 'scheduleServerClock', 'scheduleSummary'));
+        return Inertia::render('PaymentDetail/Index', compact('paymentDetails', 'filters', 'filtersVariants', 'scheduleServerClock', 'scheduleSummary'));
     }
 
     public function create()
@@ -254,17 +240,6 @@ class PaymentDetailController extends Controller
         $query = PaymentDetail::query()
             ->where('user_id', $user->id)
             ->with('paymentGateways');
-
-        if ($scope === 'tag') {
-            $tagId = (int) $request->input('tag_id');
-            $query->whereHas('tags', function ($tagQuery) use ($tagId) {
-                $tagQuery->where('payment_detail_tags.id', $tagId);
-            });
-        }
-
-        if ($scope === 'without_tags') {
-            $query->whereDoesntHave('tags');
-        }
 
         if ($scope === 'selected') {
             $selectedIds = collect((array) $request->input('selected_ids', []))

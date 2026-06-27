@@ -8,6 +8,7 @@ import {ref} from "vue";
 import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 
 const users = ref(usePage().props.users);
 
@@ -96,7 +97,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="inline-flex items-center gap-3 text-left hover:opacity-80 transition">
                                                 <div class="avatar">
                                                     <div class="w-10 rounded-full">
-                                                        <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" alt="user photo">
+                                                        <UserAvatar :user="user" />
                                                     </div>
                                                 </div>
                                                 <div>
@@ -172,7 +173,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <div class="flex items-center gap-2 hover:opacity-80 transition">
                                                     <div class="avatar">
                                                         <div class="w-12 rounded-full">
-                                                            <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" alt="user photo">
+                                                            <UserAvatar :user="user" />
                                                         </div>
                                                     </div>
                                                     <div class="min-w-0">

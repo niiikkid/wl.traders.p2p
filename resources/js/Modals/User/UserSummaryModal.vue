@@ -4,6 +4,7 @@ import ModalHeader from "@/Components/Modals/Components/ModalHeader.vue";
 import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
 import ModalFooter from "@/Components/Modals/Components/ModalFooter.vue";
 import DateTime from "@/Components/DateTime.vue";
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 import {useModalStore} from "@/store/modal.js";
 import {storeToRefs} from "pinia";
 import {computed} from "vue";
@@ -28,7 +29,7 @@ const boolToText = (value) => value ? 'Да' : 'Нет';
             <div v-else class="space-y-4">
                 <div class="rounded-box border border-base-300 p-4">
                     <div class="flex items-center gap-3">
-                        <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" class="w-12 h-12 rounded-full" alt="user photo">
+                        <UserAvatar :user="user" size="lg" />
                         <div>
                             <div class="font-semibold">{{ user.email }}</div>
                             <div class="text-sm text-base-content/70">

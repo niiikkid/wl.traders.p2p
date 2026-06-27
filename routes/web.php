@@ -46,8 +46,6 @@ use App\Http\Controllers\PaymentDetailArchiveController;
 use App\Http\Controllers\PaymentDetailController;
 use App\Http\Controllers\PaymentDetailLimitResetController;
 use App\Http\Controllers\PaymentDetailScheduleController;
-use App\Http\Controllers\PaymentDetailTagAssignmentController;
-use App\Http\Controllers\PaymentDetailTagController;
 use App\Http\Controllers\PayoutReceiptController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SmsLogController;
@@ -71,7 +69,6 @@ use App\Http\Controllers\Trader\DepositInvoiceController;
 use App\Http\Controllers\Trader\ExportController;
 use App\Http\Controllers\Trader\NotificationController as TraderNotificationController;
 use App\Http\Controllers\Trader\PayoutController;
-use App\Http\Controllers\Trader\TraderLeaderboardController;
 use App\Http\Controllers\UserDeviceController;
 use App\Http\Controllers\UserDevicePingController;
 use App\Http\Controllers\UserOnlineController;
@@ -108,7 +105,6 @@ Route::group(['middleware' => ['2fa']], function () {
     Route::group(['middleware' => ['auth', 'banned']], function () {
         Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
         Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-        Route::patch('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('profile.update.avatar');
         Route::patch('/profile/auth2fa', [ProfileController::class, 'updateAuth2fa'])->name('profile.update.auth2fa');
         Route::post('/profile/logout-other-devices', [ProfileController::class, 'logoutOtherDevices'])->name('profile.logout-other-devices');
         Route::patch('/profile/login-history-logging', [ProfileController::class, 'toggleLoginHistoryLogging'])->name('profile.toggle-login-history-logging');
@@ -192,23 +188,15 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::resource('/payment-details', PaymentDetailController::class)->only(['index', 'store', 'update']);
         Route::get('/payment-details/create-data', [PaymentDetailController::class, 'createData'])->name('payment-details.create-data');
         Route::get('/payment-details/{paymentDetail}', [PaymentDetailController::class, 'show'])->name('payment-details.show');
-        Route::patch('/payment-details/{paymentDetail}/tags', [PaymentDetailTagAssignmentController::class, 'update'])->name('payment-details.tags.update');
         Route::get('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'index'])->name('payment-detail-schedules.index');
         Route::post('/payment-detail-schedules', [PaymentDetailScheduleController::class, 'store'])->name('payment-detail-schedules.store');
         Route::patch('/payment-detail-schedules/{paymentDetailSchedule}', [PaymentDetailScheduleController::class, 'update'])->name('payment-detail-schedules.update');
         Route::post('/payment-detail-schedules/{paymentDetailSchedule}/copy', [PaymentDetailScheduleController::class, 'copy'])->name('payment-detail-schedules.copy');
 
-        Route::post('/payment-detail-tags', [PaymentDetailTagController::class, 'store'])->name('payment-detail-tags.store');
-        Route::patch('/payment-detail-tags/{paymentDetailTag}', [PaymentDetailTagController::class, 'update'])->name('payment-detail-tags.update');
-        Route::delete('/payment-detail-tags/{paymentDetailTag}', [PaymentDetailTagController::class, 'destroy'])->name('payment-detail-tags.destroy');
-
         // orders
         Route::resource('/orders', OrderController::class)->only(['index']);
         Route::patch('/orders/{order}/accept', [OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::patch('/orders/{order}/amount', [App\Http\Controllers\Admin\OrderController::class, 'updateAmount'])->name('orders.update.amount');
-
-        Route::get('/trader/leaderboard', [TraderLeaderboardController::class, 'index'])->name('trader.leaderboard.index');
-        Route::patch('/trader/leaderboard/hide-name', [TraderLeaderboardController::class, 'updateHideName'])->name('trader.leaderboard.hide-name.update');
 
         // disputes
         Route::get('/disputes', [DisputeController::class, 'index'])->name('disputes.index');

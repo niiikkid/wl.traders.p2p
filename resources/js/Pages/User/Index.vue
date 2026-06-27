@@ -11,6 +11,7 @@ import DateTime from "@/Components/DateTime.vue";
 import UserCreateModal from "@/Modals/User/UserCreateModal.vue";
 import UserEditModal from "@/Modals/User/UserEditModal.vue";
 import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 import {useModalStore} from "@/store/modal.js";
 import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
@@ -235,7 +236,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <td class="px-6 py-3 text-nowrap">
                                         <UserSummaryPopover :user="user">
                                             <div class="inline-flex items-center gap-2 text-left hover:opacity-80 transition">
-                                            <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" class="w-10 h-10 rounded-full" alt="user photo">
+                                            <UserAvatar :user="user" />
                                             <div>
                                                 <div class="text-nowrap">
                                                     {{ user.email }}
@@ -355,7 +356,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="inline-flex items-center justify-between gap-2 flex-1 min-w-0">
                                                 <UserSummaryPopover :user="user">
                                                     <div class="inline-flex items-center gap-2 text-left hover:opacity-80 transition">
-                                                    <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" class="w-10 h-10 rounded-full flex-shrink-0" alt="user photo">
+                                                    <UserAvatar :user="user" class="flex-shrink-0" />
                                                     <div>
                                                         <div class="text-nowrap truncate">
                                                             {{ user.email }}
@@ -456,7 +457,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <!-- Для экранов меньше sm -->
                                     <div class="sm:hidden">
                                         <div class="flex items-center gap-2 mb-2">
-                                            <img :src="'https://api.dicebear.com/9.x/'+user.avatar_style+'/svg?seed='+user.avatar_uuid" class="w-10 h-10 rounded-full flex-shrink-0" alt="user photo">
+                                            <UserAvatar :user="user" class="flex-shrink-0" />
                                             <UserSummaryPopover :user="user">
                                                 <div class="inline-flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80 transition">
                                                     <div class="text-nowrap truncate text-sm">

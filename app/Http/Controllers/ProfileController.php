@@ -70,21 +70,6 @@ class ProfileController extends Controller
         return Redirect::route('profile.edit');
     }
 
-    public function updateAvatar(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'avatar_uuid' => ['required', 'string', 'max:255'],
-            'avatar_style' => ['required', 'string', 'max:255'],
-        ]);
-
-        $request->user()->update([
-            'avatar_uuid' => $request->get('avatar_uuid'),
-            'avatar_style' => $request->get('avatar_style'),
-        ]);
-
-        return Redirect::route('profile.edit');
-    }
-
     public function updateAuth2fa(Request $request): RedirectResponse
     {
         $request->validate([
