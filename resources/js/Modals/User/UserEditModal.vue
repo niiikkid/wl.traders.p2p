@@ -8,14 +8,15 @@ import { useModalStore } from "@/store/modal.js";
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
-import NumberInput from "@/Components/NumberInput.vue";
 import Select from "@/Components/Select.vue";
-import {ref, watch, computed} from "vue";
-import DateTime from "@/Components/DateTime.vue";
+import { ref, watch, computed } from "vue";
 import { router } from '@inertiajs/vue3';
-import Multiselect from "@/Components/Form/Multiselect.vue";
-import TeamLeaderInsuranceFields from "@/Modals/User/Partials/TeamLeaderInsuranceFields.vue";
 import TextArea from "@/Components/TextArea.vue";
+import UserFormSection from "@/Modals/User/Partials/UserFormSection.vue";
+import UserFormToggle from "@/Modals/User/Partials/UserFormToggle.vue";
+import UserEditTraderFields from "@/Modals/User/Partials/UserEditTraderFields.vue";
+import UserEditTeamLeaderFields from "@/Modals/User/Partials/UserEditTeamLeaderFields.vue";
+import UserEditSupportFields from "@/Modals/User/Partials/UserEditSupportFields.vue";
 
 const modalStore = useModalStore();
 const { userEditModal } = storeToRefs(modalStore);
@@ -65,11 +66,24 @@ const isTrader = (roleId) => roleId === 2;
 const isMerchant = (roleId) => roleId === 3;
 const isSupport = (roleId) => roleId === 4;
 const isTeamLeader = (roleId) => roleId === 5;
-const selectedRoleName = computed(() => {
-    return roles.value.find((role) => Number(role.id) === Number(form.value.role_id))?.name ?? null;
-});
 const hasPayoutsToggle = (roleId) => isTrader(roleId) || isMerchant(roleId) || isAdmin(roleId);
 const canManageSupportFeatures = (roleId) => isSupport(roleId) || isAdmin(roleId);
+
+const modalTitle = computed(() => {
+    if (!user.value) {
+        return 'Редактирование пользователя';
+    }
+
+    return `Редактирование — ${user.value.login || user.value.email}`;
+});
+
+const canChangeTeamLeaderInsuranceMode = computed(() => {
+    if (!user.value || !isTeamLeader(form.value.role_id)) {
+        return true;
+    }
+
+    return (user.value.connected_trader_count ?? 0) === 0;
+});
 
 const close = () => {
     modalStore.closeModal('userEdit');
@@ -170,83 +184,6 @@ const loadUser = () => {
         });
 };
 
-const canChangeTeamLeaderInsuranceMode = computed(() => {
-    if (!user.value || selectedRoleName.value !== 'Team Leader') {
-        return true;
-    }
-
-    return (user.value.connected_trader_count ?? 0) === 0;
-});
-
-const teamLeaderSplitMode = computed({
-    get() {
-        const value = Number(form.value.team_leader_split_from_service_percent ?? 0);
-        if (value <= 0) return 'trader';
-        if (value >= 100) return 'admin';
-        return 'split';
-    },
-    set(mode) {
-        if (mode === 'trader') {
-            form.value.team_leader_split_from_service_percent = 0;
-            return;
-        }
-
-        if (mode === 'admin') {
-            form.value.team_leader_split_from_service_percent = 100;
-            return;
-        }
-
-        if (mode === 'split') {
-            const current = Number(form.value.team_leader_split_from_service_percent ?? 0);
-            if (current <= 0 || current >= 100) {
-                form.value.team_leader_split_from_service_percent = 50;
-            }
-        }
-    }
-});
-
-const payoutTeamLeaderSplitMode = computed({
-    get() {
-        const value = Number(form.value.payout_team_leader_split_from_service_percent ?? 0);
-        if (value <= 0) return 'trader';
-        if (value >= 100) return 'admin';
-        return 'split';
-    },
-    set(mode) {
-        if (mode === 'trader') {
-            form.value.payout_team_leader_split_from_service_percent = 0;
-            return;
-        }
-
-        if (mode === 'admin') {
-            form.value.payout_team_leader_split_from_service_percent = 100;
-            return;
-        }
-
-        if (mode === 'split') {
-            const current = Number(form.value.payout_team_leader_split_from_service_percent ?? 0);
-            if (current <= 0 || current >= 100) {
-                form.value.payout_team_leader_split_from_service_percent = 50;
-            }
-        }
-    }
-});
-
-const canConfigureFlexibleTeamLeaderCommission = computed(() => {
-    return (isTeamLeader(form.value.role_id) || isAdmin(form.value.role_id))
-        && !!form.value.team_leader_extended_access_enabled;
-});
-
-watch(
-    () => [form.value.role_id, form.value.team_leader_extended_access_enabled],
-    ([roleId, extendedEnabled]) => {
-        const teamLeaderLikeRole = isTeamLeader(roleId) || isAdmin(roleId);
-        if (!teamLeaderLikeRole || !extendedEnabled) {
-            form.value.team_leader_flexible_trader_commission_enabled = false;
-        }
-    }
-);
-
 const loadData = () => {
     loading.value = true;
     Promise.all([loadRoles(), loadUser()])
@@ -292,7 +229,6 @@ const reset2fa = () => {
     })
         .then(() => {
             processing.value = false;
-            // Ничего не делаем дополнительно, действие побочное
         })
         .catch(() => {
             processing.value = false;
@@ -313,633 +249,184 @@ watch(
 </script>
 
 <template>
-    <Modal :show="userEditModal.showed" @close="close" maxWidth="xl">
-        <ModalHeader @close="close" :title="user ? `Редактирование пользователя - ${user.login || user.email}` : 'Редактирование пользователя'" />
+    <Modal :show="userEditModal.showed" maxWidth="4xl" @close="close">
+        <ModalHeader :title="modalTitle" @close="close" />
 
         <ModalBody>
-            <div v-if="loading" class="py-6 text-center">
-                <span class="loading loading-spinner loading-md"></span>
+            <div v-if="loading" class="flex justify-center py-8">
+                <span class="loading loading-spinner loading-md" />
             </div>
-            <form v-else @submit.prevent="submit" class="space-y-6">
-                <div>
-                    <InputLabel
-                        for="login"
-                        value="Логин"
-                        :error="!!errors.login?.[0]"
-                    />
-                    <TextInput
-                        id="login"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.login"
-                        required
-                        autocomplete="username"
-                        :error="!!errors.login?.[0]"
-                        @input="errors.login = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.login?.[0]" />
-                </div>
 
-                <div>
-                    <InputLabel
-                        for="telegram_username"
-                        value="Telegram (необязательно)"
-                        :error="!!errors.telegram_username?.[0]"
-                    />
-                    <TextInput
-                        id="telegram_username"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.telegram_username"
-                        placeholder="@username или username"
-                        :error="!!errors.telegram_username?.[0]"
-                        @input="errors.telegram_username = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.telegram_username?.[0]" />
-                </div>
+            <form v-else class="space-y-3" @submit.prevent="submit">
+                <div class="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:items-start">
+                    <UserFormSection compact title="Учётная запись">
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <div>
+                                <InputLabel
+                                    for="login"
+                                    value="Логин"
+                                    :error="!!errors.login?.[0]"
+                                />
+                                <TextInput
+                                    id="login"
+                                    v-model="form.login"
+                                    type="text"
+                                    class="mt-1 block w-full"
+                                    required
+                                    autocomplete="username"
+                                    :error="!!errors.login?.[0]"
+                                    :disabled="processing"
+                                    @input="errors.login = null"
+                                />
+                                <InputError class="mt-1" :message="errors.login?.[0]" />
+                            </div>
 
-                <div v-if="user && user.id !== 1">
-                    <InputLabel
-                        for="roles"
-                        value="Роль"
-                        :error="!!errors.role_id?.[0]"
-                        class="mb-1"
-                    />
-                    <Select
-                        v-model="form.role_id"
-                        :error="!!errors.role_id?.[0]"
-                        :items="roles"
-                        value="id"
-                        name="name"
-                        default_title="Выберите роль"
-                        @change="errors.role_id = null"
-                        :disabled="processing"
-                    ></Select>
-                    <InputError class="mt-1" :message="errors.role_id?.[0]" />
-                </div>
+                            <div>
+                                <InputLabel
+                                    for="telegram_username"
+                                    value="Telegram"
+                                    :error="!!errors.telegram_username?.[0]"
+                                />
+                                <TextInput
+                                    id="telegram_username"
+                                    v-model="form.telegram_username"
+                                    type="text"
+                                    class="mt-1 block w-full"
+                                    placeholder="@username"
+                                    :error="!!errors.telegram_username?.[0]"
+                                    :disabled="processing"
+                                    @input="errors.telegram_username = null"
+                                />
+                                <InputError class="mt-1" :message="errors.telegram_username?.[0]" />
+                            </div>
 
-                <div class="form-control w-fit">
-                    <label class="label cursor-pointer gap-3">
-                        <input type="checkbox" class="toggle toggle-primary" v-model="form.banned" :disabled="processing">
-                        <span class="label-text">Заблокирован</span>
-                    </label>
-                </div>
-
-                <div v-if="form.banned">
-                    <InputLabel
-                        for="ban_reason"
-                        value="Причина блокировки (необязательно)"
-                        :error="!!errors.ban_reason?.[0]"
-                    />
-                    <TextArea
-                        id="ban_reason"
-                        v-model="form.ban_reason"
-                        class="mt-1 block w-full"
-                        :rows="3"
-                        :error="!!errors.ban_reason?.[0]"
-                        :disabled="processing"
-                        @input="errors.ban_reason = null"
-                    />
-                    <InputError class="mt-1" :message="errors.ban_reason?.[0]" />
-                </div>
-
-                <div v-if="isTrader(form.role_id) || isAdmin(form.role_id)">
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input type="checkbox" class="toggle toggle-error" v-model="form.stop_traffic" :disabled="processing">
-                            <span class="label-text">Остановить трафик</span>
-                        </label>
-                    </div>
-                    <div v-if="user?.traffic_enabled_at && !form.stop_traffic" class="text-xs opacity-70 flex items-center">
-                        Трафик включен: <DateTime :data="user.traffic_enabled_at" />
-                    </div>
-                </div>
-
-                <div v-if="isTrader(form.role_id) || isAdmin(form.role_id)">
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input type="checkbox" class="toggle toggle-primary" v-model="form.can_work_without_device" :disabled="processing">
-                            <span class="label-text">Работать без устройства</span>
-                        </label>
-                    </div>
-                    <div class="mt-1 text-xs opacity-70">
-                        При включении реквизиты можно создавать без привязки к устройству, страница устройств будет недоступна.
-                    </div>
-                </div>
-
-                <div v-if="hasPayoutsToggle(form.role_id)">
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.payouts_enabled"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Выплаты включены</span>
-                        </label>
-                    </div>
-
-                    <div
-                        class="form-control w-fit mt-2"
-                        v-if="form.payouts_enabled && (isTrader(form.role_id) || isAdmin(form.role_id))"
-                    >
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.payout_hold_enabled"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Холд включён</span>
-                        </label>
-                    </div>
-
-                    <div
-                        class="mt-2 space-y-1"
-                        v-if="form.payouts_enabled && form.payout_hold_enabled && (isTrader(form.role_id) || isAdmin(form.role_id))"
-                    >
-                        <InputLabel
-                            for="payout_hold_minutes"
-                            value="Длительность hold (минуты)"
-                            :error="!!errors.payout_hold_minutes?.[0]"
-                        />
-                        <NumberInput
-                            id="payout_hold_minutes"
-                            v-model="form.payout_hold_minutes"
-                            class="mt-1 block w-full max-w-xs"
-                            step="1"
-                            min="1"
-                            :error="!!errors.payout_hold_minutes?.[0]"
-                            @input="errors.payout_hold_minutes = null"
-                            :disabled="processing || !form.payouts_enabled || !form.payout_hold_enabled"
-                        />
-                        <InputError class="mt-1" :message="errors.payout_hold_minutes?.[0]" />
-                        <div class="mt-1 text-xs opacity-70">
-                            Поле доступно только когда выплаты и hold включены.
+                            <div v-if="user && user.id !== 1" class="sm:col-span-2">
+                                <InputLabel
+                                    for="roles"
+                                    value="Роль"
+                                    :error="!!errors.role_id?.[0]"
+                                    class="mb-1"
+                                />
+                                <Select
+                                    v-model="form.role_id"
+                                    :error="!!errors.role_id?.[0]"
+                                    :items="roles"
+                                    value="id"
+                                    name="name"
+                                    default_title="Выберите роль"
+                                    :disabled="processing"
+                                    @change="errors.role_id = null"
+                                />
+                                <InputError class="mt-1" :message="errors.role_id?.[0]" />
+                            </div>
                         </div>
-                    </div>
+                    </UserFormSection>
 
-                    <div
-                        class="mt-4 space-y-1"
-                        v-if="form.payouts_enabled && (isTrader(form.role_id) || isAdmin(form.role_id))"
-                    >
-                        <InputLabel
-                            for="payout_active_payouts_limit"
-                            value="Лимит активных выплат"
-                            :error="!!errors.payout_active_payouts_limit?.[0]"
+                    <UserFormSection compact title="Статус">
+                        <UserFormToggle
+                            v-model="form.banned"
+                            label="Заблокирован"
+                            toggle-class="toggle-error"
+                            :disabled="processing"
                         />
-                        <NumberInput
-                            id="payout_active_payouts_limit"
-                            v-model="form.payout_active_payouts_limit"
-                            class="mt-1 block w-full max-w-xs"
-                            min="1"
-                            step="1"
-                            :error="!!errors.payout_active_payouts_limit?.[0]"
-                            @input="errors.payout_active_payouts_limit = null"
-                            :disabled="processing || !form.payouts_enabled"
-                        />
-                        <InputError class="mt-1" :message="errors.payout_active_payouts_limit?.[0]" />
-                        <div class="mt-1 text-xs opacity-70">
-                            Количество выплат, которые трейдер может вести одновременно. По умолчанию 1.
+
+                        <div v-if="form.banned">
+                            <InputLabel
+                                for="ban_reason"
+                                value="Причина блокировки"
+                                :error="!!errors.ban_reason?.[0]"
+                            />
+                            <TextArea
+                                id="ban_reason"
+                                v-model="form.ban_reason"
+                                class="mt-1 block w-full"
+                                :rows="2"
+                                placeholder="Необязательно"
+                                :error="!!errors.ban_reason?.[0]"
+                                :disabled="processing"
+                                @input="errors.ban_reason = null"
+                            />
+                            <InputError class="mt-1" :message="errors.ban_reason?.[0]" />
                         </div>
-                    </div>
-                </div>
-
-                <div v-if="isTrader(form.role_id) || isAdmin(form.role_id)">
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input type="checkbox" class="toggle toggle-primary" v-model="form.can_set_order_amount_limits" :disabled="processing">
-                            <span class="label-text">Настройка лимитов сделки</span>
-                        </label>
-                    </div>
-                    <div class="mt-1 text-xs opacity-70">
-                        Трейдер сможет задавать минимальную и максимальную сумму сделки на своих реквизитах
-                    </div>
+                    </UserFormSection>
                 </div>
 
                 <div
-                    v-if="(isTrader(form.role_id) || isAdmin(form.role_id)) && !user?.uses_team_leader_shared_reserve"
+                    class="grid grid-cols-1 gap-3"
+                    :class="{
+                        'xl:grid-cols-2 xl:items-start': (isTrader(form.role_id) || isAdmin(form.role_id)) && (isTeamLeader(form.role_id) || isAdmin(form.role_id) || canManageSupportFeatures(form.role_id)),
+                    }"
                 >
-                    <InputLabel
-                        for="reserve_balance_limit"
-                        value="Страховой депозит (USDT)"
-                        :error="!!errors.reserve_balance_limit?.[0]"
-                    />
-                    <NumberInput
-                        id="reserve_balance_limit"
-                        v-model="form.reserve_balance_limit"
-                        class="mt-1 block w-full"
-                        step="1"
-                        min="0"
-                        :error="!!errors.reserve_balance_limit?.[0]"
-                        @input="errors.reserve_balance_limit = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.reserve_balance_limit?.[0]" />
-                    <div class="mt-1 text-xs opacity-70">
-                        Сумма, до которой пополнения сначала идут в резервный баланс (страховой депозит).
-                    </div>
-                </div>
-
-                <div v-if="isTrader(form.role_id)">
-                    <InputLabel
-                        for="max_min_order_amount"
-                        value="Максимальная минимальная сумма сделки"
-                        :error="!!errors.max_min_order_amount?.[0]"
-                    />
-                    <NumberInput
-                        id="max_min_order_amount"
-                        v-model="form.max_min_order_amount"
-                        class="mt-1 block w-full max-w-xs"
-                        step="1"
-                        min="0"
-                        :error="!!errors.max_min_order_amount?.[0]"
-                        @input="errors.max_min_order_amount = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.max_min_order_amount?.[0]" />
-                    <div class="mt-1 text-xs opacity-70">
-                        Потолок для поля «Минимум» в лимитах реквизита. Если не указано или 0 — ограничение не применяется.
-                    </div>
-                </div>
-
-                <div v-if="user?.uses_team_leader_shared_reserve" class="alert alert-info text-sm">
-                    <span>
-                        Трейдер работает через общий страховой резерв Team Leader.
-                        Пополнения зачисляются на основной баланс, резервный баланс трейдера не используется.
-                    </span>
-                </div>
-
-                <div v-if="isTeamLeader(form.role_id) || isAdmin(form.role_id)" class="space-y-6">
-                    <TeamLeaderInsuranceFields
-                        v-if="isTeamLeader(form.role_id)"
+                    <UserEditTraderFields
                         :form="form"
                         :errors="errors"
                         :processing="processing"
-                        :can-change-insurance-mode="canChangeTeamLeaderInsuranceMode"
-                        :connected-trader-count="user?.connected_trader_count ?? 0"
+                        :user="user"
+                        :team-leaders="teamLeaders"
+                        :show-trader-settings="isTrader(form.role_id) || isAdmin(form.role_id)"
+                        :show-payout-settings="hasPayoutsToggle(form.role_id)"
+                        :show-trader-payout-details="isTrader(form.role_id) || isAdmin(form.role_id)"
                     />
 
-                    <div v-if="isTeamLeader(form.role_id) || isAdmin(form.role_id)">
-                        <div class="form-control w-fit">
-                            <label class="label cursor-pointer gap-3">
-                                <input
-                                    type="checkbox"
-                                    class="toggle toggle-primary"
-                                    v-model="form.team_leader_extended_access_enabled"
-                                    :disabled="processing"
-                                >
-                                <span class="label-text">Расширенный функционал Team Leader</span>
-                            </label>
-                        </div>
-                        <div class="mt-1 text-xs opacity-70">
-                            Если выключено, тимлидер не увидит раздел "Трейдеры" и не получит доступ к расширенным страницам.
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 class="text-base font-semibold">Настройки сделок</h4>
-
-                        <div v-if="canConfigureFlexibleTeamLeaderCommission" class="mt-3">
-                            <div class="form-control w-fit">
-                                <label class="label cursor-pointer gap-3">
-                                    <input
-                                        type="checkbox"
-                                        class="toggle toggle-primary"
-                                        v-model="form.team_leader_flexible_trader_commission_enabled"
-                                        :disabled="processing"
-                                    >
-                                    <span class="label-text">Гибкая комиссия по трейдерам</span>
-                                </label>
-                            </div>
-                            <div class="mt-1 text-xs opacity-70">
-                                При включении Team Leader настраивает комиссию отдельно для каждого трейдера в указанном диапазоне.
-                            </div>
-                            <InputError class="mt-1" :message="errors.team_leader_flexible_trader_commission_enabled?.[0]" />
-                        </div>
-
-                        <InputLabel
-                            for="referral_commission_percentage"
-                            value="Комиссия тимлидера по умолчанию (%)"
-                            :error="!!errors.referral_commission_percentage?.[0]"
-                            class="mt-3"
+                    <div class="space-y-3">
+                        <UserEditTeamLeaderFields
+                            v-if="isTeamLeader(form.role_id) || isAdmin(form.role_id)"
+                            :form="form"
+                            :errors="errors"
+                            :processing="processing"
+                            :user="user"
+                            :is-team-leader-role="isTeamLeader(form.role_id)"
+                            :is-admin-role="isAdmin(form.role_id)"
+                            :can-change-team-leader-insurance-mode="canChangeTeamLeaderInsuranceMode"
                         />
-                        <NumberInput
-                            id="referral_commission_percentage"
-                            class="mt-1 block w-full"
-                            v-model="form.referral_commission_percentage"
-                            :error="!!errors.referral_commission_percentage?.[0]"
-                            @input="errors.referral_commission_percentage = null"
-                            step="0.01"
-                            :disabled="processing"
+
+                        <UserEditSupportFields
+                            v-if="canManageSupportFeatures(form.role_id)"
+                            :form="form"
+                            :errors="errors"
+                            :processing="processing"
                         />
-                        <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                            Базовая комиссия для всех трейдеров. Если для конкретного трейдера индивидуальная комиссия не задана, применяется это значение.
-                        </div>
-                        <InputError class="mt-1" :message="errors.referral_commission_percentage?.[0]" />
-
-                        <div
-                            v-if="canConfigureFlexibleTeamLeaderCommission && form.team_leader_flexible_trader_commission_enabled"
-                            class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3"
-                        >
-                            <div>
-                                <InputLabel
-                                    for="team_leader_flexible_trader_commission_min"
-                                    value="Минимальная комиссия (%)"
-                                    :error="!!errors.team_leader_flexible_trader_commission_min?.[0]"
-                                />
-                                <NumberInput
-                                    id="team_leader_flexible_trader_commission_min"
-                                    class="mt-1 block w-full"
-                                    v-model="form.team_leader_flexible_trader_commission_min"
-                                    :error="!!errors.team_leader_flexible_trader_commission_min?.[0]"
-                                    @input="errors.team_leader_flexible_trader_commission_min = null"
-                                    step="0.01"
-                                    min="0"
-                                    max="100"
-                                    :disabled="processing"
-                                />
-                                <InputError class="mt-1" :message="errors.team_leader_flexible_trader_commission_min?.[0]" />
-                            </div>
-
-                            <div>
-                                <InputLabel
-                                    for="team_leader_flexible_trader_commission_max"
-                                    value="Максимальная комиссия (%)"
-                                    :error="!!errors.team_leader_flexible_trader_commission_max?.[0]"
-                                />
-                                <NumberInput
-                                    id="team_leader_flexible_trader_commission_max"
-                                    class="mt-1 block w-full"
-                                    v-model="form.team_leader_flexible_trader_commission_max"
-                                    :error="!!errors.team_leader_flexible_trader_commission_max?.[0]"
-                                    @input="errors.team_leader_flexible_trader_commission_max = null"
-                                    step="0.01"
-                                    min="0"
-                                    max="100"
-                                    :disabled="processing"
-                                />
-                                <InputError class="mt-1" :message="errors.team_leader_flexible_trader_commission_max?.[0]" />
-                            </div>
-
-                            <div class="md:col-span-2 text-xs opacity-70">
-                                В этом диапазоне Team Leader сможет выставлять индивидуальную комиссию по каждому трейдеру.
-                            </div>
-                        </div>
-
-                        <div class="mt-4 space-y-2">
-                            <InputLabel
-                                value="Кто оплачивает комиссию тимлида"
-                                :error="!!errors.team_leader_split_from_service_percent?.[0]"
-                            />
-                            <div class="flex flex-wrap gap-4">
-                                <label class="label cursor-pointer gap-2">
-                                    <input
-                                        type="radio"
-                                        class="radio radio-primary"
-                                        value="trader"
-                                        v-model="teamLeaderSplitMode"
-                                        :disabled="processing"
-                                    />
-                                    <span class="label-text">Трейдер</span>
-                                </label>
-                                <label class="label cursor-pointer gap-2">
-                                    <input
-                                        type="radio"
-                                        class="radio radio-primary"
-                                        value="admin"
-                                        v-model="teamLeaderSplitMode"
-                                        :disabled="processing"
-                                    />
-                                    <span class="label-text">Админ</span>
-                                </label>
-                                <label class="label cursor-pointer gap-2">
-                                    <input
-                                        type="radio"
-                                        class="radio radio-primary"
-                                        value="split"
-                                        v-model="teamLeaderSplitMode"
-                                        :disabled="processing"
-                                    />
-                                    <span class="label-text">Сплит</span>
-                                </label>
-                            </div>
-
-                            <div v-if="teamLeaderSplitMode === 'split'" class="space-y-2 max-w-md">
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    step="1"
-                                    class="range range-primary"
-                                    v-model.number="form.team_leader_split_from_service_percent"
-                                    :disabled="processing"
-                                />
-                                <div class="flex justify-between text-xs opacity-70">
-                                    <span>Админ: {{ form.team_leader_split_from_service_percent }}%</span>
-                                    <span>Трейдер: {{ 100 - form.team_leader_split_from_service_percent }}%</span>
-                                </div>
-                            </div>
-                            <div v-else class="text-xs opacity-70">
-                                Админ: {{ form.team_leader_split_from_service_percent }}%, Трейдер: {{ 100 - form.team_leader_split_from_service_percent }}%
-                            </div>
-                            <InputError class="mt-1" :message="errors.team_leader_split_from_service_percent?.[0]" />
-                        </div>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div>
-                        <h4 class="text-base font-semibold">Настройки выплат</h4>
-
-                        <InputLabel
-                            for="payout_referral_commission_percentage"
-                            value="Комиссия тимлидера за выплаты (%)"
-                            :error="!!errors.payout_referral_commission_percentage?.[0]"
-                            class="mt-3"
-                        />
-                        <NumberInput
-                            id="payout_referral_commission_percentage"
-                            class="mt-1 block w-full"
-                            v-model="form.payout_referral_commission_percentage"
-                            :error="!!errors.payout_referral_commission_percentage?.[0]"
-                            @input="errors.payout_referral_commission_percentage = null"
-                            step="0.01"
-                            :disabled="processing"
-                        />
-                        <InputError class="mt-1" :message="errors.payout_referral_commission_percentage?.[0]" />
-
-                        <div class="mt-4 space-y-2">
-                            <InputLabel
-                                value="Кто оплачивает комиссию тимлида за выплаты"
-                                :error="!!errors.payout_team_leader_split_from_service_percent?.[0]"
-                            />
-                            <div class="flex flex-wrap gap-4">
-                                <label class="label cursor-pointer gap-2">
-                                    <input
-                                        type="radio"
-                                        class="radio radio-primary"
-                                        value="trader"
-                                        v-model="payoutTeamLeaderSplitMode"
-                                        :disabled="processing"
-                                    />
-                                    <span class="label-text">Трейдер</span>
-                                </label>
-                                <label class="label cursor-pointer gap-2">
-                                    <input
-                                        type="radio"
-                                        class="radio radio-primary"
-                                        value="admin"
-                                        v-model="payoutTeamLeaderSplitMode"
-                                        :disabled="processing"
-                                    />
-                                    <span class="label-text">Админ</span>
-                                </label>
-                                <label class="label cursor-pointer gap-2">
-                                    <input
-                                        type="radio"
-                                        class="radio radio-primary"
-                                        value="split"
-                                        v-model="payoutTeamLeaderSplitMode"
-                                        :disabled="processing"
-                                    />
-                                    <span class="label-text">Сплит</span>
-                                </label>
-                            </div>
-
-                            <div v-if="payoutTeamLeaderSplitMode === 'split'" class="space-y-2 max-w-md">
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    step="1"
-                                    class="range range-primary"
-                                    v-model.number="form.payout_team_leader_split_from_service_percent"
-                                    :disabled="processing"
-                                />
-                                <div class="flex justify-between text-xs opacity-70">
-                                    <span>Админ: {{ form.payout_team_leader_split_from_service_percent }}%</span>
-                                    <span>Трейдер: {{ 100 - form.payout_team_leader_split_from_service_percent }}%</span>
-                                </div>
-                            </div>
-                            <div v-else class="text-xs opacity-70">
-                                Админ: {{ form.payout_team_leader_split_from_service_percent }}%, Трейдер: {{ 100 - form.payout_team_leader_split_from_service_percent }}%
-                            </div>
-                            <InputError class="mt-1" :message="errors.payout_team_leader_split_from_service_percent?.[0]" />
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="canManageSupportFeatures(form.role_id)" class="space-y-3">
-                    <h4 class="text-base font-semibold">Доступы саппорта</h4>
-
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.support_can_view_deposits"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Просмотр депозитов</span>
-                        </label>
-                    </div>
-                    <InputError class="mt-1" :message="errors.support_can_view_deposits?.[0]" />
-
-                    <div class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.support_can_edit_order_amount"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Изменение суммы сделки</span>
-                        </label>
-                    </div>
-                    <InputError class="mt-1" :message="errors.support_can_edit_order_amount?.[0]" />
-
-                    <div v-if="canManageSupportFeatures(form.role_id)" class="form-control w-fit">
-                        <label class="label cursor-pointer gap-3">
-                            <input
-                                type="checkbox"
-                                class="toggle toggle-primary"
-                                v-model="form.support_can_use_manual_control_acq"
-                                :disabled="processing"
-                            >
-                            <span class="label-text">Manual Control Acquiring</span>
-                        </label>
-                    </div>
-                    <InputError class="mt-1" :message="errors.support_can_use_manual_control_acq?.[0]" />
-                </div>
-
-                <div v-if="(isTrader(form.role_id) || isAdmin(form.role_id)) && user && !user.team_leader_id">
-                    <InputLabel
-                        for="team_leader_id"
-                        value="Team Leader"
-                        :error="!!errors.team_leader_id?.[0]"
-                    />
-                    <Multiselect
-                        v-model="form.team_leader_id"
-                        :options="teamLeaders"
-                        :enable-search="true"
-                        :single-select="true"
-                        label-key="label"
-                        value-key="value"
-                        placeholder="Выберите Team Leader"
-                        :disabled="processing"
-                        @change="errors.team_leader_id = null"
-                    />
-                    <InputError class="mt-1" :message="errors.team_leader_id?.[0]" />
-                </div>
-
-                <div v-else-if="user && user.team_leader_id && (isTrader(form.role_id) || isAdmin(form.role_id))">
-                    <InputLabel value="Team Leader" />
-                    <div class="mt-1 p-2 rounded-btn bg-base-200">
-                        <span class="font-medium">{{ user.team_leader?.email }}</span>
-                    </div>
-                    <div class="mt-1 text-sm opacity-70">
-                        Team Leader уже назначен и не может быть изменен.
                     </div>
                 </div>
             </form>
 
-            <div v-if="user?.has_2fa === true" class="mt-10 pt-6 border-t border-base-200">
-                <h3 class="text-lg font-medium mb-4">Дополнительные действия</h3>
-                <div class="space-y-4">
-                    <div class="card bg-base-100 shadow-sm">
-                        <div class="card-body p-4 flex-row items-center justify-between">
-                            <div>
-                                <h4 class="text-base font-medium">Двухфакторная аутентификация</h4>
-                                <p class="text-sm opacity-70">Сброс 2FA позволит пользователю настроить его заново</p>
-                            </div>
-                            <button
-                                @click="reset2fa"
-                                type="button"
-                                class="btn btn-error"
-                                :class="{ 'btn-disabled': processing }"
-                                :disabled="processing"
-                            >
-                                Сбросить 2FA
-                            </button>
-                        </div>
+            <div
+                v-if="!loading && user?.has_2fa === true"
+                class="mt-3 rounded-lg border border-base-300 p-3"
+            >
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm font-medium">Двухфакторная аутентификация</p>
+                        <p class="text-xs text-base-content/60">
+                            Сброс позволит настроить 2FA заново
+                        </p>
                     </div>
+                    <button
+                        type="button"
+                        class="btn btn-error btn-sm"
+                        :class="{ 'btn-disabled': processing }"
+                        :disabled="processing"
+                        @click="reset2fa"
+                    >
+                        Сбросить 2FA
+                    </button>
                 </div>
             </div>
         </ModalBody>
 
         <ModalFooter>
-            <button @click="close" type="button" class="btn btn-sm">
+            <button type="button" class="btn btn-sm" @click="close">
                 Отмена
             </button>
-            <button @click="submit" type="button" class="btn btn-sm btn-primary" :class="{ 'btn-disabled': processing }" :disabled="processing">
+            <button
+                type="button"
+                class="btn btn-sm btn-primary"
+                :class="{ 'btn-disabled': processing }"
+                :disabled="processing"
+                @click="submit"
+            >
                 Сохранить
             </button>
         </ModalFooter>
     </Modal>
 </template>
-
-

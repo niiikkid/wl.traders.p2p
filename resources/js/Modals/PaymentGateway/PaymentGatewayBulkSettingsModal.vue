@@ -9,6 +9,9 @@ import NumberInput from "@/Components/NumberInput.vue";
 import InputHelper from "@/Components/InputHelper.vue";
 import DropDownWithCheckbox from "@/Components/Form/DropDownWithCheckbox.vue";
 import DropDownWithRadio from "@/Components/Form/DropDownWithRadio.vue";
+import UserFormSection from "@/Modals/User/Partials/UserFormSection.vue";
+import UserFormToggle from "@/Modals/User/Partials/UserFormToggle.vue";
+import BulkApplyField from "@/Modals/PaymentGateway/Partials/BulkApplyField.vue";
 import { storeToRefs } from "pinia";
 import { useModalStore } from "@/store/modal.js";
 import { computed, ref, watch } from "vue";
@@ -290,6 +293,16 @@ const submit = () => {
 
 const isCurrencySelected = computed(() => !!form.value.currency);
 
+const currencyLabel = computed(() => (form.value.currency || 'RUB').toString().toUpperCase());
+
+const appliedFieldsCount = computed(() => Object.values(form.value.apply).filter(Boolean).length);
+
+const showFlexibleTiers = computed(() => (
+    form.value.apply.use_flexible_trader_commission_for_orders
+    && form.value.use_flexible_trader_commission_for_orders
+    && (form.value.apply.trader_commission_tiers_for_orders || form.value.apply.total_service_commission_tiers_for_orders)
+));
+
 const removeCommissionTier = (index) => {
     const tiers = form.value.trader_commission_tiers_for_orders;
     if (tiers.length <= 1) {
@@ -450,22 +463,30 @@ watch(
         <ModalHeader @close="close" title="Массовая настройка платежных методов" />
 
         <ModalBody>
-            <div v-if="loading" class="py-6 text-center">
-                <span class="loading loading-spinner loading-md"></span>
+            <div v-if="loading" class="flex justify-center py-10">
+                <span class="loading loading-spinner loading-md" />
             </div>
-            <div v-else class="space-y-6">
+            <form v-else class="space-y-4" @submit.prevent="submit">
                 <div v-if="errors.message?.[0]" class="alert alert-error text-sm">
-                    {{ errors.message?.[0] }}
+                    {{ errors.message[0] }}
                 </div>
 
-                <div class="alert alert-info text-sm">
-                    1) Выберите валюту. 2) Отметьте нужные настройки. 3) Сохраните.
-                </div>
-
-                <div class="rounded-box border border-base-300 p-4">
-                    <div class="text-sm font-medium mb-3">
-                        Базовые параметры
+                <div class="grid grid-cols-1 gap-2 rounded-box border border-info/30 bg-info/10 px-3 py-2.5 text-xs sm:grid-cols-3 sm:text-sm">
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-info badge-sm shrink-0">1</span>
+                        <span>Выберите валюту</span>
                     </div>
+                    <div class="flex items-center gap-2" :class="{ 'opacity-50': !isCurrencySelected }">
+                        <span class="badge badge-sm shrink-0" :class="isCurrencySelected ? 'badge-info' : 'badge-ghost'">2</span>
+                        <span>Отметьте поля для изменения</span>
+                    </div>
+                    <div class="flex items-center gap-2" :class="{ 'opacity-50': !isCurrencySelected || !appliedFieldsCount }">
+                        <span class="badge badge-sm shrink-0" :class="appliedFieldsCount ? 'badge-info' : 'badge-ghost'">3</span>
+                        <span>Сохраните изменения</span>
+                    </div>
+                </div>
+
+                <UserFormSection title="Валюта" description="Настройки применятся ко всем методам выбранной валюты." compact>
                     <DropDownWithRadio
                         v-model="form.currency"
                         :items="currencies"
@@ -473,444 +494,356 @@ watch(
                         name="code"
                         label="Валюта"
                     />
-                    <InputError :message="errors.currency?.[0]" class="mt-2" />
-                    <InputHelper v-if="!errors.currency" model-value="Настройки применятся ко всем методам выбранной валюты."></InputHelper>
-                    <div v-if="!isCurrencySelected" class="mt-2 text-xs text-error">
-                        Сначала выберите валюту — без неё настройки недоступны.
+                    <InputError :message="errors.currency?.[0]" class="mt-1" />
+                    <p v-if="!isCurrencySelected && !errors.currency" class="text-xs text-warning">
+                        Сначала выберите валюту — без неё остальные настройки недоступны.
+                    </p>
+                    <div v-else-if="isCurrencySelected" class="flex flex-wrap items-center gap-2">
+                        <span class="badge badge-outline badge-sm">{{ currencyLabel }}</span>
+                        <span v-if="appliedFieldsCount" class="text-xs text-base-content/60">
+                            К применению: {{ appliedFieldsCount }} {{ appliedFieldsCount === 1 ? 'поле' : appliedFieldsCount < 5 ? 'поля' : 'полей' }}
+                        </span>
                     </div>
-                </div>
+                </UserFormSection>
 
-                <div class="space-y-6" :class="{ 'opacity-60 pointer-events-none': !isCurrencySelected }">
-                    <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Настройки реквизитов
-                        </div>
-                        <div class="space-y-2">
-                            <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                <input
-                                    type="checkbox"
-                                    class="checkbox checkbox-sm"
-                                    v-model="form.apply.detail_types"
-                                    :disabled="!isCurrencySelected"
-                                >
-                                <span class="label-text">Тип реквизитов</span>
-                            </label>
-                            <div v-if="form.apply.detail_types" class="grid gap-2">
-                                <DropDownWithCheckbox
-                                    v-model="form.detail_types"
-                                    :items="detail_types"
-                                    value="code"
-                                    name="name"
-                                    label="Тип реквизитов"
+                <div class="space-y-4" :class="{ 'pointer-events-none opacity-60': !isCurrencySelected }">
+                    <UserFormSection title="Реквизиты" compact>
+                        <BulkApplyField
+                            v-model="form.apply.detail_types"
+                            label="Тип реквизитов"
+                            :disabled="!isCurrencySelected"
+                        >
+                            <DropDownWithCheckbox
+                                v-model="form.detail_types"
+                                :items="detail_types"
+                                value="code"
+                                name="name"
+                                label="Тип реквизитов"
+                            />
+                            <InputError :message="errors.detail_types?.[0]" class="mt-1" />
+                        </BulkApplyField>
+                    </UserFormSection>
+
+                    <UserFormSection
+                        title="Лимиты и время"
+                        description="Лимит на сумму одной сделки. Время резервирования — в минутах."
+                        compact
+                    >
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <BulkApplyField
+                                v-model="form.apply.min_limit"
+                                label="Мин. сумма"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="min_limit"
+                                    :value="'Мин. сумма, ' + currencyLabel"
+                                    :error="!!errors.min_limit?.[0]"
                                 />
-                                <InputError :message="errors.detail_types?.[0]" />
-                            </div>
-                        </div>
-                    </div>
+                                <NumberInput
+                                    id="min_limit"
+                                    v-model="form.min_limit"
+                                    class="mt-1 block w-full"
+                                    placeholder="0"
+                                    :error="!!errors.min_limit?.[0]"
+                                />
+                                <InputError :message="errors.min_limit?.[0]" class="mt-1" />
+                            </BulkApplyField>
 
-                    <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Лимиты операции
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.min_limit"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Минимальная сумма</span>
-                                </label>
-                                <div v-if="form.apply.min_limit" class="grid gap-2">
-                                    <InputLabel
-                                        for="min_limit"
-                                        :value="'Минимальная сумма в ' + (form.currency || 'RUB')?.toUpperCase()"
-                                        :error="!!errors.min_limit?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="min_limit"
-                                        v-model="form.min_limit"
-                                        class="mt-1 block w-full"
-                                        placeholder="0"
-                                        :error="!!errors.min_limit?.[0]"
-                                    />
-                                    <InputError :message="errors.min_limit?.[0]" />
-                                </div>
-                            </div>
+                            <BulkApplyField
+                                v-model="form.apply.max_limit"
+                                label="Макс. сумма"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="max_limit"
+                                    :value="'Макс. сумма, ' + currencyLabel"
+                                    :error="!!errors.max_limit?.[0]"
+                                />
+                                <NumberInput
+                                    id="max_limit"
+                                    v-model="form.max_limit"
+                                    class="mt-1 block w-full"
+                                    placeholder="0"
+                                    :error="!!errors.max_limit?.[0]"
+                                />
+                                <InputError :message="errors.max_limit?.[0]" class="mt-1" />
+                            </BulkApplyField>
 
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.max_limit"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Максимальная сумма</span>
-                                </label>
-                                <div v-if="form.apply.max_limit" class="grid gap-2">
-                                    <InputLabel
-                                        for="max_limit"
-                                        :value="'Максимальная сумма в ' + (form.currency || 'RUB')?.toUpperCase()"
-                                        :error="!!errors.max_limit?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="max_limit"
-                                        v-model="form.max_limit"
-                                        class="mt-1 block w-full"
-                                        placeholder="0"
-                                        :error="!!errors.max_limit?.[0]"
-                                    />
-                                    <InputError :message="errors.max_limit?.[0]" />
-                                </div>
-                            </div>
-                        </div>
-                        <div v-if="!errors.min_limit && !errors.max_limit" class="text-xs text-base-content/70 mt-2">
-                            Лимит на сумму одной сделки.
-                        </div>
-                    </div>
+                            <BulkApplyField
+                                v-model="form.apply.reservation_time_for_orders"
+                                label="Время на сделку"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="reservation_time_for_orders"
+                                    value="Время на сделку, мин"
+                                    :error="!!errors.reservation_time_for_orders?.[0]"
+                                />
+                                <NumberInput
+                                    id="reservation_time_for_orders"
+                                    v-model="form.reservation_time_for_orders"
+                                    class="mt-1 block w-full"
+                                    placeholder="0"
+                                    :error="!!errors.reservation_time_for_orders?.[0]"
+                                />
+                                <InputError :message="errors.reservation_time_for_orders?.[0]" class="mt-1" />
+                            </BulkApplyField>
 
-                    <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Комиссии по сделкам
+                            <BulkApplyField
+                                v-model="form.apply.reservation_time_for_payouts"
+                                label="Время на выплату"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="reservation_time_for_payouts"
+                                    value="Время на выплату, мин"
+                                    :error="!!errors.reservation_time_for_payouts?.[0]"
+                                />
+                                <NumberInput
+                                    id="reservation_time_for_payouts"
+                                    v-model="form.reservation_time_for_payouts"
+                                    class="mt-1 block w-full"
+                                    placeholder="0"
+                                    :error="!!errors.reservation_time_for_payouts?.[0]"
+                                />
+                                <InputError :message="errors.reservation_time_for_payouts?.[0]" class="mt-1" />
+                            </BulkApplyField>
                         </div>
-                        <div class="mb-4 p-3 rounded-box border border-base-300 space-y-2">
-                            <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                <input
-                                    type="checkbox"
-                                    class="checkbox checkbox-sm"
-                                    v-model="form.apply.use_flexible_trader_commission_for_orders"
-                                    :disabled="!isCurrencySelected"
-                                >
-                                <span class="label-text">Применить режим комиссии трейдера (статическая/гибкая)</span>
-                            </label>
-                            <div v-if="form.apply.use_flexible_trader_commission_for_orders" class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        class="toggle toggle-primary"
-                                        v-model="form.use_flexible_trader_commission_for_orders"
-                                    >
-                                    <span class="label-text text-sm">Включить гибкую комиссию трейдера и тотал комиссии сервиса</span>
-                                </label>
-                                <InputError :message="errors.use_flexible_trader_commission_for_orders?.[0]" />
-                            </div>
+                    </UserFormSection>
+
+                    <UserFormSection title="Комиссии по сделкам" compact>
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <BulkApplyField
+                                v-model="form.apply.trader_commission_rate_for_orders"
+                                label="Трейдер % (сделки)"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="trader_commission_rate_for_orders"
+                                    value="Комиссия трейдера в %"
+                                    :error="!!errors.trader_commission_rate_for_orders?.[0]"
+                                />
+                                <NumberInput
+                                    id="trader_commission_rate_for_orders"
+                                    v-model="form.trader_commission_rate_for_orders"
+                                    class="mt-1 block w-full"
+                                    step="0.1"
+                                    placeholder="0.0"
+                                    :error="!!errors.trader_commission_rate_for_orders?.[0]"
+                                />
+                                <InputError :message="errors.trader_commission_rate_for_orders?.[0]" class="mt-1" />
+                                <InputHelper
+                                    v-if="!errors.trader_commission_rate_for_orders"
+                                    model-value="Не больше комиссии сервиса. Учитывайте прайм-тайм."
+                                />
+                            </BulkApplyField>
+
+                            <BulkApplyField
+                                v-model="form.apply.total_service_commission_rate_for_orders"
+                                label="Тотал % (сделки)"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="total_service_commission_rate_for_orders"
+                                    value="Тотал комиссия сервиса в %"
+                                    :error="!!errors.total_service_commission_rate_for_orders?.[0]"
+                                />
+                                <NumberInput
+                                    id="total_service_commission_rate_for_orders"
+                                    v-model="form.total_service_commission_rate_for_orders"
+                                    class="mt-1 block w-full"
+                                    step="0.1"
+                                    placeholder="0.0"
+                                    :error="!!errors.total_service_commission_rate_for_orders?.[0]"
+                                />
+                                <InputError :message="errors.total_service_commission_rate_for_orders?.[0]" class="mt-1" />
+                                <InputHelper
+                                    v-if="!errors.total_service_commission_rate_for_orders"
+                                    model-value="Доход сервиса = тотал − трейдер."
+                                />
+                            </BulkApplyField>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.trader_commission_rate_for_orders"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Комиссия трейдера</span>
-                                </label>
-                                <div v-if="form.apply.trader_commission_rate_for_orders" class="grid gap-2">
-                                    <InputLabel
-                                        for="trader_commission_rate_for_orders"
-                                        value="Комиссия трейдера в %"
-                                        :error="!!errors.trader_commission_rate_for_orders?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="trader_commission_rate_for_orders"
-                                        v-model="form.trader_commission_rate_for_orders"
-                                        class="mt-1 block w-full"
-                                        step="0.1"
-                                        placeholder="0.0"
-                                        :error="!!errors.trader_commission_rate_for_orders?.[0]"
-                                    />
-                                    <InputError :message="errors.trader_commission_rate_for_orders?.[0]" />
-                                    <InputHelper v-if="!errors.trader_commission_rate_for_orders" model-value="Не может быть больше чем комиссия сервиса. Учитывайте прайм-тайм."></InputHelper>
-                                </div>
-                            </div>
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.total_service_commission_rate_for_orders"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Тотал комиссия сервиса</span>
-                                </label>
-                                <div v-if="form.apply.total_service_commission_rate_for_orders" class="grid gap-2">
-                                    <InputLabel
-                                        for="total_service_commission_rate_for_orders"
-                                        value="Тотал комиссия сервиса в %"
-                                        :error="!!errors.total_service_commission_rate_for_orders?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="total_service_commission_rate_for_orders"
-                                        v-model="form.total_service_commission_rate_for_orders"
-                                        class="mt-1 block w-full"
-                                        step="0.1"
-                                        placeholder="0.0"
-                                        :error="!!errors.total_service_commission_rate_for_orders?.[0]"
-                                    />
-                                    <InputError :message="errors.total_service_commission_rate_for_orders?.[0]" />
-                                    <InputHelper v-if="!errors.total_service_commission_rate_for_orders" model-value="Доход сервиса = тотал - трейдер."></InputHelper>
-                                </div>
-                            </div>
+                        <div class="mt-3">
+                            <BulkApplyField
+                                v-model="form.apply.use_flexible_trader_commission_for_orders"
+                                label="Режим комиссии (статическая / гибкая)"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <UserFormToggle
+                                    v-model="form.use_flexible_trader_commission_for_orders"
+                                    label="Гибкая комиссия по сумме сделки"
+                                />
+                                <InputError :message="errors.use_flexible_trader_commission_for_orders?.[0]" class="mt-1" />
+                            </BulkApplyField>
                         </div>
+
                         <div
                             v-if="form.apply.use_flexible_trader_commission_for_orders && form.use_flexible_trader_commission_for_orders"
-                            class="mt-4 p-3 rounded-box border border-base-300 space-y-3"
+                            class="mt-3 space-y-3 rounded-box border border-base-300 bg-base-200/30 p-3"
                         >
-                            <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                <input
-                                    type="checkbox"
-                                    class="checkbox checkbox-sm"
-                                    v-model="form.apply.trader_commission_tiers_for_orders"
-                                    :disabled="!isCurrencySelected || form.use_flexible_trader_commission_for_orders"
-                                >
-                                <span class="label-text">Применить уровни гибкой комиссии трейдера</span>
-                            </label>
-                            <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                <input
-                                    type="checkbox"
-                                    class="checkbox checkbox-sm"
-                                    v-model="form.apply.total_service_commission_tiers_for_orders"
-                                    :disabled="!isCurrencySelected || form.use_flexible_trader_commission_for_orders"
-                                >
-                                <span class="label-text">Применить уровни гибкой тотал комиссии сервиса</span>
-                            </label>
-                            <div v-if="form.use_flexible_trader_commission_for_orders" class="text-xs text-base-content/70">
-                                При включенной гибкой комиссии уровни трейдера и тотал комиссии применяются обязательно.
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-sm font-medium">Уровни гибкой комиссии</span>
+                                <span class="badge badge-primary badge-sm">обязательно</span>
                             </div>
+                            <p class="text-xs text-base-content/60">
+                                При гибкой комиссии уровни трейдера и тотал сервиса применяются вместе с лимитами min/max.
+                            </p>
 
-                            <div v-if="form.apply.trader_commission_tiers_for_orders || form.apply.total_service_commission_tiers_for_orders" class="space-y-3">
-                                <div class="alert alert-warning text-xs">
-                                    Для массовой гибкой комиссии нужно одновременно применить min_limit и max_limit.
+                            <div v-if="showFlexibleTiers" class="space-y-3">
+                                <div class="alert alert-warning py-2 text-xs">
+                                    Для гибкой комиссии одновременно примените min_limit и max_limit.
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
-                                    <div>
-                                        <InputLabel value="Разделить диапазон по границе" />
+
+                                <div class="flex flex-wrap items-end gap-2">
+                                    <div class="min-w-0 flex-1 sm:max-w-xs">
+                                        <InputLabel value="Граница диапазона" />
                                         <NumberInput v-model="splitPoint" placeholder="2000" />
                                     </div>
-                                    <button type="button" class="btn btn-xs btn-outline" @click="splitTierAtPoint">
-                                        Разделить
-                                    </button>
-                                    <button type="button" class="btn btn-xs" @click="fillSingleTierByLimits">
-                                        1 уровень из лимитов
-                                    </button>
-                                </div>
-                                <div
-                                    v-for="(tier, index) in form.trader_commission_tiers_for_orders"
-                                    :key="`bulk-tier-${index}`"
-                                    class="grid grid-cols-1 lg:grid-cols-5 gap-2 items-end"
-                                >
-                                    <div>
-                                        <InputLabel :value="`От (уровень #${index + 1})`" />
-                                        <div class="input input-bordered w-full">{{ tier.from }}</div>
-                                        <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.from`]?.[0]" class="mt-1" />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="До" />
-                                        <div class="input input-bordered w-full">{{ tier.to }}</div>
-                                        <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.to`]?.[0]" class="mt-1" />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Трейдер %" />
-                                        <NumberInput v-model="tier.rate" step="0.1" placeholder="7" />
-                                        <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-1" />
-                                    </div>
-                                    <div>
-                                        <InputLabel value="Тотал %" />
-                                        <NumberInput v-model="form.total_service_commission_tiers_for_orders[index].rate" step="0.1" placeholder="10" />
-                                        <InputError :message="errors[`total_service_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-1" />
-                                    </div>
-                                    <div class="flex justify-end">
-                                        <button
-                                            type="button"
-                                            class="btn btn-xs btn-error btn-outline"
-                                            @click="removeCommissionTier(index)"
-                                            :disabled="form.trader_commission_tiers_for_orders.length <= 1"
-                                        >
-                                            Удалить
+                                    <div class="join">
+                                        <button type="button" class="btn btn-xs join-item btn-outline" @click="splitTierAtPoint">
+                                            Разделить
+                                        </button>
+                                        <button type="button" class="btn btn-xs join-item" @click="fillSingleTierByLimits">
+                                            1 уровень
                                         </button>
                                     </div>
                                 </div>
+
+                                <div
+                                    v-for="(tier, index) in form.trader_commission_tiers_for_orders"
+                                    :key="`bulk-tier-${index}`"
+                                    class="rounded-lg border border-base-300/60 bg-base-100 p-2"
+                                >
+                                    <div class="mb-1.5 text-xs font-medium text-base-content/60">
+                                        Уровень #{{ index + 1 }}
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-5">
+                                        <div>
+                                            <InputLabel value="От" />
+                                            <div class="input input-bordered w-full">{{ tier.from }}</div>
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.from`]?.[0]" class="mt-0.5" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="До" />
+                                            <div class="input input-bordered w-full">{{ tier.to }}</div>
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.to`]?.[0]" class="mt-0.5" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Трейдер %" />
+                                            <NumberInput v-model="tier.rate" step="0.1" placeholder="7" />
+                                            <InputError :message="errors[`trader_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-0.5" />
+                                        </div>
+                                        <div>
+                                            <InputLabel value="Тотал %" />
+                                            <NumberInput
+                                                v-model="form.total_service_commission_tiers_for_orders[index].rate"
+                                                step="0.1"
+                                                placeholder="10"
+                                            />
+                                            <InputError :message="errors[`total_service_commission_tiers_for_orders.${index}.rate`]?.[0]" class="mt-0.5" />
+                                        </div>
+                                        <div class="col-span-2 flex items-end justify-end sm:col-span-4 xl:col-span-1">
+                                            <button
+                                                type="button"
+                                                class="btn btn-xs btn-error btn-outline"
+                                                :disabled="form.trader_commission_tiers_for_orders.length <= 1"
+                                                @click="removeCommissionTier(index)"
+                                            >
+                                                Удалить
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <InputError :message="errors.trader_commission_tiers_for_orders?.[0]" />
                                 <InputError :message="errors.total_service_commission_tiers_for_orders?.[0]" />
-                                <InputHelper model-value="Диапазоны для трейдера и тотал комиссии сервиса должны быть подряд и совпадать: от min_limit до max_limit без разрывов." />
+                                <InputHelper model-value="Диапазоны трейдера и сервиса должны идти подряд от min_limit до max_limit без разрывов." />
                             </div>
                         </div>
-                    </div>
+                    </UserFormSection>
 
-                    <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Комиссии по выплатам
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.trader_commission_rate_for_payouts"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Комиссия трейдера</span>
-                                </label>
-                                <div v-if="form.apply.trader_commission_rate_for_payouts" class="grid gap-2">
-                                    <InputLabel
-                                        for="trader_commission_rate_for_payouts"
-                                        value="Комиссия трейдера (выплаты) в %"
-                                        :error="!!errors.trader_commission_rate_for_payouts?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="trader_commission_rate_for_payouts"
-                                        v-model="form.trader_commission_rate_for_payouts"
-                                        class="mt-1 block w-full"
-                                        step="0.1"
-                                        placeholder="0.0"
-                                        :error="!!errors.trader_commission_rate_for_payouts?.[0]"
-                                    />
-                                    <InputError :message="errors.trader_commission_rate_for_payouts?.[0]" />
-                                </div>
-                            </div>
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.total_service_commission_rate_for_payouts"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Тотал комиссия сервиса</span>
-                                </label>
-                                <div v-if="form.apply.total_service_commission_rate_for_payouts" class="grid gap-2">
-                                    <InputLabel
-                                        for="total_service_commission_rate_for_payouts"
-                                        value="Тотал комиссия сервиса (выплаты) в %"
-                                        :error="!!errors.total_service_commission_rate_for_payouts?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="total_service_commission_rate_for_payouts"
-                                        v-model="form.total_service_commission_rate_for_payouts"
-                                        class="mt-1 block w-full"
-                                        step="0.1"
-                                        placeholder="0.0"
-                                        :error="!!errors.total_service_commission_rate_for_payouts?.[0]"
-                                    />
-                                    <InputError :message="errors.total_service_commission_rate_for_payouts?.[0]" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <UserFormSection title="Комиссии по выплатам" compact>
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <BulkApplyField
+                                v-model="form.apply.trader_commission_rate_for_payouts"
+                                label="Трейдер % (выплаты)"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="trader_commission_rate_for_payouts"
+                                    value="Комиссия трейдера в %"
+                                    :error="!!errors.trader_commission_rate_for_payouts?.[0]"
+                                />
+                                <NumberInput
+                                    id="trader_commission_rate_for_payouts"
+                                    v-model="form.trader_commission_rate_for_payouts"
+                                    class="mt-1 block w-full"
+                                    step="0.1"
+                                    placeholder="0.0"
+                                    :error="!!errors.trader_commission_rate_for_payouts?.[0]"
+                                />
+                                <InputError :message="errors.trader_commission_rate_for_payouts?.[0]" class="mt-1" />
+                            </BulkApplyField>
 
-                    <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Временные ограничения
+                            <BulkApplyField
+                                v-model="form.apply.total_service_commission_rate_for_payouts"
+                                label="Тотал % (выплаты)"
+                                :disabled="!isCurrencySelected"
+                            >
+                                <InputLabel
+                                    for="total_service_commission_rate_for_payouts"
+                                    value="Тотал комиссия сервиса в %"
+                                    :error="!!errors.total_service_commission_rate_for_payouts?.[0]"
+                                />
+                                <NumberInput
+                                    id="total_service_commission_rate_for_payouts"
+                                    v-model="form.total_service_commission_rate_for_payouts"
+                                    class="mt-1 block w-full"
+                                    step="0.1"
+                                    placeholder="0.0"
+                                    :error="!!errors.total_service_commission_rate_for_payouts?.[0]"
+                                />
+                                <InputError :message="errors.total_service_commission_rate_for_payouts?.[0]" class="mt-1" />
+                            </BulkApplyField>
                         </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.reservation_time_for_orders"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Время на сделку</span>
-                                </label>
-                                <div v-if="form.apply.reservation_time_for_orders" class="grid gap-2">
-                                    <InputLabel
-                                        for="reservation_time_for_orders"
-                                        value="Время на сделку"
-                                        :error="!!errors.reservation_time_for_orders?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="reservation_time_for_orders"
-                                        v-model="form.reservation_time_for_orders"
-                                        class="mt-1 block w-full"
-                                        placeholder="0"
-                                        :error="!!errors.reservation_time_for_orders?.[0]"
-                                    />
-                                    <InputError :message="errors.reservation_time_for_orders?.[0]" />
-                                </div>
-                            </div>
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.reservation_time_for_payouts"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Время на выплату</span>
-                                </label>
-                                <div v-if="form.apply.reservation_time_for_payouts" class="grid gap-2">
-                                    <InputLabel
-                                        for="reservation_time_for_payouts"
-                                        value="Время на выплату"
-                                        :error="!!errors.reservation_time_for_payouts?.[0]"
-                                    />
-                                    <NumberInput
-                                        id="reservation_time_for_payouts"
-                                        v-model="form.reservation_time_for_payouts"
-                                        class="mt-1 block w-full"
-                                        placeholder="0"
-                                        :error="!!errors.reservation_time_for_payouts?.[0]"
-                                    />
-                                    <InputError :message="errors.reservation_time_for_payouts?.[0]" />
-                                </div>
-                            </div>
-                        </div>
-                        <div v-if="!errors.reservation_time_for_orders && !errors.reservation_time_for_payouts" class="text-xs text-base-content/70 mt-2">
-                            Указывайте значения в минутах.
-                        </div>
-                    </div>
+                    </UserFormSection>
 
-                    <div class="rounded-box border border-base-300 p-4">
-                        <div class="text-sm font-medium mb-3">
-                            Статусы и доступность
-                        </div>
-                        <div class="space-y-3">
-                            <div class="space-y-2">
-                                <label class="label cursor-pointer justify-start gap-3 items-start w-full">
-                                    <input
-                                        type="checkbox"
-                                        class="checkbox checkbox-sm"
-                                        v-model="form.apply.is_active"
-                                        :disabled="!isCurrencySelected"
-                                    >
-                                    <span class="label-text">Метод активен</span>
-                                </label>
-                                <label v-if="form.apply.is_active" class="label cursor-pointer justify-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        class="toggle toggle-primary"
-                                        v-model="form.is_active"
-                                        :disabled="!isCurrencySelected || !form.apply.is_active"
-                                    >
-                                    <span class="label-text text-sm">Метод активен</span>
-                                </label>
-                                <InputError :message="errors.is_active?.[0]" />
-                            </div>
-                        </div>
-                    </div>
+                    <UserFormSection title="Доступность" compact>
+                        <BulkApplyField
+                            v-model="form.apply.is_active"
+                            label="Статус метода"
+                            :disabled="!isCurrencySelected"
+                        >
+                            <UserFormToggle
+                                v-model="form.is_active"
+                                label="Метод активен"
+                                :disabled="!isCurrencySelected || !form.apply.is_active"
+                            />
+                            <InputError :message="errors.is_active?.[0]" class="mt-1" />
+                        </BulkApplyField>
+                    </UserFormSection>
                 </div>
-            </div>
+            </form>
         </ModalBody>
 
         <ModalFooter>
-            <button @click="close" type="button" class="btn btn-sm">
+            <button type="button" class="btn btn-sm" @click="close">
                 Отмена
             </button>
             <button
-                @click="submit"
                 type="button"
                 class="btn btn-sm btn-primary"
-                :class="{ 'btn-disabled': processing || !isCurrencySelected }"
-                :disabled="processing || !isCurrencySelected"
+                :class="{ 'btn-disabled': processing || !isCurrencySelected || !appliedFieldsCount }"
+                :disabled="processing || !isCurrencySelected || !appliedFieldsCount"
+                @click="submit"
             >
-                Сохранить
+                <span v-if="processing" class="loading loading-spinner loading-xs" />
+                <span v-else>Сохранить</span>
+                <span v-if="appliedFieldsCount && isCurrencySelected && !processing" class="badge badge-sm badge-neutral ml-1">
+                    {{ appliedFieldsCount }}
+                </span>
             </button>
         </ModalFooter>
     </Modal>

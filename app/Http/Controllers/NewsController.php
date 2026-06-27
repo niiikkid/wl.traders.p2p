@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\News\FormatRequest;
 use App\Http\Requests\News\ReactRequest;
 use App\Http\Requests\News\StoreRequest;
 use App\Http\Requests\News\TrackViewsRequest;
 use App\Http\Resources\NewsPostResource;
 use App\Models\NewsPost;
 use App\Models\NewsPostReaction;
+use App\Services\News\Features\NewsAiFormatter;
+use App\Support\NewsTiptapEditor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
@@ -15,7 +18,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Tiptap\Editor;
 
 class NewsController extends Controller
 {
@@ -47,14 +49,35 @@ class NewsController extends Controller
                 ->withQueryString()
         );
 
+        $openAiSetting = services()->openAi()->getSettings();
+
         return Inertia::render('News/Index', [
             'news' => $news,
             'canManageNews' => request()->routeIs('admin.news.*'),
+            'openAiConfigured' => $openAiSetting->hasApiKey()
+                && is_string($openAiSetting->selected_model)
+                && $openAiSetting->selected_model !== '',
             'newsRoleOptions' => collect(self::SELECTABLE_VISIBLE_ROLE_NAMES)
                 ->map(fn (string $roleName) => ['value' => $roleName, 'label' => $roleName])
                 ->values()
                 ->toArray(),
         ]);
+    }
+
+    public function format(FormatRequest $request): JsonResponse
+    {
+        abort_unless($request->user()->hasRole('Super Admin'), 403);
+
+        try {
+            $result = (new NewsAiFormatter)->format(
+                $request->validated('text'),
+                $request->validated('title'),
+            );
+        } catch (RuntimeException $exception) {
+            return response()->failWithMessage($exception->getMessage(), 422);
+        }
+
+        return response()->success($result);
     }
 
     public function store(StoreRequest $request): RedirectResponse
@@ -68,9 +91,7 @@ class NewsController extends Controller
         $isVisibleForAll = $visibilityType === 'all';
         $visibleRoleNames = $isVisibleForAll ? null : array_values($payload['visible_roles']);
 
-        $contentHtml = (new Editor)
-            ->setContent($contentJson)
-            ->getHTML();
+        $contentHtml = NewsTiptapEditor::jsonToHtml($contentJson);
 
         $coverImagePath = null;
         if ($request->hasFile('cover_image')) {

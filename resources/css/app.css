@@ -131,3 +131,67 @@
 [data-modal-next-root].modal:not(.modal-open) .modal-box {
     transition: none !important;
 }
+
+.news-prose :where(h2, h3) {
+    margin-top: 1.25em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-base-content);
+}
+
+.news-prose :where(h2) {
+    font-size: 1.25rem;
+}
+
+.news-prose :where(h3) {
+    font-size: 1.1rem;
+    opacity: 0.95;
+}
+
+.news-prose :where(p) {
+    margin-top: 0.65em;
+    margin-bottom: 0.65em;
+}
+
+.news-prose :where(ul, ol) {
+    margin-top: 0.5em;
+    margin-bottom: 0.75em;
+    padding-left: 1.35em;
+}
+
+.news-prose :where(li) {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+}
+
+.news-prose :where(blockquote) {
+    margin: 1em 0;
+    padding: 0.75rem 1rem;
+    border-left: 3px solid var(--color-primary);
+    border-radius: 0 var(--radius-field) var(--radius-field) 0;
+    background: color-mix(in oklch, var(--color-primary) 8%, transparent);
+}
+
+.news-prose :where(mark) {
+    background: color-mix(in oklch, var(--color-warning) 40%, transparent);
+    color: inherit;
+    padding: 0.1em 0.3em;
+    border-radius: 0.2rem;
+}
+
+.news-prose :where(hr) {
+    margin: 1.25em 0;
+    border-color: color-mix(in oklch, var(--color-base-content) 15%, transparent);
+}
+
+.news-prose :where(strong) {
+    font-weight: 600;
+}
+
+.news-prose :where(code) {
+    font-size: 0.9em;
+    padding: 0.1em 0.35em;
+    border-radius: 0.25rem;
+    background: color-mix(in oklch, var(--color-base-content) 10%, transparent);
+}

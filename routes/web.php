@@ -296,6 +296,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/manual-control-acq/orders/{order}/reject', [ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');
+        Route::post('/news/format', [NewsController::class, 'format'])->name('news.format');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');
         Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');

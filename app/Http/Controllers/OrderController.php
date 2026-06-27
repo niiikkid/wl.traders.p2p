@@ -31,8 +31,11 @@ class OrderController extends Controller
         Gate::authorize('access-to-order', $order);
 
         $authUser = auth()->user();
-        $loadWalletRelations = $authUser?->hasRole('Super Admin')
-            && request()->input('view_mode') === 'admin';
+        $viewMode = request()->input('view_mode');
+        $isAdminOrderDetail = $authUser?->hasRole('Super Admin') && $viewMode === 'admin';
+        $isTraderOrderDetail = $authUser?->hasRole('Trader')
+            && ! in_array($viewMode, ['admin', 'support'], true)
+            && (int) $authUser->id === (int) $order->trader_id;
 
         $with = [
             'trader:id,name,email',
@@ -47,7 +50,7 @@ class OrderController extends Controller
             'manualControlConfirmationCodes' => fn ($query) => $query->orderByDesc('id'),
         ];
 
-        if ($loadWalletRelations) {
+        if ($isAdminOrderDetail) {
             $with = array_merge($with, [
                 'trader.wallet',
                 'merchant.user.wallet',
@@ -55,6 +58,8 @@ class OrderController extends Controller
                 'agent.wallet',
                 'walletTransactions' => fn ($query) => $query->latest('id')->limit(50),
             ]);
+        } elseif ($isTraderOrderDetail) {
+            $with['walletTransactions'] = fn ($query) => $query->latest('id')->limit(50);
         }
 
         $order->load($with);

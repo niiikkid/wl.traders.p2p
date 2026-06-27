@@ -1,6 +1,6 @@
 <script setup>
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
-import {computed, nextTick, onMounted, ref} from "vue";
+import {nextTick, onMounted, ref} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import CopyPaymentText from "@/Components/CopyPaymentText.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -57,14 +57,6 @@ const trackOptionDisplay = (track) => {
 
 const findTrackByValue = (trackValue) => audioTracks.value.find((item) => item.value === trackValue);
 const getSelectedTrackForEvent = (eventKey) => findTrackByValue(soundForm.settings[eventKey]?.track ?? null);
-
-const telegramAlertText = computed(() => {
-    if (telegramAccount.value?.is_active) {
-        return 'Бот привязан. Все доступные Telegram-уведомления включены автоматически и не требуют правил.';
-    }
-
-    return 'Чтобы получать уведомления в Telegram, привяжите бота через ссылку ниже. После привязки уведомления включатся автоматически.';
-});
 
 const buildDefaultSoundSettings = () => {
     const defaultTrack = audioTracks.value[0]?.value ?? null;
@@ -252,11 +244,8 @@ router.on('success', () => {
                     :class="showInAppSoundSettings ? 'xl:col-start-2 xl:row-start-1' : ''"
                 >
                     <div class="card-body space-y-4">
-                        <div
-                            class="alert text-sm"
-                            :class="telegramAccount.is_active ? 'alert-success' : 'alert-info'"
-                        >
-                            {{ telegramAlertText }}
+                        <div v-if="!telegramAccount.is_active" class="alert alert-info text-sm">
+                            Чтобы получать уведомления в Telegram, привяжите бота через ссылку ниже. После привязки уведомления включатся автоматически.
                         </div>
                         <h3 class="text-lg font-semibold">Telegram</h3>
                         <div class="space-y-2">

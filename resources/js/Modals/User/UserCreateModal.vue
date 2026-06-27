@@ -10,10 +10,11 @@ import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import NumberInput from "@/Components/NumberInput.vue";
 import Select from "@/Components/Select.vue";
-import {computed, ref, watch} from "vue";
+import { computed, ref, watch } from "vue";
 import { router } from '@inertiajs/vue3';
 import Multiselect from "@/Components/Form/Multiselect.vue";
 import TeamLeaderInsuranceFields from "@/Modals/User/Partials/TeamLeaderInsuranceFields.vue";
+import UserFormSection from "@/Modals/User/Partials/UserFormSection.vue";
 
 const modalStore = useModalStore();
 const { userCreateModal } = storeToRefs(modalStore);
@@ -69,17 +70,17 @@ const loadRoles = () => {
         axios.get(route('admin.users.roles')),
         axios.get(route('admin.users.team-leaders')),
     ])
-    .then(([rolesResponse, leadersResponse]) => {
-        roles.value = (rolesResponse.data?.data || rolesResponse.data || [])
-            .filter((role) => !['Analyst', 'Agent'].includes(role.name));
-        teamLeaders.value = (leadersResponse.data?.data || leadersResponse.data || []).map(item => ({
-            value: item.id,
-            label: item.email,
-        }));
-    })
-    .finally(() => {
-        loading.value = false;
-    });
+        .then(([rolesResponse, leadersResponse]) => {
+            roles.value = (rolesResponse.data?.data || rolesResponse.data || [])
+                .filter((role) => !['Analyst', 'Agent'].includes(role.name));
+            teamLeaders.value = (leadersResponse.data?.data || leadersResponse.data || []).map(item => ({
+                value: item.id,
+                label: item.email,
+            }));
+        })
+        .finally(() => {
+            loading.value = false;
+        });
 };
 
 const submit = () => {
@@ -99,7 +100,6 @@ const submit = () => {
             if (response.data?.success || response.status === 200 || response.status === 201) {
                 close();
                 resetForm();
-                // Обновим список пользователей (через Inertia partial reload)
                 router.reload({ only: ['users'] });
             }
         })
@@ -126,169 +126,181 @@ watch(
 </script>
 
 <template>
-    <Modal :show="userCreateModal.showed" @close="close" maxWidth="xl">
-        <ModalHeader @close="close" title="Создание пользователя" />
+    <Modal :show="userCreateModal.showed" maxWidth="3xl" @close="close">
+        <ModalHeader title="Создание пользователя" @close="close" />
 
         <ModalBody>
-            <div v-if="loading" class="py-6 text-center">
-                <span class="loading loading-spinner loading-md"></span>
+            <div v-if="loading" class="flex justify-center py-8">
+                <span class="loading loading-spinner loading-md" />
             </div>
-            <form v-else @submit.prevent="submit" class="space-y-4">
-                <div>
-                    <InputLabel
-                        for="login"
-                        value="Логин"
-                        :error="!!errors.login?.[0]"
-                    />
-                    <TextInput
-                        id="login"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.login"
-                        required
-                        autocomplete="username"
-                        :error="!!errors.login?.[0]"
-                        @input="errors.login = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.login?.[0]" />
-                </div>
 
-                <div>
-                    <InputLabel
-                        for="password"
-                        value="Пароль"
-                        :error="!!errors.password?.[0]"
-                    />
-                    <TextInput
-                        id="password"
-                        v-model="form.password"
-                        type="password"
-                        class="mt-1 block w-full"
-                        autocomplete="new-password"
-                        :error="!!errors.password?.[0]"
-                        @input="errors.password = null"
-                        :disabled="processing"
-                    />
-                    <InputError :message="errors.password?.[0]" class="mt-1" />
-                </div>
+            <form v-else class="space-y-3" @submit.prevent="submit">
+                <UserFormSection compact title="Учётная запись">
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        <div class="lg:col-span-3">
+                            <InputLabel
+                                for="login"
+                                value="Логин"
+                                :error="!!errors.login?.[0]"
+                            />
+                            <TextInput
+                                id="login"
+                                v-model="form.login"
+                                type="text"
+                                class="mt-1 block w-full"
+                                required
+                                autocomplete="username"
+                                :error="!!errors.login?.[0]"
+                                :disabled="processing"
+                                @input="errors.login = null"
+                            />
+                            <InputError class="mt-1" :message="errors.login?.[0]" />
+                        </div>
 
-                <div>
-                    <InputLabel
-                        for="password_confirmation"
-                        value="Подтвердите пароль"
-                    />
-                    <TextInput
-                        id="password_confirmation"
-                        v-model="form.password_confirmation"
-                        type="password"
-                        class="mt-1 block w-full"
-                        autocomplete="new-password"
-                        :disabled="processing"
-                    />
-                    <InputError :message="errors.password_confirmation?.[0]" class="mt-1" />
-                </div>
+                        <div>
+                            <InputLabel
+                                for="password"
+                                value="Пароль"
+                                :error="!!errors.password?.[0]"
+                            />
+                            <TextInput
+                                id="password"
+                                v-model="form.password"
+                                type="password"
+                                class="mt-1 block w-full"
+                                autocomplete="new-password"
+                                :error="!!errors.password?.[0]"
+                                :disabled="processing"
+                                @input="errors.password = null"
+                            />
+                            <InputError class="mt-1" :message="errors.password?.[0]" />
+                        </div>
 
-                <div>
-                    <InputLabel
-                        for="telegram_username"
-                        value="Telegram (необязательно)"
-                        :error="!!errors.telegram_username?.[0]"
-                    />
-                    <TextInput
-                        id="telegram_username"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.telegram_username"
-                        placeholder="@username или username"
-                        :error="!!errors.telegram_username?.[0]"
-                        @input="errors.telegram_username = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.telegram_username?.[0]" />
-                </div>
+                        <div>
+                            <InputLabel
+                                for="password_confirmation"
+                                value="Подтверждение"
+                            />
+                            <TextInput
+                                id="password_confirmation"
+                                v-model="form.password_confirmation"
+                                type="password"
+                                class="mt-1 block w-full"
+                                autocomplete="new-password"
+                                :disabled="processing"
+                            />
+                            <InputError class="mt-1" :message="errors.password_confirmation?.[0]" />
+                        </div>
 
-                <div>
-                    <InputLabel
-                        for="roles"
-                        value="Роль"
-                        :error="!!errors.role_id?.[0]"
-                        class="mb-1"
-                    />
-                    <Select
-                        v-model="form.role_id"
-                        :error="!!errors.role_id?.[0]"
-                        :items="roles"
-                        value="id"
-                        name="name"
-                        default_title="Выберите роль"
-                        @change="errors.role_id = null"
-                        :disabled="processing"
-                    ></Select>
-                    <InputError class="mt-1" :message="errors.role_id?.[0]" />
-                </div>
+                        <div>
+                            <InputLabel
+                                for="telegram_username"
+                                value="Telegram"
+                                :error="!!errors.telegram_username?.[0]"
+                            />
+                            <TextInput
+                                id="telegram_username"
+                                v-model="form.telegram_username"
+                                type="text"
+                                class="mt-1 block w-full"
+                                placeholder="@username"
+                                :error="!!errors.telegram_username?.[0]"
+                                :disabled="processing"
+                                @input="errors.telegram_username = null"
+                            />
+                            <InputError class="mt-1" :message="errors.telegram_username?.[0]" />
+                        </div>
+                    </div>
+                </UserFormSection>
 
-                <div v-if="selectedRoleName === 'Trader'">
-                    <InputLabel
-                        for="max_min_order_amount"
-                        value="Максимальная минимальная сумма сделки"
-                        :error="!!errors.max_min_order_amount?.[0]"
-                    />
-                    <NumberInput
-                        id="max_min_order_amount"
-                        v-model="form.max_min_order_amount"
-                        class="mt-1 block w-full max-w-xs"
-                        step="1"
-                        min="0"
-                        :error="!!errors.max_min_order_amount?.[0]"
-                        @input="errors.max_min_order_amount = null"
-                        :disabled="processing"
-                    />
-                    <InputError class="mt-1" :message="errors.max_min_order_amount?.[0]" />
-                    <p class="mt-1 text-xs text-base-content/70">
-                        Потолок для поля «Минимум» в лимитах реквизита. Если не указано или 0 — ограничение не применяется.
-                    </p>
-                </div>
+                <UserFormSection compact title="Роль и доступ">
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div :class="{ 'sm:col-span-2': selectedRoleName !== 'Trader' }">
+                            <InputLabel
+                                for="roles"
+                                value="Роль"
+                                :error="!!errors.role_id?.[0]"
+                                class="mb-1"
+                            />
+                            <Select
+                                v-model="form.role_id"
+                                :error="!!errors.role_id?.[0]"
+                                :items="roles"
+                                value="id"
+                                name="name"
+                                default_title="Выберите роль"
+                                :disabled="processing"
+                                @change="errors.role_id = null"
+                            />
+                            <InputError class="mt-1" :message="errors.role_id?.[0]" />
+                        </div>
 
-                <div v-if="selectedRoleName === 'Trader'">
-                    <InputLabel
-                        for="team_leader_id"
-                        value="Team Leader"
-                        :error="!!errors.team_leader_id?.[0]"
-                    />
-                    <Multiselect
-                        v-model="form.team_leader_id"
-                        :options="teamLeaders"
-                        :enable-search="true"
-                        :single-select="true"
-                        label-key="label"
-                        value-key="value"
-                        placeholder="Выберите Team Leader"
-                        :disabled="processing"
-                        @change="errors.team_leader_id = null"
-                    />
-                    <InputError class="mt-1" :message="errors.team_leader_id?.[0]" />
-                </div>
+                        <template v-if="selectedRoleName === 'Trader'">
+                            <div>
+                                <InputLabel
+                                    for="max_min_order_amount"
+                                    value="Макс. мин. сумма"
+                                    hint="Потолок для «Минимум» в лимитах реквизита. 0 — без ограничения."
+                                    :error="!!errors.max_min_order_amount?.[0]"
+                                />
+                                <NumberInput
+                                    id="max_min_order_amount"
+                                    v-model="form.max_min_order_amount"
+                                    class="mt-1 block w-full"
+                                    step="1"
+                                    min="0"
+                                    :error="!!errors.max_min_order_amount?.[0]"
+                                    :disabled="processing"
+                                    @input="errors.max_min_order_amount = null"
+                                />
+                                <InputError class="mt-1" :message="errors.max_min_order_amount?.[0]" />
+                            </div>
 
-                <TeamLeaderInsuranceFields
-                    v-if="selectedRoleName === 'Team Leader'"
-                    :form="form"
-                    :errors="errors"
-                    :processing="processing"
-                />
+                            <div>
+                                <InputLabel
+                                    for="team_leader_id"
+                                    value="Team Leader"
+                                    :error="!!errors.team_leader_id?.[0]"
+                                />
+                                <Multiselect
+                                    v-model="form.team_leader_id"
+                                    :options="teamLeaders"
+                                    :enable-search="true"
+                                    :single-select="true"
+                                    label-key="label"
+                                    value-key="value"
+                                    placeholder="Выберите Team Leader"
+                                    :disabled="processing"
+                                    @change="errors.team_leader_id = null"
+                                />
+                                <InputError class="mt-1" :message="errors.team_leader_id?.[0]" />
+                            </div>
+                        </template>
+                    </div>
 
+                    <TeamLeaderInsuranceFields
+                        v-if="selectedRoleName === 'Team Leader'"
+                        :form="form"
+                        :errors="errors"
+                        :processing="processing"
+                    />
+                </UserFormSection>
             </form>
         </ModalBody>
 
         <ModalFooter>
-            <button @click="close" type="button" class="btn btn-sm">
+            <button type="button" class="btn btn-sm" @click="close">
                 Отмена
             </button>
-            <button @click="submit" type="button" class="btn btn-sm btn-primary" :class="{ 'btn-disabled': processing }" :disabled="processing">
+            <button
+                type="button"
+                class="btn btn-sm btn-primary"
+                :class="{ 'btn-disabled': processing }"
+                :disabled="processing"
+                @click="submit"
+            >
                 Сохранить
             </button>
         </ModalFooter>
     </Modal>
 </template>
-
-

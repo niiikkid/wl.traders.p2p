@@ -8,7 +8,6 @@ import DateFilter from '@/Components/Filters/Partials/DateFilter.vue';
 import InputFilter from '@/Components/Filters/Partials/InputFilter.vue';
 import DropdownFilter from '@/Components/Filters/Partials/DropdownFilter.vue';
 import SearchableDropdownFilter from '@/Components/Filters/Partials/SearchableDropdownFilter.vue';
-import RefreshTableData from '@/Components/Table/RefreshTableData.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
@@ -29,7 +28,6 @@ const tableFiltersStore = useTableFiltersStore();
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const traders = computed(() => usePage().props.traders ?? []);
-const reloadingTableData = ref(false);
 const expandedRows = ref({});
 const statusUpdatingId = ref(null);
 const modalStore = useModalStore();
@@ -316,27 +314,11 @@ defineOptions({ layout: AuthenticatedLayout });
                         <InputFilter name="maxAmount" placeholder="Макс. сумма" />
                         <InputFilter name="currency" placeholder="Валюта (например, RUB)" />
                     </FiltersPanel>
-
-                    <div class="flex items-center justify-between">
-                        <div
-                            v-if="reloadingTableData"
-                            class="px-2 text-sm text-base-content/80 flex items-center gap-2"
-                            aria-live="polite"
-                        >
-                            <span class="loading loading-spinner loading-sm text-primary" />
-                            <span>Обновляем данные...</span>
-                        </div>
-
-                        <RefreshTableData
-                            @refresh-started="reloadingTableData = true"
-                            @refresh-finished="reloadingTableData = false"
-                        />
-                    </div>
                 </div>
             </template>
             <template #body>
                 <div class="relative">
-                    <DataTable :loading="reloadingTableData">
+                    <DataTable>
                         <template #head>
                                     <th>UUID</th>
                                     <th>Реквизиты</th>

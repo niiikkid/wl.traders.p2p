@@ -26,6 +26,9 @@ class OrderResource extends JsonResource
         );
         $isAdminViewMode = auth()->check() && ! $isSupportViewMode && $authUser?->hasRole('Super Admin');
         $isAdminOrderDetailRequest = $request->input('view_mode') === 'admin' && $authUser?->hasRole('Super Admin');
+        $isTraderOrderDetailRequest = ! in_array($request->input('view_mode'), ['admin', 'support'], true)
+            && $authUser?->hasRole('Trader')
+            && (int) $authUser->id === (int) $this->trader_id;
         $manualControlConfirmationCodes = $this->resource->relationLoaded('manualControlConfirmationCodes')
             ? $this->manualControlConfirmationCodes
             : collect();
@@ -175,6 +178,11 @@ class OrderResource extends JsonResource
                     'trader' => $this->resolveTraderWalletTransactions(),
                 ],
             ]),
+            $this->mergeWhen($isTraderOrderDetailRequest, fn () => [
+                'wallet_transactions' => [
+                    'trader' => $this->resolveTraderWalletTransactions(),
+                ],
+            ]),
             'finished_at' => $this->finished_at?->toISOString(),
             'expires_at' => $this->expires_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
@@ -228,6 +236,9 @@ class OrderResource extends JsonResource
             'currency' => $transaction->amount?->getCurrency()->getCode(),
             'direction' => $transaction->direction?->value,
             'type' => $transaction->type?->value,
+            'type_name' => $transaction->type
+                ? trans('transaction-type.'.$transaction->type->value)
+                : null,
             'balance_type' => $transaction->balance_type?->value,
             'created_at' => $transaction->created_at?->toISOString(),
         ])->all();
