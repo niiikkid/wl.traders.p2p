@@ -93,6 +93,20 @@ const isRefreshing = ref(false);
 
 const canTakeMore = computed(() => (props.limits?.currentActive ?? 0) < (props.limits?.maxActive ?? 1));
 
+const activePayoutsLimitHint = computed(() => (
+    canTakeMore.value ? 'Можно взять ещё' : 'Достигнут лимит'
+));
+
+const payoutHoldEnabled = computed(() => Boolean(trader.value?.payout_hold_enabled));
+
+const payoutHoldMinutes = computed(() => (
+    payoutHoldEnabled.value ? (trader.value?.payout_hold_minutes ?? 0) : 0
+));
+
+const payoutHoldHint = computed(() => (
+    payoutHoldEnabled.value ? 'минут после отправки чека' : 'Холд отключён'
+));
+
 const refreshOptionLabel = (value) => (value === 0 ? 'Не обновлять' : `Каждые ${value}с`);
 const currentRefreshOptionLabel = computed(() => refreshOptionLabel(refreshInterval.value));
 
@@ -649,20 +663,90 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
             <template #header>
                 <div class="space-y-6">
-                    <div class="flex flex-wrap items-end justify-between gap-4">
-                        <div class="block inline-flex gap-2 w-full">
-                            <div class="p-5 rounded-box shadow bg-base-100 w-full sm:w-auto border-none">
-                                <div class="stat-title">Активных выплат</div>
-                                <div class="stat-value text-primary text-3xl">{{ limits.currentActive }}</div>
-                                <div class="stat-desc">из {{ limits.maxActive }}</div>
-                            </div>
-                            <div class="p-5 rounded-box shadow bg-base-100 w-full sm:w-auto border-0">
-                                <div class="stat-title">Холд для вас</div>
-                                <div class="stat-value text-secondary text-3xl">
-                                    {{ trader.payout_hold_enabled ? trader.payout_hold_minutes : 0 }}
+                    <div class="flex flex-wrap items-stretch justify-between gap-4">
+                        <div class="grid grid-cols-2 gap-3 w-full sm:w-auto sm:min-w-[min(100%,28rem)]">
+                            <div class="card bg-base-100 border border-base-content/10 shadow-sm">
+                                <div class="card-body gap-2 p-3.5 sm:p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-xs text-base-content/60">Активных выплат</p>
+                                            <p class="mt-0.5 text-2xl sm:text-3xl font-semibold tabular-nums leading-none text-primary">
+                                                {{ limits.currentActive }}
+                                                <span class="text-base sm:text-lg font-medium text-base-content/45">/ {{ limits.maxActive }}</span>
+                                            </p>
+                                            <p class="mt-1 text-xs text-base-content/50">{{ activePayoutsLimitHint }}</p>
+                                        </div>
+                                        <div class="shrink-0 rounded-lg bg-primary/10 p-2 text-primary">
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke-width="1.5"
+                                                stroke="currentColor"
+                                                class="size-4 sm:size-5"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                                                />
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <progress
+                                        class="progress progress-primary h-1 w-full"
+                                        :value="limits.currentActive"
+                                        :max="limits.maxActive"
+                                        :aria-label="`Занято ${limits.currentActive} из ${limits.maxActive} активных выплат`"
+                                    />
                                 </div>
-                                <div class="stat-desc">
-                                    {{ trader.payout_hold_enabled ? 'минут ожидания' : 'Холд отключен' }}
+                            </div>
+
+                            <div class="card bg-base-100 border border-base-content/10 shadow-sm">
+                                <div class="card-body gap-2 p-3.5 sm:p-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-xs text-base-content/60">Холд для вас</p>
+                                            <p
+                                                class="mt-0.5 text-2xl sm:text-3xl font-semibold tabular-nums leading-none"
+                                                :class="payoutHoldEnabled ? 'text-secondary' : 'text-base-content/35'"
+                                            >
+                                                <template v-if="payoutHoldEnabled">
+                                                    {{ payoutHoldMinutes }}
+                                                    <span class="text-base sm:text-lg font-medium text-base-content/45">мин</span>
+                                                </template>
+                                                <template v-else>—</template>
+                                            </p>
+                                            <p class="mt-1 text-xs text-base-content/50">{{ payoutHoldHint }}</p>
+                                            <span
+                                                v-if="!payoutHoldEnabled"
+                                                class="badge badge-ghost badge-xs mt-1.5 font-normal text-base-content/55"
+                                            >
+                                                Без задержки
+                                            </span>
+                                        </div>
+                                        <div
+                                            class="shrink-0 rounded-lg p-2"
+                                            :class="payoutHoldEnabled ? 'bg-secondary/10 text-secondary' : 'bg-base-content/5 text-base-content/35'"
+                                        >
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke-width="1.5"
+                                                stroke="currentColor"
+                                                class="size-4 sm:size-5"
+                                                aria-hidden="true"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                                />
+                                            </svg>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
