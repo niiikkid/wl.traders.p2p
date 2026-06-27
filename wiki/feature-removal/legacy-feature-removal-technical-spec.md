@@ -12,8 +12,8 @@ Every removal step must be implemented as a small isolated change. Before deleti
 
 ## Global Safety Rules
 
-- Do not remove shared infrastructure just because one feature uses it. For example, Team Leader flows, permanent VIP, H2H API, merchant API tokens, wallet history, payout core flow, and trader payout taking must remain functional unless a step explicitly says otherwise.
-- Treat financial features as data migrations, not UI cleanup. Agent commissions/balances, VIP limits, payout priority windows, Rapira market history, and API idempotency fields need production inventory before code deletion.
+- Do not remove shared infrastructure just because one feature uses it. For example, Team Leader flows, trader order amount limit settings (`can_set_order_amount_limits`), H2H API, merchant API tokens, wallet history, payout core flow, and trader payout taking must remain functional unless a step explicitly says otherwise.
+- Treat financial features as data migrations, not UI cleanup. Agent commissions/balances, order amount limit backups, payout priority windows, Rapira market history, and API idempotency fields need production inventory before code deletion.
 - Remove frontend entry points and backend authorization/routes together. A hidden button with a live endpoint is incomplete; a deleted endpoint with an active menu link is a regression.
 - After route changes, run `php artisan optimize` and regenerate Ziggy routes with `php artisan ziggy:generate resources/js/ziggy-routes.js`.
 - After PHP changes, run Pint on dirty PHP files. Automated tests should be added or run only when explicitly requested by the user.
@@ -41,23 +41,25 @@ Steps 1–18, 24, and 26 are already implemented and should be treated as remove
 - Remove `Analyst` from shared route middleware, gates, `HandleInertiaRequests`, filter helpers, manual-control checks, and receipt/bank-statement access where it only exists for Analyst access. Re-check gates/policies that allow Support/Admin/Trader access so dispute files remain accessible for valid roles.
 - Prepare a production data decision for existing users with role `Analyst`: remove role assignment, archive users, or migrate them to Support/Super Admin by explicit business approval.
 
-### Step 2 — Remove Automatic Temporary VIP, Keep Permanent VIP (**Shipped**)
+### Step 2 — Remove Automatic Temporary VIP, Keep Permanent Order Amount Limits (**Shipped**; renamed 2026-06-27)
+
+> **2026-06-27 rename:** permanent VIP was renamed to `users.can_set_order_amount_limits` («Настройка лимитов сделки»). Backup columns are `min_order_amount_backup` / `max_order_amount_backup`. All `is_vip` / VIP UI labels removed.
 
 #### Frontend Removal
 
-- Remove temporary VIP progress and activation UI from trader main page props and components. Keep permanent VIP display/editing based on `is_vip`.
+- Remove temporary VIP progress and activation UI from trader main page props and components. Keep permanent order-amount-limit display/editing based on `can_set_order_amount_limits`.
 - Remove `/trader/temp-vip/activate` calls and any UI that references `temp_vip_active_until`, `temp_vip_can_activate`, `temp_vip_progress_start_at`, or `is_temp_vip_active`.
-- In payment detail edit/create UI, keep VIP-limit behavior for permanent VIP only. Remove conditions that grant VIP behavior through temporary VIP, for example checks of `owner_is_temp_vip_active` and `currentUser.is_temp_vip_active`.
-- Remove admin settings UI for temporary VIP required deals, duration, and enable/disable switch. Keep the user edit field for permanent `is_vip`.
+- In payment detail edit/create UI, keep min/max order amount fields for users with `can_set_order_amount_limits` only. Remove conditions that grant the behavior through temporary VIP, for example checks of `owner_is_temp_vip_active` and `currentUser.is_temp_vip_active`.
+- Remove admin settings UI for temporary VIP required deals, duration, and enable/disable switch. Keep the user edit toggle for `can_set_order_amount_limits`.
 
 #### Backend Removal
 
 - Before code deletion, set `temp_vip_enabled = 0`, stop progress accumulation, and let active `temp_vip_active_until` windows expire or explicitly reset them.
 - Remove `Trader\TempVipController`, route `trader.temp-vip.activate`, `TempVipExpireJob`, `UpdateTempVipProgressListener`, `UserTempVipActivation`, and the `OrderSucceeded` listener registration for temporary VIP progress.
 - Remove temporary VIP methods and settings from `SettingsService` and `SettingsServiceContract`: required deals, duration minutes, enabled flag, and reset behavior.
-- Remove `User::getTempVipProgressData()` and temporary VIP fields from `UserResource` and `PaymentDetailResource`. Keep `is_vip` and permanent VIP observer behavior.
-- Keep the permanent VIP path: `users.is_vip` must remain editable and order/payment-detail limit logic must treat only `users.is_vip` as VIP.
-- Before dropping temporary VIP columns/table, decide what to do with `payment_details.vip_min_order_amount_backup` and `vip_max_order_amount_backup`; these backups may need to be restored into visible min/max limits for permanent VIP users.
+- Remove `User::getTempVipProgressData()` and temporary VIP fields from `UserResource` and `PaymentDetailResource`. Keep `can_set_order_amount_limits` and the observer that restores/resets limits on toggle.
+- Keep the permanent path: `users.can_set_order_amount_limits` must remain editable and payment-detail limit logic must treat only that flag as granting min/max editing.
+- Before dropping temporary VIP columns/table, decide what to do with `payment_details.min_order_amount_backup` and `max_order_amount_backup`; these backups may need to be restored into visible min/max limits when the flag is enabled.
 
 ### Step 3 — Remove User Teams From Admin And User Pages (**Shipped**)
 
@@ -408,7 +410,7 @@ Admin bank/payment-method settings currently contain a separate per-gateway payo
 
 - Admin can create/edit/bulk-edit payment gateways without sender fields.
 - Editing a gateway does not clear existing `sms_senders` in DB.
-- SMS ingestion, parsing, shadow SMS logs, order matching, and sender stop-list still work with existing data.
+- SMS ingestion, parsing, order matching, and sender stop-list still work with existing data.
 
 ### Step 21 — Remove NSPK Payment Detail Type
 

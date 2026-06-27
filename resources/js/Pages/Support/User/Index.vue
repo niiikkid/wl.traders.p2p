@@ -2,10 +2,10 @@
 import {Head, usePage, useForm} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import {ref} from "vue";
-import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
+import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
 import UserAvatar from '@/Components/User/UserAvatar.vue';

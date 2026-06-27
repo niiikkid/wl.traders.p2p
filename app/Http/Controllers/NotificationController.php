@@ -2,16 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\NotificationEvent;
-use App\Enums\NotificationMessageScope;
-use App\Http\Resources\NotificationRuleResource;
 use App\Http\Resources\TelegramAccountResource;
 use App\Models\Dispute;
-use App\Models\NotificationRule;
 use App\Models\Order;
 use App\Models\SmsLog;
 use App\Models\UserMeta;
-use App\Services\Money\Currency;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -28,54 +23,17 @@ class NotificationController extends Controller
         $isTrader = $user->hasRole('Trader');
         $audioTracks = $isTrader ? $this->getAudioTracks() : [];
 
-        $rules = NotificationRuleResource::collection(
-            NotificationRule::query()
-                ->where('user_id', $user->id)
-                ->latest('id')
-                ->get()
-        )->resolve();
-
         $telegramAccount = TelegramAccountResource::make(
             services()->telegram()->getOrCreateForUser($user)
         )->resolve();
 
-        $events = array_map(function (NotificationEvent $event) {
-            return [
-                'name' => $event->label(),
-                'value' => $event->value,
-            ];
-        }, NotificationEvent::forUser($user));
-
-        $currencies = Currency::getAll()
-            ->map(function (Currency $currency) {
-                return [
-                    'name' => strtoupper($currency->getCode()),
-                    'value' => $currency->getCode(),
-                ];
-            })
-            ->values()
-            ->toArray();
-
         return [
-            'rules' => $rules,
             'telegramAccount' => $telegramAccount,
             'showInAppSoundSettings' => $isTrader,
             'audioTracks' => $audioTracks,
             'notificationSoundSettings' => $isTrader
                 ? $this->buildNotificationSoundSettings($user->meta, $audioTracks)
                 : [],
-            'filtersVariants' => [
-                'event' => $events,
-                'currency' => $currencies,
-                'message_scope' => $isTrader
-                    ? array_map(function (NotificationMessageScope $scope) {
-                        return [
-                            'name' => $scope->label(),
-                            'value' => $scope->value,
-                        ];
-                    }, NotificationMessageScope::cases())
-                    : [],
-            ],
         ];
     }
 

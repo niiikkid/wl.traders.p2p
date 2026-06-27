@@ -10,7 +10,6 @@ import {storeToRefs} from "pinia";
 import {useViewStore} from "@/store/view.js";
 import {computed, ref} from "vue";
 import DateTime from "@/Components/DateTime.vue";
-import DUUID from "@/Components/DUUID.vue";
 import CopyableExternalId from "@/Components/CopyableExternalId.vue";
 import EditOrderAmountModal from "@/Modals/Order/EditOrderAmountModal.vue";
 import LinkOrderSmsModal from "@/Modals/Order/LinkOrderSmsModal.vue";

@@ -292,10 +292,6 @@ class HandleInertiaRequests extends Middleware
             'payoutsActiveCount' => (int) $payoutsActiveCount,
         ];
 
-        $trafficPaused = $authUser instanceof User && isRouteFor('Super Admin')
-            ? services()->settings()->isTrafficPaused()
-            : false;
-
         $sharedWalletStats = null;
         if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant'))) {
             $walletStatsCacheKey = "shared_wallet_stats_{$userRole}_{$authUser->id}";
@@ -337,7 +333,6 @@ class HandleInertiaRequests extends Middleware
                 'pendingDisputePreview' => fn () => $pendingDisputePreview,
             ],
             'menu' => $menu,
-            'adminTrafficPaused' => fn () => $trafficPaused,
             'notificationsSound' => $authUser instanceof User && $isTrader ? [
                 'order_assigned' => [
                     'enabled' => $authUser->meta?->notification_sound_order_enabled ?? true,

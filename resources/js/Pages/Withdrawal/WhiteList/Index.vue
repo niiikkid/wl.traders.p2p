@@ -1,8 +1,8 @@
 <script setup>
 import {Head, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
-import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
+import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import {ref} from "vue";
 import TextInput from "@/Components/TextInput.vue";

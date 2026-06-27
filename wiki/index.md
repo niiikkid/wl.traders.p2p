@@ -56,7 +56,7 @@ SMS/push automation ingress, filtering, and admin inspection outside the main `s
 
 | Article | Summary | Updated |
 |---------|---------|---------|
-| [Shadow SMS Log Implementation Plan](sms-automation/shadow-sms-log-implementation-plan.md) | **Shipped:** `shadow_sms_logs` async logging, admin Автоматика page, global enable toggle, search, hard delete all; migration applied. | 2026-05-24 |
+| [Shadow SMS Log Implementation Plan](sms-automation/shadow-sms-log-implementation-plan.md) | **Removed (2026-06-27):** feature deleted from codebase; table `shadow_sms_logs` dropped. Historical plan only. | 2026-06-27 |
 
 ## user-devices
 

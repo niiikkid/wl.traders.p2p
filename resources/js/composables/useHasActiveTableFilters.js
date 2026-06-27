@@ -27,17 +27,27 @@ const normalizeValue = (value) => {
 };
 
 /**
- * Есть ли у текущей таблицы ненулевые фильтры (для бейджа и т.п.).
+ * Количество активных (непустых) фильтров текущей таблицы.
+ * Считаем по ключам фильтров, у которых нормализованное значение непусто.
  */
-export function useHasActiveTableFilters() {
+export function useActiveTableFiltersCount() {
     const tableFiltersStore = useTableFiltersStore();
 
     return computed(() => {
         const filters = tableFiltersStore.getFilters;
         if (!filters || typeof filters !== 'object') {
-            return false;
+            return 0;
         }
 
-        return Object.values(filters).some((value) => normalizeValue(value).length > 0);
+        return Object.values(filters).filter((value) => normalizeValue(value).length > 0).length;
     });
+}
+
+/**
+ * Есть ли у текущей таблицы ненулевые фильтры (для бейджа и т.п.).
+ */
+export function useHasActiveTableFilters() {
+    const count = useActiveTableFiltersCount();
+
+    return computed(() => count.value > 0);
 }

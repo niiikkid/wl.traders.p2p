@@ -1,10 +1,9 @@
 <script setup>
-import {computed, ref, watch, onMounted, onUnmounted, nextTick, inject} from "vue";
-import {useTableFiltersStore} from "@/store/tableFilters.js";
+import {ref, watch, onMounted, onUnmounted, nextTick, inject} from "vue";
 import Pikaday from "pikaday";
-
-const tableFiltersStore = useTableFiltersStore();
-const applyFilters = inject('applyFilters', null);
+import {useFilterModel} from "@/composables/useFilterModel.js";
+import FilterField from "@/Components/Filters/Partials/FilterField.vue";
+import CalendarIcon from "@/Components/Filters/Icons/CalendarIcon.vue";
 
 const props = defineProps({
     name: {
@@ -13,14 +12,14 @@ const props = defineProps({
     title: {
         type: String,
     },
+    label: {
+        type: String,
+        default: '',
+    },
 });
 
-const model = computed({
-    get: () => tableFiltersStore.filters[props.name],
-    set: (val) => {
-        tableFiltersStore.filters[props.name] = val
-    }
-})
+const applyFilters = inject('applyFilters', null);
+const model = useFilterModel(props.name);
 
 const dateInputRef = ref(null);
 let picker = null;
@@ -66,11 +65,7 @@ onMounted(async () => {
                 weekdaysShort: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
             },
             onSelect: function(date) {
-                if (date) {
-                    model.value = formatDateForDisplay(date);
-                } else {
-                    model.value = "";
-                }
+                model.value = date ? formatDateForDisplay(date) : "";
             }
         });
 
@@ -107,13 +102,11 @@ watch(model, (newValue) => {
 </script>
 
 <template>
-    <div class="form-control w-full">
+    <FilterField :label="label">
         <div class="relative w-full">
-        <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none z-2">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4 text-base-content/60">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-            </svg>
-        </div>
+            <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none z-2">
+                <CalendarIcon class="size-4 text-base-content/60"/>
+            </div>
             <input
                 ref="dateInputRef"
                 type="text"
@@ -123,5 +116,5 @@ watch(model, (newValue) => {
                 @keydown.enter.prevent="applyFilters && applyFilters()"
             >
         </div>
-    </div>
+    </FilterField>
 </template>

@@ -23,6 +23,10 @@ class TeamLeaderTraderResource extends JsonResource
             'stop_traffic' => (bool) $this->stop_traffic,
             'online_at' => $this->normalizeCachedDate(cache()->get("user-online-at-$this->id")),
             'payment_details_count' => (int) ($this->payment_details_count ?? 0),
+            'orders_count' => (int) ($this->orders_count ?? 0),
+            'total_profit' => isset($this->total_team_leader_profit)
+                ? $this->total_team_leader_profit->toBeauty()
+                : '0.00',
             'team_leader_individual_commission_percentage' => $this->team_leader_individual_commission_percentage !== null
                 ? (float) $this->team_leader_individual_commission_percentage
                 : null,

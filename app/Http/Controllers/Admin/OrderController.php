@@ -17,27 +17,12 @@ class OrderController extends Controller
     {
         $filters = $this->getTableFilters();
         $filtersVariants = $this->getFiltersData();
-        $trafficPaused = services()->settings()->isTrafficPaused();
 
         $orders = queries()->order()->paginateForAdmin($filters);
         $orders = TableOrderResource::collection($orders);
         $incomingSmsLogsUnlinkedCount = IncomingSmsLogController::unlinkedCountForUser(auth()->user(), forAdmin: true);
 
-        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants', 'trafficPaused', 'incomingSmsLogsUnlinkedCount'));
-    }
-
-    public function updateTrafficPaused(Request $request)
-    {
-        $validated = $request->validate([
-            'paused' => ['required', 'boolean'],
-        ]);
-
-        services()->settings()->updateTrafficPaused((bool) $validated['paused']);
-
-        return redirect()->back()->with(
-            'message',
-            $validated['paused'] ? 'Трафик остановлен.' : 'Трафик запущен.'
-        );
+        return Inertia::render('Order/Index', compact('orders', 'filters', 'filtersVariants', 'incomingSmsLogsUnlinkedCount'));
     }
 
     public function updateAmount(Request $request, Order $order)

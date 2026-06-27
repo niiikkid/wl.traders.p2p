@@ -1,5 +1,7 @@
 # Shadow SMS Log (Теневой лог) — Implementation Plan
 
+> **Status: REMOVED (2026-06-27).** The feature was fully removed from the codebase. This article is kept for historical context only.
+
 > Sources: User conversation, 2026-05-23; repository exploration, 2026-05-23; implementation status, 2026-05-23; feature shipped confirmation, 2026-05-24
 > Raw: [Shadow SMS Log Requirements](../../raw/sms-automation/2026-05-23-shadow-sms-log-requirements.md); [Shadow SMS Log Enable Toggle](../../raw/sms-automation/2026-05-23-shadow-sms-log-enabled-toggle-requirements.md); [Shadow SMS Log Implementation Status](../../raw/sms-automation/2026-05-23-shadow-sms-log-implementation-status.md); [Feature Shipped Status](../../raw/sms-automation/2026-05-24-feature-shipped-status.md)
 > Updated: 2026-05-24

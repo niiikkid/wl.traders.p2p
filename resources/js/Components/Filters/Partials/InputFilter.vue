@@ -1,9 +1,7 @@
 <script setup>
-import {useTableFiltersStore} from "@/store/tableFilters.js";
-import {computed, inject} from "vue";
-
-const tableFiltersStore = useTableFiltersStore();
-const applyFilters = inject('applyFilters', null);
+import {inject} from "vue";
+import {useFilterModel} from "@/composables/useFilterModel.js";
+import FilterField from "@/Components/Filters/Partials/FilterField.vue";
 
 const props = defineProps({
     name: {
@@ -12,18 +10,18 @@ const props = defineProps({
     placeholder: {
         type: String,
     },
+    label: {
+        type: String,
+        default: '',
+    },
 });
 
-const model = computed({
-    get: () => tableFiltersStore.filters[props.name],
-    set: (val) => {
-        tableFiltersStore.filters[props.name] = val
-    }
-})
+const applyFilters = inject('applyFilters', null);
+const model = useFilterModel(props.name);
 </script>
 
 <template>
-    <div class="form-control w-full">
+    <FilterField :label="label">
         <input
             type="text"
             :id="$.uid"
@@ -32,9 +30,5 @@ const model = computed({
             class="input input-bordered input-sm w-full"
             @keydown.enter.prevent="applyFilters && applyFilters()"
         >
-    </div>
+    </FilterField>
 </template>
-
-<style scoped>
-
-</style>

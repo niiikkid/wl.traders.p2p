@@ -157,8 +157,8 @@ onUnmounted(() => {
                     <div class="text-base-content/70">Онлайн</div>
                     <div class="font-medium text-right">{{ boolToText(!!props.user.is_online) }}</div>
 
-                    <div class="text-base-content/70">VIP</div>
-                    <div class="font-medium text-right">{{ boolToText(!!props.user.is_vip) }}</div>
+                    <div class="text-base-content/70">Лимиты сделки</div>
+                    <div class="font-medium text-right">{{ boolToText(!!props.user.can_set_order_amount_limits) }}</div>
 
                     <div class="text-base-content/70">Трафик</div>
                     <div class="font-medium text-right">{{ boolToText(!!props.user.stop_traffic) }}</div>

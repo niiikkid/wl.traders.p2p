@@ -5,7 +5,7 @@ import ModalNext from '@/Components/Modals/Next/ModalNext.vue';
 import ModalHeaderNext from '@/Components/Modals/Next/ModalHeaderNext.vue';
 import ModalBodyNext from '@/Components/Modals/Next/ModalBodyNext.vue';
 import ModalFooterNext from '@/Components/Modals/Next/ModalFooterNext.vue';
-import DisplayUUID from '@/Components/DisplayUUID.vue';
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import MoneyValue from '@/Components/MoneyValue.vue';
 import OrderStatus from '@/Components/OrderStatus.vue';
 import PaymentDetail from '@/Components/PaymentDetail.vue';
@@ -326,7 +326,7 @@ watch(
                                         >
                                             MC
                                         </span>
-                                        <DisplayUUID :uuid="order.uuid" />
+                                        <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                     </div>
                                 </th>
                                 <td>
@@ -409,7 +409,7 @@ watch(
                                     >
                                         MC
                                     </span>
-                                    <DisplayUUID :uuid="order.uuid" />
+                                    <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                 </div>
                                 <div class="mt-1">
                                     <DateTime

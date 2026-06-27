@@ -7,7 +7,7 @@ import { useModalStore } from "@/store/modal.js";
 import { ref, watch } from "vue";
 import DateTime from "@/Components/DateTime.vue";
 import OrderStatus from "@/Components/OrderStatus.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 
 const modalStore = useModalStore();
 const { antiFraudClientOrdersModal } = storeToRefs(modalStore);
@@ -87,7 +87,7 @@ watch(
                         <tbody>
                         <tr v-for="order in orders" :key="order.id">
                             <td class="whitespace-nowrap font-medium">
-                                <DisplayUUID :uuid="order.uuid" />
+                                <CopyableOrderUid :uuid="order.uuid ?? ''" />
                             </td>
                             <td>
                                 <div class="text-nowrap text-base-content">

@@ -4,8 +4,8 @@ use App\Http\Controllers\Admin\AddressWhitelistController;
 use App\Http\Controllers\Admin\AntiFraudClientController;
 use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
-use App\Http\Controllers\Admin\CallbackLogController;
 use App\Http\Controllers\Admin\CurrencyController;
+use App\Http\Controllers\Admin\EnabledCardsController;
 use App\Http\Controllers\Admin\IntegrationApiController;
 use App\Http\Controllers\Admin\ManualControlAcqController;
 use App\Http\Controllers\Admin\MerchantApiLogController;
@@ -16,7 +16,6 @@ use App\Http\Controllers\Admin\PriceParserController;
 use App\Http\Controllers\Admin\ProfitCalculatorController;
 use App\Http\Controllers\Admin\SenderStopListController;
 use App\Http\Controllers\Admin\SettingsController;
-use App\Http\Controllers\Admin\ShadowSmsLogController;
 use App\Http\Controllers\Admin\SmsStopWordController;
 use App\Http\Controllers\Admin\TelegramBotSettingController;
 use App\Http\Controllers\Admin\TelegramChatAttachmentController;
@@ -38,7 +37,6 @@ use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\ModalController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\NotificationRuleController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderSmsLogController;
 use App\Http\Controllers\PaymentController;
@@ -52,11 +50,9 @@ use App\Http\Controllers\SmsLogController;
 use App\Http\Controllers\SmsLogOrderController;
 use App\Http\Controllers\SmsLogRejectController;
 use App\Http\Controllers\Support\DepositController;
-use App\Http\Controllers\Support\EnabledCardsController;
 use App\Http\Controllers\Support\FilterController;
 use App\Http\Controllers\Support\UserController;
 use App\Http\Controllers\TeamLeader\DepositInvoiceController as TeamLeaderDepositInvoiceController;
-use App\Http\Controllers\TeamLeader\ReferralController;
 use App\Http\Controllers\TeamLeader\TraderController;
 use App\Http\Controllers\TeamLeader\TraderDisputeController;
 use App\Http\Controllers\TeamLeader\TraderFinanceController;
@@ -121,9 +117,6 @@ Route::group(['middleware' => ['2fa']], function () {
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Merchant|Super Admin']], function () {
         Route::get('/notifications/ping', [NotificationController::class, 'ping'])->name('notifications.ping');
         Route::patch('/notifications/sound-settings', [NotificationController::class, 'updateSoundSettings'])->name('notifications.sound.update');
-        Route::post('/notifications/rules', [NotificationRuleController::class, 'store'])->name('notifications.rules.store');
-        Route::patch('/notifications/rules/{notificationRule}', [NotificationRuleController::class, 'update'])->name('notifications.rules.update');
-        Route::delete('/notifications/rules/{notificationRule}', [NotificationRuleController::class, 'destroy'])->name('notifications.rules.destroy');
         Route::post('/notifications/telegram/link', [TelegramSettingsController::class, 'refreshLink'])->name('notifications.telegram.link');
         Route::post('/notifications/telegram/unlink', [TelegramSettingsController::class, 'unlink'])->name('notifications.telegram.unlink');
     });
@@ -133,7 +126,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/finances', [WalletController::class, 'index'])->name('finances.index');
         Route::post('/deposit/invoices', [TeamLeaderDepositInvoiceController::class, 'store'])->name('deposit.invoices.store');
-        Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
         Route::get('/traders', [TraderController::class, 'index'])->name('traders.index');
         Route::patch('/traders/{trader}/toggle-online', [TraderController::class, 'toggleOnline'])->name('traders.toggle-online');
         Route::patch('/traders/{trader}/commission', [TraderController::class, 'updateCommission'])->name('traders.update-commission');
@@ -232,9 +224,6 @@ Route::group(['middleware' => ['2fa']], function () {
     Route::group(['prefix' => 'support', 'as' => 'support.', 'middleware' => ['auth', 'banned', 'role:Support|Super Admin']], function () {
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::patch('/users/{user}/toggle-traffic', [UserController::class, 'toggleTraffic'])->name('users.toggle-traffic');
-        Route::get('/enabled-cards', [EnabledCardsController::class, 'index'])->name('enabled-cards.index');
-        Route::post('/enabled-cards/limit-levels', [EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
-        Route::delete('/enabled-cards/limit-levels', [EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
         Route::get('/orders', [App\Http\Controllers\Support\OrderController::class, 'index'])->name('orders.index');
         Route::patch('/orders/{order}/accept', [App\Http\Controllers\Support\OrderController::class, 'acceptOrder'])->name('orders.accept');
         Route::patch('/orders/{order}/amount', [App\Http\Controllers\Support\OrderController::class, 'updateAmount'])->name('orders.update.amount');
@@ -311,10 +300,8 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/app', [App\Http\Controllers\Admin\ApkController::class, 'store'])->name('app.store');
         Route::get('/integration-api', [IntegrationApiController::class, 'index'])->name('integration-api.index');
         Route::post('/integration-api/regenerate-token', [IntegrationApiController::class, 'regenerateToken'])->name('integration-api.regenerate-token');
-        Route::get('/open-ai', [OpenAiSettingController::class, 'index'])->name('open-ai.index');
         Route::patch('/open-ai', [OpenAiSettingController::class, 'update'])->name('open-ai.update');
         Route::post('/open-ai/models', [OpenAiSettingController::class, 'refreshModels'])->name('open-ai.models.refresh');
-        Route::post('/open-ai/prompt', [OpenAiSettingController::class, 'prompt'])->name('open-ai.prompt');
         Route::get('/telegram-bot/settings', [TelegramBotSettingController::class, 'show'])->name('telegram-bot.settings.show');
         Route::patch('/telegram-bot/settings', [TelegramBotSettingController::class, 'update'])->name('telegram-bot.settings.update');
         Route::post('/telegram-bot/webhook', [TelegramBotSettingController::class, 'setupWebhook'])->name('telegram-bot.webhook.setup');
@@ -340,9 +327,9 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/profit-calculator', [ProfitCalculatorController::class, 'index'])->name('profit-calculator.index');
         Route::post('/profit-calculator/calculate', [ProfitCalculatorController::class, 'calculate'])->name('profit-calculator.calculate');
 
-        Route::get('/enabled-cards', [App\Http\Controllers\Admin\EnabledCardsController::class, 'index'])->name('enabled-cards.index');
-        Route::post('/enabled-cards/limit-levels', [App\Http\Controllers\Admin\EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
-        Route::delete('/enabled-cards/limit-levels', [App\Http\Controllers\Admin\EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
+        Route::get('/enabled-cards', [EnabledCardsController::class, 'index'])->name('enabled-cards.index');
+        Route::post('/enabled-cards/limit-levels', [EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
+        Route::delete('/enabled-cards/limit-levels', [EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
 
         // Маршруты для фильтрации
         Route::get('/filters/detail-types', [App\Http\Controllers\Admin\FilterController::class, 'getDetailTypes']);
@@ -365,7 +352,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/payment-gateways/bulk-settings', [PaymentGatewayController::class, 'bulkUpdate'])->name('payment-gateways.bulk-settings.update');
         Route::patch('/payment-gateways/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payment-gateways.update');
         Route::get('/orders', [App\Http\Controllers\Admin\OrderController::class, 'index'])->name('orders.index');
-        Route::patch('/orders/traffic-paused', [App\Http\Controllers\Admin\OrderController::class, 'updateTrafficPaused'])->name('orders.traffic-paused.update');
         Route::get('/payouts', [App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('payouts.index');
         Route::get('/payouts/export', [App\Http\Controllers\Admin\PayoutController::class, 'export'])->name('payouts.export');
         Route::patch('/payouts/{payout}/status', [App\Http\Controllers\Admin\PayoutController::class, 'updateStatus'])->name('payouts.status.update');
@@ -384,10 +370,6 @@ Route::group(['middleware' => ['2fa']], function () {
 
         Route::get('/sms-logs', [App\Http\Controllers\Admin\SmsLogController::class, 'index'])->name('sms-logs.index');
         Route::get('/incoming-sms-logs', [IncomingSmsLogController::class, 'index'])->name('incoming-sms-logs.index');
-        Route::get('/shadow-sms-logs', [ShadowSmsLogController::class, 'index'])->name('shadow-sms-logs.index');
-        Route::patch('/shadow-sms-logs/enabled', [ShadowSmsLogController::class, 'updateEnabled'])->name('shadow-sms-logs.enabled.update');
-        Route::delete('/shadow-sms-logs', [ShadowSmsLogController::class, 'destroyAll'])->name('shadow-sms-logs.destroy-all');
-        Route::delete('/shadow-sms-logs/by-pattern', [ShadowSmsLogController::class, 'destroyByPattern'])->name('shadow-sms-logs.destroy-by-pattern');
         Route::get('/devices', [AdminUserDeviceController::class, 'index'])->name('devices.index');
         Route::get('/devices/{device}/connect-snapshot', [AdminUserDeviceController::class, 'connectSnapshot'])
             ->name('devices.connect-snapshot.show');
@@ -444,7 +426,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant-api-logs.index');
         Route::get('/merchant-api-logs/amount-distribution', [MerchantApiLogController::class, 'amountDistribution'])->name('merchant-api-logs.amount-distribution');
         Route::post('/merchant-api-logs/delete', [MerchantApiLogController::class, 'deleteByDateRange'])->name('merchant-api-logs.delete');
-        Route::get('/callback-logs', [CallbackLogController::class, 'index'])->name('callback-logs.index');
+        Route::redirect('/callback-logs', '/admin/merchant-api-logs?tab=callbacks')->name('callback-logs.index');
 
         // Только для локальной разработки: страница со всеми компонентами
         if (is_local()) {

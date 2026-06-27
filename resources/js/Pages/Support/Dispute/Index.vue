@@ -9,10 +9,9 @@ import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import DateTime from "@/Components/DateTime.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 
 const modalStore = useModalStore();
 
@@ -117,9 +116,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col">
                                             ID
                                         </th>
-                                        <th scope="col" class=" text-nowrap">
-                                            Сделка
-                                        </th>
                                         <th scope="col">
                                             Реквизит
                                         </th>
@@ -145,9 +141,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="row" class=" font-medium whitespace-nowrap">
                                             {{ dispute.id }}
                                         </th>
-                                        <td>
-                                            <DisplayUUID :uuid="dispute.order.uuid"/>
-                                        </td>
                                         <td>
                                             <PaymentDetail
                                                 :detail="dispute.payment_detail.detail"
@@ -203,10 +196,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="inline-flex gap-3">
                                             <div class="inline-flex items-center">
                                                 <span class="text-base-content/70">ID:</span> <span class="font-medium ml-4">{{ dispute.id }}</span>
-                                            </div>
-                                            <div class="hidden sm:inline-flex gap-1 items-center">
-                                                <span class="text-base-content/70 text-xs">Сделка:</span>
-                                                <DisplayUUID :uuid="dispute.order.uuid"/>
                                             </div>
                                         </div>
                                         <div class="inline-flex items-center">
@@ -277,11 +266,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </div>
                                         </div>
                                         <div class="border-b border-base-content/10 my-2"></div>
-                                        <div class="flex items-center justify-between">
-                                            <div class="inline-flex items-center gap-1">
-                                                <span class="text-base-content/70 text-xs">Сделка:</span>
-                                                <DisplayUUID :uuid="dispute.order.uuid"/>
-                                            </div>
+                                        <div class="flex items-center justify-end">
                                             <div>
                                                 <button
                                                     type="button"

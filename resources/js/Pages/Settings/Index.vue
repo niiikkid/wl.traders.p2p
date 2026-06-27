@@ -8,6 +8,7 @@ import FundsOnHold from '@/Pages/Settings/Partials/FundsOnHold.vue';
 import MaxPendingDisputes from '@/Pages/Settings/Partials/MaxPendingDisputes.vue';
 import MaxRejectedDisputes from '@/Pages/Settings/Partials/MaxRejectedDisputes.vue';
 import DefaultReserveBalanceLimit from '@/Pages/Settings/Partials/DefaultReserveBalanceLimit.vue';
+import OpenAiSetting from '@/Pages/Settings/Partials/OpenAiSetting.vue';
 
 defineOptions({ layout: AuthenticatedLayout })
 </script>
@@ -41,6 +42,9 @@ defineOptions({ layout: AuthenticatedLayout })
             </SettingsPanel>
             <SettingsPanel>
                 <MaxRejectedDisputes />
+            </SettingsPanel>
+            <SettingsPanel>
+                <OpenAiSetting />
             </SettingsPanel>
         </div>
     </div>

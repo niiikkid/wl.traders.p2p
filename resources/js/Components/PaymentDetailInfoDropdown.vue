@@ -24,13 +24,13 @@ const overlay = ref(null);
 const dropdownPosition = ref({top: 0, left: 0});
 const dropdownMaxHeight = ref(null);
 
-const isVipUser = computed(() => {
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
+const canSetOrderAmountLimits = computed(() => {
+    return currentUser?.can_set_order_amount_limits === true || currentUser?.can_set_order_amount_limits === 1;
 });
 
 const shouldShowAmountRange = computed(() => {
-    return isVipUser.value
-        || paymentDetail.value?.owner_is_vip
+    return canSetOrderAmountLimits.value
+        || paymentDetail.value?.owner_can_set_order_amount_limits
         || paymentDetail.value?.min_order_amount !== null
         || paymentDetail.value?.max_order_amount !== null;
 });

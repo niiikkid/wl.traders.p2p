@@ -3,22 +3,20 @@ import {Head, router, usePage} from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import DateTime from "@/Components/DateTime.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import {computed, nextTick, onBeforeUnmount, onMounted, ref, unref, watch} from "vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
+import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch} from "vue";
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from "@/Components/DisplayID.vue";
-import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import MerchantApiLogAmountDistributionModal from "@/Modals/MerchantApiLogs/MerchantApiLogAmountDistributionModal.vue";
-import {useModalStore} from "@/store/modal";
-import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
+import CallbackLogsTable from "@/Pages/MerchantApiLogs/Partials/CallbackLogsTable.vue";
+import ChartBarIcon from "@/Components/Filters/Icons/ChartBarIcon.vue";
+import ChevronDownIcon from "@/Components/Filters/Icons/ChevronDownIcon.vue";
 import ApexCharts from 'apexcharts';
-
-const modalStore = useModalStore();
 const page = usePage();
 
-const isAdminMerchantApiLogsPage = computed(() => route().current() === 'admin.merchant-api-logs.index');
+const isAdminLogsPage = computed(() => route().current('admin.merchant-api-logs.*'));
 const showAmountDistributionModal = ref(false);
 const amountDistributionRoute = computed(() => {
     if (route().current('admin.merchant-api-logs.index')) {
@@ -27,20 +25,15 @@ const amountDistributionRoute = computed(() => {
 
     return null;
 });
-const filtersPanelRef = ref(null);
-const hasActiveMerchantApiLogFilters = useHasActiveTableFilters();
-const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
 const isRefreshingPage = ref(false);
 const activeApiLogTab = computed(() => page.props.activeApiLogTab || 'orders');
+const isCallbackLogsTab = computed(() => activeApiLogTab.value === 'callbacks');
 const isPayoutLogsTab = computed(() => activeApiLogTab.value === 'payouts');
+const isMerchantApiLogsTab = computed(() => !isCallbackLogsTab.value);
 const entityColumnLabel = computed(() => isPayoutLogsTab.value ? 'Выплата' : 'Сделка');
 const entityUuidPlaceholder = computed(() => isPayoutLogsTab.value ? 'UUID выплаты' : 'UUID сделки');
 const detailColumnLabel = computed(() => isPayoutLogsTab.value ? 'Метод' : 'Реквизит');
 const detailFieldLabel = computed(() => isPayoutLogsTab.value ? 'Метод выплаты:' : 'Тип реквизита:');
-
-const toggleFiltersFromToolbar = () => {
-    filtersPanelRef.value?.toggleFiltersDisplay?.();
-};
 
 const refreshMerchantApiLogsPage = () => {
     if (isRefreshingPage.value) {
@@ -56,7 +49,9 @@ const refreshMerchantApiLogsPage = () => {
     });
 };
 const logs = computed(() => page.props.logs);
-const canManageMerchantApiLogDeletion = computed(() => Boolean(page.props.can_manage_merchant_api_log_deletion));
+const statisticsStorageKey = 'display-merchant-api-logs-statistics';
+const displayStatistics = ref(false);
+const isStatisticsAnimating = ref(false);
 const expandedRows = ref({}); // Для отслеживания развернутых строк (desktop)
 const expandedCards = ref({}); // Для отслеживания развернутых карточек (mobile)
 const chart = ref(null);
@@ -118,44 +113,26 @@ const sumByFailedCurrencyToday = computed(() => page.props.sumByFailedCurrencyTo
 const sumBySuccessCurrencyTotal = computed(() => page.props.sumBySuccessCurrencyTotal);
 const sumByFailedCurrencyTotal = computed(() => page.props.sumByFailedCurrencyTotal);
 
-// Данные для удаления логов по периоду
-const startDate = ref('');
-const endDate = ref('');
-const processing = ref(false);
+const syncStatisticsDisplayFromStorage = () => {
+    const saved = localStorage.getItem(statisticsStorageKey);
+    if (saved === null) {
+        localStorage.setItem(statisticsStorageKey, 'hide');
+        displayStatistics.value = false;
+        return;
+    }
 
-// Функция для проверки, выбраны ли обе даты
-const areBothDatesSelected = () => {
-    return startDate.value && endDate.value;
+    displayStatistics.value = saved === 'display';
 };
 
-// Функция для удаления логов
-const deleteLogsByDateRange = () => {
-    processing.value = true;
-    router.post(route('admin.merchant-api-logs.delete'), {
-        start_date: startDate.value,
-        end_date: endDate.value,
-    }, {
-        onSuccess: () => {
-            processing.value = false;
-            startDate.value = '';
-            endDate.value = '';
-        },
-        onError: () => {
-            processing.value = false;
-        }
-    });
+const toggleStatisticsDisplay = () => {
+    displayStatistics.value = !displayStatistics.value;
+    localStorage.setItem(statisticsStorageKey, displayStatistics.value ? 'display' : 'hide');
 };
 
-// Функция для подтверждения удаления
-const confirmDelete = () => {
-    if (!areBothDatesSelected()) return;
-
-    modalStore.openConfirmModal({
-        title: 'Подтверждение удаления',
-        body: `Вы уверены, что хотите удалить все логи API запросов за период с ${startDate.value} по ${endDate.value}? Это действие нельзя отменить.`,
-        confirm_button_name: 'Удалить',
-        confirm: deleteLogsByDateRange
-    });
+const onStatisticsTransitionEnd = (event) => {
+    if (event.propertyName === 'grid-template-rows') {
+        isStatisticsAnimating.value = false;
+    }
 };
 
 const switchApiLogTab = (tab) => {
@@ -377,7 +354,19 @@ const toggleExpand = (logId) => {
 
 defineOptions({ layout: AuthenticatedLayout })
 
+watch(displayStatistics, (isOpen) => {
+    isStatisticsAnimating.value = true;
+
+    if (isOpen) {
+        nextTick(() => {
+            renderChart();
+            apexChart.value?.resize();
+        });
+    }
+});
+
 onMounted(() => {
+    syncStatisticsDisplayFromStorage();
     nextTick(renderChart);
 });
 
@@ -413,39 +402,18 @@ onBeforeUnmount(() => {
 
 <template>
     <div>
-        <Head title="Логи API-запросов" />
+        <Head title="Логи" />
 
         <MainTableSection
-            title="Логи API-запросов"
+            title="Логи"
             :data="logs"
             :visit-extra-data="{ tab: activeApiLogTab }"
         >
-            <template v-if="isAdminMerchantApiLogsPage" #button>
+            <template v-if="isAdminLogsPage && isMerchantApiLogsTab" #button>
                 <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
                     <div
                         class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
                     >
-                        <div class="relative inline-flex shrink-0">
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
-                                :class="{ 'btn-active': filtersPanelOpen }"
-                                title="Фильтры"
-                                aria-label="Показать или скрыть фильтры"
-                                @click.prevent="toggleFiltersFromToolbar"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
-                                </svg>
-                            </button>
-                            <span
-                                v-if="hasActiveMerchantApiLogFilters"
-                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
-                                aria-hidden="true"
-                                title="Есть применённые фильтры"
-                            />
-                        </div>
-
                         <button
                             type="button"
                             class="btn btn-sm btn-square btn-secondary btn-outline shrink-0 rounded-lg"
@@ -500,14 +468,33 @@ onBeforeUnmount(() => {
                     >
                         Выплаты
                     </button>
+                    <button
+                        v-if="isAdminLogsPage"
+                        type="button"
+                        role="tab"
+                        class="tab"
+                        :class="{ 'tab-active': activeApiLogTab === 'callbacks' }"
+                        @click="switchApiLogTab('callbacks')"
+                    >
+                        Callback
+                    </button>
                 </div>
 
                 <FiltersPanel
-                    ref="filtersPanelRef"
-                    name="merchant-api-logs"
+                    :name="isCallbackLogsTab ? 'callback-logs' : 'merchant-api-logs'"
                     :query="{ tab: activeApiLogTab }"
-                    :omit-default-toggle-button="isAdminMerchantApiLogsPage"
                 >
+                    <template v-if="isCallbackLogsTab">
+                        <InputFilter
+                            name="uuid"
+                            placeholder="UUID сущности"
+                        />
+                        <InputFilter
+                            name="merchant"
+                            placeholder="Мерчант (имя или uuid)"
+                        />
+                    </template>
+                    <template v-else>
                     <InputFilter
                         name="merchant"
                         placeholder="Мерчант (имя или uuid)"
@@ -540,324 +527,314 @@ onBeforeUnmount(() => {
                         name="apiLogStatuses"
                         title="Статусы"
                     />
+                    </template>
                 </FiltersPanel>
+
+                <section v-if="activeApiLogTab === 'orders'" class="mt-2 space-y-2">
+                    <button
+                        type="button"
+                        class="group flex w-full items-center gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm transition-colors hover:border-primary/50 focus:outline-none"
+                        :class="{ 'border-primary/40': displayStatistics }"
+                        :aria-expanded="displayStatistics ? 'true' : 'false'"
+                        @click.prevent="toggleStatisticsDisplay"
+                    >
+                        <span class="flex size-8 flex-none items-center justify-center rounded-lg bg-base-200 text-base-content/70 transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                            <ChartBarIcon class="size-4"/>
+                        </span>
+                        <span class="font-medium text-base-content">Статистика запросов</span>
+                        <span class="ml-auto flex items-center gap-2 text-sm text-base-content/60">
+                            <span class="hidden sm:inline">{{ displayStatistics ? 'Скрыть' : 'Показать' }}</span>
+                            <ChevronDownIcon class="size-4 transition-transform duration-200" :class="{ 'rotate-180': displayStatistics }"/>
+                        </span>
+                    </button>
+
+                    <div
+                        class="grid transition-[grid-template-rows] duration-300 ease-out"
+                        :class="displayStatistics ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'"
+                        @transitionend="onStatisticsTransitionEnd"
+                    >
+                        <div :class="displayStatistics && !isStatisticsAnimating ? 'overflow-visible' : 'overflow-hidden'">
+                            <div class="card border border-base-300 bg-base-100 shadow-sm">
+                                <div class="space-y-4 p-3 lg:p-4">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <h2 class="text-lg font-semibold">Статистика запросов</h2>
+                                        <button
+                                            v-if="amountDistributionRoute"
+                                            type="button"
+                                            class="btn btn-sm btn-outline btn-primary"
+                                            @click="showAmountDistributionModal = true"
+                                        >
+                                            Распределение по сумме
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                        <div class="card card-border bg-base-200/40 shadow-none">
+                                            <div class="card-body py-4">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="opacity-70">Успешно сегодня</p>
+                                                        <p class="text-2xl font-bold">{{ successToday }}</p>
+                                                    </div>
+                                                    <div class="rounded-full bg-success/10 p-3">
+                                                        <svg class="h-6 w-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card card-border bg-base-200/40 shadow-none">
+                                            <div class="card-body py-4">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="opacity-70">Ошибок сегодня</p>
+                                                        <p class="text-2xl font-bold">{{ failedToday }}</p>
+                                                    </div>
+                                                    <div class="rounded-full bg-error/10 p-3">
+                                                        <svg class="h-6 w-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card card-border bg-base-200/40 shadow-none">
+                                            <div class="card-body py-4">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="opacity-70">Успешно всего</p>
+                                                        <p class="text-2xl font-bold">{{ successTotal }}</p>
+                                                    </div>
+                                                    <div class="rounded-full bg-success/10 p-3">
+                                                        <svg class="h-6 w-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card card-border bg-base-200/40 shadow-none">
+                                            <div class="card-body py-4">
+                                                <div class="flex items-center justify-between">
+                                                    <div>
+                                                        <p class="opacity-70">Ошибок всего</p>
+                                                        <p class="text-2xl font-bold">{{ failedTotal }}</p>
+                                                    </div>
+                                                    <div class="rounded-full bg-error/10 p-3">
+                                                        <svg class="h-6 w-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-box border border-base-300 bg-base-200/30 px-6 pb-7 pt-4 pl-3">
+                                        <div class="flex flex-col gap-3 pl-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <div>
+                                                <h3 class="text-lg text-base-content/70">{{ chartTitle }}</h3>
+                                                <p class="text-sm text-base-content/60">{{ chartSubtitle }}</p>
+                                            </div>
+                                            <div class="flex flex-col gap-2 sm:items-end">
+                                                <div class="join join-horizontal">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm join-item"
+                                                        :class="chartMode === 'day' ? 'btn-active btn-primary' : 'bg-base-200/60 border-transparent'"
+                                                        @click="switchChartMode('day')"
+                                                    >
+                                                        День
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm join-item"
+                                                        :class="chartMode === 'average' ? 'btn-active btn-primary' : 'bg-base-200/60 border-transparent'"
+                                                        @click="switchChartMode('average')"
+                                                    >
+                                                        Средний день
+                                                    </button>
+                                                </div>
+                                                <div v-if="chartMode === 'day'" class="join join-horizontal items-center">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm btn-ghost join-item"
+                                                        @click="navigateChartDate(-1)"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7" />
+                                                        </svg>
+                                                    </button>
+                                                    <span class="join-item min-w-36 px-3 text-center text-sm font-medium text-base-content">
+                                                        {{ selectedChartDateLabel }}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm btn-ghost join-item"
+                                                        @click="navigateChartDate(1)"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7-7 7" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                                <div v-else class="flex flex-wrap justify-start gap-1 sm:justify-end">
+                                                    <button
+                                                        v-for="weekday in weekdayOptions"
+                                                        :key="weekday.value"
+                                                        type="button"
+                                                        class="btn btn-xs"
+                                                        :class="selectedWeekdays.includes(weekday.value) ? 'btn-primary' : 'btn-outline'"
+                                                        @click="toggleWeekday(weekday.value)"
+                                                    >
+                                                        {{ weekday.label }}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div ref="chart" class="h-60"></div>
+                                        <div class="mt-4 flex justify-end pl-3">
+                                            <div class="grid w-full grid-cols-1 gap-2 md:w-auto md:grid-cols-[minmax(9rem,12rem)_minmax(8rem,10rem)_minmax(8rem,10rem)_auto] md:items-end">
+                                                <label class="form-control w-full">
+                                                    <div class="label py-1">
+                                                        <span class="label-text text-xs">Валюта</span>
+                                                    </div>
+                                                    <select v-model="selectedChartCurrency" class="select select-bordered select-sm w-full">
+                                                        <option value="">Все валюты</option>
+                                                        <option
+                                                            v-for="currency in chartCurrencyOptions"
+                                                            :key="currency"
+                                                            :value="currency"
+                                                        >
+                                                            {{ currency.toUpperCase() }}
+                                                        </option>
+                                                    </select>
+                                                </label>
+                                                <label class="form-control w-full">
+                                                    <div class="label py-1">
+                                                        <span class="label-text text-xs">Сумма от</span>
+                                                    </div>
+                                                    <input
+                                                        v-model="chartAmountFrom"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        class="input input-bordered input-sm w-full"
+                                                        placeholder="0"
+                                                    >
+                                                </label>
+                                                <label class="form-control w-full">
+                                                    <div class="label py-1">
+                                                        <span class="label-text text-xs">Сумма до</span>
+                                                    </div>
+                                                    <input
+                                                        v-model="chartAmountTo"
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        class="input input-bordered input-sm w-full"
+                                                        placeholder="∞"
+                                                    >
+                                                </label>
+                                                <div class="flex gap-2 md:justify-end">
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-primary btn-sm"
+                                                        @click="applyChartFilters"
+                                                    >
+                                                        Применить
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-ghost btn-sm"
+                                                        @click="resetChartFilters"
+                                                    >
+                                                        Сбросить
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                        <div class="card card-border bg-base-200/40 shadow-none">
+                                            <div class="card-body">
+                                                <h3 class="mb-3 text-lg font-semibold">Суммы успешных запросов</h3>
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    <div>
+                                                        <h4 class="mb-2 text-sm font-medium opacity-70">Сегодня</h4>
+                                                        <div class="space-y-2">
+                                                            <div v-for="(amount, currency) in sumBySuccessCurrencyToday" :key="'success-today-' + currency" class="flex justify-between">
+                                                                <span>{{ currency.toUpperCase() }}</span>
+                                                                <span class="font-medium">{{ formatNumber(amount) }}</span>
+                                                            </div>
+                                                            <div v-if="Object.keys(sumBySuccessCurrencyToday).length === 0" class="opacity-70">
+                                                                Нет данных
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="mb-2 text-sm font-medium opacity-70">Всего</h4>
+                                                        <div class="space-y-2">
+                                                            <div v-for="(amount, currency) in sumBySuccessCurrencyTotal" :key="'success-total-' + currency" class="flex justify-between">
+                                                                <span>{{ currency.toUpperCase() }}</span>
+                                                                <span class="font-medium">{{ formatNumber(amount) }}</span>
+                                                            </div>
+                                                            <div v-if="Object.keys(sumBySuccessCurrencyTotal).length === 0" class="opacity-70">
+                                                                Нет данных
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card card-border bg-base-200/40 shadow-none">
+                                            <div class="card-body">
+                                                <h3 class="mb-3 text-lg font-semibold">Суммы неудачных запросов</h3>
+                                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    <div>
+                                                        <h4 class="mb-2 text-sm font-medium opacity-70">Сегодня</h4>
+                                                        <div class="space-y-2">
+                                                            <div v-for="(amount, currency) in sumByFailedCurrencyToday" :key="'failed-today-' + currency" class="flex justify-between">
+                                                                <span>{{ currency.toUpperCase() }}</span>
+                                                                <span class="font-medium">{{ formatNumber(amount) }}</span>
+                                                            </div>
+                                                            <div v-if="Object.keys(sumByFailedCurrencyToday).length === 0" class="opacity-70">
+                                                                Нет данных
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="mb-2 text-sm font-medium opacity-70">Всего</h4>
+                                                        <div class="space-y-2">
+                                                            <div v-for="(amount, currency) in sumByFailedCurrencyTotal" :key="'failed-total-' + currency" class="flex justify-between">
+                                                                <span>{{ currency.toUpperCase() }}</span>
+                                                                <span class="font-medium">{{ formatNumber(amount) }}</span>
+                                                            </div>
+                                                            <div v-if="Object.keys(sumByFailedCurrencyTotal).length === 0" class="opacity-70">
+                                                                Нет данных
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </template>
 
             <template v-slot:body>
-                <!-- Панель статистики -->
-                <div v-if="!isPayoutLogsTab" class="mb-6">
-                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                        <h2 class="text-xl font-semibold">Статистика запросов</h2>
-                        <button
-                            v-if="amountDistributionRoute"
-                            type="button"
-                            class="btn btn-sm btn-outline btn-primary"
-                            @click="showAmountDistributionModal = true"
-                        >
-                            Распределение по сумме
-                        </button>
-                    </div>
-
-                    <!-- Карточки статистики -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <!-- Успешные запросы сегодня -->
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body py-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="opacity-70">Успешно сегодня</p>
-                                    <p class="text-2xl font-bold">{{ successToday }}</p>
-                                </div>
-                                <div class="bg-success/10 p-3 rounded-full">
-                                    <svg class="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-
-                        <!-- Неудачные запросы сегодня -->
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body py-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="opacity-70">Ошибок сегодня</p>
-                                    <p class="text-2xl font-bold">{{ failedToday }}</p>
-                                </div>
-                                <div class="bg-error/10 p-3 rounded-full">
-                                    <svg class="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-
-                        <!-- Успешные запросы всего -->
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body py-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="opacity-70">Успешно всего</p>
-                                    <p class="text-2xl font-bold">{{ successTotal }}</p>
-                                </div>
-                                <div class="bg-success/10 p-3 rounded-full">
-                                    <svg class="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-
-                        <!-- Неудачные запросы всего -->
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body py-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="opacity-70">Ошибок всего</p>
-                                    <p class="text-2xl font-bold">{{ failedTotal }}</p>
-                                </div>
-                                <div class="bg-error/10 p-3 rounded-full">
-                                    <svg class="w-6 h-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card bg-base-100 shadow mt-4 pt-4 pb-7 px-6 pl-3">
-                        <div class="flex flex-col gap-3 pl-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <h3 class="text-base-content/70 text-lg">{{ chartTitle }}</h3>
-                                <p class="text-sm text-base-content/60">{{ chartSubtitle }}</p>
-                            </div>
-                            <div class="flex flex-col gap-2 sm:items-end">
-                                <div class="join join-horizontal">
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm join-item"
-                                        :class="chartMode === 'day' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
-                                        @click="switchChartMode('day')"
-                                    >
-                                        День
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-sm join-item"
-                                        :class="chartMode === 'average' ? 'btn-active btn-primary' : 'bg-base-100 border-transparent'"
-                                        @click="switchChartMode('average')"
-                                    >
-                                        Средний день
-                                    </button>
-                                </div>
-                                <div v-if="chartMode === 'day'" class="join join-horizontal items-center">
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-ghost join-item"
-                                    @click="navigateChartDate(-1)"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 19-7-7 7-7" />
-                                    </svg>
-                                </button>
-                                <span class="join-item px-3 text-sm font-medium text-base-content min-w-36 text-center">
-                                    {{ selectedChartDateLabel }}
-                                </span>
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-ghost join-item"
-                                    @click="navigateChartDate(1)"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 5 7 7-7 7" />
-                                    </svg>
-                                </button>
-                                </div>
-                                <div v-else class="flex flex-wrap gap-1 justify-start sm:justify-end">
-                                    <button
-                                        v-for="weekday in weekdayOptions"
-                                        :key="weekday.value"
-                                        type="button"
-                                        class="btn btn-xs"
-                                        :class="selectedWeekdays.includes(weekday.value) ? 'btn-primary' : 'btn-outline'"
-                                        @click="toggleWeekday(weekday.value)"
-                                    >
-                                        {{ weekday.label }}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div ref="chart" class="h-60"></div>
-                        <div class="mt-4 flex justify-end pl-3">
-                            <div class="grid w-full grid-cols-1 gap-2 md:w-auto md:grid-cols-[minmax(9rem,12rem)_minmax(8rem,10rem)_minmax(8rem,10rem)_auto] md:items-end">
-                                <label class="form-control w-full">
-                                    <div class="label py-1">
-                                        <span class="label-text text-xs">Валюта</span>
-                                    </div>
-                                    <select v-model="selectedChartCurrency" class="select select-bordered select-sm w-full">
-                                        <option value="">Все валюты</option>
-                                        <option
-                                            v-for="currency in chartCurrencyOptions"
-                                            :key="currency"
-                                            :value="currency"
-                                        >
-                                            {{ currency.toUpperCase() }}
-                                        </option>
-                                    </select>
-                                </label>
-                                <label class="form-control w-full">
-                                    <div class="label py-1">
-                                        <span class="label-text text-xs">Сумма от</span>
-                                    </div>
-                                    <input
-                                        v-model="chartAmountFrom"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        class="input input-bordered input-sm w-full"
-                                        placeholder="0"
-                                    >
-                                </label>
-                                <label class="form-control w-full">
-                                    <div class="label py-1">
-                                        <span class="label-text text-xs">Сумма до</span>
-                                    </div>
-                                    <input
-                                        v-model="chartAmountTo"
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        class="input input-bordered input-sm w-full"
-                                        placeholder="∞"
-                                    >
-                                </label>
-                                <div class="flex gap-2 md:justify-end">
-                                    <button
-                                        type="button"
-                                        class="btn btn-primary btn-sm"
-                                        @click="applyChartFilters"
-                                    >
-                                        Применить
-                                    </button>
-                                    <button
-                                        type="button"
-                                        class="btn btn-ghost btn-sm"
-                                        @click="resetChartFilters"
-                                    >
-                                        Сбросить
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Суммы по валютам -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        <!-- Суммы успешных запросов -->
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body">
-                            <h3 class="text-lg font-semibold mb-3">Суммы успешных запросов</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <h4 class="text-sm font-medium opacity-70 mb-2">Сегодня</h4>
-                                    <div class="space-y-2">
-                                        <div v-for="(amount, currency) in sumBySuccessCurrencyToday" :key="'success-today-' + currency" class="flex justify-between">
-                                            <span>{{ currency.toUpperCase() }}</span>
-                                            <span class="font-medium">{{ formatNumber(amount) }}</span>
-                                        </div>
-                                        <div v-if="Object.keys(sumBySuccessCurrencyToday).length === 0" class="opacity-70">
-                                            Нет данных
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-medium opacity-70 mb-2">Всего</h4>
-                                    <div class="space-y-2">
-                                        <div v-for="(amount, currency) in sumBySuccessCurrencyTotal" :key="'success-total-' + currency" class="flex justify-between">
-                                            <span>{{ currency.toUpperCase() }}</span>
-                                            <span class="font-medium">{{ formatNumber(amount) }}</span>
-                                        </div>
-                                        <div v-if="Object.keys(sumBySuccessCurrencyTotal).length === 0" class="opacity-70">
-                                            Нет данных
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-
-                        <!-- Суммы неудачных запросов -->
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body">
-                            <h3 class="text-lg font-semibold mb-3">Суммы неудачных запросов</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <h4 class="text-sm font-medium opacity-70 mb-2">Сегодня</h4>
-                                    <div class="space-y-2">
-                                        <div v-for="(amount, currency) in sumByFailedCurrencyToday" :key="'failed-today-' + currency" class="flex justify-between">
-                                            <span>{{ currency.toUpperCase() }}</span>
-                                            <span class="font-medium">{{ formatNumber(amount) }}</span>
-                                        </div>
-                                        <div v-if="Object.keys(sumByFailedCurrencyToday).length === 0" class="opacity-70">
-                                            Нет данных
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-medium opacity-70 mb-2">Всего</h4>
-                                    <div class="space-y-2">
-                                        <div v-for="(amount, currency) in sumByFailedCurrencyTotal" :key="'failed-total-' + currency" class="flex justify-between">
-                                            <span>{{ currency.toUpperCase() }}</span>
-                                            <span class="font-medium">{{ formatNumber(amount) }}</span>
-                                        </div>
-                                        <div v-if="Object.keys(sumByFailedCurrencyTotal).length === 0" class="opacity-70">
-                                            Нет данных
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Панель управления логами -->
-                    <div v-if="canManageMerchantApiLogDeletion" class="mt-6">
-                        <div class="card bg-base-100 shadow">
-                            <div class="card-body">
-                            <h4 class="text-md font-medium mb-2">Управление логами</h4>
-                            <div class="flex flex-col md:flex-row gap-4 items-start md:items-end">
-                                <div class="w-full md:flex-grow grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <label class="form-control w-full">
-                                        <div class="label"><span class="label-text">Начальная дата</span></div>
-                                        <input type="date" v-model="startDate" class="input input-bordered w-full" />
-                                    </label>
-                                    <label class="form-control w-full">
-                                        <div class="label"><span class="label-text">Конечная дата</span></div>
-                                        <input type="date" v-model="endDate" class="input input-bordered w-full" />
-                                    </label>
-                                </div>
-                                <button
-                                    @click="confirmDelete"
-                                    class="btn btn-error rounded-xl"
-                                    :disabled="!areBothDatesSelected() || processing"
-                                >
-                                    <span v-if="!processing">Удалить</span>
-                                    <span v-else>Удаление...</span>
-                                </button>
-                            </div>
-                            <p class="mt-2 text-sm opacity-70">
-                                Выберите период, за который нужно удалить логи. Будут удалены все логи, созданные в указанный период.
-                            </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="relative">
+                <CallbackLogsTable v-if="isCallbackLogsTab" :logs="logs" />
+                <div v-else class="relative">
                     <!-- Desktop/tablet view (table) -->
                     <div class="hidden xl:block rounded-table relative">
                         <div class="overflow-x-auto card bg-base-100 shadow">
@@ -909,9 +886,9 @@ onBeforeUnmount(() => {
                                                 {{ log.merchant.name }}
                                             </td>
                                             <td>
-                                                <DisplayUUID
+                                                <CopyableOrderUid
                                                     v-if="isPayoutLogsTab ? log.payout : log.order"
-                                                    :uuid="isPayoutLogsTab ? log.payout?.uuid : log.order?.uuid"
+                                                    :uuid="(isPayoutLogsTab ? log.payout?.uuid : log.order?.uuid) ?? ''"
                                                 />
                                             </td>
                                             <td>
@@ -1125,7 +1102,7 @@ onBeforeUnmount(() => {
                                     <div v-show="!!expandedCards[log.id]" class="mt-3 space-y-2 bg-base-300/50 rounded-box p-2">
                                         <div v-if="isPayoutLogsTab ? log.payout : log.order" class="flex items-center gap-2 text-sm">
                                             <span class="text-base-content/80 truncate">{{ entityColumnLabel }}:</span>
-                                            <DisplayUUID :uuid="isPayoutLogsTab ? log.payout?.uuid : log.order?.uuid"/>
+                                            <CopyableOrderUid :uuid="(isPayoutLogsTab ? log.payout?.uuid : log.order?.uuid) ?? ''" />
                                         </div>
                                         <div v-if="log.external_id" class="flex items-center gap-2 text-sm">
                                             <span class="text-base-content/80 truncate">Внешний ID:</span>
@@ -1184,8 +1161,6 @@ onBeforeUnmount(() => {
                 </div>
             </template>
         </MainTableSection>
-
-        <ConfirmModal />
 
         <MerchantApiLogAmountDistributionModal
             :show="showAmountDistributionModal"

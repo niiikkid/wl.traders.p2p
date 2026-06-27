@@ -1,14 +1,11 @@
 <script setup>
 import {router, usePage} from "@inertiajs/vue3";
-import {computed, ref} from "vue";
+import {ref} from "vue";
 import ViewModeSwitcher from "@/Layouts/Partials/ViewModeSwitcher.vue";
 import {useUserStore} from "@/store/user.js";
 
 const menu = ref(usePage().props.menu);
 const userStore = useUserStore();
-const extendedTeamLeaderAccessEnabled = computed(() => {
-    return !!usePage().props.auth?.user?.team_leader_extended_access_enabled;
-});
 
 router.on('success', (event) => {
     menu.value = usePage().props.menu;
@@ -65,20 +62,7 @@ router.on('success', (event) => {
         </li>
 
 
-        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('leader.referrals.*') }]">
-            <span
-                @click="router.visit(route('leader.referrals.index'), { preserveScroll: true })"
-                @keydown.enter.space="router.visit(route('leader.referrals.index'), { preserveScroll: true })"
-                role="link"
-                tabindex="0"
-            >
-                <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 17H4a1 1 0 0 1-1-1 3 3 0 0 1 3-3h1m0-3a2.5 2.5 0 1 1 2-4.5M19.5 17h.5a1 1 0 0 0 1-1 3 3 0 0 0-3-3h-1m0-3a2.5 2.5 0 1 0-2-4.5m.5 14h-8a1 1 0 0 1-1-1 3 3 0 0 1 3-3h4a3 3 0 0 1 3 3 1 1 0 0 1-1 1Zm-2-7a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
-                </svg>
-                Рефералы
-            </span>
-        </li>
-        <li v-if="extendedTeamLeaderAccessEnabled" :class="[{ 'bg-base-content/10 rounded-lg': route().current('leader.traders.*') }]">
+        <li :class="[{ 'bg-base-content/10 rounded-lg': route().current('leader.traders.*') }]">
             <span
                 @click="router.visit(route('leader.traders.index'), { preserveScroll: true })"
                 @keydown.enter.space="router.visit(route('leader.traders.index'), { preserveScroll: true })"
@@ -86,7 +70,7 @@ router.on('success', (event) => {
                 tabindex="0"
             >
                 <svg class="size-5 opacity-30" stroke-width="1.5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v1H4V7Zm0 3h16v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6Zm10 3a1 1 0 1 0 0 2h3a1 1 0 1 0 0-2h-3Z"/>
+                    <path stroke="currentColor" stroke-linecap="round" stroke-width="2" d="M16 19h4a1 1 0 0 0 1-1v-1a3 3 0 0 0-3-3h-2m-2.236-4a3 3 0 1 0 0-4M3 18v-1a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Zm8-10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                 </svg>
                 Трейдеры
             </span>

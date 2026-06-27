@@ -30,14 +30,6 @@ class SettingsService implements SettingsServiceContract
 
     const MAX_REJECTED_DISPUTES = 'max_rejected_disputes';
 
-    const TRAFFIC_PAUSED = 'traffic_paused';
-
-    const TRAFFIC_PAUSED_CACHE_KEY = 'settings_traffic_paused';
-
-    const SHADOW_SMS_LOG_ENABLED = 'shadow_sms_log_enabled';
-
-    const SHADOW_SMS_LOG_ENABLED_CACHE_KEY = 'settings_shadow_sms_log_enabled';
-
     const DEFAULT_RESERVE_BALANCE_LIMIT = 'default_reserve_balance_limit';
 
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
@@ -163,42 +155,6 @@ class SettingsService implements SettingsServiceContract
         $this->updateParam(self::MAX_REJECTED_DISPUTES, json_encode(['count' => $count, 'period' => $period]));
     }
 
-    public function isTrafficPaused(): bool
-    {
-        return (bool) cache()->remember(self::TRAFFIC_PAUSED_CACHE_KEY, now()->addMinute(), function () {
-            return (int) Setting::query()
-                ->where('key', self::TRAFFIC_PAUSED)
-                ->value('value') === 1;
-        });
-    }
-
-    public function updateTrafficPaused(bool $paused): void
-    {
-        $this->updateParam(self::TRAFFIC_PAUSED, $paused ? 1 : 0);
-        cache()->put(self::TRAFFIC_PAUSED_CACHE_KEY, $paused, now()->addMinute());
-    }
-
-    public function isShadowSmsLogEnabled(): bool
-    {
-        return (bool) cache()->remember(self::SHADOW_SMS_LOG_ENABLED_CACHE_KEY, now()->addMinute(), function () {
-            return (int) (Setting::query()
-                ->where('key', self::SHADOW_SMS_LOG_ENABLED)
-                ->value('value') ?? 1) === 1;
-        });
-    }
-
-    public function updateShadowSmsLogEnabled(bool $enabled): void
-    {
-        Setting::query()->updateOrCreate(
-            ['key' => self::SHADOW_SMS_LOG_ENABLED],
-            ['value' => $enabled ? 1 : 0]
-        );
-
-        cache()->put('app-settings', Setting::all());
-        cache()->put(self::SHADOW_SMS_LOG_ENABLED_CACHE_KEY, $enabled, now()->addMinute());
-        $this->settings = null;
-    }
-
     public function getDefaultReserveBalanceLimit(): int
     {
         return (int) $this->getParam(self::DEFAULT_RESERVE_BALANCE_LIMIT);
@@ -269,16 +225,6 @@ class SettingsService implements SettingsServiceContract
         Setting::firstOrCreate([
             'key' => self::MAX_REJECTED_DISPUTES,
             'value' => json_encode(['count' => 10, 'period' => 60]),
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::TRAFFIC_PAUSED,
-            'value' => 0,
-        ]);
-
-        Setting::firstOrCreate([
-            'key' => self::SHADOW_SMS_LOG_ENABLED,
-            'value' => 1,
         ]);
 
         Setting::firstOrCreate([

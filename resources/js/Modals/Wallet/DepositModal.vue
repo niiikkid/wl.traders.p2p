@@ -1,35 +1,34 @@
 <script setup>
-import ModalFooter from "@/Components/Modals/Components/ModalFooter.vue";
-import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
-import Modal from "@/Components/Modals/Modal.vue";
-import ModalHeader from "@/Components/Modals/Components/ModalHeader.vue";
-
-import { storeToRefs } from 'pinia'
-import { useModalStore } from "@/store/modal.js";
-import InputError from "@/Components/InputError.vue";
-import InputLabel from "@/Components/InputLabel.vue";
-import {router, useForm, usePage} from "@inertiajs/vue3";
-import {computed} from "vue";
-import {useViewStore} from "@/store/view.js";
-import InputHelper from "@/Components/InputHelper.vue";
-import NumberInput from "@/Components/NumberInput.vue";
-import TextInput from "@/Components/TextInput.vue";
-
-const props = defineProps({
-    balanceType: {
-        type: String,
-    },
-});
-
-const modalStore = useModalStore();
-const { depositModal } = storeToRefs(modalStore);
-const viewStore = useViewStore();
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/Components/Modal';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import InputHelper from '@/Components/InputHelper.vue';
+import NumberInput from '@/Components/NumberInput.vue';
+import TextInput from '@/Components/TextInput.vue';
+import { useModalStore } from '@/store/modal.js';
+import { useViewStore } from '@/store/view.js';
+import { useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 const page = usePage();
+const modalStore = useModalStore();
+const viewStore = useViewStore();
 
-const providerDepositModalTitle = computed(() =>
-    viewStore.isAdminViewMode ? 'Пополнение баланса провайдера' : 'Пополнение баланса',
-);
+const show = computed(() => modalStore.isOpen('deposit'));
+const params = computed(() => modalStore.paramsOf('deposit'));
+const balanceType = computed(() => params.value.balanceType ?? 'trust');
+
+const title = computed(() => {
+    const titles = {
+        trust: 'Пополнение траст баланса',
+        merchant: 'Пополнение мерчант баланса',
+        teamleader: 'Пополнение баланса тимлидера',
+        reserve: 'Пополнение общего страхового резерва',
+        provider: viewStore.isAdminViewMode ? 'Пополнение баланса провайдера' : 'Пополнение баланса',
+    };
+
+    return titles[balanceType.value] ?? 'Пополнение баланса';
+});
 
 const trustDepositHelper = computed(() => {
     const insurance = page.props.teamLeaderInsurance;
@@ -41,138 +40,93 @@ const trustDepositHelper = computed(() => {
     return 'Если резерв меньше 1000 USDT, то часть депозита зачислится в резерв.';
 });
 
-const close = () => {
-    modalStore.closeModal('deposit')
-};
-
 const form = useForm({
     amount: null,
     balance_type: null,
     tx_hash: null,
 });
 
+const close = () => {
+    modalStore.close('deposit');
+    form.reset();
+    form.clearErrors();
+};
+
 const deposit = () => {
     form
-        .transform((data) => {
-            data.balance_type = props.balanceType;
-
-            return data;
-        })
-        .post(route('admin.users.wallet.deposit', depositModal.value.params.user.id), {
+        .transform((data) => ({ ...data, balance_type: balanceType.value }))
+        .post(route('admin.users.wallet.deposit', params.value.user.id), {
             preserveScroll: true,
             onSuccess: () => {
                 modalStore.closeAll();
                 form.reset();
             },
         });
-}
+};
 </script>
 
 <template>
-    <Modal :show="depositModal.showed" @close="close" maxWidth="sm">
-        <template v-if="balanceType === 'trust'">
-            <ModalHeader
-                title="Пополнение траст баланса"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'merchant'">
-            <ModalHeader
-                title="Пополнение мерчант баланса"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'teamleader'">
-            <ModalHeader
-                title="Пополнение баланса тимлидера"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'reserve'">
-            <ModalHeader
-                title="Пополнение общего страхового резерва"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'provider'">
-            <ModalHeader
-                :title="providerDepositModalTitle"
-                @close="close"
-            />
-        </template>
+    <Modal :show="show" size="sm" @close="close">
+        <ModalHeader :title="title" @close="close" />
+
         <ModalBody>
-            <h1 class="text-base-content/70 text-sm">Введите сумму пополнения в USDT и нажмите «Продолжить»</h1>
-            <form action="#" class="mx-auto max-w-screen-xl 2xl:px-0 mt-8 mb-5">
-                <div class="mx-auto max-w-3xl">
-                    <div>
-                        <div>
-                            <InputLabel
-                                for="amount"
-                                value="Сумма пополнения"
-                                :error="!!form.errors.amount"
-                            />
+            <p class="text-sm text-base-content/70">
+                Введите сумму пополнения в USDT и нажмите «Пополнить».
+            </p>
 
-                            <NumberInput
-                                id="amount"
-                                class="mt-1 block w-full"
-                                v-model="form.amount"
-                                placeholder="Сумма в USDT"
-                                required
-                                autofocus
-                                :error="!!form.errors.amount"
-                                @input="form.clearErrors('amount')"
-                            />
-
-                            <InputError class="mt-2" :message="form.errors.amount" />
-                            <template v-if="balanceType === 'trust'">
-                                <InputHelper v-if="! form.errors.amount" :model-value="trustDepositHelper" />
-                            </template>
-                            <template v-if="balanceType === 'reserve'">
-                                <InputHelper
-                                    v-if="! form.errors.amount"
-                                    model-value="Средства зачисляются только на резервный баланс Team Leader."
-                                />
-                            </template>
-                        </div>
-
-                        <div class="mt-4">
-                            <InputLabel
-                                for="tx_hash"
-                                value="Хэш транзакции"
-                                :error="!!form.errors.tx_hash"
-                            />
-
-                            <TextInput
-                                id="tx_hash"
-                                class="mt-1 block w-full"
-                                v-model="form.tx_hash"
-                                placeholder="Хэш транзакции (опционально)"
-                                :error="!!form.errors.tx_hash"
-                                @input="form.clearErrors('tx_hash')"
-                            />
-
-                            <InputError class="mt-2" :message="form.errors.tx_hash" />
-                            <InputHelper v-if="! form.errors.tx_hash" model-value="Необязательное поле. Укажите хэш транзакции, если есть."></InputHelper>
-                        </div>
-                    </div>
+            <div class="mt-4 space-y-4">
+                <div>
+                    <InputLabel for="amount" value="Сумма пополнения" :error="!!form.errors.amount" />
+                    <NumberInput
+                        id="amount"
+                        v-model="form.amount"
+                        class="mt-1 block w-full"
+                        placeholder="Сумма в USDT"
+                        required
+                        autofocus
+                        :error="!!form.errors.amount"
+                        @input="form.clearErrors('amount')"
+                    />
+                    <InputError class="mt-2" :message="form.errors.amount" />
+                    <InputHelper
+                        v-if="!form.errors.amount && balanceType === 'trust'"
+                        :model-value="trustDepositHelper"
+                    />
+                    <InputHelper
+                        v-if="!form.errors.amount && balanceType === 'reserve'"
+                        model-value="Средства зачисляются только на резервный баланс Team Leader."
+                    />
                 </div>
-            </form>
-        </ModalBody>
-        <ModalFooter>
-            <div class="flex justify-center items-center w-full">
-                <button
-                    @click.prevent="deposit"
-                    :disabled="form.processing"
-                    type="button"
-                    class="btn btn-primary"
-                >
-                    Пополнить
-                </button>
+
+                <div>
+                    <InputLabel for="tx_hash" value="Хэш транзакции" :error="!!form.errors.tx_hash" />
+                    <TextInput
+                        id="tx_hash"
+                        v-model="form.tx_hash"
+                        class="mt-1 block w-full"
+                        placeholder="Хэш транзакции (опционально)"
+                        :error="!!form.errors.tx_hash"
+                        @input="form.clearErrors('tx_hash')"
+                    />
+                    <InputError class="mt-2" :message="form.errors.tx_hash" />
+                    <InputHelper
+                        v-if="!form.errors.tx_hash"
+                        model-value="Необязательное поле. Укажите хэш транзакции, если есть."
+                    />
+                </div>
             </div>
+        </ModalBody>
+
+        <ModalFooter>
+            <button type="button" class="btn btn-ghost" @click="close">Отмена</button>
+            <button
+                type="button"
+                class="btn btn-primary"
+                :disabled="form.processing"
+                @click="deposit"
+            >
+                Пополнить
+            </button>
         </ModalFooter>
     </Modal>
 </template>
-
-<style scoped>
-
-</style>

@@ -41,5 +41,5 @@ The frontend is a **server-driven Inertia.js v2 app**, not a standalone SPA. Vue
 
 - **Giant page/modal files** (`MainPage/Admin/Index.vue` ~1.9k lines, `TelegramChats/Index.vue`, `Payout/Trader/Index.vue`, `PaymentDetail/Index.vue`, modals 1000+ lines). Don't make new files like this — extract components/composables.
 - **Mixed form approaches** (Inertia `useForm` vs `ref` + axios vs inline). For new forms prefer `useForm` for Inertia-backed submits; use axios only where the existing modal flow already does.
-- **Two modal systems** (`Modal.vue` vs `Modals/Next/*`), near-duplicate components (`DisplayUUID` vs `DUUID`), local filter systems bypassing `FiltersPanel` (`EnabledCards/Index`), axios-paginated lists (`Merchant/Index`). Prefer the standard blocks above for new work.
+- **Two modal systems** (`Modal.vue` vs `Modals/Next/*`), local filter systems bypassing `FiltersPanel` (`EnabledCards/Index`), axios-paginated lists (`Merchant/Index`). Prefer the standard blocks above for new work.
 - `jsconfig.json` excludes `Pages/Payout/**` even though those files exist — a stale config quirk, not a signal to avoid the folder.

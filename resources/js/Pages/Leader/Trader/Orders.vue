@@ -4,14 +4,15 @@ import {ref} from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import DateFilter from "@/Components/Filters/Pertials/DateFilter.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import DateFilter from "@/Components/Filters/Partials/DateFilter.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import OrderStatus from "@/Components/OrderStatus.vue";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import DateTime from "@/Components/DateTime.vue";
+import MoneyValue from "@/Components/MoneyValue.vue";
 
 const trader = ref(usePage().props.trader);
 const orders = ref(usePage().props.orders);
@@ -91,21 +92,36 @@ defineOptions({layout: AuthenticatedLayout});
                         <tbody>
                             <tr v-for="order in orders.data" :key="order.id" class="hover">
                                 <th class="font-medium whitespace-nowrap">
-                                    <DisplayUUID :uuid="order.uuid"/>
+                                    <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                 </th>
                                 <td>
-                                    <div class="text-nowrap text-base-content">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
-                                    <div class="text-nowrap text-xs opacity-70">{{ order.total_profit }} {{ order.base_currency.toUpperCase() }}</div>
+                                    <MoneyValue :value="order.amount" :currency="order.currency" block />
+                                    <MoneyValue
+                                        :value="order.total_profit"
+                                        :currency="order.base_currency"
+                                        secondary
+                                        block
+                                    />
                                 </td>
                                 <td>
-                                    <div class="flex items-center gap-3">
-                                        <GatewayLogo :img_path="order.payment_gateway_logo_path" :name="order.payment_gateway_name" class="w-10 h-10 text-base-content/50"/>
-                                        <PaymentDetail
-                                            :detail="order.payment_detail"
-                                            :type="order.payment_detail_type"
-                                            :name="order.payment_detail_name"
-                                            :copyable="false"
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <GatewayLogo
+                                            :img_path="order.payment_gateway_logo_path"
+                                            :name="order.payment_gateway_name"
+                                            class="w-6 h-6 shrink-0 text-base-content/50"
                                         />
+                                        <div class="min-w-0">
+                                            <PaymentDetail
+                                                :detail="order.payment_detail"
+                                                :type="order.payment_detail_type"
+                                                :name="order.payment_detail_name"
+                                                :copyable="false"
+                                                short
+                                            />
+                                            <div class="text-xs text-base-content/60 truncate">
+                                                {{ order.payment_gateway_name }}
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                                 <td>

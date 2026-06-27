@@ -17,6 +17,13 @@ class SettingsController extends Controller
         $maxPendingDisputes = services()->settings()->getMaxPendingDisputes();
         $maxRejectedDisputes = services()->settings()->getMaxRejectedDisputes();
         $defaultReserveBalanceLimit = services()->settings()->getDefaultReserveBalanceLimit();
+        $openAiSettingModel = services()->openAi()->getSettings();
+        $openAiSetting = [
+            'has_api_key' => $openAiSettingModel->hasApiKey(),
+            'selected_model' => $openAiSettingModel->selected_model,
+            'available_models' => $openAiSettingModel->available_models ?? [],
+            'models_loaded_at' => $openAiSettingModel->models_loaded_at?->toDateTimeString(),
+        ];
 
         return Inertia::render('Settings/Index', compact(
             'appSlogan',
@@ -24,7 +31,8 @@ class SettingsController extends Controller
             'fundsOnHoldTime',
             'maxPendingDisputes',
             'maxRejectedDisputes',
-            'defaultReserveBalanceLimit'
+            'defaultReserveBalanceLimit',
+            'openAiSetting',
         ));
     }
 

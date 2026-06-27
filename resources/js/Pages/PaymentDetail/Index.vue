@@ -7,10 +7,10 @@ import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue"
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
-import {computed, onBeforeUnmount, onMounted, ref, unref, watch} from "vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
+import {computed, onBeforeUnmount, onMounted, ref, watch} from "vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
+import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
@@ -19,7 +19,7 @@ import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import {useModalStore} from "@/store/modal.js";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import PaymentDetailCreateModal from "@/Modals/PaymentDetail/PaymentDetailCreateModal.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
@@ -28,7 +28,6 @@ import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetai
 import PaymentDetailScheduleServerClock from "@/Components/PaymentDetail/PaymentDetailScheduleServerClock.vue";
 import PaymentDetailScheduleSummary from "@/Components/PaymentDetail/PaymentDetailScheduleSummary.vue";
 import DateTime from "@/Components/DateTime.vue";
-import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import {usePaymentDetailScheduleTableTick} from "@/composables/usePaymentDetailScheduleTableTick.js";
 
 const modalStore = useModalStore();
@@ -70,14 +69,6 @@ const toggleBlocked = ref(false);
 const isTraderView = computed(() => viewStore.isTraderViewMode);
 const selectionModeEnabled = ref(false);
 const selectedDetailIds = ref([]);
-
-const filtersPanelRef = ref(null);
-const hasActivePaymentFilters = useHasActiveTableFilters();
-const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
-
-const toggleFiltersFromToolbar = () => {
-    filtersPanelRef.value?.toggleFiltersDisplay?.();
-};
 
 const displayDetailLastDeal = ref(getCookieValue('displayDetailLastDeal', true));
 const displayDetailSchedule = ref(getCookieValue('displayDetailSchedule', true));
@@ -154,9 +145,9 @@ const columnToggleBadgeClass = (active) => (
 
 const currentUser = usePage().props.auth?.user;
 
-// Определяем, является ли текущий пользователь VIP
-const isVipUser = computed(() => {
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
+// Определяем, может ли трейдер настраивать лимиты суммы сделки
+const canSetOrderAmountLimits = computed(() => {
+    return currentUser?.can_set_order_amount_limits === true || currentUser?.can_set_order_amount_limits === 1;
 });
 
 const normalizeNumber = (value) => {
@@ -417,27 +408,6 @@ defineOptions({ layout: AuthenticatedLayout })
                         <div
                             class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
                         >
-                            <div class="relative inline-flex shrink-0">
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
-                                    :class="{ 'btn-active': filtersPanelOpen }"
-                                    title="Фильтры"
-                                    aria-label="Показать или скрыть фильтры"
-                                    @click.prevent="toggleFiltersFromToolbar"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
-                                    </svg>
-                                </button>
-                                <span
-                                    v-if="hasActivePaymentFilters"
-                                    class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
-                                    aria-hidden="true"
-                                    title="Есть применённые фильтры"
-                                />
-                            </div>
-
                             <button
                                 v-if="viewStore.isAdminViewMode"
                                 type="button"
@@ -474,11 +444,7 @@ defineOptions({ layout: AuthenticatedLayout })
                 </div>
             </template>
             <template v-slot:table-filters>
-                <FiltersPanel
-                    ref="filtersPanelRef"
-                    name="payment-details"
-                    omit-default-toggle-button
-                >
+                <FiltersPanel name="payment-details">
                     <InputFilter
                         name="id"
                         placeholder="ID реквизита"
@@ -861,7 +827,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                                 <span class="text-base-content/70">Интервал:</span>
                                                                 <span class="text-right">{{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}</span>
                                                             </div>
-                                                            <div v-if="viewStore.isAdminViewMode || isVipUser" class="grid gap-1">
+                                                            <div v-if="viewStore.isAdminViewMode || canSetOrderAmountLimits" class="grid gap-1">
                                                                 <div class="flex items-center justify-between gap-2">
                                                                     <span class="text-base-content/70">Мин:</span>
                                                                     <span class="text-right">{{ payment_detail.min_order_amount !== null ? payment_detail.min_order_amount : '∞' }}</span>
@@ -1038,7 +1004,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <span class="text-base-content/70">Интервал:</span>
                                                     <span class="text-right">{{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}</span>
                                                 </div>
-                                                <div v-if="viewStore.isAdminViewMode || isVipUser" class="grid gap-1">
+                                                <div v-if="viewStore.isAdminViewMode || canSetOrderAmountLimits" class="grid gap-1">
                                                     <div class="flex items-center justify-between gap-2">
                                                         <span class="text-base-content/70">Мин:</span>
                                                         <span class="text-right">{{ payment_detail.min_order_amount !== null ? payment_detail.min_order_amount : '∞' }}</span>

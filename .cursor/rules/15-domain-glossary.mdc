@@ -52,6 +52,6 @@ Active: **Super Admin, Trader, Merchant, Team Leader, Support, Analyst** (Analys
 6. **`email` ≠ name** — use `email` as the display identifier everywhere.
 7. **Merchant ≠ User** — the API `merchant_id` is `merchants.uuid`; the authenticated API user is the shop owner (`api-access-to-merchant` Gate).
 8. **Traffic control:** global pause (`SettingsService::isTrafficPaused`), per-trader `stop_traffic`, rejected-dispute limits can auto-stop a trader's traffic.
-9. **SMS auto-close of orders is currently disabled** (commented TODO in `SmsService`); shadow SMS logging is a separate pipeline.
+9. **SMS auto-close of orders is currently disabled** (commented TODO in `SmsService`).
 10. **`FundsHolderService` / `FundsOnHold`** exist but are largely not wired into the core order/payout flow — don't assume they run.
-11. **Legacy removal is in progress** (Agent, Analyst, Rapira, temp VIP). Check `wiki/feature-removal/` before touching those areas.
+11. **Legacy removal is in progress** (Agent, Analyst, Rapira). Check `wiki/feature-removal/` before touching those areas.

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Enums\NotificationEvent;
 use App\Jobs\SendNotificationJob;
-use App\Models\NotificationRule;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Notification\Events\PayoutsAvailableNotificationEvent;
@@ -33,81 +31,66 @@ class NotifyTradersAboutAvailablePayoutsCommand extends Command
 
     public function handle(NotificationTemplateResolver $templateResolver): int
     {
-        $processedKeys = [];
         $checked = 0;
         $sent = 0;
+        $currencies = Currency::getAll();
 
-        $this->rulesQuery()
-            ->chunkById(self::CHUNK_SIZE, function ($rules) use (&$processedKeys, &$checked, &$sent, $templateResolver): void {
-                foreach ($rules as $rule) {
-                    $trader = $rule->user;
-                    $currency = $rule->currency;
+        $this->tradersQuery()
+            ->chunkById(self::CHUNK_SIZE, function ($traders) use ($currencies, &$checked, &$sent, $templateResolver): void {
+                foreach ($traders as $trader) {
+                    foreach ($currencies as $currency) {
+                        if (! $currency instanceof Currency) {
+                            continue;
+                        }
 
-                    if (! $trader instanceof User || ! $currency instanceof Currency) {
-                        continue;
-                    }
+                        $key = $this->stateKey($trader->id, $currency->getCode());
 
-                    $key = $this->stateKey($trader->id, $currency->getCode());
+                        if (Cache::has($this->cooldownKey($trader->id, $currency->getCode()))) {
+                            continue;
+                        }
 
-                    if (isset($processedKeys[$key])) {
-                        continue;
-                    }
+                        $availableCount = queries()->payout()->countStackForTrader($trader, $currency->getCode());
+                        $checked++;
 
-                    $processedKeys[$key] = true;
+                        if (Cache::pull($this->syncAfterCooldownKey($trader->id, $currency->getCode()), false)) {
+                            $this->storeState($trader->id, $currency->getCode(), $availableCount);
 
-                    if (Cache::has($this->cooldownKey($trader->id, $currency->getCode()))) {
-                        continue;
-                    }
+                            continue;
+                        }
 
-                    $availableCount = queries()->payout()->countStackForTrader($trader, $currency->getCode());
-                    $checked++;
+                        $previousState = Cache::get($key, self::STATE_EMPTY);
 
-                    if (Cache::pull($this->syncAfterCooldownKey($trader->id, $currency->getCode()), false)) {
+                        if ($previousState === self::STATE_EMPTY && $availableCount > 0) {
+                            $this->sendNotification($templateResolver, $trader, $currency, $availableCount);
+                            $this->startCooldown($trader->id, $currency->getCode());
+                            $sent++;
+
+                            continue;
+                        }
+
                         $this->storeState($trader->id, $currency->getCode(), $availableCount);
-
-                        continue;
                     }
-
-                    $previousState = Cache::get($key, self::STATE_EMPTY);
-
-                    if ($previousState === self::STATE_EMPTY && $availableCount > 0) {
-                        $this->sendNotification($templateResolver, $trader, $currency, $availableCount);
-                        $this->startCooldown($trader->id, $currency->getCode());
-                        $sent++;
-
-                        continue;
-                    }
-
-                    $this->storeState($trader->id, $currency->getCode(), $availableCount);
                 }
             });
 
-        $this->info("Проверено правил: {$checked}. Отправлено уведомлений: {$sent}.");
+        $this->info("Проверено направлений выплат: {$checked}. Отправлено уведомлений: {$sent}.");
 
         return self::SUCCESS;
     }
 
-    private function rulesQuery(): Builder
+    private function tradersQuery(): Builder
     {
-        return NotificationRule::query()
-            ->where('event', NotificationEvent::PAYOUTS_AVAILABLE->value)
-            ->where('enabled', true)
-            ->whereNotNull('currency')
-            ->whereHas('user', function (Builder $query): void {
-                $query
-                    ->role('Trader')
-                    ->whereNull('banned_at')
-                    ->whereNull('archived_at')
-                    ->where('payouts_enabled', true)
-                    ->whereHas('telegramAccount', function (Builder $telegramQuery): void {
-                        $telegramQuery
-                            ->where('is_active', true)
-                            ->whereNotNull('chat_id');
-                    });
+        return User::query()
+            ->role('Trader')
+            ->whereNull('banned_at')
+            ->whereNull('archived_at')
+            ->where('payouts_enabled', true)
+            ->whereHas('telegramAccount', function (Builder $telegramQuery): void {
+                $telegramQuery
+                    ->where('is_active', true)
+                    ->whereNotNull('chat_id');
             })
-            ->with([
-                'user:id,email,payouts_enabled,banned_at,archived_at',
-            ])
+            ->select(['id', 'email', 'payouts_enabled', 'banned_at', 'archived_at'])
             ->orderBy('id');
     }
 

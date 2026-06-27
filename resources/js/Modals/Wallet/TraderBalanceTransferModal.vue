@@ -1,23 +1,18 @@
 <script setup>
-import Modal from '@/Components/Modals/Modal.vue';
-import ModalHeader from '@/Components/Modals/Components/ModalHeader.vue';
-import ModalBody from '@/Components/Modals/Components/ModalBody.vue';
-import ModalFooter from '@/Components/Modals/Components/ModalFooter.vue';
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/Components/Modal';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import InputError from '@/Components/InputError.vue';
-import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
-import UserAvatar from '@/Components/User/UserAvatar.vue';
 import { truncateTrustBalanceForTransfer } from '@/utils/truncateTrustBalanceForTransfer.js';
 import { useModalStore } from '@/store/modal.js';
 import { router, usePage } from '@inertiajs/vue3';
-import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import axios from 'axios';
 
 const page = usePage();
 const modalStore = useModalStore();
-const { traderBalanceTransferModal } = storeToRefs(modalStore);
+
+const show = computed(() => modalStore.isOpen('traderBalanceTransfer'));
 
 const recipientLogin = ref('');
 const amount = ref('');
@@ -39,9 +34,7 @@ const maxTransferAmount = computed(() => {
 });
 
 const canTransferAll = computed(() => Number(maxTransferAmount.value) > 0);
-
 const has2fa = computed(() => Boolean(transferConfig.value?.has_2fa));
-
 const recipientChecked = computed(() => recipientPreview.value !== null);
 
 const canSubmit = computed(() => (
@@ -53,6 +46,10 @@ const canSubmit = computed(() => (
     && !submitting.value
 ));
 
+const avatarUrl = (preview) => (
+    `https://api.dicebear.com/9.x/${preview.avatar_style}/svg?seed=${preview.avatar_uuid}`
+);
+
 const resetRecipientPreview = () => {
     recipientPreview.value = null;
     recipientError.value = '';
@@ -62,6 +59,20 @@ const resetRecipientPreview = () => {
 watch(recipientLogin, () => {
     resetRecipientPreview();
 });
+
+const sanitizeAmountInput = (value) => {
+    const next = String(value ?? '').replace(',', '.');
+
+    if (next === '') {
+        return '';
+    }
+
+    if (!/^\d*\.?\d{0,2}$/.test(next)) {
+        return amount.value;
+    }
+
+    return next;
+};
 
 watch(amount, (value) => {
     const sanitized = sanitizeAmountInput(value);
@@ -78,7 +89,7 @@ watch(amount, (value) => {
 });
 
 const close = () => {
-    modalStore.closeModal('traderBalanceTransfer');
+    modalStore.close('traderBalanceTransfer');
     recipientLogin.value = '';
     amount.value = '';
     oneTimePassword.value = '';
@@ -113,6 +124,7 @@ const checkRecipient = async () => {
 
     if (!login) {
         recipientError.value = 'Укажите логин получателя.';
+
         return;
     }
 
@@ -142,20 +154,6 @@ const fillMaxAmount = () => {
 
     amount.value = maxTransferAmount.value;
     fieldErrors.value = { ...fieldErrors.value, amount: undefined };
-};
-
-const sanitizeAmountInput = (value) => {
-    let next = String(value ?? '').replace(',', '.');
-
-    if (next === '') {
-        return '';
-    }
-
-    if (!/^\d*\.?\d{0,2}$/.test(next)) {
-        return amount.value;
-    }
-
-    return next;
 };
 
 const submitTransfer = async () => {
@@ -207,8 +205,9 @@ const confirmTransfer = () => {
 </script>
 
 <template>
-    <Modal :show="traderBalanceTransferModal.showed" max-width="md" @close="close">
+    <Modal :show="show" size="md" @close="close">
         <ModalHeader title="Перевод средств трейдеру" @close="close" />
+
         <ModalBody>
             <div class="space-y-4">
                 <div>
@@ -225,7 +224,6 @@ const confirmTransfer = () => {
                         <button
                             type="button"
                             class="btn btn-neutral shrink-0"
-                            :class="{ 'btn-disabled': checkingRecipient || submitting || !recipientLogin.trim() }"
                             :disabled="checkingRecipient || submitting || !recipientLogin.trim()"
                             @click="checkRecipient"
                         >
@@ -236,7 +234,7 @@ const confirmTransfer = () => {
                 </div>
 
                 <div v-if="recipientPreview" class="flex items-center gap-3 rounded-lg border border-base-300 p-3">
-                    <UserAvatar :login="recipientPreview.login" />
+                    <img :src="avatarUrl(recipientPreview)" class="h-10 w-10 rounded-full" alt="recipient photo">
                     <span class="font-medium text-base-content">{{ recipientPreview.login }}</span>
                 </div>
 
@@ -254,7 +252,6 @@ const confirmTransfer = () => {
                         <button
                             type="button"
                             class="btn btn-secondary shrink-0 whitespace-nowrap"
-                            :class="{ 'btn-disabled': !recipientChecked || !canTransferAll || submitting }"
                             :disabled="!recipientChecked || !canTransferAll || submitting"
                             @click="fillMaxAmount"
                         >
@@ -279,26 +276,14 @@ const confirmTransfer = () => {
                 </div>
             </div>
         </ModalBody>
+
         <ModalFooter>
-            <button
-                type="button"
-                class="btn btn-secondary min-w-28"
-                :disabled="submitting"
-                @click="close"
-            >
+            <button type="button" class="btn btn-ghost" :disabled="submitting" @click="close">
                 Отмена
             </button>
-            <button
-                type="button"
-                class="btn btn-primary min-w-28"
-                :class="{ 'btn-disabled': !canSubmit }"
-                :disabled="!canSubmit"
-                @click="confirmTransfer"
-            >
+            <button type="button" class="btn btn-primary" :disabled="!canSubmit" @click="confirmTransfer">
                 Перевести
             </button>
         </ModalFooter>
     </Modal>
-
-    <ConfirmModal />
 </template>

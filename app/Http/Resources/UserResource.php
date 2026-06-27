@@ -112,7 +112,7 @@ class UserResource extends JsonResource
             'sms_auto_close_orders_enabled' => (bool) $this->sms_auto_close_orders_enabled,
             'traffic_enabled_at' => $this->traffic_enabled_at?->toISOString(),
             'is_online' => $this->is_online,
-            'is_vip' => $this->is_vip,
+            'can_set_order_amount_limits' => $this->can_set_order_amount_limits,
             'referral_commission_percentage' => $this->referral_commission_percentage,
             'team_leader_split_from_service_percent' => $this->team_leader_split_from_service_percent,
             'payout_referral_commission_percentage' => $this->payout_referral_commission_percentage,

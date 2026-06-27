@@ -22,20 +22,12 @@ const walletStats = ref(usePage().props.walletStats);
 const user = usePage().props.user;
 const primaryCurrency = walletStats.value.currency.primary.toUpperCase();
 
-const emit = defineEmits(['setBalanceType']);
-
 router.on('success', (event) => {
     walletStats.value = usePage().props.walletStats;
 })
 
-const setBalanceType = (type) => {
-    emit('setBalanceType', type);
-};
-
-const custom = getRandomInt(9999999999999999);
-
 const openTraderDepositModal = () => {
-    modalStore.openTraderDepositModal({});
+    modalStore.open('traderDeposit');
 };
 
 const showTransferButton = computed(() => (
@@ -49,12 +41,8 @@ const usesTeamLeaderSharedReserve = computed(() => (
 ));
 
 const openTraderBalanceTransferModal = () => {
-    modalStore.openTraderBalanceTransferModal({});
+    modalStore.open('traderBalanceTransfer');
 };
-
-function getRandomInt(max) {
-    return Math.floor(Math.random() * max);
-}
 </script>
 
 <template>
@@ -67,7 +55,7 @@ function getRandomInt(max) {
                         <template v-if="viewStore.isAdminViewMode">
                             <div class="join">
                                 <button
-                                    @click.prevent="modalStore.openWithdrawalModal({user}); setBalanceType('trust')"
+                                    @click.prevent="modalStore.open('withdrawal', { user, balanceType: 'trust' })"
                                     type="button"
                                     class="btn btn-outline btn-error join-item btn-sm"
                                 >
@@ -77,7 +65,7 @@ function getRandomInt(max) {
                                     <span class="md:block hidden">Вывести</span>
                                 </button>
                                 <button
-                                    @click.prevent="modalStore.openDepositModal({user}); setBalanceType('trust')"
+                                    @click.prevent="modalStore.open('deposit', { user, balanceType: 'trust' })"
                                     type="button"
                                     class="btn btn-outline btn-primary join-item btn-sm"
                                 >
@@ -107,7 +95,7 @@ function getRandomInt(max) {
                                     <span class="sr-only">Перевести средства</span>
                                 </button>
                                 <button
-                                    @click.prevent="modalStore.openWithdrawalModal({user}); setBalanceType('trust')"
+                                    @click.prevent="modalStore.open('withdrawal', { user, balanceType: 'trust' })"
                                     type="button"
                                     class="btn btn-outline btn-error btn-sm btn-square shrink-0"
                                     title="Вывести"

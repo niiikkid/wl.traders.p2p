@@ -20,10 +20,6 @@ class OrderPoolingService implements OrderPoolingServiceContract
      */
     public function processOrderPooling(H2HRequest $request): JsonResponse
     {
-        if (services()->settings()->isTrafficPaused()) {
-            return response()->failWithMessage(OrderException::trafficPaused()->getMessage());
-        }
-
         $merchant = queries()->merchant()->findByUUID($request->merchant_id);
 
         // Логируем запрос и получаем request_id

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\MerchantApiLog\AmountDistributionRequest;
+use App\Http\Resources\CallbackLogResource;
 use App\Http\Resources\MerchantApiLogResource;
 use App\Models\MerchantApiRequestLog;
 use App\Models\User;
@@ -42,7 +43,23 @@ class MerchantApiLogController extends Controller
             abort(404);
         }
 
-        $activeApiLogTab = $request->query('tab') === 'payouts' ? 'payouts' : 'orders';
+        $activeApiLogTab = match ($request->query('tab')) {
+            'payouts' => 'payouts',
+            'callbacks' => 'callbacks',
+            default => 'orders',
+        };
+
+        if ($activeApiLogTab === 'callbacks') {
+            $logs = queries()->callbackLog()->paginateForAdmin($filters);
+
+            return Inertia::render('MerchantApiLogs/Index', [
+                'logs' => CallbackLogResource::collection($logs),
+                'filters' => $filters,
+                'filtersVariants' => [],
+                'activeApiLogTab' => $activeApiLogTab,
+            ]);
+        }
+
         $requestType = $activeApiLogTab === 'payouts'
             ? MerchantApiRequestLog::TYPE_PAYOUT
             : MerchantApiRequestLog::TYPE_ORDER;

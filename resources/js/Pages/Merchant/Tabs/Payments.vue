@@ -3,7 +3,7 @@ import DateTime from "@/Components/DateTime.vue";
 import {usePage} from "@inertiajs/vue3";
 import {computed, ref, watch} from "vue";
 import Pagination from "@/Components/Pagination/Pagination.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import AmountModifiedIndicator from "@/Components/AmountModifiedIndicator.vue";
 
 const emit = defineEmits(['openPage']);
@@ -79,7 +79,7 @@ const openPage = (pageNumber) => {
                 </tr>
                 <tr v-for="order in ordersData" :key="order.id" class="hover">
                     <th scope="row" class="font-medium whitespace-nowrap">
-                        <DisplayUUID :uuid="order.uuid"/>
+                        <CopyableOrderUid :uuid="order.uuid ?? ''" />
                     </th>
                     <td>
                         <div class="flex flex-nowrap items-baseline gap-1.5">

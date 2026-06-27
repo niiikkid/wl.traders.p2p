@@ -19,14 +19,6 @@ interface SettingsServiceContract
 
     public function updatePrimeTimeBonus(string $starts, string $ends, float $rate): void;
 
-    public function isTrafficPaused(): bool;
-
-    public function updateTrafficPaused(bool $paused): void;
-
-    public function isShadowSmsLogEnabled(): bool;
-
-    public function updateShadowSmsLogEnabled(bool $enabled): void;
-
     public function getMarketPriceParser(
         Currency $currency,
         MarketEnum $market

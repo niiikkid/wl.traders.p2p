@@ -4,14 +4,16 @@ import {onUnmounted, ref} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
-import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
+import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import NumberInput from "@/Components/NumberInput.vue";
 import InputError from "@/Components/InputError.vue";
 import UserAvatar from '@/Components/User/UserAvatar.vue';
+import MoneyValue from '@/Components/MoneyValue.vue';
 
 const traders = ref(usePage().props.traders);
+const extendedAccessEnabled = ref(usePage().props.extendedAccessEnabled ?? false);
 const commissionSettings = ref(usePage().props.commissionSettings || {
     flexible_enabled: false,
     min: null,
@@ -39,6 +41,7 @@ onUnmounted(() => {
 
 router.on('success', () => {
     traders.value = usePage().props.traders;
+    extendedAccessEnabled.value = usePage().props.extendedAccessEnabled ?? false;
     commissionSettings.value = usePage().props.commissionSettings || commissionSettings.value;
 });
 
@@ -140,7 +143,9 @@ defineOptions({layout: AuthenticatedLayout});
         <MainTableSection
             title="Трейдеры"
             :data="traders"
-            info="Список ваших трейдеров с быстрым переходом в подробную информацию."
+            :info="extendedAccessEnabled
+                ? 'Список ваших трейдеров с быстрым переходом в подробную информацию.'
+                : 'Список ваших трейдеров и статистика по сделкам.'"
         >
             <template #table-filters>
                 <FiltersPanel name="leader-traders">
@@ -148,14 +153,16 @@ defineOptions({layout: AuthenticatedLayout});
                         name="user"
                         placeholder="Поиск (почта или имя)"
                     />
-                    <FilterCheckbox
-                        name="online"
-                        title="Онлайн"
-                    />
-                    <FilterCheckbox
-                        name="traffic_disabled"
-                        title="Трафик выключен"
-                    />
+                    <template v-if="extendedAccessEnabled">
+                        <FilterCheckbox
+                            name="online"
+                            title="Онлайн"
+                        />
+                        <FilterCheckbox
+                            name="traffic_disabled"
+                            title="Трафик выключен"
+                        />
+                    </template>
                 </FiltersPanel>
             </template>
 
@@ -168,12 +175,14 @@ defineOptions({layout: AuthenticatedLayout});
                                     <tr>
                                         <th>ID</th>
                                         <th>Трейдер</th>
-                                        <th>Реквизитов</th>
-                                        <th>Комиссия ТЛ</th>
-                                        <th>Статус</th>
-                                        <th>Работает</th>
+                                        <th>Сделок</th>
+                                        <th>Доход</th>
+                                        <th v-if="extendedAccessEnabled">Реквизитов</th>
+                                        <th v-if="extendedAccessEnabled">Комиссия ТЛ</th>
+                                        <th v-if="extendedAccessEnabled">Статус</th>
+                                        <th v-if="extendedAccessEnabled">Работает</th>
                                         <th>Создан</th>
-                                        <th class="text-right">Действия</th>
+                                        <th v-if="extendedAccessEnabled" class="text-right">Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -188,10 +197,14 @@ defineOptions({layout: AuthenticatedLayout});
                                                 </div>
                                             </div>
                                         </td>
+                                        <td class="whitespace-nowrap tabular-nums">{{ trader.orders_count }}</td>
                                         <td class="whitespace-nowrap">
-                                            <span class="badge badge-outline">{{ trader.payment_details_count }}</span>
+                                            <MoneyValue :value="trader.total_profit" currency="usdt" />
                                         </td>
-                                        <td class="whitespace-nowrap">
+                                        <td v-if="extendedAccessEnabled" class="whitespace-nowrap tabular-nums">
+                                            {{ trader.payment_details_count }}
+                                        </td>
+                                        <td v-if="extendedAccessEnabled" class="whitespace-nowrap">
                                             <div class="flex flex-col gap-1">
                                                 <span class="font-medium">
                                                     {{ formatPercent(trader.team_leader_effective_commission_percentage) }}
@@ -201,14 +214,14 @@ defineOptions({layout: AuthenticatedLayout});
                                                 </span>
                                             </div>
                                         </td>
-                                        <td class="whitespace-nowrap">
+                                        <td v-if="extendedAccessEnabled" class="whitespace-nowrap">
                                             <div class="inline-flex items-center gap-2">
                                                 <span class="badge badge-success badge-sm" v-if="trader.is_online">Онлайн</span>
                                                 <span class="badge badge-ghost badge-sm" v-else>Оффлайн</span>
                                                 <span class="badge badge-error badge-sm" v-if="trader.stop_traffic">Трафик off</span>
                                             </div>
                                         </td>
-                                        <td class="whitespace-nowrap">
+                                        <td v-if="extendedAccessEnabled" class="whitespace-nowrap">
                                             <input
                                                 type="checkbox"
                                                 :checked="trader.is_online"
@@ -220,7 +233,7 @@ defineOptions({layout: AuthenticatedLayout});
                                         <td class="whitespace-nowrap">
                                             <DateTime :data="trader.created_at" :plural="true" />
                                         </td>
-                                        <td class="text-right">
+                                        <td v-if="extendedAccessEnabled" class="text-right">
                                             <div class="inline-flex items-center gap-2">
                                                 <button
                                                     v-if="commissionSettings.flexible_enabled"
@@ -259,17 +272,30 @@ defineOptions({layout: AuthenticatedLayout});
                                             <div class="text-xs text-base-content/70 truncate">{{ trader.name }}</div>
                                         </div>
                                     </div>
-                                    <span class="badge badge-outline">{{ trader.payment_details_count }}</span>
+                                    <span v-if="extendedAccessEnabled" class="tabular-nums text-sm">
+                                        {{ trader.payment_details_count }} рекв.
+                                    </span>
                                 </div>
 
-                                <div class="mt-2 text-sm">
+                                <div class="flex items-center justify-between border-t border-base-content/10 pt-2 mt-2">
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-base-content/70 text-xs">Сделок</div>
+                                        <div class="font-medium tabular-nums">{{ trader.orders_count }}</div>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="text-base-content/70 text-xs">Доход</div>
+                                        <MoneyValue :value="trader.total_profit" currency="usdt" compact />
+                                    </div>
+                                </div>
+
+                                <div v-if="extendedAccessEnabled" class="mt-2 text-sm">
                                     <span class="text-base-content/70">Комиссия ТЛ:</span>
                                     <span class="font-medium ml-1">
                                         {{ formatPercent(trader.team_leader_effective_commission_percentage) }}
                                     </span>
                                 </div>
 
-                                <div class="flex justify-between items-center mt-3">
+                                <div v-if="extendedAccessEnabled" class="flex justify-between items-center mt-3">
                                     <div class="inline-flex items-center gap-2">
                                         <span class="badge badge-success badge-sm" v-if="trader.is_online">Онлайн</span>
                                         <span class="badge badge-ghost badge-sm" v-else>Оффлайн</span>

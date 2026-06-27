@@ -2,13 +2,10 @@
 
 namespace App\Http\Controllers\API\APP;
 
-use App\DTO\SMS\ShadowSmsLogData;
 use App\DTO\SMS\SmsDTO;
-use App\Enums\ShadowSmsLogFilterReason;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\SMS\StoreRequest;
 use App\Jobs\HandleSmsJob;
-use App\Jobs\RecordShadowSmsLogJob;
 use App\Models\SenderStopList;
 use App\Models\UserDevice;
 use App\Services\Sms\Parser;
@@ -48,13 +45,6 @@ class SmsController extends Controller
         $dispatch->afterResponse();
 
         if (mb_strlen($request->message) > self::MAX_INCOMING_SMS_MESSAGE_LENGTH) {
-            $this->recordShadowSmsLog(
-                request: $request,
-                device: $device,
-                filterReason: ShadowSmsLogFilterReason::MaxMessageLength,
-                messageLength: mb_strlen($request->message),
-            );
-
             return response()->success();
         }
 
@@ -67,26 +57,10 @@ class SmsController extends Controller
         });
 
         if (in_array($sender, $senderStopList)) {
-            $this->recordShadowSmsLog(
-                request: $request,
-                device: $device,
-                filterReason: ShadowSmsLogFilterReason::SenderStopList,
-                matchedSender: $sender,
-            );
-
             return response()->success();
         }
 
-        $matchedStopWord = $parser->findMatchedStopWord($request->message);
-
-        if ($matchedStopWord !== null) {
-            $this->recordShadowSmsLog(
-                request: $request,
-                device: $device,
-                filterReason: ShadowSmsLogFilterReason::StopWord,
-                matchedStopWord: $matchedStopWord,
-            );
-
+        if ($parser->findMatchedStopWord($request->message) !== null) {
             return response()->success();
         }
 
@@ -97,35 +71,5 @@ class SmsController extends Controller
         );
 
         return response()->success();
-    }
-
-    private function recordShadowSmsLog(
-        StoreRequest $request,
-        UserDevice $device,
-        ShadowSmsLogFilterReason $filterReason,
-        ?string $matchedSender = null,
-        ?string $matchedStopWord = null,
-        ?int $messageLength = null,
-    ): void {
-        if (! services()->settings()->isShadowSmsLogEnabled()) {
-            return;
-        }
-
-        try {
-            RecordShadowSmsLogJob::dispatch(new ShadowSmsLogData(
-                userId: $device->user_id,
-                userDeviceId: $device->id,
-                sender: $request->sender,
-                message: $request->message,
-                timestamp: $request->timestamp,
-                type: $request->type,
-                filterReason: $filterReason->value,
-                matchedSender: $matchedSender,
-                matchedStopWord: $matchedStopWord,
-                messageLength: $messageLength,
-            ));
-        } catch (Throwable $exception) {
-            report($exception);
-        }
     }
 }

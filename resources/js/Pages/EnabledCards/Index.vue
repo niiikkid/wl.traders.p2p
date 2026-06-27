@@ -12,11 +12,7 @@ const props = defineProps({
 });
 
 const page = usePage();
-const routePrefix = computed(() => route().current('support.*') ? 'support' : 'admin');
-const filtersBasePath = computed(() => routePrefix.value === 'support' ? '/support/filters' : '/admin/filters');
-
-/** Список реквизитов есть только в админке; support приходит к этой странице отдельным пунктом меню. */
-const showPaymentDetailsLink = computed(() => route().current('admin.enabled-cards.*'));
+const filtersBasePath = '/admin/filters';
 
 // Имя для куки
 const CURRENCY_COOKIE_NAME = 'selected_currency';
@@ -121,7 +117,7 @@ const addLimitLevel = () => {
     if (!selectedCurrency.value) return;
 
     addLevelForm.currency = selectedCurrency.value;
-    addLevelForm.post(route(`${routePrefix.value}.enabled-cards.limit-levels.store`), {
+    addLevelForm.post(route('admin.enabled-cards.limit-levels.store'), {
         preserveState: true,
         preserveScroll: true,
         only: ['statistics', 'filters', 'errors'],
@@ -134,7 +130,7 @@ const addLimitLevel = () => {
 const removeLimitLevel = (amount) => {
     if (!selectedCurrency.value) return;
 
-    router.delete(route(`${routePrefix.value}.enabled-cards.limit-levels.destroy`), {
+    router.delete(route('admin.enabled-cards.limit-levels.destroy'), {
         data: {
             currency: selectedCurrency.value,
             amount,
@@ -170,7 +166,6 @@ const removeLimitLevel = (amount) => {
                         </option>
                     </select>
                     <button
-                        v-if="showPaymentDetailsLink"
                         type="button"
                         class="btn btn-outline btn-sm shrink-0"
                         @click="router.visit(route('admin.payment-details.index'), { preserveScroll: true })"

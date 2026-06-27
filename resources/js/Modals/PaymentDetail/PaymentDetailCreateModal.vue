@@ -39,8 +39,8 @@ const payment_gateways = ref([]);
 const devices = ref([]);
 const canWorkWithoutDevice = ref(usePage().props.auth?.user?.can_work_without_device ?? false);
 const currentUser = usePage().props.auth?.user;
-const isVipUser = computed(() => {
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
+const canSetOrderAmountLimits = computed(() => {
+    return currentUser?.can_set_order_amount_limits === true || currentUser?.can_set_order_amount_limits === 1;
 });
 
 const { traderMaxMinOrderAmount, clampMinOrderAmount } = useTraderMaxMinOrderAmount({
@@ -242,7 +242,7 @@ const setActiveHelp = (key) => {
     activeHelpKey.value = key;
 };
 
-const clampVipOrderRangeToGatewayLimits = () => {
+const clampOrderRangeToGatewayLimits = () => {
     const gateway = selectedPaymentGateway.value;
     if (!gateway) {
         return;
@@ -294,7 +294,7 @@ watch(selectedDetailType, (newType) => {
 watch(
     () => form.value.payment_gateway_ids,
     () => {
-        clampVipOrderRangeToGatewayLimits();
+        clampOrderRangeToGatewayLimits();
     },
     { deep: true }
 );
@@ -761,12 +761,12 @@ watch(
                     </div>
 
                     <div
-                        v-if="isVipUser"
+                        v-if="canSetOrderAmountLimits"
                         class="rounded-box border border-base-300 p-4"
                     >
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Лимит на сумму сделки ({{ form.currency?.toUpperCase() }})</span>
-                            <FieldHint :text="paymentDetailSectionHints.vipOrderAmountLimits" :class="desktopHintClass" />
+                            <FieldHint :text="paymentDetailSectionHints.orderAmountLimits" :class="desktopHintClass" />
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <NumberInputBlock

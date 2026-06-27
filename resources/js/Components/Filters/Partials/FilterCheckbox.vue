@@ -1,8 +1,5 @@
 <script setup>
-import {computed} from "vue";
-import {useTableFiltersStore} from "@/store/tableFilters.js";
-
-const tableFiltersStore = useTableFiltersStore();
+import {useFilterModel} from "@/composables/useFilterModel.js";
 
 const props = defineProps({
     name: {
@@ -13,12 +10,7 @@ const props = defineProps({
     },
 });
 
-const model = computed({
-    get: () => tableFiltersStore.filters[props.name],
-    set: (val) => {
-        tableFiltersStore.filters[props.name] = val
-    }
-})
+const model = useFilterModel(props.name);
 </script>
 
 <template>
@@ -35,7 +27,3 @@ const model = computed({
         </label>
     </div>
 </template>
-
-<style scoped>
-
-</style>

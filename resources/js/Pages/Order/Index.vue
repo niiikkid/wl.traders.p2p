@@ -8,19 +8,20 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useModalStore} from "@/store/modal.js";
 import DateTime from "@/Components/DateTime.vue";
 import {useViewStore} from "@/store/view.js";
-import {computed, ref, unref} from "vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import {ref} from "vue";
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import EditOrderAmountModal from "@/Modals/Order/EditOrderAmountModal.vue";
+import OrderModal from "@/Modals/OrderModal.vue";
+import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
-import DateFilter from "@/Components/Filters/Pertials/DateFilter.vue";
+import DateFilter from "@/Components/Filters/Partials/DateFilter.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import TraderExportModal from "@/Components/Export/TraderExportModal.vue";
-import {useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
 import MoneyValue from "@/Components/MoneyValue.vue";
 import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
 import PaymentDetailInfoDropdown from "@/Components/PaymentDetailInfoDropdown.vue";
@@ -32,10 +33,6 @@ const viewStore = useViewStore();
 const orders = ref(usePage().props.orders);
 const modalStore = useModalStore();
 const { confirmAcceptOrder } = useConfirmAcceptOrder();
-const trafficPaused = ref(usePage().props.trafficPaused ?? usePage().props.adminTrafficPaused ?? false);
-const trafficPauseForm = useForm({
-    paused: trafficPaused.value,
-});
 
 const filtersVariants = ref(usePage().props.filtersVariants);
 const showExportModal = ref(false);
@@ -44,19 +41,13 @@ const incomingSmsLogsUnlinkedCount = ref(usePage().props.incomingSmsLogsUnlinked
 
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
-    trafficPaused.value = usePage().props.trafficPaused ?? usePage().props.adminTrafficPaused ?? false;
-    trafficPauseForm.paused = trafficPaused.value;
     incomingSmsLogsUnlinkedCount.value = usePage().props.incomingSmsLogsUnlinkedCount ?? incomingSmsLogsUnlinkedCount.value;
 })
 
 const reloadingTableData = ref(false);
-const filtersPanelRef = ref(null);
-const hasActiveOrderFilters = useHasActiveTableFilters();
 
-const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
-
-const toggleFiltersFromToolbar = () => {
-    filtersPanelRef.value?.toggleFiltersDisplay?.();
+const openOrderModal = (order) => {
+    modalStore.openOrderModal({order_id: order.id});
 };
 
 const confirmAcceptDispute = (dispute) => {
@@ -125,32 +116,6 @@ const handleIncomingSmsLogsCountUpdated = (count) => {
     });
 };
 
-const confirmToggleTraffic = () => {
-    const nextPaused = !trafficPaused.value;
-
-    modalStore.openConfirmModal({
-        title: nextPaused
-            ? 'Вы уверены, что хотите остановить трафик?'
-            : 'Вы уверены, что хотите запустить трафик?',
-        body: nextPaused
-            ? 'Новые автоматические назначения реквизитов будут остановлены. Изменение применяется с учётом минутного кэша.'
-            : 'Новые автоматические назначения реквизитов снова будут доступны.',
-        confirm_button_name: nextPaused ? 'Остановить трафик' : 'Запустить трафик',
-        confirm: () => {
-            trafficPauseForm.paused = nextPaused;
-            trafficPauseForm.patch(route('admin.orders.traffic-paused.update'), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    trafficPaused.value = nextPaused;
-                    router.reload({
-                        only: ['trafficPaused', 'adminTrafficPaused', 'flash'],
-                    });
-                },
-            });
-        },
-    });
-};
-
 defineOptions({ layout: AuthenticatedLayout })
 </script>
 
@@ -201,63 +166,6 @@ defineOptions({ layout: AuthenticatedLayout })
                     <div
                         class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
                     >
-                        <div class="relative inline-flex shrink-0">
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
-                                :class="{ 'btn-active': filtersPanelOpen }"
-                                title="Фильтры"
-                                aria-label="Показать или скрыть фильтры"
-                                @click.prevent="toggleFiltersFromToolbar"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
-                                </svg>
-                            </button>
-                            <span
-                                v-if="hasActiveOrderFilters"
-                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
-                                aria-hidden="true"
-                                title="Есть применённые фильтры"
-                            />
-                        </div>
-
-                        <button
-                            v-if="viewStore.isAdminViewMode"
-                            type="button"
-                            class="btn btn-sm btn-square btn-outline shrink-0 rounded-lg"
-                            :class="trafficPaused ? 'btn-error' : 'btn-primary'"
-                            :title="trafficPaused ? 'Запустить трафик' : 'Остановить трафик'"
-                            :aria-label="trafficPaused ? 'Запустить трафик' : 'Остановить трафик'"
-                            :disabled="trafficPauseForm.processing"
-                            @click.prevent="confirmToggleTraffic"
-                        >
-                            <span v-if="trafficPauseForm.processing" class="loading loading-spinner loading-xs" />
-                            <svg
-                                v-else-if="!trafficPaused"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="h-5 w-5"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            <svg
-                                v-else
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="h-5 w-5"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 0 1 0 .656l-5.603 3.113a.375.375 0 0 1-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112Z" />
-                            </svg>
-                        </button>
-
                         <button
                             v-if="viewStore.isTraderViewMode"
                             type="button"
@@ -306,11 +214,7 @@ defineOptions({ layout: AuthenticatedLayout })
                         <MoneyTreeGame />
                     </div>-->
 
-                    <FiltersPanel
-                        ref="filtersPanelRef"
-                        name="orders"
-                        omit-default-toggle-button
-                    >
+                    <FiltersPanel name="orders">
                         <DateFilter name="startDate" title="Начальная дата"/>
                         <DateFilter name="endDate" title="Конечная дата"/>
                         <InputFilter
@@ -406,7 +310,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             >
                                                 MC
                                             </span>
-                                            <DisplayUUID :uuid="order.uuid"/>
+                                            <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                         </div>
                                     </th>
                                     <td>
@@ -487,6 +391,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                             </button>
+                                            <OrderDetailsOpenButton
+                                                :has-order-sms="order.has_order_sms"
+                                                :disabled="reloadingTableData"
+                                                @click="openOrderModal(order)"
+                                            />
                                         </div>
                                     </td>
                                 </tr>
@@ -515,7 +424,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 MC
                                             </span>
                                             <span class="text-base-content/70">UUID:</span>
-                                            <DisplayUUID :uuid="order.uuid"/>
+                                            <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                         </div>
                                         <div class="inline-flex items-center">
                                             <DateTime class="justify-start" :data="order.created_at"/>
@@ -575,6 +484,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                             </button>
+                                            <OrderDetailsOpenButton
+                                                square
+                                                :has-order-sms="order.has_order_sms"
+                                                :disabled="reloadingTableData"
+                                                @click="openOrderModal(order)"
+                                            />
                                         </div>
                                     </div>
                                     <!--Для всего что меньше sm size-->
@@ -637,6 +552,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                     </svg>
                                                 </button>
+                                                <OrderDetailsOpenButton
+                                                    square
+                                                    :has-order-sms="order.has_order_sms"
+                                                    :disabled="reloadingTableData"
+                                                    @click="openOrderModal(order)"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -648,6 +569,7 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
         </MainTableSection>
 
+        <OrderModal/>
         <PaymentDetailEditModal/>
         <EditOrderAmountModal/>
         <DisputeModal

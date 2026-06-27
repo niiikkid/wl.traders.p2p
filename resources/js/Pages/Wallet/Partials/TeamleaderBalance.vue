@@ -11,15 +11,9 @@ const walletStats = ref(usePage().props.walletStats);
 const user = usePage().props.user;
 const primaryCurrency = walletStats.value.currency.primary.toUpperCase();
 
-const emit = defineEmits(['setBalanceType']);
-
 router.on('success', (event) => {
     walletStats.value = usePage().props.walletStats;
 })
-
-const setBalanceType = (type) => {
-    emit('setBalanceType', type);
-};
 
 const teamLeaderUsesSharedReserve = computed(() => {
     const insurance = usePage().props.teamLeaderInsurance;
@@ -42,7 +36,7 @@ const teamLeaderUsesSharedReserve = computed(() => {
                         <template v-if="viewStore.isAdminViewMode">
                             <div class="join">
                                 <button
-                                    @click.prevent="modalStore.openWithdrawalModal({user}); setBalanceType('teamleader')"
+                                    @click.prevent="modalStore.open('withdrawal', { user, balanceType: 'teamleader' })"
                                     type="button"
                                     class="btn btn-outline btn-error join-item btn-sm"
                                 >
@@ -52,7 +46,7 @@ const teamLeaderUsesSharedReserve = computed(() => {
                                     <span class="md:block hidden">Вывести</span>
                                 </button>
                                 <button
-                                    @click.prevent="modalStore.openDepositModal({user}); setBalanceType('teamleader')"
+                                    @click.prevent="modalStore.open('deposit', { user, balanceType: 'teamleader' })"
                                     type="button"
                                     class="btn btn-outline btn-primary join-item btn-sm"
                                 >
@@ -66,7 +60,7 @@ const teamLeaderUsesSharedReserve = computed(() => {
                         <template v-else-if="viewStore.isTeamLeaderViewMode">
                             <div>
                                 <button
-                                    @click.prevent="modalStore.openWithdrawalModal({user}); setBalanceType('teamleader')"
+                                    @click.prevent="modalStore.open('withdrawal', { user, balanceType: 'teamleader' })"
                                     type="button"
                                     class="btn btn-outline btn-error btn-sm"
                                 >

@@ -8,11 +8,11 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useModalStore} from "@/store/modal.js";
 import DateTime from "@/Components/DateTime.vue";
 import {ref} from "vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
-import DateFilter from "@/Components/Filters/Pertials/DateFilter.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
+import DateFilter from "@/Components/Filters/Partials/DateFilter.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
@@ -195,7 +195,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                 <tbody>
                                     <tr v-for="order in orders.data" class="bg-base-100 border-b last:border-none">
                                     <th scope="row" class=" font-medium whitespace-nowrap">
-                                        <DisplayUUID :uuid="order.uuid"/>
+                                        <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                     </th>
                                     <td>
                                         <div class="text-nowrap">{{ order.amount }} {{ order.currency.toUpperCase() }}</div>
@@ -270,7 +270,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <!-- Шапка: UUID и дата создания -->
                                     <div class="flex justify-between items-center border-b border-base-content/10 mb-2">
                                         <div class="inline-flex items-center">
-                                            <span class="text-base-content/70">UUID:</span> <DisplayUUID :uuid="order.uuid"/>
+                                            <span class="text-base-content/70">UUID:</span> <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                         </div>
                                         <div class="inline-flex items-center">
                                             <DateTime class="justify-start" :data="order.created_at"/>

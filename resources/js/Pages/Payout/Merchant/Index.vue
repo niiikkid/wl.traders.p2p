@@ -1,18 +1,17 @@
 <script setup>
 import {Head, router, usePage} from '@inertiajs/vue3';
-import {computed, ref, unref} from 'vue';
+import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
-import DateFilter from '@/Components/Filters/Pertials/DateFilter.vue';
-import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
-import DropdownFilter from '@/Components/Filters/Pertials/DropdownFilter.vue';
+import DateFilter from '@/Components/Filters/Partials/DateFilter.vue';
+import InputFilter from '@/Components/Filters/Partials/InputFilter.vue';
+import DropdownFilter from '@/Components/Filters/Partials/DropdownFilter.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
 import TableAction from '@/Components/Table/TableAction.vue';
-import {useHasActiveTableFilters} from '@/composables/useHasActiveTableFilters.js';
 
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
@@ -76,14 +75,6 @@ const resendPayoutCallback = (payoutUUID) => {
     router.post(route('merchant.payouts.callback.resend', payoutUUID));
 };
 
-const filtersPanelRef = ref(null);
-const hasActivePayoutFilters = useHasActiveTableFilters();
-const filtersPanelOpen = computed(() => unref(filtersPanelRef.value?.displayFilters) ?? false);
-
-const toggleFiltersFromToolbar = () => {
-    filtersPanelRef.value?.toggleFiltersDisplay?.();
-};
-
 defineOptions({ layout: AuthenticatedLayout });
 </script>
 
@@ -95,41 +86,9 @@ defineOptions({ layout: AuthenticatedLayout });
             title="Выплаты"
             :data="payouts"
         >
-            <template #button>
-                <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
-                    <div
-                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
-                    >
-                        <div class="relative inline-flex shrink-0">
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
-                                :class="{ 'btn-active': filtersPanelOpen }"
-                                title="Фильтры"
-                                aria-label="Показать или скрыть фильтры"
-                                @click.prevent="toggleFiltersFromToolbar"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
-                                </svg>
-                            </button>
-                            <span
-                                v-if="hasActivePayoutFilters"
-                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
-                                aria-hidden="true"
-                                title="Есть применённые фильтры"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </template>
             <template #header>
                 <div class="space-y-4">
-                    <FiltersPanel
-                        ref="filtersPanelRef"
-                        name="merchant-payouts"
-                        omit-default-toggle-button
-                    >
+                    <FiltersPanel name="merchant-payouts">
                         <DateFilter name="startDate" title="Создано с" />
                         <DateFilter name="endDate" title="Создано по" />
                         <InputFilter name="uuid" placeholder="UUID" />

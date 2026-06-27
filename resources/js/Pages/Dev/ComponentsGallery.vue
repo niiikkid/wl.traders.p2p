@@ -8,10 +8,10 @@ import AlertInfo from '@/Components/Alerts/AlertInfo.vue'
 import AlertWarning from '@/Components/Alerts/AlertWarning.vue'
 import {Head} from "@inertiajs/vue3";
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue'
-import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue'
-import DropdownFilter from '@/Components/Filters/Pertials/DropdownFilter.vue'
-import DateFilter from '@/Components/Filters/Pertials/DateFilter.vue'
-import FilterCheckbox from '@/Components/Filters/Pertials/FilterCheckbox.vue'
+import InputFilter from '@/Components/Filters/Partials/InputFilter.vue'
+import DropdownFilter from '@/Components/Filters/Partials/DropdownFilter.vue'
+import DateFilter from '@/Components/Filters/Partials/DateFilter.vue'
+import FilterCheckbox from '@/Components/Filters/Partials/FilterCheckbox.vue'
 import {onMounted, reactive, ref} from 'vue'
 import {useTableFiltersStore} from '@/store/tableFilters.js'
 import TextInputBlock from '@/Components/Form/TextInputBlock.vue'
@@ -39,7 +39,7 @@ import CopyPaymentText from '@/Components/CopyPaymentText.vue'
 import CopyUUID from '@/Components/CopyUUID.vue'
 import DateTime from '@/Components/DateTime.vue'
 import DisplayID from '@/Components/DisplayID.vue'
-import DisplayUUID from '@/Components/DisplayUUID.vue'
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue'
 import DisputeStatus from '@/Components/DisputeStatus.vue'
 import EmptyTable from '@/Components/EmptyTable.vue'
 import GatewayLogo from '@/Components/GatewayLogo.vue'
@@ -240,8 +240,8 @@ const demoPopoverText = ref('Это всплывающее описание с �
                                 </div>
 
                                 <div class="flex items-center gap-3">
-                                    <span class="text-sm opacity-70">DisplayUUID</span>
-                                    <DisplayUUID :uuid="demoUUID" />
+                                    <span class="text-sm opacity-70">CopyableOrderUid</span>
+                                    <CopyableOrderUid :uuid="demoUUID" />
                                 </div>
 
                                 <div class="flex items-center gap-3">

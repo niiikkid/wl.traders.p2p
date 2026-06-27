@@ -17,26 +17,6 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
-                deposit: {
-                    showed: false,
-                    params: {},
-                },
-                traderDeposit: {
-                    showed: false,
-                    params: {},
-                },
-                leaderReserveDeposit: {
-                    showed: false,
-                    params: {},
-                },
-                traderBalanceTransfer: {
-                    showed: false,
-                    params: {},
-                },
-                withdrawal: {
-                    showed: false,
-                    params: {},
-                },
                 order: {
                     showed: false,
                     params: {},
@@ -117,16 +97,18 @@ export const useModalStore = defineStore('modal', {
         }
     },
     getters: {
+        /**
+         * Universal reactive accessors used by the new modal standard.
+         * Prefer these (`isOpen('name')` / `paramsOf('name')`) over per-modal getters.
+         */
+        isOpen: (state) => (name) => state.modals[name]?.showed ?? false,
+        paramsOf: (state) => (name) => state.modals[name]?.params ?? {},
+
         confirmModal: (state) => state.modals.confirm,
         disputeModal: (state) => state.modals.dispute,
         disputeCancelModal: (state) => state.modals.disputeCancel,
-        depositModal: (state) => state.modals.deposit,
-        withdrawalModal: (state) => state.modals.withdrawal,
         orderModal: (state) => state.modals.order,
         editOrderAmountModal: (state) => state.modals.editOrderAmount,
-        traderDepositModal: (state) => state.modals.traderDeposit,
-        leaderReserveDepositModal: (state) => state.modals.leaderReserveDeposit,
-        traderBalanceTransferModal: (state) => state.modals.traderBalanceTransfer,
         userCreateModal: (state) => state.modals.userCreate,
         userEditModal: (state) => state.modals.userEdit,
         userSummaryModal: (state) => state.modals.userSummary,
@@ -146,14 +128,29 @@ export const useModalStore = defineStore('modal', {
         antiFraudClientOrdersModal: (state) => state.modals.antiFraudClientOrders,
     },
     actions: {
-        openModal(name, params = {}) {
+        open(name, params = {}) {
             releaseSelectionAndFocusBeforeModalOpen();
+
+            if (!this.modals[name]) {
+                this.modals[name] = { showed: false, params: {} };
+            }
+
             this.modals[name].params = params;
             this.modals[name].showed = true;
         },
-        closeModal(name) {
+        close(name) {
+            if (!this.modals[name]) {
+                return;
+            }
+
             this.modals[name].showed = false;
             this.modals[name].params = {};
+        },
+        openModal(name, params = {}) {
+            this.open(name, params);
+        },
+        closeModal(name) {
+            this.close(name);
         },
         openConfirmModal({
              title,
@@ -179,21 +176,6 @@ export const useModalStore = defineStore('modal', {
         },
         openDisputeCancelModal(props) {
             this.openModal('disputeCancel', props);
-        },
-        openDepositModal(props) {
-            this.openModal('deposit', props);
-        },
-        openTraderDepositModal(props) {
-            this.openModal('traderDeposit', props);
-        },
-        openLeaderReserveDepositModal(props = {}) {
-            this.openModal('leaderReserveDeposit', props);
-        },
-        openTraderBalanceTransferModal(props = {}) {
-            this.openModal('traderBalanceTransfer', props);
-        },
-        openWithdrawalModal(props) {
-            this.openModal('withdrawal', props);
         },
         openOrderModal(props) {
             this.openModal('order', props);

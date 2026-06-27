@@ -35,7 +35,7 @@ const form = ref({
     ban_reason: '',
     stop_traffic: false,
     can_work_without_device: false,
-    is_vip: false,
+    can_set_order_amount_limits: false,
     payouts_enabled: true,
     payout_hold_enabled: true,
     payout_hold_minutes: 60,
@@ -87,7 +87,7 @@ const resetState = () => {
         ban_reason: '',
         stop_traffic: false,
         can_work_without_device: false,
-        is_vip: false,
+        can_set_order_amount_limits: false,
         payouts_enabled: true,
         payout_hold_enabled: true,
         payout_hold_minutes: 60,
@@ -140,7 +140,7 @@ const loadUser = () => {
             form.value.ban_reason = data.ban_reason || '';
             form.value.stop_traffic = !!data.stop_traffic;
             form.value.can_work_without_device = !!data.can_work_without_device;
-            form.value.is_vip = !!data.is_vip;
+            form.value.can_set_order_amount_limits = !!data.can_set_order_amount_limits;
             form.value.payouts_enabled = data.payouts_enabled ?? true;
             form.value.payout_hold_enabled = data.payout_hold_enabled ?? true;
             form.value.payout_hold_minutes = data.payout_hold_minutes ?? 60;
@@ -511,12 +511,12 @@ watch(
                 <div v-if="isTrader(form.role_id) || isAdmin(form.role_id)">
                     <div class="form-control w-fit">
                         <label class="label cursor-pointer gap-3">
-                            <input type="checkbox" class="toggle toggle-primary" v-model="form.is_vip" :disabled="processing">
-                            <span class="label-text">VIP статус</span>
+                            <input type="checkbox" class="toggle toggle-primary" v-model="form.can_set_order_amount_limits" :disabled="processing">
+                            <span class="label-text">Настройка лимитов сделки</span>
                         </label>
                     </div>
                     <div class="mt-1 text-xs opacity-70">
-                        VIP пользователи могут редактировать минимальную и максимальную сумму сделки
+                        Трейдер сможет задавать минимальную и максимальную сумму сделки на своих реквизитах
                     </div>
                 </div>
 

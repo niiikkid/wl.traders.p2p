@@ -33,7 +33,7 @@ class InfrastructureController extends Controller
             'name' => $user->name,
             'roles' => $user->roles->pluck('name')->values(),
             'is_online' => (bool) $user->is_online,
-            'is_vip' => (bool) $user->is_vip,
+            'can_set_order_amount_limits' => (bool) $user->can_set_order_amount_limits,
             'created_at' => $user->created_at?->toIso8601String(),
             'updated_at' => $user->updated_at?->toIso8601String(),
         ]);
@@ -50,7 +50,7 @@ class InfrastructureController extends Controller
                 'name' => $user->name,
                 'roles' => $user->roles->pluck('name')->values(),
                 'is_online' => (bool) $user->is_online,
-                'is_vip' => (bool) $user->is_vip,
+                'can_set_order_amount_limits' => (bool) $user->can_set_order_amount_limits,
                 'wallet' => $user->wallet ? [
                     'id' => $user->wallet->id,
                 ] : null,

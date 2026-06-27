@@ -1,177 +1,130 @@
 <script setup>
-import ModalFooter from "@/Components/Modals/Components/ModalFooter.vue";
-import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
-import Modal from "@/Components/Modals/Modal.vue";
-import ModalHeader from "@/Components/Modals/Components/ModalHeader.vue";
+import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/Components/Modal';
+import InputHelper from '@/Components/InputHelper.vue';
+import NumberInput from '@/Components/NumberInput.vue';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import TextInput from '@/Components/TextInput.vue';
+import { useModalStore } from '@/store/modal.js';
+import { useViewStore } from '@/store/view.js';
+import { useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
-import { storeToRefs } from 'pinia'
-import { useModalStore } from "@/store/modal.js";
-import InputHelper from "@/Components/InputHelper.vue";
-import NumberInput from "@/Components/NumberInput.vue";
-import InputError from "@/Components/InputError.vue";
-import InputLabel from "@/Components/InputLabel.vue";
-import {router, useForm, usePage} from "@inertiajs/vue3";
-import {useViewStore} from "@/store/view.js";
-import TextInput from "@/Components/TextInput.vue";
-
-const props = defineProps({
-    balanceType: {
-        type: String,
-    },
-});
-
-const total_trust_withdrawable_amount = usePage().props.total_trust_withdrawable_amount;
-const total_merchant_withdrawable_amount = usePage().props.total_merchant_withdrawable_amount;
+const page = usePage();
 const modalStore = useModalStore();
-const { withdrawalModal } = storeToRefs(modalStore);
 const viewStore = useViewStore();
 
-const close = () => {
-    modalStore.closeModal('withdrawal')
-};
+const show = computed(() => modalStore.isOpen('withdrawal'));
+const params = computed(() => modalStore.paramsOf('withdrawal'));
+const balanceType = computed(() => params.value.balanceType ?? 'trust');
+
+const totalTrustWithdrawable = computed(() => page.props.total_trust_withdrawable_amount);
+const totalMerchantWithdrawable = computed(() => page.props.total_merchant_withdrawable_amount);
+
+const isSelfWithdrawal = computed(() => (
+    viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode
+));
+
+const title = computed(() => {
+    const titles = {
+        trust: 'Вывод с траст баланса',
+        merchant: 'Вывод с мерчант баланса',
+        teamleader: 'Вывод с баланса тимлидера',
+        reserve: 'Вывод общего страхового резерва',
+        provider: 'Вывод с баланса провайдера',
+    };
+
+    return titles[balanceType.value] ?? 'Вывод средств';
+});
 
 const form = useForm({
     amount: null,
     address: null,
-    balance_type: props.balanceType,
+    balance_type: null,
 });
 
+const close = () => {
+    modalStore.close('withdrawal');
+    form.reset();
+    form.clearErrors();
+};
+
 const withdraw = () => {
-    if (viewStore.isAdminViewMode) {
-        form
-            .transform((data) => {
-                data.balance_type = props.balanceType;
+    const target = viewStore.isAdminViewMode
+        ? route('admin.users.wallet.withdraw', params.value.user.id)
+        : route('invoice.store');
 
-                return data;
-            })
-            .post(route('admin.users.wallet.withdraw', withdrawalModal.value.params.user.id), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    modalStore.closeAll();
-                    form.reset();
-                },
-            });
-    }
-    if (viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode) {
-        form
-            .transform((data) => {
-                data.balance_type = props.balanceType;
-
-                return data;
-            })
-            .post(route('invoice.store'), {
-                preserveScroll: true,
-                onSuccess: () => {
-                    modalStore.closeAll();
-                    form.reset();
-                },
-            });
-    }
-}
+    form
+        .transform((data) => ({ ...data, balance_type: balanceType.value }))
+        .post(target, {
+            preserveScroll: true,
+            onSuccess: () => {
+                modalStore.closeAll();
+                form.reset();
+            },
+        });
+};
 </script>
 
 <template>
-    <Modal :show="withdrawalModal.showed" @close="close" maxWidth="sm">
-        <template v-if="balanceType === 'trust'">
-            <ModalHeader
-                title="Вывод с траст баланса"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'merchant'">
-            <ModalHeader
-                title="Вывод с мерчант баланса"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'teamleader'">
-            <ModalHeader
-                title="Вывод с баланса тимлидера"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'reserve'">
-            <ModalHeader
-                title="Вывод общего страхового резерва"
-                @close="close"
-            />
-        </template>
-        <template v-if="balanceType === 'provider'">
-            <ModalHeader
-                title="Вывод с баланса провайдера"
-                @close="close"
-            />
-        </template>
+    <Modal :show="show" size="sm" @close="close">
+        <ModalHeader :title="title" @close="close" />
+
         <ModalBody>
-            <h1 class="text-base-content/70 text-sm">Введите сумму которую хотите вывести с баланса в USDT и нажмите «Продолжить»</h1>
-            <form action="#" class="mx-auto max-w-screen-xl 2xl:px-0 mt-8 mb-5">
-                <div class="mx-auto max-w-3xl">
-                    <div>
-                        <div>
-                            <InputLabel
-                                for="amount"
-                                value="Сумма вывода"
-                                :error="!!form.errors.amount"
-                            />
+            <p class="text-sm text-base-content/70">
+                Введите сумму, которую хотите вывести с баланса в USDT, и нажмите «Вывести».
+            </p>
 
-                            <NumberInput
-                                id="amount"
-                                class="mt-1 block w-full"
-                                v-model="form.amount"
-                                placeholder="Сумма в USDT"
-                                required
-                                autofocus
-                                :error="!!form.errors.amount"
-                                @input="form.clearErrors('amount')"
-                            />
-
-                            <InputError class="mt-2" :message="form.errors.amount" />
-                            <template v-show="balanceType === 'trust'">
-                                <InputHelper v-if="! form.errors.amount" :model-value="'Максимум: ' + total_trust_withdrawable_amount + ' USDT'"></InputHelper>
-                            </template>
-                            <template v-show="balanceType === 'merchant'">
-                                <InputHelper v-if="! form.errors.amount" :model-value="'Максимум: ' + total_merchant_withdrawable_amount + ' USDT'"></InputHelper>
-                            </template>
-                        </div>
-                        <div class="mt-3" v-if="viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode">
-                            <InputLabel
-                                for="address"
-                                value="Адрес"
-                                :error="!!form.errors.address"
-                            />
-
-                            <TextInput
-                                id="address"
-                                class="mt-1 block w-full"
-                                v-model="form.address"
-                                placeholder="Ваш USDT TRC-20 Адрес"
-                                required
-                                autofocus
-                                :error="!!form.errors.address"
-                                @input="form.clearErrors('address')"
-                            />
-
-                            <InputError class="mt-2" :message="form.errors.address" />
-                        </div>
-                    </div>
+            <div class="mt-4 space-y-4">
+                <div>
+                    <InputLabel for="amount" value="Сумма вывода" :error="!!form.errors.amount" />
+                    <NumberInput
+                        id="amount"
+                        v-model="form.amount"
+                        class="mt-1 block w-full"
+                        placeholder="Сумма в USDT"
+                        required
+                        autofocus
+                        :error="!!form.errors.amount"
+                        @input="form.clearErrors('amount')"
+                    />
+                    <InputError class="mt-2" :message="form.errors.amount" />
+                    <InputHelper
+                        v-if="!form.errors.amount && balanceType === 'trust'"
+                        :model-value="`Максимум: ${totalTrustWithdrawable} USDT`"
+                    />
+                    <InputHelper
+                        v-if="!form.errors.amount && balanceType === 'merchant'"
+                        :model-value="`Максимум: ${totalMerchantWithdrawable} USDT`"
+                    />
                 </div>
-            </form>
-        </ModalBody>
-        <ModalFooter>
-            <div class="flex justify-center items-center w-full">
-                <button
-                    @click.prevent="withdraw"
-                    :disabled="form.processing"
-                    type="button"
-                    class="btn btn-error btn-sm sm:btn-md"
-                >
-                    Вывести
-                </button>
+
+                <div v-if="isSelfWithdrawal">
+                    <InputLabel for="address" value="Адрес" :error="!!form.errors.address" />
+                    <TextInput
+                        id="address"
+                        v-model="form.address"
+                        class="mt-1 block w-full"
+                        placeholder="Ваш USDT TRC-20 адрес"
+                        required
+                        :error="!!form.errors.address"
+                        @input="form.clearErrors('address')"
+                    />
+                    <InputError class="mt-2" :message="form.errors.address" />
+                </div>
             </div>
+        </ModalBody>
+
+        <ModalFooter>
+            <button type="button" class="btn btn-ghost" @click="close">Отмена</button>
+            <button
+                type="button"
+                class="btn btn-error"
+                :disabled="form.processing"
+                @click="withdraw"
+            >
+                Вывести
+            </button>
         </ModalFooter>
     </Modal>
 </template>
-
-<style scoped>
-
-</style>

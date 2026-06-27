@@ -41,7 +41,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property TelegramAccount|null $telegramAccount
  * @property User $merchant
  * @property bool $is_online
- * @property bool $is_vip
+ * @property bool $can_set_order_amount_limits
  * @property bool $stop_traffic
  * @property bool $can_work_without_device
  * @property bool $sms_auto_close_orders_enabled
@@ -105,7 +105,7 @@ class User extends Authenticatable
         'apk_access_token',
         'api_access_token',
         'is_online',
-        'is_vip',
+        'can_set_order_amount_limits',
         'stop_traffic',
         'can_work_without_device',
         'sms_auto_close_orders_enabled',

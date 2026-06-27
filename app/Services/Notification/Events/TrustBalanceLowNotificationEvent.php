@@ -56,4 +56,9 @@ class TrustBalanceLowNotificationEvent implements NotificationEventInterface
         return $this->previousBalance->greaterOrEquals($threshold)
             && $this->currentBalance->lessThan($threshold);
     }
+
+    public function isBelow(Money $threshold): bool
+    {
+        return $this->currentBalance->lessThan($threshold);
+    }
 }

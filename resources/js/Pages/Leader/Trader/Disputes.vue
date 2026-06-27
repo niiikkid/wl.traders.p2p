@@ -4,13 +4,13 @@ import {ref} from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
-import DisplayUUID from "@/Components/DisplayUUID.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import DisputeStatus from "@/Components/DisputeStatus.vue";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import DateTime from "@/Components/DateTime.vue";
+import MoneyValue from "@/Components/MoneyValue.vue";
 
 const trader = ref(usePage().props.trader);
 const disputes = ref(usePage().props.disputes);
@@ -78,7 +78,6 @@ defineOptions({layout: AuthenticatedLayout});
                                 <th>ID</th>
                                 <th>Сумма</th>
                                 <th>Реквизит</th>
-                                <th>Сделка</th>
                                 <th>Статус</th>
                                 <th>Создан</th>
                             </tr>
@@ -87,22 +86,34 @@ defineOptions({layout: AuthenticatedLayout});
                             <tr v-for="dispute in disputes.data" :key="dispute.id" class="hover">
                                 <th class="font-medium whitespace-nowrap">{{ dispute.id }}</th>
                                 <td>
-                                    <div class="text-nowrap text-base-content">{{ dispute.order.amount }} {{ dispute.order.currency.toUpperCase() }}</div>
-                                    <div class="text-nowrap text-base-content/70 text-xs">{{ dispute.order.total_profit }} {{ dispute.order.base_currency.toUpperCase() }}</div>
+                                    <MoneyValue :value="dispute.order.amount" :currency="dispute.order.currency" block />
+                                    <MoneyValue
+                                        :value="dispute.order.total_profit"
+                                        :currency="dispute.order.base_currency"
+                                        secondary
+                                        block
+                                    />
                                 </td>
                                 <td>
-                                    <div class="flex items-center gap-3">
-                                        <GatewayLogo :img_path="dispute.payment_gateway.logo_path" :name="dispute.payment_gateway.name" class="w-10 h-10 text-base-content/50"/>
-                                        <PaymentDetail
-                                            :detail="dispute.payment_detail.detail"
-                                            :type="dispute.payment_detail.type"
-                                            :name="dispute.payment_detail.name"
-                                            :copyable="false"
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <GatewayLogo
+                                            :img_path="dispute.payment_gateway.logo_path"
+                                            :name="dispute.payment_gateway.name"
+                                            class="w-6 h-6 shrink-0 text-base-content/50"
                                         />
+                                        <div class="min-w-0">
+                                            <PaymentDetail
+                                                :detail="dispute.payment_detail.detail"
+                                                :type="dispute.payment_detail.type"
+                                                :name="dispute.payment_detail.name"
+                                                :copyable="false"
+                                                short
+                                            />
+                                            <div class="text-xs text-base-content/60 truncate">
+                                                {{ dispute.payment_gateway.name }}
+                                            </div>
+                                        </div>
                                     </div>
-                                </td>
-                                <td>
-                                    <DisplayUUID :uuid="dispute.order.uuid" />
                                 </td>
                                 <td>
                                     <DisputeStatus :status="dispute.status" />

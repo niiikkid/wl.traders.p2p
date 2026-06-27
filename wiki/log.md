@@ -1,5 +1,10 @@
 # Wiki Log
 
+## [2026-06-27] rename | VIP status → trader order amount limits setting
+- Renamed `users.is_vip` to `users.can_set_order_amount_limits`; backup columns on `payment_details` dropped the `vip_` prefix.
+- UI: toggle «Настройка лимитов сделки» in user edit; removed VIP star badge from user list.
+- Infrastructure API field `is_vip` renamed to `can_set_order_amount_limits`.
+
 ## [2026-06-15] implementation | Step 26 — Remove Order Details Eye Button / Full Requisite Reveal
 - Updated: Legacy Feature Removal Technical Specification
 
@@ -250,3 +255,7 @@
 
 ## [2026-06-16] implementation | Step 22 — Payout commission helper text removal (frontend)
 - Updated: Legacy Feature Removal Technical Specification
+
+## [2026-06-27] removal | Shadow SMS Log feature removed
+- Removed: model, job, service, admin page, routes, settings toggle, `shadow_sms_logs` table
+- Updated: Shadow SMS Log Implementation Plan (marked REMOVED), wiki index

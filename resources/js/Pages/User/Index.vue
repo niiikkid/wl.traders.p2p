@@ -3,17 +3,17 @@ import {Head, router, usePage, useForm} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import AddMobileIcon from "@/Components/AddMobileIcon.vue";
-import InputFilter from "@/Components/Filters/Pertials/InputFilter.vue";
+import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import {ref, onUnmounted, computed, onMounted} from "vue";
-import FilterCheckbox from "@/Components/Filters/Pertials/FilterCheckbox.vue";
+import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import UserCreateModal from "@/Modals/User/UserCreateModal.vue";
 import UserEditModal from "@/Modals/User/UserEditModal.vue";
 import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
 import UserAvatar from '@/Components/User/UserAvatar.vue';
 import {useModalStore} from "@/store/modal.js";
-import DropdownFilter from "@/Components/Filters/Pertials/DropdownFilter.vue";
+import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
@@ -218,9 +218,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                         Заходил
                                     </th>
                                     <th scope="col" class="px-6 py-3">
-                                        Создан
-                                    </th>
-                                    <th scope="col" class="px-6 py-3">
                                         Работает
                                     </th>
                                     <th scope="col" class="px-6 py-3 flex justify-center">
@@ -233,20 +230,21 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="row" class="px-6 py-3 font-medium whitespace-nowrap">
                                         {{ user.id }}
                                     </th>
-                                    <td class="px-6 py-3 text-nowrap">
+                                    <td class="px-6 py-3">
                                         <UserSummaryPopover :user="user">
-                                            <div class="inline-flex items-center gap-2 text-left hover:opacity-80 transition">
-                                            <UserAvatar :user="user" />
-                                            <div>
-                                                <div class="text-nowrap">
+                                            <div class="inline-flex max-w-[16rem] min-w-0 items-center gap-2 text-left hover:opacity-80 transition">
+                                            <UserAvatar :user="user" class="shrink-0" />
+                                            <div class="min-w-0 overflow-hidden">
+                                                <div class="truncate" :title="user.email">
                                                     {{ user.email }}
                                                 </div>
-                                                <div class="text-nowrap text-xs inline-flex items-center gap-2">
-                                                    <span>{{ user.role.name }}</span>
+                                                <div class="truncate text-xs text-base-content/70">
+                                                    <span :title="user.role.name">{{ user.role.name }}</span>
                                                 </div>
                                             </div>
                                             <span
                                                 v-if="user.banned_at"
+                                                class="shrink-0"
                                                 title="Пользователь заблокирован"
                                             >
                                                 <svg class="w-4 h-4 text-danger" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
@@ -255,6 +253,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </span>
                                             <span
                                                 v-if="user.stop_traffic"
+                                                class="shrink-0"
                                                 title="Трафик остановлен"
                                             >
                                                 <svg class="w-4 h-4 text-error" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
@@ -263,18 +262,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </span>
                                             <span
                                                 v-else-if="user.traffic_enabled_at"
+                                                class="shrink-0"
                                                 :title="'Трафик включен: ' + user.traffic_enabled_at"
                                             >
                                                 <svg class="w-4 h-4 text-success" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                                                     <path fill-rule="evenodd" d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Zm-11.99 4a1 1 0 0 1-.705-.292l-3.99-3.96a1 1 0 0 1 1.41-1.419l3.285 3.26 6.289-6.254a1 1 0 0 1 1.41 1.418l-6.99 6.955a1 1 0 0 1-.709.292Z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </span>
-                                            <span
-                                                v-if="user.is_vip"
-                                                title="VIP пользователь"
-                                            >
-                                                <svg class="w-4 h-4 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path fill-rule="evenodd" d="M10.788 3.103c.495-1.004 1.926-1.004 2.421 0l2.358 4.777 5.273.766c1.107.16 1.55 1.522.748 2.303l-3.816 3.72.9 5.25c.19 1.104-.968 1.945-1.959 1.424l-4.716-2.48-4.715 2.48c-.99.52-2.148-.32-1.96-1.424l.9-5.25-3.815-3.72c-.8-.78-.36-2.142.748-2.303l5.274-.766 2.358-4.777Z" clip-rule="evenodd"/>
                                                 </svg>
                                             </span>
                                             </div>
@@ -286,9 +278,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
                                         <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
-                                    </td>
-                                    <td class="px-6 py-3 text-nowrap">
-                                        <DateTime :data="user.created_at" :plural="true"/>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
                                         <div class="space-y-1">
@@ -338,15 +327,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                 class="card bg-base-100 shadow-sm"
                             >
                                 <div class="card-body p-4 pt-2 pb-3">
-                                    <!-- Шапка: ID и дата создания -->
+                                    <!-- Шапка: ID -->
                                     <div class="flex justify-between items-center border-b border-base-content/10 mb-0 pb-2">
                                         <div class="inline-flex gap-3">
                                             <div class="inline-flex items-center">
                                                 <span class="text-base-content/70">ID:</span> <span class="font-medium ml-4">{{ user.id }}</span>
                                             </div>
-                                        </div>
-                                        <div class="inline-flex items-center">
-                                            <DateTime :data="user.created_at" :plural="true"/>
                                         </div>
                                     </div>
 
@@ -354,20 +340,22 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div class="hidden sm:block">
                                         <div class="flex items-center justify-between gap-2 py-2">
                                             <div class="inline-flex items-center justify-between gap-2 flex-1 min-w-0">
+                                                <div class="min-w-0 flex-1 overflow-hidden">
                                                 <UserSummaryPopover :user="user">
-                                                    <div class="inline-flex items-center gap-2 text-left hover:opacity-80 transition">
-                                                    <UserAvatar :user="user" class="flex-shrink-0" />
-                                                    <div>
-                                                        <div class="text-nowrap truncate">
+                                                    <div class="inline-flex min-w-0 max-w-full items-center gap-2 text-left hover:opacity-80 transition">
+                                                    <UserAvatar :user="user" class="shrink-0" />
+                                                    <div class="min-w-0 overflow-hidden">
+                                                        <div class="truncate" :title="user.email">
                                                             {{ user.email }}
                                                         </div>
-                                                        <div class="text-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
-                                                            <span>{{ user.role.name }}</span>
+                                                        <div class="truncate text-xs text-base-content/70">
+                                                            <span :title="user.role.name">{{ user.role.name }}</span>
                                                         </div>
                                                     </div>
                                                     </div>
                                                 </UserSummaryPopover>
-                                                <div class="inline-flex items-center">
+                                                </div>
+                                                <div class="inline-flex shrink-0 items-center">
                                                     <span class="tex-xs text-base-content/70">Заходил:</span>
                                                     <span class="text-base-content ml-1">
                                                         <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
@@ -397,14 +385,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     >
                                                         <svg class="w-4 h-4 text-success" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                                                             <path fill-rule="evenodd" d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Zm-11.99 4a1 1 0 0 1-.705-.292l-3.99-3.96a1 1 0 0 1 1.41-1.419l3.285 3.26 6.289-6.254a1 1 0 0 1 1.41 1.418l-6.99 6.955a1 1 0 0 1-.709.292Z" clip-rule="evenodd"/>
-                                                        </svg>
-                                                    </span>
-                                                    <span
-                                                        v-if="user.is_vip"
-                                                        title="VIP пользователь"
-                                                    >
-                                                        <svg class="w-4 h-4 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                                            <path fill-rule="evenodd" d="M10.788 3.103c.495-1.004 1.926-1.004 2.421 0l2.358 4.777 5.273.766c1.107.16 1.55 1.522.748 2.303l-3.816 3.72.9 5.25c.19 1.104-.968 1.945-1.959 1.424l-4.716-2.48-4.715 2.48c-.99.52-2.148-.32-1.96-1.424l.9-5.25-3.815-3.72c-.8-.78-.36-2.142.748-2.303l5.274-.766 2.358-4.777Z" clip-rule="evenodd"/>
                                                         </svg>
                                                     </span>
                                                 </div>
@@ -456,19 +436,23 @@ defineOptions({ layout: AuthenticatedLayout })
 
                                     <!-- Для экранов меньше sm -->
                                     <div class="sm:hidden">
-                                        <div class="flex items-center gap-2 mb-2">
-                                            <UserAvatar :user="user" class="flex-shrink-0" />
+                                        <div class="flex items-center gap-2 mb-2 min-w-0">
+                                            <UserAvatar :user="user" class="shrink-0" />
+                                            <div class="min-w-0 flex-1 overflow-hidden">
                                             <UserSummaryPopover :user="user">
-                                                <div class="inline-flex items-center gap-2 min-w-0 flex-1 text-left hover:opacity-80 transition">
-                                                    <div class="text-nowrap truncate text-sm">
-                                                        {{ user.email }}
-                                                    </div>
-                                                    <div class="text-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
-                                                        <span>{{ user.role.name }}</span>
+                                                <div class="inline-flex min-w-0 flex-1 items-center gap-2 text-left hover:opacity-80 transition">
+                                                    <div class="min-w-0 overflow-hidden">
+                                                        <div class="truncate text-sm" :title="user.email">
+                                                            {{ user.email }}
+                                                        </div>
+                                                        <div class="truncate text-xs text-base-content/70">
+                                                            <span :title="user.role.name">{{ user.role.name }}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </UserSummaryPopover>
-                                            <div class="flex items-center gap-1 flex-shrink-0 mr-1">
+                                            </div>
+                                            <div class="flex shrink-0 items-center gap-1 mr-1">
                                                 <span
                                                     v-if="user.banned_at"
                                                     title="Пользователь заблокирован"
@@ -491,14 +475,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 >
                                                     <svg class="w-4 h-4 text-success" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                                                         <path fill-rule="evenodd" d="M22 12c0 5.523-4.477 10-10 10S2 17.523 2 12 6.477 2 12 2s10 4.477 10 10Zm-11.99 4a1 1 0 0 1-.705-.292l-3.99-3.96a1 1 0 0 1 1.41-1.419l3.285 3.26 6.289-6.254a1 1 0 0 1 1.41 1.418l-6.99 6.955a1 1 0 0 1-.709.292Z" clip-rule="evenodd"/>
-                                                    </svg>
-                                                </span>
-                                                <span
-                                                    v-if="user.is_vip"
-                                                    title="VIP пользователь"
-                                                >
-                                                    <svg class="w-4 h-4 text-primary" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path fill-rule="evenodd" d="M10.788 3.103c.495-1.004 1.926-1.004 2.421 0l2.358 4.777 5.273.766c1.107.16 1.55 1.522.748 2.303l-3.816 3.72.9 5.25c.19 1.104-.968 1.945-1.959 1.424l-4.716-2.48-4.715 2.48c-.99.52-2.148-.32-1.96-1.424l.9-5.25-3.815-3.72c-.8-.78-.36-2.142.748-2.303l5.274-.766 2.358-4.777Z" clip-rule="evenodd"/>
                                                     </svg>
                                                 </span>
                                             </div>

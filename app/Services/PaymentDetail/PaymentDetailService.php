@@ -39,8 +39,8 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 'max_pending_orders_quantity' => $data->max_pending_orders_quantity,
                 'min_order_amount' => $data->min_order_amount ? Money::fromPrecision($data->min_order_amount, Currency::make($data->currency)) : null,
                 'max_order_amount' => $data->max_order_amount ? Money::fromPrecision($data->max_order_amount, Currency::make($data->currency)) : null,
-                'vip_min_order_amount_backup' => $data->min_order_amount ? Money::fromPrecision($data->min_order_amount, Currency::make($data->currency)) : null,
-                'vip_max_order_amount_backup' => $data->max_order_amount ? Money::fromPrecision($data->max_order_amount, Currency::make($data->currency)) : null,
+                'min_order_amount_backup' => $data->min_order_amount ? Money::fromPrecision($data->min_order_amount, Currency::make($data->currency)) : null,
+                'max_order_amount_backup' => $data->max_order_amount ? Money::fromPrecision($data->max_order_amount, Currency::make($data->currency)) : null,
                 'order_interval_minutes' => $data->order_interval_minutes,
                 'currency' => Currency::make($data->currency),
                 'user_id' => $data->user_id,
@@ -80,8 +80,8 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 'daily_successful_orders_limit' => $data->daily_successful_orders_limit,
                 'min_order_amount' => $data->min_order_amount ? Money::fromPrecision($data->min_order_amount, $paymentDetail->currency) : null,
                 'max_order_amount' => $data->max_order_amount ? Money::fromPrecision($data->max_order_amount, $paymentDetail->currency) : null,
-                'vip_min_order_amount_backup' => $data->min_order_amount ? Money::fromPrecision($data->min_order_amount, $paymentDetail->currency) : null,
-                'vip_max_order_amount_backup' => $data->max_order_amount ? Money::fromPrecision($data->max_order_amount, $paymentDetail->currency) : null,
+                'min_order_amount_backup' => $data->min_order_amount ? Money::fromPrecision($data->min_order_amount, $paymentDetail->currency) : null,
+                'max_order_amount_backup' => $data->max_order_amount ? Money::fromPrecision($data->max_order_amount, $paymentDetail->currency) : null,
                 'order_interval_minutes' => $data->order_interval_minutes,
                 'max_pending_orders_quantity' => $data->max_pending_orders_quantity,
                 'user_device_id' => $data->user_device_id,
@@ -110,7 +110,7 @@ class PaymentDetailService implements PaymentDetailServiceContract
         });
     }
 
-    public function restoreVipLimitsForUser(User $user): void
+    public function restoreOrderAmountLimitsForUser(User $user): void
     {
         $this->transaction(function () use ($user) {
             PaymentDetail::query()
@@ -118,14 +118,14 @@ class PaymentDetailService implements PaymentDetailServiceContract
                 ->get()
                 ->each(function (PaymentDetail $detail) {
                     $detail->updateQuietly([
-                        'min_order_amount' => $detail->vip_min_order_amount_backup,
-                        'max_order_amount' => $detail->vip_max_order_amount_backup,
+                        'min_order_amount' => $detail->min_order_amount_backup,
+                        'max_order_amount' => $detail->max_order_amount_backup,
                     ]);
                 });
         });
     }
 
-    public function resetVipLimitsForUser(User $user): void
+    public function resetOrderAmountLimitsForUser(User $user): void
     {
         $this->transaction(function () use ($user) {
             PaymentDetail::query()

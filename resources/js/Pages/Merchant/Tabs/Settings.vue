@@ -8,7 +8,7 @@ import {computed, reactive, ref, watch} from "vue";
 import {useViewStore} from "@/store/view.js";
 import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
-import DUUID from "@/Components/DUUID.vue";
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import {DEFAULT_RUB_MARKET, filterMarketOptions} from "@/utils/market.js";
 
 const viewStore = useViewStore();
@@ -608,7 +608,7 @@ const merchantStatus = computed(() => {
 
                 <div v-if="merchant?.uuid" class="shrink-0 rounded-lg bg-base-100 px-2.5 py-1.5 text-[11px] shadow-sm">
                     <div class="mb-0.5 text-base-content/50">Merchant ID</div>
-                    <DUUID :uuid="merchant.uuid"/>
+                    <CopyableOrderUid :uuid="merchant.uuid ?? ''" />
                 </div>
             </div>
 

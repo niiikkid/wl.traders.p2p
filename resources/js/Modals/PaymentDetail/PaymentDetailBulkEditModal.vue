@@ -25,12 +25,12 @@ const errors = ref({});
 
 const currentUser = usePage().props.auth?.user;
 const isAdminUser = computed(() => usePage().props.auth?.is_admin === true || usePage().props.auth?.role?.name === 'Super Admin');
-const isVipUser = computed(() => {
+const canSetOrderAmountLimits = computed(() => {
     if (isAdminUser.value && viewStore.isAdminViewMode) {
         return true;
     }
 
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
+    return currentUser?.can_set_order_amount_limits === true || currentUser?.can_set_order_amount_limits === 1;
 });
 
 const shouldBypassTraderMinLimit = computed(() => isAdminUser.value && viewStore.isAdminViewMode);
@@ -251,7 +251,7 @@ watch(
                 <InputError :message="errors._error?.[0]" />
 
                 <div class="space-y-6" :class="{ 'opacity-60 pointer-events-none': !canEdit }">
-                    <div v-if="isVipUser" class="rounded-box border border-base-300 p-4">
+                    <div v-if="canSetOrderAmountLimits" class="rounded-box border border-base-300 p-4">
                         <div class="text-sm font-medium mb-3">
                             Лимит на сумму сделки
                         </div>
@@ -309,7 +309,7 @@ watch(
                             Лимит на сумму сделки
                         </div>
                         <div class="text-xs text-base-content/60">
-                            Поля доступны только для VIP.
+                            Администратор не разрешил настройку минимальной и максимальной суммы сделки.
                         </div>
                     </div>
 

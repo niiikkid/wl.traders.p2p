@@ -267,7 +267,7 @@ curl -X GET "https://your-domain.com/api/integration/v1/wallets/55/transactions?
 
 - `id`, `email`, `name`
 - `roles[]`
-- `is_online`, `is_vip`
+- `is_online`, `can_set_order_amount_limits`
 - `created_at`, `updated_at`
 
 ### PaymentDetail

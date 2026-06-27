@@ -1,5 +1,5 @@
 <script setup>
-import DisplayUUID from '@/Components/DisplayUUID.vue';
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import MoneyValue from '@/Components/MoneyValue.vue';
 import PaymentDetail from '@/Components/PaymentDetail.vue';
 
@@ -38,7 +38,7 @@ defineProps({
                 <span class="text-xs font-medium uppercase tracking-wide text-base-content/50">
                     Сделка
                 </span>
-                <DisplayUUID :uuid="uuid" :copyable="false" />
+                <CopyableOrderUid :uuid="uuid ?? ''" :copyable="false" />
             </div>
 
             <div class="flex items-center justify-between gap-4 px-4 py-3">

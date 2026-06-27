@@ -11,7 +11,6 @@ const props = defineProps({
 
 const items = [
     {key: 'messages', label: 'Сообщения', route: 'admin.sms-logs.index'},
-    {key: 'shadow', label: 'Теневой лог', route: 'admin.shadow-sms-logs.index'},
     {key: 'app', label: 'Приложение', route: 'admin.app.index'},
     {key: 'devices', label: 'Устройства', route: 'admin.devices.index'},
 ];

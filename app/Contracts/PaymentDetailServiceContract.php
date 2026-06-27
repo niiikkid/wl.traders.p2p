@@ -15,9 +15,7 @@ interface PaymentDetailServiceContract
 
     public function toggleActive(PaymentDetail $paymentDetail): void;
 
-    public function restoreVipLimitsForUser(User $user): void;
+    public function restoreOrderAmountLimitsForUser(User $user): void;
 
-    public function resetVipLimitsForUser(User $user): void;
+    public function resetOrderAmountLimitsForUser(User $user): void;
 }
-
-

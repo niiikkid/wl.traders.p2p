@@ -73,7 +73,7 @@ class PaymentDetailResource extends JsonResource
                     'owner_id' => $user->id,
                     'owner_name' => $user->name,
                     'owner_email' => $user->email,
-                    'owner_is_vip' => (bool) $user->is_vip,
+                    'owner_can_set_order_amount_limits' => (bool) $user->can_set_order_amount_limits,
                     'owner_can_work_without_device' => (bool) $user->can_work_without_device,
                     'owner_max_min_order_amount' => $user->effectiveMaxMinOrderAmount(),
                 ];

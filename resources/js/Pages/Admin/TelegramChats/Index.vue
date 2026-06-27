@@ -5,7 +5,7 @@ import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
-import DisplayUUID from '@/Components/DisplayUUID.vue';
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import ConfirmModal from '@/Components/Modals/ConfirmModal.vue';
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue';
@@ -1239,9 +1239,9 @@ watch(
                                                             </span>
                                                         </td>
                                                         <td class="align-top">
-                                                            <DisplayUUID
+                                                            <CopyableOrderUid
                                                                 v-if="message.detected_uuid"
-                                                                :uuid="message.detected_uuid"
+                                                                :uuid="message.detected_uuid ?? ''"
                                                             />
                                                             <span v-else>—</span>
                                                         </td>
@@ -1561,7 +1561,7 @@ watch(
                     </div>
                     <div v-if="messageDetail.detected_uuid">
                         <span class="text-base-content/60">UUID:</span>
-                        <DisplayUUID :uuid="messageDetail.detected_uuid" />
+                        <CopyableOrderUid :uuid="messageDetail.detected_uuid ?? ''" />
                     </div>
                     <div v-if="messageDetail.order_id">
                         <span class="text-base-content/60">Order ID:</span> {{ messageDetail.order_id }}

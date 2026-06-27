@@ -4,11 +4,11 @@ import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
-import DateFilter from '@/Components/Filters/Pertials/DateFilter.vue';
-import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
-import DropdownFilter from '@/Components/Filters/Pertials/DropdownFilter.vue';
+import DateFilter from '@/Components/Filters/Partials/DateFilter.vue';
+import InputFilter from '@/Components/Filters/Partials/InputFilter.vue';
+import DropdownFilter from '@/Components/Filters/Partials/DropdownFilter.vue';
 import RefreshTableData from '@/Components/Table/RefreshTableData.vue';
-import DisplayUUID from '@/Components/DisplayUUID.vue';
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
 
@@ -128,7 +128,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                 <template v-for="payout in payoutItems" :key="payout.id">
                                     <tr class="bg-base-100 border-base-200 border-b last:border-none align-top">
                                         <td>
-                                            <DisplayUUID :uuid="payout.uuid" class="text-sm font-semibold" />
+                                            <CopyableOrderUid :uuid="payout.uuid ?? ''" class="text-sm font-semibold" />
                                         </td>
                                         <td>
                                             <div>
@@ -325,7 +325,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                             <div class="min-w-0 flex-1 text-[11px]">
                                                 <div class="inline-flex items-center gap-1 pl-1 min-w-0">
                                                     <span class="text-base-content/70">UUID:</span>
-                                                    <DisplayUUID :uuid="payout.uuid" class="text-sm font-semibold" />
+                                                    <CopyableOrderUid :uuid="payout.uuid ?? ''" class="text-sm font-semibold" />
                                                 </div>
                                             </div>
                                             <div class="shrink-0">

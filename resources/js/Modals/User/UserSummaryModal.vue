@@ -48,7 +48,7 @@ const boolToText = (value) => value ? 'Да' : 'Нет';
                     <div class="rounded-box border border-base-300 p-3">
                         <div class="text-base-content/70 mb-1">Статусы</div>
                         <div>Онлайн: <span class="font-medium">{{ boolToText(!!user.is_online) }}</span></div>
-                        <div>VIP: <span class="font-medium">{{ boolToText(!!user.is_vip) }}</span></div>
+                        <div>Лимиты сделки: <span class="font-medium">{{ boolToText(!!user.can_set_order_amount_limits) }}</span></div>
                         <div>Трафик остановлен: <span class="font-medium">{{ boolToText(!!user.stop_traffic) }}</span></div>
                         <div>Без устройства: <span class="font-medium">{{ boolToText(!!user.can_work_without_device) }}</span></div>
                     </div>

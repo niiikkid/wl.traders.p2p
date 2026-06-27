@@ -2,20 +2,16 @@
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import GoBackButton from "@/Components/GoBackButton.vue";
-import DepositModal from "@/Modals/Wallet/DepositModal.vue";
-import WithdrawalModal from "@/Modals/Wallet/WithdrawalModal.vue";
-import TraderDepositModal from "@/Modals/Wallet/TraderDepositModal.vue";
-import LeaderReserveDepositModal from "@/Modals/Wallet/LeaderReserveDepositModal.vue";
+import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import MerchantBalance from "@/Pages/Wallet/Partials/MerchantBalance.vue";
 import {useViewStore} from "@/store/view.js";
 import OperationsHistory from "@/Pages/Wallet/Partials/OperationsHistory.vue";
-import {computed, ref} from "vue";
+import {computed} from "vue";
 import EscrowBalance from "@/Pages/Wallet/Partials/EscrowBalance.vue";
 import DisputeBalance from "@/Pages/Wallet/Partials/DisputeBalance.vue";
 import TrustBalance from "@/Pages/Wallet/Partials/TrustBalance.vue";
 import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import TeamLeaderSharedReserveBalance from "@/Pages/Wallet/Partials/TeamLeaderSharedReserveBalance.vue";
-import TraderBalanceTransferModal from "@/Modals/Wallet/TraderBalanceTransferModal.vue";
 
 const page = usePage();
 const user = page.props.user;
@@ -78,7 +74,6 @@ const showDisputeBalanceCard = computed(() => {
     return viewStore.isTraderViewMode || viewStore.isAdminViewMode;
 });
 
-const balanceType = ref('trust');
 const fiatCurrencyForm = useForm({
     fiat_currency: walletStats.currency.secondary,
 });
@@ -89,10 +84,6 @@ const availableFiatCurrencies = computed(() => {
         label: rate.code.toUpperCase(),
     }));
 });
-
-const setBalanceType = (type) => {
-    balanceType.value = type;
-}
 
 const updateFiatCurrency = () => {
     fiatCurrencyForm.patch(route('wallet.fiat-currency.update'), {
@@ -197,26 +188,20 @@ defineOptions({ layout: AuthenticatedLayout })
                 v-show="showTrustBalanceCard"
                 :trader-balance-transfer="traderBalanceTransfer"
                 :team-leader-insurance="teamLeaderInsurance"
-                @setBalanceType="setBalanceType"
             />
-            <MerchantBalance v-show="showMerchantBalanceCard" @setBalanceType="setBalanceType"/>
-            <TeamleaderBalance v-show="showTeamleaderBalanceCard" @setBalanceType="setBalanceType"/>
+            <MerchantBalance v-show="showMerchantBalanceCard"/>
+            <TeamleaderBalance v-show="showTeamleaderBalanceCard"/>
             <TeamLeaderSharedReserveBalance
                 v-if="teamLeaderInsurance && showTeamLeaderSharedReserveCard"
                 :team-leader-insurance="teamLeaderInsurance"
-                @setBalanceType="setBalanceType"
             />
-            <EscrowBalance v-show="showEscrowBalanceCard" @setBalanceType="setBalanceType"/>
-            <DisputeBalance v-show="showDisputeBalanceCard" @setBalanceType="setBalanceType"/>
+            <EscrowBalance v-show="showEscrowBalanceCard"/>
+            <DisputeBalance v-show="showDisputeBalanceCard"/>
         </div>
 
         <OperationsHistory/>
 
-        <DepositModal :balanceType="balanceType"/>
-        <TraderDepositModal :balanceType="balanceType"/>
-        <LeaderReserveDepositModal />
-        <TraderBalanceTransferModal />
-        <WithdrawalModal :balanceType="balanceType"/>
+        <ConfirmModal />
     </div>
 </template>
 

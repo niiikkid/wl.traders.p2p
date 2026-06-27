@@ -18,15 +18,9 @@ const walletStats = ref(usePage().props.walletStats);
 const user = usePage().props.user;
 const primaryCurrency = walletStats.value.currency.primary.toUpperCase();
 
-const emit = defineEmits(['setBalanceType']);
-
 router.on('success', () => {
     walletStats.value = usePage().props.walletStats;
 });
-
-const setBalanceType = (type) => {
-    emit('setBalanceType', type);
-};
 
 const reserveAmount = computed(() => walletStats.value.base.trustReserveAmount);
 
@@ -35,7 +29,7 @@ const requiredReserve = computed(() => props.teamLeaderInsurance.reserve_balance
 const stopThreshold = computed(() => props.teamLeaderInsurance.reserve_stop_threshold);
 
 const openLeaderReserveDepositModal = () => {
-    modalStore.openLeaderReserveDepositModal({});
+    modalStore.open('leaderReserveDeposit');
 };
 </script>
 
@@ -59,14 +53,14 @@ const openLeaderReserveDepositModal = () => {
                                 <button
                                     type="button"
                                     class="btn btn-outline btn-error join-item btn-sm"
-                                    @click.prevent="modalStore.openWithdrawalModal({ user }); setBalanceType('reserve')"
+                                    @click.prevent="modalStore.open('withdrawal', { user, balanceType: 'reserve' })"
                                 >
                                     <span class="md:block hidden">Вывести</span>
                                 </button>
                                 <button
                                     type="button"
                                     class="btn btn-outline btn-primary join-item btn-sm"
-                                    @click.prevent="modalStore.openDepositModal({ user }); setBalanceType('reserve')"
+                                    @click.prevent="modalStore.open('deposit', { user, balanceType: 'reserve' })"
                                 >
                                     <span class="md:block hidden">Пополнить</span>
                                 </button>

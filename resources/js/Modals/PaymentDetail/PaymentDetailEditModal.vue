@@ -51,19 +51,19 @@ const canWorkWithoutDevice = ref(usePage().props.auth?.user?.can_work_without_de
 
 const currentUser = usePage().props.auth?.user;
 const isAdminUser = computed(() => usePage().props.auth?.is_admin === true || usePage().props.auth?.role?.name === 'Super Admin');
-const isVipUser = computed(() => {
-    // В админ-режиме админ всегда должен видеть все поля (включая VIP-лимиты)
+const canSetOrderAmountLimits = computed(() => {
+    // В админ-режиме админ всегда должен видеть все поля (включая лимиты суммы сделки)
     if (isAdminUser.value && viewStore.isAdminViewMode) {
         return true;
     }
 
     // В режиме "как трейдер" (или для обычного трейдера) ориентируемся на владельца реквизита,
     // если бэкенд его отдал, иначе — на текущего пользователя.
-    if (payment_detail.value?.owner_is_vip === true) {
+    if (payment_detail.value?.owner_can_set_order_amount_limits === true) {
         return true;
     }
 
-    return currentUser?.is_vip === true || currentUser?.is_vip === 1;
+    return currentUser?.can_set_order_amount_limits === true || currentUser?.can_set_order_amount_limits === 1;
 });
 
 const shouldBypassTraderMinLimit = computed(() => isAdminUser.value && viewStore.isAdminViewMode);
@@ -205,7 +205,7 @@ const setActiveHelp = (key) => {
     activeHelpKey.value = key;
 };
 
-const clampVipOrderRangeToGatewayLimits = () => {
+const clampOrderRangeToGatewayLimits = () => {
     const gateway = selectedPaymentGateway.value;
     if (!gateway) {
         return;
@@ -328,7 +328,7 @@ const loadPaymentDetail = (id) => {
             canWorkWithoutDevice.value = !!detail.owner_can_work_without_device;
         }
 
-        clampVipOrderRangeToGatewayLimits();
+        clampOrderRangeToGatewayLimits();
     });
 };
 
@@ -419,7 +419,7 @@ watch(
 watch(
     () => form.value.payment_gateway_ids,
     () => {
-        clampVipOrderRangeToGatewayLimits();
+        clampOrderRangeToGatewayLimits();
     },
     { deep: true }
 );
@@ -551,10 +551,10 @@ watch(
                     </div>
                 </div>
 
-                <div v-if="isVipUser" class="rounded-box border border-base-300 p-4">
+                <div v-if="canSetOrderAmountLimits" class="rounded-box border border-base-300 p-4">
                     <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                         <span>Лимит на сумму сделки ({{ payment_detail?.currency?.toUpperCase() || '' }})</span>
-                        <FieldHint :text="paymentDetailSectionHints.vipOrderAmountLimits" :class="desktopHintClass" />
+                        <FieldHint :text="paymentDetailSectionHints.orderAmountLimits" :class="desktopHintClass" />
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <NumberInputBlock

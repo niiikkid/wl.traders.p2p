@@ -5,8 +5,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import DateTime from '@/Components/DateTime.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
-import InputFilter from '@/Components/Filters/Pertials/InputFilter.vue';
-import { computed, ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import InputFilter from '@/Components/Filters/Partials/InputFilter.vue';
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import ApexCharts from 'apexcharts';
 
 defineOptions({ layout: AuthenticatedLayout });
@@ -16,7 +16,6 @@ const chartData = usePage().props.chart || { labels: [], series: [] };
 
 const chart = ref(null);
 const apexChart = ref(null);
-const historyFiltersPanel = ref(null);
 
 const chartStorageKey = 'display-antifraud-history-chart';
 const chartInitialDisplay = localStorage.getItem(chartStorageKey);
@@ -28,12 +27,6 @@ const toggleChartDisplay = () => {
     displayChart.value = !displayChart.value;
     localStorage.setItem(chartStorageKey, displayChart.value ? 'display' : 'hide');
 };
-const toggleHistoryFilters = () => {
-    historyFiltersPanel.value?.toggleFiltersDisplay();
-};
-const isHistoryFiltersOpen = computed(() => Boolean(historyFiltersPanel.value?.displayFilters));
-const hasActiveHistoryFilters = computed(() => Boolean(historyFiltersPanel.value?.hasActiveFilters));
-
 const colorProbeSpans = {};
 const getThemeColor = (token) => {
     let span = colorProbeSpans[token];
@@ -213,26 +206,6 @@ onBeforeUnmount(() => {
             <template v-slot:table-filters>
                 <div class="flex justify-end mb-3">
                     <div class="inline-flex items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm">
-                        <div class="relative inline-flex shrink-0">
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-square btn-primary btn-outline rounded-lg"
-                                :class="{ 'btn-active': isHistoryFiltersOpen }"
-                                :title="isHistoryFiltersOpen ? 'Скрыть фильтры' : 'Показать фильтры'"
-                                aria-label="Показать или скрыть фильтры"
-                                @click.prevent="toggleHistoryFilters"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="h-5 w-5">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
-                                </svg>
-                            </button>
-                            <span
-                                v-if="hasActiveHistoryFilters"
-                                class="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-base-100 bg-error"
-                                aria-hidden="true"
-                                title="Есть применённые фильтры"
-                            />
-                        </div>
                         <button
                             type="button"
                             class="btn btn-sm btn-square btn-secondary btn-outline shrink-0 rounded-lg"
@@ -247,7 +220,7 @@ onBeforeUnmount(() => {
                     </div>
                 </div>
 
-                <FiltersPanel ref="historyFiltersPanel" name="anti-fraud-history" :omit-default-toggle-button="true">
+                <FiltersPanel name="anti-fraud-history">
                     <InputFilter
                         name="merchant"
                         placeholder="Мерчант (имя или uuid)"

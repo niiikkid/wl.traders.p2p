@@ -42,11 +42,11 @@ class UserObserver
             $shouldSyncDetailEnabledPeriods = true;
         }
 
-        if ($user->wasChanged('is_vip')) {
-            if ($user->is_vip) {
-                services()->paymentDetail()->restoreVipLimitsForUser($user);
+        if ($user->wasChanged('can_set_order_amount_limits')) {
+            if ($user->can_set_order_amount_limits) {
+                services()->paymentDetail()->restoreOrderAmountLimitsForUser($user);
             } else {
-                services()->paymentDetail()->resetVipLimitsForUser($user);
+                services()->paymentDetail()->resetOrderAmountLimitsForUser($user);
             }
         }
 

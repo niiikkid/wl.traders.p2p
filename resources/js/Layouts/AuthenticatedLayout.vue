@@ -12,6 +12,7 @@ import SupportMenu from "@/Layouts/Partials/SupportMenu.vue";
 import AdminMenuApp from "@/Layouts/Partials/AdminMenuApp.vue";
 import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 import PaymentDetailScheduleManagerModal from '@/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue';
+import ModalsHost from '@/Components/Modal/ModalsHost.vue';
 
 const viewStore = useViewStore();
 
@@ -42,10 +43,6 @@ const syncNotificationSoundSettingsFromProps = () => {
 
 const canPollNotifications = computed(() => {
     return usePage().props.auth?.is_trader === true;
-});
-
-const adminTrafficPaused = computed(() => {
-    return usePage().props.adminTrafficPaused === true;
 });
 
 const getNotificationSoundLeaderStorageKey = () => {
@@ -527,23 +524,6 @@ const openDocs = () => {
 
                     <!-- Main content area -->
                     <main class="w-full lg:w-[calc(100%_-_17.5rem)] pt-2">
-                        <div
-                            v-if="viewStore.isAdminViewMode && adminTrafficPaused"
-                            role="alert"
-                            class="alert alert-error mb-4 shadow-sm"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="h-6 w-6 shrink-0"
-                            >
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9v6m-4.5 0V9M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                            </svg>
-                            <span class="font-semibold">Трафик остановлен. Новые автоматические назначения реквизитов временно недоступны.</span>
-                        </div>
                         <slot />
                     </main>
                 </div>
@@ -552,5 +532,6 @@ const openDocs = () => {
         </div>
 
         <PaymentDetailScheduleManagerModal v-if="viewStore.isTraderViewMode" />
+        <ModalsHost />
     </div>
 </template>

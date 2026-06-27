@@ -102,7 +102,7 @@ class UserService implements UserServiceContract
                 ...$this->resolveBanAttributes($user, $wasBanned, $isBanned, $data->ban_reason),
                 'stop_traffic' => $data->stop_traffic,
                 'can_work_without_device' => $data->can_work_without_device,
-                'is_vip' => $data->is_vip,
+                'can_set_order_amount_limits' => $data->can_set_order_amount_limits,
                 'payouts_enabled' => $data->payouts_enabled,
                 'payout_hold_enabled' => $data->payout_hold_enabled,
                 'payout_hold_minutes' => $data->payout_hold_minutes ?? $user->payout_hold_minutes,

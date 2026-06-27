@@ -68,11 +68,6 @@ class OrderException extends BaseException
         return new self('Не удалось получить актуальный курс конвертации.');
     }
 
-    public static function trafficPaused(): OrderException
-    {
-        return new self('Трафик временно остановлен администратором.');
-    }
-
     public static function teamLeaderReserveStopThresholdReached(): OrderException
     {
         return new self('Выдача сделок остановлена: резерв Team Leader на пороге или ниже.');
