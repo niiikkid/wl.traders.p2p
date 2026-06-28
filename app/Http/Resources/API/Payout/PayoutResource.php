@@ -14,34 +14,31 @@ class PayoutResource extends JsonResource
             'payout_id' => $this->uuid,
             'external_id' => $this->external_id,
             'status' => $this->status->value,
-            'payout_method_type' => $this->payout_method_type->value,
+            'payout_method' => $this->payout_method_type->value,
             'bank_name' => $this->bank_name,
             'requisites' => $this->requisites,
-            'initials' => $this->initials,
+            'recipient_name' => $this->initials,
             'merchant' => [
                 'id' => $this->merchant?->uuid,
                 'name' => $this->merchant?->name,
             ],
             'payment_gateway' => [
-                'id' => $this->paymentGateway?->id,
                 'name' => $this->paymentGateway?->name,
                 'code' => $this->paymentGateway?->code,
             ],
             'receipt_url' => $this->receipt_path ? route('payouts.receipts.show', ['payout' => $this->uuid]) : null,
             'amounts' => [
                 'fiat' => $this->formatMoney($this->amount_fiat, $this->amount_fiat_currency),
-                'usdt_body' => $this->formatMoney($this->usdt_body, $this->usdt_body_currency),
-                'merchant_debit' => $this->formatMoney($this->merchant_debit, $this->merchant_debit_currency),
+                'usdt' => $this->formatMoney($this->usdt_body, $this->usdt_body_currency),
+                'merchant_charge' => $this->formatMoney($this->merchant_debit, $this->merchant_debit_currency),
             ],
             'fees' => [
                 'total' => $this->formatMoney($this->total_fee, $this->total_fee_currency),
             ],
-            'commissions' => [
-                'total' => $this->total_commission_rate,
-            ],
+            'commission_percent' => $this->total_commission_rate,
             'rate' => [
                 'market' => $this->rate_market->value,
-                'price' => $this->conversion_price?->toBeauty(),
+                'value' => $this->conversion_price?->toBeauty(),
                 'currency' => strtoupper($this->conversion_price_currency),
                 'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
@@ -67,4 +64,3 @@ class PayoutResource extends JsonResource
         ];
     }
 }
-

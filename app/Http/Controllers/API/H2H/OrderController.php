@@ -145,7 +145,7 @@ class OrderController extends Controller
             'order_id' => $order->uuid,
             'confirmation_code' => [
                 'value' => $created_code->confirmation_code,
-                'created_at' => $created_code->created_at?->getTimestamp(),
+                'created_at' => $created_code->created_at?->toIso8601String(),
             ],
         ]);
     }

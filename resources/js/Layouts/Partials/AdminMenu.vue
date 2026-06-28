@@ -5,7 +5,6 @@ import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
 import { useUserStore } from '@/store/user.js';
 import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
-import NewsIcon from '@/Layouts/Partials/Icons/NewsIcon.vue';
 import BellIcon from '@/Layouts/Partials/Icons/BellIcon.vue';
 import UsersIcon from '@/Layouts/Partials/Icons/UsersIcon.vue';
 import CurrenciesIcon from '@/Layouts/Partials/Icons/CurrenciesIcon.vue';
@@ -32,13 +31,6 @@ const items = computed(() => [
         icon: DashboardIcon,
         href: route('admin.main.index'),
         active: route().current('admin.main.index'),
-    },
-    {
-        key: 'news',
-        label: 'Новости',
-        icon: NewsIcon,
-        href: route('admin.news.index'),
-        active: route().current('admin.news.*'),
     },
     {
         key: 'notifications',

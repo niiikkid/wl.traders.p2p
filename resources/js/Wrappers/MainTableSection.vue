@@ -1,7 +1,8 @@
 <script setup>
 import {router, usePage} from "@inertiajs/vue3";
-import {computed, ref, getCurrentInstance, watch} from "vue";
+import {computed, ref, watch} from "vue";
 import Pagination from "@/Components/Pagination/Pagination.vue";
+import PerPageSelect from "@/Components/Pagination/PerPageSelect.vue";
 import TableEmptyState from "@/Components/TableEmptyState.vue";
 import AlertError from "@/Components/Alerts/AlertError.vue";
 import AlertInfo from "@/Components/Alerts/AlertInfo.vue";
@@ -69,16 +70,6 @@ const items = computed(() => {
     return props.data;
 });
 
-const perPageOptions = [
-    { value: 5, name: '5 строк' },
-    { value: 10, name: '10 строк' },
-    { value: 15, name: '15 строк' },
-    { value: 20, name: '20 строк' },
-    { value: 25, name: '25 строк' },
-    { value: 50, name: '50 строк' },
-    { value: 100, name: '100 строк' }
-];
-
 const changeCurrentPage = (value) => {
     tableFiltersStore.setCurrentPage(value ?? 1);
 
@@ -99,8 +90,6 @@ const openPage = () => {
     })
 }
 
-
-const {uid} = getCurrentInstance();
 
 const hasPendingDisputes = ref(usePage().props.data?.hasPendingDisputes);
 const pendingDisputesCount = computed(() => Number(usePage().props.menu?.pendingDisputesCount ?? 0));
@@ -189,35 +178,16 @@ router.on('success', () => {
                     <Pagination
                         v-model="tableFiltersStore.page"
                         :total-items="tableFiltersStore.getTotal"
-                        previous-label="Назад" next-label="Вперед"
-                        @page-changed="changeCurrentPage"
+                        previous-label="Назад"
+                        next-label="Вперед"
                         :per-page="tableFiltersStore.getPerPage"
-                    ></Pagination>
+                        @page-changed="changeCurrentPage"
+                    />
 
-                    <div class="dropdown dropdown-left dropdown-top">
-                        <div tabindex="0" role="button" class="btn btn-outline btn-xs">
-                            {{ tableFiltersStore.getPerPage }} строк
-                            <svg class="w-2.5 h-2.5 ms-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
-                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4"/>
-                            </svg>
-                        </div>
-                        <ul tabindex="0" class="dropdown-content menu p-2 shadow bg-base-100 rounded-box w-52">
-                            <li v-for="(option, index) in perPageOptions" :key="option.value" class="">
-                                <label class="label cursor-pointer justify-start gap-3 px-2 py-2">
-                                    <input
-                                        :id="'perPage-'+uid+'-'+index"
-                                        type="radio"
-                                        :name="'perPageRadio'+uid"
-                                        :value="option.value"
-                                        :checked="tableFiltersStore.getPerPage === option.value"
-                                        @change="changePerPage(option.value)"
-                                        class="radio radio-xs"
-                                    >
-                                    <span :for="'perPage-'+uid+'-'+index" class="label-text text-xs">{{ option.name }}</span>
-                                </label>
-                            </li>
-                        </ul>
-                    </div>
+                    <PerPageSelect
+                        :model-value="tableFiltersStore.getPerPage"
+                        @change="changePerPage"
+                    />
                 </div>
             </div>
         </div>

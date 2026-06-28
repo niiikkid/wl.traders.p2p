@@ -20,6 +20,8 @@ import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
+import TraderCardHeader from "@/Components/Leader/TraderCardHeader.vue";
+import TraderPaymentDetailsSubNav from "@/Components/Leader/TraderPaymentDetailsSubNav.vue";
 
 const page = usePage();
 const tableFiltersStore = useTableFiltersStore();
@@ -84,16 +86,6 @@ const radialStyle = (value) => {
     };
 };
 
-const openPage = (tab) => {
-    tableFiltersStore.setTab(tab);
-    tableFiltersStore.setCurrentPage(1);
-
-    router.visit(route(route().current(), {trader: trader.value.id}), {
-        preserveScroll: true,
-        data: tableFiltersStore.getQueryData,
-    });
-};
-
 router.on('success', () => {
     trader.value = usePage().props.trader;
     paymentDetails.value = usePage().props.paymentDetails;
@@ -113,60 +105,19 @@ defineOptions({layout: AuthenticatedLayout});
 
 <template>
     <div>
-        <Head :title="`Трейдер #${trader.id} - Реквизиты`" />
+        <Head :title="`${trader.email} — Реквизиты`" />
 
         <MainTableSection
             title="Карточка трейдера"
             :data="paymentDetails"
-            :info="`Трейдер: ${trader.email}`"
         >
             <template #header>
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div class="breadcrumbs text-sm">
-                        <ul>
-                            <li>
-                                <button class="link link-hover" @click="router.visit(route('leader.traders.index'))">Трейдеры</button>
-                            </li>
-                            <li>{{ trader.email }}</li>
-                        </ul>
-                    </div>
-
-                    <ul class="flex flex-wrap text-sm font-medium text-center">
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-primary">Реквизиты</button>
-                        </li>
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-outline" @click="router.visit(route('leader.traders.orders.index', {trader: trader.id}))">Сделки</button>
-                        </li>
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-outline" @click="router.visit(route('leader.traders.disputes.index', {trader: trader.id}))">Споры</button>
-                        </li>
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-outline" @click="router.visit(route('leader.traders.finances.index', {trader: trader.id}))">Финансы</button>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="flex items-center justify-between gap-3 mt-2">
-                    <div class="inline-flex items-center gap-2">
-                        <span class="badge badge-outline">ID {{ trader.id }}</span>
-                        <span class="badge badge-success" v-if="trader.is_online">Онлайн</span>
-                        <span class="badge badge-ghost" v-else>Оффлайн</span>
-                    </div>
-
-                    <ul class="flex flex-wrap text-sm font-medium text-center">
-                        <li class="me-2">
-                            <a @click.prevent="openPage('active')" href="#" :class="currentTab === 'active' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'">
-                                Активные
-                            </a>
-                        </li>
-                        <li class="me-2">
-                            <a @click.prevent="openPage('archived')" href="#" :class="currentTab === 'archived' ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-outline'">
-                                Архив
-                            </a>
-                        </li>
-                    </ul>
-                </div>
+                <TraderCardHeader :trader="trader" current="payment-details">
+                    <TraderPaymentDetailsSubNav
+                        :trader-id="trader.id"
+                        :current="currentTab"
+                    />
+                </TraderCardHeader>
             </template>
 
             <template #table-filters>
@@ -204,7 +155,6 @@ defineOptions({layout: AuthenticatedLayout});
                         <template #head>
                             <th>UUID</th>
                             <th>Реквизит</th>
-                            <th>Тип</th>
                             <th>Лимиты</th>
                             <th class="text-nowrap">Расписание</th>
                             <th>Статус</th>
@@ -224,7 +174,6 @@ defineOptions({layout: AuthenticatedLayout});
                                                 />
                                             </div>
                                         </td>
-                                        <td class="whitespace-nowrap">{{ detail.detail_type }}</td>
                                         <td class="text-nowrap">
                                             <TableCellPopover>
                                                 <template #trigger>

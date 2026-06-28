@@ -71,10 +71,7 @@ class HandleInertiaRequests extends Middleware
             cache()->put("user-online-at-{$userId}", $now->toISOString());
             app(UserOnlinePeriodRecorder::class)->touch($userId, $now);
 
-            if ($request->routeIs([
-                'news.index',
-                'leader.news.index',
-            ])) {
+            if ($request->routeIs('news.mark-read')) {
                 $user->meta()->updateOrCreate(
                     ['user_id' => $userId],
                     ['news_last_read_at' => $now]
@@ -243,7 +240,7 @@ class HandleInertiaRequests extends Middleware
                 });
             }
 
-            if ($authUser->hasRole('Trader') || $authUser->hasRole('Team Leader')) {
+            if ($authUser instanceof User) {
                 $newsUnreadCount = cache()->remember("news_unread_{$userId}", 15, function () use ($userId) {
                     $lastReadAt = UserMeta::query()
                         ->where('user_id', $userId)
@@ -259,7 +256,9 @@ class HandleInertiaRequests extends Middleware
                             $query->where('created_at', '>', $lastReadAt);
                         });
 
-                    $query->visibleForRoles($roleNames);
+                    if (! $user->hasRole('Super Admin')) {
+                        $query->visibleForRoles($roleNames);
+                    }
 
                     return $query->count();
                 });
@@ -333,6 +332,7 @@ class HandleInertiaRequests extends Middleware
                 'pendingDisputePreview' => fn () => $pendingDisputePreview,
             ],
             'menu' => $menu,
+            'news' => fn () => $this->buildNewsSharedProps($isAdmin),
             'notificationsSound' => $authUser instanceof User && $isTrader ? [
                 'order_assigned' => [
                     'enabled' => $authUser->meta?->notification_sound_order_enabled ?? true,
@@ -347,6 +347,33 @@ class HandleInertiaRequests extends Middleware
                     'track' => $authUser->meta?->notification_sound_message_track ?? 'radwimps.mp3',
                 ],
             ] : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildNewsSharedProps(bool $isAdmin): array
+    {
+        if (! $isAdmin) {
+            return [
+                'canManage' => false,
+                'openAiConfigured' => false,
+                'roleOptions' => [],
+            ];
+        }
+
+        $openAiSetting = services()->openAi()->getSettings();
+
+        return [
+            'canManage' => true,
+            'openAiConfigured' => $openAiSetting->hasApiKey()
+                && is_string($openAiSetting->selected_model)
+                && $openAiSetting->selected_model !== '',
+            'roleOptions' => collect(['Trader', 'Support', 'Team Leader'])
+                ->map(fn (string $roleName) => ['value' => $roleName, 'label' => $roleName])
+                ->values()
+                ->toArray(),
         ];
     }
 }

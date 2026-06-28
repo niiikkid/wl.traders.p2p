@@ -2,19 +2,17 @@
     <nav aria-label="Navigation">
         <div
             v-if="layout === 'table'"
-            class="text-gray-700 dark:text-gray-400 mb-2"
+            class="text-base-content/60 mb-2"
             :class="large ? 'text-base' : 'text-xs'"
         >
             Showing
-            <span class="font-semibold text-gray-900 dark:text-white">{{ startItemsCount }}</span>
+            <span class="font-semibold text-base-content">{{ startItemsCount }}</span>
             to
-            <span class="font-semibold text-gray-900 dark:text-white">{{ endItemsCount }}</span>
+            <span class="font-semibold text-base-content">{{ endItemsCount }}</span>
             of
-            <span class="font-semibold text-gray-900 dark:text-white">{{ computedTotalItems }}</span>
+            <span class="font-semibold text-base-content">{{ computedTotalItems }}</span>
         </div>
-        <div
-            class="join"
-        >
+        <div class="join">
             <slot name="start" />
 
             <slot
@@ -271,13 +269,14 @@ const isFirstPage = computed(() => props.modelValue === 1)
 const isLastPage = computed(() => props.modelValue === computedTotalPages.value)
 
 function getPageButtonClasses (active: boolean) {
-    const baseClasses = 'btn btn-xs join-item btn-outline'
-    const activeClasses = 'btn-active'
+    const baseClasses = 'btn btn-xs join-item border-transparent'
+    const activeClasses = 'bg-primary text-primary-content font-medium hover:bg-primary'
+    const inactiveClasses = 'bg-base-300/80 text-base-content hover:bg-base-300'
     const largeClasses = 'btn-md'
-    return twMerge(baseClasses, active && activeClasses, props.large && largeClasses)
+    return twMerge(baseClasses, active ? activeClasses : inactiveClasses, props.large && largeClasses)
 }
 function getNavigationButtonClasses (toPage: number) {
-    const baseClasses = 'btn btn-xs join-item btn-outline'
+    const baseClasses = 'btn btn-xs join-item border-transparent bg-base-300/60 text-base-content hover:bg-base-300'
     const disabledClasses = 'btn-disabled'
     const largeClasses = 'btn-md'
     const tableClasses = 'btn-ghost'

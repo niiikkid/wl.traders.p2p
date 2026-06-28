@@ -385,7 +385,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     Используется в заголовке <code class="bg-base-200 px-1 rounded">Access-Token</code> для запросов к API.
                                 </p>
                             </div>
-                            <span class="badge" :class="hasApiToken ? 'badge-success' : 'badge-warning'">
+                            <span class="badge shrink-0 whitespace-nowrap" :class="hasApiToken ? 'badge-success' : 'badge-warning'">
                                 {{ hasApiToken ? 'создан' : 'не создан' }}
                             </span>
                         </div>
@@ -449,7 +449,7 @@ defineOptions({ layout: AuthenticatedLayout });
                                     Используется для проверки HMAC-подписи callback’ов.
                                 </p>
                             </div>
-                            <span class="badge" :class="hasWebhookSecret ? 'badge-success' : 'badge-warning'">
+                            <span class="badge shrink-0 whitespace-nowrap" :class="hasWebhookSecret ? 'badge-success' : 'badge-warning'">
                                 {{ hasWebhookSecret ? 'создан' : 'не создан' }}
                             </span>
                         </div>

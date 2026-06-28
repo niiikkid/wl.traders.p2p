@@ -64,7 +64,7 @@ class StoreRequest extends FormRequest
                 },
             ],
             'amount' => ['required', 'integer', 'gt:0'],
-            'payout_method_type' => ['required', 'string', Rule::in(PayoutMethodType::values())],
+            'payout_method' => ['required', 'string', Rule::in(PayoutMethodType::values())],
             'payment_gateway' => [
                 'nullable',
                 'string',
@@ -79,7 +79,7 @@ class StoreRequest extends FormRequest
                 'required_without:payment_gateway',
             ],
             'requisites' => ['required', 'string', 'max:255'],
-            'initials' => ['required', 'string', 'max:255'],
+            'recipient_name' => ['required', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:30'],
             'callback_url' => ['nullable', 'string', 'url:https', 'max:256'],
             'rate' => ['nullable'],
@@ -88,8 +88,8 @@ class StoreRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if ($this->has('payout_method_type') && is_string($this->payout_method_type)) {
-            $this->merge(['payout_method_type' => strtolower($this->payout_method_type)]);
+        if ($this->has('payout_method') && is_string($this->payout_method)) {
+            $this->merge(['payout_method' => strtolower($this->payout_method)]);
         }
 
         if ($this->has('payment_gateway') && is_string($this->payment_gateway)) {
@@ -169,6 +169,28 @@ class StoreRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    /**
+     * Map public API field names to the internal payload keys consumed by the payout pipeline.
+     *
+     * @return array<string, mixed>
+     */
+    public function toPayoutPayload(): array
+    {
+        $data = $this->validated();
+
+        if (array_key_exists('payout_method', $data)) {
+            $data['payout_method_type'] = $data['payout_method'];
+            unset($data['payout_method']);
+        }
+
+        if (array_key_exists('recipient_name', $data)) {
+            $data['initials'] = $data['recipient_name'];
+            unset($data['recipient_name']);
+        }
+
+        return $data;
     }
 
     protected function resolveCurrencyCode(): ?string

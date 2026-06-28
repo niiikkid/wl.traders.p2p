@@ -24,6 +24,7 @@ import Dropzone from '@/Components/Form/Dropzone.vue'
 import SaveButton from '@/Components/Form/SaveButton.vue'
 import TextInput from '@/Components/TextInput.vue'
 import Pagination from '@/Components/Pagination/Pagination.vue'
+import PerPageSelect from '@/Components/Pagination/PerPageSelect.vue'
 import RefreshTableData from '@/Components/Table/RefreshTableData.vue'
 import TableActionsDropdown from '@/Components/Table/TableActionsDropdown.vue'
 import TableAction from '@/Components/Table/TableAction.vue'
@@ -510,6 +511,11 @@ const demoPopoverText = ref('Это всплывающее описание с �
                                         />
                                         <div class="text-sm opacity-70">Текущая страница: {{ tablePage }}</div>
                                     </div>
+                                </div>
+
+                                <div>
+                                    <div class="mb-2 text-sm opacity-70">Выбор количества строк</div>
+                                    <PerPageSelect v-model="perPage" />
                                 </div>
                             </div>
                         </div>

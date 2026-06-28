@@ -80,9 +80,10 @@ class PayoutController extends Controller
     private function processPayoutPooling(StoreRequest $request, Merchant $merchant): JsonResponse
     {
         $validated = $request->validated();
+        $payload = $request->toPayoutPayload();
         $requestId = $this->logPayoutRequest($request, $merchant, [
             ...$validated,
-            'payment_detail_type' => $validated['payout_method_type'] ?? null,
+            'payment_detail_type' => $validated['payout_method'] ?? null,
             'operation' => 'create',
         ]);
         $maxWaitMs = $this->resolveMaxWaitMs($request, $merchant);
@@ -97,7 +98,7 @@ class PayoutController extends Controller
         PayoutPoolingJob::dispatch(
             $jobID,
             $createdAtMs,
-            $validated,
+            $payload,
             $maxWaitMs,
             $createdAtMs + $this->resolveCreationDeadlineMs($maxWaitMs, $pollIntervalMs),
         );

@@ -63,9 +63,9 @@ defineOptions({layout: AuthenticatedLayout})
                         </template>
                                 <tr v-for="invoice in invoices.data" class="bg-base-100 border-b last:border-none border-base-200">
                                     <td>
-                                        <div class="text-nowrap">{{ invoice.amount }} {{ invoice.currency.toUpperCase() }}</div>
-                                        <div v-show="invoice.balance_type === 'trust'" class="text-xs opacity-70">Траст</div>
-                                        <div v-show="invoice.balance_type === 'merchant'" class="text-xs opacity-70">Мерчант</div>
+                                        <div class="font-medium text-nowrap text-base-content">{{ invoice.amount }} {{ invoice.currency.toUpperCase() }}</div>
+                                        <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
+                                        <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                                     </td>
                                     <td>
                                         {{ invoice.user.email }}
@@ -93,9 +93,9 @@ defineOptions({layout: AuthenticatedLayout})
 
                                     <div class="hidden sm:flex items-center justify-between gap-2">
                                         <div class="text-right">
-                                            <div class="text-nowrap text-base-content">{{ invoice.amount }} {{ invoice.currency.toUpperCase() }}</div>
-                                            <div v-show="invoice.balance_type === 'trust'" class="text-xs opacity-70">Траст</div>
-                                            <div v-show="invoice.balance_type === 'merchant'" class="text-xs opacity-70">Мерчант</div>
+                                            <div class="font-medium text-nowrap text-base-content">{{ invoice.amount }} {{ invoice.currency.toUpperCase() }}</div>
+                                            <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
+                                            <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                                         </div>
                                         <div>
                                             <InvoiceStatus :status="invoice.status"></InvoiceStatus>
@@ -120,11 +120,11 @@ defineOptions({layout: AuthenticatedLayout})
                                     <div class="sm:hidden">
                                         <div class="flex items-center justify-between">
                                             <div>
-                                                <div class="text-nowrap text-xs text-base-content">
+                                                <div class="font-medium text-nowrap text-xs text-base-content">
                                                     {{ invoice.amount }} {{ invoice.currency.toUpperCase() }}
                                                 </div>
-                                                <div class="text-nowrap text-xs opacity-70" v-if="invoice.balance_type === 'trust'">Траст</div>
-                                                <div class="text-nowrap text-xs opacity-70" v-else-if="invoice.balance_type === 'merchant'">Мерчант</div>
+                                                <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
+                                                <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                                             </div>
                                             <div>
                                                 <InvoiceStatus :status="invoice.status"></InvoiceStatus>

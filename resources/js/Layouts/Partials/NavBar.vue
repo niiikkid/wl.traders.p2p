@@ -3,6 +3,9 @@ import {Link, router, usePage} from "@inertiajs/vue3";
 import {computed, ref} from "vue";
 import {useViewStore} from "@/store/view.js";
 import UserAvatar from "@/Components/User/UserAvatar.vue";
+import NewsDropdown from "@/Components/News/NewsDropdown.vue";
+import NewsCreateModal from "@/Components/News/NewsCreateModal.vue";
+import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 
 const viewStore = useViewStore();
 
@@ -80,10 +83,25 @@ const usesTeamLeaderSharedReserve = computed(() => (
 
 const role = usePage().props.auth.role;
 const email = usePage().props.auth.user.email;
+const canManageNews = computed(() => usePage().props.news?.canManage === true);
+const showCreateNewsModal = ref(false);
+const newsDropdownRef = ref(null);
 
 const login = computed(() =>
     email.charAt(0).toUpperCase() + email.slice(1)
-)
+);
+
+const openCreateNewsModal = () => {
+    showCreateNewsModal.value = true;
+};
+
+const closeCreateNewsModal = () => {
+    showCreateNewsModal.value = false;
+};
+
+const onNewsCreated = () => {
+    newsDropdownRef.value?.refreshFeed?.();
+};
 
 const openFinancePage = () => {
     router.visit(activeFinanceRoute.value, { preserveScroll: true });
@@ -122,7 +140,7 @@ router.on('success', () => {
                     </Link>
                 </div>
             </div>
-            <div class="flex items-center space-x-3">
+            <div class="flex items-center gap-2">
                 <div v-show="viewStore.isMerchantViewMode" class="lg:block hidden">
                     <div class="dropdown dropdown-end">
                         <button
@@ -234,25 +252,36 @@ router.on('success', () => {
                         </div>
                     </div>
                 </div>
+                <NewsDropdown ref="newsDropdownRef" />
+                <button
+                    v-if="canManageNews"
+                    type="button"
+                    class="btn btn-ghost btn-sm btn-square text-primary hover:bg-primary/10"
+                    title="Создать новость"
+                    @click.prevent="openCreateNewsModal"
+                >
+                    <span class="sr-only">Создать новость</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                </button>
                 <div class="flex items-center">
                     <div class="dropdown dropdown-end">
-                        <div tabindex="0" role="button" class="flex items-center space-x-4 cursor-pointer py-3 px-4 pr-2 rounded-xl hover:bg-base-300">
-                            <UserAvatar :user="$page.props.auth.user" size="md" ring />
-                            <div class="sm:block hidden">
-                                <p class="text-lg text-base-content" role="none">
+                        <div tabindex="0" role="button" class="btn btn-ghost btn-sm h-auto min-h-0 gap-2 rounded-lg px-2 py-1.5 normal-case font-normal">
+                            <UserAvatar :user="$page.props.auth.user" size="sm" ring />
+                            <div class="hidden md:block text-left max-w-[9rem]">
+                                <p class="text-sm font-medium text-base-content truncate leading-tight" role="none">
                                     {{ login }}
                                 </p>
-                                <p class="text-md text-base-content/50" role="none">
+                                <p class="text-xs text-base-content/50 truncate leading-tight" role="none">
                                     {{ role.name }}
                                 </p>
                             </div>
-                            <div class="sm:block hidden">
-                                <svg class="w-6 h-4 text-base-content" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m19 9-7 7-7-7"/>
-                                </svg>
-                            </div>
+                            <svg class="hidden md:block size-3.5 text-base-content/50 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/>
+                            </svg>
                         </div>
-                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] w-55 lg:w-45 p-2 shadow bg-base-100 rounded-box">
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-2 z-[1] w-52 p-2 shadow bg-base-100 rounded-box border border-base-300/60">
                             <li class="lg:hidden block menu-title px-4">Пользователь</li>
                             <li class="lg:hidden block px-2 hover:bg-transparent active:bg-transparent focus:bg-transparent pointer-events-none">
                                 <div class="text-base font-medium text-base-content/70 truncate">{{ login }}</div>
@@ -320,6 +349,12 @@ router.on('success', () => {
             </div>
         </div>
     </nav>
+    <NewsCreateModal
+        :show="showCreateNewsModal"
+        @close="closeCreateNewsModal"
+        @created="onNewsCreated"
+    />
+    <ConfirmModal />
 </template>
 
 <style scoped>

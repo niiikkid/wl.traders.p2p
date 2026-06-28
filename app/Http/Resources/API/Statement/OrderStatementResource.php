@@ -31,12 +31,12 @@ class OrderStatementResource extends JsonResource
                 'currency' => $this->merchant_profit->getCurrency()->getCode(),
             ],
             'rate' => [
-                'amount' => $this->conversion_price?->toPrecision(),
+                'value' => $this->conversion_price?->toPrecision(),
                 'market' => $this->market?->value,
-                'rate_fixed_at' => $this->rate_fixed_at?->getTimestamp(),
+                'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
             'status' => $this->status->value,
-            'created_at' => $this->created_at?->getTimestamp(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

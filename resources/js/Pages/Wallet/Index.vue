@@ -97,52 +97,52 @@ defineOptions({ layout: AuthenticatedLayout })
 <template>
     <Head title="Финансы"/>
 
-    <div>
-        <h2 class="text-3xl font-bold text-base-content mb-6">Финансы</h2>
+    <div class="max-w-5xl mx-auto space-y-5">
+        <div v-if="viewStore.isAdminViewMode">
+            <GoBackButton @click="router.visit(route('admin.users.index'))"></GoBackButton>
+        </div>
 
-        <div
-            v-if="viewStore.isTraderViewMode || (showTrustBalanceCard && viewStore.isAdminViewMode)"
-            class="mb-4 flex items-center justify-end gap-2"
-        >
-            <span class="text-sm opacity-70">Валюта отображения</span>
-            <select
-                v-model="fiatCurrencyForm.fiat_currency"
-                class="select select-bordered select-sm w-20"
-                :disabled="fiatCurrencyForm.processing"
-                @change="updateFiatCurrency"
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+                <h2 class="text-2xl sm:text-3xl font-bold text-base-content">Финансы</h2>
+                <p v-if="viewStore.isAdminViewMode" class="text-sm text-base-content/60 mt-1">
+                    Кошелёк пользователя <span class="text-primary font-medium">{{ user.email }}</span>
+                </p>
+            </div>
+
+            <label
+                v-if="viewStore.isTraderViewMode || (showTrustBalanceCard && viewStore.isAdminViewMode)"
+                class="flex items-center gap-2"
             >
-                <option
-                    v-for="currency in availableFiatCurrencies"
-                    :key="currency.code"
-                    :value="currency.code"
+                <span class="text-sm text-base-content/60">Валюта</span>
+                <select
+                    v-model="fiatCurrencyForm.fiat_currency"
+                    class="select select-bordered select-sm w-20"
+                    :disabled="fiatCurrencyForm.processing"
+                    @change="updateFiatCurrency"
                 >
-                    {{ currency.label }}
-                </option>
-            </select>
-            <span v-if="fiatCurrencyForm.errors.fiat_currency" class="text-error text-xs">
-                {{ fiatCurrencyForm.errors.fiat_currency }}
-            </span>
-        </div>
-
-        <div v-if="viewStore.isAdminViewMode" class="mb-3">
-            <GoBackButton
-                @click="router.visit(route('admin.users.index'))"
-            ></GoBackButton>
+                    <option
+                        v-for="currency in availableFiatCurrencies"
+                        :key="currency.code"
+                        :value="currency.code"
+                    >
+                        {{ currency.label }}
+                    </option>
+                </select>
+            </label>
         </div>
 
         <div
-            v-if="viewStore.isAdminViewMode"
-            class="mb-3"
+            v-if="fiatCurrencyForm.errors.fiat_currency"
+            class="text-error text-xs text-right"
         >
-            <h2 class="text-xl text-base-content sm:text-2xl">
-                Пользователь: <span class="text-primary">{{user.email}}</span>
-            </h2>
+            {{ fiatCurrencyForm.errors.fiat_currency }}
         </div>
 
         <div
             v-if="!viewStore.isAdminViewMode && showTeamLeaderSharedReserveCard"
             role="alert"
-            class="alert alert-info mb-6 text-sm"
+            class="alert alert-info text-sm py-2"
         >
             <span>
                 В истории операций можно отфильтровать движения по доходу тимлидера и по общему страховому резерву.
@@ -152,7 +152,7 @@ defineOptions({ layout: AuthenticatedLayout })
         <div
             v-if="viewStore.isAdminViewMode && teamLeaderInsurance?.uses_shared_reserve && teamLeaderInsurance?.role === 'team_leader'"
             role="alert"
-            class="alert alert-info mb-6 text-sm"
+            class="alert alert-info text-sm py-2"
         >
             <span>
                 Режим «{{ teamLeaderInsurance.mode_label }}».
@@ -163,7 +163,7 @@ defineOptions({ layout: AuthenticatedLayout })
         <div
             v-if="viewStore.isAdminViewMode && teamLeaderInsurance?.uses_shared_reserve && teamLeaderInsurance?.role === 'trader'"
             role="alert"
-            class="alert alert-info mb-6 text-sm"
+            class="alert alert-info text-sm py-2"
         >
             <span>
                 Трейдер подключён к Team Leader
@@ -174,16 +174,16 @@ defineOptions({ layout: AuthenticatedLayout })
             </span>
         </div>
 
-        <div v-if="$page.props.flash.error" role="alert" class="alert alert-error mb-6">
-            <svg class="w-4 h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+        <div v-if="$page.props.flash.error" role="alert" class="alert alert-error text-sm py-2">
+            <svg class="w-4 h-4 shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
             </svg>
             <span>
-                <span class="font-medium">Внимание</span> {{ $page.props.flash.error }}
+                <span class="font-medium">Внимание.</span> {{ $page.props.flash.error }}
             </span>
         </div>
 
-        <div class="grid xl:grid-cols-2 grid-cols-1 gap-6 mb-6">
+        <div class="grid sm:grid-cols-2 grid-cols-1 gap-4">
             <TrustBalance
                 v-show="showTrustBalanceCard"
                 :trader-balance-transfer="traderBalanceTransfer"

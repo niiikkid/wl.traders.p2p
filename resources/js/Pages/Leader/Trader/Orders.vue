@@ -16,6 +16,7 @@ import MoneyValue from "@/Components/MoneyValue.vue";
 import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
+import TraderCardHeader from "@/Components/Leader/TraderCardHeader.vue";
 
 const trader = ref(usePage().props.trader);
 const orders = ref(usePage().props.orders);
@@ -32,39 +33,14 @@ defineOptions({layout: AuthenticatedLayout});
 
 <template>
     <div>
-        <Head :title="`Трейдер #${trader.id} - Сделки`" />
+        <Head :title="`${trader.email} — Сделки`" />
 
         <MainTableSection
             title="Карточка трейдера"
             :data="orders"
-            :info="`Трейдер: ${trader.email}`"
         >
             <template #header>
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div class="breadcrumbs text-sm">
-                        <ul>
-                            <li>
-                                <button class="link link-hover" @click="router.visit(route('leader.traders.index'))">Трейдеры</button>
-                            </li>
-                            <li>{{ trader.email }}</li>
-                        </ul>
-                    </div>
-
-                    <ul class="flex flex-wrap text-sm font-medium text-center">
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-outline" @click="router.visit(route('leader.traders.payment-details.index', {trader: trader.id}))">Реквизиты</button>
-                        </li>
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-primary">Сделки</button>
-                        </li>
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-outline" @click="router.visit(route('leader.traders.disputes.index', {trader: trader.id}))">Споры</button>
-                        </li>
-                        <li class="me-2">
-                            <button class="btn btn-sm btn-outline" @click="router.visit(route('leader.traders.finances.index', {trader: trader.id}))">Финансы</button>
-                        </li>
-                    </ul>
-                </div>
+                <TraderCardHeader :trader="trader" current="orders" />
             </template>
 
             <template #table-filters>

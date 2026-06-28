@@ -13,11 +13,11 @@ use App\Services\News\Features\NewsAiFormatter;
 use App\Support\NewsTiptapEditor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Inertia\Inertia;
-use Inertia\Response;
+use RuntimeException;
 
 class NewsController extends Controller
 {
@@ -25,9 +25,9 @@ class NewsController extends Controller
 
     private const VIEW_TRACK_COOLDOWN_MINUTES = 30;
 
-    public function index(): Response
+    public function feed(Request $request): JsonResponse
     {
-        $user = auth()->user();
+        $user = $request->user();
         $userRoleNames = $user->roles()->pluck('name')->values()->all();
 
         $newsQuery = NewsPost::query()
@@ -43,24 +43,35 @@ class NewsController extends Controller
             $newsQuery->visibleForRoles($userRoleNames);
         }
 
-        $news = NewsPostResource::collection(
-            $newsQuery
-                ->paginate(request()->integer('per_page', 10))
-                ->withQueryString()
+        $news = $newsQuery
+            ->paginate($request->integer('per_page', 10));
+
+        return response()->success([
+            'data' => NewsPostResource::collection($news->items())->resolve(),
+            'meta' => [
+                'current_page' => $news->currentPage(),
+                'last_page' => $news->lastPage(),
+                'per_page' => $news->perPage(),
+                'total' => $news->total(),
+            ],
+        ]);
+    }
+
+    public function markRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $userId = $user->id;
+        $now = now();
+
+        $user->meta()->updateOrCreate(
+            ['user_id' => $userId],
+            ['news_last_read_at' => $now]
         );
 
-        $openAiSetting = services()->openAi()->getSettings();
+        cache()->forget("news_unread_{$userId}");
 
-        return Inertia::render('News/Index', [
-            'news' => $news,
-            'canManageNews' => request()->routeIs('admin.news.*'),
-            'openAiConfigured' => $openAiSetting->hasApiKey()
-                && is_string($openAiSetting->selected_model)
-                && $openAiSetting->selected_model !== '',
-            'newsRoleOptions' => collect(self::SELECTABLE_VISIBLE_ROLE_NAMES)
-                ->map(fn (string $roleName) => ['value' => $roleName, 'label' => $roleName])
-                ->values()
-                ->toArray(),
+        return response()->success([
+            'news_last_read_at' => $now->toISOString(),
         ]);
     }
 
@@ -98,8 +109,8 @@ class NewsController extends Controller
             $coverImagePath = $request->file('cover_image')->store('news-covers', 'public');
         }
 
-        DB::transaction(function () use ($request, $title, $contentJson, $contentHtml, $coverImagePath, $isVisibleForAll, $visibleRoleNames) {
-            NewsPost::query()->create([
+        $newsPost = DB::transaction(function () use ($request, $title, $contentJson, $contentHtml, $coverImagePath, $isVisibleForAll, $visibleRoleNames) {
+            return NewsPost::query()->create([
                 'author_id' => $request->user()->id,
                 'cover_image_path' => $coverImagePath,
                 'title' => $title,
@@ -109,6 +120,15 @@ class NewsController extends Controller
                 'content_html' => $contentHtml,
             ]);
         });
+
+        $newsPost->load('author:id,email');
+
+        if ($request->expectsJson()) {
+            return response()->successWithMessage(
+                'Новость успешно опубликована',
+                NewsPostResource::make($newsPost)->resolve(),
+            );
+        }
 
         return redirect()
             ->back()
@@ -123,7 +143,14 @@ class NewsController extends Controller
             Storage::disk('public')->delete($newsPost->cover_image_path);
         }
 
+        $newsPostId = $newsPost->id;
         $newsPost->delete();
+
+        if (request()->expectsJson()) {
+            return response()->successWithMessage('Новость удалена', [
+                'id' => $newsPostId,
+            ]);
+        }
 
         return redirect()
             ->back()

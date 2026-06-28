@@ -19,7 +19,7 @@ class PayoutStatementResource extends JsonResource
          * @var Payout $this
          */
         return [
-            'uuid' => $this->uuid,
+            'payout_id' => $this->uuid,
             'external_id' => $this->external_id,
             'payout' => [
                 'amount' => $this->amount_fiat->toPrecision(),
@@ -32,10 +32,10 @@ class PayoutStatementResource extends JsonResource
             'rate' => [
                 'value' => $this->conversion_price->toPrecision(),
                 'market' => $this->rate_market->value,
-                'rate_fixed_at' => $this->rate_fixed_at?->getTimestamp(),
+                'fixed_at' => $this->rate_fixed_at?->toIso8601String(),
             ],
             'status' => $this->status->value,
-            'created_at' => $this->created_at?->getTimestamp(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

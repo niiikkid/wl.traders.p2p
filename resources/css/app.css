@@ -195,3 +195,21 @@
     border-radius: 0.25rem;
     background: color-mix(in oklch, var(--color-base-content) 10%, transparent);
 }
+
+/* Shiki code blocks (API documentation): neutralize Shiki's inline background and normalize typography. */
+.code-block-body pre.shiki {
+    margin: 0;
+    padding: 0.85rem 1rem;
+    background-color: transparent !important;
+    overflow-x: auto;
+}
+
+.code-block-body code {
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+}
+
+.code-block-body .shiki .line {
+    white-space: pre;
+}

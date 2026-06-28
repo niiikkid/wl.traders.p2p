@@ -7,7 +7,6 @@ import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
 import { useUserStore } from '@/store/user.js';
 import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
-import NewsIcon from '@/Layouts/Partials/Icons/NewsIcon.vue';
 import BellIcon from '@/Layouts/Partials/Icons/BellIcon.vue';
 import PaymentDetailsIcon from '@/Layouts/Partials/Icons/PaymentDetailsIcon.vue';
 import OrdersIcon from '@/Layouts/Partials/Icons/OrdersIcon.vue';
@@ -27,14 +26,6 @@ const items = computed(() => [
         icon: DashboardIcon,
         href: route('trader.main.index'),
         active: route().current('trader.main.index'),
-    },
-    {
-        key: 'news',
-        label: 'Новости',
-        icon: NewsIcon,
-        href: route('news.index'),
-        active: route().current('news.*'),
-        badge: menu.value.newsUnreadCount,
     },
     {
         key: 'notifications',

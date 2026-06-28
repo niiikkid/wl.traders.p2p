@@ -3,14 +3,11 @@ import { computed } from 'vue';
 import ViewModeSwitcher from '@/Layouts/Partials/ViewModeSwitcher.vue';
 import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
 import { useUserStore } from '@/store/user.js';
-import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
-import NewsIcon from '@/Layouts/Partials/Icons/NewsIcon.vue';
 import WalletIcon from '@/Layouts/Partials/Icons/WalletIcon.vue';
 import UsersIcon from '@/Layouts/Partials/Icons/UsersIcon.vue';
 
 const userStore = useUserStore();
-const { menu } = useMenuCounters();
 
 const items = computed(() => [
     {
@@ -19,14 +16,6 @@ const items = computed(() => [
         icon: DashboardIcon,
         href: route('leader.main.index'),
         active: route().current('leader.main.index'),
-    },
-    {
-        key: 'news',
-        label: 'Новости',
-        icon: NewsIcon,
-        href: route('leader.news.index'),
-        active: route().current('leader.news.*'),
-        badge: menu.value.newsUnreadCount,
     },
     {
         key: 'finances',

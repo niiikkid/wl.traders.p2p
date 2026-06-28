@@ -137,9 +137,9 @@ router.on('success', () => {
                                 {{ invoice.id }}
                             </th>
                             <td>
-                                <div class="text-nowrap">{{ invoice.amount }} {{ invoice.currency.toUpperCase() }}</div>
-                                <div v-show="invoice.balance_type === 'trust'" class="text-xs opacity-70">Траст</div>
-                                <div v-show="invoice.balance_type === 'merchant'" class="text-xs opacity-70">Мерчант</div>
+                                <div class="font-medium text-nowrap text-base-content">{{ invoice.amount }} {{ invoice.currency.toUpperCase() }}</div>
+                                <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
+                                <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                             </td>
                             <td>{{ invoice.user.email }}</td>
                             <td v-if="isWithdrawalsTab">
@@ -179,12 +179,12 @@ router.on('success', () => {
                             </div>
 
                             <div class="hidden sm:flex items-center justify-between gap-2">
-                                <div :class="isWithdrawalsTab ? 'w-20' : 'text-right'">
-                                    <div class="text-nowrap text-base-content">
+                                <div :class="isWithdrawalsTab ? 'w-24' : 'text-right'">
+                                    <div class="font-medium text-nowrap text-base-content">
                                         {{ invoice.amount }} {{ invoice.currency.toUpperCase() }}
                                     </div>
-                                    <div v-show="invoice.balance_type === 'trust'" class="text-xs opacity-70">Траст</div>
-                                    <div v-show="invoice.balance_type === 'merchant'" class="text-xs opacity-70">Мерчант</div>
+                                    <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
+                                    <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                                 </div>
                                 <div>
                                     <InvoiceStatus :status="invoice.status" />
@@ -215,11 +215,11 @@ router.on('success', () => {
                             <div class="sm:hidden">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <div class="text-nowrap text-xs text-base-content">
+                                        <div class="font-medium text-nowrap text-xs text-base-content">
                                             {{ invoice.amount }} {{ invoice.currency.toUpperCase() }}
                                         </div>
-                                        <div v-show="invoice.balance_type === 'trust'" class="text-nowrap text-xs opacity-70">Траст</div>
-                                        <div v-show="invoice.balance_type === 'merchant'" class="text-nowrap text-xs opacity-70">Мерчант</div>
+                                        <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
+                                        <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                                     </div>
                                     <div>
                                         <InvoiceStatus :status="invoice.status" />

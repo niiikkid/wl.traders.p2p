@@ -1,6 +1,7 @@
 <script setup>
 import { Head, usePage, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import StatsModeNav from '@/Components/MainPage/StatsModeNav.vue';
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import ApexCharts from 'apexcharts';
 import axios from 'axios';
@@ -872,26 +873,7 @@ defineOptions({ layout: AuthenticatedLayout });
                 <slot name="button"></slot>
             </div>
 
-            <div class="mt-2">
-                <ul class="flex w-full gap-2 text-sm font-medium text-center sm:w-auto sm:flex-wrap sm:gap-0">
-                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
-                        <a
-                            href="#"
-                            class="btn btn-sm w-full sm:w-auto"
-                            :class="activeStatsMode === 'deals' ? 'btn-primary' : 'btn-outline'"
-                            @click.prevent="switchStatsMode('deals')"
-                        >Сделки</a>
-                    </li>
-                    <li class="min-w-0 flex-1 sm:flex-none sm:me-2">
-                        <a
-                            href="#"
-                            class="btn btn-sm w-full sm:w-auto"
-                            :class="activeStatsMode === 'payouts' ? 'btn-primary' : 'btn-outline'"
-                            @click.prevent="switchStatsMode('payouts')"
-                        >Выплаты</a>
-                    </li>
-                </ul>
-            </div>
+            <StatsModeNav :current="activeStatsMode" @switch="switchStatsMode" />
 
             <div>
                 <section>

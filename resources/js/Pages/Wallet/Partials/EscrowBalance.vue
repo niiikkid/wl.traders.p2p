@@ -1,13 +1,8 @@
 <script setup>
-import {useModalStore} from "@/store/modal.js";
 import {router, usePage} from "@inertiajs/vue3";
-import {useViewStore} from "@/store/view.js";
 import {ref} from "vue";
+import BalanceCard from "@/Pages/Wallet/Partials/BalanceCard.vue";
 
-const viewStore = useViewStore();
-const modalStore = useModalStore();
-
-const user = usePage().props.user;
 const walletStats = ref(usePage().props.walletStats);
 const escrowBalance = ref({
     primary: walletStats.value.escrowBalances.orders.balance.primary,
@@ -19,7 +14,7 @@ const currency = ref({
     secondary: walletStats.value.currency.secondary.toUpperCase(),
 });
 
-router.on('success', (event) => {
+router.on('success', () => {
     walletStats.value = usePage().props.walletStats;
     escrowBalance.value = {
         primary: walletStats.value.escrowBalances.orders.balance.primary,
@@ -34,33 +29,22 @@ router.on('success', (event) => {
 </script>
 
 <template>
-    <div>
-        <div class="grow lg:mt-0">
-            <div class="card bg-base-100 shadow">
-                <div class="card-body">
-                    <div class="flex justify-between">
-                        <h3 class="card-title">Холд <span class="md:inline-block hidden">(проводится сделка)</span></h3>
-                    </div>
+    <BalanceCard title="Холд по сделкам" accent="neutral" :amount="escrowBalance.primary" :currency="currency.primary">
+        <template #icon>
+            <svg class="size-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+        </template>
 
-                    <div class="pt-1 inline-block align-middle">
-                        <span class="text-xl font-bold">
-                           {{ escrowBalance.primary }} {{ currency.primary }}
-                        </span>
-                    </div>
+        <template #badge>
+            <span class="badge badge-ghost badge-sm">{{ escrowBalance.count }} сделок</span>
+        </template>
 
-                    <div class="mt-0">
-                        <div class="inline-flex">
-                            <div class="text-sm opacity-70">
-                                {{ escrowBalance.secondary }} {{ currency.secondary }} — Сделок — {{ escrowBalance.count }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <template #meta>
+            <div class="inline-flex items-center gap-1.5 text-sm">
+                <span class="text-base-content/50">≈</span>
+                <span class="font-medium">{{ escrowBalance.secondary }} {{ currency.secondary }}</span>
             </div>
-        </div>
-    </div>
+        </template>
+    </BalanceCard>
 </template>
-
-<style scoped>
-
-</style>

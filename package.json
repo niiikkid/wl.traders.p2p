@@ -16,6 +16,7 @@
         "daisyui": "^5.1.31",
         "laravel-vite-plugin": "^1.0",
         "postcss": "^8.5.6",
+        "shiki": "^4.3.0",
         "tailwindcss": "^4.1.14",
         "unplugin-vue-define-options": "^1.5.5",
         "vite": "^5.4.20",

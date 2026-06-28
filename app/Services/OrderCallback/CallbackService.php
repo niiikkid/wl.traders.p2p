@@ -4,7 +4,7 @@ namespace App\Services\OrderCallback;
 
 use App\Contracts\CallbackServiceContract;
 use App\Http\Resources\API\H2H\OrderResource;
-use App\Http\Resources\API\Payout\PayoutCallbackResource;
+use App\Http\Resources\API\Payout\PayoutResource;
 use App\Models\CallbackLog;
 use App\Models\Order;
 use App\Models\Payout\Payout;
@@ -42,7 +42,7 @@ class CallbackService implements CallbackServiceContract
             return;
         }
 
-        $data = PayoutCallbackResource::make($payout)->resolve();
+        $data = PayoutResource::make($payout)->resolve();
         $this->sendCallback(
             url: $callbackUrl,
             payload: $data,

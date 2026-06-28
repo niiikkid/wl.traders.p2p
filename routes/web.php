@@ -113,6 +113,10 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/user/online', [UserOnlineController::class, 'toggle'])->name('user.online.toggle');
         Route::get('/payouts/{payout:uuid}/receipt', [PayoutReceiptController::class, 'show'])->name('payouts.receipts.show');
         Route::get('/payouts/{payout:uuid}/receipts/{receipt}', [PayoutReceiptController::class, 'showItem'])->name('payouts.receipts.item.show');
+        Route::get('/news/feed', [NewsController::class, 'feed'])->name('news.feed');
+        Route::post('/news/mark-read', [NewsController::class, 'markRead'])->name('news.mark-read');
+        Route::post('/news/views', [NewsController::class, 'trackViews'])->name('news.views.store');
+        Route::post('/news/reactions', [NewsController::class, 'react'])->name('news.reactions.store');
     });
 
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Merchant|Super Admin']], function () {
@@ -124,7 +128,6 @@ Route::group(['middleware' => ['2fa']], function () {
 
     Route::group(['prefix' => 'leader', 'as' => 'leader.',  'middleware' => ['auth', 'banned', 'role:Team Leader|Super Admin']], function () {
         Route::get('/main', [MainPageController::class, 'leader'])->name('main.index');
-        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/finances', [WalletController::class, 'index'])->name('finances.index');
         Route::post('/deposit/invoices', [TeamLeaderDepositInvoiceController::class, 'store'])->name('deposit.invoices.store');
         Route::get('/traders', [TraderController::class, 'index'])->name('traders.index');
@@ -148,14 +151,8 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/disputes/{dispute:uuid}/bank-statement', [DisputeController::class, 'bankStatement'])->name('disputes.bank-statement');
     });
 
-    Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Team Leader|Super Admin']], function () {
-        Route::post('/news/views', [NewsController::class, 'trackViews'])->name('news.views.store');
-        Route::post('/news/reactions', [NewsController::class, 'react'])->name('news.reactions.store');
-    });
-
     Route::group(['middleware' => ['auth', 'banned', 'role:Trader|Super Admin']], function () {
         Route::get('/trader/main', [MainPageController::class, 'trader'])->name('trader.main.index');
-        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::get('/trader/main/filter-options/{type}', [MainPageController::class, 'traderFilterOptions'])->name('trader.main.filter-options');
 
         Route::get('/notifications', [TraderNotificationController::class, 'index'])->name('notifications.index');
@@ -297,7 +294,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/manual-control-acq/orders/{order}/confirmation-type', [ManualControlAcqController::class, 'setConfirmationType'])->name('manual-control-acq.set-confirmation-type');
         Route::post('/manual-control-acq/orders/{order}/confirm', [ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
         Route::post('/manual-control-acq/orders/{order}/reject', [ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
-        Route::get('/news', [NewsController::class, 'index'])->name('news.index');
         Route::post('/news', [NewsController::class, 'store'])->name('news.store');
         Route::post('/news/format', [NewsController::class, 'format'])->name('news.format');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');

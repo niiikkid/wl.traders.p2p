@@ -32,6 +32,21 @@ class StoreRequest extends FormRequest
         ];
     }
 
+    protected function prepareForValidation(): void
+    {
+        $contentJson = $this->input('content_json');
+
+        if (is_string($contentJson)) {
+            $decoded = json_decode($contentJson, true);
+
+            if (is_array($decoded)) {
+                $this->merge([
+                    'content_json' => $decoded,
+                ]);
+            }
+        }
+    }
+
     /**
      * @return array<string, string>
      */
