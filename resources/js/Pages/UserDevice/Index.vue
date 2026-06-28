@@ -78,9 +78,9 @@ const closePingModal = () => {
 
 <template>
     <div>
-        <Head title="Устройства" />
+        <Head title="Автоматика — Устройства" />
 
-        <MainTableSection title="Устройства" :data="devices" :paginate="false">
+        <MainTableSection title="Автоматика" subtitle="Устройства" :data="devices" :paginate="false">
             <template v-slot:header>
                 <div class="space-y-4 mb-6">
                     <TraderAutomationNav current="devices" />
@@ -91,11 +91,11 @@ const closePingModal = () => {
                             aria-labelledby="apk-download-title"
                         >
                             <div class="card-body gap-4 p-4 sm:p-6">
-                                <div class="flex items-start gap-4">
-                                    <div class="rounded-2xl bg-primary/15 p-3 text-primary ring-1 ring-primary/20 shrink-0">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20">
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
-                                            class="size-8"
+                                            class="size-6"
                                             viewBox="0 0 24 24"
                                             fill="currentColor"
                                             aria-hidden="true"
@@ -151,72 +151,97 @@ const closePingModal = () => {
                             </div>
                         </section>
 
-                        <div class="card bg-base-100 shadow-md">
-                            <div class="card-body p-4 sm:p-6 gap-4">
-                                <div>
-                                    <h3 class="card-title">Режим обработки СМС</h3>
-                                    <p class="text-sm text-base-content/70 mt-1">
-                                        В автоматическом режиме система сама закрывает сделки по входящим поступлениям. В полуавтоматическом — СМС привязывается к сделке, а закрываете ее вы вручную.
-                                    </p>
+                        <section
+                            class="card bg-base-100 shadow-md"
+                            aria-labelledby="sms-processing-mode-title"
+                        >
+                            <div class="card-body gap-3 p-4 sm:p-5">
+                                <div class="flex items-start gap-3">
+                                    <div class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="size-6"
+                                            viewBox="0 0 24 24"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path d="M17 11h-2V9h2m-4 2h-2V9h2m-4 2H7V9h2m11-7H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2" />
+                                        </svg>
+                                    </div>
+
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h3 id="sms-processing-mode-title" class="card-title text-base sm:text-lg">
+                                                Режим обработки СМС
+                                            </h3>
+                                            <span
+                                                :class="[
+                                                    'badge badge-xs',
+                                                    smsAutoCloseEnabled ? 'badge-success' : 'badge-warning',
+                                                ]"
+                                            >
+                                                {{ smsAutoCloseEnabled ? 'Авто' : 'Полуавто' }}
+                                            </span>
+                                        </div>
+                                        <p class="text-xs sm:text-sm text-base-content/60 mt-0.5">
+                                            Авто — сделки закрываются сами. Полуавто — привязка к сделке, закрытие вручную.
+                                        </p>
+                                    </div>
                                 </div>
 
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div
+                                    class="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                                    role="radiogroup"
+                                    aria-labelledby="sms-processing-mode-title"
+                                >
                                     <label
                                         :class="[
-                                            'card border',
-                                            smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
+                                            'flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors',
+                                            smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'border-base-300 bg-base-200/40',
                                             smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
                                         ]"
                                     >
-                                        <div class="card-body p-3">
-                                            <div class="flex items-center justify-between gap-3">
-                                                <div class="font-medium text-xs">Автоматический</div>
-                                                <input
-                                                    type="radio"
-                                                    name="sms-processing-mode"
-                                                    class="radio radio-xs radio-primary"
-                                                    :checked="smsAutoCloseEnabled"
-                                                    :disabled="smsProcessingModeForm.processing"
-                                                    @change="updateSmsProcessingMode(true)"
-                                                >
-                                            </div>
-                                        </div>
+                                        <input
+                                            type="radio"
+                                            name="sms-processing-mode"
+                                            class="radio radio-xs radio-primary"
+                                            :checked="smsAutoCloseEnabled"
+                                            :disabled="smsProcessingModeForm.processing"
+                                            @change="updateSmsProcessingMode(true)"
+                                        >
+                                        <span class="text-sm font-medium">Автоматический</span>
                                     </label>
 
                                     <label
                                         :class="[
-                                            'card border',
-                                            !smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'bg-base-200 border-base-300',
+                                            'flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors',
+                                            !smsAutoCloseEnabled ? 'border-primary bg-primary/10' : 'border-base-300 bg-base-200/40',
                                             smsProcessingModeForm.processing ? 'opacity-70 cursor-progress' : 'cursor-pointer',
                                         ]"
                                     >
-                                        <div class="card-body p-3">
-                                            <div class="flex items-center justify-between gap-3">
-                                                <div class="font-medium text-xs">Полуавтоматический</div>
-                                                <input
-                                                    type="radio"
-                                                    name="sms-processing-mode"
-                                                    class="radio radio-xs radio-primary"
-                                                    :checked="!smsAutoCloseEnabled"
-                                                    :disabled="smsProcessingModeForm.processing"
-                                                    @change="updateSmsProcessingMode(false)"
-                                                >
-                                            </div>
-                                        </div>
+                                        <input
+                                            type="radio"
+                                            name="sms-processing-mode"
+                                            class="radio radio-xs radio-primary"
+                                            :checked="!smsAutoCloseEnabled"
+                                            :disabled="smsProcessingModeForm.processing"
+                                            @change="updateSmsProcessingMode(false)"
+                                        >
+                                        <span class="text-sm font-medium">Полуавтоматический</span>
                                     </label>
                                 </div>
 
-                                <InputError class="text-error text-sm" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
+                                <InputError class="text-error text-xs" :message="smsProcessingModeForm.errors.sms_auto_close_orders_enabled" />
                             </div>
-                        </div>
+                        </section>
 
                         <div class="card bg-base-100 shadow-md">
                             <div class="card-body gap-3 p-4 sm:p-5">
                                 <div class="flex items-start gap-3">
-                                    <div class="rounded-2xl bg-primary/15 p-2.5 text-primary ring-1 ring-primary/20 shrink-0">
+                                    <div class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary ring-1 ring-primary/20">
                                         <svg
                                             xmlns="http://www.w3.org/2000/svg"
-                                            class="size-7"
+                                            class="size-6"
                                             viewBox="0 0 24 24"
                                             fill="currentColor"
                                             aria-hidden="true"

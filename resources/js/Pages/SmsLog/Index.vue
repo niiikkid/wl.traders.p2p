@@ -203,10 +203,11 @@ defineOptions({ layout: AuthenticatedLayout })
 
 <template>
     <div>
-        <Head title="Сообщения" />
+        <Head :title="viewStore.isTraderViewMode ? 'Автоматика — Сообщения' : 'Сообщения'" />
 
         <MainTableSection
-            title="Сообщения"
+            :title="viewStore.isTraderViewMode ? 'Автоматика' : 'Сообщения'"
+            :subtitle="viewStore.isTraderViewMode ? 'Сообщения' : ''"
             :data="smsLogs"
             :display-pagination="currentTab === 'logs'"
         >
