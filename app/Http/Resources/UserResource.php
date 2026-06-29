@@ -27,6 +27,9 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'login' => $this->email, // логин совпадает с колонкой email
+            'avatar_url' => $this->avatarUrl(),
+            'avatar_caption' => $this->avatar_caption,
+            'avatar_generation_status' => $this->avatar_generation_status,
             'telegram_username' => $this->telegram_username,
             'telegram_tag' => $this->telegram_username ? '@'.$this->telegram_username : null,
             'telegram_url' => $this->telegram_username ? 'https://t.me/'.$this->telegram_username : null,

@@ -5,19 +5,24 @@ namespace App\Http\Controllers;
 use App\Enums\BalanceType;
 use App\Exceptions\InvoiceException;
 use App\Http\Requests\Invoice\StoreRequest;
+use App\Models\WithdrawalAddress;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
-use Illuminate\Support\Facades\Http;
 
 class InvoiceController extends Controller
 {
     public function store(StoreRequest $request)
     {
         try {
+            $user = $request->user();
+            $withdrawalAddress = WithdrawalAddress::query()
+                ->where('user_id', $user->id)
+                ->findOrFail($request->integer('withdrawal_address_id'));
+
             services()->invoice()->createWithdrawal(
-                walletID: auth()->user()->wallet->id,
-                amount: Money::fromPrecision($request->amount, Currency::USDT()),
-                address: $request->address,
+                walletID: $user->wallet->id,
+                amount: Money::fromPrecision($request->amount, Currency::USDT()->getCode()),
+                withdrawalAddress: $withdrawalAddress,
                 balanceType: BalanceType::from($request->balance_type),
             );
 

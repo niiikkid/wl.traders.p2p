@@ -8,6 +8,7 @@ import { useModalStore } from '@/store/modal.js';
 import { router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import axios from 'axios';
+import UserAvatar from '@/Components/User/UserAvatar.vue';
 
 const page = usePage();
 const modalStore = useModalStore();
@@ -45,10 +46,6 @@ const canSubmit = computed(() => (
     && !checkingRecipient.value
     && !submitting.value
 ));
-
-const avatarUrl = (preview) => (
-    `https://api.dicebear.com/9.x/${preview.avatar_style}/svg?seed=${preview.avatar_uuid}`
-);
 
 const resetRecipientPreview = () => {
     recipientPreview.value = null;
@@ -234,7 +231,10 @@ const confirmTransfer = () => {
                 </div>
 
                 <div v-if="recipientPreview" class="flex items-center gap-3 rounded-lg border border-base-300 p-3">
-                    <img :src="avatarUrl(recipientPreview)" class="h-10 w-10 rounded-full" alt="recipient photo">
+                    <UserAvatar
+                        :user="recipientPreview"
+                        size="md"
+                    />
                     <span class="font-medium text-base-content">{{ recipientPreview.login }}</span>
                 </div>
 

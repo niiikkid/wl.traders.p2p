@@ -19,6 +19,10 @@ import {
     paymentDetailSectionHints,
     paymentDetailTypeHints,
 } from "@/utils/paymentDetailHints.js";
+import {
+    getPaymentDetailInputMeta,
+    useFormatPaymentDetail,
+} from "@/utils/paymentDetail.js";
 import { storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
@@ -129,6 +133,14 @@ const isManualProcessing = computed(() => {
 
 const currentDetailHint = computed(() => {
     return paymentDetailTypeHints[payment_detail.value?.detail_type] ?? null;
+});
+
+const currentDetailInputMeta = computed(() => {
+    return getPaymentDetailInputMeta(payment_detail.value?.detail_type, payment_detail.value?.currency);
+});
+
+const formattedPaymentDetail = computed(() => {
+    return useFormatPaymentDetail(payment_detail.value?.detail, payment_detail.value?.detail_type);
 });
 
 const activeHelpKey = ref('user_device_id');
@@ -499,11 +511,19 @@ watch(
                                 </span>
                             </div>
                             <div class="min-w-0">
-                                <div class="font-medium truncate">
-                                    {{ payment_detail?.payment_gateway?.name || 'Платежный метод' }}
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div class="font-medium truncate">
+                                        {{ payment_detail?.payment_gateway?.name || 'Платежный метод' }}
+                                    </div>
+                                    <span class="badge badge-soft badge-info badge-sm">
+                                        {{ currentDetailInputMeta.badge }}
+                                    </span>
                                 </div>
                                 <div class="text-sm text-base-content/70 break-all">
-                                    {{ payment_detail?.detail || '-' }}
+                                    {{ formattedPaymentDetail || '-' }}
+                                </div>
+                                <div v-if="currentDetailInputMeta.helper" class="mt-1 text-xs text-base-content/50">
+                                    {{ currentDetailInputMeta.helper }}
                                 </div>
                             </div>
                         </div>

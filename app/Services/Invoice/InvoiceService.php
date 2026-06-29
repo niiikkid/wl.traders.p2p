@@ -10,6 +10,7 @@ use App\Enums\TransactionType;
 use App\Exceptions\InvoiceException;
 use App\Models\Invoice;
 use App\Models\Wallet;
+use App\Models\WithdrawalAddress;
 use App\Services\External\InvoiceApiClient;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -17,9 +18,9 @@ use App\Utils\Transaction;
 
 class InvoiceService implements InvoiceServiceContract
 {
-    public function createWithdrawal(int $walletID, Money $amount, ?string $address, BalanceType $balanceType): Invoice
+    public function createWithdrawal(int $walletID, Money $amount, WithdrawalAddress $withdrawalAddress, BalanceType $balanceType): Invoice
     {
-        return Transaction::run(function () use ($walletID, $amount, $address, $balanceType) {
+        return Transaction::run(function () use ($walletID, $amount, $withdrawalAddress, $balanceType) {
             $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
 
             $totalAvailableBalance = services()->wallet()->getTotalAvailableBalance($wallet, $balanceType);
@@ -31,7 +32,8 @@ class InvoiceService implements InvoiceServiceContract
             $invoice = Invoice::create([
                 'amount' => $amount,
                 'currency' => $amount->getCurrency(),
-                'address' => $address,
+                'address' => null,
+                'withdrawal_address_id' => $withdrawalAddress->id,
                 'type' => InvoiceType::WITHDRAWAL,
                 'balance_type' => $balanceType,
                 'status' => InvoiceStatus::PENDING,

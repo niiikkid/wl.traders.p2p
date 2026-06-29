@@ -5,6 +5,7 @@ namespace App\Contracts;
 use App\Enums\BalanceType;
 use App\Exceptions\InvoiceException;
 use App\Models\Invoice;
+use App\Models\WithdrawalAddress;
 use App\Services\Money\Money;
 
 interface InvoiceServiceContract
@@ -12,7 +13,7 @@ interface InvoiceServiceContract
     /**
      * @throws InvoiceException
      */
-    public function createWithdrawal(int $walletID, Money $amount, ?string $address, BalanceType $balanceType): Invoice;
+    public function createWithdrawal(int $walletID, Money $amount, WithdrawalAddress $withdrawalAddress, BalanceType $balanceType): Invoice;
 
     /**
      * @throws InvoiceException

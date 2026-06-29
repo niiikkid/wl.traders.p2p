@@ -7,6 +7,7 @@ use App\Enums\InvoiceType;
 use App\Http\Requests\Wallet\UpdateFiatCurrencyRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TransactionResource;
+use App\Http\Resources\WithdrawalAddressResource;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Services\User\TeamLeaderInsuranceService;
@@ -105,6 +106,7 @@ class WalletController extends Controller
         $traderBalanceTransfer = $this->traderBalanceTransferProps($request, $wallet);
         $teamLeaderInsurance = $this->teamLeaderInsuranceProps($request);
         $walletHistoryShowsBalanceType = $teamLeaderUsesSharedReserve;
+        $withdrawalAddresses = $this->withdrawalAddressProps($user);
 
         return Inertia::render('Wallet/Index', compact(
             'walletStats',
@@ -118,6 +120,7 @@ class WalletController extends Controller
             'traderBalanceTransfer',
             'teamLeaderInsurance',
             'walletHistoryShowsBalanceType',
+            'withdrawalAddresses',
         ));
     }
 
@@ -209,5 +212,20 @@ class WalletController extends Controller
         }
 
         return $this->teamLeaderInsuranceService->teamLeaderInsurancePropsForUser($user);
+    }
+
+    /**
+     * @return array{items: array<int, mixed>, has_2fa: bool}
+     */
+    private function withdrawalAddressProps(User $user): array
+    {
+        $addresses = $user->withdrawalAddresses()
+            ->latest()
+            ->get();
+
+        return [
+            'items' => WithdrawalAddressResource::collection($addresses)->resolve(),
+            'has_2fa' => $user->google2fa_secret !== null,
+        ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +50,8 @@ class ProfileController extends Controller
             ->paginate($request->integer('per_page', 10))
             ->withQueryString();
 
+        $openAiSetting = services()->openAi()->getSettings();
+
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
@@ -56,6 +59,16 @@ class ProfileController extends Controller
             'loginHistory' => $loginHistory,
             'loginHistoryLoggingEnabled' => (bool) $user->login_history_logging_enabled,
             'canManageLoginHistoryLogging' => $user->hasRole('Super Admin'),
+            'avatar' => [
+                'url' => $user->avatarUrl(),
+                'caption' => $user->avatar_caption,
+                'status' => $user->avatar_generation_status,
+                'error' => $user->avatar_generation_error,
+                'generated_at' => $user->avatar_generated_at?->toISOString(),
+            ],
+            'openAiConfigured' => $openAiSetting->hasApiKey()
+                && is_string($openAiSetting->selected_model)
+                && $openAiSetting->selected_model !== '',
         ]);
     }
 
@@ -92,6 +105,24 @@ class ProfileController extends Controller
         $request->session()->regenerate();
 
         return Redirect::route('profile.edit')->with('status', 'other-sessions-logged-out');
+    }
+
+    public function regenerateAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        try {
+            $result = services()->user()->requestAvatarGeneration($user);
+        } catch (\Throwable $exception) {
+            return response()->failWithMessage(
+                $exception->getMessage() ?: 'Не удалось сгенерировать аватар.',
+                422,
+            );
+        }
+
+        return response()->success([
+            'status' => $result['status'],
+        ]);
     }
 
     public function toggleLoginHistoryLogging(Request $request): RedirectResponse

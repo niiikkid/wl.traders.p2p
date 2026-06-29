@@ -125,7 +125,7 @@ class OpenAiService implements OpenAiServiceContract
             'content' => $prompt,
         ];
 
-        $response = $this->client($setting->api_key)->post('/responses', [
+        $response = $this->client($setting->api_key, timeout: 90)->post('/responses', [
             'model' => $selectedModel,
             'input' => $input,
         ]);
@@ -137,14 +137,53 @@ class OpenAiService implements OpenAiServiceContract
         return $response->json();
     }
 
-    private function client(string $apiKey): PendingRequest
+    public function generateImage(string $prompt, string $size = '1024x1024'): string
+    {
+        $setting = $this->getSettings();
+
+        if (! $setting->hasApiKey()) {
+            throw new RuntimeException('API ключ OpenAI не задан.');
+        }
+
+        $response = $this->client($setting->api_key, timeout: 120)->post('/images/generations', [
+            'model' => $this->preferredImageModel(),
+            'prompt' => $prompt,
+            'size' => $size,
+            'n' => 1,
+        ]);
+
+        if (! $response->successful()) {
+            throw new RuntimeException($response->json('error.message') ?: 'OpenAI Image API вернул ошибку.');
+        }
+
+        $base64 = $response->json('data.0.b64_json');
+
+        if (! is_string($base64) || $base64 === '') {
+            throw new RuntimeException('OpenAI Image API не вернул изображение.');
+        }
+
+        $binary = base64_decode($base64, true);
+
+        if ($binary === false || $binary === '') {
+            throw new RuntimeException('Не удалось декодировать изображение от OpenAI.');
+        }
+
+        return $binary;
+    }
+
+    private function client(string $apiKey, int $timeout = 30): PendingRequest
     {
         return Http::baseUrl(self::BASE_URL)
             ->acceptJson()
             ->asJson()
             ->withToken($apiKey)
             ->connectTimeout(10)
-            ->timeout(30);
+            ->timeout($timeout);
+    }
+
+    private function preferredImageModel(): string
+    {
+        return 'gpt-image-1-mini';
     }
 
     private function preferredModel(array $models): ?string

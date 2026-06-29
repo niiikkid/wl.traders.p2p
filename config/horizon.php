@@ -89,6 +89,7 @@ return [
         'redis:notifications' => 60,
         'redis:telegram-chat-automation' => 60,
         'redis:payout-pooling' => 35,
+        'redis:avatar-generation' => 120,
     ],
 
     /*
@@ -341,6 +342,18 @@ return [
             'timeout' => 120,
             'nice' => 0,
         ],
+        'supervisor-avatar-generation' => [
+            'connection' => 'redis',
+            'queue' => ['avatar-generation'],
+            'balance' => 'simple',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 256,
+            'tries' => 1,
+            'timeout' => 190,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -357,6 +370,7 @@ return [
             'supervisor-main-page-cache' => [],
             'supervisor-payout' => [],
             'supervisor-telegram-chat-automation' => [],
+            'supervisor-avatar-generation' => [],
         ],
         'development' => [
             'supervisor-base' => [],
@@ -371,6 +385,7 @@ return [
             'supervisor-main-page-cache' => [],
             'supervisor-payout' => [],
             'supervisor-telegram-chat-automation' => [],
+            'supervisor-avatar-generation' => [],
         ],
         'local' => [
             'supervisor-base' => [],
@@ -385,6 +400,7 @@ return [
             'supervisor-main-page-cache' => [],
             'supervisor-payout' => [],
             'supervisor-telegram-chat-automation' => [],
+            'supervisor-avatar-generation' => [],
         ],
     ],
 ];

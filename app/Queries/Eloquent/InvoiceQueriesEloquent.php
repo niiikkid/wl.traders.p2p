@@ -14,7 +14,7 @@ class InvoiceQueriesEloquent implements InvoiceQueries
     public function paginate(Wallet $wallet, ?InvoiceType $invoiceType = null, ?BalanceType $balanceType = null): LengthAwarePaginator
     {
         return Invoice::query()
-            ->with('wallet.user')
+            ->with(['wallet.user', 'withdrawalAddress'])
             ->where('wallet_id', $wallet->id)
             ->when($invoiceType, function ($query) use ($invoiceType) {
                 return $query->where('type', $invoiceType);

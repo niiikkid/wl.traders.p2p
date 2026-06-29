@@ -4,6 +4,7 @@ namespace App\Http\Requests\Invoice;
 
 use App\Enums\BalanceType;
 use App\Rules\ValidateTRC20Address;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,14 +21,31 @@ class StoreRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
+            'withdrawal_address_id' => [
+                'required',
+                'integer',
+                Rule::exists('withdrawal_addresses', 'id')
+                    ->where('user_id', $this->user()?->id),
+            ],
             'address' => ['nullable', 'string', 'min:34', 'max:34', new ValidateTRC20Address],
             'amount' => ['required', 'integer', 'min:1'],
             'balance_type' => ['required', Rule::enum(BalanceType::class)],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'withdrawal_address_id.required' => 'Выберите адрес вывода.',
+            'withdrawal_address_id.exists' => 'Выберите доступный адрес вывода.',
         ];
     }
 }

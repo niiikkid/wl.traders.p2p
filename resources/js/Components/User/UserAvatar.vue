@@ -19,6 +19,10 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    avatarUrl: {
+        type: String,
+        default: '',
+    },
     size: {
         type: String,
         default: 'sm',
@@ -36,6 +40,12 @@ const initials = computed(() => getUserInitials({
     login: props.login || props.user?.login,
 }));
 
+const resolvedAvatarUrl = computed(() => (
+    props.avatarUrl
+    || props.user?.avatar_url
+    || null
+));
+
 const sizeClasses = computed(() => {
     switch (props.size) {
         case 'lg':
@@ -49,15 +59,22 @@ const sizeClasses = computed(() => {
 </script>
 
 <template>
-    <div class="avatar avatar-placeholder shrink-0">
+    <div class="avatar shrink-0" :class="resolvedAvatarUrl ? '' : 'avatar-placeholder'">
         <div
-            class="rounded-full bg-neutral text-neutral-content flex items-center justify-center"
+            class="rounded-full flex items-center justify-center overflow-hidden"
             :class="[
                 sizeClasses.wrapper,
+                resolvedAvatarUrl ? 'bg-base-200' : 'bg-neutral text-neutral-content',
                 ring ? 'ring-primary ring-offset-base-100 ring-2 ring-offset-2' : '',
             ]"
         >
-            <span :class="sizeClasses.text">{{ initials }}</span>
+            <img
+                v-if="resolvedAvatarUrl"
+                :src="resolvedAvatarUrl"
+                :alt="email || user?.email || 'Аватар'"
+                class="h-full w-full object-cover"
+            >
+            <span v-else :class="sizeClasses.text">{{ initials }}</span>
         </div>
     </div>
 </template>

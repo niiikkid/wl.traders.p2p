@@ -586,55 +586,128 @@ const merchantStatus = computed(() => {
 
     return {label: 'Выключен', class: 'badge-neutral'};
 });
+
+const gatewayCount = computed(() => paymentGateways.value?.data?.length ?? 0);
+
+const geoCount = computed(() => {
+    if (viewStore.isAdminViewMode) {
+        return geoItems.value?.length ?? 0;
+    }
+
+    return merchantGeosReadonly.value.length;
+});
+
+const callbackState = computed(() => {
+    if (!merchant.value) {
+        return 'Нет данных';
+    }
+
+    if (merchant.value.callback_url && merchant.value.payout_callback_url) {
+        return 'Сделки и выплаты';
+    }
+
+    if (merchant.value.callback_url) {
+        return 'Только сделки';
+    }
+
+    if (merchant.value.payout_callback_url) {
+        return 'Только выплаты';
+    }
+
+    return 'Не настроены';
+});
 </script>
 
 <template>
-    <div class="space-y-3 text-xs">
-        <div class="rounded-xl border border-base-300 bg-base-200/50 p-2.5 sm:p-3">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <h2 class="truncate text-sm font-semibold text-base-content">
-                            {{ merchant?.name || 'Мерчант' }}
-                        </h2>
-                        <span v-if="merchantStatus" class="badge badge-sm" :class="merchantStatus.class">
-                            {{ merchantStatus.label }}
-                        </span>
+    <div class="space-y-4 text-sm">
+        <div class="overflow-hidden rounded-2xl border border-base-300 bg-base-100 shadow-sm">
+            <div class="bg-base-200/70 p-4 sm:p-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div class="min-w-0 space-y-3">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="badge badge-primary badge-sm">Мерчант</span>
+                            <span v-if="merchantStatus" class="badge badge-sm" :class="merchantStatus.class">
+                                {{ merchantStatus.label }}
+                            </span>
+                        </div>
+                        <div>
+                            <h2 class="truncate text-xl font-semibold leading-tight text-base-content sm:text-2xl">
+                                {{ merchant?.name || 'Мерчант' }}
+                            </h2>
+                            <p class="mt-1 text-xs text-base-content/60 sm:text-sm">
+                                Управление callback, комиссиями, GEO и лимитами без изменения логики мерчанта.
+                            </p>
+                        </div>
                     </div>
-                    <p v-if="activeTabMeta?.description" class="mt-0.5 text-[11px] text-base-content/60">
-                        {{ activeTabMeta.description }}
-                    </p>
+
+                    <div
+                        v-if="merchant?.uuid"
+                        class="min-w-0 shrink-0 rounded-2xl border border-base-300 bg-base-100 p-3 shadow-sm lg:max-w-xs"
+                    >
+                        <div class="mb-1 text-[11px] font-medium uppercase tracking-wide text-base-content/50">
+                            Merchant ID
+                        </div>
+                        <CopyableOrderUid :uuid="merchant.uuid ?? ''" />
+                    </div>
                 </div>
 
-                <div v-if="merchant?.uuid" class="shrink-0 rounded-lg bg-base-100 px-2.5 py-1.5 text-[11px] shadow-sm">
-                    <div class="mb-0.5 text-base-content/50">Merchant ID</div>
-                    <CopyableOrderUid :uuid="merchant.uuid ?? ''" />
+                <div class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <div class="rounded-xl border border-base-300 bg-base-100 p-3">
+                        <div class="text-[11px] font-medium uppercase tracking-wide text-base-content/50">
+                            Callback
+                        </div>
+                        <div class="mt-1 truncate font-semibold text-base-content">
+                            {{ callbackState }}
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-base-300 bg-base-100 p-3">
+                        <div class="text-[11px] font-medium uppercase tracking-wide text-base-content/50">
+                            GEO
+                        </div>
+                        <div class="mt-1 font-semibold text-base-content">
+                            {{ geoCount }} направлений
+                        </div>
+                    </div>
+                    <div class="rounded-xl border border-base-300 bg-base-100 p-3">
+                        <div class="text-[11px] font-medium uppercase tracking-wide text-base-content/50">
+                            Комиссии
+                        </div>
+                        <div class="mt-1 font-semibold text-base-content">
+                            {{ gatewayCount }} методов
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="mt-3 overflow-x-auto">
-                <div class="tabs tabs-boxed w-max min-w-full flex-nowrap bg-base-100 p-0.5 rounded-lg">
+            <div class="border-t border-base-300 bg-base-100 p-2">
+                <div class="flex gap-2 overflow-x-auto">
                     <button
                         v-for="tab in tabs"
                         :key="tab.id"
                         type="button"
-                        class="tab h-auto min-h-7 whitespace-nowrap px-2.5 py-1 text-xs"
-                        :class="{ 'tab-active font-semibold': activeTab === tab.id }"
+                        class="btn btn-sm shrink-0 justify-start rounded-xl border-base-300 px-3 font-medium"
+                        :class="activeTab === tab.id ? 'btn-primary' : 'btn-ghost'"
                         @click="activeTab = tab.id"
                     >
-                        {{ tab.title }}
+                        <span>{{ tab.title }}</span>
+                        <span
+                            v-if="tab.description"
+                            class="hidden text-[11px] font-normal opacity-70 sm:inline"
+                        >
+                            {{ tab.description }}
+                        </span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="rounded-xl border border-base-300 bg-base-100 p-2.5 shadow-sm sm:p-3">
-            <div class="mb-3 flex items-start justify-between gap-2">
+        <div class="rounded-2xl border border-base-300 bg-base-100 p-4 shadow-sm sm:p-5">
+            <div class="mb-4 flex items-start justify-between gap-3 border-b border-base-300 pb-4">
                 <div>
-                    <h3 class="text-xs font-semibold text-base-content">
+                    <h3 class="text-base font-semibold text-base-content">
                         {{ activeTabMeta?.title }}
                     </h3>
-                    <p v-if="activeTabMeta?.description" class="mt-0.5 text-[11px] text-base-content/60">
+                    <p v-if="activeTabMeta?.description" class="mt-1 text-sm text-base-content/60">
                         {{ activeTabMeta.description }}
                     </p>
                 </div>
@@ -1107,6 +1180,3 @@ const merchantStatus = computed(() => {
     </div>
 </template>
 
-<style scoped>
-
-</style>

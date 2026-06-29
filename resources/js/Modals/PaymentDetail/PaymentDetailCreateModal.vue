@@ -20,7 +20,12 @@ import {
     paymentDetailSectionHints,
     paymentDetailTypeHints,
 } from "@/utils/paymentDetailHints.js";
-import { isRemovedDetailType } from "@/utils/paymentDetail.js";
+import {
+    formatPaymentDetailInput,
+    getPaymentDetailInputMeta,
+    isRemovedDetailType,
+    normalizePaymentDetailInput,
+} from "@/utils/paymentDetail.js";
 import { storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
@@ -158,6 +163,15 @@ const isManualProcessing = computed(() => {
 const currentDetailHint = computed(() => {
     return paymentDetailTypeHints[selectedDetailType.value] ?? null;
 });
+
+const currentDetailInputMeta = computed(() => {
+    return getPaymentDetailInputMeta(selectedDetailType.value, form.value.currency);
+});
+
+const formatDetailField = (type, value) => {
+    details.value[type] = formatPaymentDetailInput(value, type, form.value.currency);
+    errors.value.detail = null;
+};
 
 const helpTopics = computed(() => ({
     currency: {
@@ -378,7 +392,7 @@ const submit = () => {
         payload.user_device_id = null;
     }
     payload.detail_type = selectedDetailType.value;
-    payload.detail = details.value[payload.detail_type];
+    payload.detail = normalizePaymentDetailInput(details.value[payload.detail_type], payload.detail_type, payload.currency);
     payload.additional_info = payload.additional_info || null;
     if (!payload.payment_detail_schedule_id) {
         payload.payment_detail_schedule_id = null;
@@ -568,19 +582,24 @@ watch(
                                 :hint="currentDetailHint"
                                 :hint-class="desktopHintClass"
                             />
-                            <div class="relative">
-                                <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
-                                    <span class="text-gray-500 dark:text-gray-400">+</span>
+                            <div class="join mt-1 w-full">
+                                <div class="join-item flex min-w-20 items-center justify-center rounded-s-field border border-base-300 bg-base-200 px-3 text-sm font-medium text-base-content/70">
+                                    {{ currentDetailInputMeta.prefix }}
                                 </div>
                                 <TextInput
                                     id="detail"
                                     v-model="details['phone']"
                                     type="text"
-                                    class="mt-1 block w-full ps-7"
+                                    class="join-item block w-full"
+                                    :placeholder="currentDetailInputMeta.placeholder"
                                     :error="!!errors.detail?.[0]"
-                                    @input="errors.detail = null"
+                                    @input="formatDetailField('phone', $event.target.value)"
                                     :disabled="processing"
                                 />
+                            </div>
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
+                                <span>{{ currentDetailInputMeta.helper }}</span>
                             </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
@@ -592,19 +611,24 @@ watch(
                                 :hint="currentDetailHint"
                                 :hint-class="desktopHintClass"
                             />
-                            <div class="relative">
-                                <div class="absolute inset-y-0 start-0 flex items-center ps-3.5 pointer-events-none">
-                                    <span class="text-gray-500 dark:text-gray-400">+</span>
+                            <div class="join mt-1 w-full">
+                                <div class="join-item flex min-w-20 items-center justify-center rounded-s-field border border-base-300 bg-base-200 px-3 text-sm font-medium text-base-content/70">
+                                    {{ currentDetailInputMeta.prefix }}
                                 </div>
                                 <TextInput
                                     id="detail"
                                     v-model="details['mobile_commerce']"
                                     type="text"
-                                    class="mt-1 block w-full ps-7"
+                                    class="join-item block w-full"
+                                    :placeholder="currentDetailInputMeta.placeholder"
                                     :error="!!errors.detail?.[0]"
-                                    @input="errors.detail = null"
+                                    @input="formatDetailField('mobile_commerce', $event.target.value)"
                                     :disabled="processing"
                                 />
+                            </div>
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
+                                <span>{{ currentDetailInputMeta.helper }}</span>
                             </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
@@ -621,11 +645,15 @@ watch(
                                 v-model="details['card']"
                                 type="text"
                                 class="mt-1 block w-full"
-                                placeholder="0000 0000 0000 0000"
+                                :placeholder="currentDetailInputMeta.placeholder"
                                 :error="!!errors.detail?.[0]"
-                                @input="errors.detail = null"
+                                @input="formatDetailField('card', $event.target.value)"
                                 :disabled="processing"
                             />
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
+                                <span>{{ currentDetailInputMeta.helper }}</span>
+                            </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
@@ -642,11 +670,15 @@ watch(
                                 v-model="details['account_number']"
                                 type="text"
                                 class="mt-1 block w-full"
-                                placeholder="00000000000000000000"
+                                :placeholder="currentDetailInputMeta.placeholder"
                                 :error="!!errors.detail?.[0]"
-                                @input="errors.detail = null"
+                                @input="formatDetailField('account_number', $event.target.value)"
                                 :disabled="processing"
                             />
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
+                                <span>{{ currentDetailInputMeta.helper }}</span>
+                            </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
@@ -663,11 +695,15 @@ watch(
                                 v-model="details['iban_uah']"
                                 type="text"
                                 class="mt-1 block w-full"
-                                placeholder="UA543220010000026200353789635"
+                                :placeholder="currentDetailInputMeta.placeholder"
                                 :error="!!errors.detail?.[0]"
-                                @input="errors.detail = null"
+                                @input="formatDetailField('iban_uah', $event.target.value)"
                                 :disabled="processing"
                             />
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
+                                <span>{{ currentDetailInputMeta.helper }}</span>
+                            </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
 
@@ -684,11 +720,15 @@ watch(
                                 v-model="details['e-com']"
                                 type="url"
                                 class="mt-1 block w-full"
-                                placeholder="https://example.com/pay"
+                                :placeholder="currentDetailInputMeta.placeholder"
                                 :error="!!errors.detail?.[0]"
                                 @input="errors.detail = null"
                                 :disabled="processing"
                             />
+                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
+                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
+                                <span>{{ currentDetailInputMeta.helper }}</span>
+                            </div>
                             <InputError :message="errors.detail?.[0]" class="mt-2" />
                         </div>
                     </div>

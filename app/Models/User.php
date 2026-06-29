@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Lab404\Impersonate\Models\Impersonate;
 use Spatie\Permission\Traits\HasRoles;
@@ -37,6 +38,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Collection<int, Dispute> $disputes
  * @property Collection<int, SmsLog> $smsLogs
  * @property Collection<int, UserLoginHistory> $loginHistories
+ * @property Collection<int, WithdrawalAddress> $withdrawalAddresses
  * @property Collection<int, UserDevice> $devices
  * @property Collection<int, Merchant> $merchants Мерчанты (магазины), к которым имеет доступ саппорт
  * @property Wallet $wallet
@@ -86,7 +88,14 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $ban_reason
  * @property int|null $banned_by_user_id
  * @property User|null $bannedBy
- * @property Carbon $created_at
+ * @property string|null $avatar_path
+ * @property string|null $avatar_description
+ * @property string|null $avatar_caption
+ * @property Carbon|null $avatar_generated_at
+ * @property string|null $avatar_generation_status
+ * @property Carbon|null $avatar_generation_requested_at
+ * @property Carbon|null $avatar_generation_failed_at
+ * @property string|null $avatar_generation_error
  * @property Carbon $updated_At
  */
 #[ObservedBy([UserObserver::class])]
@@ -146,6 +155,14 @@ class User extends Authenticatable
         'banned_by_user_id',
         'archived_at',
         'merchant_id',
+        'avatar_path',
+        'avatar_description',
+        'avatar_caption',
+        'avatar_generated_at',
+        'avatar_generation_status',
+        'avatar_generation_requested_at',
+        'avatar_generation_failed_at',
+        'avatar_generation_error',
     ];
 
     /**
@@ -200,7 +217,19 @@ class User extends Authenticatable
             'team_leader_reserve_balance_limit' => 'integer',
             'team_leader_reserve_stop_threshold' => 'integer',
             'login_history_logging_enabled' => 'boolean',
+            'avatar_generated_at' => 'datetime',
+            'avatar_generation_requested_at' => 'datetime',
+            'avatar_generation_failed_at' => 'datetime',
         ];
+    }
+
+    public function avatarUrl(): ?string
+    {
+        if (! is_string($this->avatar_path) || $this->avatar_path === '') {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->avatar_path);
     }
 
     public static function generateApiAccessToken(): string
@@ -332,6 +361,11 @@ class User extends Authenticatable
     public function paymentDetails(): HasMany
     {
         return $this->hasMany(PaymentDetail::class);
+    }
+
+    public function withdrawalAddresses(): HasMany
+    {
+        return $this->hasMany(WithdrawalAddress::class);
     }
 
     public function orders(): HasMany

@@ -17,12 +17,13 @@ use Illuminate\Database\Eloquent\Builder;
 class TraderBalanceTransferService
 {
     /**
-     * @return array{login: string}
+     * @return array{login: string, avatar_url: ?string}
      */
     public function recipientPreview(User $recipient): array
     {
         return [
             'login' => $recipient->email,
+            'avatar_url' => $recipient->avatarUrl(),
         ];
     }
 

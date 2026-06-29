@@ -6,11 +6,15 @@ use App\Contracts\UserServiceContract;
 use App\DTO\User\UserCreateDTO;
 use App\DTO\User\UserUpdateDTO;
 use App\Enums\TeamLeaderInsuranceMode;
+use App\Jobs\GenerateUserAvatarJob;
 use App\Models\User;
+use App\Services\User\Features\UserAvatarGenerator;
 use App\Utils\Transaction;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 
 class UserService implements UserServiceContract
@@ -210,7 +214,7 @@ class UserService implements UserServiceContract
             return [
                 'banned_at' => now(),
                 'ban_reason' => $banReason,
-                'banned_by_user_id' => auth()->id(),
+                'banned_by_user_id' => Auth::id(),
             ];
         }
 
@@ -219,6 +223,46 @@ class UserService implements UserServiceContract
             'ban_reason' => $banReason,
             'banned_by_user_id' => $user->banned_by_user_id,
         ];
+    }
+
+    /**
+     * @return array{status: string}
+     */
+    public function requestAvatarGeneration(User $user): array
+    {
+        return $this->transaction(function () use ($user): array {
+            $lockedUser = User::query()
+                ->whereKey($user->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (is_string($lockedUser->avatar_path) && $lockedUser->avatar_path !== '') {
+                throw new RuntimeException('Аватар уже сгенерирован. Повторная генерация недоступна.');
+            }
+
+            if (in_array($lockedUser->avatar_generation_status, ['generating', 'processing'], true)) {
+                return ['status' => 'generating'];
+            }
+
+            $lockedUser->update([
+                'avatar_generation_status' => 'generating',
+                'avatar_generation_requested_at' => now(),
+                'avatar_generation_failed_at' => null,
+                'avatar_generation_error' => null,
+            ]);
+
+            GenerateUserAvatarJob::dispatch((int) $lockedUser->getKey());
+
+            return ['status' => 'generating'];
+        });
+    }
+
+    /**
+     * @return array{caption: string, avatar_url: string}
+     */
+    public function regenerateAvatar(User $user): array
+    {
+        return (new UserAvatarGenerator(services()->openAi()))->generate($user);
     }
 
     /**

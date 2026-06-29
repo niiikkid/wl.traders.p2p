@@ -23,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property Money $amount
  * @property Currency $currency
  * @property string $address
+ * @property int|null $withdrawal_address_id
+ * @property WithdrawalAddress|null $withdrawalAddress
  * @property NetworkEnum $network
  * @property string $tx_hash
  * @property InvoiceType $type
@@ -44,12 +46,13 @@ class Invoice extends Model
         'amount',
         'currency',
         'address',
+        'withdrawal_address_id',
         'network',
         'tx_hash',
         'type',
         'balance_type',
         'status',
-        'transaction_id', //это внешний id, для автоматики, не относится к модели Invoice
+        'transaction_id', // это внешний id, для автоматики, не относится к модели Invoice
         'wallet_id',
     ];
 
@@ -65,5 +68,10 @@ class Invoice extends Model
     public function wallet(): BelongsTo
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function withdrawalAddress(): BelongsTo
+    {
+        return $this->belongsTo(WithdrawalAddress::class);
     }
 }

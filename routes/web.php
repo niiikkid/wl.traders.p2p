@@ -72,6 +72,7 @@ use App\Http\Controllers\UserDevicePingController;
 use App\Http\Controllers\UserOnlineController;
 use App\Http\Controllers\Wallet\TraderBalanceTransferController;
 use App\Http\Controllers\WalletController;
+use App\Http\Controllers\WithdrawalAddressController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -106,7 +107,11 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/profile/auth2fa', [ProfileController::class, 'updateAuth2fa'])->name('profile.update.auth2fa');
         Route::post('/profile/logout-other-devices', [ProfileController::class, 'logoutOtherDevices'])->name('profile.logout-other-devices');
         Route::patch('/profile/login-history-logging', [ProfileController::class, 'toggleLoginHistoryLogging'])->name('profile.toggle-login-history-logging');
+        Route::post('/profile/avatar/regenerate', [ProfileController::class, 'regenerateAvatar'])
+            ->middleware('throttle:6,2')
+            ->name('profile.avatar.regenerate');
         Route::patch('/wallet/fiat-currency', [WalletController::class, 'updateFiatCurrency'])->name('wallet.fiat-currency.update');
+        Route::post('/wallet/withdrawal-addresses', [WithdrawalAddressController::class, 'store'])->name('wallet.withdrawal-addresses.store');
     });
 
     Route::group(['middleware' => ['auth', 'banned']], function () {

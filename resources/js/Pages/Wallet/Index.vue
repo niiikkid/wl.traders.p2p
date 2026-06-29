@@ -12,6 +12,7 @@ import DisputeBalance from "@/Pages/Wallet/Partials/DisputeBalance.vue";
 import TrustBalance from "@/Pages/Wallet/Partials/TrustBalance.vue";
 import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import TeamLeaderSharedReserveBalance from "@/Pages/Wallet/Partials/TeamLeaderSharedReserveBalance.vue";
+import { useAppClipboard } from '@/composables/useAppClipboard.js';
 
 const page = usePage();
 const user = page.props.user;
@@ -23,6 +24,8 @@ const walletSurfaces = computed(() => page.props.walletSurfaces ?? null);
 
 const traderBalanceTransfer = computed(() => page.props.traderBalanceTransfer ?? null);
 const teamLeaderInsurance = computed(() => page.props.teamLeaderInsurance ?? null);
+const withdrawalAddresses = computed(() => page.props.withdrawalAddresses?.items ?? []);
+const { copy, copied } = useAppClipboard();
 
 const showTrustBalanceCard = computed(() => {
     const ws = walletSurfaces.value;
@@ -172,6 +175,59 @@ defineOptions({ layout: AuthenticatedLayout })
                 </template>
                 с общим страховым резервом. Личный резерв трейдера не используется.
             </span>
+        </div>
+
+        <div
+            v-if="viewStore.isAdminViewMode"
+            class="collapse collapse-arrow rounded-box border border-base-300 bg-base-100"
+        >
+            <input type="checkbox" />
+            <div class="collapse-title flex items-center justify-between gap-3 text-base font-medium">
+                <span>Адреса вывода</span>
+                <span class="badge badge-outline">USDT TRC20</span>
+            </div>
+            <div class="collapse-content">
+                <div v-if="withdrawalAddresses.length" class="space-y-2 pt-1">
+                    <div
+                        v-for="address in withdrawalAddresses"
+                        :key="address.id"
+                        class="rounded-box border border-base-300 bg-base-200/40 p-3"
+                    >
+                        <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="min-w-0">
+                                <div class="truncate font-medium">
+                                    {{ address.name || 'Без названия' }}
+                                </div>
+                                <div class="truncate font-mono text-xs text-base-content/70">
+                                    {{ address.masked_address }}
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-xs shrink-0"
+                                @click="copy(address.address)"
+                            >
+                                {{ copied ? 'Скопировано' : 'Копировать' }}
+                            </button>
+                        </div>
+
+                        <div class="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                            <div class="rounded bg-base-100 p-2">
+                                <div class="text-xs text-base-content/60">Выводов</div>
+                                <div class="font-medium">{{ address.withdrawals_count ?? 0 }}</div>
+                            </div>
+                            <div class="rounded bg-base-100 p-2">
+                                <div class="text-xs text-base-content/60">Сумма</div>
+                                <div class="font-medium">{{ address.withdrawals_amount ?? '0' }} USDT</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="text-sm text-base-content/60">
+                    У пользователя пока нет сохранённых адресов вывода.
+                </div>
+            </div>
         </div>
 
         <div v-if="$page.props.flash.error" role="alert" class="alert alert-error text-sm py-2">

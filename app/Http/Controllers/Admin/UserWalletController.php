@@ -12,6 +12,7 @@ use App\Http\Requests\Admin\User\Wallet\WithdrawRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TransactionResource;
 use App\Http\Resources\UserResource;
+use App\Http\Resources\WithdrawalAddressResource;
 use App\Models\User;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -224,6 +225,7 @@ class UserWalletController extends Controller
         $teamLeaderInsurance = $this->teamLeaderInsuranceService->teamLeaderInsurancePropsForUser($user);
         $walletHistoryShowsBalanceType = $walletAdminFullView
             || ($user->hasRole('Team Leader') && $this->teamLeaderInsuranceService->teamLeaderUsesSharedReserve($user));
+        $withdrawalAddresses = $this->withdrawalAddressProps($user);
 
         $user = UserResource::make($user)->resolve();
 
@@ -240,6 +242,7 @@ class UserWalletController extends Controller
             'walletAdminFullView',
             'teamLeaderInsurance',
             'walletHistoryShowsBalanceType',
+            'withdrawalAddresses',
         ));
     }
 
@@ -425,5 +428,26 @@ class UserWalletController extends Controller
         } catch (InvoiceException $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * @return array{items: array<int, mixed>, has_2fa: bool}
+     */
+    private function withdrawalAddressProps(User $user): array
+    {
+        $addresses = $user->withdrawalAddresses()
+            ->withCount(['invoices as withdrawals_count' => function ($query): void {
+                $query->where('type', InvoiceType::WITHDRAWAL);
+            }])
+            ->withSum(['invoices as withdrawals_amount' => function ($query): void {
+                $query->where('type', InvoiceType::WITHDRAWAL);
+            }], 'amount')
+            ->latest()
+            ->get();
+
+        return [
+            'items' => WithdrawalAddressResource::collection($addresses)->resolve(),
+            'has_2fa' => $user->google2fa_secret !== null,
+        ];
     }
 }

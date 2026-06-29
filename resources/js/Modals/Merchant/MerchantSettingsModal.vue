@@ -97,12 +97,12 @@ watch(
 </script>
 
 <template>
-    <Modal :show="merchantSettingsModal.showed" maxWidth="3xl" @close="close">
+    <Modal :show="merchantSettingsModal.showed" maxWidth="6xl" @close="close">
         <ModalHeader :title="title" @close="close" />
         <ModalBody>
-            <div v-if="loading" class="rounded-xl bg-base-200/60 py-8 text-center text-xs text-base-content/60">
-                <span class="loading loading-spinner loading-sm mr-2 align-middle"></span>
-                <span class="align-middle">Загрузка настроек...</span>
+            <div v-if="loading" class="rounded-2xl border border-base-300 bg-base-200/60 py-16 text-center text-sm text-base-content/70">
+                <span class="loading loading-spinner loading-md mr-2 align-middle text-primary"></span>
+                <span class="align-middle">Загрузка настроек мерчанта...</span>
             </div>
             <div v-else-if="error" class="alert alert-error shadow">
                 {{ error }}
@@ -117,7 +117,7 @@ watch(
                 :payment-gateways="paymentGateways"
                 @updated="notifyUpdated"
             />
-            <div v-else class="py-8 text-center text-xs text-base-content/60">
+            <div v-else class="rounded-2xl border border-dashed border-base-300 py-16 text-center text-sm text-base-content/60">
                 Данные отсутствуют.
             </div>
         </ModalBody>
