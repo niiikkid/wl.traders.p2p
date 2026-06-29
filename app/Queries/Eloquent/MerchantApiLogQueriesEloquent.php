@@ -55,6 +55,12 @@ class MerchantApiLogQueriesEloquent implements MerchantApiLogQueries
             ->with(['merchant', 'order', 'payout'])
             ->tap(fn (Builder $query) => $this->applyRequestTypeFilter($query, $requestType))
             ->whereRelation('merchant', 'user_id', $user->id)
+            ->when($filters->merchant, function ($query) use ($filters) {
+                $query->where(function ($query) use ($filters) {
+                    $query->whereRelation('merchant', 'name', 'LIKE', '%'.$filters->merchant.'%');
+                    $query->orWhereRelation('merchant', 'uuid', 'LIKE', '%'.$filters->merchant.'%');
+                });
+            })
             ->when($filters->externalID, function ($query) use ($filters) {
                 $query->where('external_id', 'LIKE', '%'.$filters->externalID.'%');
             })

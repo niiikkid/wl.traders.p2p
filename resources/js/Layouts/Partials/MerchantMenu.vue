@@ -11,6 +11,7 @@ import OrdersIcon from '@/Layouts/Partials/Icons/OrdersIcon.vue';
 import PayoutsIcon from '@/Layouts/Partials/Icons/PayoutsIcon.vue';
 import WalletIcon from '@/Layouts/Partials/Icons/WalletIcon.vue';
 import IntegrationIcon from '@/Layouts/Partials/Icons/IntegrationIcon.vue';
+import LogsIcon from '@/Layouts/Partials/Icons/LogsIcon.vue';
 
 const userStore = useUserStore();
 const { menu } = useMenuCounters();
@@ -62,6 +63,13 @@ const items = computed(() => {
             icon: IntegrationIcon,
             href: route('integration.index'),
             active: route().current('integration.*'),
+        },
+        {
+            key: 'merchant-api-logs',
+            label: 'Логи',
+            icon: LogsIcon,
+            href: route('merchant.merchant-api-logs.index'),
+            active: route().current('merchant.merchant-api-logs.*'),
         },
     ];
 });

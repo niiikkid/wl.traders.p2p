@@ -21,10 +21,16 @@ import ApexCharts from 'apexcharts';
 const page = usePage();
 
 const isAdminLogsPage = computed(() => route().current('admin.merchant-api-logs.*'));
+const isMerchantLogsPage = computed(() => route().current('merchant.merchant-api-logs.*'));
+const isScopedLogsPage = computed(() => isAdminLogsPage.value || isMerchantLogsPage.value);
 const showAmountDistributionModal = ref(false);
 const amountDistributionRoute = computed(() => {
     if (route().current('admin.merchant-api-logs.index')) {
         return route('admin.merchant-api-logs.amount-distribution');
+    }
+
+    if (route().current('merchant.merchant-api-logs.index')) {
+        return route('merchant.merchant-api-logs.amount-distribution');
     }
 
     return null;
@@ -413,7 +419,7 @@ onBeforeUnmount(() => {
             :data="logs"
             :visit-extra-data="{ tab: activeApiLogTab }"
         >
-            <template v-if="isAdminLogsPage && isMerchantApiLogsTab" #button>
+            <template v-if="isScopedLogsPage && isMerchantApiLogsTab" #button>
                 <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
                     <div
                         class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
@@ -456,7 +462,7 @@ onBeforeUnmount(() => {
                 <div class="space-y-4">
                     <LogsNav
                         :current="activeApiLogTab"
-                        :show-callbacks="isAdminLogsPage"
+                        :show-callbacks="isScopedLogsPage"
                         @switch="switchApiLogTab"
                     />
 

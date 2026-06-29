@@ -53,15 +53,16 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
      *     }
      * }
      */
-    public function getAmountDistribution(string $currency, string $period): array
+    public function getAmountDistribution(string $currency, string $period, ?User $merchantUser = null): array
     {
         $currency = strtolower($currency);
         $period = $this->amountDistributionBucketService->normalizePeriod($period);
+        $merchantCacheSuffix = $merchantUser ? ":merchant:{$merchantUser->id}" : '';
 
         return Cache::remember(
-            "merchant_api_logs_amount_distribution:{$currency}:{$period}",
+            "merchant_api_logs_amount_distribution:{$currency}:{$period}{$merchantCacheSuffix}",
             now()->addSeconds(self::AMOUNT_DISTRIBUTION_CACHE_TTL_SECONDS),
-            fn (): array => $this->calculateAmountDistribution($currency, $period),
+            fn (): array => $this->calculateAmountDistribution($currency, $period, $merchantUser),
         );
     }
 
@@ -90,7 +91,7 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
      *     }
      * }
      */
-    private function calculateAmountDistribution(string $currency, string $period): array
+    private function calculateAmountDistribution(string $currency, string $period, ?User $merchantUser = null): array
     {
         [$periodStartAt, $periodEndAt] = $this->amountDistributionBucketService->resolvePeriodBounds($period, null, null);
         $amountExpression = $this->normalizedAmountExpression();
@@ -103,7 +104,10 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
             ->whereNotNull('amount')
             ->where('amount', '!=', '')
             ->when($periodStartAt !== null, fn (Builder $query) => $query->where('created_at', '>=', $periodStartAt))
-            ->when($periodEndAt !== null, fn (Builder $query) => $query->where('created_at', '<=', $periodEndAt));
+            ->when($periodEndAt !== null, fn (Builder $query) => $query->where('created_at', '<=', $periodEndAt))
+            ->when($merchantUser, function (Builder $query, User $user): void {
+                $query->whereRelation('merchant', 'user_id', $user->id);
+            });
 
         /** @var Collection<int, object{amount_bucket: string, all_count: int|string, successful_count: int|string}> $rows */
         $rows = (clone $logsQuery)
@@ -397,6 +401,94 @@ class MerchantApiStatisticsService implements MerchantApiStatisticsServiceContra
                     'sumByFailedCurrencyToday' => $sumByFailedCurrencyToday,
                     'sumBySuccessCurrencyTotal' => $sumBySuccessCurrencyTotal,
                     'sumByFailedCurrencyTotal' => $sumByFailedCurrencyTotal,
+                ];
+            },
+        );
+    }
+
+    /**
+     * @return array{
+     *     successToday: int,
+     *     failedToday: int,
+     *     successTotal: int,
+     *     failedTotal: int,
+     *     sumBySuccessCurrencyToday: array<string, float|int|string>,
+     *     sumByFailedCurrencyToday: array<string, float|int|string>,
+     *     sumBySuccessCurrencyTotal: array<string, float|int|string>,
+     *     sumByFailedCurrencyTotal: array<string, float|int|string>
+     * }
+     */
+    public function getStatisticsForMerchant(User $merchantUser): array
+    {
+        $today = now()->toDateString();
+
+        return Cache::remember(
+            "merchant_api_logs:dashboard_stats:merchant:{$merchantUser->id}:{$today}",
+            now()->addSeconds(self::DASHBOARD_STATS_CACHE_TTL_SECONDS),
+            function () use ($merchantUser, $today): array {
+                $paymentGateways = PaymentGateway::query()
+                    ->select('id', 'code', 'currency')
+                    ->get()
+                    ->pluck('currency', 'code')
+                    ->toArray();
+
+                $baseQuery = MerchantApiRequestLog::query()
+                    ->tap(fn (Builder $query) => $this->applyOrderRequestTypeFilter($query))
+                    ->whereRelation('merchant', 'user_id', $merchantUser->id);
+
+                $rows = (clone $baseQuery)
+                    ->select([
+                        DB::raw('DATE(created_at) as date'),
+                        'is_successful',
+                        DB::raw('COALESCE(currency, payment_gateway) as currency_key'),
+                        DB::raw('COUNT(*) as count'),
+                        DB::raw('SUM(amount) as sum_amount'),
+                    ])
+                    ->groupBy('date', 'is_successful', 'currency_key')
+                    ->get();
+
+                $grouped = [];
+
+                foreach ($rows as $row) {
+                    $currencyKey = $row->currency_key;
+                    $currency = $currencyKey;
+
+                    if (! Currency::isCurrency($currencyKey) && isset($paymentGateways[$currencyKey])) {
+                        $currency = $paymentGateways[$currencyKey];
+                    }
+
+                    $groupKey = $row->date.'|'.$row->is_successful.'|'.$currency;
+
+                    if (! isset($grouped[$groupKey])) {
+                        $grouped[$groupKey] = [
+                            'date' => $row->date,
+                            'is_successful' => (bool) $row->is_successful,
+                            'currency' => $currency,
+                            'count' => 0,
+                            'sum_amount' => 0,
+                        ];
+                    }
+
+                    $grouped[$groupKey]['count'] += (int) $row->count;
+                    $grouped[$groupKey]['sum_amount'] += (float) $row->sum_amount;
+                }
+
+                $collection = collect($grouped);
+                $todayStats = $collection->filter(fn (array $row): bool => $row['date'] === $today);
+                $successToday = $todayStats->filter(fn (array $row): bool => $row['is_successful']);
+                $failedToday = $todayStats->reject(fn (array $row): bool => $row['is_successful']);
+                $successTotal = $collection->filter(fn (array $row): bool => $row['is_successful']);
+                $failedTotal = $collection->reject(fn (array $row): bool => $row['is_successful']);
+
+                return [
+                    'successToday' => $successToday->sum('count'),
+                    'failedToday' => $failedToday->sum('count'),
+                    'successTotal' => $successTotal->sum('count'),
+                    'failedTotal' => $failedTotal->sum('count'),
+                    'sumBySuccessCurrencyToday' => $successToday->groupBy('currency')->map->sum('sum_amount')->toArray(),
+                    'sumByFailedCurrencyToday' => $failedToday->groupBy('currency')->map->sum('sum_amount')->toArray(),
+                    'sumBySuccessCurrencyTotal' => $successTotal->groupBy('currency')->map->sum('sum_amount')->toArray(),
+                    'sumByFailedCurrencyTotal' => $failedTotal->groupBy('currency')->map->sum('sum_amount')->toArray(),
                 ];
             },
         );

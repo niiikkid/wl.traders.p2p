@@ -32,6 +32,7 @@ use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\IncomingSmsLogController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MainPageController;
+use App\Http\Controllers\Merchant\MerchantApiLogController as MerchantMerchantApiLogController;
 use App\Http\Controllers\Merchant\PayoutCallbackController;
 use App\Http\Controllers\Merchant\ResendCallbackController;
 use App\Http\Controllers\MerchantController;
@@ -271,7 +272,8 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/merchant/payouts/{payout:uuid}/callback/resend', [PayoutCallbackController::class, 'resend'])->name('merchant.payouts.callback.resend');
 
         Route::resource('/payments', PaymentController::class)->only(['index']);
-        Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant.merchant-api-logs.index');
+        Route::get('/merchant-api-logs', [MerchantMerchantApiLogController::class, 'index'])->name('merchant.merchant-api-logs.index');
+        Route::get('/merchant-api-logs/amount-distribution', [MerchantMerchantApiLogController::class, 'amountDistribution'])->name('merchant.merchant-api-logs.amount-distribution');
 
         Route::post('/payment/{order}/callback/resend', [ResendCallbackController::class, 'resend'])->name('payment.callback.resend');
     });
