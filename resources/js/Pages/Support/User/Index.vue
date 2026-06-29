@@ -74,7 +74,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         Баланс
                                     </th>
                                     <th scope="col">
-                                        Пинг
+                                        Заходил
                                     </th>
                                     <th scope="col">
                                         Создан
@@ -90,24 +90,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="row" class=" font-medium whitespace-nowrap">
                                         {{ user.id }}
                                     </th>
-                                    <td class=" whitespace-nowrap">
+                                    <td class="max-w-[16rem]">
                                         <UserSummaryPopover :user="user">
-                                            <div class="inline-flex items-center gap-3 text-left hover:opacity-80 transition">
-                                                <div class="avatar">
-                                                    <div class="w-10 rounded-full">
-                                                        <UserAvatar :user="user" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <div class="whitespace-nowrap">
+                                            <div class="inline-flex max-w-[16rem] min-w-0 items-center gap-2 text-left hover:opacity-80 transition">
+                                                <UserAvatar :user="user" class="shrink-0" />
+                                                <div class="min-w-0 overflow-hidden">
+                                                    <div class="truncate" :title="user.email">
                                                         {{ user.email }}
                                                     </div>
-                                                    <div class="whitespace-nowrap text-xs text-base-content/70 inline-flex items-center gap-2">
-                                                        <span>{{ user.role.name }}</span>
+                                                    <div class="truncate text-xs text-base-content/70">
+                                                        <span :title="user.role.name">{{ user.role.name }}</span>
                                                     </div>
                                                 </div>
-                                                <span v-if="user.banned_at" class="badge badge-error badge-sm" title="Пользователь заблокирован">Ban</span>
-                                                <span v-if="user.stop_traffic" class="badge badge-error badge-sm" title="Трафик остановлен">Stop</span>
+                                                <span v-if="user.banned_at" class="badge badge-error badge-sm shrink-0" title="Пользователь заблокирован">Ban</span>
+                                                <span v-if="user.stop_traffic" class="badge badge-error badge-sm shrink-0" title="Трафик остановлен">Stop</span>
                                             </div>
                                         </UserSummaryPopover>
                                     </td>
@@ -115,7 +111,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         {{ user.balance }} $
                                     </td>
                                     <td class=" whitespace-nowrap">
-                                        <DateTime v-if="user.apk_latest_ping_at" :data="user.apk_latest_ping_at" :plural="true"/>
+                                        <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
                                     </td>
                                     <td class=" whitespace-nowrap">
                                         <DateTime class="justify-start" :data="user.created_at"/>
@@ -160,20 +156,20 @@ defineOptions({ layout: AuthenticatedLayout })
 
                                     <!-- Основная информация: пользователь -->
                                     <div class="flex items-center justify-between gap-3 mb-1">
-                                        <div class="min-w-0">
+                                        <div class="min-w-0 flex-1">
                                             <UserSummaryPopover :user="user">
-                                                <div class="flex items-center gap-2 hover:opacity-80 transition">
+                                                <div class="flex min-w-0 items-center gap-2 hover:opacity-80 transition">
                                                     <div class="avatar">
                                                         <div class="w-12 rounded-full">
                                                             <UserAvatar :user="user" />
                                                         </div>
                                                     </div>
-                                                    <div class="min-w-0">
-                                                        <div class="whitespace-nowrap truncate font-medium">
+                                                    <div class="min-w-0 overflow-hidden">
+                                                        <div class="truncate font-medium" :title="user.email">
                                                             {{ user.email }}
                                                         </div>
-                                                        <div class="inline-flex items-center gap-2 text-xs text-base-content/70">
-                                                            <span>{{ user.role.name }}</span>
+                                                        <div class="truncate text-xs text-base-content/70">
+                                                            <span :title="user.role.name">{{ user.role.name }}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -195,10 +191,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="text-base-content/70 text-sm">Баланс</div>
                                             <div class="text-base-content font-medium">{{ user.balance }} $</div>
                                         </div>
-                                        <div v-if="user.apk_latest_ping_at" class="flex items-center justify-between">
-                                            <div class="text-base-content/70 text-sm">Пинг</div>
+                                        <div class="flex items-center justify-between">
+                                            <div class="text-base-content/70 text-sm">Заходил</div>
                                             <div class="text-base-content">
-                                                <DateTime :data="user.apk_latest_ping_at" :plural="true"/>
+                                                <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
+                                                <span v-else>—</span>
                                             </div>
                                         </div>
                                         <div class="flex items-center justify-between border-t border-base-content/10 pt-2 mt-2">
