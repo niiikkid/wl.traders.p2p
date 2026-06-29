@@ -24,7 +24,7 @@ const profileTabs = [
     {
         key: 'history',
         title: 'Сессии',
-        description: 'Недавние входы',
+        description: 'История входов',
         icon: 'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
     },
 ];
@@ -41,8 +41,8 @@ defineProps({
         default: () => ({}),
     },
     loginHistory: {
-        type: Array,
-        default: () => [],
+        type: Object,
+        default: () => ({ data: [], meta: {} }),
     },
     loginHistoryLoggingEnabled: {
         type: Boolean,

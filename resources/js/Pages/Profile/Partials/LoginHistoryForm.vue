@@ -7,12 +7,13 @@ import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modals/Modal.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { useModalStore } from '@/store/modal.js';
-import { useForm } from '@inertiajs/vue3';
-import { nextTick, ref } from 'vue';
+import { useForm, router } from '@inertiajs/vue3';
+import { computed, nextTick, ref } from 'vue';
+import Pagination from '@/Components/Pagination/Pagination.vue';
 
 const props = defineProps({
     loginHistory: {
-        type: Array,
+        type: Object,
         required: true,
     },
     status: {
@@ -28,6 +29,37 @@ const props = defineProps({
         default: false,
     },
 });
+
+const loginHistoryItems = computed(() => props.loginHistory?.data ?? []);
+
+const loginHistoryMeta = computed(() => {
+    const source = props.loginHistory ?? {};
+
+    if (source.meta) {
+        return source.meta;
+    }
+
+    return {
+        current_page: source.current_page ?? 1,
+        per_page: source.per_page ?? 10,
+        total: source.total ?? 0,
+        last_page: source.last_page ?? 1,
+    };
+});
+
+const showLoginHistoryPagination = computed(() => (loginHistoryMeta.value.last_page ?? 1) > 1);
+
+const openLoginHistoryPage = (page) => {
+    router.visit(route('profile.edit'), {
+        data: {
+            page,
+            per_page: loginHistoryMeta.value.per_page ?? 10,
+        },
+        preserveScroll: true,
+        preserveState: true,
+        only: ['loginHistory'],
+    });
+};
 
 const modalStore = useModalStore();
 
@@ -181,7 +213,7 @@ const toggleLoginHistoryLogging = () => {
         title: enabling ? 'Включить логирование сессий?' : 'Отключить логирование сессий?',
         body: enabling
             ? 'Новые входы снова будут записываться в историю сессий.'
-            : 'Логирование сессий входа будет отключено, а все существующие записи истории будут удалены.',
+            : 'Логирование сессий входа будет отключено. Существующая история сохранится, новые входы записываться не будут.',
         confirm_button_name: enabling ? 'Включить' : 'Отключить',
         cancel_button_name: 'Отмена',
         confirm: () => {
@@ -200,7 +232,7 @@ const toggleLoginHistoryLogging = () => {
                 <h2 class="text-base font-semibold text-base-content">Сессии входа</h2>
 
                 <p class="text-xs leading-relaxed text-base-content/60">
-                    Последние попытки входа: устройство, сеть и результат.
+                    История попыток входа: устройство, сеть и результат.
                 </p>
             </div>
 
@@ -231,7 +263,7 @@ const toggleLoginHistoryLogging = () => {
         </div>
 
         <div v-if="status === 'login-history-logging-disabled'" class="alert alert-warning mt-4 py-2 text-sm">
-            Логирование сессий отключено, история входов удалена.
+            Логирование сессий отключено. Новые входы не записываются в историю.
         </div>
 
         <div v-if="status === 'login-history-logging-enabled'" class="alert alert-success mt-4 py-2 text-sm">
@@ -260,7 +292,7 @@ const toggleLoginHistoryLogging = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="(item, index) in loginHistory" :key="index">
+                            <tr v-for="item in loginHistoryItems" :key="item.id">
                                 <td>
                                     <div class="font-medium">{{ getDeviceSummary(item) || 'Не определено' }}</div>
                                     <div class="text-xs text-base-content/60">{{ item.device_type || 'Тип не определён' }}</div>
@@ -283,7 +315,7 @@ const toggleLoginHistoryLogging = () => {
                                     {{ getStatusText(item.is_successful) }}
                                 </td>
                             </tr>
-                            <tr v-if="loginHistory.length === 0">
+                            <tr v-if="loginHistoryItems.length === 0">
                                 <td colspan="5" class="text-center text-base-content/60">
                                     Сессий пока нет
                                 </td>
@@ -296,8 +328,8 @@ const toggleLoginHistoryLogging = () => {
             <!-- Mobile view (cards list) -->
             <div class="xl:hidden space-y-2">
                 <div
-                    v-for="(item, index) in loginHistory"
-                    :key="index"
+                    v-for="item in loginHistoryItems"
+                    :key="item.id"
                     class="card bg-base-100 border border-base-300 shadow-sm"
                 >
                     <div class="card-body px-3 py-2.5">
@@ -353,7 +385,7 @@ const toggleLoginHistoryLogging = () => {
                     </div>
                 </div>
 
-                <div v-if="loginHistory.length === 0" class="card bg-base-100 border border-base-300 shadow-sm">
+                <div v-if="loginHistoryItems.length === 0" class="card bg-base-100 border border-base-300 shadow-sm">
                     <div class="card-body px-3 py-3">
                         <div class="text-center text-xs text-base-content/60">
                             Сессий пока нет
@@ -361,6 +393,17 @@ const toggleLoginHistoryLogging = () => {
                     </div>
                 </div>
             </div>
+
+            <Pagination
+                v-if="showLoginHistoryPagination"
+                class="mt-4"
+                :model-value="loginHistoryMeta.current_page"
+                :total-items="loginHistoryMeta.total"
+                :per-page="loginHistoryMeta.per_page"
+                previous-label="Назад"
+                next-label="Вперёд"
+                @page-changed="openLoginHistoryPage"
+            />
         </div>
 
         <Modal :show="confirmingLogout" max-width="md" @close="closeLogoutModal">

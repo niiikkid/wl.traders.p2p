@@ -7,7 +7,6 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -45,11 +44,10 @@ class ProfileController extends Controller
             ];
         }
 
-        // Получаем историю авторизаций пользователя
         $loginHistory = $user->loginHistories()
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+            ->orderByDesc('created_at')
+            ->paginate($request->integer('per_page', 10))
+            ->withQueryString();
 
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
@@ -103,10 +101,7 @@ class ProfileController extends Controller
         abort_unless($user->hasRole('Super Admin'), 403);
 
         if ($user->login_history_logging_enabled) {
-            DB::transaction(function () use ($user) {
-                services()->loginHistory()->clearUserHistory($user);
-                $user->update(['login_history_logging_enabled' => false]);
-            });
+            $user->update(['login_history_logging_enabled' => false]);
 
             return Redirect::route('profile.edit')->with('status', 'login-history-logging-disabled');
         }
