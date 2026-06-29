@@ -1,8 +1,6 @@
 <script setup>
 import { computed } from 'vue';
-import ViewModeSwitcher from '@/Layouts/Partials/ViewModeSwitcher.vue';
 import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
-import { useUserStore } from '@/store/user.js';
 import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
 import BellIcon from '@/Layouts/Partials/Icons/BellIcon.vue';
@@ -21,7 +19,6 @@ import AntiFraudIcon from '@/Layouts/Partials/Icons/AntiFraudIcon.vue';
 import TelegramChatsIcon from '@/Layouts/Partials/Icons/TelegramChatsIcon.vue';
 import SettingsIcon from '@/Layouts/Partials/Icons/SettingsIcon.vue';
 
-const userStore = useUserStore();
 const { menu } = useMenuCounters();
 
 const items = computed(() => [
@@ -155,9 +152,5 @@ const items = computed(() => [
 </script>
 
 <template>
-    <SidebarMenu :items="items">
-        <template #prepend>
-            <ViewModeSwitcher v-if="userStore.isAdmin" class="mb-2" />
-        </template>
-    </SidebarMenu>
+    <SidebarMenu :items="items" />
 </template>

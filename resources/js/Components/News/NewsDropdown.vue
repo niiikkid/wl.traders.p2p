@@ -104,8 +104,8 @@ onBeforeUnmount(() => {
     <div ref="rootRef" class="relative">
         <button
             type="button"
-            class="btn btn-ghost btn-sm btn-square indicator"
-            :class="{ 'bg-base-300/60': isOpen }"
+            class="btn btn-ghost btn-square indicator h-auto min-h-0 px-2.5 py-1.5 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
+            :class="{ 'bg-base-300/60 border-base-300': isOpen }"
             :aria-expanded="isOpen"
             aria-haspopup="true"
             title="Новости"

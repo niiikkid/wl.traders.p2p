@@ -5,14 +5,11 @@ import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
-import DateTime from '@/Components/DateTime.vue';
 import {ref} from "vue";
-import DataTable from '@/Components/Table/DataTable.vue';
-import DataCardList from '@/Components/Table/DataCardList.vue';
-import DataCard from '@/Components/Table/DataCard.vue';
 import TraderAutomationNav from '@/Components/Trader/AutomationNav.vue';
-import DeviceTokenCopy from '@/Components/Trader/DeviceTokenCopy.vue';
 import DevicePingHistoryModal from '@/Modals/DevicePingHistoryModal.vue';
+import UserDeviceCard from '@/Components/Device/UserDeviceCard.vue';
+import { useDevicesAutoRefresh } from '@/composables/useDevicesAutoRefresh.js';
 
 const devices = ref(usePage().props.devices.data);
 
@@ -58,7 +55,9 @@ const updateSmsProcessingMode = (isEnabled) => {
 router.on('success', () => {
     devices.value = usePage().props.devices.data;
     smsAutoCloseEnabled.value = !!usePage().props.smsAutoCloseEnabled;
-})
+});
+
+useDevicesAutoRefresh(['devices', 'smsAutoCloseEnabled']);
 
 defineOptions({ layout: AuthenticatedLayout })
 
@@ -319,160 +318,36 @@ const closePingModal = () => {
             </template>
 
             <template v-slot:body>
-                <div class="relative">
-                    <!-- Desktop/tablet view (table) -->
-                    <DataTable>
-                        <template #head>
-                                    <th scope="col" class="px-6 py-3">
-                                        Название
-                                    </th>
-                                    <th scope="col" class="px-6 py-3">
-                                        Токен
-                                    </th>
-                                    <th scope="col" class="px-6 py-3">
-                                        Статус
-                                    </th>
-                                    <th scope="col" class="px-6 py-3">
-                                        Последний пинг
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right">
+                <div v-if="!devices.length" class="rounded-2xl border border-dashed border-base-content/15 bg-base-100 p-8 text-center shadow-sm">
+                    <div class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="size-7"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                        >
+                            <path d="M17 1H7a2 2 0 0 0-2 2v18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2m0 18H7V5h10zm-1-6h-3V8h-2v5H8l4 4z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-base font-semibold text-base-content">
+                        Устройств пока нет
+                    </h3>
+                    <p class="mt-1 text-sm text-base-content/60">
+                        Создайте токен выше и подключите телефон через APK.
+                    </p>
+                </div>
 
-                                    </th>
-                        </template>
-                                <template v-for="device in devices" :key="device.id">
-                                <tr>
-                                    <th scope="row" class="px-6 py-3 font-medium whitespace-nowrap text-base-content">
-                                        {{ device.name }}
-                                    </th>
-                                    <td class="px-6 py-3">
-                                        <DeviceTokenCopy :token="device.token" />
-                                    </td>
-                                    <td class="px-6 py-3">
-                                        <span :class="['badge', device.android_id ? 'badge-success' : 'badge-warning']" class="badge-sm text-nowrap">
-                                            {{ device.android_id ? 'Подключено' : 'Не подключено' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-3">
-                                        <DateTime v-if="device.latest_ping_at" :data="device.latest_ping_at" :plural="true" />
-                                        <span v-else>нет данных</span>
-                                    </td>
-                                    <td class="px-6 py-3 text-right">
-                                        <button
-                                            type="button"
-                                            class="btn btn-ghost btn-sm btn-square"
-                                            aria-label="История пингов"
-                                            @click="openPingModal(device)"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                class="size-4"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                aria-hidden="true"
-                                            >
-                                                <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
-                                            </svg>
-                                        </button>
-                                    </td>
-                                </tr>
-                                </template>
-                    </DataTable>
-
-                    <!-- Mobile view (cards list) -->
-                    <DataCardList>
-                            <DataCard
-                                v-for="device in devices"
-                                :key="device.id"
-                            >
-                                    <!-- Шапка: Название и последний пинг -->
-                                    <div class="flex justify-between items-center">
-                                        <div class="inline-flex items-center gap-2 min-w-0">
-                                            <span class="font-medium text-base-content truncate">{{ device.name }}</span>
-                                        </div>
-                                        <div class="inline-flex items-center">
-                                            <span :class="['badge', 'badge-sm', device.android_id ? 'badge-success' : 'badge-warning']" class="text-nowrap">
-                                                {{ device.android_id ? 'Подключено' : 'Не подключено' }}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div class="border-b border-base-content/10">
-
-                                    </div>
-
-                                    <!-- Для >= sm -->
-                                    <div class="hidden sm:flex items-center justify-between gap-2">
-                                        <div class="min-w-0">
-                                            <div class="text-xs text-base-content/70">Токен</div>
-                                            <DeviceTokenCopy :token="device.token" truncate-class="w-40" />
-                                        </div>
-                                        <div>
-                                            <DateTime v-if="device.latest_ping_at" class="justify-start" :data="device.latest_ping_at" :plural="true"/>
-                                            <span v-else class="opacity-70">нет данных</span>
-                                        </div>
-                                        <div>
-                                            <button
-                                                type="button"
-                                                class="btn btn-ghost btn-xs btn-square"
-                                                aria-label="История пингов"
-                                                @click.stop="openPingModal(device)"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="size-4"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    aria-hidden="true"
-                                                >
-                                                    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Для xs -->
-                                    <div class="sm:hidden">
-                                        <div class="flex items-center justify-between gap-2">
-                                            <div class="min-w-0">
-                                                <div class="text-xs text-base-content/70">Токен</div>
-                                                <DeviceTokenCopy :token="device.token" truncate-class="w-40" />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                class="btn btn-ghost btn-xs btn-square shrink-0"
-                                                aria-label="История пингов"
-                                                @click.stop="openPingModal(device)"
-                                            >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    class="size-4"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    aria-hidden="true"
-                                                >
-                                                    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        <div class="mt-2">
-                                            <DateTime v-if="device.latest_ping_at" class="justify-start" :data="device.latest_ping_at" :plural="true"/>
-                                            <span v-else class="opacity-70">нет данных</span>
-                                        </div>
-                                    </div>
-                            </DataCard>
-                    </DataCardList>
+                <div
+                    v-else
+                    class="grid grid-cols-1 gap-4 xl:grid-cols-2"
+                >
+                    <UserDeviceCard
+                        v-for="device in devices"
+                        :key="device.id"
+                        :device="device"
+                        @show-pings="openPingModal"
+                    />
                 </div>
             </template>
         </MainTableSection>

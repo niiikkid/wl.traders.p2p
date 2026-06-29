@@ -1,8 +1,5 @@
 <script setup>
-import Select from "@/Components/Select.vue";
-
 import {useViewStore} from "@/store/view.js";
-import {watch} from "vue";
 import {router} from "@inertiajs/vue3";
 
 const viewStore = useViewStore();
@@ -54,13 +51,16 @@ const getCurrentViewModeLabel = () => {
 </script>
 
 <template>
-    <div>
-        <div class="dropdown dropdown-end w-full">
-            <div tabindex="0" role="button" class="btn btn-outline btn-primary btn-sm w-full">
-                {{ getCurrentViewModeLabel() }}
-            </div>
+    <div class="dropdown dropdown-end">
+        <button
+            tabindex="0"
+            type="button"
+            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40 btn-sm"
+        >
+            {{ getCurrentViewModeLabel() }}
+        </button>
 
-            <ul tabindex="0" class="dropdown-content menu bg-base-100 border border-base-300 rounded-box z-1 w-52 p-2 shadow-sm">
+        <ul tabindex="0" class="dropdown-content menu bg-base-100 border border-base-300 rounded-box z-[60] w-52 p-2 shadow-sm">
                 <li class="active-item">
                     <a @click="selectViewMode('admin')">
                         Админ
@@ -86,8 +86,7 @@ const getCurrentViewModeLabel = () => {
                         Саппорт
                     </a>
                 </li>
-            </ul>
-        </div>
+        </ul>
     </div>
 </template>
 

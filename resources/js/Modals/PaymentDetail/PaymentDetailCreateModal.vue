@@ -87,6 +87,124 @@ const selectedDetailType = ref(null);
 const activeHelpKey = ref('currency');
 const desktopHintClass = 'xl:hidden';
 
+const currentStep = ref(1);
+
+const stepsMeta = [
+    { id: 1, title: 'Основа', subtitle: 'Валюта и тип реквизита' },
+    { id: 2, title: 'Реквизит', subtitle: 'Метод оплаты и данные получателя' },
+    { id: 3, title: 'Лимиты', subtitle: 'Ограничения и расписание' },
+    { id: 4, title: 'Готово', subtitle: 'Проверка и сохранение' },
+];
+
+const totalSteps = stepsMeta.length;
+
+const fieldStepMap = {
+    currency: 1,
+    detail_type: 1,
+    payment_gateway_ids: 2,
+    user_device_id: 2,
+    detail: 2,
+    name: 2,
+    initials: 2,
+    additional_info: 2,
+    min_order_amount: 3,
+    max_order_amount: 3,
+    daily_limit: 3,
+    daily_successful_orders_limit: 3,
+    monthly_limit: 3,
+    monthly_successful_orders_limit: 3,
+    monthly_limit_reset_day: 3,
+    max_pending_orders_quantity: 3,
+    order_interval_minutes: 3,
+    payment_detail_schedule_id: 3,
+    is_active: 4,
+};
+
+const detailFieldLabels = {
+    card: 'Карта',
+    phone: 'Номер телефона',
+    mobile_commerce: 'Номер телефона',
+    account_number: 'Номер счета',
+    iban_uah: 'Номер счета IBAN',
+    'e-com': 'Ссылка E-COM',
+};
+
+const detailFieldLabel = computed(() => detailFieldLabels[selectedDetailType.value] ?? 'Реквизит');
+const isPhoneLikeDetail = computed(() => ['phone', 'mobile_commerce'].includes(selectedDetailType.value));
+const isEcomDetail = computed(() => selectedDetailType.value === 'e-com');
+
+const detailFilled = computed(() => {
+    const type = selectedDetailType.value;
+    if (!type) {
+        return false;
+    }
+    return String(details.value[type] ?? '').trim().length > 0;
+});
+
+const canGoNext = computed(() => {
+    if (currentStep.value === 1) {
+        return !!form.value.currency && !!selectedDetailType.value;
+    }
+    if (currentStep.value === 2) {
+        return normalizeGatewaySelection(form.value.payment_gateway_ids).length > 0 && detailFilled.value;
+    }
+    return true;
+});
+
+const isLastStep = computed(() => currentStep.value >= totalSteps);
+
+const goToStep = (id) => {
+    if (id < currentStep.value) {
+        currentStep.value = id;
+    }
+};
+
+const goNext = () => {
+    if (!canGoNext.value) {
+        return;
+    }
+    if (currentStep.value < totalSteps) {
+        currentStep.value += 1;
+    }
+};
+
+const goBack = () => {
+    if (currentStep.value > 1) {
+        currentStep.value -= 1;
+    }
+};
+
+const selectedDeviceName = computed(() => {
+    const id = Number(form.value.user_device_id);
+    if (!id) {
+        return canWorkWithoutDevice.value ? 'Ручной режим' : '—';
+    }
+    return devices.value.find((device) => Number(device.id) === id)?.name ?? '—';
+});
+
+const detailPreview = computed(() => {
+    const type = selectedDetailType.value;
+    if (!type) {
+        return '—';
+    }
+    return details.value[type] || '—';
+});
+
+const formatLimitPreview = (value, suffix = '') => {
+    if (value === '' || value === null || value === undefined) {
+        return 'без ограничения';
+    }
+    return suffix ? `${value} ${suffix}` : `${value}`;
+};
+
+const onDetailInput = (event) => {
+    if (isEcomDetail.value) {
+        errors.value.detail = null;
+        return;
+    }
+    formatDetailField(selectedDetailType.value, event.target.value);
+};
+
 const availableCurrencies = computed(() => {
     const currencies = [...new Set(payment_gateways.value.map(pg => pg.currency))];
     return currencies.map(currency => ({
@@ -293,6 +411,9 @@ const clampOrderRangeToGatewayLimits = () => {
 watch(selectedDetailType, (newType) => {
     form.value.payment_gateway_ids = [];
     form.value.detail_type = newType;
+    if (!newType && currentStep.value > 1) {
+        currentStep.value = 1;
+    }
     if (newType !== 'iban_uah') {
         form.value.additional_info = '';
     }
@@ -349,6 +470,7 @@ const resetState = () => {
     };
     selectedDetailType.value = null;
     activeHelpKey.value = 'currency';
+    currentStep.value = 1;
     errors.value = {};
     devices.value = [];
     payment_gateways.value = [];
@@ -412,8 +534,19 @@ const submit = () => {
             processing.value = false;
             if (error.response && error.response.data && error.response.data.errors) {
                 errors.value = error.response.data.errors;
+                goToFirstStepWithError();
             }
         });
+};
+
+const goToFirstStepWithError = () => {
+    const steps = Object.keys(errors.value)
+        .map((field) => fieldStepMap[field])
+        .filter((step) => Number.isFinite(step));
+
+    if (steps.length) {
+        currentStep.value = Math.min(...steps);
+    }
 };
 
 watch(
@@ -436,8 +569,30 @@ watch(
             <div v-if="loading" class="py-6 text-center">
                 <span class="loading loading-spinner loading-md"></span>
             </div>
-            <form v-else @submit.prevent="submit" class="space-y-6">
-                <div class="rounded-box border border-base-300 p-4">
+            <form v-else @submit.prevent="isLastStep ? submit() : goNext()" class="space-y-6">
+                <div class="rounded-box border border-base-300 bg-base-200/40 p-3">
+                    <ul class="steps steps-horizontal w-full text-xs sm:text-sm">
+                        <li
+                            v-for="step in stepsMeta"
+                            :key="step.id"
+                            class="step"
+                            :class="[
+                                step.id <= currentStep ? 'step-primary' : '',
+                                step.id < currentStep ? 'cursor-pointer' : '',
+                            ]"
+                            :data-content="step.id < currentStep ? '✓' : String(step.id)"
+                            @click="goToStep(step.id)"
+                        >
+                            <span class="font-medium">{{ step.title }}</span>
+                        </li>
+                    </ul>
+                    <p class="mt-2 text-center text-xs text-base-content/60">
+                        Шаг {{ currentStep }} из {{ totalSteps }} — {{ stepsMeta[currentStep - 1].subtitle }}
+                    </p>
+                </div>
+
+                <!-- Step 1: Основа -->
+                <div v-show="currentStep === 1" class="rounded-box border border-base-300 p-4">
                     <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                         <span>Параметры реквизита</span>
                         <FieldHint :text="paymentDetailSectionHints.parameters" :class="desktopHintClass" />
@@ -492,6 +647,8 @@ watch(
                 </div>
 
                 <template v-if="selectedDetailType">
+                    <!-- Step 2: Реквизит и получатель -->
+                    <div v-show="currentStep === 2" class="space-y-6">
                     <div class="rounded-box border border-base-300 p-4 space-y-4">
                         <div class="flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Платежные данные</span>
@@ -574,155 +731,38 @@ watch(
                                 </div>
                             </div>
                         </div>
-                        <div v-if="selectedDetailType === 'phone'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
+                        <div @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
                             <InputLabel
                                 for="detail"
-                                value="Номер телефона"
+                                :value="detailFieldLabel"
                                 :error="!!errors.detail?.[0]"
                                 :hint="currentDetailHint"
                                 :hint-class="desktopHintClass"
                             />
-                            <div class="join mt-1 w-full">
+                            <div v-if="isPhoneLikeDetail" class="join mt-1 w-full">
                                 <div class="join-item flex min-w-20 items-center justify-center rounded-s-field border border-base-300 bg-base-200 px-3 text-sm font-medium text-base-content/70">
                                     {{ currentDetailInputMeta.prefix }}
                                 </div>
                                 <TextInput
                                     id="detail"
-                                    v-model="details['phone']"
+                                    v-model="details[selectedDetailType]"
                                     type="text"
                                     class="join-item block w-full"
                                     :placeholder="currentDetailInputMeta.placeholder"
                                     :error="!!errors.detail?.[0]"
-                                    @input="formatDetailField('phone', $event.target.value)"
+                                    @input="onDetailInput"
                                     :disabled="processing"
                                 />
                             </div>
-                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
-                                <span>{{ currentDetailInputMeta.helper }}</span>
-                            </div>
-                            <InputError :message="errors.detail?.[0]" class="mt-2" />
-                        </div>
-                        <div v-if="selectedDetailType === 'mobile_commerce'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
-                            <InputLabel
-                                for="detail"
-                                value="Номер телефона"
-                                :error="!!errors.detail?.[0]"
-                                :hint="currentDetailHint"
-                                :hint-class="desktopHintClass"
-                            />
-                            <div class="join mt-1 w-full">
-                                <div class="join-item flex min-w-20 items-center justify-center rounded-s-field border border-base-300 bg-base-200 px-3 text-sm font-medium text-base-content/70">
-                                    {{ currentDetailInputMeta.prefix }}
-                                </div>
-                                <TextInput
-                                    id="detail"
-                                    v-model="details['mobile_commerce']"
-                                    type="text"
-                                    class="join-item block w-full"
-                                    :placeholder="currentDetailInputMeta.placeholder"
-                                    :error="!!errors.detail?.[0]"
-                                    @input="formatDetailField('mobile_commerce', $event.target.value)"
-                                    :disabled="processing"
-                                />
-                            </div>
-                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
-                                <span>{{ currentDetailInputMeta.helper }}</span>
-                            </div>
-                            <InputError :message="errors.detail?.[0]" class="mt-2" />
-                        </div>
-                        <div v-if="selectedDetailType === 'card'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
-                            <InputLabel
-                                for="detail"
-                                value="Карта"
-                                :error="!!errors.detail?.[0]"
-                                :hint="currentDetailHint"
-                                :hint-class="desktopHintClass"
-                            />
                             <TextInput
+                                v-else
                                 id="detail"
-                                v-model="details['card']"
-                                type="text"
+                                v-model="details[selectedDetailType]"
+                                :type="isEcomDetail ? 'url' : 'text'"
                                 class="mt-1 block w-full"
                                 :placeholder="currentDetailInputMeta.placeholder"
                                 :error="!!errors.detail?.[0]"
-                                @input="formatDetailField('card', $event.target.value)"
-                                :disabled="processing"
-                            />
-                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
-                                <span>{{ currentDetailInputMeta.helper }}</span>
-                            </div>
-                            <InputError :message="errors.detail?.[0]" class="mt-2" />
-                        </div>
-
-                        <div v-if="selectedDetailType === 'account_number'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
-                            <InputLabel
-                                for="detail"
-                                value="Номер счета"
-                                :error="!!errors.detail?.[0]"
-                                :hint="currentDetailHint"
-                                :hint-class="desktopHintClass"
-                            />
-                            <TextInput
-                                id="detail"
-                                v-model="details['account_number']"
-                                type="text"
-                                class="mt-1 block w-full"
-                                :placeholder="currentDetailInputMeta.placeholder"
-                                :error="!!errors.detail?.[0]"
-                                @input="formatDetailField('account_number', $event.target.value)"
-                                :disabled="processing"
-                            />
-                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
-                                <span>{{ currentDetailInputMeta.helper }}</span>
-                            </div>
-                            <InputError :message="errors.detail?.[0]" class="mt-2" />
-                        </div>
-
-                        <div v-if="selectedDetailType === 'iban_uah'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
-                            <InputLabel
-                                for="detail"
-                                value="Номер счета IBAN"
-                                :error="!!errors.detail?.[0]"
-                                :hint="currentDetailHint"
-                                :hint-class="desktopHintClass"
-                            />
-                            <TextInput
-                                id="detail"
-                                v-model="details['iban_uah']"
-                                type="text"
-                                class="mt-1 block w-full"
-                                :placeholder="currentDetailInputMeta.placeholder"
-                                :error="!!errors.detail?.[0]"
-                                @input="formatDetailField('iban_uah', $event.target.value)"
-                                :disabled="processing"
-                            />
-                            <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                                <span class="badge badge-soft badge-info badge-sm">{{ currentDetailInputMeta.badge }}</span>
-                                <span>{{ currentDetailInputMeta.helper }}</span>
-                            </div>
-                            <InputError :message="errors.detail?.[0]" class="mt-2" />
-                        </div>
-
-                        <div v-if="selectedDetailType === 'e-com'" @mouseenter="setActiveHelp('detail')" @focusin="setActiveHelp('detail')">
-                            <InputLabel
-                                for="detail"
-                                value="Ссылка E-COM"
-                                :error="!!errors.detail?.[0]"
-                                :hint="currentDetailHint"
-                                :hint-class="desktopHintClass"
-                            />
-                            <TextInput
-                                id="detail"
-                                v-model="details['e-com']"
-                                type="url"
-                                class="mt-1 block w-full"
-                                :placeholder="currentDetailInputMeta.placeholder"
-                                :error="!!errors.detail?.[0]"
-                                @input="errors.detail = null"
+                                @input="onDetailInput"
                                 :disabled="processing"
                             />
                             <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
@@ -799,7 +839,10 @@ watch(
                             </div>
                         </div>
                     </div>
+                    </div>
 
+                    <!-- Step 3: Лимиты и расписание -->
+                    <div v-show="currentStep === 3" class="space-y-6">
                     <div
                         v-if="canSetOrderAmountLimits"
                         class="rounded-box border border-base-300 p-4"
@@ -1017,7 +1060,10 @@ watch(
                         :disabled="processing"
                         @clear-error="(field) => (errors[field] = null)"
                     />
+                    </div>
 
+                    <!-- Step 4: Проверка и сохранение -->
+                    <div v-show="currentStep === 4" class="space-y-6">
                     <div class="rounded-box border border-base-300 p-4">
                         <div class="mb-3 flex flex-wrap items-center gap-1.5 text-sm font-medium">
                             <span>Состояние реквизита</span>
@@ -1035,12 +1081,90 @@ watch(
                             <input type="checkbox" class="toggle toggle-primary" v-model="form.is_active" :disabled="processing" />
                         </label>
                     </div>
+
+                    <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+                        <div class="mb-3 text-sm font-medium">Сводка реквизита</div>
+                        <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Валюта</dt>
+                                <dd class="font-medium">{{ form.currency?.toUpperCase() || '—' }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Тип реквизита</dt>
+                                <dd class="font-medium">{{ detail_type_names[selectedDetailType] ?? '—' }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Платежный метод</dt>
+                                <dd class="font-medium text-right">{{ selectedPaymentGateway?.name ?? '—' }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Обработка</dt>
+                                <dd class="font-medium text-right">{{ selectedDeviceName }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1 sm:col-span-2">
+                                <dt class="text-base-content/60">{{ detailFieldLabel }}</dt>
+                                <dd class="font-medium text-right break-all">{{ detailPreview }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Получатель</dt>
+                                <dd class="font-medium text-right">{{ form.initials || '—' }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Никнейм</dt>
+                                <dd class="font-medium text-right">{{ form.name || '—' }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Сумма сделки</dt>
+                                <dd class="font-medium text-right">
+                                    {{ formatLimitPreview(form.min_order_amount) }} — {{ formatLimitPreview(form.max_order_amount) }}
+                                </dd>
+                            </div>
+                            <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
+                                <dt class="text-base-content/60">Дневной объём</dt>
+                                <dd class="font-medium text-right">{{ formatLimitPreview(form.daily_limit) }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 py-1">
+                                <dt class="text-base-content/60">Месячный объём</dt>
+                                <dd class="font-medium text-right">{{ formatLimitPreview(form.monthly_limit) }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-3 py-1">
+                                <dt class="text-base-content/60">Статус</dt>
+                                <dd>
+                                    <span class="badge badge-sm" :class="form.is_active ? 'badge-success badge-outline' : 'badge-ghost'">
+                                        {{ form.is_active ? 'Включен' : 'Выключен' }}
+                                    </span>
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                    </div>
                 </template>
             </form>
         </ModalBody>
         <ModalFooter>
+            <button v-if="currentStep > 1" @click="goBack" type="button" class="btn btn-sm btn-ghost" :disabled="processing">
+                Назад
+            </button>
             <button @click="close" type="button" class="btn btn-sm">Отмена</button>
-            <button @click="submit" type="button" class="btn btn-sm btn-primary" :class="{ 'btn-disabled': processing }" :disabled="processing">
+            <button
+                v-if="!isLastStep"
+                @click="goNext"
+                type="button"
+                class="btn btn-sm btn-primary"
+                :class="{ 'btn-disabled': !canGoNext }"
+                :disabled="!canGoNext"
+            >
+                Далее
+            </button>
+            <button
+                v-else
+                @click="submit"
+                type="button"
+                class="btn btn-sm btn-primary"
+                :class="{ 'btn-disabled': processing }"
+                :disabled="processing"
+            >
+                <span v-if="processing" class="loading loading-spinner loading-xs"></span>
                 Сохранить
             </button>
         </ModalFooter>

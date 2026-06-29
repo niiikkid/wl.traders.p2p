@@ -1,13 +1,9 @@
 <script setup>
 import { computed } from 'vue';
-import ViewModeSwitcher from '@/Layouts/Partials/ViewModeSwitcher.vue';
 import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
-import { useUserStore } from '@/store/user.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
 import WalletIcon from '@/Layouts/Partials/Icons/WalletIcon.vue';
 import UsersIcon from '@/Layouts/Partials/Icons/UsersIcon.vue';
-
-const userStore = useUserStore();
 
 const items = computed(() => [
     {
@@ -35,9 +31,5 @@ const items = computed(() => [
 </script>
 
 <template>
-    <SidebarMenu :items="items">
-        <template #prepend>
-            <ViewModeSwitcher v-if="userStore.isAdmin" class="mb-2" />
-        </template>
-    </SidebarMenu>
+    <SidebarMenu :items="items" />
 </template>

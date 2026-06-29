@@ -1,10 +1,8 @@
 <script setup>
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import ViewModeSwitcher from '@/Layouts/Partials/ViewModeSwitcher.vue';
 import OnlineSwitcher from '@/Layouts/Partials/OnlineSwitcher.vue';
 import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
-import { useUserStore } from '@/store/user.js';
 import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
 import BellIcon from '@/Layouts/Partials/Icons/BellIcon.vue';
@@ -15,7 +13,6 @@ import DisputesIcon from '@/Layouts/Partials/Icons/DisputesIcon.vue';
 import WalletIcon from '@/Layouts/Partials/Icons/WalletIcon.vue';
 import AutomationIcon from '@/Layouts/Partials/Icons/AutomationIcon.vue';
 
-const userStore = useUserStore();
 const { menu } = useMenuCounters();
 const payoutsEnabled = computed(() => !!usePage().props.auth?.user?.payouts_enabled);
 
@@ -91,7 +88,6 @@ const items = computed(() => [
 <template>
     <SidebarMenu :items="items">
         <template #prepend>
-            <ViewModeSwitcher v-if="userStore.isAdmin" class="mb-2" />
             <li class="not-prose mb-3 mt-0.5 min-w-0 py-0.5">
                 <OnlineSwitcher />
             </li>

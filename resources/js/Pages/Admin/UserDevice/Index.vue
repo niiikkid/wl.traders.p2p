@@ -4,16 +4,16 @@ import {computed, ref} from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AutomationNav from '@/Components/Admin/AutomationNav.vue';
 import MainTableSection from '@/Wrappers/MainTableSection.vue';
-import DateTime from '@/Components/DateTime.vue';
 import DeviceConnectSnapshotModal from '@/Modals/DeviceConnectSnapshotModal.vue';
-import DataTable from '@/Components/Table/DataTable.vue';
-import DataCardList from '@/Components/Table/DataCardList.vue';
-import DataCard from '@/Components/Table/DataCard.vue';
+import UserDeviceCard from '@/Components/Device/UserDeviceCard.vue';
+import { useDevicesAutoRefresh } from '@/composables/useDevicesAutoRefresh.js';
 
 defineOptions({ layout: AuthenticatedLayout })
 
 const page = usePage();
 const devices = computed(() => page.props.devices);
+
+useDevicesAutoRefresh(['devices']);
 
 const snapshotModalOpen = ref(false);
 const snapshotDeviceId = ref(null);
@@ -31,14 +31,6 @@ const processingModeClass = (device) => {
     return device.user?.sms_auto_close_orders_enabled ? 'badge-success' : 'badge-warning';
 };
 
-const shortToken = (token) => {
-    if (!token) {
-        return '—';
-    }
-
-    return `${token.slice(0, 8)}...${token.slice(-6)}`;
-};
-
 const openSnapshotModal = (device) => {
     snapshotDeviceId.value = device.id;
     snapshotDeviceName.value = device.name ?? '';
@@ -49,40 +41,6 @@ const closeSnapshotModal = () => {
     snapshotModalOpen.value = false;
     snapshotDeviceId.value = null;
     snapshotDeviceName.value = '';
-};
-
-const copyToClipboard = async (text) => {
-    if (!text) {
-        return;
-    }
-
-    const notifyOk = () => alert('Токен скопирован в буфер обмена');
-
-    try {
-        if (navigator.clipboard?.writeText) {
-            await navigator.clipboard.writeText(text);
-            notifyOk();
-            return;
-        }
-    } catch {
-        // Fallback below handles restricted clipboard access.
-    }
-
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-
-    const isCopied = document.execCommand('copy');
-    document.body.removeChild(textarea);
-
-    if (isCopied) {
-        notifyOk();
-    }
 };
 </script>
 
@@ -96,120 +54,30 @@ const copyToClipboard = async (text) => {
             </template>
 
             <template #body>
-                <div class="relative">
-                    <DataTable table-class="table-xs">
-                        <template #head>
-                                    <th scope="col" class="px-3 py-2">ID</th>
-                                    <th scope="col" class="px-3 py-2">Трейдер</th>
-                                    <th scope="col" class="px-3 py-2">Название</th>
-                                    <th scope="col" class="px-3 py-2">Токен</th>
-                                    <th scope="col" class="px-3 py-2">Статус</th>
-                                    <th scope="col" class="px-3 py-2">Режим</th>
-                                    <th scope="col" class="px-3 py-2">Последний пинг</th>
-                                    <th scope="col" class="px-3 py-2">Подключен</th>
-                                    <th scope="col" class="px-3 py-2 text-right">Снимок</th>
-                        </template>
-                                <tr v-for="device in devices.data" :key="device.id">
-                                    <td class="px-3 py-2 font-medium text-base-content">{{ device.id }}</td>
-                                    <td class="px-3 py-2">
-                                        <span class="font-medium text-base-content">{{ device.user?.email ?? '—' }}</span>
-                                    </td>
-                                    <td class="px-3 py-2 font-medium whitespace-nowrap text-base-content">{{ device.name }}</td>
-                                    <td class="px-3 py-2">
-                                        <button
-                                            type="button"
-                                            class="btn btn-ghost btn-xs font-mono"
-                                            :title="device.token"
-                                            @click="copyToClipboard(device.token)"
-                                        >
-                                            {{ shortToken(device.token) }}
-                                        </button>
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <span :class="['badge', 'badge-sm', device.android_id ? 'badge-success' : 'badge-warning']" class="text-nowrap">
-                                            {{ device.android_id ? 'Подключено' : 'Не подключено' }}
-                                        </span>
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <span :class="['badge', 'badge-sm', processingModeClass(device)]" :title="processingModeTitle(device)">
-                                            {{ processingModeShortTitle(device) }}
-                                        </span>
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <DateTime v-if="device.latest_ping_at" :data="device.latest_ping_at" :plural="true" />
-                                        <span v-else>нет данных</span>
-                                    </td>
-                                    <td class="px-3 py-2">
-                                        <DateTime v-if="device.connected_at" :data="device.connected_at" />
-                                        <span v-else>нет данных</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-right">
-                                        <button
-                                            type="button"
-                                            class="btn btn-outline btn-xs"
-                                            :disabled="! device.has_connect_snapshot"
-                                            @click="openSnapshotModal(device)"
-                                        >
-                                            Просмотр
-                                        </button>
-                                    </td>
-                                </tr>
-                    </DataTable>
+                <div
+                    v-if="!devices.data?.length"
+                    class="rounded-2xl border border-dashed border-base-content/15 bg-base-100 p-8 text-center shadow-sm"
+                >
+                    <p class="text-sm text-base-content/60">
+                        Подключённых устройств пока нет.
+                    </p>
+                </div>
 
-                    <DataCardList>
-                            <DataCard
-                                v-for="device in devices.data"
-                                :key="device.id"
-                                body-class="p-3 gap-2"
-                            >
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="min-w-0">
-                                        <div class="text-xs text-base-content/60">ID: {{ device.id }}</div>
-                                        <div class="font-medium text-base-content truncate">{{ device.name }}</div>
-                                        <div class="text-sm text-base-content/70 truncate">{{ device.user?.email ?? '—' }}</div>
-                                    </div>
-                                    <span :class="['badge', 'badge-sm', device.android_id ? 'badge-success' : 'badge-warning']" class="text-nowrap">
-                                        {{ device.android_id ? 'Подключено' : 'Не подключено' }}
-                                    </span>
-                                </div>
-
-                                <div class="grid gap-2 text-sm">
-                                    <div>
-                                        <div class="text-xs text-base-content/70">Токен</div>
-                                        <button
-                                            type="button"
-                                            class="btn btn-ghost btn-xs px-0 font-mono"
-                                            :title="device.token"
-                                            @click="copyToClipboard(device.token)"
-                                        >
-                                            {{ shortToken(device.token) }}
-                                        </button>
-                                    </div>
-                                    <div class="flex items-center justify-between gap-2">
-                                        <span class="text-base-content/70">Режим</span>
-                                        <span :class="['badge', 'badge-sm', processingModeClass(device)]" :title="processingModeTitle(device)">
-                                            {{ processingModeShortTitle(device) }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center justify-between gap-2">
-                                        <span class="text-base-content/70">Пинг</span>
-                                        <DateTime v-if="device.latest_ping_at" :data="device.latest_ping_at" :plural="true" />
-                                        <span v-else>нет данных</span>
-                                    </div>
-                                </div>
-
-                                <div class="flex justify-end pt-1">
-                                    <button
-                                        type="button"
-                                        class="btn btn-outline btn-xs"
-                                        :disabled="! device.has_connect_snapshot"
-                                        @click="openSnapshotModal(device)"
-                                    >
-                                        Снимок устройства
-                                    </button>
-                                </div>
-                            </DataCard>
-                    </DataCardList>
+                <div
+                    v-else
+                    class="grid grid-cols-1 gap-4 xl:grid-cols-2"
+                >
+                    <UserDeviceCard
+                        v-for="device in devices.data"
+                        :key="device.id"
+                        :device="device"
+                        show-trader
+                        :show-ping-activity="false"
+                        :processing-mode-short-title="processingModeShortTitle(device)"
+                        :processing-mode-class="processingModeClass(device)"
+                        :processing-mode-title="processingModeTitle(device)"
+                        @show-snapshot="openSnapshotModal"
+                    />
                 </div>
             </template>
         </MainTableSection>

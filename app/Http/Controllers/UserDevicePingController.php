@@ -23,8 +23,9 @@ class UserDevicePingController extends Controller
 
         $now = CarbonImmutable::now();
         $currentBucket = UserDevicePing::toBucket5s($now);
-        // Ровно 720 ячеек: последние 60 минут, включая текущий бакет
-        $startBucket = $currentBucket - 719;
+        $minutes = min(60, max(1, (int) $request->integer('minutes', 60)));
+        $bucketCount = $minutes * 12;
+        $startBucket = $currentBucket - ($bucketCount - 1);
 
         $pings = UserDevicePing::query()
             ->where('user_device_id', $device->id)

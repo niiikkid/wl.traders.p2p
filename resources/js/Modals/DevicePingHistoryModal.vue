@@ -40,7 +40,10 @@ const fetchPings = async () => {
     errorMessage.value = '';
 
     try {
-        const { data } = await window.axios.get(route('trader.devices.pings', { device: props.device.id }));
+        const { data } = await window.axios.get(
+            route('trader.devices.pings', { device: props.device.id }),
+            { params: { minutes: 60 } },
+        );
         const items = Array.isArray(data.data?.items) ? data.data.items : [];
         pings.value = items.map((item) => ({ ok: !!item.ok, bucket: item.bucket }));
     } catch {

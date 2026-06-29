@@ -2,9 +2,10 @@
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import {nextTick, onMounted, ref} from "vue";
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import CopyPaymentText from "@/Components/CopyPaymentText.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
+import DateTime from "@/Components/DateTime.vue";
 import {useModalStore} from "@/store/modal.js";
+import {useAppClipboard} from "@/composables/useAppClipboard.js";
 import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 
 defineOptions({layout: AuthenticatedLayout});
@@ -12,7 +13,32 @@ defineOptions({layout: AuthenticatedLayout});
 const SOUND_EVENT_KEYS = ['order_assigned', 'dispute_opened', 'message_received'];
 
 const modalStore = useModalStore();
+const {copy, copied} = useAppClipboard();
 const telegramAccount = ref(usePage().props.telegramAccount ?? {});
+
+const telegramNotificationTypes = [
+    'Новые сделки',
+    'Открытые споры',
+    'Сообщения с устройств',
+    'Низкий trust-баланс',
+    'Доступные выплаты',
+    'Запросы на вывод',
+];
+
+const telegramLinkSteps = [
+    {
+        title: 'Обновите ссылку',
+        description: 'Ссылка персональная и привязывается только к вашему аккаунту.',
+    },
+    {
+        title: 'Откройте Telegram',
+        description: 'Перейдите в бота и нажмите «Start» или «Запустить».',
+    },
+    {
+        title: 'Готово',
+        description: 'После подтверждения уведомления включатся автоматически.',
+    },
+];
 const audioTracks = ref(usePage().props.audioTracks ?? []);
 const notificationSoundSettings = ref(usePage().props.notificationSoundSettings ?? {});
 const showInAppSoundSettings = ref(usePage().props.showInAppSoundSettings ?? false);
@@ -243,53 +269,175 @@ router.on('success', () => {
                     class="card bg-base-100 shadow"
                     :class="showInAppSoundSettings ? 'xl:col-start-2 xl:row-start-1' : ''"
                 >
-                    <div class="card-body space-y-4">
-                        <div v-if="!telegramAccount.is_active" class="alert alert-info text-sm">
-                            Чтобы получать уведомления в Telegram, привяжите бота через ссылку ниже. После привязки уведомления включатся автоматически.
+                    <div class="card-body gap-5">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex min-w-0 items-start gap-3">
+                                <div
+                                    class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#2AABEE]/15 text-[#2AABEE]"
+                                    aria-hidden="true"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                        <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h3 class="card-title text-lg">Telegram</h3>
+                                    <p class="text-sm text-base-content/70">
+                                        Мгновенные уведомления о важных событиях в панели — отдельно от звуков в браузере.
+                                    </p>
+                                </div>
+                            </div>
+                            <span
+                                class="badge shrink-0 whitespace-nowrap"
+                                :class="telegramAccount.is_active ? 'badge-success' : 'badge-warning'"
+                            >
+                                {{ telegramAccount.is_active ? 'Подключён' : 'Не подключён' }}
+                            </span>
                         </div>
-                        <h3 class="text-lg font-semibold">Telegram</h3>
+
+                        <div
+                            v-if="telegramAccount.is_active"
+                            class="rounded-box border border-success/25 bg-success/5 p-4"
+                        >
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <div class="space-y-1">
+                                    <div class="text-xs text-base-content/60">Бот</div>
+                                    <div class="text-sm font-medium">
+                                        <span v-if="telegramAccount.bot_username">@{{ telegramAccount.bot_username }}</span>
+                                        <span v-else class="text-base-content/50">—</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="text-xs text-base-content/60">Привязан</div>
+                                    <div class="text-sm font-medium">
+                                        <DateTime
+                                            v-if="telegramAccount.linked_at"
+                                            :data="telegramAccount.linked_at"
+                                            :simple="true"
+                                            :copyable="false"
+                                        />
+                                        <span v-else class="text-base-content/50">—</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-else class="space-y-4">
+                            <div class="rounded-box border border-base-300 bg-base-200/40 p-4">
+                                <p class="mb-3 text-sm font-medium">Как подключить</p>
+                                <ol class="space-y-3">
+                                    <li
+                                        v-for="(step, index) in telegramLinkSteps"
+                                        :key="step.title"
+                                        class="flex gap-3"
+                                    >
+                                        <span
+                                            class="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+                                            :class="index === 0 ? 'bg-primary text-primary-content' : 'bg-base-300 text-base-content/70'"
+                                        >
+                                            {{ index + 1 }}
+                                        </span>
+                                        <div class="min-w-0 pt-0.5">
+                                            <p class="text-sm font-medium leading-snug">{{ step.title }}</p>
+                                            <p class="text-xs text-base-content/60">{{ step.description }}</p>
+                                        </div>
+                                    </li>
+                                </ol>
+                            </div>
+
+                            <div v-if="telegramAccount.start_link" class="space-y-2">
+                                <label class="text-xs font-medium text-base-content/70" for="telegram-start-link">
+                                    Персональная ссылка для привязки
+                                </label>
+                                <div class="relative">
+                                    <input
+                                        id="telegram-start-link"
+                                        type="text"
+                                        class="input input-bordered input-sm w-full truncate bg-base-200 pe-11 text-sm text-base-content/80"
+                                        :value="telegramAccount.start_link"
+                                        readonly
+                                        disabled
+                                    >
+                                    <button
+                                        type="button"
+                                        class="btn btn-ghost btn-xs btn-square absolute end-1.5 top-1/2 -translate-y-1/2"
+                                        :class="{'text-success': copied}"
+                                        :aria-label="copied ? 'Скопировано' : 'Скопировать ссылку'"
+                                        @click="copy(telegramAccount.start_link)"
+                                    >
+                                        <svg
+                                            v-if="!copied"
+                                            class="size-4"
+                                            aria-hidden="true"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="currentColor"
+                                            viewBox="0 0 18 20"
+                                        >
+                                            <path d="M16 1h-3.278A1.992 1.992 0 0 0 11 0H7a1.993 1.993 0 0 0-1.722 1H2a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2Zm-3 14H5a1 1 0 0 1 0-2h8a1 1 0 0 1 0 2Zm0-4H5a1 1 0 0 1 0-2h8a1 1 0 1 1 0 2Zm0-5H5a1 1 0 0 1 0-2h2V2h4v2h2a1 1 0 1 1 0 2Z"/>
+                                        </svg>
+                                        <svg
+                                            v-else
+                                            class="size-4"
+                                            aria-hidden="true"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 16 12"
+                                        >
+                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5.917 5.724 10.5 15 1.5"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-else class="alert alert-warning text-sm">
+                                <span>Бот не настроен. Укажите <code class="rounded bg-base-200 px-1">TELEGRAM_BOT_NAME</code>, чтобы сформировать ссылку привязки.</span>
+                            </div>
+                        </div>
+
                         <div class="space-y-2">
-                            <div class="flex items-center gap-2">
-                                <span class="badge" :class="telegramAccount.is_active ? 'badge-success' : 'badge-warning'">
-                                    {{ telegramAccount.is_active ? 'Привязан' : 'Не привязан' }}
-                                </span>
-                                <span v-if="telegramAccount.bot_username" class="text-sm text-base-content/70">
-                                    @{{ telegramAccount.bot_username }}
+                            <p class="text-xs font-medium text-base-content/60">Что приходит в Telegram</p>
+                            <div class="flex flex-wrap gap-1.5">
+                                <span
+                                    v-for="type in telegramNotificationTypes"
+                                    :key="type"
+                                    class="badge badge-sm badge-outline"
+                                >
+                                    {{ type }}
                                 </span>
                             </div>
-                            <div v-if="!telegramAccount.is_active && telegramAccount.start_link" class="flex flex-wrap items-center gap-3">
-                                <a
+                        </div>
+
+                        <div class="card-actions justify-end gap-2 pt-1">
+                            <button
+                                v-if="telegramAccount.is_active"
+                                type="button"
+                                class="btn btn-sm btn-outline btn-error"
+                                :disabled="telegramForm.processing"
+                                @click.prevent="unlinkTelegram"
+                            >
+                                Отвязать бота
+                            </button>
+                            <template v-else>
+                                <button
+                                    type="button"
                                     class="btn btn-sm btn-outline"
+                                    :class="{'loading': telegramForm.processing}"
+                                    :disabled="telegramForm.processing"
+                                    @click.prevent="refreshTelegramLink"
+                                >
+                                    Обновить ссылку
+                                </button>
+                                <a
+                                    v-if="telegramAccount.start_link"
+                                    class="btn btn-sm btn-primary"
                                     :href="telegramAccount.start_link"
                                     target="_blank"
                                     rel="noopener"
                                 >
                                     Открыть Telegram
                                 </a>
-                                <CopyPaymentText text="Скопировать ссылку" :copy_text="telegramAccount.start_link" />
-                            </div>
-                            <div v-else-if="!telegramAccount.is_active" class="text-sm text-base-content/70">
-                                Укажите `TELEGRAM_BOT_NAME`, чтобы сформировать ссылку привязки.
-                            </div>
+                            </template>
                         </div>
-                        <button
-                            v-if="telegramAccount.is_active"
-                            type="button"
-                            class="btn btn-sm btn-outline btn-error"
-                            :disabled="telegramForm.processing"
-                            @click.prevent="unlinkTelegram"
-                        >
-                            Отвязать бота
-                        </button>
-                        <button
-                            v-else
-                            type="button"
-                            class="btn btn-sm btn-primary"
-                            :disabled="telegramForm.processing"
-                            @click.prevent="refreshTelegramLink"
-                        >
-                            Обновить ссылку
-                        </button>
                     </div>
                 </div>
             </div>

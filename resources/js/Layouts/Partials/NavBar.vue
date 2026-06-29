@@ -2,12 +2,15 @@
 import {Link, router, usePage} from "@inertiajs/vue3";
 import {computed, ref} from "vue";
 import {useViewStore} from "@/store/view.js";
+import {useUserStore} from "@/store/user.js";
+import ViewModeSwitcher from "@/Layouts/Partials/ViewModeSwitcher.vue";
 import UserAvatar from "@/Components/User/UserAvatar.vue";
 import NewsDropdown from "@/Components/News/NewsDropdown.vue";
 import NewsCreateModal from "@/Components/News/NewsCreateModal.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 
 const viewStore = useViewStore();
+const userStore = useUserStore();
 
 const wallet = ref(usePage().props.data.wallet);
 
@@ -147,15 +150,15 @@ router.on('success', () => {
                             tabindex="0"
                             type="button"
                             role="button"
-                            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
+                            class="btn btn-ghost normal-case h-auto min-h-0 px-2.5 py-1.5 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
                         >
                             <div class="flex items-center justify-center gap-2">
-                                <svg class="w-6 h-6 text-primary shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5 text-primary shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8H5m12 0a1 1 0 0 1 1 1v2.6M17 8l-4-4M5 8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.6M5 8l4-4 4 4m6 4h-4a2 2 0 1 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1Z"/>
                                 </svg>
-                                <div class="font-semibold text-base-content text-nowrap flex items-center gap-2">
-                                    <span class="text-lg leading-none">{{ walletFormated.merchant_balance }}</span>
-                                    <span class="badge badge-ghost">USDT</span>
+                                <div class="font-semibold text-base-content text-nowrap flex items-center gap-1.5">
+                                    <span class="text-base leading-none">{{ walletFormated.merchant_balance }}</span>
+                                    <span class="badge badge-ghost badge-sm">USDT</span>
                                 </div>
                             </div>
                         </button>
@@ -176,31 +179,22 @@ router.on('success', () => {
                         </div>
                     </div>
                 </div>
-                <div v-show="viewStore.isTraderViewMode" class="lg:flex items-center hidden text-nowrap">
+                <div v-show="viewStore.isTraderViewMode" class="lg:block hidden">
                     <div class="dropdown dropdown-end">
                         <button
                             tabindex="0"
                             type="button"
                             role="button"
-                            class="btn btn-ghost normal-case h-auto min-h-0 px-3 py-2 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
+                            class="btn btn-ghost normal-case h-auto min-h-0 px-2.5 py-1.5 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
                         >
                             <div class="flex items-center justify-center gap-2">
-                                <svg class="w-6 h-6 text-primary shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                <svg class="w-5 h-5 text-primary shrink-0" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8H5m12 0a1 1 0 0 1 1 1v2.6M17 8l-4-4M5 8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.6M5 8l4-4 4 4m6 4h-4a2 2 0 1 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1Z"/>
                                 </svg>
-                                <div class="font-semibold text-base-content text-nowrap flex items-center gap-2">
-                                    <span class="text-lg leading-none">{{ walletFormated.trust_balance }}</span>
-                                    <span class="badge badge-ghost">USDT</span>
+                                <div class="font-semibold text-base-content text-nowrap flex items-center gap-1.5">
+                                    <span class="text-base leading-none">{{ walletFormated.trust_balance }}</span>
+                                    <span class="badge badge-ghost badge-sm">USDT</span>
                                 </div>
-                                <span
-                                    v-if="!usesTeamLeaderSharedReserve"
-                                    class="inline-flex items-center text-sm px-3 py-1.5 rounded-full badge badge-outline"
-                                >
-                                    <svg class="w-4 h-4 mr-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v3m-3-6V7a3 3 0 1 1 6 0v4m-8 0h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/>
-                                    </svg>
-                                    {{ walletFormated.reserve_balance }} USDT
-                                </span>
                             </div>
                         </button>
                         <div tabindex="0" class="dropdown-content z-[60] mt-2 w-80 max-w-[calc(100vw-2rem)] card bg-base-100 border border-base-300 shadow">
@@ -252,6 +246,7 @@ router.on('success', () => {
                         </div>
                     </div>
                 </div>
+                <ViewModeSwitcher v-if="userStore.isAdmin" />
                 <NewsDropdown ref="newsDropdownRef" />
                 <button
                     v-if="canManageNews"
@@ -295,32 +290,13 @@ router.on('success', () => {
                                             <span class="badge badge-ghost badge-sm">USDT</span>
                                         </div>
                                     </div>
-                                    <div v-show="viewStore.isTraderViewMode">
-                                        <div class="flex items-center">
-                                            <svg class="w-5 h-5 text-primary mr-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8H5m12 0a1 1 0 0 1 1 1v2.6M17 8l-4-4M5 8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.6M5 8l4-4 4 4m6 4h-4a2 2 0 1 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1Z"/>
-                                            </svg>
-                                            <div class="font-semibold">
-                                                <span class="text-base text-base-content mr-1">{{ walletFormated.trust_balance }}</span>
-                                                <span class="badge badge-ghost badge-sm">USDT</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div v-show="viewStore.isTraderViewMode" class="flex items-center mt-2">
+                                    <div v-show="viewStore.isTraderViewMode" class="flex items-center">
                                         <svg class="w-5 h-5 text-primary mr-2" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
-                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14v3m-3-6V7a3 3 0 1 1 6 0v4m-8 0h10a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/>
+                                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8H5m12 0a1 1 0 0 1 1 1v2.6M17 8l-4-4M5 8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.6M5 8l4-4 4 4m6 4h-4a2 2 0 1 0 0 4h4a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1Z"/>
                                         </svg>
-                                        <div class="font-semibold">
-                                            <span
-                                                v-if="usesTeamLeaderSharedReserve"
-                                                class="badge badge-neutral badge-sm"
-                                            >
-                                                тимлидерский
-                                            </span>
-                                            <template v-else>
-                                                <span class="text-base text-base-content mr-1">{{ walletFormated.reserve_balance }}</span>
-                                                <span class="badge badge-ghost badge-sm">USDT</span>
-                                            </template>
+                                        <div class="font-semibold flex items-center gap-2">
+                                            <span class="text-base text-base-content">{{ walletFormated.trust_balance }}</span>
+                                            <span class="badge badge-ghost badge-sm">USDT</span>
                                         </div>
                                     </div>
                                 </div>

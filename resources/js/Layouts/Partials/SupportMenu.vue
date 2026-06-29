@@ -1,9 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import ViewModeSwitcher from '@/Layouts/Partials/ViewModeSwitcher.vue';
 import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
-import { useUserStore } from '@/store/user.js';
 import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import SupportUsersIcon from '@/Layouts/Partials/Icons/SupportUsersIcon.vue';
 import OrdersIcon from '@/Layouts/Partials/Icons/OrdersIcon.vue';
@@ -11,7 +9,6 @@ import DepositsIcon from '@/Layouts/Partials/Icons/DepositsIcon.vue';
 import DisputesIcon from '@/Layouts/Partials/Icons/DisputesIcon.vue';
 import PayoutsIcon from '@/Layouts/Partials/Icons/PayoutsIcon.vue';
 
-const userStore = useUserStore();
 const { menu } = useMenuCounters();
 const canViewDeposits = computed(() => !!usePage().props.auth?.user?.support_can_view_deposits);
 
@@ -63,9 +60,5 @@ const items = computed(() => [
 </script>
 
 <template>
-    <SidebarMenu :items="items">
-        <template #prepend>
-            <ViewModeSwitcher v-if="userStore.isAdmin" class="mb-2" />
-        </template>
-    </SidebarMenu>
+    <SidebarMenu :items="items" />
 </template>
