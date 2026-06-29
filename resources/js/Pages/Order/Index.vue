@@ -255,6 +255,16 @@ defineOptions({ layout: AuthenticatedLayout })
                             :options="filtersVariants.orderStatuses"
                             title="Статусы"
                         />
+                        <DropdownFilter
+                            v-if="viewStore.isTraderViewMode"
+                            name="hasDispute"
+                            title="Наличие спора"
+                        />
+                        <DropdownFilter
+                            v-if="viewStore.isTraderViewMode"
+                            name="disputeStatuses"
+                            title="Статусы споров"
+                        />
                     </FiltersPanel>
                 </div>
             </template>
@@ -285,7 +295,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                            
                                         </th>
                         </template>
-                                    <tr v-for="order in orders.data" class="bg-base-100 border-b last:border-none border-base-200">
+                                    <tr
+                                        v-for="order in orders.data"
+                                        :key="order.id"
+                                        class="border-b last:border-none border-base-200"
+                                        :class="order.has_pending_dispute ? 'bg-error/10 border-l-2 border-l-error' : 'bg-base-100'"
+                                    >
                                     <th scope="row" class="font-medium whitespace-nowrap text-gray-900 dark:text-gray-200">
                                         <div class="inline-flex items-center gap-1.5">
                                             <span
@@ -391,6 +406,8 @@ defineOptions({ layout: AuthenticatedLayout })
                             <DataCard
                                 v-for="order in orders.data"
                                 :key="order.id"
+                                :class="order.has_pending_dispute ? 'ring-1 ring-error/40 rounded-box' : ''"
+                                :body-class="order.has_pending_dispute ? 'p-4 pt-2 pb-3 bg-error/10 rounded-box' : 'p-4 pt-2 pb-3'"
                             >
                                     <!-- Компактная шапка: логотип, короткий реквизит, сумма и переключатель -->
                                     <div class="flex justify-between items-center border-b border-base-content/10">

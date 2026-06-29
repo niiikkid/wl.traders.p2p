@@ -2,39 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\TelegramAccountResource;
 use App\Models\Dispute;
 use App\Models\Order;
 use App\Models\SmsLog;
-use App\Models\UserMeta;
+use App\Services\Notification\NotificationSettingsPresenter;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class NotificationController extends Controller
 {
-    protected const DEFAULT_SOUND_TRACK = 'radwimps.mp3';
+    public function __construct(
+        protected NotificationSettingsPresenter $notificationSettingsPresenter
+    ) {}
 
     protected function buildIndexProps(Request $request): array
     {
-        $user = $request->user();
-        $isTrader = $user->hasRole('Trader');
-        $audioTracks = $isTrader ? $this->getAudioTracks() : [];
-
-        $telegramAccount = TelegramAccountResource::make(
-            services()->telegram()->getOrCreateForUser($user)
-        )->resolve();
-
-        return [
-            'telegramAccount' => $telegramAccount,
-            'showInAppSoundSettings' => $isTrader,
-            'audioTracks' => $audioTracks,
-            'notificationSoundSettings' => $isTrader
-                ? $this->buildNotificationSoundSettings($user->meta, $audioTracks)
-                : [],
-        ];
+        return $this->notificationSettingsPresenter->present($request->user());
     }
 
     protected function renderIndex(Request $request, string $view)
@@ -68,7 +53,7 @@ class NotificationController extends Controller
 
         abort_unless($user->hasRole('Trader'), 403);
 
-        $audioTracks = $this->getAudioTracks();
+        $audioTracks = $this->notificationSettingsPresenter->getAudioTracks();
         $allowedTracks = array_column($audioTracks, 'value');
 
         $validated = $request->validate([
@@ -87,11 +72,11 @@ class NotificationController extends Controller
             ['user_id' => $user->id],
             [
                 'notification_sound_order_enabled' => (bool) $settings['order_assigned']['enabled'],
-                'notification_sound_order_track' => $this->resolveSoundTrack($settings['order_assigned']['track'] ?? null, $audioTracks),
+                'notification_sound_order_track' => $this->notificationSettingsPresenter->resolveSoundTrack($settings['order_assigned']['track'] ?? null, $audioTracks),
                 'notification_sound_dispute_enabled' => (bool) $settings['dispute_opened']['enabled'],
-                'notification_sound_dispute_track' => $this->resolveSoundTrack($settings['dispute_opened']['track'] ?? null, $audioTracks),
+                'notification_sound_dispute_track' => $this->notificationSettingsPresenter->resolveSoundTrack($settings['dispute_opened']['track'] ?? null, $audioTracks),
                 'notification_sound_message_enabled' => (bool) $settings['message_received']['enabled'],
-                'notification_sound_message_track' => $this->resolveSoundTrack($settings['message_received']['track'] ?? null, $audioTracks),
+                'notification_sound_message_track' => $this->notificationSettingsPresenter->resolveSoundTrack($settings['message_received']['track'] ?? null, $audioTracks),
             ]
         );
 
@@ -113,70 +98,5 @@ class NotificationController extends Controller
                 )
                 ->max('id') ?? 0),
         ];
-    }
-
-    protected function buildNotificationSoundSettings(?UserMeta $meta, array $audioTracks): array
-    {
-        return [
-            'order_assigned' => [
-                'enabled' => $meta?->notification_sound_order_enabled ?? true,
-                'track' => $this->resolveSoundTrack($meta?->notification_sound_order_track, $audioTracks),
-            ],
-            'dispute_opened' => [
-                'enabled' => $meta?->notification_sound_dispute_enabled ?? true,
-                'track' => $this->resolveSoundTrack($meta?->notification_sound_dispute_track, $audioTracks),
-            ],
-            'message_received' => [
-                'enabled' => $meta?->notification_sound_message_enabled ?? true,
-                'track' => $this->resolveSoundTrack($meta?->notification_sound_message_track, $audioTracks),
-            ],
-        ];
-    }
-
-    protected function getAudioTracks(): array
-    {
-        $audioDirectory = public_path('audio');
-
-        if (! File::isDirectory($audioDirectory)) {
-            return [];
-        }
-
-        return collect(File::files($audioDirectory))
-            ->filter(function ($file) {
-                return $file->getExtension() === 'mp3';
-            })
-            ->sortBy(function ($file) {
-                return $file->getFilename();
-            })
-            ->values()
-            ->map(function ($file) {
-                $name = $file->getFilename();
-
-                return [
-                    'name' => $name,
-                    'value' => $name,
-                    'url' => '/audio/'.$name,
-                ];
-            })
-            ->toArray();
-    }
-
-    protected function resolveSoundTrack(?string $track, array $audioTracks): ?string
-    {
-        if (empty($audioTracks)) {
-            return null;
-        }
-
-        $allowedTracks = array_column($audioTracks, 'value');
-
-        if ($track && in_array($track, $allowedTracks, true)) {
-            return $track;
-        }
-
-        if (in_array(self::DEFAULT_SOUND_TRACK, $allowedTracks, true)) {
-            return self::DEFAULT_SOUND_TRACK;
-        }
-
-        return $audioTracks[0]['value'];
     }
 }

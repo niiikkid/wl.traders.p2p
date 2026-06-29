@@ -6,12 +6,10 @@ import PerPageSelect from "@/Components/Pagination/PerPageSelect.vue";
 import TableEmptyState from "@/Components/TableEmptyState.vue";
 import AlertError from "@/Components/Alerts/AlertError.vue";
 import AlertInfo from "@/Components/Alerts/AlertInfo.vue";
-import {useModalStore} from "@/store/modal.js";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import AppTooltip from '@/Components/AppTooltip.vue';
 
 const tableFiltersStore = useTableFiltersStore();
-const modalStore = useModalStore();
 const page = usePage();
 
 const props = defineProps({
@@ -93,7 +91,8 @@ const openPage = () => {
 
 const hasPendingDisputes = ref(usePage().props.data?.hasPendingDisputes);
 const pendingDisputesCount = computed(() => Number(usePage().props.menu?.pendingDisputesCount ?? 0));
-const pendingDisputePreview = ref(usePage().props.data?.pendingDisputePreview ?? null);
+
+const isOnOrdersPage = computed(() => route().current('orders.*'));
 
 const pendingDisputeBannerMessage = computed(() => {
     if (pendingDisputesCount.value <= 1) {
@@ -104,18 +103,11 @@ const pendingDisputeBannerMessage = computed(() => {
 });
 
 const openPendingDisputePrimary = () => {
-    if (pendingDisputePreview.value && pendingDisputesCount.value === 1) {
-        modalStore.openDisputeModal({dispute: pendingDisputePreview.value});
-
-        return;
-    }
-
-    router.visit(route('disputes.index'));
+    router.visit(route('orders.index'));
 };
 
 router.on('success', () => {
     hasPendingDisputes.value = usePage().props.data?.hasPendingDisputes;
-    pendingDisputePreview.value = usePage().props.data?.pendingDisputePreview ?? null;
 });
 </script>
 
@@ -150,6 +142,7 @@ router.on('success', () => {
                 >
                     <span class="min-w-0">{{ pendingDisputeBannerMessage }}</span>
                     <button
+                        v-if="!isOnOrdersPage"
                         type="button"
                         class="btn btn-sm btn-outline shrink-0"
                         @click.prevent="openPendingDisputePrimary"

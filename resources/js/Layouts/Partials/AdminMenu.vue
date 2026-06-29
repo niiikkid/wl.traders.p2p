@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
 import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
-import BellIcon from '@/Layouts/Partials/Icons/BellIcon.vue';
 import UsersIcon from '@/Layouts/Partials/Icons/UsersIcon.vue';
 import CurrenciesIcon from '@/Layouts/Partials/Icons/CurrenciesIcon.vue';
 import BankIcon from '@/Layouts/Partials/Icons/BankIcon.vue';
@@ -28,13 +27,6 @@ const items = computed(() => [
         icon: DashboardIcon,
         href: route('admin.main.index'),
         active: route().current('admin.main.index'),
-    },
-    {
-        key: 'notifications',
-        label: 'Уведомления',
-        icon: BellIcon,
-        href: route('admin.notifications.index'),
-        active: route().current('admin.notifications.*'),
     },
     {
         key: 'users',

@@ -5,11 +5,9 @@ import OnlineSwitcher from '@/Layouts/Partials/OnlineSwitcher.vue';
 import SidebarMenu from '@/Layouts/Partials/Sidebar/SidebarMenu.vue';
 import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import DashboardIcon from '@/Layouts/Partials/Icons/DashboardIcon.vue';
-import BellIcon from '@/Layouts/Partials/Icons/BellIcon.vue';
 import PaymentDetailsIcon from '@/Layouts/Partials/Icons/PaymentDetailsIcon.vue';
 import OrdersIcon from '@/Layouts/Partials/Icons/OrdersIcon.vue';
 import PayoutsIcon from '@/Layouts/Partials/Icons/PayoutsIcon.vue';
-import DisputesIcon from '@/Layouts/Partials/Icons/DisputesIcon.vue';
 import WalletIcon from '@/Layouts/Partials/Icons/WalletIcon.vue';
 import AutomationIcon from '@/Layouts/Partials/Icons/AutomationIcon.vue';
 
@@ -23,13 +21,6 @@ const items = computed(() => [
         icon: DashboardIcon,
         href: route('trader.main.index'),
         active: route().current('trader.main.index'),
-    },
-    {
-        key: 'notifications',
-        label: 'Уведомления',
-        icon: BellIcon,
-        href: route('notifications.index'),
-        active: route().current('notifications.*'),
     },
     {
         key: 'payment-details',
@@ -58,15 +49,6 @@ const items = computed(() => [
         badge: menu.value.payoutsActiveCount,
         badgeClass: 'badge-info',
         show: payoutsEnabled.value,
-    },
-    {
-        key: 'disputes',
-        label: 'Споры',
-        icon: DisputesIcon,
-        href: route('disputes.index'),
-        active: route().current('disputes.*'),
-        badge: menu.value.pendingDisputesCount,
-        badgeClass: 'badge-error',
     },
     {
         key: 'wallet',

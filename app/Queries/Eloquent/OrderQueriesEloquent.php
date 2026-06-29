@@ -135,12 +135,26 @@ class OrderQueriesEloquent implements OrderQueries
                 'paymentDetail.userDevice:id,name',
                 'paymentDetail.user:id,name,email',
                 'dispute' => function ($query) {
-                    $query->where('status', DisputeStatus::PENDING->value)
-                        ->select(['id', 'order_id', 'status', 'reason', 'receipt', 'created_at']);
+                    $query->select(['id', 'order_id', 'uuid', 'status', 'reason', 'receipt', 'bank_statement', 'created_at']);
                 },
             ])
             ->when(! empty($filters->orderStatuses), function ($query) use ($filters) {
                 $query->whereIn('status', $filters->orderStatuses);
+            })
+            ->when(! empty($filters->disputeStatuses), function ($query) use ($filters) {
+                $query->whereHas('dispute', function ($subQuery) use ($filters) {
+                    $subQuery->whereIn('status', $filters->disputeStatuses);
+                });
+            })
+            ->when(! empty($filters->hasDispute), function ($query) use ($filters) {
+                $wantsWith = in_array('yes', $filters->hasDispute, true);
+                $wantsWithout = in_array('no', $filters->hasDispute, true);
+
+                if ($wantsWith && ! $wantsWithout) {
+                    $query->whereHas('dispute');
+                } elseif ($wantsWithout && ! $wantsWith) {
+                    $query->whereDoesntHave('dispute');
+                }
             })
             ->when($filters->startDate, function ($query) use ($filters) {
                 $query->whereDate('created_at', '>=', $filters->startDate);
@@ -186,7 +200,11 @@ class OrderQueriesEloquent implements OrderQueries
                 'manual_control_acquiring',
             ])
             ->withExists('dispute')
+            ->withExists(['dispute as has_pending_dispute' => function ($query) {
+                $query->where('status', DisputeStatus::PENDING->value);
+            }])
             ->withExists('smsLog')
+            ->orderByDesc('has_pending_dispute')
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
     }

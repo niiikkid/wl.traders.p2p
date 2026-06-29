@@ -7,6 +7,7 @@ import ViewModeSwitcher from "@/Layouts/Partials/ViewModeSwitcher.vue";
 import UserAvatar from "@/Components/User/UserAvatar.vue";
 import NewsDropdown from "@/Components/News/NewsDropdown.vue";
 import NewsCreateModal from "@/Components/News/NewsCreateModal.vue";
+import NotificationsSettingsButton from "@/Components/Notifications/NotificationsSettingsButton.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 
 const viewStore = useViewStore();
@@ -247,6 +248,7 @@ router.on('success', () => {
                     </div>
                 </div>
                 <ViewModeSwitcher v-if="userStore.isAdmin" />
+                <NotificationsSettingsButton />
                 <NewsDropdown ref="newsDropdownRef" />
                 <button
                     v-if="canManageNews"

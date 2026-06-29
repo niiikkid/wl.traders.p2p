@@ -57,6 +57,13 @@ abstract class Controller
             }
         }
 
+        $hasDispute = request()->input('filters.hasDispute', '');
+        $hasDispute = explode(',', $hasDispute);
+        $hasDispute = array_values(array_filter(
+            $hasDispute,
+            fn (string $value): bool => in_array($value, ['yes', 'no'], true)
+        ));
+
         $invoiceStatuses = request()->input('filters.invoiceStatuses', '');
         $invoiceStatuses = explode(',', $invoiceStatuses);
 
@@ -155,6 +162,7 @@ abstract class Controller
         $currentFilters = [
             'orderStatuses' => $orderStatuses,
             'disputeStatuses' => $disputeStatuses,
+            'hasDispute' => $hasDispute,
             'invoiceStatuses' => $invoiceStatuses,
             'apiLogStatuses' => $apiLogStatuses,
             'startDate' => $startDate,
@@ -199,6 +207,7 @@ abstract class Controller
             endDate: $currentFilters['endDate'],
             orderStatuses: $currentFilters['orderStatuses'],
             disputeStatuses: $currentFilters['disputeStatuses'],
+            hasDispute: $currentFilters['hasDispute'],
             invoiceStatuses: $currentFilters['invoiceStatuses'],
             apiLogStatuses: $currentFilters['apiLogStatuses'],
             externalID: $currentFilters['externalID'],
@@ -254,6 +263,17 @@ abstract class Controller
                 'value' => $status,
             ];
         }
+
+        $hasDispute = [
+            [
+                'name' => 'Есть спор',
+                'value' => 'yes',
+            ],
+            [
+                'name' => 'Нет спора',
+                'value' => 'no',
+            ],
+        ];
 
         $invoiceStatuses = [];
         foreach (InvoiceStatus::values() as $status) {
@@ -374,6 +394,7 @@ abstract class Controller
         return [
             'orderStatuses' => $orderStatuses,
             'disputeStatuses' => $disputeStatuses,
+            'hasDispute' => $hasDispute,
             'invoiceStatuses' => $invoiceStatuses,
             'apiLogStatuses' => $apiLogStatuses,
             'currency' => $currencyVariants,

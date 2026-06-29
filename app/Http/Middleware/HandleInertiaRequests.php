@@ -8,7 +8,6 @@ use App\Enums\InvoiceType;
 use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutStatus;
-use App\Http\Resources\DisputeResource;
 use App\Http\Resources\UserResource;
 use App\Http\Resources\WalletResource;
 use App\Models\Dispute;
@@ -20,6 +19,7 @@ use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Models\UserMeta;
 use App\Services\Money\Currency;
+use App\Services\Notification\NotificationSettingsPresenter;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
 use App\Services\Wallet\Values\WalletStatsValue;
 use Illuminate\Http\Request;
@@ -265,22 +265,6 @@ class HandleInertiaRequests extends Middleware
             }
         }
 
-        $pendingDisputePreview = null;
-        if ($authUser instanceof User
-            && $isTrader
-            && ((int) $pendingDisputesCount) === 1) {
-            $singlePendingDispute = Dispute::query()
-                ->where('status', DisputeStatus::PENDING)
-                ->whereRelation('order.paymentDetail', 'user_id', $authUser->id)
-                ->with(['order.paymentDetail.user', 'order.paymentGateway'])
-                ->orderedWithPendingFirst()
-                ->first();
-
-            $pendingDisputePreview = $singlePendingDispute
-                ? DisputeResource::make($singlePendingDispute)->resolve()
-                : null;
-        }
-
         $menu = [
             'pendingOrdersCount' => (int) $pendingOrdersCount,
             'pendingDisputesCount' => (int) $pendingDisputesCount,
@@ -329,10 +313,12 @@ class HandleInertiaRequests extends Middleware
                 'wallet' => fn () => $authUser ? WalletResource::make($authUser->wallet)->resolve() : null,
                 'wallet_stats' => fn () => $sharedWalletStats,
                 'hasPendingDisputes' => fn () => $isTrader ? $menu['pendingDisputesCount'] > 0 : 0,
-                'pendingDisputePreview' => fn () => $pendingDisputePreview,
             ],
             'menu' => $menu,
             'news' => fn () => $this->buildNewsSharedProps($isAdmin),
+            'notificationsSettings' => fn () => ($isTrader || $isAdmin) && $authUser instanceof User
+                ? app(NotificationSettingsPresenter::class)->present($authUser)
+                : null,
             'notificationsSound' => $authUser instanceof User && $isTrader ? [
                 'order_assigned' => [
                     'enabled' => $authUser->meta?->notification_sound_order_enabled ?? true,

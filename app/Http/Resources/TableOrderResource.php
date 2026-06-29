@@ -29,6 +29,7 @@ class TableOrderResource extends JsonResource
             'status' => $this->status->value,
             'status_name' => $this->status_name,
             'has_dispute' => (bool) $this->dispute_exists,
+            'has_pending_dispute' => (bool) ($this->has_pending_dispute ?? false),
             'dispute' => $this->dispute ? [
                 'id' => $this->dispute->id,
                 'uuid' => $this->dispute->uuid,
