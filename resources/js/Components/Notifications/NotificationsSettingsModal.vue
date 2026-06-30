@@ -17,6 +17,12 @@ const emit = defineEmits(['close']);
 
 const canShow = computed(() => usePage().props.notificationsSettings != null);
 
+const showInAppSoundSettings = computed(
+    () => usePage().props.notificationsSettings?.showInAppSoundSettings === true,
+);
+
+const modalMaxWidth = computed(() => (showInAppSoundSettings.value ? '5xl' : '2xl'));
+
 const close = () => {
     emit('close');
 };
@@ -26,11 +32,11 @@ const close = () => {
     <ModalNext
         v-if="canShow"
         :show="show"
-        max-width="5xl"
+        :max-width="modalMaxWidth"
         @close="close"
     >
-        <ModalHeaderNext title="Уведомления" @close="close" />
-        <ModalBodyNext>
+        <ModalHeaderNext title="Уведомления" class="!px-3 sm:!px-4" @close="close" />
+        <ModalBodyNext class="!px-1.5 !py-1.5 sm:!px-2.5 sm:!py-2 ![scrollbar-gutter:auto]">
             <NotificationsSettingsContent />
         </ModalBodyNext>
     </ModalNext>

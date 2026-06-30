@@ -69,7 +69,7 @@ const deleteNews = (post) => {
 
 <template>
     <div class="flex max-h-[min(32rem,calc(100dvh-6rem))] flex-col">
-        <div class="shrink-0 border-b border-base-300/60 px-4 py-3">
+        <div class="shrink-0 border-b border-base-300/60 px-3 py-3">
             <div class="flex items-center justify-between gap-2">
                 <h3 class="text-sm font-semibold text-base-content">Новости</h3>
                 <span v-if="meta?.total" class="badge badge-ghost badge-xs">
@@ -78,7 +78,7 @@ const deleteNews = (post) => {
             </div>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 [scrollbar-gutter:stable_both-edges]">
+        <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3 [scrollbar-gutter:stable_both-edges]">
             <div v-if="loading" class="flex justify-center py-10">
                 <span class="loading loading-spinner loading-md text-primary" />
             </div>
@@ -98,7 +98,7 @@ const deleteNews = (post) => {
                         >
                     </figure>
 
-                    <div class="card-body gap-3 p-4">
+                    <div class="card-body gap-3 px-3 py-4">
                         <div class="flex items-start justify-between gap-2">
                             <h4 class="text-base font-semibold leading-snug text-base-content">
                                 {{ post.title || 'Без заголовка' }}

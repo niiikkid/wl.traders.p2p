@@ -204,9 +204,12 @@ router.on('success', () => {
 
 <template>
     <div>
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
-        <div v-if="showInAppSoundSettings" class="card bg-base-100 shadow xl:col-start-1 xl:row-start-1">
-            <div class="card-body space-y-3">
+        <div
+            class="grid grid-cols-1 gap-4"
+            :class="showInAppSoundSettings ? 'xl:grid-cols-2 xl:items-start' : ''"
+        >
+        <div v-if="showInAppSoundSettings" class="card bg-base-100 xl:col-start-1 xl:row-start-1">
+            <div class="card-body space-y-3 p-3 sm:p-4">
                 <h3 class="text-lg font-semibold">Звуковые уведомления в панели</h3>
                 <p class="text-sm text-base-content/70">
                     Здесь можно настроить звуковые уведомления для панели — они работают отдельно от уведомлений в Telegram и на них не влияют.
@@ -256,10 +259,10 @@ router.on('success', () => {
         </div>
 
         <div
-            class="card bg-base-100 shadow"
+            class="card bg-base-100"
             :class="showInAppSoundSettings ? 'xl:col-start-2 xl:row-start-1' : ''"
         >
-            <div class="card-body gap-5">
+            <div class="card-body gap-4 p-3 sm:p-4">
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex min-w-0 items-start gap-3">
                         <div

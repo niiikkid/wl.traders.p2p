@@ -6,7 +6,8 @@ import PaymentDetailLimit from "@/Components/PaymentDetailLimit.vue";
 import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
-import AddMobileIcon from "@/Components/AddMobileIcon.vue";
+import PageToolbar from "@/Components/Table/PageToolbar.vue";
+import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
 import {computed, onBeforeUnmount, ref, watch} from "vue";
 import PaymentDetailsNav from '@/Components/Admin/PaymentDetailsNav.vue';
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
@@ -373,47 +374,38 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Реквизиты"
             :data="paymentDetails"
         >
+            <template #button>
+                <PageToolbar>
+                    <PageToolbarAction
+                        v-if="viewStore.isAdminViewMode"
+                        icon="chart-bar"
+                        title="Включенные реквизиты"
+                        @click="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
+                    />
+
+                    <PageToolbarAction
+                        v-if="isTraderView"
+                        icon="schedule"
+                        title="Расписание работы"
+                        @click="openScheduleManagerModal"
+                    />
+
+                    <PageToolbarAction
+                        icon="bulk-settings"
+                        title="Массовая настройка"
+                        @click="openBulkEditModal"
+                    />
+
+                    <PageToolbarAction
+                        icon="create-requisite"
+                        title="Создать реквизиты"
+                        @click="openCreateModal"
+                    />
+                </PageToolbar>
+            </template>
             <template v-slot:header>
                 <div class="flex w-full min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
                     <PaymentDetailsNav :current="currentTab" />
-
-                    <div class="flex w-full max-w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:ms-auto sm:w-auto">
-                        <div
-                            class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
-                        >
-                            <button
-                                v-if="viewStore.isAdminViewMode"
-                                type="button"
-                                class="btn btn-sm btn-square btn-primary btn-outline shrink-0 rounded-lg"
-                                title="Включенные реквизиты"
-                                aria-label="Включенные реквизиты"
-                                @click="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
-                            >
-                            <svg class="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                <rect x="4" y="14" width="3.5" height="6" rx="1.75" stroke="currentColor" stroke-width="1.3"/>
-                                <rect x="10.25" y="9" width="3.5" height="11" rx="1.75" stroke="currentColor" stroke-width="1.3"/>
-                                <rect x="16.5" y="4" width="3.5" height="16" rx="1.75" stroke="currentColor" stroke-width="1.3"/>
-                            </svg>
-                      
-                            </button>
-
-                            <button
-                                type="button"
-                                class="hidden md:inline-flex btn btn-sm btn-square btn-accent btn-outline shrink-0 rounded-lg"
-                                title="Создать реквизиты"
-                                aria-label="Создать реквизиты"
-                                @click="openCreateModal"
-                            >
-                                <svg class="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                                    <path d="M21 12.5V8C21 6.89543 20.1046 6 19 6H5C3.89543 6 3 6.89543 3 8V17C3 18.1046 3.89543 19 5 19H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M18.5 15V17.5M18.5 20V17.5M18.5 17.5H16M18.5 17.5H21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M3 10H20.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                    <path d="M7 15H9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
-                            </button>
-                        </div>
-                        <AddMobileIcon variant="accent" @click="openCreateModal" />
-                    </div>
                 </div>
             </template>
             <template v-slot:table-filters>
@@ -570,24 +562,6 @@ defineOptions({ layout: AuthenticatedLayout })
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                                                         </svg>
                                                     </button>
-                                                    <TableActionsDropdown
-                                                        buttonClass="swap swap-rotate cursor-pointer inline-grid place-items-center w-6 h-6 text-primary"
-                                                    >
-                                                        <template #icon>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
-                                                            </svg>
-                                                        </template>
-                                                        <TableAction
-                                                            v-if="isTraderView"
-                                                            @click="openScheduleManagerModal"
-                                                        >
-                                                            Расписания работы
-                                                        </TableAction>
-                                                        <TableAction @click="openBulkEditModal">
-                                                            Массовая настройка
-                                                        </TableAction>
-                                                    </TableActionsDropdown>
                                                 </div>
                                             </div>
                                         </th>
