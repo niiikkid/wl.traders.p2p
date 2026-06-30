@@ -23,17 +23,42 @@ import DataCard from "@/Components/Table/DataCard.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
 import CancelDisputeModal from "@/Modals/CancelDisputeModal.vue";
 import {useConfirmAcceptOrder} from '@/composables/useConfirmAcceptOrder.js';
+import OrderDetailsOpenButton from "@/Components/Order/OrderDetailsOpenButton.vue";
+import OrderModal from "@/Modals/OrderModal.vue";
 
 const orders = ref(usePage().props.orders);
 const modalStore = useModalStore();
 const { confirmAcceptOrder } = useConfirmAcceptOrder();
 const canUseManualControlAcq = Boolean(usePage().props.auth?.user?.support_can_use_manual_control_acq);
 
+const prioritizePendingDisputes = (paginatedOrders) => {
+    if (!paginatedOrders?.data || !Array.isArray(paginatedOrders.data)) {
+        return paginatedOrders;
+    }
+
+    paginatedOrders.data = [...paginatedOrders.data].sort((left, right) => {
+        if (Boolean(left.has_pending_dispute) === Boolean(right.has_pending_dispute)) {
+            return right.id - left.id;
+        }
+
+        return left.has_pending_dispute ? -1 : 1;
+    });
+
+    return paginatedOrders;
+};
+
+prioritizePendingDisputes(orders.value);
+
 router.on('success', (event) => {
     orders.value = usePage().props.orders;
+    prioritizePendingDisputes(orders.value);
 })
 
 const reloadingTableData = ref(false);
+
+const openOrderModal = (order) => {
+    modalStore.openOrderModal({order_id: order.id});
+};
 
 const confirmAcceptDispute = (dispute) => {
     modalStore.openConfirmModal({
@@ -41,7 +66,7 @@ const confirmAcceptDispute = (dispute) => {
         body: 'В таком случае, сделка будет закрыта как оплаченная.',
         confirm_button_name: 'Принять спор',
         confirm: () => {
-            useForm({}).patch(route('support.disputes.accept', dispute.id), {
+            useForm({}).patch(route('support.disputes.accept', dispute.uuid), {
                 preserveScroll: true,
                 onFinish: () => {
                     modalStore.closeAll()
@@ -60,7 +85,7 @@ const confirmRollbackDispute = (dispute) => {
         body: 'Референтная сделка не изменит свой статус.',
         confirm_button_name: 'Открыть спор',
         confirm: () => {
-            useForm({}).patch(route('support.disputes.rollback', dispute.id), {
+            useForm({}).patch(route('support.disputes.rollback', dispute.uuid), {
                 preserveScroll: true,
                 onFinish: () => {
                     modalStore.closeAll()
@@ -141,6 +166,14 @@ defineOptions({ layout: AuthenticatedLayout })
                             name="orderStatuses"
                             title="Статусы"
                         />
+                        <DropdownFilter
+                            name="hasDispute"
+                            title="Наличие спора"
+                        />
+                        <DropdownFilter
+                            name="disputeStatuses"
+                            title="Статусы споров"
+                        />
                     </FiltersPanel>
             </template>
             <template v-slot:body>
@@ -170,7 +203,12 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <span class="sr-only">Действия</span>
                                         </th>
                         </template>
-                                    <tr v-for="order in orders.data" class="bg-base-100 border-b last:border-none">
+                                    <tr
+                                        v-for="order in orders.data"
+                                        :key="order.id"
+                                        class="border-b last:border-none border-base-200"
+                                        :class="order.has_pending_dispute ? 'bg-error/10 border-l-2 border-l-error' : 'bg-base-100'"
+                                    >
                                     <th scope="row" class=" font-medium whitespace-nowrap">
                                         <CopyableOrderUid :uuid="order.uuid ?? ''" />
                                     </th>
@@ -227,6 +265,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                 </svg>
                                             </button>
+                                            <OrderDetailsOpenButton
+                                                :disabled="reloadingTableData"
+                                                @click="openOrderModal(order)"
+                                            />
                                         </div>
                                     </td>
                                 </tr>
@@ -237,6 +279,8 @@ defineOptions({ layout: AuthenticatedLayout })
                             <DataCard
                                 v-for="order in orders.data"
                                 :key="order.id"
+                                :class="order.has_pending_dispute ? 'ring-1 ring-error/40 rounded-box' : ''"
+                                :body-class="order.has_pending_dispute ? 'p-4 pt-2 pb-3 bg-error/10 rounded-box' : 'p-4 pt-2 pb-3'"
                             >
                                     <!-- Шапка: UUID и дата создания -->
                                     <div class="flex justify-between items-center border-b border-base-content/10 mb-2">
@@ -294,6 +338,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                     </svg>
                                                 </button>
+                                                <OrderDetailsOpenButton
+                                                    square
+                                                    :disabled="reloadingTableData"
+                                                    @click="openOrderModal(order)"
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -348,6 +397,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                                         </svg>
                                                     </button>
+                                                    <OrderDetailsOpenButton
+                                                        square
+                                                        :disabled="reloadingTableData"
+                                                        @click="openOrderModal(order)"
+                                                    />
                                                 </div>
                                             </div>
                                         </div>
@@ -364,6 +418,7 @@ defineOptions({ layout: AuthenticatedLayout })
             @rollback="confirmRollbackDispute"
         />
         <CancelDisputeModal/>
+        <OrderModal/>
         <ConfirmModal/>
     </div>
 </template>

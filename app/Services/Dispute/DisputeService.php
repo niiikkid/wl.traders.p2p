@@ -59,6 +59,8 @@ class DisputeService implements DisputeServiceContract
                 'status' => DisputeStatus::PENDING,
             ]);
 
+            $this->syncOrderPendingDisputeFlag($order->id);
+
             DisputeOpenedEvent::dispatch($dispute);
 
             return $dispute;
@@ -81,6 +83,7 @@ class DisputeService implements DisputeServiceContract
             ]);
 
             if ($updated) {
+                $this->syncOrderPendingDisputeFlag($dispute->order_id);
                 SendTelegramDisputeResolutionNotificationJob::dispatch($dispute->id, DisputeStatus::ACCEPTED);
             }
 
@@ -125,6 +128,7 @@ class DisputeService implements DisputeServiceContract
             $this->checkRejectedDisputesLimit($dispute->trader_id);
 
             if ($updated) {
+                $this->syncOrderPendingDisputeFlag($dispute->order_id);
                 SendTelegramDisputeResolutionNotificationJob::dispatch($dispute->id, DisputeStatus::CANCELED);
             }
 
@@ -160,7 +164,7 @@ class DisputeService implements DisputeServiceContract
 
         // Считаем количество отклоненных споров за указанный период
         $count = Dispute::where('trader_id', $traderId)
-            ->where('status', DisputeStatus::CANCELED)
+            ->where('status', DisputeStatus::CANCELED->value)
             ->where('created_at', '>=', $sinceDate)
             ->count();
 
@@ -185,13 +189,31 @@ class DisputeService implements DisputeServiceContract
 
             $this->deleteBankStatement($dispute->bank_statement);
 
-            return $dispute->update([
+            $updated = $dispute->update([
                 'status' => DisputeStatus::PENDING,
                 'reason' => null,
                 'reason_code' => null,
                 'bank_statement' => null,
             ]);
+
+            if ($updated) {
+                $this->syncOrderPendingDisputeFlag($dispute->order_id);
+            }
+
+            return $updated;
         });
+    }
+
+    private function syncOrderPendingDisputeFlag(int $orderId): void
+    {
+        $hasPendingDispute = Dispute::query()
+            ->where('order_id', $orderId)
+            ->where('status', DisputeStatus::PENDING->value)
+            ->exists();
+
+        Order::query()
+            ->whereKey($orderId)
+            ->update(['has_pending_dispute' => $hasPendingDispute]);
     }
 
     private function resolveBankStatementFilename(

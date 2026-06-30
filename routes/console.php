@@ -12,6 +12,7 @@ Schedule::command('app:update-p2p-prices')->everyThreeMinutes();
 Schedule::command('app:execute-funds-on-hold')->everyMinute();
 Schedule::command('app:prune-user-device-pings')->everyMinute();
 Schedule::command('app:prune-user-online-periods')->daily();
+Schedule::command('app:prune-user-online-pings')->hourly();
 Schedule::command('app:reset-payment-detail-daily-limits')->daily();
 Schedule::command('app:reset-payment-detail-monthly-limits')->hourly();
 Schedule::command('app:load-filter-conditions')->hourly();

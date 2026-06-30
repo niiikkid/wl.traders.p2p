@@ -126,6 +126,7 @@ class Order extends Model
         'agent_commission_rate', // Комиссия агента, %
         'total_service_commission_rate', // Комиссия всего, %
         'status',
+        'has_pending_dispute',
         'sub_status',
         'callback_url',
         'success_url',
@@ -158,6 +159,7 @@ class Order extends Model
 
     protected $casts = [
         'status' => OrderStatus::class,
+        'has_pending_dispute' => 'bool',
         'sub_status' => OrderSubStatus::class,
         'expires_at' => 'datetime',
         'finished_at' => 'datetime',

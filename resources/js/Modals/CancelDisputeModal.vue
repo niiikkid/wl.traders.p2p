@@ -136,7 +136,7 @@ const onBankStatementChange = (event) => {
 };
 
 const cancel = (dispute) => {
-    form.patch(route(cancelDisputeRouteName.value, dispute.id), {
+    form.patch(route(cancelDisputeRouteName.value, dispute.uuid), {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {

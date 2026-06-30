@@ -6,7 +6,6 @@ import { useMenuCounters } from '@/composables/useMenuCounters.js';
 import SupportUsersIcon from '@/Layouts/Partials/Icons/SupportUsersIcon.vue';
 import OrdersIcon from '@/Layouts/Partials/Icons/OrdersIcon.vue';
 import DepositsIcon from '@/Layouts/Partials/Icons/DepositsIcon.vue';
-import DisputesIcon from '@/Layouts/Partials/Icons/DisputesIcon.vue';
 import PayoutsIcon from '@/Layouts/Partials/Icons/PayoutsIcon.vue';
 
 const { menu } = useMenuCounters();
@@ -37,15 +36,6 @@ const items = computed(() => [
         href: route('support.deposits.index'),
         active: route().current('support.deposits.*'),
         show: canViewDeposits.value,
-    },
-    {
-        key: 'disputes',
-        label: 'Споры',
-        icon: DisputesIcon,
-        href: route('support.disputes.index'),
-        active: route().current('support.disputes.*'),
-        badge: menu.value.pendingDisputesCount,
-        badgeClass: 'badge-error',
     },
     {
         key: 'payouts',

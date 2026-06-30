@@ -37,6 +37,10 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
+                userOnlineActivity: {
+                    showed: false,
+                    params: {},
+                },
                 paymentDetailCreate: {
                     showed: false,
                     params: {},
@@ -112,6 +116,7 @@ export const useModalStore = defineStore('modal', {
         userCreateModal: (state) => state.modals.userCreate,
         userEditModal: (state) => state.modals.userEdit,
         userSummaryModal: (state) => state.modals.userSummary,
+        userOnlineActivityModal: (state) => state.modals.userOnlineActivity,
         paymentDetailCreateModal: (state) => state.modals.paymentDetailCreate,
         paymentDetailEditModal: (state) => state.modals.paymentDetailEdit,
         paymentDetailBulkEditModal: (state) => state.modals.paymentDetailBulkEdit,
@@ -191,6 +196,9 @@ export const useModalStore = defineStore('modal', {
         },
         openUserSummaryModal(props) {
             this.openModal('userSummary', props);
+        },
+        openUserOnlineActivityModal(props) {
+            this.openModal('userOnlineActivity', props);
         },
         openPaymentDetailCreateModal(props) {
             this.openModal('paymentDetailCreate', props);

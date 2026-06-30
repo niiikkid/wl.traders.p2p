@@ -45,7 +45,7 @@ const disputesIndexRouteName = () => {
     }
 
     if (viewStore.isSupportViewMode) {
-        return 'support.disputes.index';
+        return 'support.orders.index';
     }
 
     return 'disputes.index';

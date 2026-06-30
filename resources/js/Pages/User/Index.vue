@@ -12,6 +12,7 @@ import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import DateTime from "@/Components/DateTime.vue";
 import UserCreateModal from "@/Modals/User/UserCreateModal.vue";
 import UserEditModal from "@/Modals/User/UserEditModal.vue";
+import UserOnlineActivityModal from "@/Modals/User/UserOnlineActivityModal.vue";
 import UserSummaryPopover from "@/Components/User/UserSummaryPopover.vue";
 import UserAvatar from '@/Components/User/UserAvatar.vue';
 import {useModalStore} from "@/store/modal.js";
@@ -82,6 +83,10 @@ const openUserEditModal = (user) => {
     modalStore.openUserEditModal({ user });
 };
 
+const openOnlineActivity = (user) => {
+    modalStore.openUserOnlineActivityModal({ user });
+};
+
 const isTraderRole = (user) => user.role?.name === 'Trader';
 
 /** Баланс и переход в кошелёк — только для ролей с финансовым кошельком в админке. */
@@ -131,6 +136,7 @@ defineOptions({ layout: AuthenticatedLayout })
 
         <UserCreateModal />
         <UserEditModal />
+        <UserOnlineActivityModal />
         <ConfirmModal />
 
         <MainTableSection
@@ -246,7 +252,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <template v-else>—</template>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
-                                        <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
+                                        <button v-if="user.online_at" type="button" class="btn btn-ghost btn-xs gap-2 px-1" title="История онлайна" @click="openOnlineActivity(user)"><DateTime :data="user.online_at" :plural="true" :copyable="false"/></button>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
                                         <div class="space-y-1">
@@ -321,7 +327,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 <div class="inline-flex shrink-0 items-center">
                                                     <span class="tex-xs text-base-content/70">Заходил:</span>
                                                     <span class="text-base-content ml-1">
-                                                        <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
+                                                        <button v-if="user.online_at" type="button" class="btn btn-ghost btn-xs gap-2 px-1" title="История онлайна" @click="openOnlineActivity(user)"><DateTime :data="user.online_at" :plural="true" :copyable="false"/></button>
                                                         <span v-else>-</span>
                                                     </span>
                                                 </div>
@@ -454,7 +460,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="flex items-center">
                                                 <span class="tex-xs text-base-content/70">Заходил:</span>
                                                 <span class="text-base-content ml-1">
-                                                    <DateTime v-if="user.online_at" :data="user.online_at" :plural="true"/>
+                                                    <button v-if="user.online_at" type="button" class="btn btn-ghost btn-xs gap-2 px-1" title="История онлайна" @click="openOnlineActivity(user)"><DateTime :data="user.online_at" :plural="true" :copyable="false"/></button>
                                                     <span v-else>-</span>
                                                 </span>
                                             </div>

@@ -21,6 +21,7 @@ use App\Models\UserMeta;
 use App\Services\Money\Currency;
 use App\Services\Notification\NotificationSettingsPresenter;
 use App\Services\UserOnline\UserOnlinePeriodRecorder;
+use App\Services\UserOnline\UserOnlinePingRecorder;
 use App\Services\Wallet\Values\WalletStatsValue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -70,6 +71,7 @@ class HandleInertiaRequests extends Middleware
             $now = now();
             cache()->put("user-online-at-{$userId}", $now->toISOString());
             app(UserOnlinePeriodRecorder::class)->touch($userId, $now);
+            app(UserOnlinePingRecorder::class)->record($userId, $now);
 
             if ($request->routeIs('news.mark-read')) {
                 $user->meta()->updateOrCreate(

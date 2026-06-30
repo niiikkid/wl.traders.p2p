@@ -33,6 +33,45 @@ const NOTIFICATION_SOUND_LEADER_TTL_MS = 8000;
 const NOTIFICATION_SOUND_LEADER_HEARTBEAT_MS = 3000;
 const NOTIFICATION_POLL_INTERVAL_MS = 5000;
 
+// Онлайн-пинг веб-панели для всех авторизованных пользователей.
+// Фронтенд шлёт каждые 10с, бэкенд хранит не чаще шага 15с.
+const ONLINE_PING_INTERVAL_MS = 10000;
+const onlinePingInterval = ref(null);
+const isOnlinePingRequestRunning = ref(false);
+
+const sendOnlinePing = async () => {
+    if (typeof document !== 'undefined' && document.hidden) {
+        return;
+    }
+
+    if (isOnlinePingRequestRunning.value) {
+        return;
+    }
+
+    isOnlinePingRequestRunning.value = true;
+
+    try {
+        await window.axios.post(route('online.ping'));
+    } catch (error) {
+        // ignored
+    } finally {
+        isOnlinePingRequestRunning.value = false;
+    }
+};
+
+const startOnlinePing = () => {
+    stopOnlinePing();
+    sendOnlinePing();
+    onlinePingInterval.value = setInterval(sendOnlinePing, ONLINE_PING_INTERVAL_MS);
+};
+
+const stopOnlinePing = () => {
+    if (onlinePingInterval.value) {
+        clearInterval(onlinePingInterval.value);
+        onlinePingInterval.value = null;
+    }
+};
+
 const syncNotificationSoundSettingsFromProps = () => {
     notificationSoundSettings.value = usePage().props.notificationsSound ?? null;
 };
@@ -342,6 +381,7 @@ onMounted(() => {
     applyViewMode();
     syncNotificationSoundSettingsFromProps();
     startNotificationsPolling();
+    startOnlinePing();
     window.addEventListener('visibilitychange', handleNotificationVisibilityChange);
     window.addEventListener('beforeunload', handleNotificationBeforeUnload);
 })
@@ -373,6 +413,7 @@ router.on('success', (event) => {
 
 onUnmounted(() => {
     stopNotificationsPolling();
+    stopOnlinePing();
     window.removeEventListener('visibilitychange', handleNotificationVisibilityChange);
     window.removeEventListener('beforeunload', handleNotificationBeforeUnload);
     removeNotificationSoundLeaderIfOwned();

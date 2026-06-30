@@ -61,7 +61,7 @@ const confirmAcceptDispute = (dispute) => {
         body: 'В таком случае, сделка будет закрыта как оплаченная.',
         confirm_button_name: 'Принять спор',
         confirm: () => {
-            useForm({}).patch(route('disputes.accept', dispute.id), {
+            useForm({}).patch(route('disputes.accept', dispute.uuid), {
                 preserveScroll: true,
                 onFinish: () => {
                     modalStore.closeAll()
@@ -80,7 +80,7 @@ const confirmRollbackDispute = (dispute) => {
         body: 'Референтная сделка не изменит свой статус.',
         confirm_button_name: 'Открыть спор',
         confirm: () => {
-            useForm({}).patch(route('disputes.rollback', dispute.id), {
+            useForm({}).patch(route('disputes.rollback', dispute.uuid), {
                 preserveScroll: true,
                 onFinish: () => {
                     modalStore.closeAll()

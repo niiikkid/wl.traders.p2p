@@ -29,15 +29,19 @@ class TableOrderResource extends JsonResource
             'status' => $this->status->value,
             'status_name' => $this->status_name,
             'has_dispute' => (bool) $this->dispute_exists,
-            'has_pending_dispute' => (bool) ($this->has_pending_dispute ?? false),
+            'has_pending_dispute' => (bool) $this->has_pending_dispute,
             'dispute' => $this->dispute ? [
                 'id' => $this->dispute->id,
                 'uuid' => $this->dispute->uuid,
                 'uuid_short' => mb_substr($this->dispute->uuid, 0, 8),
                 'receipt' => $this->dispute->receipt,
-                'receipt_url' => $this->dispute->receipt ? route('disputes.receipt', $this->dispute->uuid) : null,
+                'receipt_url' => $this->dispute->receipt && $this->dispute->uuid
+                    ? route('disputes.receipt', $this->dispute->uuid)
+                    : null,
                 'bank_statement' => $this->dispute->bank_statement,
-                'bank_statement_url' => $this->dispute->bank_statement ? route('disputes.bank-statement', $this->dispute->uuid) : null,
+                'bank_statement_url' => $this->dispute->bank_statement && $this->dispute->uuid
+                    ? route('disputes.bank-statement', $this->dispute->uuid)
+                    : null,
                 'order' => [
                     'id' => $this->id,
                     'uuid' => $this->uuid,

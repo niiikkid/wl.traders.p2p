@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\TelegramChatAttachmentController;
 use App\Http\Controllers\Admin\TelegramChatController;
 use App\Http\Controllers\Admin\TelegramChatTraderController;
 use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
+use App\Http\Controllers\Admin\UserOnlinePingController;
 use App\Http\Controllers\Admin\UserWalletController;
 use App\Http\Controllers\Admin\WithdrawalController;
 use App\Http\Controllers\ApiIntegrationController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\MerchantController;
 use App\Http\Controllers\ModalController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OnlinePingController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OrderSmsLogController;
 use App\Http\Controllers\PaymentController;
@@ -116,6 +118,7 @@ Route::group(['middleware' => ['2fa']], function () {
 
     Route::group(['middleware' => ['auth', 'banned']], function () {
         Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
+        Route::post('/online/ping', [OnlinePingController::class, 'store'])->name('online.ping');
         Route::patch('/user/online', [UserOnlineController::class, 'toggle'])->name('user.online.toggle');
         Route::get('/payouts/{payout:uuid}/receipt', [PayoutReceiptController::class, 'show'])->name('payouts.receipts.show');
         Route::get('/payouts/{payout:uuid}/receipts/{receipt}', [PayoutReceiptController::class, 'showItem'])->name('payouts.receipts.item.show');
@@ -242,7 +245,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/manual-control-acq/orders/{order}/confirm', [ManualControlAcqController::class, 'confirm'])->name('manual-control-acq.confirm');
         Route::post('/manual-control-acq/orders/{order}/reject', [ManualControlAcqController::class, 'reject'])->name('manual-control-acq.reject');
         Route::get('/deposits', [DepositController::class, 'index'])->name('deposits.index');
-        Route::get('/disputes', [App\Http\Controllers\Support\DisputeController::class, 'index'])->name('disputes.index');
         Route::post('/disputes/{order}', [App\Http\Controllers\Support\DisputeController::class, 'store'])->name('disputes.store');
         Route::patch('/disputes/{dispute:uuid}/accept', [App\Http\Controllers\Support\DisputeController::class, 'accept'])->name('disputes.accept');
         Route::patch('/disputes/{dispute:uuid}/cancel', [App\Http\Controllers\Support\DisputeController::class, 'cancel'])->name('disputes.cancel');
@@ -352,6 +354,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::delete('/users/{user}/unarchive', [App\Http\Controllers\Admin\UserController::class, 'unarchive'])->name('users.unarchive');
         Route::get('/users/roles', [App\Http\Controllers\Admin\UserController::class, 'roles'])->name('users.roles');
         Route::get('/users/team-leaders', [App\Http\Controllers\Admin\UserController::class, 'teamLeaders'])->name('users.team-leaders');
+        Route::get('/users/{user}/online-pings', [UserOnlinePingController::class, 'index'])->name('users.online-pings');
         Route::get('/users/{user}', [App\Http\Controllers\Admin\UserController::class, 'show'])->name('users.show');
         Route::resource('/users', App\Http\Controllers\Admin\UserController::class)->only(['index', 'store', 'update']);
         Route::delete('/users/{user}/reset-2fa', [App\Http\Controllers\Admin\UserController::class, 'reset2fa'])->name('users.reset-2fa');
