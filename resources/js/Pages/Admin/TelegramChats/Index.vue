@@ -14,6 +14,8 @@ import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
 import AppTooltip from '@/Components/AppTooltip.vue';
+import PageToolbar from '@/Components/Table/PageToolbar.vue';
+import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
 import { useModalStore } from '@/store/modal.js';
 
 const props = defineProps({
@@ -715,26 +717,29 @@ watch(
             }"
         >
             <template #button>
-                <div
-                    class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
-                >
-                    <span class="badge badge-sm" :class="botStatusSummary.class">{{ botStatusSummary.text }}</span>
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline shrink-0 rounded-lg"
+                <PageToolbar>
+                    <template #prefix>
+                        <span class="badge badge-sm shrink-0" :class="botStatusSummary.class">
+                            {{ botStatusSummary.text }}
+                        </span>
+                    </template>
+
+                    <PageToolbarAction
+                        icon="settings"
+                        title="Настройки бота"
+                        label="Настройки бота"
                         @click="openBotSettingsModal"
-                    >
-                        Настройки бота
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-primary shrink-0 rounded-lg"
+                    />
+
+                    <PageToolbarAction
+                        icon="webhook"
+                        title="Установить webhook"
+                        label="Webhook"
+                        :loading="webhookSettingUp"
                         :disabled="webhookSettingUp || !botSettingState.has_bot_token"
                         @click="setupWebhook"
-                    >
-                        {{ webhookSettingUp ? 'Устанавливаем...' : 'Установить webhook' }}
-                    </button>
-                </div>
+                    />
+                </PageToolbar>
             </template>
 
             <template #header>

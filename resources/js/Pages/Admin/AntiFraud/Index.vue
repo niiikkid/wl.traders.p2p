@@ -7,6 +7,8 @@ import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
 import AntiFraudSettingModal from '@/Modals/Admin/AntiFraudSettingModal.vue';
+import PageToolbar from '@/Components/Table/PageToolbar.vue';
+import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
 import { useModalStore } from '@/store/modal.js';
 
 defineOptions({ layout: AuthenticatedLayout });
@@ -54,9 +56,14 @@ const formatRateLimits = (limits) => {
             :display-pagination="false"
         >
             <template #button>
-                <button type="button" class="btn btn-sm btn-primary shrink-0" @click="createSetting">
-                    Создать настройки
-                </button>
+                <PageToolbar>
+                    <PageToolbarAction
+                        icon="plus"
+                        title="Создать настройки"
+                        label="Создать настройки"
+                        @click="createSetting"
+                    />
+                </PageToolbar>
             </template>
 
             <template #header>

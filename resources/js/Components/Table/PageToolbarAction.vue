@@ -75,7 +75,7 @@ defineEmits(['click']);
 <template>
     <button
         type="button"
-        class="btn join-item relative h-10 min-h-10 shrink-0 gap-2 rounded-none border-0 text-sm font-medium transition-colors"
+        class="btn join-item relative z-0 h-10 min-h-10 shrink-0 gap-2 overflow-visible rounded-none border-0 text-sm font-medium transition-colors first:rounded-s-[0.65rem] last:rounded-e-[0.65rem]"
         :class="[
             variantClass,
             visibilityClass,
@@ -100,7 +100,7 @@ defineEmits(['click']);
 
         <span
             v-if="badge !== null && badge !== undefined && Number(badge) > 0"
-            class="badge badge-warning badge-sm absolute -top-1.5 -right-1.5 min-w-5 px-1"
+            class="badge badge-warning badge-sm pointer-events-none absolute -top-1 -right-1 z-10 min-w-5 px-1"
         >
             {{ badge }}
         </span>

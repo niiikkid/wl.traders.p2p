@@ -23,7 +23,9 @@ defineProps({
             <span class="sm:hidden">{{ loadingLabel }}</span>
         </div>
 
-        <div class="join overflow-hidden rounded-lg border border-base-content/10 bg-base-100/90 shadow-sm">
+        <slot name="prefix" />
+
+        <div class="join overflow-visible rounded-xl border border-base-content/10 bg-base-100/90 p-0.5 shadow-sm">
             <slot />
         </div>
 

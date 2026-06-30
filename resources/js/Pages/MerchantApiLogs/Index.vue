@@ -15,6 +15,8 @@ import LogsNav from '@/Components/Admin/LogsNav.vue';
 import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
+import PageToolbar from "@/Components/Table/PageToolbar.vue";
+import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
 import ChartBarIcon from "@/Components/Filters/Icons/ChartBarIcon.vue";
 import ChevronDownIcon from "@/Components/Filters/Icons/ChevronDownIcon.vue";
 import ApexCharts from 'apexcharts';
@@ -420,42 +422,14 @@ onBeforeUnmount(() => {
             :visit-extra-data="{ tab: activeApiLogTab }"
         >
             <template v-if="isScopedLogsPage && isMerchantApiLogsTab" #button>
-                <div class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
-                    <div
-                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
-                    >
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-square btn-secondary btn-outline shrink-0 rounded-lg"
-                            :disabled="isRefreshingPage"
-                            title="Обновить"
-                            aria-label="Обновить страницу"
-                            @click="refreshMerchantApiLogsPage"
-                        >
-                            <span
-                                v-if="isRefreshingPage"
-                                class="loading loading-spinner loading-sm text-secondary"
-                                role="status"
-                            />
-                            <svg
-                                v-else
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke-width="1.5"
-                                stroke="currentColor"
-                                class="h-5 w-5 shrink-0"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
-                                />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
+                <PageToolbar>
+                    <PageToolbarAction
+                        icon="refresh"
+                        title="Обновить страницу"
+                        :loading="isRefreshingPage"
+                        @click="refreshMerchantApiLogsPage"
+                    />
+                </PageToolbar>
             </template>
 
             <template #header>

@@ -24,7 +24,7 @@ const variantClass = computed(() => ({
 <template>
     <button
         type="button"
-        class="btn btn-square h-10 min-h-10 w-10 min-w-10 rounded-lg border border-base-content/10 bg-base-100/90 shadow-sm md:hidden"
+        class="btn btn-square h-10 min-h-10 w-10 min-w-10 rounded-xl border border-base-content/10 bg-base-100/90 shadow-sm md:hidden"
         :class="variantClass"
         :title="title"
         :aria-label="title"

@@ -17,6 +17,15 @@ use Spatie\Permission\Models\Role;
 
 abstract class Controller
 {
+    /**
+     * @var list<string>
+     */
+    private const HIDDEN_ROLE_FILTER_NAMES = [
+        'Provider Liquidity',
+        'Analyst',
+        'Agent',
+    ];
+
     public function getTableFilters(): TableFiltersValue
     {
         $currentRoute = request()->route()->getName();
@@ -103,7 +112,10 @@ abstract class Controller
         $roles = request()->input('filters.roles', '');
         $roles = explode(',', $roles);
         $roles = array_filter($roles);
-        $roles = array_values(array_filter($roles, fn (string $role): bool => $role !== 'Provider Liquidity'));
+        $roles = array_values(array_filter(
+            $roles,
+            fn (string $role): bool => ! in_array($role, self::HIDDEN_ROLE_FILTER_NAMES, true)
+        ));
 
         $payoutStatuses = request()->input('filters.payoutStatuses', '');
         $payoutStatuses = explode(',', $payoutStatuses);
@@ -304,7 +316,7 @@ abstract class Controller
 
         // Получаем список всех ролей из БД
         $roles = Role::query()
-            ->where('name', '!=', 'Provider Liquidity')
+            ->whereNotIn('name', self::HIDDEN_ROLE_FILTER_NAMES)
             ->get()
             ->map(function ($role) {
                 return [

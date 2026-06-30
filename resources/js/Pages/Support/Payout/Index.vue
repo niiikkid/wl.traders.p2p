@@ -8,6 +8,7 @@ import DateFilter from '@/Components/Filters/Partials/DateFilter.vue';
 import InputFilter from '@/Components/Filters/Partials/InputFilter.vue';
 import DropdownFilter from '@/Components/Filters/Partials/DropdownFilter.vue';
 import RefreshTableData from '@/Components/Table/RefreshTableData.vue';
+import PageToolbar from '@/Components/Table/PageToolbar.vue';
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DisplayID from '@/Components/DisplayID.vue';
 import DateTime from '@/Components/DateTime.vue';
@@ -56,9 +57,17 @@ defineOptions({ layout: AuthenticatedLayout });
             title="Выплаты"
             :data="payouts"
         >
+            <template #button>
+                <PageToolbar :loading="reloadingTableData">
+                    <RefreshTableData
+                        icon-only
+                        @refresh-started="reloadingTableData = true"
+                        @refresh-finished="reloadingTableData = false"
+                    />
+                </PageToolbar>
+            </template>
             <template #header>
-                <div class="space-y-4">
-                    <FiltersPanel name="support-payouts">
+                <FiltersPanel name="support-payouts">
                         <DateFilter name="startDate" title="Создано с" />
                         <DateFilter name="endDate" title="Создано по" />
                         <InputFilter name="uuid" placeholder="UUID" />
@@ -74,31 +83,6 @@ defineOptions({ layout: AuthenticatedLayout });
                         <InputFilter name="maxAmount" placeholder="Макс. сумма" />
                         <InputFilter name="currency" placeholder="Валюта (например, RUB)" />
                     </FiltersPanel>
-
-                    <div class="flex items-center justify-between">
-                        <div
-                            v-if="reloadingTableData"
-                            class="px-2 text-sm text-base-content/80 flex items-center gap-2 xl:hidden"
-                            aria-live="polite"
-                        >
-                            <span class="loading loading-spinner loading-sm text-primary" />
-                            <span>Обновляем данные...</span>
-                        </div>
-                        <div
-                            v-if="reloadingTableData"
-                            class="hidden xl:flex px-2 text-sm text-base-content/80 items-center gap-2"
-                            aria-live="polite"
-                        >
-                            <span class="loading loading-spinner loading-sm text-primary" />
-                            <span>Обновляем данные...</span>
-                        </div>
-
-                        <RefreshTableData
-                            @refresh-started="reloadingTableData = true"
-                            @refresh-finished="reloadingTableData = false"
-                        />
-                    </div>
-                </div>
             </template>
             <template #body>
                 <div class="relative">

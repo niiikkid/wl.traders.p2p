@@ -2,7 +2,8 @@
 import {Head, router, usePage, useForm} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
-import AddMobileIcon from "@/Components/AddMobileIcon.vue";
+import PageToolbar from "@/Components/Table/PageToolbar.vue";
+import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import {ref, onUnmounted, computed} from "vue";
@@ -137,18 +138,14 @@ defineOptions({ layout: AuthenticatedLayout })
             :data="users"
         >
             <template v-slot:button>
-                <div class="hidden md:flex items-center justify-end gap-2">
-                    <button
+                <PageToolbar>
+                    <PageToolbarAction
+                        icon="plus"
+                        title="Создать пользователя"
+                        label="Создать пользователя"
                         @click="openUserCreateModal"
-                        type="button"
-                        class="btn btn-sm btn-primary"
-                    >
-                        Создать пользователя
-                    </button>
-                </div>
-                <AddMobileIcon
-                    @click="openUserCreateModal"
-                />
+                    />
+                </PageToolbar>
             </template>
             <template #header>
                 <UsersNav :current="currentTab" />

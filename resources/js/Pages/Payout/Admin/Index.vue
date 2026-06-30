@@ -22,6 +22,8 @@ import MoneyValue from '@/Components/MoneyValue.vue';
 import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
+import PageToolbar from '@/Components/Table/PageToolbar.vue';
+import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
 
 const tableFiltersStore = useTableFiltersStore();
 
@@ -264,22 +266,21 @@ defineOptions({ layout: AuthenticatedLayout });
             :data="payouts"
         >
             <template #button>
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <button
-                        type="button"
-                        class="btn btn-primary btn-sm"
+                <PageToolbar>
+                    <PageToolbarAction
+                        icon="export"
+                        title="Выгрузить выплаты"
+                        label="Выгрузить"
                         @click="openAdminPayoutsExport"
-                    >
-                        Выгрузить
-                    </button>
-                    <button
-                        type="button"
-                        class="btn btn-outline btn-sm"
+                    />
+
+                    <PageToolbarAction
+                        icon="bulk-settings"
+                        title="Настройки выплат"
+                        label="Настройки"
                         @click="modalStore.openPayoutSettingsModal()"
-                    >
-                        Настройки выплат
-                    </button>
-                </div>
+                    />
+                </PageToolbar>
             </template>
             <template #header>
                 <div class="space-y-4">

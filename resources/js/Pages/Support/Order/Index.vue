@@ -15,6 +15,8 @@ import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import DateFilter from "@/Components/Filters/Partials/DateFilter.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
 import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
+import PageToolbar from "@/Components/Table/PageToolbar.vue";
+import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
 import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
@@ -90,9 +92,25 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Сделки"
             :data="orders"
         >
+            <template #button>
+                <PageToolbar :loading="reloadingTableData">
+                    <PageToolbarAction
+                        v-if="canUseManualControlAcq"
+                        title="Manual Control ACQ"
+                        @click="openManualControlAcqPage"
+                    >
+                        <span class="text-[11px] font-semibold tracking-tight">ACQ</span>
+                    </PageToolbarAction>
+
+                    <RefreshTableData
+                        icon-only
+                        @refresh-started="reloadingTableData = true"
+                        @refresh-finished="reloadingTableData = false"
+                    />
+                </PageToolbar>
+            </template>
             <template v-slot:header>
-                <div>
-                    <FiltersPanel name="orders">
+                <FiltersPanel name="orders">
                         <DateFilter name="startDate" title="Начальная дата"/>
                         <DateFilter name="endDate" title="Конечная дата"/>
                         <InputFilter
@@ -124,32 +142,6 @@ defineOptions({ layout: AuthenticatedLayout })
                             title="Статусы"
                         />
                     </FiltersPanel>
-
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <button
-                                v-if="canUseManualControlAcq"
-                                type="button"
-                                class="btn btn-primary btn-sm"
-                                @click="openManualControlAcqPage"
-                            >
-                                Manual Control ACQ
-                            </button>
-                            <div v-if="reloadingTableData" class="xl:hidden px-2 text-sm text-base-content/80 flex items-center gap-2" aria-live="polite">
-                                <div class="animate-spin inline-block w-5 h-5 border-[3px] border-current border-t-transparent text-primary rounded-full" role="status" aria-label="loading">
-                                    <span class="sr-only">Загрузка...</span>
-                                </div>
-                                <span class="hidden sm:block">Загрузка данных...</span>
-                                <span class="sm:hidden">Загрузка...</span>
-                            </div>
-                        </div>
-
-                        <RefreshTableData
-                            @refresh-started="reloadingTableData = true"
-                            @refresh-finished="reloadingTableData = false"
-                        />
-                    </div>
-                </div>
             </template>
             <template v-slot:body>
                 <div class="relative">

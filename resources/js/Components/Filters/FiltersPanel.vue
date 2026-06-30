@@ -1,5 +1,5 @@
 <script setup>
-import {computed, provide, ref, watch} from "vue";
+import {computed, onBeforeUnmount, provide, ref, watch} from "vue";
 import {router, usePage} from "@inertiajs/vue3";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import {useActiveTableFiltersCount, useHasActiveTableFilters} from "@/composables/useHasActiveTableFilters.js";
@@ -40,15 +40,34 @@ const activeFiltersCount = useActiveTableFiltersCount();
 
 const contentOverflowClass = computed(() => (displayFilters.value && !isAnimating.value ? 'overflow-visible' : 'overflow-hidden'));
 
-watch(displayFilters, () => {
+let animationFallbackTimer = null;
+
+const clearAnimationFallback = () => {
+    if (animationFallbackTimer !== null) {
+        clearTimeout(animationFallbackTimer);
+        animationFallbackTimer = null;
+    }
+};
+
+const finishAnimation = () => {
+    clearAnimationFallback();
+    isAnimating.value = false;
+};
+
+const startAnimation = () => {
+    clearAnimationFallback();
     isAnimating.value = true;
-});
+    // На случай prefers-reduced-motion или отсутствия transition (например, при восстановлении из storage).
+    animationFallbackTimer = setTimeout(finishAnimation, 350);
+};
 
 const onCollapseTransitionEnd = (event) => {
     if (event.propertyName === 'grid-template-rows') {
-        isAnimating.value = false;
+        finishAnimation();
     }
 };
+
+onBeforeUnmount(clearAnimationFallback);
 
 const syncDisplayFromStorage = (key) => {
     const saved = localStorage.getItem(key);
@@ -70,6 +89,7 @@ watch(filtersStorageKey, (newKey) => {
 });
 
 const toggleFiltersDisplay = () => {
+    startAnimation();
     displayFilters.value = !displayFilters.value;
     localStorage.setItem(filtersStorageKey.value, displayFilters.value ? 'display' : 'hide');
 }

@@ -13,6 +13,8 @@ import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
 import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
+import PageToolbar from "@/Components/Table/PageToolbar.vue";
+import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
 import {computed, ref} from 'vue';
 
 const viewStore = useViewStore();
@@ -95,36 +97,14 @@ defineOptions({ layout: AuthenticatedLayout })
             :paginate="viewStore.isAdminViewMode"
         >
             <template v-slot:button>
-                <div
-                    v-if="viewStore.isMerchantViewMode"
-                    class="flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2"
-                >
-                    <div
-                        class="inline-flex max-w-full flex-wrap items-center justify-end gap-2 rounded-xl border border-base-300 bg-base-300 px-2.5 py-1.5 shadow-sm"
-                    >
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-primary btn-outline shrink-0 rounded-lg px-3 min-h-8 h-8 gap-2 font-semibold tracking-tight"
-                            @click="openCreateModal"
-                        >
-                            <svg
-                                class="h-5 w-5 shrink-0"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
-                                aria-hidden="true"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    clip-rule="evenodd"
-                                    d="M3.75 4.5L4.5 3.75H10.5L11.25 4.5V10.5L10.5 11.25H4.5L3.75 10.5V4.5ZM5.25 5.25V9.75H9.75V5.25H5.25ZM13.5 3.75L12.75 4.5V10.5L13.5 11.25H19.5L20.25 10.5V4.5L19.5 3.75H13.5ZM14.25 9.75V5.25H18.75V9.75H14.25ZM17.25 20.25H15.75V17.25H12.75V15.75H15.75V12.75H17.25V15.75H20.25V17.25H17.25V20.25ZM4.5 12.75L3.75 13.5V19.5L4.5 20.25H10.5L11.25 19.5V13.5L10.5 12.75H4.5ZM5.25 18.75V14.25H9.75V18.75H5.25Z"
-                                    fill="currentColor"
-                                />
-                            </svg>
-                            <span>Создать мерчант</span>
-                        </button>
-                    </div>
-                </div>
+                <PageToolbar v-if="viewStore.isMerchantViewMode">
+                    <PageToolbarAction
+                        icon="create-merchant"
+                        title="Создать мерчант"
+                        label="Создать мерчант"
+                        @click="openCreateModal"
+                    />
+                </PageToolbar>
             </template>
             <template v-slot:body>
                 <div v-if="viewStore.isAdminViewMode" class="relative">

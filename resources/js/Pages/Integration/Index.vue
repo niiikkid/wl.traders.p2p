@@ -6,6 +6,8 @@ import {ref, onMounted, onBeforeUnmount, nextTick} from 'vue';
 import axios from 'axios';
 import ApiDocumentation from '@/Pages/Integration/Components/ApiDocumentation.vue';
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
+import PageToolbar from '@/Components/Table/PageToolbar.vue';
+import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
 import {useModalStore} from "@/store/modal.js";
 
 const pageProps = usePage().props;
@@ -364,15 +366,16 @@ defineOptions({ layout: AuthenticatedLayout });
         <div class="mx-auto max-w-7xl">
             <div class="mb-6 flex items-center justify-between gap-4">
                 <h2 class="text-3xl font-bold text-base-content">API Интеграция</h2>
-                <button
-                    type="button"
-                    class="btn btn-outline btn-primary btn-sm"
-                    :class="{ 'btn-disabled': downloadingDocumentation }"
-                    :disabled="downloadingDocumentation"
-                    @click="downloadDocumentation"
-                >
-                    Скачать документацию
-                </button>
+                <PageToolbar>
+                    <PageToolbarAction
+                        icon="download"
+                        title="Скачать документацию"
+                        label="Скачать документацию"
+                        :loading="downloadingDocumentation"
+                        :disabled="downloadingDocumentation"
+                        @click="downloadDocumentation"
+                    />
+                </PageToolbar>
             </div>
 
             <div class="grid gap-6 mb-6 lg:grid-cols-2">
