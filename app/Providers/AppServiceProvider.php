@@ -31,16 +31,26 @@ use App\Contracts\TelegramChatBotServiceContract;
 use App\Contracts\TelegramChatFileServiceContract;
 use App\Contracts\TelegramChatWebhookIngestionServiceContract;
 use App\Contracts\TelegramServiceContract;
+use App\Contracts\UserActivityLogServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
 use App\Mixins\ResponseMixins;
+use App\Models\AntiFraudSetting;
 use App\Models\Dispute;
+use App\Models\Invoice;
 use App\Models\Merchant;
+use App\Models\OpenAiSetting;
 use App\Models\Order;
 use App\Models\PaymentDetail;
+use App\Models\PaymentGateway;
 use App\Models\Payout\Payout as PayoutModel;
+use App\Models\Setting;
 use App\Models\SmsLog;
+use App\Models\TelegramBotSetting;
+use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Observers\UserActivityObserver;
 use App\Queries\Cache\MerchantQueriesCache;
 use App\Queries\Eloquent\CallbackLogQueriesEloquent;
 use App\Queries\Eloquent\DisputeQueriesEloquent;
@@ -52,6 +62,7 @@ use App\Queries\Eloquent\PaymentDetailQueriesEloquent;
 use App\Queries\Eloquent\PaymentGatewayQueriesEloquent;
 use App\Queries\Eloquent\PayoutQueriesEloquent;
 use App\Queries\Eloquent\TransactionQueriesEloquent;
+use App\Queries\Eloquent\UserActivityLogQueriesEloquent;
 use App\Queries\Interfaces\CallbackLogQueries;
 use App\Queries\Interfaces\DisputeQueries;
 use App\Queries\Interfaces\InvoiceQueries;
@@ -62,6 +73,7 @@ use App\Queries\Interfaces\PaymentDetailQueries;
 use App\Queries\Interfaces\PaymentGatewayQueries;
 use App\Queries\Interfaces\PayoutQueries;
 use App\Queries\Interfaces\TransactionQueries;
+use App\Queries\Interfaces\UserActivityLogQueries;
 use App\Queries\QueriesBuilder;
 use App\Services\AntiFraud\AntiFraudService;
 use App\Services\AntiFraud\AntiFraudSettingService;
@@ -70,6 +82,7 @@ use App\Services\Device\DeviceService;
 use App\Services\Dispute\DisputeService;
 use App\Services\Invoice\InvoiceService;
 use App\Services\Logging\MerchantApiLogService;
+use App\Services\Logging\UserActivityLogService;
 use App\Services\MainPage\MainPageCacheService;
 use App\Services\MainPage\MainPageStatsService;
 use App\Services\Market\MarketService;
@@ -107,6 +120,7 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Permission\Models\Role;
 use Telegram\Bot\BotsManager;
 use Telegram\Bot\HttpClients\GuzzleHttpClient;
 
@@ -172,6 +186,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(MerchantApiLogServiceContract::class, function () {
             return new MerchantApiLogService;
+        });
+        $this->app->singleton(UserActivityLogServiceContract::class, function () {
+            return new UserActivityLogService;
         });
         $this->app->singleton(OrderPoolingServiceContract::class, function () {
             return new OrderPoolingService;
@@ -289,6 +306,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(PayoutQueries::class, function () {
             return new PayoutQueriesEloquent;
         });
+        $this->app->bind(UserActivityLogQueries::class, function () {
+            return new UserActivityLogQueriesEloquent;
+        });
     }
 
     /**
@@ -312,6 +332,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Response::mixin(new ResponseMixins);
+
+        $this->registerUserActivityObservers();
 
         Gate::define('access-to-payment-detail', function (User $user, PaymentDetail $paymentDetail) {
             return $user->id === $paymentDetail->user_id || $user->hasRole('Super Admin');
@@ -379,5 +401,28 @@ class AppServiceProvider extends ServiceProvider
             return PaymentDetail::query()->findOrFail($id);
         });
 
+    }
+
+    private function registerUserActivityObservers(): void
+    {
+        foreach ([
+            User::class,
+            Role::class,
+            Merchant::class,
+            PaymentDetail::class,
+            PaymentGateway::class,
+            Order::class,
+            PayoutModel::class,
+            Dispute::class,
+            Wallet::class,
+            Transaction::class,
+            Invoice::class,
+            Setting::class,
+            OpenAiSetting::class,
+            AntiFraudSetting::class,
+            TelegramBotSetting::class,
+        ] as $model) {
+            $model::observe(UserActivityObserver::class);
+        }
     }
 }

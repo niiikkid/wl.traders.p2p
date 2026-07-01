@@ -15,6 +15,8 @@ class TableFiltersValue implements Arrayable
         public array $hasDispute = [],
         public array $invoiceStatuses = [],
         public array $apiLogStatuses = [],
+        public array $activityActions = [],
+        public array $activitySubjectTypes = [],
         public ?string $externalID = null,
         public ?string $uuid = null,
         public ?string $orderUuid = null,
@@ -49,6 +51,7 @@ class TableFiltersValue implements Arrayable
         public ?string $searchMessage = null,
         public array $smsOperationTypes = [],
         public bool $onlyUnlinkedIncoming = false,
+        public ?string $subjectId = null,
     ) {}
 
     public function toArray(): array
@@ -61,6 +64,8 @@ class TableFiltersValue implements Arrayable
             'hasDispute' => implode(',', $this->hasDispute),
             'invoiceStatuses' => implode(',', $this->invoiceStatuses),
             'apiLogStatuses' => implode(',', $this->apiLogStatuses),
+            'activityActions' => implode(',', $this->activityActions),
+            'activitySubjectTypes' => implode(',', $this->activitySubjectTypes),
             'externalID' => $this->externalID,
             'uuid' => $this->uuid,
             'orderUuid' => $this->orderUuid,
@@ -95,6 +100,7 @@ class TableFiltersValue implements Arrayable
             'searchMessage' => $this->searchMessage,
             'smsOperationTypes' => implode(',', $this->smsOperationTypes),
             'onlyUnlinkedIncoming' => $this->onlyUnlinkedIncoming,
+            'subjectId' => $this->subjectId,
         ];
     }
 }

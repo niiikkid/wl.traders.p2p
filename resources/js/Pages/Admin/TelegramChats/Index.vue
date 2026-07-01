@@ -106,6 +106,81 @@ const messageTypeLabels = {
     unknown: 'Неизвестно',
 };
 
+const guideMode = ref('disputes');
+
+const guideModes = [
+    {
+        value: 'disputes',
+        title: 'Авто-споры',
+        badge: 'Входящие сообщения',
+        description: 'Бот читает сообщения мерчантов, ищет UUID сделки и чек, а затем открывает спор по fail-сделке.',
+        result: 'Подходит для чатов, куда мерчанты присылают чек и UUID проблемной сделки.',
+        accentClass: 'border-warning/40 bg-warning/10',
+        steps: [
+            'Добавьте бота в нужный Telegram-чат и установите webhook.',
+            'Дождитесь первого сообщения: чат появится здесь как ожидающий модерации.',
+            'Откройте чат, выберите функцию «Споры» и переведите статус в «Активен».',
+            'Мерчант отправляет UUID сделки и чек. Обработка идёт только для fail-сделок.',
+            'Система открывает спор, сохраняет сообщение, файл и результат обработки.',
+        ],
+        checks: [
+            'У чата выбрана функция «Споры».',
+            'Статус чата — «Активен».',
+            'Сообщение содержит UUID сделки и допустимый файл: jpg, png или pdf.',
+            'Debug можно выключить после проверки: останутся только спорные сообщения.',
+        ],
+    },
+    {
+        value: 'traders',
+        title: 'Команда трейдеров',
+        badge: 'Исходящие уведомления',
+        description: 'Бот пишет в командный чат, когда по сделке трейдера открыт спор, и напоминает, пока спор не закрыт.',
+        result: 'Подходит для внутренних чатов команд, где трейдерам нужно быстро увидеть новый спор.',
+        accentClass: 'border-info/40 bg-info/10',
+        steps: [
+            'Создайте или выберите Telegram-группу команды и добавьте туда бота.',
+            'Отправьте любое сообщение, чтобы система увидела чат и показала его в списке.',
+            'Откройте чат, выберите функцию «Трейдеры» и сохраните настройки.',
+            'Добавьте трейдеров в блоке «Трейдеры». Username нужен только для упоминания.',
+            'При новом споре бот отправит уведомление сразу, через 15 минут и далее каждый час, пока спор открыт.',
+        ],
+        checks: [
+            'У чата выбрана функция «Трейдеры».',
+            'Статус чата — «Активен».',
+            'В чат добавлен хотя бы один трейдер.',
+            'Уведомления не открывают споры и не обрабатывают входящие сообщения.',
+        ],
+    },
+];
+
+const activeGuideMode = computed(
+    () => guideModes.find((mode) => mode.value === guideMode.value) ?? guideModes[0],
+);
+
+const selectedChatGuideHint = computed(() => {
+    if (!props.selectedChat) {
+        return 'Выберите чат из списка, чтобы применить сценарий к конкретному Telegram-чату.';
+    }
+
+    if (guideMode.value === 'disputes') {
+        if (props.selectedChat.chat_type === 'dispute_processing' && props.selectedChat.status === 'active') {
+            return 'Выбранный чат уже готов открывать споры по входящим сообщениям.';
+        }
+
+        return 'Для выбранного чата проверьте функцию «Споры» и статус «Активен».';
+    }
+
+    if (props.selectedChat.chat_type === 'trader_team' && props.selectedChat.status === 'active') {
+        const tradersCount = props.selectedChat.team_traders?.length ?? 0;
+
+        return tradersCount > 0
+            ? `Выбранный командный чат готов: трейдеров добавлено — ${tradersCount}.`
+            : 'Чат активен как команда трейдеров, осталось добавить участников.';
+    }
+
+    return 'Для выбранного чата проверьте функцию «Трейдеры», статус «Активен» и список участников.';
+});
+
 const botStatusSummary = computed(() => {
     if (!botSettingState.value.has_bot_token) {
         return { text: 'Токен не задан', class: 'badge-warning' };
@@ -743,25 +818,135 @@ watch(
             </template>
 
             <template #header>
-                <div role="tablist" class="tabs tabs-boxed w-fit">
-                    <button
-                        type="button"
-                        role="tab"
-                        class="tab"
-                        :class="{ 'tab-active': tab === 'active' }"
-                        @click="switchTab('active')"
-                    >
-                        Активные
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        class="tab"
-                        :class="{ 'tab-active': tab === 'archived' }"
-                        @click="switchTab('archived')"
-                    >
-                        Архив
-                    </button>
+                <div class="flex flex-col gap-4">
+                    <div class="card border border-base-300 bg-base-100 shadow-sm">
+                        <div class="card-body gap-5">
+                            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="max-w-3xl space-y-2">
+                                    <span class="badge badge-primary badge-outline">Как пользоваться</span>
+                                    <h2 class="card-title text-xl">
+                                        Telegram-чаты — это настройка сценария для каждого чата
+                                    </h2>
+                                    <p class="text-sm leading-relaxed text-base-content/70">
+                                        Сначала бот обнаруживает Telegram-чат по webhook, а администратор решает, что этот чат должен делать:
+                                        открывать споры по сообщениям мерчантов или отправлять уведомления команде трейдеров.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-3 lg:grid-cols-2">
+                                <button
+                                    v-for="mode in guideModes"
+                                    :key="mode.value"
+                                    type="button"
+                                    class="rounded-box cursor-pointer border p-4 text-left transition hover:border-primary/40 hover:bg-base-200/40 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/60"
+                                    :class="guideMode === mode.value ? `${mode.accentClass} shadow-sm` : 'border-base-300/60 bg-base-200/10'"
+                                    @click="guideMode = mode.value"
+                                >
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="space-y-2">
+                                            <span class="badge badge-sm badge-outline">
+                                                {{ mode.badge }}
+                                            </span>
+                                            <h3 class="font-semibold text-base-content">
+                                                {{ mode.title }}
+                                            </h3>
+                                            <p class="text-sm leading-relaxed text-base-content/70">
+                                                {{ mode.description }}
+                                            </p>
+                                        </div>
+                                        <span
+                                            class="inline-flex size-5 shrink-0 items-center justify-center rounded-full border transition"
+                                            :class="guideMode === mode.value ? 'border-primary bg-primary/15 text-primary' : 'border-base-content/25 text-transparent'"
+                                            aria-hidden="true"
+                                        >
+                                            <span class="size-2 rounded-full bg-current" />
+                                        </span>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <div class="rounded-box border p-4" :class="activeGuideMode.accentClass">
+                                <div class="flex flex-col gap-4">
+                                    <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                        <div>
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                                                Сценарий: {{ activeGuideMode.title }}
+                                            </p>
+                                            <p class="mt-1 text-sm text-base-content/70">
+                                                {{ activeGuideMode.result }}
+                                            </p>
+                                        </div>
+                                        <div class="alert alert-info max-w-xl py-2 text-sm">
+                                            <span>{{ selectedChatGuideHint }}</span>
+                                        </div>
+                                    </div>
+
+                                    <ol class="grid gap-3 lg:grid-cols-5">
+                                        <li
+                                            v-for="(step, index) in activeGuideMode.steps"
+                                            :key="step"
+                                            class="flex gap-3 lg:flex-col lg:gap-2"
+                                        >
+                                            <div class="flex shrink-0 items-center gap-3 lg:w-full">
+                                                <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-base-100 text-sm font-bold text-primary shadow-sm">
+                                                    {{ index + 1 }}
+                                                </span>
+                                                <span
+                                                    v-if="index < activeGuideMode.steps.length - 1"
+                                                    class="hidden h-px flex-1 bg-primary/25 lg:block"
+                                                    aria-hidden="true"
+                                                />
+                                            </div>
+                                            <p class="text-sm leading-relaxed text-base-content/75 lg:pr-2">
+                                                {{ step }}
+                                            </p>
+                                        </li>
+                                    </ol>
+
+                                    <div class="collapse collapse-arrow border border-base-300 bg-base-100/70">
+                                        <input type="checkbox" checked>
+                                        <div class="collapse-title text-sm font-semibold">
+                                            Что проверить перед запуском
+                                        </div>
+                                        <div class="collapse-content">
+                                            <ul class="grid gap-2 text-sm text-base-content/75 md:grid-cols-2">
+                                                <li
+                                                    v-for="check in activeGuideMode.checks"
+                                                    :key="check"
+                                                    class="flex gap-2"
+                                                >
+                                                    <span class="mt-1 size-2 rounded-full bg-primary" aria-hidden="true" />
+                                                    <span>{{ check }}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div role="tablist" class="tabs tabs-boxed w-fit">
+                        <button
+                            type="button"
+                            role="tab"
+                            class="tab"
+                            :class="{ 'tab-active': tab === 'active' }"
+                            @click="switchTab('active')"
+                        >
+                            Активные
+                        </button>
+                        <button
+                            type="button"
+                            role="tab"
+                            class="tab"
+                            :class="{ 'tab-active': tab === 'archived' }"
+                            @click="switchTab('archived')"
+                        >
+                            Архив
+                        </button>
+                    </div>
                 </div>
             </template>
 

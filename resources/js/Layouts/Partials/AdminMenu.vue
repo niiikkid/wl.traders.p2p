@@ -117,6 +117,13 @@ const items = computed(() => [
         href: route('admin.merchant-api-logs.index'),
         active: route().current('admin.merchant-api-logs.*'),
     },
+    {
+        key: 'activity-logs',
+        label: 'Аудит',
+        icon: LogsIcon,
+        href: route('admin.activity-logs.index'),
+        active: route().current('admin.activity-logs.*'),
+    },
     // Калькулятор прибыли (admin.profit-calculator.*) — временно отключён
     {
         key: 'anti-fraud',

@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\TelegramBotSettingController;
 use App\Http\Controllers\Admin\TelegramChatAttachmentController;
 use App\Http\Controllers\Admin\TelegramChatController;
 use App\Http\Controllers\Admin\TelegramChatTraderController;
+use App\Http\Controllers\Admin\UserActivityLogController;
 use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
 use App\Http\Controllers\Admin\UserOnlinePingController;
 use App\Http\Controllers\Admin\UserWalletController;
@@ -449,6 +450,7 @@ Route::group(['middleware' => ['2fa']], function () {
         })->name('impersonate.start');
 
         Route::get('/merchant-api-logs', [MerchantApiLogController::class, 'index'])->name('merchant-api-logs.index');
+        Route::get('/activity-logs', [UserActivityLogController::class, 'index'])->name('activity-logs.index');
         Route::get('/merchant-api-logs/amount-distribution', [MerchantApiLogController::class, 'amountDistribution'])->name('merchant-api-logs.amount-distribution');
         Route::post('/merchant-api-logs/delete', [MerchantApiLogController::class, 'deleteByDateRange'])->name('merchant-api-logs.delete');
         Route::redirect('/callback-logs', '/admin/merchant-api-logs?tab=callbacks')->name('callback-logs.index');

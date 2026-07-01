@@ -26,6 +26,8 @@ interface ServiceBuilderContract
 
     public function merchantApiLog(): MerchantApiLogServiceContract;
 
+    public function userActivityLog(): UserActivityLogServiceContract;
+
     public function orderPooling(): OrderPoolingServiceContract;
 
     public function device(): DeviceServiceContract;

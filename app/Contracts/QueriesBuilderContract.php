@@ -12,6 +12,7 @@ use App\Queries\Interfaces\PaymentDetailQueries;
 use App\Queries\Interfaces\PaymentGatewayQueries;
 use App\Queries\Interfaces\PayoutQueries;
 use App\Queries\Interfaces\TransactionQueries;
+use App\Queries\Interfaces\UserActivityLogQueries;
 
 interface QueriesBuilderContract
 {
@@ -32,6 +33,8 @@ interface QueriesBuilderContract
     public function merchantApiLog(): MerchantApiLogQueries;
 
     public function callbackLog(): CallbackLogQueries;
+
+    public function userActivityLog(): UserActivityLogQueries;
 
     public function payout(): PayoutQueries;
 }

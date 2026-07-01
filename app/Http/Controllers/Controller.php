@@ -8,6 +8,8 @@ use App\Enums\InvoiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PayoutMethodType;
 use App\Enums\PayoutStatus;
+use App\Enums\UserActivityAction;
+use App\Enums\UserActivitySubjectType;
 use App\Models\Merchant;
 use App\ObjectValues\TableFilters\TableFiltersValue;
 use App\Services\Money\Currency;
@@ -148,6 +150,20 @@ abstract class Controller
             fn (string $value): bool => in_array($value, ['in', 'out', 'undefined'], true)
         ));
 
+        $activityActions = request()->input('filters.activityActions', '');
+        $activityActions = explode(',', $activityActions);
+        $activityActions = array_values(array_filter(
+            $activityActions,
+            fn (string $value): bool => UserActivityAction::tryFrom($value) !== null,
+        ));
+
+        $activitySubjectTypes = request()->input('filters.activitySubjectTypes', '');
+        $activitySubjectTypes = explode(',', $activitySubjectTypes);
+        $activitySubjectTypes = array_values(array_filter(
+            $activitySubjectTypes,
+            fn (string $value): bool => UserActivitySubjectType::tryFrom($value) !== null,
+        ));
+
         $startDate = request()->input('filters.startDate');
 
         if ($startDate) {
@@ -212,6 +228,9 @@ abstract class Controller
             'searchMessage' => request()->input('filters.searchMessage'),
             'smsOperationTypes' => $smsOperationTypes,
             'onlyUnlinkedIncoming' => request()->input('filters.onlyUnlinkedIncoming') === 'true',
+            'activityActions' => $activityActions,
+            'activitySubjectTypes' => $activitySubjectTypes,
+            'subjectId' => request()->input('filters.subjectId'),
         ];
 
         return new TableFiltersValue(
@@ -255,6 +274,9 @@ abstract class Controller
             searchMessage: $currentFilters['searchMessage'],
             smsOperationTypes: $currentFilters['smsOperationTypes'],
             onlyUnlinkedIncoming: $currentFilters['onlyUnlinkedIncoming'],
+            activityActions: $currentFilters['activityActions'],
+            activitySubjectTypes: $currentFilters['activitySubjectTypes'],
+            subjectId: $currentFilters['subjectId'],
         );
     }
 
@@ -403,6 +425,34 @@ abstract class Controller
             ],
         ];
 
+        $activityActions = [
+            ['name' => 'Создание', 'value' => UserActivityAction::Created->value],
+            ['name' => 'Изменение', 'value' => UserActivityAction::Updated->value],
+            ['name' => 'Удаление', 'value' => UserActivityAction::Deleted->value],
+            ['name' => 'Восстановление', 'value' => UserActivityAction::Restored->value],
+            ['name' => 'Полное удаление', 'value' => UserActivityAction::ForceDeleted->value],
+            ['name' => 'Роль назначена', 'value' => UserActivityAction::RoleAttached->value],
+            ['name' => 'Роль снята', 'value' => UserActivityAction::RoleDetached->value],
+        ];
+
+        $activitySubjectTypes = [
+            ['name' => 'Пользователь', 'value' => UserActivitySubjectType::User->value],
+            ['name' => 'Роль', 'value' => UserActivitySubjectType::Role->value],
+            ['name' => 'Мерчант', 'value' => UserActivitySubjectType::Merchant->value],
+            ['name' => 'Реквизит', 'value' => UserActivitySubjectType::PaymentDetail->value],
+            ['name' => 'Банк', 'value' => UserActivitySubjectType::PaymentGateway->value],
+            ['name' => 'Сделка', 'value' => UserActivitySubjectType::Order->value],
+            ['name' => 'Выплата', 'value' => UserActivitySubjectType::Payout->value],
+            ['name' => 'Спор', 'value' => UserActivitySubjectType::Dispute->value],
+            ['name' => 'Кошелек', 'value' => UserActivitySubjectType::Wallet->value],
+            ['name' => 'Транзакция', 'value' => UserActivitySubjectType::Transaction->value],
+            ['name' => 'Инвойс', 'value' => UserActivitySubjectType::Invoice->value],
+            ['name' => 'Настройка', 'value' => UserActivitySubjectType::Setting->value],
+            ['name' => 'OpenAI', 'value' => UserActivitySubjectType::OpenAiSetting->value],
+            ['name' => 'Антифрод', 'value' => UserActivitySubjectType::AntiFraudSetting->value],
+            ['name' => 'Telegram Bot', 'value' => UserActivitySubjectType::TelegramBotSetting->value],
+        ];
+
         return [
             'orderStatuses' => $orderStatuses,
             'disputeStatuses' => $disputeStatuses,
@@ -416,6 +466,8 @@ abstract class Controller
             'payoutStatuses' => $payoutStatuses,
             'payoutMethodTypes' => $payoutMethodTypes,
             'smsOperationTypes' => $smsOperationTypes,
+            'activityActions' => $activityActions,
+            'activitySubjectTypes' => $activitySubjectTypes,
         ];
     }
 }

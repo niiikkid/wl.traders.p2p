@@ -9,10 +9,11 @@ use App\Queries\Interfaces\InvoiceQueries;
 use App\Queries\Interfaces\MerchantApiLogQueries;
 use App\Queries\Interfaces\MerchantQueries;
 use App\Queries\Interfaces\OrderQueries;
-use App\Queries\Interfaces\PayoutQueries;
 use App\Queries\Interfaces\PaymentDetailQueries;
 use App\Queries\Interfaces\PaymentGatewayQueries;
+use App\Queries\Interfaces\PayoutQueries;
 use App\Queries\Interfaces\TransactionQueries;
+use App\Queries\Interfaces\UserActivityLogQueries;
 
 class QueriesBuilder implements QueriesBuilderContract
 {
@@ -50,15 +51,20 @@ class QueriesBuilder implements QueriesBuilderContract
     {
         return make(TransactionQueries::class);
     }
-    
+
     public function merchantApiLog(): MerchantApiLogQueries
     {
         return make(MerchantApiLogQueries::class);
     }
-    
+
     public function callbackLog(): CallbackLogQueries
     {
         return make(CallbackLogQueries::class);
+    }
+
+    public function userActivityLog(): UserActivityLogQueries
+    {
+        return make(UserActivityLogQueries::class);
     }
 
     public function payout(): PayoutQueries

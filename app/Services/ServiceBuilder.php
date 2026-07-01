@@ -26,6 +26,7 @@ use App\Contracts\SettingsServiceContract;
 use App\Contracts\SmsServiceContract;
 use App\Contracts\TelegramChatBotServiceContract;
 use App\Contracts\TelegramServiceContract;
+use App\Contracts\UserActivityLogServiceContract;
 use App\Contracts\UserServiceContract;
 use App\Contracts\WalletServiceContract;
 
@@ -84,6 +85,11 @@ class ServiceBuilder implements ServiceBuilderContract
     public function merchantApiLog(): MerchantApiLogServiceContract
     {
         return make(MerchantApiLogServiceContract::class);
+    }
+
+    public function userActivityLog(): UserActivityLogServiceContract
+    {
+        return make(UserActivityLogServiceContract::class);
     }
 
     public function orderPooling(): OrderPoolingServiceContract
