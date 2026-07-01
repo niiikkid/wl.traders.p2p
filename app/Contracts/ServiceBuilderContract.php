@@ -4,6 +4,8 @@ namespace App\Contracts;
 
 interface ServiceBuilderContract
 {
+    public function accountSession(): AccountSessionServiceContract;
+
     public function order(): OrderServiceContract;
 
     public function sms(): SmsServiceContract;

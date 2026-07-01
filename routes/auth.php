@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AccountSessionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\Check2FACodeController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
@@ -60,4 +61,21 @@ Route::middleware('auth')->group(function () {
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
+});
+
+Route::middleware(['auth', 'banned', '2fa'])->group(function () {
+    Route::get('accounts/add', [AccountSessionController::class, 'create'])
+        ->name('account-sessions.create');
+    Route::post('accounts/add', [AccountSessionController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('account-sessions.store');
+    Route::get('accounts/2fa', [AccountSessionController::class, 'twoFactor'])
+        ->name('account-sessions.2fa');
+    Route::post('accounts/2fa', [AccountSessionController::class, 'verifyTwoFactor'])
+        ->middleware('throttle:5,1')
+        ->name('account-sessions.2fa.verify');
+    Route::post('accounts/{user}/switch', [AccountSessionController::class, 'switch'])
+        ->name('account-sessions.switch');
+    Route::delete('accounts/{user}', [AccountSessionController::class, 'remove'])
+        ->name('account-sessions.remove');
 });

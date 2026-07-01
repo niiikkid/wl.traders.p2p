@@ -2,26 +2,37 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
-use PragmaRX\Google2FALaravel\Events\OneTimePasswordRequested;
-use PragmaRX\Google2FALaravel\Support\Authenticator;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class Google2FAMiddleware
 {
     /**
      * Handle an incoming request.
      *
-     * @param \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response) $next
+     * @param  Closure(Request): (Response)  $next
      */
-    public function handle($request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
-        $user = auth()->user();
+        $user = $request->user();
 
-        if (!$user) {
+        if (! $user instanceof User) {
             return $next($request);
         }
 
-        if (session()->has('user_2fa_passed') || $user->google2fa_secret === null) {
+        if ($user->isImpersonated()) {
+            if (session()->has('user_2fa_passed') || $user->google2fa_secret === null) {
+                return $next($request);
+            }
+
+            return redirect()->route('auth.2fa');
+        }
+
+        services()->accountSession()->ensureCurrentAccount($request, $user);
+
+        if (! services()->accountSession()->requiresTwoFactor($request, $user)) {
             return $next($request);
         }
 

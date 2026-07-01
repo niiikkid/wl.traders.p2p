@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\AccountSessionServiceContract;
 use App\Contracts\AntiFraudServiceContract;
 use App\Contracts\AntiFraudSettingServiceContract;
 use App\Contracts\CallbackServiceContract;
@@ -32,6 +33,11 @@ use App\Contracts\WalletServiceContract;
 
 class ServiceBuilder implements ServiceBuilderContract
 {
+    public function accountSession(): AccountSessionServiceContract
+    {
+        return make(AccountSessionServiceContract::class);
+    }
+
     public function order(): OrderServiceContract
     {
         return make(OrderServiceContract::class);

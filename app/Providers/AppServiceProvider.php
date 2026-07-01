@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Contracts\AccountSessionServiceContract;
 use App\Contracts\AntiFraudServiceContract;
 use App\Contracts\AntiFraudSettingServiceContract;
 use App\Contracts\CallbackServiceContract;
@@ -77,6 +78,7 @@ use App\Queries\Interfaces\UserActivityLogQueries;
 use App\Queries\QueriesBuilder;
 use App\Services\AntiFraud\AntiFraudService;
 use App\Services\AntiFraud\AntiFraudSettingService;
+use App\Services\Auth\AccountSessionService;
 use App\Services\Auth\LoginHistoryService;
 use App\Services\Device\DeviceService;
 use App\Services\Dispute\DisputeService;
@@ -150,6 +152,9 @@ class AppServiceProvider extends ServiceProvider
         // services
         $this->app->singleton(ServiceBuilderContract::class, function () {
             return new ServiceBuilder;
+        });
+        $this->app->singleton(AccountSessionServiceContract::class, function () {
+            return new AccountSessionService;
         });
         $this->app->bind(OrderServiceContract::class, function () {
             return new OrderService;

@@ -8,9 +8,11 @@ use Inertia\Inertia;
 
 class Check2FACodeController extends Controller
 {
-    public function check()
+    public function check(Request $request)
     {
-        if (! auth()->user()->google2fa_secret || session()->get('user_2fa_passed') === true) {
+        $user = $request->user();
+
+        if (! $user?->google2fa_secret || ! services()->accountSession()->requiresTwoFactor($request, $user)) {
             return redirect()->route('dashboard');
         }
 
@@ -19,24 +21,18 @@ class Check2FACodeController extends Controller
 
     public function validate(Request $request)
     {
-        if (! auth()->user()->google2fa_secret || session()->get('user_2fa_passed') === true) {
+        $user = $request->user();
+
+        if (! $user?->google2fa_secret || ! services()->accountSession()->requiresTwoFactor($request, $user)) {
             return redirect()->route('dashboard');
         }
 
         $request->validate([
-            'one_time_password' => ['required', 'numeric'],
+            'one_time_password' => ['required', 'string', 'size:6'],
         ]);
 
-        /**
-         * @var \PragmaRX\Google2FALaravel\Google2FA $google2fa
-         */
-        $google2fa = app('pragmarx.google2fa');
-        $user = auth()->user();
-
-        $opt = $google2fa->getCurrentOtp($user->google2fa_secret);
-
-        if ((int)$opt === (int) $request->input('one_time_password')) {
-            session()->put('user_2fa_passed', true);
+        if (services()->accountSession()->verifyTwoFactorCode($user, (string) $request->input('one_time_password'))) {
+            services()->accountSession()->markCurrentTwoFactorPassed($request, $user);
 
             return redirect()->route('dashboard');
         }

@@ -85,14 +85,17 @@ const usesTeamLeaderSharedReserve = computed(() => (
     && usePage().props.auth.user?.uses_team_leader_shared_reserve === true
 ));
 
-const role = usePage().props.auth.role;
-const email = usePage().props.auth.user.email;
+const role = computed(() => usePage().props.auth.role ?? {});
+const email = computed(() => usePage().props.auth.user?.email ?? '');
+const accountSessions = computed(() => usePage().props.auth.accounts ?? { items: [], has_multiple: false });
+const accounts = computed(() => accountSessions.value.items ?? []);
+const canManageAccountSessions = computed(() => usePage().props.auth.is_impersonated !== true);
 const canManageNews = computed(() => usePage().props.news?.canManage === true);
 const showCreateNewsModal = ref(false);
 const newsDropdownRef = ref(null);
 
 const login = computed(() =>
-    email.charAt(0).toUpperCase() + email.slice(1)
+    email.value.charAt(0).toUpperCase() + email.value.slice(1)
 );
 
 const openCreateNewsModal = () => {
@@ -109,6 +112,27 @@ const onNewsCreated = () => {
 
 const openFinancePage = () => {
     router.visit(activeFinanceRoute.value, { preserveScroll: true });
+};
+
+const switchAccount = (account) => {
+    if (account.is_current) {
+        return;
+    }
+
+    router.post(route('account-sessions.switch', { user: account.id }), {}, {
+        preserveScroll: false,
+        preserveState: false,
+    });
+};
+
+const removeAccount = (account) => {
+    if (account.is_current) {
+        return;
+    }
+
+    router.delete(route('account-sessions.remove', { user: account.id }), {
+        preserveScroll: true,
+    });
 };
 
 router.on('success', () => {
@@ -278,7 +302,7 @@ router.on('success', () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/>
                             </svg>
                         </div>
-                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-2 z-[1] w-52 p-2 shadow bg-base-100 rounded-box border border-base-300/60">
+                        <ul tabindex="0" class="menu menu-sm dropdown-content mt-2 z-[1] w-80 max-w-[calc(100vw-2rem)] p-2 shadow bg-base-100 rounded-box border border-base-300/60">
                             <li class="lg:hidden block menu-title px-4">Пользователь</li>
                             <li class="lg:hidden block px-2 hover:bg-transparent active:bg-transparent focus:bg-transparent pointer-events-none">
                                 <div class="text-base font-medium text-base-content/70 truncate">{{ login }}</div>
@@ -303,6 +327,62 @@ router.on('success', () => {
                                     </div>
                                 </div>
                             </li>
+
+                            <template v-if="canManageAccountSessions">
+                                <li class="menu-title px-4">Аккаунты</li>
+                                <li
+                                    v-for="account in accounts"
+                                    :key="account.id"
+                                    class="px-1"
+                                >
+                                    <div class="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-base-200">
+                                        <button
+                                            type="button"
+                                            class="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                            :class="account.is_current ? 'cursor-default' : 'cursor-pointer'"
+                                            :disabled="account.is_current"
+                                            @click.stop="switchAccount(account)"
+                                        >
+                                            <UserAvatar :user="account" size="sm" :ring="account.is_current" />
+                                            <span class="min-w-0 flex-1">
+                                                <span class="block truncate text-sm font-medium text-base-content">
+                                                    {{ account.email }}
+                                                </span>
+                                                <span class="block truncate text-xs text-base-content/55">
+                                                    {{ account.role?.name ?? 'Без роли' }}
+                                                </span>
+                                            </span>
+                                        </button>
+
+                                        <span v-if="account.is_current" class="badge badge-primary badge-xs shrink-0">
+                                            Текущий
+                                        </span>
+
+                                        <button
+                                            v-else
+                                            type="button"
+                                            class="btn btn-ghost btn-xs btn-square shrink-0 text-error"
+                                            title="Убрать из этого браузера"
+                                            @click.stop="removeAccount(account)"
+                                        >
+                                            <span class="sr-only">Убрать аккаунт</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </li>
+
+                                <li class="px-2">
+                                    <Link :href="route('account-sessions.create')" class="justify-start text-base">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4 opacity-70" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                        </svg>
+                                        Добавить аккаунт
+                                    </Link>
+                                </li>
+                            </template>
+
                             <li class="menu-title px-4">Меню</li>
                             <li class="px-2">
                                 <Link :href="route('profile.edit')" class="justify-start text-base">
@@ -311,7 +391,7 @@ router.on('success', () => {
                             </li>
                             <li class="px-2">
                                 <Link :href="route('logout')" method="post" class="justify-start text-base">
-                                    Выход
+                                    Выйти из всех аккаунтов
                                 </Link>
                             </li>
                         </ul>

@@ -56,9 +56,17 @@ class HandleInertiaRequests extends Middleware
         $isAdmin = false;
         $isTrader = false;
         $authRole = null;
+        $authAccounts = [
+            'items' => [],
+            'has_multiple' => false,
+        ];
 
         if ($authUser instanceof User) {
             $authUser->loadMissing('roles', 'wallet', 'meta');
+            if (! $authUser->isImpersonated()) {
+                services()->accountSession()->ensureCurrentAccount($request, $authUser);
+                $authAccounts = services()->accountSession()->accountsForShare($request, $authUser);
+            }
             $isAdmin = $authUser->hasRole('Super Admin');
             $isTrader = $authUser->hasRole('Trader');
             $authRole = $authUser->roles->first();
@@ -302,6 +310,7 @@ class HandleInertiaRequests extends Middleware
                 'is_admin' => $isAdmin,
                 'is_trader' => $isTrader,
                 'is_impersonated' => $authUser?->isImpersonated(),
+                'accounts' => fn () => $authAccounts,
             ],
             'ziggy' => fn () => [
                 'location' => $request->url(),
