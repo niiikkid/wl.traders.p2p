@@ -227,34 +227,8 @@ class PayoutService implements PayoutServiceContract
                 throw PayoutException::payoutUnavailableForTaking();
             }
 
-            $lockedTrader = User::query()
-                ->whereKey($trader->id)
-                ->with('teamLeader')
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            if ($lockedTrader->archived_at !== null || $lockedTrader->banned_at !== null) {
-                throw new PayoutException('Трейдер недоступен для работы с выплатами.');
-            }
-
-            if (! $lockedTrader->payouts_enabled) {
-                throw new PayoutException('Выплаты для трейдера отключены.');
-            }
-
-            $limit = max((int) $lockedTrader->payout_active_payouts_limit ?: 1, 1);
-
-            $activeCount = Payout::query()
-                ->where('trader_id', $lockedTrader->id)
-                ->whereIn('status', [
-                    PayoutStatus::TAKEN->value,
-                    PayoutStatus::SENT->value,
-                ])
-                ->lockForUpdate()
-                ->count();
-
-            if ($activeCount >= $limit) {
-                throw PayoutException::traderActiveLimitReached($limit);
-            }
+            $lockedTrader = $this->lockAvailablePayoutTrader($trader);
+            $this->ensureTraderActivePayoutLimit($lockedTrader);
 
             $payout->update([
                 'trader_id' => $lockedTrader->id,
@@ -269,6 +243,57 @@ class PayoutService implements PayoutServiceContract
             ]);
 
             return $payout->load('merchant', 'paymentGateway', 'trader');
+        });
+    }
+
+    /**
+     * Transfer a taken payout to another trader without changing status or sending callbacks.
+     *
+     * @throws PayoutException
+     */
+    public function transferTrader(Payout $payout, User $trader, ?string $note = null): Payout
+    {
+        return Transaction::run(function () use ($payout, $trader, $note) {
+            $locked = Payout::query()
+                ->whereKey($payout->id)
+                ->with('trader')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($locked->status->notEquals(PayoutStatus::TAKEN)) {
+                throw new PayoutException('Передать можно только выплату в работе до отправки денег.');
+            }
+
+            if (! $locked->trader_id) {
+                throw PayoutException::payoutNotAssignedToTrader();
+            }
+
+            $oldTraderID = $locked->trader_id;
+            $lockedTrader = $this->lockAvailablePayoutTrader($trader);
+
+            if ($oldTraderID === $lockedTrader->id) {
+                throw new PayoutException('Выплата уже закреплена за этим трейдером.');
+            }
+
+            $this->ensureTraderActivePayoutLimit($lockedTrader, $locked);
+
+            $locked->update([
+                'trader_id' => $lockedTrader->id,
+            ]);
+
+            $this->logOperation(
+                $locked,
+                PayoutOperationType::TRANSFER_TRADER,
+                null,
+                [
+                    'manual' => true,
+                    'old_trader_id' => $oldTraderID,
+                    'new_trader_id' => $lockedTrader->id,
+                    'note' => $note,
+                ]
+            );
+
+            return $locked->fresh('merchant', 'paymentGateway', 'trader');
         });
     }
 
@@ -637,6 +662,50 @@ class PayoutService implements PayoutServiceContract
 
             throw new PayoutException('Не удалось сменить статус выплаты.');
         });
+    }
+
+    private function lockAvailablePayoutTrader(User $trader): User
+    {
+        $lockedTrader = User::query()
+            ->whereKey($trader->id)
+            ->with('teamLeader')
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if (! $lockedTrader->hasRole('Trader')) {
+            throw new PayoutException('Выбранный пользователь не является трейдером.');
+        }
+
+        if ($lockedTrader->archived_at !== null || $lockedTrader->banned_at !== null) {
+            throw new PayoutException('Трейдер недоступен для работы с выплатами.');
+        }
+
+        if (! $lockedTrader->payouts_enabled) {
+            throw new PayoutException('Выплаты для трейдера отключены.');
+        }
+
+        return $lockedTrader;
+    }
+
+    private function ensureTraderActivePayoutLimit(User $trader, ?Payout $excludedPayout = null): void
+    {
+        $limit = max((int) $trader->payout_active_payouts_limit ?: 1, 1);
+
+        $activeQuery = Payout::query()
+            ->where('trader_id', $trader->id)
+            ->whereIn('status', [
+                PayoutStatus::TAKEN->value,
+                PayoutStatus::SENT->value,
+            ])
+            ->lockForUpdate();
+
+        if ($excludedPayout) {
+            $activeQuery->where('id', '!=', $excludedPayout->id);
+        }
+
+        if ($activeQuery->count() >= $limit) {
+            throw PayoutException::traderActiveLimitReached($limit);
+        }
     }
 
     private function ensureGatewaySupportsPayouts(PaymentGateway $gateway): void

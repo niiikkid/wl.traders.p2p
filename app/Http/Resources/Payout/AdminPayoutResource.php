@@ -125,6 +125,7 @@ class AdminPayoutResource extends JsonResource
             PayoutOperationType::RESERVE_FROM_MERCHANT => 'Резерв с мерчанта',
             PayoutOperationType::RETURN_TO_MERCHANT => 'Возврат мерчанту',
             PayoutOperationType::MARK_TAKEN => 'Взятие выплаты',
+            PayoutOperationType::TRANSFER_TRADER => 'Передача трейдеру',
             PayoutOperationType::MARK_SENT => 'Отметка об отправке',
             PayoutOperationType::SET_HOLD => 'Установка холда',
             PayoutOperationType::RELEASE_HOLD => 'Снятие холда',

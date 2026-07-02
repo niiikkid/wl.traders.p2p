@@ -375,6 +375,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/payouts', [App\Http\Controllers\Admin\PayoutController::class, 'index'])->name('payouts.index');
         Route::get('/payouts/export', [App\Http\Controllers\Admin\PayoutController::class, 'export'])->name('payouts.export');
         Route::patch('/payouts/{payout}/status', [App\Http\Controllers\Admin\PayoutController::class, 'updateStatus'])->name('payouts.status.update');
+        Route::patch('/payouts/{payout}/trader', [App\Http\Controllers\Admin\PayoutController::class, 'transferTrader'])->name('payouts.trader.transfer');
         Route::get('/payouts/settings-data', [App\Http\Controllers\Admin\PayoutController::class, 'settingsData'])->name('payouts.settings-data');
         Route::patch('/payouts/settings', [App\Http\Controllers\Admin\PayoutController::class, 'updateSettings'])->name('payouts.settings.update');
 

@@ -29,6 +29,8 @@ interface PayoutServiceContract
     /**
      * @throws PayoutException
      */
+    public function transferTrader(Payout $payout, User $trader, ?string $note = null): Payout;
+
     /**
      * @param  array<int, UploadedFile>  $receipts
      *

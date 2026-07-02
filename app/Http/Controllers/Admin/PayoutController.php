@@ -6,9 +6,11 @@ use App\Enums\PayoutStatus;
 use App\Exceptions\PayoutException;
 use App\Exports\AdminPayoutsExport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\Payout\TransferTraderRequest;
 use App\Http\Requests\Admin\Payout\UpdateCurrencySettingsRequest;
 use App\Http\Requests\Admin\Payout\UpdateStatusRequest;
 use App\Http\Resources\Payout\AdminPayoutResource;
+use App\Models\Payout\Payout;
 use App\Models\User;
 use App\Services\Money\Currency;
 use Illuminate\Http\JsonResponse;
@@ -32,7 +34,6 @@ class PayoutController extends Controller
             ->select(['id', 'name', 'email'])
             ->role('Trader')
             ->where('payouts_enabled', true)
-            ->where('is_online', true)
             ->orderBy('name')
             ->get();
 
@@ -73,6 +74,23 @@ class PayoutController extends Controller
         }
 
         return redirect()->back()->with('message', 'Статус выплаты обновлён.');
+    }
+
+    public function transferTrader(TransferTraderRequest $request, Payout $payout): RedirectResponse
+    {
+        $trader = User::query()->findOrFail($request->validated('trader_id'));
+
+        try {
+            services()->payout()->transferTrader(
+                payout: $payout,
+                trader: $trader,
+                note: $request->validated('note') ?? null,
+            );
+        } catch (PayoutException $exception) {
+            return redirect()->back()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->back()->with('message', 'Трейдер выплаты обновлён.');
     }
 
     public function settingsData(): JsonResponse

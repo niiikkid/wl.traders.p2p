@@ -19,7 +19,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
-class AdminPayoutsExport implements FromQuery, WithHeadings, WithMapping, WithColumnFormatting
+class AdminPayoutsExport implements FromQuery, WithColumnFormatting, WithHeadings, WithMapping
 {
     private const int COMMISSION_PERCENT_DECIMALS = 2;
 
@@ -222,6 +222,7 @@ class AdminPayoutsExport implements FromQuery, WithHeadings, WithMapping, WithCo
             PayoutOperationType::RESERVE_FROM_MERCHANT => 'Резерв с мерчанта',
             PayoutOperationType::RETURN_TO_MERCHANT => 'Возврат мерчанту',
             PayoutOperationType::MARK_TAKEN => 'Взятие выплаты',
+            PayoutOperationType::TRANSFER_TRADER => 'Передача трейдеру',
             PayoutOperationType::MARK_SENT => 'Отметка об отправке',
             PayoutOperationType::SET_HOLD => 'Установка холда',
             PayoutOperationType::RELEASE_HOLD => 'Снятие холда',

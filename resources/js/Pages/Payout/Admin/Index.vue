@@ -32,12 +32,19 @@ const payoutItems = computed(() => payouts.value?.data ?? []);
 const traders = computed(() => usePage().props.traders ?? []);
 const expandedRows = ref({});
 const statusUpdatingId = ref(null);
+const traderTransferringId = ref(null);
 const modalStore = useModalStore();
 const selectedTraders = ref({});
 const traderModal = ref({
     open: false,
     payout: null,
     option: null,
+    traderId: null,
+    error: null,
+});
+const transferTraderModal = ref({
+    open: false,
+    payout: null,
     traderId: null,
     error: null,
 });
@@ -59,6 +66,8 @@ const statusClasses = {
 const statusBadge = (status) => statusClasses[status] ?? 'badge-ghost';
 
 const resolveBankName = (payout) => payout?.bank_name ?? payout?.payment_gateway?.name ?? '—';
+
+const isTransferable = (payout) => payout?.status === 'taken' && Boolean(payout?.trader?.id);
 
 const statusOptions = [
     {
@@ -125,6 +134,8 @@ const getTraderLabel = (id) => {
     const trader = traders.value.find((item) => item.id === id);
     return trader ? `${trader.name ?? trader.email} (${trader.email})` : 'не выбран';
 };
+
+const getTransferTraderOptions = (payout) => traders.value.filter((trader) => trader.id !== payout?.trader?.id);
 
 const openTraderModal = (payout, option) => {
     const preset = payout.trader?.id ?? getSelectedTrader(payout.id) ?? traders.value[0]?.id ?? null;
@@ -205,6 +216,53 @@ const confirmTraderModal = () => {
     setSelectedTrader(payout.id, traderId);
     closeTraderModal();
     sendStatusChange(payout, option, traderId);
+};
+
+const openTransferTraderModal = (payout) => {
+    const preset = getTransferTraderOptions(payout)[0]?.id ?? null;
+
+    transferTraderModal.value = {
+        open: true,
+        payout,
+        traderId: preset,
+        error: null,
+    };
+};
+
+const closeTransferTraderModal = () => {
+    transferTraderModal.value.open = false;
+    transferTraderModal.value.error = null;
+};
+
+const sendTraderTransfer = (payout, traderId) => {
+    traderTransferringId.value = payout.id;
+
+    router.patch(route('admin.payouts.trader.transfer', payout.id), { trader_id: traderId }, {
+        preserveScroll: true,
+        onFinish: () => {
+            traderTransferringId.value = null;
+        },
+        onError: () => {
+            traderTransferringId.value = null;
+        },
+    });
+};
+
+const confirmTransferTraderModal = () => {
+    const { payout, traderId } = transferTraderModal.value;
+
+    if (! traderId) {
+        transferTraderModal.value.error = 'Выберите трейдера';
+        return;
+    }
+
+    if (traderId === payout.trader?.id) {
+        transferTraderModal.value.error = 'Выберите другого трейдера';
+        return;
+    }
+
+    closeTransferTraderModal();
+    sendTraderTransfer(payout, traderId);
 };
 
 const openStatusConfirm = (payout, option) => {
@@ -394,6 +452,15 @@ defineOptions({ layout: AuthenticatedLayout });
                                 </td>
                                 <td class="text-right align-top">
                                     <TableActionsDropdown>
+                                        <TableAction
+                                            v-if="isTransferable(payout)"
+                                            @click="openTransferTraderModal(payout)"
+                                        >
+                                            <div class="flex flex-col text-left">
+                                                <span class="text-xs font-medium">Передать трейдеру</span>
+                                                <span class="text-[10px] text-base-content/60">Без смены статуса и callback.</span>
+                                            </div>
+                                        </TableAction>
                                         <TableAction
                                             v-for="option in getAvailableOptions(payout)"
                                             :key="`${payout.id}-${option.value}`"
@@ -746,6 +813,15 @@ defineOptions({ layout: AuthenticatedLayout });
                             <div class="flex items-center justify-between gap-2 border-t border-base-content/10 pt-2 mt-2">
                                 <TableActionsDropdown>
                                     <TableAction
+                                        v-if="isTransferable(payout)"
+                                        @click="openTransferTraderModal(payout)"
+                                    >
+                                        <div class="flex flex-col text-left">
+                                            <span class="text-xs font-medium">Передать трейдеру</span>
+                                            <span class="text-[10px] text-base-content/60">Без смены статуса и callback.</span>
+                                        </div>
+                                    </TableAction>
+                                    <TableAction
                                         v-for="option in getAvailableOptions(payout)"
                                         :key="`mobile-${payout.id}-${option.value}`"
                                         @click="openStatusConfirm(payout, option)"
@@ -920,7 +996,7 @@ defineOptions({ layout: AuthenticatedLayout });
                     Выплата {{ traderModal.payout?.uuid }} → {{ traderModal.option?.label }}
                 </p>
                 <div class="space-y-2">
-                    <div class="text-xs uppercase text-base-content/50">Активные трейдеры (онлайн, выплаты включены)</div>
+                    <div class="text-xs uppercase text-base-content/50">Активные трейдеры с включёнными выплатами</div>
                     <select
                         v-model.number="traderModal.traderId"
                         class="select select-bordered w-full"
@@ -939,6 +1015,44 @@ defineOptions({ layout: AuthenticatedLayout });
                 <div class="modal-action">
                     <button class="btn btn-sm btn-ghost" type="button" @click="closeTraderModal">Отмена</button>
                     <button class="btn btn-sm btn-primary" type="button" @click="confirmTraderModal">Подтвердить</button>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="transferTraderModal.open" max-width="md" @close="closeTransferTraderModal">
+            <div class="space-y-3">
+                <h3 class="text-lg font-semibold text-base-content">Передать выплату другому трейдеру</h3>
+                <p class="text-sm text-base-content/70">
+                    Выплата {{ transferTraderModal.payout?.uuid }} останется в статусе
+                    “{{ transferTraderModal.payout?.status_label }}”. Суммы и время взятия не изменятся.
+                </p>
+                <div class="space-y-2">
+                    <div class="text-xs uppercase text-base-content/50">Новый трейдер</div>
+                    <select
+                        v-model.number="transferTraderModal.traderId"
+                        class="select select-bordered w-full"
+                    >
+                        <option :value="null">Выберите трейдера</option>
+                        <option
+                            v-for="trader in getTransferTraderOptions(transferTraderModal.payout)"
+                            :key="`transfer-tr-${trader.id}`"
+                            :value="trader.id"
+                        >
+                            {{ trader.name ?? trader.email }} ({{ trader.email }})
+                        </option>
+                    </select>
+                    <div v-if="transferTraderModal.error" class="text-error text-sm">{{ transferTraderModal.error }}</div>
+                </div>
+                <div class="modal-action">
+                    <button class="btn btn-sm btn-ghost" type="button" @click="closeTransferTraderModal">Отмена</button>
+                    <button
+                        class="btn btn-sm btn-primary"
+                        type="button"
+                        :disabled="traderTransferringId === transferTraderModal.payout?.id"
+                        @click="confirmTransferTraderModal"
+                    >
+                        Передать
+                    </button>
                 </div>
             </div>
         </Modal>

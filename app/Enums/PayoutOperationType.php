@@ -11,6 +11,7 @@ enum PayoutOperationType: string
     case RESERVE_FROM_MERCHANT = 'reserve_from_merchant';
     case RETURN_TO_MERCHANT = 'return_to_merchant';
     case MARK_TAKEN = 'mark_taken';
+    case TRANSFER_TRADER = 'transfer_trader';
     case MARK_SENT = 'mark_sent';
     case SET_HOLD = 'set_hold';
     case RELEASE_HOLD = 'release_hold';
@@ -18,5 +19,3 @@ enum PayoutOperationType: string
     case SERVICE_INCOME = 'service_income';
     case TEAMLEAD_INCOME = 'teamlead_income';
 }
-
-
