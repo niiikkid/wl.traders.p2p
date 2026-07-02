@@ -104,6 +104,14 @@ const items = computed(() => [
         spanClass: 'text-nowrap',
     },
     {
+        key: 'wallet-deposit',
+        label: 'Крипто-пополнения',
+        icon: WalletIcon,
+        href: route('admin.wallet-deposit.index'),
+        active: route().current('admin.wallet-deposit.*'),
+        spanClass: 'text-nowrap',
+    },
+    {
         key: 'automation',
         label: 'Автоматика',
         icon: AutomationIcon,

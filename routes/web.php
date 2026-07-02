@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\UserActivityLogController;
 use App\Http\Controllers\Admin\UserDeviceController as AdminUserDeviceController;
 use App\Http\Controllers\Admin\UserOnlinePingController;
 use App\Http\Controllers\Admin\UserWalletController;
+use App\Http\Controllers\Admin\WalletDepositAddressController;
 use App\Http\Controllers\Admin\WithdrawalController;
 use App\Http\Controllers\ApiIntegrationController;
 use App\Http\Controllers\ApkController;
@@ -77,6 +78,7 @@ use App\Http\Controllers\UserDevicePingController;
 use App\Http\Controllers\UserOnlineController;
 use App\Http\Controllers\Wallet\TraderBalanceTransferController;
 use App\Http\Controllers\WalletController;
+use App\Http\Controllers\WalletDepositInvoiceController;
 use App\Http\Controllers\WithdrawalAddressController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -121,6 +123,8 @@ Route::group(['middleware' => ['2fa']], function () {
 
     Route::group(['middleware' => ['auth', 'banned']], function () {
         Route::post('/invoice', [InvoiceController::class, 'store'])->name('invoice.store');
+        Route::get('/deposit/invoices/{walletDepositInvoice}', [WalletDepositInvoiceController::class, 'show'])->name('deposit.invoices.show');
+        Route::get('/deposit/invoices/{walletDepositInvoice}/qr', [WalletDepositInvoiceController::class, 'qr'])->name('deposit.invoices.qr');
         Route::post('/online/ping', [OnlinePingController::class, 'store'])->name('online.ping');
         Route::patch('/user/online', [UserOnlineController::class, 'toggle'])->name('user.online.toggle');
         Route::get('/payouts/{payout:uuid}/receipt', [PayoutReceiptController::class, 'show'])->name('payouts.receipts.show');
@@ -350,6 +354,14 @@ Route::group(['middleware' => ['2fa']], function () {
 
         Route::post('/enabled-cards/limit-levels', [EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
         Route::delete('/enabled-cards/limit-levels', [EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
+
+        // Внутренний криптопроцессинг пополнений (USDT TRC20)
+        Route::get('/wallet-deposit', [WalletDepositAddressController::class, 'index'])->name('wallet-deposit.index');
+        Route::post('/wallet-deposit/addresses', [WalletDepositAddressController::class, 'store'])->name('wallet-deposit.addresses.store');
+        Route::patch('/wallet-deposit/addresses/{walletDepositAddress}', [WalletDepositAddressController::class, 'update'])->name('wallet-deposit.addresses.update');
+        Route::post('/wallet-deposit/addresses/{walletDepositAddress}/refresh-balance', [WalletDepositAddressController::class, 'refreshBalance'])->name('wallet-deposit.addresses.refresh-balance');
+        Route::get('/wallet-deposit/invoices/{walletDepositInvoice}/transfers', [App\Http\Controllers\Admin\WalletDepositInvoiceController::class, 'transfers'])->name('wallet-deposit.invoices.transfers');
+        Route::post('/wallet-deposit/invoices/{walletDepositInvoice}/manual-attach', [App\Http\Controllers\Admin\WalletDepositInvoiceController::class, 'manualAttach'])->name('wallet-deposit.invoices.manual-attach');
 
         // Маршруты для фильтрации
         Route::get('/filters/detail-types', [App\Http\Controllers\Admin\FilterController::class, 'getDetailTypes']);

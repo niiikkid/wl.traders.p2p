@@ -29,6 +29,7 @@ use App\Contracts\TelegramChatBotServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserActivityLogServiceContract;
 use App\Contracts\UserServiceContract;
+use App\Contracts\WalletDepositServiceContract;
 use App\Contracts\WalletServiceContract;
 
 class ServiceBuilder implements ServiceBuilderContract
@@ -71,6 +72,11 @@ class ServiceBuilder implements ServiceBuilderContract
     public function invoice(): InvoiceServiceContract
     {
         return make(InvoiceServiceContract::class);
+    }
+
+    public function walletDeposit(): WalletDepositServiceContract
+    {
+        return make(WalletDepositServiceContract::class);
     }
 
     public function settings(): SettingsServiceContract

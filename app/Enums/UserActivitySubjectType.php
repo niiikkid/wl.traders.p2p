@@ -23,4 +23,6 @@ enum UserActivitySubjectType: string
     case OpenAiSetting = 'open_ai_setting';
     case AntiFraudSetting = 'anti_fraud_setting';
     case TelegramBotSetting = 'telegram_bot_setting';
+    case WalletDepositInvoice = 'wallet_deposit_invoice';
+    case WalletDepositAddress = 'wallet_deposit_address';
 }

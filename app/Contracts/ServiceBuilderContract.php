@@ -20,6 +20,8 @@ interface ServiceBuilderContract
 
     public function invoice(): InvoiceServiceContract;
 
+    public function walletDeposit(): WalletDepositServiceContract;
+
     public function settings(): SettingsServiceContract;
 
     public function fundsHolder(): FundsHolderServiceContract;

@@ -26,6 +26,9 @@ return [
         'payouts' => [
             'available' => 'Новые выплаты',
         ],
+        'wallet_deposit' => [
+            'paid' => 'Пополнение зачислено',
+        ],
     ],
     'message_scopes' => [
         'all' => 'Для всех сообщений',
@@ -60,6 +63,10 @@ return [
         'payouts_available' => [
             'title' => 'Новые выплаты',
             'body' => 'В общем стакане появились доступные выплаты: :count шт. Валюта: :currency.',
+        ],
+        'wallet_deposit_paid' => [
+            'title' => 'Пополнение зачислено',
+            'body' => 'Ваше пополнение на :amount :currency успешно зачислено на баланс.',
         ],
     ],
     'telegram' => [

@@ -34,6 +34,7 @@ use App\Contracts\TelegramChatWebhookIngestionServiceContract;
 use App\Contracts\TelegramServiceContract;
 use App\Contracts\UserActivityLogServiceContract;
 use App\Contracts\UserServiceContract;
+use App\Contracts\WalletDepositServiceContract;
 use App\Contracts\WalletServiceContract;
 use App\Mixins\ResponseMixins;
 use App\Models\AntiFraudSetting;
@@ -51,6 +52,8 @@ use App\Models\TelegramBotSetting;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletDepositAddress;
+use App\Models\WalletDepositInvoice;
 use App\Observers\UserActivityObserver;
 use App\Queries\Cache\MerchantQueriesCache;
 use App\Queries\Eloquent\CallbackLogQueriesEloquent;
@@ -113,6 +116,7 @@ use App\Services\Telegram\TelegramService;
 use App\Services\User\UserService;
 use App\Services\Wallet\TraderBalanceTransferService;
 use App\Services\Wallet\WalletService;
+use App\Services\WalletDeposit\WalletDepositService;
 use App\Support\LoginLogger;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Queue\Events\JobFailed;
@@ -179,6 +183,9 @@ class AppServiceProvider extends ServiceProvider
         });
         $this->app->singleton(InvoiceServiceContract::class, function () {
             return new InvoiceService;
+        });
+        $this->app->singleton(WalletDepositServiceContract::class, function () {
+            return new WalletDepositService;
         });
         $this->app->singleton(SettingsServiceContract::class, function () {
             return new SettingsService;
@@ -370,6 +377,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-to-self', function (User $user) {
             return $user->id === auth()->id() || $user->hasRole('Super Admin');
         });
+        Gate::define('access-to-wallet-deposit-invoice', function (User $user, WalletDepositInvoice $invoice) {
+            return $user->id === $invoice->wallet?->user_id || $user->hasRole('Super Admin');
+        });
         // api
         Gate::define('api-access-to-merchant', function (User $user, Merchant $merchant) {
             return $user->id === $merchant->user_id;
@@ -426,6 +436,8 @@ class AppServiceProvider extends ServiceProvider
             OpenAiSetting::class,
             AntiFraudSetting::class,
             TelegramBotSetting::class,
+            WalletDepositInvoice::class,
+            WalletDepositAddress::class,
         ] as $model) {
             $model::observe(UserActivityObserver::class);
         }

@@ -29,3 +29,4 @@ Schedule::command('payouts:available:notify-traders')->everyMinute()->withoutOve
 // Обновление статистики API логов мерчанта каждые 5 минут (включая вчерашний день)
 Schedule::command('merchant-api:stats:update')->everyFiveMinutes();
 Schedule::command('dashboard:stats:cache')->everyFifteenMinutes();
+Schedule::command('wallet-deposit:invoices:dispatch-polls')->everyMinute()->withoutOverlapping();

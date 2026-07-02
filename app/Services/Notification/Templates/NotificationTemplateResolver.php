@@ -61,6 +61,14 @@ class NotificationTemplateResolver
                 ]),
                 payload: $payload
             ),
+            NotificationEvent::WALLET_DEPOSIT_PAID => new NotificationContent(
+                title: $this->telegramBoldTitle(trans('notifications.templates.wallet_deposit_paid.title')),
+                body: trans('notifications.templates.wallet_deposit_paid.body', [
+                    'amount' => '<b>'.$this->e($payload['amount'] ?? null).'</b>',
+                    'currency' => '<b>'.$this->e(strtoupper((string) ($payload['currency'] ?? ''))).'</b>',
+                ]),
+                payload: $payload
+            ),
         };
     }
 

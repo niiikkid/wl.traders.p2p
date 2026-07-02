@@ -11,7 +11,6 @@ use App\Exceptions\InvoiceException;
 use App\Models\Invoice;
 use App\Models\Wallet;
 use App\Models\WithdrawalAddress;
-use App\Services\External\InvoiceApiClient;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Utils\Transaction;
@@ -192,111 +191,6 @@ class InvoiceService implements InvoiceServiceContract
                     transactionType: TransactionType::WITHDRAWAL_BY_ADMIN,
                     balanceType: $balanceType
                 );
-        });
-    }
-
-    /**
-     * Создание депозита через внешний сервис: создаём PENDING-инвойс у нас и инвойс у провайдера атомарно
-     * Возвращает массив с нашим инвойсом и ответом провайдера (в т.ч. payment_url)
-     */
-    public function createExternalDeposit(int $walletID, Money $amount, BalanceType $balanceType): array
-    {
-        return Transaction::run(function () use ($walletID, $amount, $balanceType) {
-            $wallet = Wallet::where('id', $walletID)->lockForUpdate()->first();
-
-            // Создаём локальный инвойс в ожидании оплаты
-            $invoice = Invoice::create([
-                'amount' => $amount,
-                'currency' => $amount->getCurrency(),
-                'address' => null,
-                'type' => InvoiceType::DEPOSIT,
-                'balance_type' => $balanceType,
-                'status' => InvoiceStatus::PENDING,
-                'wallet_id' => $wallet->id,
-            ]);
-
-            // Вызываем внешний сервис: external_invoice_id = наш ID
-            $client = new InvoiceApiClient;
-            $callbackUrl = route('api.external.invoice.callback');
-            $external = $client->createInvoice(
-                currency: 'usdt',
-                network: 'tron',
-                amount: $amount->toBeauty(),
-                externalInvoiceId: (string) $invoice->id,
-                callbackUrl: $callbackUrl,
-                tag: null,
-                metadata: null,
-                productName: 'Пополнение баланса',
-                productDescription: 'Пополнение баланса аккаунта трейдера',
-                clientId: (string) $wallet->user_id,
-            );
-
-            // Сохраняем связку с внешним инвойсом
-            $invoice->update([
-                'external_id' => $external['id'] ?? null,
-            ]);
-
-            return [
-                'invoice' => $invoice->fresh(),
-                'external' => $external,
-            ];
-        });
-    }
-
-    /**
-     * Завершить внешний депозит: меняем статус на SUCCESS и зачисляем средства
-     */
-    public function finishExternalDeposit(int $invoiceID, ?Money $amountReceived = null, ?string $txHash = null): Invoice
-    {
-        return Transaction::run(function () use ($invoiceID, $amountReceived, $txHash) {
-            $invoice = Invoice::where('id', $invoiceID)->lockForUpdate()->first();
-
-            if ($invoice->type->notEquals(InvoiceType::DEPOSIT)) {
-                throw InvoiceException::invalidInvoiceType();
-            }
-
-            if ($invoice->status->notEquals(InvoiceStatus::PENDING)) {
-                throw InvoiceException::invoiceAlreadyFinished();
-            }
-
-            $finalAmount = $amountReceived ?? $invoice->amount;
-
-            $invoice->update([
-                'status' => InvoiceStatus::SUCCESS,
-                'tx_hash' => $txHash,
-            ]);
-
-            services()->wallet()
-                ->giveToBalance(
-                    walletID: $invoice->wallet->id,
-                    amount: $finalAmount,
-                    transactionType: TransactionType::DEPOSIT_BY_USER,
-                    balanceType: $invoice->balance_type
-                );
-
-            return $invoice->fresh();
-        });
-    }
-
-    /**
-     * Отменить внешний депозит (истёк/отменён)
-     */
-    public function cancelExternalDeposit(int $invoiceID): Invoice
-    {
-        return Transaction::run(function () use ($invoiceID) {
-            $invoice = Invoice::where('id', $invoiceID)->lockForUpdate()->first();
-
-            if ($invoice->type->notEquals(InvoiceType::DEPOSIT)) {
-                throw InvoiceException::invalidInvoiceType();
-            }
-
-            if ($invoice->status->notEquals(InvoiceStatus::PENDING)) {
-                throw InvoiceException::invoiceAlreadyFinished();
-            }
-
-            $invoice->update(['status' => InvoiceStatus::FAIL]);
-
-            return $invoice->fresh();
         });
     }
 }

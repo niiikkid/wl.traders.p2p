@@ -20,6 +20,8 @@ use App\Models\TelegramBotSetting;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletDepositAddress;
+use App\Models\WalletDepositInvoice;
 use App\Services\Money\Money;
 use BackedEnum;
 use Illuminate\Database\Eloquent\Model;
@@ -51,6 +53,8 @@ class UserActivityLogService implements UserActivityLogServiceContract
         OpenAiSetting::class => UserActivitySubjectType::OpenAiSetting->value,
         AntiFraudSetting::class => UserActivitySubjectType::AntiFraudSetting->value,
         TelegramBotSetting::class => UserActivitySubjectType::TelegramBotSetting->value,
+        WalletDepositInvoice::class => UserActivitySubjectType::WalletDepositInvoice->value,
+        WalletDepositAddress::class => UserActivitySubjectType::WalletDepositAddress->value,
     ];
 
     /**

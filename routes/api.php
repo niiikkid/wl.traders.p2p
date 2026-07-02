@@ -113,7 +113,3 @@ if (app()->environment(['local', 'dev', 'development'])) {
         ]);
     });
 }
-
-// Коллбэк от внешнего сервиса инвойсов (публичный, без токенов)
-Route::post('/v1/callbacks/invoice', [DepositController::class, 'externalWebhook'])
-    ->name('api.external.invoice.callback');

@@ -3,60 +3,42 @@
 namespace App\Http\Controllers\Trader;
 
 use App\Enums\BalanceType;
-use App\Exceptions\InvoiceException;
+use App\Exceptions\WalletDepositException;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\WalletDepositInvoiceResource;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class DepositInvoiceController extends Controller
 {
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'amount' => ['required', 'numeric', 'min:1'],
+            'amount' => ['required', 'integer', 'min:1'],
         ]);
 
         try {
-            $result = services()->invoice()->createExternalDeposit(
-                walletID: auth()->user()->wallet->id,
-                amount: Money::fromPrecision($validated['amount'], Currency::USDT()),
+            $invoice = services()->walletDeposit()->createInvoice(
+                walletID: $request->user()->wallet->id,
+                amount: Money::fromPrecision((string) $validated['amount'], Currency::USDT()->getCode()),
                 balanceType: BalanceType::TRUST,
             );
 
-            $external = $result['external'] ?? [];
             return response()->json([
-                'payment_url' => $external['payment_url'] ?? null,
-                'external_invoice_id' => $external['id'] ?? null,
-                'invoice_id' => $result['invoice']->id ?? null,
+                'invoice' => (new WalletDepositInvoiceResource($invoice))->resolve(),
             ]);
-        } catch (InvoiceException $e) {
+        } catch (WalletDepositException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
-        } catch (HttpExceptionInterface $e) {
-            Log::warning('External deposit invoice creation failed', [
-                'user_id' => auth()->id(),
-                'amount' => $validated['amount'] ?? null,
-                'status' => $e->getStatusCode(),
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'message' => $e->getMessage() ?: 'Ошибка внешнего сервиса при создании инвойса',
-            ], $e->getStatusCode());
         } catch (\Throwable $e) {
-            Log::error('External deposit invoice creation unexpected error', [
-                'user_id' => auth()->id(),
-                'amount' => $validated['amount'] ?? null,
+            Log::error('Trader deposit invoice creation failed', [
+                'user_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'message' => 'Не удалось создать инвойс. Попробуйте позже.',
-            ], 500);
+            return response()->json(['message' => 'Не удалось создать инвойс. Попробуйте позже.'], 500);
         }
     }
 }
-
-
