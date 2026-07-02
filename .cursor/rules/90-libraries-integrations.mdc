@@ -46,4 +46,4 @@ How the installed packages are actually used here. Don't add new dependencies wi
 ## Frontend libraries
 - **DaisyUI 5 + Tailwind v4** — all styling (theme `dim`); see `65-vue-conventions.mdc`.
 - **pinia** — client state stores (`view`, `user`, `modal`, `tableFilters`).
-- **apexcharts** — dashboard charts. **pikaday** — date inputs in filters. **@vueuse/core**, **lodash**, **date-fns** (rarely), **sortablejs/vuedraggable** (ordering UIs), **tailwind-merge**, **vue-flagpack** (country flags), **vue-tg** (Telegram web app helpers).
+- **echarts** v6 + **vue-echarts** — dashboard charts (via the shared `Components/Charts/DashboardChart.vue` wrapper). **pikaday** — date inputs in filters. **@vueuse/core**, **lodash**, **date-fns** (rarely), **sortablejs/vuedraggable** (ordering UIs), **tailwind-merge**, **vue-flagpack** (country flags), **vue-tg** (Telegram web app helpers).

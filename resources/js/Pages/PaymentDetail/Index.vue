@@ -2,8 +2,6 @@
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import PaymentDetail from "@/Components/PaymentDetail.vue";
-import PaymentDetailLimit from "@/Components/PaymentDetailLimit.vue";
-import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue";
 import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import {useViewStore} from "@/store/view.js";
 import PageToolbar from "@/Components/Table/PageToolbar.vue";
@@ -36,6 +34,10 @@ import DataTable from "@/Components/Table/DataTable.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
 import CopyableOrderUid from "@/Components/CopyableOrderUid.vue";
+import PaymentDetailLimitRings from "@/Components/PaymentDetail/PaymentDetailLimitRings.vue";
+import PaymentDetailLimitsPanel from "@/Components/PaymentDetail/PaymentDetailLimitsPanel.vue";
+import PaymentDetailMetaPanel from "@/Components/PaymentDetail/PaymentDetailMetaPanel.vue";
+import PaymentDetailTotalsPanel from "@/Components/PaymentDetail/PaymentDetailTotalsPanel.vue";
 
 const detailUuidLabel = (detail) => detail?.uuid_short ?? detail?.uuid?.slice(0, 8) ?? '';
 
@@ -162,91 +164,6 @@ const canSetOrderAmountLimits = computed(() => {
     return currentUser?.can_set_order_amount_limits === true || currentUser?.can_set_order_amount_limits === 1;
 });
 
-const normalizeNumber = (value) => {
-    if (value === null || value === undefined || value === '') {
-        return 0;
-    }
-
-    return Number(String(value).replace(/\s/g, '').replace(',', '.')) || 0;
-};
-
-const formatInteger = (value) => {
-    const number = Number(value ?? 0);
-
-    if (!Number.isFinite(number)) {
-        return '0';
-    }
-
-    return new Intl.NumberFormat('ru-RU', {
-        maximumFractionDigits: 0,
-    }).format(Math.trunc(number));
-};
-
-const formatMoneyAmount = (value) => {
-    if (value === null || value === undefined || value === '') {
-        return '-';
-    }
-
-    const normalized = String(value).replace(/\s/g, '').replace(',', '.');
-    const number = Number(normalized);
-
-    if (!Number.isFinite(number)) {
-        return String(value);
-    }
-
-    return new Intl.NumberFormat('ru-RU', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(number);
-};
-
-const percentFrom = (current, limit) => {
-    const current_value = normalizeNumber(current);
-    const limit_value = normalizeNumber(limit);
-
-    if (limit_value <= 0) {
-        return 0;
-    }
-
-    return Math.min(100, (current_value / limit_value) * 100);
-};
-
-const hasLimit = (limit) => {
-    return normalizeNumber(limit) > 0;
-};
-
-const progressClass = (percent, has_limit = true) => {
-    if (!has_limit) {
-        return 'text-base-content/40';
-    }
-
-    if (percent < 40) {
-        return 'text-success';
-    }
-
-    if (percent < 80) {
-        return 'text-warning';
-    }
-
-    return 'text-error';
-};
-
-const percentLabel = (percent) => {
-    if (!Number.isFinite(percent)) {
-        return '0%';
-    }
-
-    return `${Math.round(percent)}%`;
-};
-
-const radialStyle = (value) => {
-    return {
-        '--value': value,
-        '--size': '2.4rem',
-        '--thickness': '3px',
-    };
-};
-
 const toggleActive = (detailUuid) => {
     detailActiveToggleForm.patch(route('payment-details.toggle-active', detailUuid), {
         preserveScroll: true,
@@ -304,16 +221,6 @@ const detailUsesManualProcessing = (paymentDetail) => {
 
 const shouldShowProcessingIndicator = (paymentDetail) => {
     return viewStore.isAdminViewMode || !!paymentDetail.owner_can_work_without_device;
-};
-
-const processingModeBadgeClass = (paymentDetail) => {
-    return detailUsesManualProcessing(paymentDetail)
-        ? 'badge-warning badge-outline'
-        : 'badge-success badge-outline';
-};
-
-const processingModeLabel = (paymentDetail) => {
-    return detailUsesManualProcessing(paymentDetail) ? 'Ручной' : 'Автоматика';
 };
 
 const currentPageDetailIds = computed(() => {
@@ -452,8 +359,9 @@ defineOptions({ layout: AuthenticatedLayout })
                 <div class="relative">
                     <div
                         v-if="showTableColumnToggles"
-                        class="mb-2 flex flex-wrap items-center gap-1"
+                        class="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1.5"
                     >
+                        <span class="text-xs font-medium text-base-content/50">Показывать:</span>
                         <button
                             v-if="isTraderView"
                             type="button"
@@ -473,7 +381,6 @@ defineOptions({ layout: AuthenticatedLayout })
                         >
                             Расписание
                         </button>
-                        <PaymentDetailScheduleServerClock v-if="displayDetailSchedule" />
                         <button
                             v-if="displayDetailSchedule"
                             type="button"
@@ -484,6 +391,7 @@ defineOptions({ layout: AuthenticatedLayout })
                         >
                             Сводка
                         </button>
+                        <PaymentDetailScheduleServerClock v-if="displayDetailSchedule" class="ms-auto" />
                     </div>
 
                     <PaymentDetailScheduleSummary
@@ -593,137 +501,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <td class="text-nowrap">
                                                 <TableCellPopover>
                                                     <template #trigger>
-                                                        <div class="flex items-center gap-2">
-                                                            <div class="relative grid place-items-center">
-                                                                <div class="radial-progress text-base-300/60" :style="radialStyle(100)"></div>
-                                                                <div
-                                                                    class="radial-progress absolute inset-0"
-                                                                    :class="progressClass(
-                                                                        percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity),
-                                                                        hasLimit(payment_detail.max_pending_orders_quantity)
-                                                                    )"
-                                                                    :style="radialStyle(percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity))"
-                                                                    role="progressbar"
-                                                                    :aria-valuenow="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
-                                                                >
-                                                                    <span class="text-[10px] leading-none">
-                                                                        {{ percentLabel(percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)) }}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div class="relative grid place-items-center">
-                                                                <div class="radial-progress text-base-300/60" :style="radialStyle(100)"></div>
-                                                                <div
-                                                                    class="radial-progress absolute inset-0"
-                                                                    :class="progressClass(
-                                                                        percentFrom(payment_detail.current_daily_successful_orders_count, payment_detail.daily_successful_orders_limit),
-                                                                        hasLimit(payment_detail.daily_successful_orders_limit)
-                                                                    )"
-                                                                    :style="radialStyle(percentFrom(payment_detail.current_daily_successful_orders_count, payment_detail.daily_successful_orders_limit))"
-                                                                    role="progressbar"
-                                                                    :aria-valuenow="percentFrom(payment_detail.current_daily_successful_orders_count, payment_detail.daily_successful_orders_limit)"
-                                                                >
-                                                                    <span class="text-[10px] leading-none">
-                                                                        {{ percentLabel(percentFrom(payment_detail.current_daily_successful_orders_count, payment_detail.daily_successful_orders_limit)) }}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <div class="relative grid place-items-center">
-                                                                <div class="radial-progress text-base-300/60" :style="radialStyle(100)"></div>
-                                                                <div
-                                                                    class="radial-progress absolute inset-0"
-                                                                    :class="progressClass(
-                                                                        percentFrom(payment_detail.current_daily_limit, payment_detail.daily_limit),
-                                                                        hasLimit(payment_detail.daily_limit)
-                                                                    )"
-                                                                    :style="radialStyle(percentFrom(payment_detail.current_daily_limit, payment_detail.daily_limit))"
-                                                                    role="progressbar"
-                                                                    :aria-valuenow="percentFrom(payment_detail.current_daily_limit, payment_detail.daily_limit)"
-                                                                >
-                                                                    <span class="text-[10px] leading-none">
-                                                                        {{ percentLabel(percentFrom(payment_detail.current_daily_limit, payment_detail.daily_limit)) }}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                        <PaymentDetailLimitRings :payment-detail="payment_detail" />
                                                     </template>
-                                                    <div class="grid gap-2 text-sm">
-                                                        <div class="rounded-box border border-base-200 bg-base-100 p-2">
-                                                            <div class="mb-2 flex items-center justify-between gap-2">
-                                                                <span class="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">В день</span>
-                                                                <span class="badge badge-xs badge-outline">суточные</span>
-                                                            </div>
-                                                            <div class="grid gap-2">
-                                                                <div class="grid gap-1">
-                                                                    <div class="flex min-w-0 flex-nowrap items-center justify-between gap-2">
-                                                                        <div class="min-w-0 truncate text-xs text-base-content/70">Активных сделок</div>
-                                                                        <div class="relative shrink-0 text-nowrap">
-                                                                            <span
-                                                                                class="text-xs font-semibold"
-                                                                                :class="{
-                                                                                    'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                                                    'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                                                    'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
-                                                                                }"
-                                                                            >
-                                                                                {{ payment_detail.pending_orders_count }}
-                                                                            </span>
-                                                                            <span class="mx-1 opacity-70">из</span>
-                                                                            <span class="text-xs font-semibold">
-                                                                                {{ payment_detail.max_pending_orders_quantity }}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <progress
-                                                                        class="progress w-full"
-                                                                        :class="{
-                                                                            'progress-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                                            'progress-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                                            'progress-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
-                                                                        }"
-                                                                        :value="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
-                                                                        max="100"
-                                                                    ></progress>
-                                                                </div>
-                                                                <div class="grid gap-1">
-                                                                    <PaymentDetailOrdersLimit
-                                                                        label="Количество сделок"
-                                                                        :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
-                                                                        :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
-                                                                    />
-                                                                </div>
-                                                                <div class="grid gap-1">
-                                                                    <PaymentDetailLimit
-                                                                        label="Объём сделок"
-                                                                        :current_daily_limit="payment_detail.current_daily_limit"
-                                                                        :daily_limit="payment_detail.daily_limit"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="rounded-box border border-base-200 bg-base-100 p-2">
-                                                            <div class="mb-2 flex items-center justify-between gap-2">
-                                                                <span class="text-[11px] font-semibold uppercase tracking-wide text-base-content/60">В месяц</span>
-                                                                <span class="badge badge-xs badge-outline">сброс {{ payment_detail.monthly_limit_reset_day ?? '—' }}</span>
-                                                            </div>
-                                                            <div class="grid gap-2">
-                                                                <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1">
-                                                                    <PaymentDetailLimit
-                                                                        label="Объём сделок"
-                                                                        :current_daily_limit="payment_detail.current_monthly_limit"
-                                                                        :daily_limit="payment_detail.monthly_limit"
-                                                                    />
-                                                                </div>
-                                                                <div class="grid gap-1">
-                                                                    <PaymentDetailOrdersLimit
-                                                                        label="Количество сделок"
-                                                                        :current_daily_successful_orders_count="payment_detail.current_monthly_successful_orders_count"
-                                                                        :daily_successful_orders_limit="payment_detail.monthly_successful_orders_limit"
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <PaymentDetailLimitsPanel :payment-detail="payment_detail" />
                                                 </TableCellPopover>
                                             </td>
                                             <td v-if="displayDetailSchedule" class="min-w-[9rem]">
@@ -751,53 +531,15 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <td class="text-right">
                                                 <div class="flex items-center justify-end gap-2">
                                                     <TableInfoDropdown>
-                                                        <div class="grid gap-2 text-sm">
-                                                            <div v-if="viewStore.isAdminViewMode" class="flex items-center justify-between gap-2">
-                                                                <span class="text-base-content/70">Профиль:</span>
-                                                                <span class="text-right">{{ payment_detail.owner_email }}</span>
-                                                            </div>
-                                                            <div v-if="shouldShowProcessingIndicator(payment_detail)" class="flex items-center justify-between gap-2">
-                                                                <span class="text-base-content/70">Обработка:</span>
-                                                                <span class="badge badge-sm" :class="processingModeBadgeClass(payment_detail)">
-                                                                    {{ processingModeLabel(payment_detail) }}
-                                                                </span>
-                                                            </div>
-                                                            <div v-if="payment_detail.user_device_id" class="flex items-center justify-between gap-2">
-                                                                <span class="text-base-content/70">Устройство:</span>
-                                                                <span class="text-right">{{ payment_detail.device_name }}</span>
-                                                            </div>
-                                                            <div class="flex items-center justify-between gap-2">
-                                                                <span class="text-base-content/70">Интервал:</span>
-                                                                <span class="text-right">{{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}</span>
-                                                            </div>
-                                                            <div v-if="viewStore.isAdminViewMode || canSetOrderAmountLimits" class="grid gap-1">
-                                                                <div class="flex items-center justify-between gap-2">
-                                                                    <span class="text-base-content/70">Мин:</span>
-                                                                    <span class="text-right">{{ payment_detail.min_order_amount !== null ? payment_detail.min_order_amount : '∞' }}</span>
-                                                                </div>
-                                                                <div class="flex items-center justify-between gap-2">
-                                                                    <span class="text-base-content/70">Макс:</span>
-                                                                    <span class="text-right">{{ payment_detail.max_order_amount !== null ? payment_detail.max_order_amount : '∞' }}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div class="divider my-1"></div>
-                                                            <div class="grid gap-1.5">
-                                                                <div class="flex items-center justify-between gap-2">
-                                                                    <span class="text-base-content/50">Сделок:</span>
-                                                                    <span class="text-right font-medium">{{ formatInteger(payment_detail.successful_orders_total_count) }}</span>
-                                                                </div>
-                                                                <div class="flex items-center justify-between gap-2">
-                                                                    <span class="text-base-content/50">Оборот:</span>
-                                                                    <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_fiat) }} <span class="text-primary">{{ payment_detail.currency?.toUpperCase?.() }}</span></span>
-                                                                </div>
-                                                                <div class="flex items-center justify-between gap-2">
-                                                                    <span class="text-base-content/50">Оборот:</span>
-                                                                    <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_usdt) }} <span class="text-primary">USDT</span></span>
-                                                                </div>
-                                                                <div class="pt-1 text-[11px] text-base-content/50 text-center">
-                                                                    Обновляется раз в 15 минут
-                                                                </div>
-                                                            </div>
+                                                        <div class="grid gap-2">
+                                                            <PaymentDetailMetaPanel
+                                                                :payment-detail="payment_detail"
+                                                                :is-admin="viewStore.isAdminViewMode"
+                                                                :can-set-order-amount-limits="canSetOrderAmountLimits"
+                                                                :show-processing="shouldShowProcessingIndicator(payment_detail)"
+                                                            />
+                                                            <div class="divider my-0"></div>
+                                                            <PaymentDetailTotalsPanel :payment-detail="payment_detail" />
                                                         </div>
                                                     </TableInfoDropdown>
                                                     <TableActionsDropdown v-if="currentTab === 'active'">
@@ -830,17 +572,22 @@ defineOptions({ layout: AuthenticatedLayout })
                             <DataCard
                                 v-for="payment_detail in paymentDetails.data"
                                 :key="payment_detail.uuid"
+                                body-class="p-4 space-y-3"
                             >
-                                    <div class="flex justify-between items-center gap-2">
-                                        <div class="inline-flex items-center gap-2 min-w-0 text-xs">
-                                            <span class="text-base-content/70 shrink-0">UUID:</span>
-                                            <CopyableOrderUid :uuid="payment_detail.uuid ?? ''" class="truncate" />
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="flex min-w-0 items-start gap-3">
+                                            <GatewayLogo :img_path="payment_detail.payment_gateway.logo_path" :name="payment_detail.payment_gateway.name" class="w-10 h-10 shrink-0"/>
+                                            <PaymentDetail
+                                                :detail="payment_detail.detail"
+                                                :type="payment_detail.detail_type"
+                                                :name="payment_detail.name"
+                                                :show-processing-indicator="shouldShowProcessingIndicator(payment_detail)"
+                                                :uses-manual-processing="detailUsesManualProcessing(payment_detail)"
+                                            ></PaymentDetail>
                                         </div>
-                                        <div class="inline-flex items-center gap-0 shrink-0 gap-3">
-                                            <label class="label cursor-pointer justify-start gap-2 p-0">
-                                                <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-xs" @change="toggleActive(payment_detail.uuid)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
-                                            </label>
-                                            <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
+                                        <div class="flex shrink-0 items-center gap-1">
+                                            <input type="checkbox" :checked="payment_detail.is_active" class="toggle toggle-success toggle-sm" @change="toggleActive(payment_detail.uuid)" :disabled="detailActiveToggleForm.processing || toggleBlocked || currentTab === 'archived'">
+                                            <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-sm">
                                                 <template v-if="currentTab === 'active'">
                                                     <TableAction @click="openVolumeStatisticsModal(payment_detail)">
                                                         Статистика
@@ -864,24 +611,31 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </div>
 
-                                    <div class="border-b border-base-content/10"></div>
-
-                                    <div class="flex items-start gap-2 min-w-0">
-                                        <GatewayLogo :img_path="payment_detail.payment_gateway.logo_path" :name="payment_detail.payment_gateway.name" class="w-10 h-10 shrink-0"/>
-                                        <PaymentDetail
-                                            :detail="payment_detail.detail"
-                                            :type="payment_detail.detail_type"
-                                            :name="payment_detail.name"
-                                            :show-processing-indicator="shouldShowProcessingIndicator(payment_detail)"
-                                            :uses-manual-processing="detailUsesManualProcessing(payment_detail)"
-                                        ></PaymentDetail>
+                                    <div class="flex items-center justify-between gap-3 rounded-box bg-base-200/40 px-3 py-2">
+                                        <PaymentDetailLimitRings :payment-detail="payment_detail" size="2.4rem" />
+                                        <TableInfoDropdown button-class="btn btn-ghost btn-circle btn-sm">
+                                            <div class="grid gap-2">
+                                                <PaymentDetailMetaPanel
+                                                    :payment-detail="payment_detail"
+                                                    :is-admin="viewStore.isAdminViewMode"
+                                                    :can-set-order-amount-limits="canSetOrderAmountLimits"
+                                                    show-processing
+                                                />
+                                                <div class="divider my-0"></div>
+                                                <PaymentDetailLimitsPanel :payment-detail="payment_detail" />
+                                                <div class="divider my-0"></div>
+                                                <PaymentDetailTotalsPanel :payment-detail="payment_detail" />
+                                            </div>
+                                        </TableInfoDropdown>
                                     </div>
 
-                                    <template v-if="displayDetailSchedule">
-                                        <div class="border-b border-base-content/10"></div>
-
-                                        <div class="text-xs">
-                                            <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
+                                    <div
+                                        v-if="displayDetailSchedule || (isTraderView && displayDetailLastDeal)"
+                                        class="grid gap-3 border-t border-base-content/10 pt-3 text-xs"
+                                        :class="{ 'sm:grid-cols-2': displayDetailSchedule && isTraderView && displayDetailLastDeal }"
+                                    >
+                                        <div v-if="displayDetailSchedule" class="min-w-0">
+                                            <div class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-base-content/50">
                                                 Расписание
                                             </div>
                                             <PaymentDetailScheduleStatus
@@ -889,13 +643,8 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 compact
                                             />
                                         </div>
-                                    </template>
-
-                                    <template v-if="isTraderView && displayDetailLastDeal">
-                                        <div class="border-b border-base-content/10"></div>
-
-                                        <div class="text-xs">
-                                            <div class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60 mb-1">
+                                        <div v-if="isTraderView && displayDetailLastDeal" class="min-w-0">
+                                            <div class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-base-content/50">
                                                 Последняя сделка
                                             </div>
                                             <DateTime
@@ -906,153 +655,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                             />
                                             <span v-else class="text-base-content/50">—</span>
                                         </div>
-                                    </template>
+                                    </div>
 
-                                    <div class="border-b border-base-content/10"></div>
-
-                                    <div class="flex items-start justify-between gap-2 text-xs text-base-content/80">
-                                        <span class="text-nowrap pt-1">
-                                            <span
-                                                class="font-semibold"
-                                                :class="{
-                                                    'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                    'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                    'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
-                                                }"
-                                            >
-                                                {{ payment_detail.pending_orders_count }}
-                                            </span>
-                                            <span class="mx-0.5 opacity-70">из</span>
-                                            <span class="font-semibold">{{ payment_detail.max_pending_orders_quantity }}</span>
-                                            <span class="text-base-content/50 ml-1">активных</span>
-                                        </span>
-
-                                        <TableInfoDropdown button-class="btn btn-ghost btn-circle btn-xs">
-                                            <div class="grid gap-1.5 text-xs leading-tight">
-                                                <div v-if="viewStore.isAdminViewMode" class="flex items-center justify-between gap-2">
-                                                    <span class="text-base-content/70">Профиль:</span>
-                                                    <span class="text-right">{{ payment_detail.owner_email }}</span>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-2">
-                                                    <span class="text-base-content/70">Обработка:</span>
-                                                    <span class="badge badge-xs" :class="processingModeBadgeClass(payment_detail)">
-                                                        {{ processingModeLabel(payment_detail) }}
-                                                    </span>
-                                                </div>
-                                                <div v-if="payment_detail.user_device_id" class="flex items-center justify-between gap-2">
-                                                    <span class="text-base-content/70">Устройство:</span>
-                                                    <span class="text-right">{{ payment_detail.device_name }}</span>
-                                                </div>
-                                                <div class="flex items-center justify-between gap-2">
-                                                    <span class="text-base-content/70">Интервал:</span>
-                                                    <span class="text-right">{{ payment_detail.order_interval_minutes !== null ? payment_detail.order_interval_minutes + ' мин' : '-' }}</span>
-                                                </div>
-                                                <div v-if="viewStore.isAdminViewMode || canSetOrderAmountLimits" class="grid gap-1">
-                                                    <div class="flex items-center justify-between gap-2">
-                                                        <span class="text-base-content/70">Мин:</span>
-                                                        <span class="text-right">{{ payment_detail.min_order_amount !== null ? payment_detail.min_order_amount : '∞' }}</span>
-                                                    </div>
-                                                    <div class="flex items-center justify-between gap-2">
-                                                        <span class="text-base-content/70">Макс:</span>
-                                                        <span class="text-right">{{ payment_detail.max_order_amount !== null ? payment_detail.max_order_amount : '∞' }}</span>
-                                                    </div>
-                                                </div>
-                                                <div class="divider my-0.5"></div>
-                                                <div class="rounded-box border border-base-200 bg-base-100 p-2">
-                                                    <div class="mb-1.5 flex items-center justify-between gap-2">
-                                                        <span class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60">В день</span>
-                                                        <span class="badge badge-xs badge-outline">суточные</span>
-                                                    </div>
-                                                    <div class="grid gap-1.5">
-                                                        <div class="grid gap-1">
-                                                            <div class="flex min-w-0 flex-nowrap items-center justify-between gap-2">
-                                                                <div class="min-w-0 truncate text-[10px] text-base-content/70">Активных сделок</div>
-                                                                <div class="relative shrink-0 text-nowrap">
-                                                                    <span
-                                                                        class="text-xs font-semibold"
-                                                                        :class="{
-                                                                            'text-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                                            'text-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                                            'text-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
-                                                                        }"
-                                                                    >
-                                                                        {{ payment_detail.pending_orders_count }}
-                                                                    </span>
-                                                                    <span class="mx-1 opacity-70">из</span>
-                                                                    <span class="text-xs font-semibold">
-                                                                        {{ payment_detail.max_pending_orders_quantity }}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <progress
-                                                                class="progress w-full"
-                                                                :class="{
-                                                                    'progress-success': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 40,
-                                                                    'progress-warning': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 40 && percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) < 80,
-                                                                    'progress-error': percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity) >= 80
-                                                                }"
-                                                                :value="percentFrom(payment_detail.pending_orders_count, payment_detail.max_pending_orders_quantity)"
-                                                                max="100"
-                                                            ></progress>
-                                                        </div>
-                                                        <div class="grid gap-1">
-                                                            <PaymentDetailOrdersLimit
-                                                                label="Количество сделок"
-                                                                :current_daily_successful_orders_count="payment_detail.current_daily_successful_orders_count"
-                                                                :daily_successful_orders_limit="payment_detail.daily_successful_orders_limit"
-                                                            />
-                                                        </div>
-                                                        <div class="grid gap-1">
-                                                            <PaymentDetailLimit
-                                                                label="Объём сделок"
-                                                                :current_daily_limit="payment_detail.current_daily_limit"
-                                                                :daily_limit="payment_detail.daily_limit"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="rounded-box border border-base-200 bg-base-100 p-2">
-                                                    <div class="mb-1.5 flex items-center justify-between gap-2">
-                                                        <span class="text-[10px] font-semibold uppercase tracking-wide text-base-content/60">В месяц</span>
-                                                        <span class="badge badge-xs badge-outline">сброс {{ payment_detail.monthly_limit_reset_day ?? '—' }}</span>
-                                                    </div>
-                                                    <div class="grid gap-1.5">
-                                                        <div v-if="hasLimit(payment_detail.monthly_limit)" class="grid gap-1">
-                                                            <PaymentDetailLimit
-                                                                label="Объём сделок"
-                                                                :current_daily_limit="payment_detail.current_monthly_limit"
-                                                                :daily_limit="payment_detail.monthly_limit"
-                                                            />
-                                                        </div>
-                                                        <div class="grid gap-1">
-                                                            <PaymentDetailOrdersLimit
-                                                                label="Количество сделок"
-                                                                :current_daily_successful_orders_count="payment_detail.current_monthly_successful_orders_count"
-                                                                :daily_successful_orders_limit="payment_detail.monthly_successful_orders_limit"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div class="divider my-0.5"></div>
-                                                <div class="grid gap-1">
-                                                    <div class="flex items-center justify-between gap-2">
-                                                        <span class="text-base-content/50">Сделок:</span>
-                                                        <span class="text-right font-medium">{{ formatInteger(payment_detail.successful_orders_total_count) }}</span>
-                                                    </div>
-                                                    <div class="flex items-center justify-between gap-2">
-                                                        <span class="text-base-content/50">Оборот:</span>
-                                                        <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_fiat) }} <span class="text-primary">{{ payment_detail.currency?.toUpperCase?.() }}</span></span>
-                                                    </div>
-                                                    <div class="flex items-center justify-between gap-2">
-                                                        <span class="text-base-content/50">Оборот:</span>
-                                                        <span class="text-right font-medium">{{ formatMoneyAmount(payment_detail.successful_orders_total_turnover_usdt) }} <span class="text-primary">USDT</span></span>
-                                                    </div>
-                                                    <div class="pt-0.5 text-[10px] text-base-content/50 text-center">
-                                                        Обновляется раз в 15 минут
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </TableInfoDropdown>
+                                    <div class="flex items-center gap-2 border-t border-base-content/10 pt-2 text-xs">
+                                        <span class="shrink-0 text-base-content/50">UUID</span>
+                                        <CopyableOrderUid :uuid="payment_detail.uuid ?? ''" class="truncate" />
                                     </div>
                             </DataCard>
                     </DataCardList>

@@ -29,6 +29,15 @@ use Throwable;
 
 class MainPageStatsService implements MainPageStatsServiceContract
 {
+    /**
+     * Per-request memo of a user's owned merchant ids. `scopeMerchantOrders`
+     * runs for every aggregate/bucket query on a dashboard load, so without
+     * this the same `Merchant::where(user_id)` lookup fires 10+ times per page.
+     *
+     * @var array<int, array<int>>
+     */
+    private array $userMerchantIdsCache = [];
+
     public function __construct(
         private readonly MerchantApiStatisticsServiceContract $merchantApiStatisticsService,
     ) {}
@@ -1621,7 +1630,11 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
     private function resolveUserMerchantIds(User $user): array
     {
-        return Merchant::query()
+        if (array_key_exists($user->id, $this->userMerchantIdsCache)) {
+            return $this->userMerchantIdsCache[$user->id];
+        }
+
+        return $this->userMerchantIdsCache[$user->id] = Merchant::query()
             ->where('user_id', $user->id)
             ->pluck('id')
             ->map(fn ($id) => (int) $id)

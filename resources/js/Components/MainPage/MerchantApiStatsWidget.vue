@@ -1,14 +1,28 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import axios from 'axios';
 import WidgetHeader from '@/Components/MainPage/WidgetHeader.vue';
+import StatCard from '@/Components/MainPage/StatCard.vue';
+import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
+import DashboardChart from '@/Components/Charts/DashboardChart.vue';
 import MerchantApiLogAmountDistributionModal from '@/Modals/MerchantApiLogs/MerchantApiLogAmountDistributionModal.vue';
+
+const props = defineProps({
+    statsRouteName: {
+        type: String,
+        default: 'admin.main.api-log-stats',
+    },
+    amountDistributionRouteName: {
+        type: String,
+        default: 'admin.merchant-api-logs.amount-distribution',
+    },
+});
 
 const loading = ref(false);
 const loaded = ref(false);
 const errored = ref(false);
 const showAmountDistributionModal = ref(false);
-const amountDistributionRoute = route('admin.merchant-api-logs.amount-distribution');
+const amountDistributionRoute = route(props.amountDistributionRouteName);
 
 const failedTotal = ref(0);
 const failedToday = ref(0);
@@ -60,50 +74,28 @@ const formatChartValue = (value) => (chartMode.value === 'average'
     ? Number(value).toLocaleString('ru-RU', { maximumFractionDigits: 2 })
     : Math.round(value).toString());
 
+const chartValueFormatter = computed(() => (value) => formatChartValue(value));
+const chartTooltipFormatter = computed(() => (value) => `${formatChartValue(value)} запросов`);
+
+const apiChartSeries = computed(() => [
+    {
+        name: chartMode.value === 'average' ? 'В среднем всего' : 'Всего запросов',
+        data: requestsChart.value.total || [],
+        color: '#ef4444',
+    },
+    {
+        name: chartMode.value === 'average' ? 'В среднем успешных' : 'Успешные запросы',
+        data: requestsChart.value.successful || [],
+        color: '#22c55e',
+    },
+]);
+
 const formatNumber = (num) => {
-    if (num === undefined || num === null) return '0';
+    if (num === undefined || num === null) {
+        return '0';
+    }
     const rounded = Math.round(num * 100) / 100;
     return rounded.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
-
-const chartEl = ref(null);
-const apexChart = ref(null);
-
-const renderChart = async () => {
-    await nextTick();
-    if (!chartEl.value) {
-        return;
-    }
-
-    if (!apexChart.value) {
-        const { default: ApexCharts } = await import('apexcharts');
-        apexChart.value = new ApexCharts(chartEl.value, {
-            chart: { type: 'line', height: 240, toolbar: { show: false }, zoom: { enabled: false } },
-            stroke: { curve: 'smooth', width: 3 },
-            grid: { borderColor: 'rgba(148, 163, 184, 0.2)' },
-            dataLabels: { enabled: false },
-            markers: { size: 0, hover: { size: 4 } },
-            legend: { position: 'top', horizontalAlign: 'left', labels: { colors: '#999' } },
-            tooltip: { theme: 'dark', y: { formatter: (value) => `${formatChartValue(value)} запросов` } },
-            series: [],
-        });
-        apexChart.value.render();
-    }
-
-    apexChart.value.updateOptions({
-        series: [
-            { name: chartMode.value === 'average' ? 'В среднем всего' : 'Всего запросов', data: requestsChart.value.total },
-            { name: chartMode.value === 'average' ? 'В среднем успешных' : 'Успешные запросы', data: requestsChart.value.successful },
-        ],
-        xaxis: {
-            categories: requestsChart.value.labels,
-            labels: { style: { colors: '#999' } },
-            axisBorder: { show: false },
-            axisTicks: { show: false },
-        },
-        yaxis: { min: 0, forceNiceScale: true, labels: { style: { colors: '#999' }, formatter: formatChartValue } },
-        colors: ['#ef4444', '#22c55e'],
-    }, false, false);
 };
 
 const load = async (overrides = {}) => {
@@ -124,7 +116,7 @@ const load = async (overrides = {}) => {
     };
 
     try {
-        const { data } = await axios.get(route('admin.main.api-log-stats'), { params });
+        const { data } = await axios.get(route(props.statsRouteName), { params });
         failedTotal.value = data.failedTotal;
         failedToday.value = data.failedToday;
         successTotal.value = data.successTotal;
@@ -139,7 +131,6 @@ const load = async (overrides = {}) => {
         chartMode.value = data.requestsChartMode || chartMode.value;
         selectedWeekdays.value = (data.requestsChartWeekdays || selectedWeekdays.value).map((weekday) => Number(weekday));
         loaded.value = true;
-        await renderChart();
     } catch (error) {
         errored.value = true;
     } finally {
@@ -200,116 +191,74 @@ const resetChartFilters = () => {
 onMounted(() => {
     load();
 });
-
-onBeforeUnmount(() => {
-    if (apexChart.value) {
-        apexChart.value.destroy();
-        apexChart.value = null;
-    }
-});
 </script>
 
 <template>
-    <div class="space-y-3">
-        <WidgetHeader title="Статистика запросов API" :loading="loading" @refresh="load()" />
+    <div class="space-y-4">
+        <WidgetHeader title="Статистика запросов API" :loading="loading" @refresh="load()">
+            <template #actions>
+                <PageToolbarAction
+                    icon="chart-bar"
+                    label="Распределение по сумме"
+                    title="Распределение по сумме"
+                    @click="showAmountDistributionModal = true"
+                />
+            </template>
+        </WidgetHeader>
 
-        <div class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="space-y-4 p-3 lg:p-4">
-                <div v-if="loading && !loaded" class="space-y-4">
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <div v-for="n in 4" :key="n" class="skeleton h-24 w-full"></div>
+        <div v-if="loading && !loaded" class="space-y-4">
+            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <div v-for="n in 4" :key="n" class="skeleton h-20 w-full"></div>
+            </div>
+            <div class="skeleton h-72 w-full"></div>
+        </div>
+
+        <div v-else-if="errored" class="flex h-40 items-center justify-center text-sm text-error">
+            Не удалось загрузить статистику
+        </div>
+
+        <template v-else>
+            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <StatCard label="Успешно сегодня" :value="successToday" color="success">
+                    <template #icon>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </template>
+                </StatCard>
+
+                <StatCard label="Ошибок сегодня" :value="failedToday" color="error">
+                    <template #icon>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </template>
+                </StatCard>
+
+                <StatCard label="Успешно всего" :value="successTotal" color="success">
+                    <template #icon>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </template>
+                </StatCard>
+
+                <StatCard label="Ошибок всего" :value="failedTotal" color="error">
+                    <template #icon>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </template>
+                </StatCard>
+            </div>
+
+            <div class="rounded-box border border-base-300/60 bg-base-100 px-4 pt-4 pb-6">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <h3 class="text-sm font-medium text-base-content/60">{{ chartTitle }}</h3>
+                        <p class="text-xs text-base-content/50">{{ chartSubtitle }}</p>
                     </div>
-                    <div class="skeleton h-60 w-full"></div>
-                </div>
-
-                <div v-else-if="errored" class="flex h-40 items-center justify-center text-sm text-error">
-                    Не удалось загрузить статистику
-                </div>
-
-                <template v-else>
-                    <div class="flex flex-wrap items-center justify-end gap-2">
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-outline btn-primary"
-                            @click="showAmountDistributionModal = true"
-                        >
-                            Распределение по сумме
-                        </button>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <div class="card card-border bg-base-200/40 shadow-none">
-                            <div class="card-body py-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="opacity-70">Успешно сегодня</p>
-                                        <p class="text-2xl font-bold">{{ successToday }}</p>
-                                    </div>
-                                    <div class="rounded-full bg-success/10 p-3">
-                                        <svg class="h-6 w-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card card-border bg-base-200/40 shadow-none">
-                            <div class="card-body py-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="opacity-70">Ошибок сегодня</p>
-                                        <p class="text-2xl font-bold">{{ failedToday }}</p>
-                                    </div>
-                                    <div class="rounded-full bg-error/10 p-3">
-                                        <svg class="h-6 w-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card card-border bg-base-200/40 shadow-none">
-                            <div class="card-body py-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="opacity-70">Успешно всего</p>
-                                        <p class="text-2xl font-bold">{{ successTotal }}</p>
-                                    </div>
-                                    <div class="rounded-full bg-success/10 p-3">
-                                        <svg class="h-6 w-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card card-border bg-base-200/40 shadow-none">
-                            <div class="card-body py-4">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="opacity-70">Ошибок всего</p>
-                                        <p class="text-2xl font-bold">{{ failedTotal }}</p>
-                                    </div>
-                                    <div class="rounded-full bg-error/10 p-3">
-                                        <svg class="h-6 w-6 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="rounded-box border border-base-300 bg-base-200/30 px-3 pb-7 pt-4 sm:px-6">
-                        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                                <h3 class="text-lg text-base-content/70">{{ chartTitle }}</h3>
-                                <p class="text-sm text-base-content/60">{{ chartSubtitle }}</p>
-                            </div>
-                            <div class="flex flex-col gap-2 sm:items-end">
+                    <div class="flex flex-col gap-2 sm:items-end">
                                 <div class="join join-horizontal">
                                     <button
                                         type="button"
@@ -357,7 +306,15 @@ onBeforeUnmount(() => {
                                 </div>
                             </div>
                         </div>
-                        <div ref="chartEl" class="h-60"></div>
+                        <DashboardChart
+                            :labels="requestsChart.labels"
+                            :series="apiChartSeries"
+                            :value-formatter="chartValueFormatter"
+                            :tooltip-value-formatter="chartTooltipFormatter"
+                            :y-min="0"
+                            :show-legend="true"
+                            height="15rem"
+                        />
                         <div class="mt-4 flex justify-end">
                             <div class="grid w-full grid-cols-1 gap-2 md:w-auto md:grid-cols-[minmax(9rem,12rem)_minmax(8rem,10rem)_minmax(8rem,10rem)_auto] md:items-end">
                                 <label class="form-control w-full">
@@ -391,10 +348,10 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div class="card card-border bg-base-200/40 shadow-none">
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div class="rounded-box border border-base-300/60 bg-base-100">
                             <div class="card-body">
-                                <h3 class="mb-3 text-lg font-semibold">Суммы успешных запросов</h3>
+                                <h3 class="mb-3 text-sm font-semibold text-base-content/70">Суммы успешных запросов</h3>
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
                                         <h4 class="mb-2 text-sm font-medium opacity-70">Сегодня</h4>
@@ -420,9 +377,9 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
 
-                        <div class="card card-border bg-base-200/40 shadow-none">
+                        <div class="rounded-box border border-base-300/60 bg-base-100">
                             <div class="card-body">
-                                <h3 class="mb-3 text-lg font-semibold">Суммы неудачных запросов</h3>
+                                <h3 class="mb-3 text-sm font-semibold text-base-content/70">Суммы неудачных запросов</h3>
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
                                         <h4 class="mb-2 text-sm font-medium opacity-70">Сегодня</h4>
@@ -449,8 +406,6 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                 </template>
-            </div>
-        </div>
 
         <MerchantApiLogAmountDistributionModal
             :show="showAmountDistributionModal"

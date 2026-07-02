@@ -174,11 +174,10 @@ const resetFilters = () => {
 </script>
 
 <template>
-    <div class="space-y-3">
+    <div class="space-y-4">
         <WidgetHeader title="Включенные реквизиты" :loading="loading" @refresh="load" />
 
-        <div class="card border border-base-300 bg-base-100 shadow-sm">
-            <div class="space-y-6 p-4 sm:p-5">
+        <div class="space-y-5">
                 <div v-if="loading && !loaded" class="space-y-4">
                     <div class="skeleton h-16 w-full"></div>
                     <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 3xl:grid-cols-4">
@@ -229,16 +228,16 @@ const resetFilters = () => {
                         </button>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 3xl:grid-cols-4">
-                        <div class="card bg-base-200/40 border border-base-300 shadow-none">
+                    <div class="grid grid-cols-1 gap-3 xl:grid-cols-2 3xl:grid-cols-4">
+                        <div class="rounded-box border border-base-300/60 bg-base-100">
                             <div class="card-body p-5">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-base-content/60">Количество реквизитов</p>
-                                        <p class="text-xl font-bold">{{ statistics.totalPaymentDetails }}</p>
+                                        <p class="text-xs font-medium text-base-content/55">Количество реквизитов</p>
+                                        <p class="mt-1.5 text-xl font-semibold tabular-nums">{{ statistics.totalPaymentDetails }}</p>
                                     </div>
-                                    <div class="p-3 rounded-full bg-primary/10 text-primary">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                                         </svg>
                                     </div>
@@ -246,15 +245,15 @@ const resetFilters = () => {
                             </div>
                         </div>
 
-                        <div class="card bg-base-200/40 border border-base-300 shadow-none">
+                        <div class="rounded-box border border-base-300/60 bg-base-100">
                             <div class="card-body p-5">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-base-content/60">Свободный лимит ({{ selectedCurrencyInfo?.symbol || '—' }})</p>
-                                        <p class="text-xl font-bold">{{ selectedCurrencyLimit?.symbol }} {{ selectedCurrencyLimit?.total_free_limit || '0.00' }}</p>
+                                        <p class="text-xs font-medium text-base-content/55">Свободный лимит ({{ selectedCurrencyInfo?.symbol || '—' }})</p>
+                                        <p class="mt-1.5 text-xl font-semibold tabular-nums">{{ selectedCurrencyLimit?.symbol }} {{ selectedCurrencyLimit?.total_free_limit || '0.00' }}</p>
                                     </div>
-                                    <div class="p-3 rounded-full bg-success/10 text-success">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div class="grid size-10 place-items-center rounded-xl bg-success/10 text-success">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                                         </svg>
                                     </div>
@@ -262,15 +261,15 @@ const resetFilters = () => {
                             </div>
                         </div>
 
-                        <div class="card bg-base-200/40 border border-base-300 shadow-none">
+                        <div class="rounded-box border border-base-300/60 bg-base-100">
                             <div class="card-body p-5">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-base-content/60">Потенциальный лимит ({{ selectedCurrencyInfo?.symbol || '—' }})</p>
-                                        <p class="text-xl font-bold">{{ selectedPotentialLimit?.symbol }} {{ selectedPotentialLimit?.total_potential_limit || '0.00' }}</p>
+                                        <p class="text-xs font-medium text-base-content/55">Потенциальный лимит ({{ selectedCurrencyInfo?.symbol || '—' }})</p>
+                                        <p class="mt-1.5 text-xl font-semibold tabular-nums">{{ selectedPotentialLimit?.symbol }} {{ selectedPotentialLimit?.total_potential_limit || '0.00' }}</p>
                                     </div>
-                                    <div class="p-3 rounded-full bg-secondary/10 text-secondary">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div class="grid size-10 place-items-center rounded-xl bg-secondary/10 text-secondary">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                                         </svg>
                                     </div>
@@ -278,11 +277,11 @@ const resetFilters = () => {
                             </div>
                         </div>
 
-                        <div class="card bg-base-200/40 border border-base-300 shadow-none">
+                        <div class="rounded-box border border-base-300/60 bg-base-100">
                             <div class="card-body p-5">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-base-content/60">Баланс трейдеров ({{ statistics.tradersBalance.symbol }})</p>
+                                        <p class="text-xs font-medium text-base-content/55">Баланс трейдеров ({{ statistics.tradersBalance.symbol }})</p>
                                         <p class="md:flex grid gap-x-4">
                                             <span class="flex items-center">
                                                 <span class="text-base-content/60 text-sm mr-2">Всего:</span>
@@ -294,8 +293,8 @@ const resetFilters = () => {
                                             </span>
                                         </p>
                                     </div>
-                                    <div class="p-3 rounded-full bg-warning/10 text-warning">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div class="grid size-10 place-items-center rounded-xl bg-warning/10 text-warning">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
                                     </div>
@@ -304,10 +303,10 @@ const resetFilters = () => {
                         </div>
                     </div>
 
-                    <div class="card bg-base-200/40 border border-base-300 shadow-none">
+                    <div class="rounded-box border border-base-300/60 bg-base-100">
                         <div class="card-body p-4 sm:p-5 gap-4">
                             <div class="flex flex-col gap-1">
-                                <h3 class="card-title text-lg">Уровни минимального лимита</h3>
+                                <h3 class="card-title text-base">Уровни минимального лимита</h3>
                                 <p class="text-sm text-base-content/70">
                                     Для каждой валюты можно задать свои уровни. Группа «Не указан» всегда остаётся фиксированной.
                                 </p>
@@ -405,7 +404,6 @@ const resetFilters = () => {
                         </DataCardList>
                     </div>
                 </template>
-            </div>
         </div>
     </div>
 </template>

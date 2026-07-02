@@ -68,7 +68,7 @@ const deleteNews = (post) => {
 </script>
 
 <template>
-    <div class="flex max-h-[min(32rem,calc(100dvh-6rem))] flex-col">
+    <div class="flex max-h-[min(38rem,calc(100dvh-5rem))] flex-col">
         <div class="shrink-0 border-b border-base-300/60 px-3 py-3">
             <div class="flex items-center justify-between gap-2">
                 <h3 class="text-sm font-semibold text-base-content">Новости</h3>

@@ -28,7 +28,7 @@ alwaysApply: false
 ## Icons, charts, editors, dates
 
 - **Icons:** inline SVG (the project does not use Iconify or an icon library). Reuse existing icon components/markup.
-- **Charts:** `apexcharts` directly on dashboard pages.
+- **Charts:** `echarts` v6 via `vue-echarts` (`echarts/core` tree-shaking registered in `Components/Charts/echarts.js`). Use the shared `Components/Charts/DashboardChart.vue` wrapper (theme-aware colors, value formatters, comparison/multi-series) rather than instantiating charts by hand. `apexcharts` has been removed — don't reintroduce it.
 - **Rich text:** TipTap (`@tiptap/vue-3`) is available for news/editor content.
 - **Dates:** render via the `Components/DateTime` component; date inputs use Pikaday (in filters). Don't hand-format ISO strings in templates.
 

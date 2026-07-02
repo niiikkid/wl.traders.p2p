@@ -1,16 +1,53 @@
 <script setup>
 import CodeBlock from '@/Components/CodeBlock.vue';
+import ApiDocumentationNav from '@/Pages/Integration/Components/ApiDocumentationNav.vue';
 
 const tocSections = [
-    { id: 'about', title: 'Введение' },
-    { id: 'base', title: 'Основы' },
-    { id: 'order-statuses', title: 'Статусы сделок' },
-    { id: 'callback', title: 'Callbacks' },
-    { id: 'base-methods', title: 'Базовые методы' },
-    { id: 'h2h-api', title: 'Host To Host API' },
-    { id: 'manual-control-acquiring', title: 'Manual Control Acquiring' },
-    { id: 'payouts-api', title: 'Payouts API' },
-    { id: 'statements-api', title: 'Выписки' },
+    {
+        id: 'about',
+        title: 'Введение',
+        icon: '<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 7v14m-9-3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4a4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3a3 3 0 0 0-3-3z"/>',
+    },
+    {
+        id: 'base',
+        title: 'Основы',
+        icon: '<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m18 16l4-4l-4-4M6 8l-4 4l4 4m8.5-12l-5 16"/>',
+    },
+    {
+        id: 'order-statuses',
+        title: 'Статусы сделок',
+        icon: '<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5h8m-8 7h8m-8 7h8M3 17l2 2l4-4M3 7l2 2l4-4"/>',
+    },
+    {
+        id: 'callback',
+        title: 'Callbacks',
+        icon: '<g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/><path d="m6 17l3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06"/><path d="m12 6l3.13 5.73C15.66 12.7 16.9 13 18 13a4 4 0 0 1 0 8"/></g>',
+    },
+    {
+        id: 'base-methods',
+        title: 'Базовые методы',
+        icon: '<g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></g>',
+    },
+    {
+        id: 'h2h-api',
+        title: 'Host To Host API',
+        icon: '<path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3L4 7l4 4M4 7h16m-4 14l4-4l-4-4m4 4H4"/>',
+    },
+    {
+        id: 'manual-control-acquiring',
+        title: 'MCA',
+        icon: '<g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></g>',
+    },
+    {
+        id: 'payouts-api',
+        title: 'Payouts API',
+        icon: '<g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></g>',
+    },
+    {
+        id: 'statements-api',
+        title: 'Выписки',
+        icon: '<g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8"/></g>',
+    },
 ];
 
 const responseSuccessExample = `{
@@ -322,23 +359,7 @@ if (! hash_equals($expected, $signature)) {
 <template>
     <div class="space-y-10" data-api-docs-markdown-root>
         <div class="grid grid-cols-1 gap-6 xl:flex">
-            <aside>
-                <div class="card menu menu-sm sticky top-6 w-full bg-base-100 p-0 shadow xl:w-64">
-                    <div class="card-body">
-                        <h3 class="card-title text-lg">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                            Содержание
-                        </h3>
-                        <ul class="w-full">
-                            <li v-for="section in tocSections" :key="section.id">
-                                <a :href="`#${section.id}`" class="truncate">{{ section.title }}</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </aside>
+            <ApiDocumentationNav :sections="tocSections" />
 
             <div class="min-w-0 flex-1 space-y-6">
                 <article id="about" class="card bg-base-100 shadow">

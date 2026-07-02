@@ -35,6 +35,7 @@ use App\Http\Controllers\DisputeController;
 use App\Http\Controllers\IncomingSmsLogController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\MainPageController;
+use App\Http\Controllers\Merchant\DashboardStatsController as MerchantDashboardStatsController;
 use App\Http\Controllers\Merchant\MerchantApiLogController as MerchantMerchantApiLogController;
 use App\Http\Controllers\Merchant\PayoutCallbackController;
 use App\Http\Controllers\Merchant\ResendCallbackController;
@@ -269,6 +270,7 @@ Route::group(['middleware' => ['2fa']], function () {
     Route::group(['middleware' => ['auth', 'banned', 'role:Merchant|Super Admin']], function () {
         Route::get('/merchant/main', [MainPageController::class, 'merchant'])->name('merchant.main.index');
         Route::get('/merchant/main/filter-options/{type}', [MainPageController::class, 'merchantFilterOptions'])->name('merchant.main.filter-options');
+        Route::get('/merchant/main/api-log-stats', [MerchantDashboardStatsController::class, 'merchantApi'])->name('merchant.main.api-log-stats');
 
         Route::resource('/merchants', MerchantController::class)->only(['index', 'store']);
         Route::get('/merchants/data', [MerchantController::class, 'indexData'])->name('merchants.data');
