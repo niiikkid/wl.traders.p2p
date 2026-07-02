@@ -6,8 +6,10 @@ import Pagination from "@/Components/Pagination/Pagination.vue";
 import TableEmptyState from "@/Components/TableEmptyState.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {walletBalanceTypeLabel} from "@/utils/walletBalanceTypeLabel.js";
+import {useModalStore} from "@/store/modal.js";
 
 const viewStore = useViewStore();
+const modalStore = useModalStore();
 
 const page = usePage();
 
@@ -33,6 +35,7 @@ const balanceTypeLabel = (balanceType) => walletBalanceTypeLabel(balanceType, {
 const user = page.props.user;
 const invoices = ref(page.props.invoices);
 const transactions = ref(page.props.transactions);
+const walletDepositInvoices = computed(() => page.props.walletDepositInvoices ?? []);
 const tabs = ref(page.props.tabs);
 const filters = ref(page.props.filters);
 const currentTab = ref(page.props.currentTab);
@@ -97,6 +100,26 @@ const openTransactionsExport = () => {
     }
     window.open(url, '_blank');
 };
+
+const openWalletDepositInvoice = (invoice) => {
+    modalStore.open(invoice.balance_type === 'reserve' ? 'leaderReserveDeposit' : 'traderDeposit', {
+        invoice,
+    });
+};
+
+const walletDepositStatus = (status) => {
+    const statuses = {
+        pending: { label: 'Ожидание оплаты', badge: 'badge-info' },
+        processing: { label: 'Подтверждается', badge: 'badge-warning' },
+        paid: { label: 'Зачислено', badge: 'badge-success' },
+        expired: { label: 'Истёк', badge: 'badge-neutral' },
+        cancelled: { label: 'Отменён', badge: 'badge-error' },
+        amount_mismatch: { label: 'Проверка суммы', badge: 'badge-error' },
+        failed: { label: 'Ошибка', badge: 'badge-error' },
+    };
+
+    return statuses[status] ?? { label: status, badge: 'badge-neutral' };
+};
 </script>
 
 <template>
@@ -134,6 +157,49 @@ const openTransactionsExport = () => {
                         <span class="hidden sm:inline">Excel</span>
                     </button>
                 </div>
+            </div>
+
+            <div v-if="walletDepositInvoices.length" class="rounded-box border border-base-300 bg-base-200/40 p-3">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <div>
+                        <div class="font-medium">Крипто-инвойсы</div>
+                        <div class="text-xs text-base-content/60">Последние локальные инвойсы USDT TRC20 можно открыть повторно.</div>
+                    </div>
+                    <span class="badge badge-outline">USDT TRC20</span>
+                </div>
+
+                <ul class="divide-y divide-base-300/60">
+                    <li
+                        v-for="depositInvoice in walletDepositInvoices"
+                        :key="'wallet-deposit-' + depositInvoice.id"
+                        class="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-medium">{{ depositInvoice.amount }} USDT</span>
+                                <span class="badge badge-sm badge-soft" :class="walletDepositStatus(depositInvoice.status).badge">
+                                    {{ walletDepositStatus(depositInvoice.status).label }}
+                                </span>
+                                <span
+                                    v-if="showHistoryBalanceTypeColumn && depositInvoice.balance_type"
+                                    class="badge badge-ghost badge-xs"
+                                >{{ balanceTypeLabel(depositInvoice.balance_type) }}</span>
+                            </div>
+                            <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-base-content/50">
+                                <DateTime :data="depositInvoice.created_at" />
+                                <span class="truncate">· {{ depositInvoice.address }}</span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="btn btn-outline btn-xs shrink-0"
+                            @click="openWalletDepositInvoice(depositInvoice)"
+                        >
+                            Открыть оплату
+                        </button>
+                    </li>
+                </ul>
             </div>
 
             <div

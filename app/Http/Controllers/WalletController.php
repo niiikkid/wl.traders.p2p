@@ -7,9 +7,11 @@ use App\Enums\InvoiceType;
 use App\Http\Requests\Wallet\UpdateFiatCurrencyRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TransactionResource;
+use App\Http\Resources\WalletDepositInvoiceResource;
 use App\Http\Resources\WithdrawalAddressResource;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletDepositInvoice;
 use App\Services\User\TeamLeaderInsuranceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -107,6 +109,7 @@ class WalletController extends Controller
         $teamLeaderInsurance = $this->teamLeaderInsuranceProps($request);
         $walletHistoryShowsBalanceType = $teamLeaderUsesSharedReserve;
         $withdrawalAddresses = $this->withdrawalAddressProps($user);
+        $walletDepositInvoices = $this->walletDepositInvoiceProps($wallet);
 
         return Inertia::render('Wallet/Index', compact(
             'walletStats',
@@ -121,6 +124,7 @@ class WalletController extends Controller
             'teamLeaderInsurance',
             'walletHistoryShowsBalanceType',
             'withdrawalAddresses',
+            'walletDepositInvoices',
         ));
     }
 
@@ -227,5 +231,19 @@ class WalletController extends Controller
             'items' => WithdrawalAddressResource::collection($addresses)->resolve(),
             'has_2fa' => $user->google2fa_secret !== null,
         ];
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function walletDepositInvoiceProps(Wallet $wallet): array
+    {
+        $invoices = WalletDepositInvoice::query()
+            ->where('wallet_id', $wallet->id)
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        return WalletDepositInvoiceResource::collection($invoices)->resolve();
     }
 }

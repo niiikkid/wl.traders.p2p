@@ -43,15 +43,15 @@ return [
     // TRON blockchain read source for internal USDT (TRC20) deposit processing.
     // TronGrid is only a read source: it never owns invoice status or balances.
     'trongrid' => [
-        'base_url' => env('TRONGRID_BASE_URL', 'https://api.trongrid.io'),
+        'base_url' => env('TRONGRID_BASE_URL'),
         'api_key' => env('TRONGRID_API_KEY'),
-        'usdt_contract' => env('TRONGRID_USDT_CONTRACT', 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'),
-        'tronscan_base_url' => env('TRONSCAN_BASE_URL', 'https://tronscan.org'),
+        'usdt_contract' => env('TRONGRID_USDT_CONTRACT'),
+        'tronscan_base_url' => env('TRONSCAN_BASE_URL'),
     ],
 
     // Operational thresholds for internal wallet deposit invoices.
     'wallet_deposit' => [
-        'qr_disk' => env('WALLET_DEPOSIT_QR_DISK', 'local'),
+        'qr_disk' => env('WALLET_DEPOSIT_QR_DISK'),
         'invoice_expires_in_minutes' => (int) env('WALLET_DEPOSIT_INVOICE_EXPIRES_IN_MINUTES', 30),
         'min_confirmations' => (int) env('WALLET_DEPOSIT_MIN_CONFIRMATIONS', 10),
         'amount_collision_percent' => (float) env('WALLET_DEPOSIT_AMOUNT_COLLISION_PERCENT', 5),

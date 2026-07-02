@@ -19,6 +19,7 @@ const POLL_INTERVAL_MS = 10000;
 
 const modalStore = useModalStore();
 const show = computed(() => modalStore.isOpen(props.modalName));
+const modalParams = computed(() => modalStore.paramsOf(props.modalName));
 
 const step = ref('amount');
 const amount = ref('');
@@ -152,6 +153,35 @@ const submit = async () => {
     }
 };
 
+const openExistingInvoice = async () => {
+    const existingInvoice = modalParams.value.invoice;
+    const invoiceId = modalParams.value.invoiceId ?? existingInvoice?.id;
+
+    if (existingInvoice) {
+        invoice.value = existingInvoice;
+        startPaymentView();
+    }
+
+    if (!invoiceId) {
+        return;
+    }
+
+    try {
+        loading.value = true;
+        const { data } = await axios.get(route('deposit.invoices.show', invoiceId), {
+            headers: { Accept: 'application/json' },
+        });
+
+        invoice.value = data.invoice;
+        startPaymentView();
+    } catch (e) {
+        error.value = e.response?.data?.message || 'Не удалось открыть инвойс.';
+        step.value = 'amount';
+    } finally {
+        loading.value = false;
+    }
+};
+
 const copyAddress = async () => {
     if (!invoice.value?.address) {
         return;
@@ -169,6 +199,7 @@ const copyAddress = async () => {
 watch(show, (visible) => {
     if (visible) {
         reset();
+        openExistingInvoice();
     } else {
         stopTimers();
     }

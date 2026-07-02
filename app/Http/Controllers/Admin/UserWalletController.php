@@ -12,8 +12,11 @@ use App\Http\Requests\Admin\User\Wallet\WithdrawRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Http\Resources\TransactionResource;
 use App\Http\Resources\UserResource;
+use App\Http\Resources\WalletDepositInvoiceResource;
 use App\Http\Resources\WithdrawalAddressResource;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Models\WalletDepositInvoice;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Services\User\TeamLeaderInsuranceService;
@@ -226,6 +229,7 @@ class UserWalletController extends Controller
         $walletHistoryShowsBalanceType = $walletAdminFullView
             || ($user->hasRole('Team Leader') && $this->teamLeaderInsuranceService->teamLeaderUsesSharedReserve($user));
         $withdrawalAddresses = $this->withdrawalAddressProps($user);
+        $walletDepositInvoices = $this->walletDepositInvoiceProps($wallet);
 
         $user = UserResource::make($user)->resolve();
 
@@ -243,6 +247,7 @@ class UserWalletController extends Controller
             'teamLeaderInsurance',
             'walletHistoryShowsBalanceType',
             'withdrawalAddresses',
+            'walletDepositInvoices',
         ));
     }
 
@@ -391,6 +396,20 @@ class UserWalletController extends Controller
         }
 
         return BalanceType::TRUST;
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function walletDepositInvoiceProps(Wallet $wallet): array
+    {
+        $invoices = WalletDepositInvoice::query()
+            ->where('wallet_id', $wallet->id)
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        return WalletDepositInvoiceResource::collection($invoices)->resolve();
     }
 
     private function resolveHistoryBalanceType(User $user, BalanceType $scopedBalanceType): ?BalanceType
