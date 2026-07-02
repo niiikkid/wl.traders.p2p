@@ -31,25 +31,18 @@ const TYPE_OPTIONS = [
     { value: 'binance', name: 'Binance' },
 ];
 
-const DIRECTION_OPTIONS = [
-    { value: 'pay_in', name: 'Приём (pay-in)' },
-    { value: 'pay_out', name: 'Выплаты (pay-out)' },
-];
-
 const SIDE_OPTIONS = [
-    { value: '', name: 'По умолчанию для направления' },
-    { value: 'buy', name: 'Покупка USDT (buy)' },
     { value: 'sell', name: 'Продажа USDT (sell)' },
+    { value: 'buy', name: 'Покупка USDT (buy)' },
 ];
 
 const createForm = () => ({
     id: null,
     name: '',
     type: 'bybit',
-    direction: 'pay_in',
     quote_currency: 'rub',
     is_active: true,
-    side: '',
+    side: 'sell',
     rate: null,
     amount: null,
     payment_methods: [],
@@ -104,10 +97,9 @@ const populateFromSource = (source) => {
         id: source.id,
         name: source.name ?? '',
         type: source.type,
-        direction: source.direction,
         quote_currency: source.quote_currency,
         is_active: !!source.is_active,
-        side: settings.side ?? '',
+        side: settings.side ?? 'sell',
         rate: settings.rate ?? null,
         amount: settings.amount ?? null,
         payment_methods: (settings.payment_methods ?? []).map((value) => String(value)),
@@ -134,7 +126,7 @@ const loadFilterOptions = () => {
 };
 
 const buildSettings = () => {
-    const side = form.value.side || null;
+    const side = form.value.side || 'sell';
 
     if (form.value.type === 'manual') {
         return { rate: Number(form.value.rate ?? 0), ...(side ? { side } : {}) };
@@ -161,9 +153,8 @@ const buildSettings = () => {
 };
 
 const buildPayload = () => ({
-    name: form.value.name || null,
+    name: (form.value.name || '').trim(),
     type: form.value.type,
-    direction: form.value.direction,
     quote_currency: form.value.quote_currency,
     is_active: form.value.is_active,
     settings: buildSettings(),
@@ -196,6 +187,12 @@ const preview = () => {
 
 const submit = () => {
     if (processing.value) return;
+
+    if (!(form.value.name || '').trim()) {
+        errors.value = { name: ['Укажите название источника.'] };
+        return;
+    }
+
     processing.value = true;
     errors.value = {};
 
@@ -258,13 +255,14 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
             <form class="space-y-4" @submit.prevent="submit">
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <InputLabel for="rs-name" value="Название (необязательно)" :error="!!errorMessage('name')" />
+                        <InputLabel for="rs-name" value="Название *" :error="!!errorMessage('name')" />
                         <TextInput
                             id="rs-name"
                             v-model="form.name"
                             type="text"
                             class="input input-bordered w-full mt-1"
-                            placeholder="Например, Bybit RUB (приём)"
+                            placeholder="Например, Bybit RUB (продажа)"
+                            :error="!!errorMessage('name')"
                             @input="clearError('name')"
                         />
                         <InputError :message="errorMessage('name')" class="mt-1" />
@@ -282,20 +280,6 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
                             @change="clearError('type')"
                         />
                         <InputError :message="errorMessage('type')" class="mt-1" />
-                    </div>
-
-                    <div>
-                        <InputLabel value="Направление" :error="!!errorMessage('direction')" class="mb-1" />
-                        <Select
-                            v-model="form.direction"
-                            :items="DIRECTION_OPTIONS"
-                            value="value"
-                            name="name"
-                            :required="false"
-                            size="sm"
-                            @change="clearError('direction')"
-                        />
-                        <InputError :message="errorMessage('direction')" class="mt-1" />
                     </div>
 
                     <div>
@@ -322,7 +306,7 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
                             :required="false"
                             size="sm"
                         />
-                        <InputHelper model-value="По умолчанию: pay-in → продажа (sell), pay-out → покупка (buy)." />
+                        <InputHelper model-value="Какую сторону P2P-стакана парсить: продажа (sell) или покупка (buy) USDT." />
                     </div>
 
                     <div class="flex items-end">
@@ -371,7 +355,9 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
                             value-key="id"
                             placeholder="Выберите страну"
                             single-select
+                            allow-toggle-off
                         />
+                        <InputHelper model-value="Повторный клик по выбранной стране снимает выбор." />
                     </div>
 
                     <div>
@@ -458,8 +444,8 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
             <button
                 type="button"
                 class="btn btn-sm btn-primary"
-                :class="{ 'btn-disabled': processing }"
-                :disabled="processing"
+                :class="{ 'btn-disabled': processing || !form.name?.trim() }"
+                :disabled="processing || !form.name?.trim()"
                 @click="submit"
             >
                 Сохранить

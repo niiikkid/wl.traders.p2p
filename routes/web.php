@@ -444,7 +444,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/merchants/{merchant}/validated', [App\Http\Controllers\Admin\MerchantController::class, 'validated'])->name('merchants.validated');
         Route::patch('/merchants/{merchant}/settings', [App\Http\Controllers\Admin\MerchantController::class, 'updateSettings'])->name('merchants.settings.update');
         Route::patch('/merchants/{merchant}/geo', [App\Http\Controllers\Admin\MerchantController::class, 'updateGeo'])->name('merchants.geo.update');
-        Route::patch('/merchants/{merchant}/rate-sources', [App\Http\Controllers\Admin\MerchantController::class, 'updateRateSources'])->name('merchants.rate-sources.update');
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
         // Вход под другим пользователем
         Route::post('/impersonate/{user}', function (User $user) {

@@ -4,7 +4,6 @@ namespace App\Services\Market;
 
 use App\Contracts\MarketServiceContract;
 use App\Enums\MarketEnum;
-use App\Enums\RateSourceDirection;
 use App\Jobs\LoadConversionPricesJob;
 use App\Jobs\RefreshRateSourceJob;
 use App\Models\Merchant;
@@ -45,9 +44,9 @@ class MarketService implements MarketServiceContract
         }
     }
 
-    public function resolveRateBinding(Merchant $merchant, Currency $currency, RateSourceDirection $direction): ResolvedRateBinding
+    public function resolveRateBinding(Merchant $merchant, Currency $currency): ResolvedRateBinding
     {
-        $binding = $merchant->getRateSourceBinding($currency, $direction);
+        $binding = $merchant->getRateSourceBinding($currency);
 
         if ($binding) {
             $mode = $binding['mode'] ?? null;
@@ -61,7 +60,6 @@ class MarketService implements MarketServiceContract
                     ->active()
                     ->whereKey((int) $binding['source_id'])
                     ->where('quote_currency', $currency->getCode())
-                    ->where('direction', $direction->value)
                     ->first();
 
                 // A configured-but-missing/inactive source resolves to source mode with no model,

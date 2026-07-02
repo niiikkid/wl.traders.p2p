@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\RateSourceDirection;
 use App\Enums\RateSourceType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RateSource\SaveRequest;
@@ -28,7 +27,6 @@ class RateSourceController extends Controller
         return Inertia::render('RateSource/Index', [
             'sources' => $sources,
             'types' => RateSourceType::values(),
-            'directions' => RateSourceDirection::values(),
             'currencies' => Currency::getAllCodes(),
         ]);
     }
@@ -40,7 +38,6 @@ class RateSourceController extends Controller
         $source = RateSource::query()->create([
             'name' => $request->validated('name'),
             'type' => $type,
-            'direction' => RateSourceDirection::from($request->validated('direction')),
             'base_currency' => 'usdt',
             'quote_currency' => strtolower($request->validated('quote_currency')),
             'is_active' => $request->boolean('is_active', true),
@@ -61,7 +58,6 @@ class RateSourceController extends Controller
         $rateSource->update([
             'name' => $request->validated('name'),
             'type' => $type,
-            'direction' => RateSourceDirection::from($request->validated('direction')),
             'quote_currency' => strtolower($request->validated('quote_currency')),
             'is_active' => $request->boolean('is_active', true),
             'settings' => $this->normalizeSettings($type, (array) $request->validated('settings', [])),
@@ -106,7 +102,6 @@ class RateSourceController extends Controller
         $source = new RateSource([
             'name' => $request->validated('name'),
             'type' => $type,
-            'direction' => RateSourceDirection::from($request->validated('direction')),
             'base_currency' => 'usdt',
             'quote_currency' => strtolower($request->validated('quote_currency')),
             'is_active' => true,
@@ -141,14 +136,13 @@ class RateSourceController extends Controller
     }
 
     /**
-     * Active sources for merchant binding, grouped by currency and direction.
+     * Active sources for merchant binding, grouped by currency.
      */
     public function options(): JsonResponse
     {
         $sources = RateSource::query()
             ->active()
             ->orderBy('quote_currency')
-            ->orderBy('direction')
             ->orderByDesc('id')
             ->get();
 

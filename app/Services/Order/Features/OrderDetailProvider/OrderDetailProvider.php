@@ -3,7 +3,6 @@
 namespace App\Services\Order\Features\OrderDetailProvider;
 
 use App\Enums\DetailType;
-use App\Enums\RateSourceDirection;
 use App\Exceptions\OrderException;
 use App\Models\Merchant;
 use App\Models\Order;
@@ -36,7 +35,6 @@ class OrderDetailProvider
         $binding = services()->market()->resolveRateBinding(
             $this->merchant,
             $this->amount->getCurrency(),
-            RateSourceDirection::PAY_IN,
         );
 
         if ($binding->isMerchantApi()) {

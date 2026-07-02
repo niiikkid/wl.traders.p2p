@@ -30,6 +30,10 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
+    allowToggleOff: {
+        type: Boolean,
+        default: false
+    },
     canUnselect: {
         type: Function,
         default: () => true
@@ -102,6 +106,18 @@ const selectOption = (option) => {
     const optionValue = option[props.valueKey];
     
     if (props.singleSelect) {
+        const alreadySelected = selectedOptions.value.includes(optionValue);
+
+        if (alreadySelected && props.allowToggleOff) {
+            if (!props.canUnselect(optionValue)) {
+                return;
+            }
+            selectedOptions.value = [];
+            emit('update:modelValue', selectedOptions.value);
+            emit('change', selectedOptions.value);
+            return;
+        }
+
         if (selectedOptions.value.length > 0 && !props.canUnselect(selectedOptions.value[0])) {
             return;
         }

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\MarketEnum;
-use App\Enums\RateSourceDirection;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MerchantResource;
 use App\Models\Merchant;
@@ -116,136 +115,89 @@ class MerchantController extends Controller
     }
 
     /**
-     * Обновить GEO (валюта => маркет) для мерчанта.
+     * Обновить GEO мерчанта: для каждой валюты выбирается источник курса
+     * (конкретный RateSource) либо режим «курс от мерчанта» (merchant_api).
      *
      * @throws ValidationException
      */
     public function updateGeo(Request $request, Merchant $merchant): JsonResponse
     {
-        $validator = validator($request->all(), [
+        $request->validate([
             'geos' => ['required', 'array', 'min:1'],
             'geos.*.currency' => ['required', 'string', Rule::in(Currency::getAllCodes())],
-            'geos.*.market' => ['required', Rule::in(MarketEnum::selectableValues())],
+            'geos.*.source' => ['required'],
             'geos.*.order_reference_rate' => ['nullable', 'numeric', 'gt:0'],
             'geos.*.payout_reference_rate' => ['nullable', 'numeric', 'gt:0'],
             'geos.*.max_deviation_percent' => ['nullable', 'numeric', 'gt:0', 'decimal:0,2'],
         ]);
 
-        $validator->after(function () use ($validator, $request) {
-            $geoMap = [];
+        $validator = validator([], []);
 
-            foreach ($request->input('geos', []) as $geo) {
-                $currencyCode = strtolower($geo['currency'] ?? '');
-                $marketValue = $geo['market'] ?? null;
+        $geoMap = [];
+        $rateSourcesMap = [];
+        $merchantApiRates = [];
 
-                if (isset($geoMap[$currencyCode])) {
-                    $validator->errors()->add('geos', "Валюта {$currencyCode} уже добавлена в GEO.");
+        foreach ($request->input('geos', []) as $geo) {
+            $currencyCode = strtolower($geo['currency'] ?? '');
+            $sourceValue = (string) ($geo['source'] ?? '');
 
-                    continue;
-                }
+            if ($currencyCode === '' || ! Currency::isCurrency($currencyCode)) {
+                $validator->errors()->add('geos', 'Указана неподдерживаемая валюта.');
 
-                $marketEnum = MarketEnum::tryFrom($marketValue);
-                if (! $marketEnum) {
-                    $validator->errors()->add('geos', "Маркет {$marketValue} не поддерживается.");
-
-                    continue;
-                }
-
-                if ($marketEnum->isDeprecated()) {
-                    $validator->errors()->add('geos', "Маркет {$marketEnum->value} больше не поддерживается.");
-
-                    continue;
-                }
-
-                try {
-                    $currency = Currency::make($currencyCode);
-
-                    $supportsCurrency = services()->market()
-                        ->getSupportedCurrencies($marketEnum)
-                        ->contains(fn (Currency $supported) => $supported->getCode() === $currency->getCode());
-
-                    if (! $supportsCurrency) {
-                        $validator->errors()->add(
-                            'geos',
-                            "Маркет {$marketEnum->value} не поддерживает валюту ".strtoupper($currencyCode)
-                        );
-                    }
-
-                    if ($marketEnum->equals(MarketEnum::MERCHANT_API)) {
-                        $orderReferenceRate = $geo['order_reference_rate'] ?? null;
-                        $payoutReferenceRate = $geo['payout_reference_rate'] ?? null;
-                        $maxDeviationPercent = $geo['max_deviation_percent'] ?? null;
-
-                        if ($orderReferenceRate === null || $orderReferenceRate === '') {
-                            $validator->errors()->add(
-                                'geos',
-                                'Для валюты '.strtoupper($currencyCode).' в маркете merchant_api нужно указать опорный курс для сделок.'
-                            );
-                        } elseif (! $this->isDecimalWithinPrecision((string) $orderReferenceRate, $currency->getPrecision())) {
-                            $validator->errors()->add(
-                                'geos',
-                                'Опорный курс сделок для '.strtoupper($currencyCode)." может содержать не более {$currency->getPrecision()} знаков после запятой."
-                            );
-                        }
-
-                        if ($payoutReferenceRate === null || $payoutReferenceRate === '') {
-                            $validator->errors()->add(
-                                'geos',
-                                'Для валюты '.strtoupper($currencyCode).' в маркете merchant_api нужно указать опорный курс для выплат.'
-                            );
-                        } elseif (! $this->isDecimalWithinPrecision((string) $payoutReferenceRate, $currency->getPrecision())) {
-                            $validator->errors()->add(
-                                'geos',
-                                'Опорный курс выплат для '.strtoupper($currencyCode)." может содержать не более {$currency->getPrecision()} знаков после запятой."
-                            );
-                        }
-
-                        if ($maxDeviationPercent === null || $maxDeviationPercent === '') {
-                            $validator->errors()->add(
-                                'geos',
-                                'Для валюты '.strtoupper($currencyCode).' в маркете merchant_api нужно указать допустимое расхождение в процентах.'
-                            );
-                        } elseif (! $this->isDecimalWithinPrecision((string) $maxDeviationPercent, 2)) {
-                            $validator->errors()->add(
-                                'geos',
-                                'Допустимое расхождение для '.strtoupper($currencyCode).' может содержать не более 2 знаков после запятой.'
-                            );
-                        }
-                    }
-                } catch (\Throwable) {
-                    $validator->errors()->add('geos', "Валюта {$currencyCode} не поддерживается.");
-                }
-
-                $geoMap[$currencyCode] = $marketEnum->value;
+                continue;
             }
-        });
 
-        $validator->validate();
+            if (isset($geoMap[$currencyCode])) {
+                $validator->errors()->add('geos', "Валюта {$currencyCode} уже добавлена в GEO.");
 
-        $geoMap = collect($request->input('geos', []))
-            ->mapWithKeys(fn (array $geo) => [strtolower($geo['currency']) => $geo['market']])
-            ->toArray();
+                continue;
+            }
 
-        $merchantApiRateSettings = collect($request->input('geos', []))
-            ->filter(function (array $geo) {
-                return ($geo['market'] ?? null) === MarketEnum::MERCHANT_API->value;
-            })
-            ->mapWithKeys(function (array $geo) {
-                $currencyCode = strtolower($geo['currency']);
+            $currency = Currency::make($currencyCode);
 
-                return [
-                    $currencyCode => [
-                        'order_reference_rate' => (float) $geo['order_reference_rate'],
-                        'payout_reference_rate' => (float) $geo['payout_reference_rate'],
-                        'max_deviation_percent' => round((float) $geo['max_deviation_percent'], 2),
-                    ],
+            if ($sourceValue === ResolvedRateBinding::MODE_MERCHANT_API) {
+                $this->validateMerchantApiReferenceRates($validator, $currency, $geo);
+
+                $geoMap[$currencyCode] = MarketEnum::MERCHANT_API->value;
+                $rateSourcesMap[$currencyCode] = ['mode' => ResolvedRateBinding::MODE_MERCHANT_API];
+                $merchantApiRates[$currencyCode] = [
+                    'order_reference_rate' => (float) ($geo['order_reference_rate'] ?? 0),
+                    'payout_reference_rate' => (float) ($geo['payout_reference_rate'] ?? 0),
+                    'max_deviation_percent' => round((float) ($geo['max_deviation_percent'] ?? 0), 2),
                 ];
-            })
-            ->toArray();
+
+                continue;
+            }
+
+            $source = ctype_digit($sourceValue)
+                ? RateSource::query()
+                    ->active()
+                    ->whereKey((int) $sourceValue)
+                    ->where('quote_currency', $currencyCode)
+                    ->first()
+                : null;
+
+            if (! $source) {
+                $validator->errors()->add('geos', 'Не найден активный источник курса для '.strtoupper($currencyCode).'.');
+
+                continue;
+            }
+
+            $geoMap[$currencyCode] = $source->type->toMarketEnum()->value;
+            $rateSourcesMap[$currencyCode] = [
+                'mode' => ResolvedRateBinding::MODE_SOURCE,
+                'source_id' => $source->id,
+            ];
+        }
+
+        if ($validator->errors()->isNotEmpty()) {
+            throw new ValidationException($validator);
+        }
 
         $settings = $merchant->settings ?? [];
         $settings['geos'] = $geoMap;
-        $settings['merchant_api_rates'] = $merchantApiRateSettings;
+        $settings['rate_sources'] = $rateSourcesMap;
+        $settings['merchant_api_rates'] = $merchantApiRates;
 
         $merchant->settings = $settings;
         if (! empty($geoMap)) {
@@ -259,74 +211,32 @@ class MerchantController extends Controller
     }
 
     /**
-     * Привязать конкретные источники курсов к мерчанту по валюте и направлению.
-     *
-     * @throws ValidationException
+     * @param  array<string, mixed>  $geo
      */
-    public function updateRateSources(Request $request, Merchant $merchant): JsonResponse
+    private function validateMerchantApiReferenceRates($validator, Currency $currency, array $geo): void
     {
-        $validated = $request->validate([
-            'bindings' => ['present', 'array'],
-            'bindings.*.currency' => ['required', 'string', Rule::in(Currency::getAllCodes())],
-            'bindings.*.direction' => ['required', Rule::in(RateSourceDirection::values())],
-            'bindings.*.mode' => ['required', Rule::in([
-                ResolvedRateBinding::MODE_SOURCE,
-                ResolvedRateBinding::MODE_MERCHANT_API,
-            ])],
-            'bindings.*.source_id' => ['nullable', 'integer'],
-        ]);
+        $currencyCode = strtoupper($currency->getCode());
+        $orderReferenceRate = $geo['order_reference_rate'] ?? null;
+        $payoutReferenceRate = $geo['payout_reference_rate'] ?? null;
+        $maxDeviationPercent = $geo['max_deviation_percent'] ?? null;
 
-        $validator = validator([], []);
-
-        $map = [];
-
-        foreach ($validated['bindings'] as $binding) {
-            $currency = strtolower($binding['currency']);
-            $direction = $binding['direction'];
-            $mode = $binding['mode'];
-
-            if ($mode === ResolvedRateBinding::MODE_SOURCE) {
-                $sourceId = $binding['source_id'] ?? null;
-
-                $source = $sourceId
-                    ? RateSource::query()
-                        ->active()
-                        ->whereKey((int) $sourceId)
-                        ->where('quote_currency', $currency)
-                        ->where('direction', $direction)
-                        ->first()
-                    : null;
-
-                if (! $source) {
-                    $validator->errors()->add(
-                        'bindings',
-                        'Не найден активный источник для '.strtoupper($currency).' ('.$direction.').'
-                    );
-
-                    continue;
-                }
-
-                $map[$currency][$direction] = [
-                    'mode' => ResolvedRateBinding::MODE_SOURCE,
-                    'source_id' => $source->id,
-                ];
-
-                continue;
-            }
-
-            $map[$currency][$direction] = ['mode' => ResolvedRateBinding::MODE_MERCHANT_API];
+        if ($orderReferenceRate === null || $orderReferenceRate === '') {
+            $validator->errors()->add('geos', "Для {$currencyCode} (курс от мерчанта) укажите опорный курс для сделок.");
+        } elseif (! $this->isDecimalWithinPrecision((string) $orderReferenceRate, $currency->getPrecision())) {
+            $validator->errors()->add('geos', "Опорный курс сделок для {$currencyCode} может содержать не более {$currency->getPrecision()} знаков после запятой.");
         }
 
-        if ($validator->errors()->isNotEmpty()) {
-            throw new ValidationException($validator);
+        if ($payoutReferenceRate === null || $payoutReferenceRate === '') {
+            $validator->errors()->add('geos', "Для {$currencyCode} (курс от мерчанта) укажите опорный курс для выплат.");
+        } elseif (! $this->isDecimalWithinPrecision((string) $payoutReferenceRate, $currency->getPrecision())) {
+            $validator->errors()->add('geos', "Опорный курс выплат для {$currencyCode} может содержать не более {$currency->getPrecision()} знаков после запятой.");
         }
 
-        $merchant->setRateSourcesMap($map);
-        $merchant->save();
-
-        return response()->json([
-            'merchant' => MerchantResource::make($merchant->fresh())->resolve(),
-        ]);
+        if ($maxDeviationPercent === null || $maxDeviationPercent === '') {
+            $validator->errors()->add('geos', "Для {$currencyCode} (курс от мерчанта) укажите допустимое расхождение в процентах.");
+        } elseif (! $this->isDecimalWithinPrecision((string) $maxDeviationPercent, 2)) {
+            $validator->errors()->add('geos', "Допустимое расхождение для {$currencyCode} может содержать не более 2 знаков после запятой.");
+        }
     }
 
     protected function isDecimalWithinPrecision(string $value, int $maxScale): bool

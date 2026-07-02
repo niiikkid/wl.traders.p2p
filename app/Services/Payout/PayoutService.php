@@ -8,7 +8,6 @@ use App\Enums\BalanceType;
 use App\Enums\MarketEnum;
 use App\Enums\PayoutOperationType;
 use App\Enums\PayoutStatus;
-use App\Enums\RateSourceDirection;
 use App\Enums\TransactionType;
 use App\Exceptions\PayoutCreationTimedOutException;
 use App\Exceptions\PayoutException;
@@ -1020,7 +1019,7 @@ class PayoutService implements PayoutServiceContract
         MarketEnum $geoMarket,
         ?Money $merchantRate = null
     ): array {
-        $binding = services()->market()->resolveRateBinding($merchant, $currency, RateSourceDirection::PAY_OUT);
+        $binding = services()->market()->resolveRateBinding($merchant, $currency);
 
         if ($binding->isMerchantApi()) {
             $merchantApiRateSetting = $merchant->getMerchantApiRateSetting($currency);

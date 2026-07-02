@@ -4,17 +4,15 @@ import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import SaveButton from "@/Components/Form/SaveButton.vue";
 import {usePage} from "@inertiajs/vue3";
-import {computed, reactive, ref, watch} from "vue";
+import {computed, reactive, ref, watch, onMounted} from "vue";
 import {useViewStore} from "@/store/view.js";
 import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
-import RateSourceBindings from "@/Pages/Merchant/Tabs/Partials/RateSourceBindings.vue";
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
-import {DEFAULT_RUB_MARKET, filterMarketOptions} from "@/utils/market.js";
 
 const viewStore = useViewStore();
 const emit = defineEmits(['updated']);
-const MERCHANT_API_MARKET = 'merchant_api';
+const MERCHANT_API_SOURCE = 'merchant_api';
 
 const props = defineProps({
     merchant: {
@@ -59,8 +57,36 @@ const deepClone = (value, fallback = undefined) => {
 
 const merchant = ref(deepClone(props.merchant ?? page?.props?.merchant ?? null));
 const markets = ref(deepClone(props.markets?.length ? props.markets : page?.props?.markets ?? []));
-const selectableMarkets = computed(() => filterMarketOptions(markets.value));
 const currencies = ref(deepClone(props.currencies?.length ? props.currencies : page?.props?.currencies ?? []));
+const rateSources = ref([]);
+
+const loadRateSources = () => {
+    if (!viewStore.isAdminViewMode) {
+        return;
+    }
+    axios.get(route('admin.rate-sources.options'))
+        .then(({data}) => {
+            rateSources.value = data?.data?.sources ?? data?.sources ?? [];
+        })
+        .catch(() => {
+            rateSources.value = [];
+        });
+};
+
+const sourcesForCurrency = (currency) => rateSources.value.filter(
+    (source) => source.quote_currency === String(currency).toLowerCase(),
+);
+
+const sourceLabel = (currency, value) => {
+    if (value === MERCHANT_API_SOURCE) {
+        return 'Курс от мерчанта (API)';
+    }
+    const found = rateSources.value.find((source) => String(source.id) === String(value));
+    if (found) {
+        return `${found.name || found.pair} (${found.type})`;
+    }
+    return '—';
+};
 const detailTypes = ref(deepClone(props.detailTypes?.length ? props.detailTypes : page?.props?.detailTypes ?? []));
 const commissionSettings = ref(deepClone(props.commissionSettings ?? page?.props?.commissionSettings ?? [], []));
 const paymentGateways = ref(deepClone(
@@ -70,23 +96,19 @@ const paymentGateways = ref(deepClone(
 ));
 
 const normalizeGeoItems = (items) => {
-    const source = deepClone(items ?? [], []);
+    const list = deepClone(items ?? [], []);
 
-    if (!source || source.length === 0) {
-        return [{
-            currency: 'rub',
-            market: DEFAULT_RUB_MARKET,
-            order_reference_rate: null,
-            payout_reference_rate: null,
-            max_deviation_percent: null,
-        }];
+    if (!Array.isArray(list) || list.length === 0) {
+        return [];
     }
 
-    return source
-        .filter((geo) => geo?.currency && geo?.market)
+    return list
+        .filter((geo) => geo?.currency)
         .map((geo) => ({
             currency: (geo.currency ?? '').toLowerCase(),
-            market: geo.market,
+            source: geo.source === 'merchant_api'
+                ? 'merchant_api'
+                : (geo.source !== null && geo.source !== undefined ? String(geo.source) : ''),
             order_reference_rate: geo.order_reference_rate ?? geo.reference_rate ?? null,
             payout_reference_rate: geo.payout_reference_rate ?? geo.reference_rate ?? null,
             max_deviation_percent: geo.max_deviation_percent ?? null,
@@ -108,7 +130,7 @@ const formCallback = reactive({
 
 const geoForm = reactive({
     currency: '',
-    market: '',
+    source: '',
     order_reference_rate: '',
     payout_reference_rate: '',
     max_deviation_percent: '',
@@ -156,6 +178,7 @@ const merchantGeosReadonly = computed(() => {
         .map((geo) => ({
             currency: String(geo.currency).toLowerCase(),
             market: geo.market,
+            source: geo.source ?? null,
             order_reference_rate: geo.order_reference_rate ?? geo.reference_rate ?? null,
             payout_reference_rate: geo.payout_reference_rate ?? geo.reference_rate ?? null,
             max_deviation_percent: geo.max_deviation_percent ?? null,
@@ -298,9 +321,9 @@ watch(
 );
 
 watch(
-    () => geoForm.market,
-    (market) => {
-        if (market !== MERCHANT_API_MARKET) {
+    () => geoForm.source,
+    (source) => {
+        if (source !== MERCHANT_API_SOURCE) {
             geoForm.order_reference_rate = '';
             geoForm.payout_reference_rate = '';
             geoForm.max_deviation_percent = '';
@@ -308,6 +331,14 @@ watch(
             clearFormError(geoForm, 'payout_reference_rate');
             clearFormError(geoForm, 'max_deviation_percent');
         }
+    }
+);
+
+// Сбрасываем выбранный источник при смене валюты, т.к. источники зависят от валюты.
+watch(
+    () => geoForm.currency,
+    () => {
+        geoForm.source = '';
     }
 );
 
@@ -397,11 +428,11 @@ const submitSettings = () => {
 };
 
 const addGeo = () => {
-    if (!geoForm.currency || !geoForm.market) {
+    if (!geoForm.currency || !geoForm.source) {
         return;
     }
 
-    if (geoForm.market === MERCHANT_API_MARKET) {
+    if (geoForm.source === MERCHANT_API_SOURCE) {
         const orderReferenceRate = Number(geoForm.order_reference_rate);
         const payoutReferenceRate = Number(geoForm.payout_reference_rate);
         const maxDeviationPercent = Number(geoForm.max_deviation_percent);
@@ -433,15 +464,15 @@ const addGeo = () => {
         ...geoItems.value,
         {
             currency,
-            market: geoForm.market,
-            order_reference_rate: geoForm.market === MERCHANT_API_MARKET ? geoForm.order_reference_rate : null,
-            payout_reference_rate: geoForm.market === MERCHANT_API_MARKET ? geoForm.payout_reference_rate : null,
-            max_deviation_percent: geoForm.market === MERCHANT_API_MARKET ? geoForm.max_deviation_percent : null,
+            source: geoForm.source,
+            order_reference_rate: geoForm.source === MERCHANT_API_SOURCE ? geoForm.order_reference_rate : null,
+            payout_reference_rate: geoForm.source === MERCHANT_API_SOURCE ? geoForm.payout_reference_rate : null,
+            max_deviation_percent: geoForm.source === MERCHANT_API_SOURCE ? geoForm.max_deviation_percent : null,
         },
     ];
 
     geoForm.currency = '';
-    geoForm.market = '';
+    geoForm.source = '';
     geoForm.order_reference_rate = '';
     geoForm.payout_reference_rate = '';
     geoForm.max_deviation_percent = '';
@@ -449,10 +480,6 @@ const addGeo = () => {
 };
 
 const removeGeo = (currency) => {
-    if ((geoItems.value || []).length <= 1) {
-        return;
-    }
-
     geoItems.value = geoItems.value.filter((geo) => geo.currency !== currency);
 };
 
@@ -465,7 +492,13 @@ const submitGeo = () => {
     geoForm.errors = {};
 
     axios.patch(route('admin.merchants.geo.update', merchant.value.id), {
-        geos: geoItems.value,
+        geos: geoItems.value.map((geo) => ({
+            currency: geo.currency,
+            source: geo.source,
+            order_reference_rate: geo.source === MERCHANT_API_SOURCE ? geo.order_reference_rate : null,
+            payout_reference_rate: geo.source === MERCHANT_API_SOURCE ? geo.payout_reference_rate : null,
+            max_deviation_percent: geo.source === MERCHANT_API_SOURCE ? geo.max_deviation_percent : null,
+        })),
     }, {
         headers: {Accept: 'application/json'},
     }).then(({data}) => {
@@ -544,22 +577,13 @@ const activeTab = ref('callback');
 
 const adminTabs = [
     {id: 'moderation', title: 'Модерация', description: 'Статус доступа'},
-    {id: 'geo', title: 'Гео', description: 'Валюты и маркеты'},
-    {id: 'rate-sources', title: 'Источники', description: 'Курсы по направлениям'},
+    {id: 'geo', title: 'Гео', description: 'Валюты и источники курсов'},
     {id: 'settings', title: 'Лимиты', description: 'Время и суммы'},
 ];
 
-const geoCurrencyCodes = computed(() => (merchant.value?.geos ?? [])
-    .map((geo) => String(geo.currency ?? '').toLowerCase())
-    .filter((code) => code !== ''));
-
-const handleRateSourcesUpdated = (value) => {
-    if (value) {
-        merchant.value = value;
-        resetFormsFromMerchant(merchant.value);
-        emit('updated', merchant.value);
-    }
-};
+onMounted(() => {
+    loadRateSources();
+});
 
 const tabs = computed(() => {
     const rows = [
@@ -803,7 +827,7 @@ const callbackState = computed(() => {
                                 {{ markets.find((m) => m.value === geo.market)?.name || geo.market }}
                             </div>
                             <div
-                                v-if="geo.market === MERCHANT_API_MARKET"
+                                v-if="geo.market === MERCHANT_API_SOURCE"
                                 class="mt-0.5 text-[11px] text-base-content/70"
                             >
                                 Сделки: {{ geo.order_reference_rate ?? '—' }} · Выплаты: {{ geo.payout_reference_rate ?? '—' }} · Отклонение: ±{{ geo.max_deviation_percent ?? '—' }}%
@@ -901,26 +925,32 @@ const callbackState = computed(() => {
 
                                 <div>
                                     <InputLabel
-                                        for="geo_market"
-                                        value="Маркет"
-                                        :error="!!geoForm.errors.market || !!geoForm.errors.geos"
+                                        for="geo_source"
+                                        value="Источник курса"
+                                        :error="!!geoForm.errors.source || !!geoForm.errors.geos"
                                         class="mb-0.5"
                                     />
-                                    <Select
-                                        id="geo_market"
-                                        v-model="geoForm.market"
-                                        :items="selectableMarkets"
-                                        value="value"
-                                        name="name"
-                                        default_title="Выберите маркет"
-                                        :required="false"
-                                        size="sm"
-                                        :error="!!geoForm.errors.market || !!geoForm.errors.geos"
-                                        @change="() => { clearFormError(geoForm, 'market'); clearFormError(geoForm, 'geos'); }"
-                                    ></Select>
+                                    <select
+                                        id="geo_source"
+                                        v-model="geoForm.source"
+                                        class="select select-bordered select-sm w-full"
+                                        :class="{ 'select-error': !!geoForm.errors.source || !!geoForm.errors.geos }"
+                                        :disabled="!geoForm.currency"
+                                        @change="() => { clearFormError(geoForm, 'source'); clearFormError(geoForm, 'geos'); }"
+                                    >
+                                        <option value="" disabled>{{ geoForm.currency ? 'Выберите источник' : 'Сначала выберите валюту' }}</option>
+                                        <option :value="MERCHANT_API_SOURCE">Курс от мерчанта (API)</option>
+                                        <option
+                                            v-for="source in sourcesForCurrency(geoForm.currency)"
+                                            :key="source.id"
+                                            :value="String(source.id)"
+                                        >
+                                            {{ source.name || source.pair }} ({{ source.type }})
+                                        </option>
+                                    </select>
                                 </div>
 
-                                <div v-if="geoForm.market === MERCHANT_API_MARKET">
+                                <div v-if="geoForm.source === MERCHANT_API_SOURCE">
                                     <InputLabel
                                         for="geo_order_reference_rate"
                                         value="Опорный курс для сделок"
@@ -939,7 +969,7 @@ const callbackState = computed(() => {
                                     <InputError :message="geoForm.errors.order_reference_rate" class="mt-1" />
                                 </div>
 
-                                <div v-if="geoForm.market === MERCHANT_API_MARKET">
+                                <div v-if="geoForm.source === MERCHANT_API_SOURCE">
                                     <InputLabel
                                         for="geo_payout_reference_rate"
                                         value="Опорный курс для выплат"
@@ -958,7 +988,7 @@ const callbackState = computed(() => {
                                     <InputError :message="geoForm.errors.payout_reference_rate" class="mt-1" />
                                 </div>
 
-                                <div v-if="geoForm.market === MERCHANT_API_MARKET">
+                                <div v-if="geoForm.source === MERCHANT_API_SOURCE">
                                     <InputLabel
                                         for="geo_max_deviation_percent"
                                         value="Допустимое отклонение, %"
@@ -984,9 +1014,9 @@ const callbackState = computed(() => {
                                         @click="addGeo"
                                         :disabled="
                                             !geoForm.currency
-                                            || !geoForm.market
+                                            || !geoForm.source
                                             || (
-                                                geoForm.market === MERCHANT_API_MARKET
+                                                geoForm.source === MERCHANT_API_SOURCE
                                                 && (
                                                     !geoForm.order_reference_rate
                                                     || !geoForm.payout_reference_rate
@@ -1001,7 +1031,7 @@ const callbackState = computed(() => {
                             </div>
 
                             <InputError
-                                :message="Array.isArray(geoForm.errors.geos) ? geoForm.errors.geos.join(' ') : (geoForm.errors.geos || geoForm.errors.currency || geoForm.errors.market)"
+                                :message="Array.isArray(geoForm.errors.geos) ? geoForm.errors.geos.join(' ') : (geoForm.errors.geos || geoForm.errors.currency || geoForm.errors.source)"
                                 class="mt-1"
                             />
 
@@ -1016,10 +1046,10 @@ const callbackState = computed(() => {
                                             {{ currencies.find(c => c.value.toLowerCase() === geo.currency?.toLowerCase())?.name || geo.currency?.toUpperCase() }}
                                         </div>
                                         <div class="text-[11px] text-base-content/70">
-                                            {{ markets.find(m => m.value === geo.market)?.name || geo.market }}
+                                            {{ sourceLabel(geo.currency, geo.source) }}
                                         </div>
                                         <div
-                                            v-if="geo.market === MERCHANT_API_MARKET"
+                                            v-if="geo.source === MERCHANT_API_SOURCE"
                                             class="mt-0.5 text-[11px] text-base-content/70"
                                         >
                                             Сделки: {{ geo.order_reference_rate }} | Выплаты: {{ geo.payout_reference_rate }} | Отклонение: ±{{ geo.max_deviation_percent }}%
@@ -1029,14 +1059,13 @@ const callbackState = computed(() => {
                                         type="button"
                                         class="btn btn-xs btn-ghost text-error"
                                         @click.prevent="removeGeo(geo.currency)"
-                                        :disabled="geoItems.length <= 1"
                                     >
                                         Удалить
                                     </button>
                                 </div>
                             </div>
                             <p v-else class="text-xs text-base-content/70">
-                                Добавьте хотя бы один GEO: выберите валюту и маркет, затем нажмите «Добавить».
+                                Добавьте хотя бы один GEO: выберите валюту и источник курса, затем нажмите «Добавить».
                             </p>
 
                             <SaveButton
@@ -1046,18 +1075,6 @@ const callbackState = computed(() => {
                             />
                         </form>
                     </div>
-                </div>
-            </div>
-
-            <!-- Таб: Источники курсов (только для админа) -->
-            <div v-if="activeTab === 'rate-sources' && viewStore.isAdminViewMode" class="space-y-3">
-                <div v-if="merchant">
-                    <RateSourceBindings
-                        :merchant-id="merchant.id"
-                        :currencies="geoCurrencyCodes"
-                        :bindings="merchant.rate_source_bindings ?? []"
-                        @updated="handleRateSourcesUpdated"
-                    />
                 </div>
             </div>
 

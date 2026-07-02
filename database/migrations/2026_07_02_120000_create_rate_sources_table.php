@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\RateSourceDirection;
 use App\Enums\RateSourceType;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -13,9 +12,8 @@ return new class extends Migration
         Schema::create('rate_sources', function (Blueprint $table) {
             $table->id();
 
-            $table->string('name')->nullable();
+            $table->string('name');
             $table->string('type')->default(RateSourceType::MANUAL->value);
-            $table->string('direction')->default(RateSourceDirection::PAY_IN->value);
 
             $table->string('base_currency')->default('usdt');
             $table->string('quote_currency');
@@ -35,7 +33,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['type', 'is_active']);
-            $table->index(['quote_currency', 'direction', 'is_active']);
+            $table->index(['quote_currency', 'is_active']);
         });
     }
 

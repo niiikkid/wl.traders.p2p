@@ -14,7 +14,6 @@ defineOptions({ layout: AuthenticatedLayout });
 const props = defineProps({
     sources: { type: Array, default: () => [] },
     types: { type: Array, default: () => [] },
-    directions: { type: Array, default: () => [] },
     currencies: { type: Array, default: () => [] },
 });
 
@@ -22,7 +21,6 @@ const modalStore = useModalStore();
 const refreshingId = ref(null);
 
 const TYPE_LABELS = { manual: 'Ручной', bybit: 'Bybit', binance: 'Binance' };
-const DIRECTION_LABELS = { pay_in: 'Приём', pay_out: 'Выплаты' };
 const STATUS_BADGE = {
     success: 'badge-success',
     empty: 'badge-warning',
@@ -30,7 +28,6 @@ const STATUS_BADGE = {
 };
 
 const typeLabel = (value) => TYPE_LABELS[value] ?? value;
-const directionLabel = (value) => DIRECTION_LABELS[value] ?? value;
 
 const openCreate = () => {
     modalStore.openRateSourceEditModal({ currencies: props.currencies });
@@ -83,7 +80,6 @@ const remove = (source) => {
                         <template #head>
                             <th scope="col" class="px-4 py-3">Название</th>
                             <th scope="col" class="px-4 py-3">Пара</th>
-                            <th scope="col" class="px-4 py-3">Направление</th>
                             <th scope="col" class="px-4 py-3">Тип</th>
                             <th scope="col" class="px-4 py-3">Курс</th>
                             <th scope="col" class="px-4 py-3">Статус</th>
@@ -96,11 +92,6 @@ const remove = (source) => {
                                 <span v-if="!source.is_active" class="badge badge-ghost badge-xs ml-1">выкл</span>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">{{ source.pair }}</td>
-                            <td class="px-4 py-3">
-                                <span class="badge badge-sm" :class="source.direction === 'pay_in' ? 'badge-info' : 'badge-secondary'">
-                                    {{ directionLabel(source.direction) }}
-                                </span>
-                            </td>
                             <td class="px-4 py-3">{{ typeLabel(source.type) }}</td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span :class="!source.rate || source.rate === '0.00' ? 'text-error' : ''">
@@ -148,9 +139,7 @@ const remove = (source) => {
                                     {{ source.name || source.pair }}
                                     <span v-if="!source.is_active" class="badge badge-ghost badge-xs ml-1">выкл</span>
                                 </div>
-                                <span class="badge badge-sm" :class="source.direction === 'pay_in' ? 'badge-info' : 'badge-secondary'">
-                                    {{ directionLabel(source.direction) }}
-                                </span>
+                                <span class="badge badge-sm badge-ghost">{{ typeLabel(source.type) }}</span>
                             </div>
                             <div class="flex flex-col gap-1 text-sm">
                                 <div class="flex justify-between">

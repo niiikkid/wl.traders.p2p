@@ -2,7 +2,6 @@
 
 namespace App\Services\Rates;
 
-use App\Enums\RateSourceDirection;
 use App\Enums\RateSourceType;
 use App\Models\RateSource;
 use App\Models\ValueObjects\Settings\BinancePriceParserSideSettings;
@@ -114,18 +113,13 @@ class RateRefreshService
     }
 
     /**
-     * Historical semantics: pay-in uses the "sell" side, pay-out uses the "buy" side.
-     * An explicit `settings.side` overrides the default.
+     * The parser side (buy/sell) is configured explicitly per source. Defaults to "sell".
      */
     protected function resolveSide(RateSource $source): string
     {
         $configured = $source->settings['side'] ?? null;
 
-        if (in_array($configured, ['buy', 'sell'], true)) {
-            return $configured;
-        }
-
-        return $source->direction->equals(RateSourceDirection::PAY_OUT) ? 'buy' : 'sell';
+        return in_array($configured, ['buy', 'sell'], true) ? $configured : 'sell';
     }
 
     protected function storeSuccess(RateSource $source, Money $rate): void

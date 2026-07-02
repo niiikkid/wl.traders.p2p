@@ -41,10 +41,24 @@ class MerchantResource extends JsonResource
                     $currencyCode = strtolower($currency);
                     $merchantApiRateMap = $this->settings['merchant_api_rates'] ?? [];
                     $merchantApiRateSettings = $merchantApiRateMap[$currencyCode] ?? null;
+                    $rateSourcesMap = $this->getRateSourcesMap();
+                    $binding = $rateSourcesMap[$currencyCode] ?? null;
+
+                    $source = null;
+                    if (is_array($binding)) {
+                        if (($binding['mode'] ?? null) === 'merchant_api') {
+                            $source = 'merchant_api';
+                        } elseif (! empty($binding['source_id'])) {
+                            $source = (int) $binding['source_id'];
+                        }
+                    } elseif ($market === 'merchant_api') {
+                        $source = 'merchant_api';
+                    }
 
                     return [
                         'currency' => $currencyCode,
                         'market' => $market,
+                        'source' => $source,
                         'order_reference_rate' => $merchantApiRateSettings['order_reference_rate']
                             ?? $merchantApiRateSettings['reference_rate']
                             ?? null,
@@ -55,7 +69,6 @@ class MerchantResource extends JsonResource
                     ];
                 })
                 ->values(),
-            'rate_source_bindings' => $this->rateSourceBindings(),
             'commission_settings' => $this->getCommissionSettings(),
             'max_order_wait_time' => $this->max_order_wait_time,
             'max_payout_wait_time' => $this->max_payout_wait_time,
@@ -64,39 +77,5 @@ class MerchantResource extends JsonResource
             'banned_at' => $this->banned_at?->toDateTimeString(),
             'created_at' => $this->created_at->toDateTimeString(),
         ];
-    }
-
-    /**
-     * Flatten settings.rate_sources into a UI-friendly list.
-     *
-     * @return array<int, array{currency: string, direction: string, mode: string, source_id: int|null}>
-     */
-    private function rateSourceBindings(): array
-    {
-        /**
-         * @var Merchant $this
-         */
-        $bindings = [];
-
-        foreach ($this->getRateSourcesMap() as $currency => $directions) {
-            if (! is_array($directions)) {
-                continue;
-            }
-
-            foreach ($directions as $direction => $binding) {
-                if (! is_array($binding)) {
-                    continue;
-                }
-
-                $bindings[] = [
-                    'currency' => strtolower((string) $currency),
-                    'direction' => (string) $direction,
-                    'mode' => (string) ($binding['mode'] ?? ''),
-                    'source_id' => isset($binding['source_id']) ? (int) $binding['source_id'] : null,
-                ];
-            }
-        }
-
-        return $bindings;
     }
 }

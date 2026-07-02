@@ -3,7 +3,6 @@
 namespace App\Contracts;
 
 use App\Enums\MarketEnum;
-use App\Enums\RateSourceDirection;
 use App\Models\Merchant;
 use App\Models\RateSource;
 use App\Services\Market\Value\ResolvedMarketPrice;
@@ -17,10 +16,10 @@ interface MarketServiceContract
     public function loadAllPrices(): void;
 
     /**
-     * Resolve how a merchant obtains the rate for a currency+direction
+     * Resolve how a merchant obtains the rate for a currency
      * (attached rate source, merchant-provided rate, or legacy market fallback).
      */
-    public function resolveRateBinding(Merchant $merchant, Currency $currency, RateSourceDirection $direction): ResolvedRateBinding;
+    public function resolveRateBinding(Merchant $merchant, Currency $currency): ResolvedRateBinding;
 
     /**
      * Return the ready rate for a configured rate source (cache first, DB fallback).

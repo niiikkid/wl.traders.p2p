@@ -8,6 +8,7 @@ use App\Services\Market\Value\MarketPrices;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class ByBitParser extends BaseParser
 {
@@ -71,28 +72,13 @@ class ByBitParser extends BaseParser
             'itemRegion' => 1,
         ];
 
-        $result = Http::withHeaders([
-            'Accept' => 'application/json',
-            'Accept-Language' => 'en',
-            'Cache-Control' => 'no-cache',
-            'Accept-Encoding' => 'gzip, deflate, br',
-            'Content-Type' => 'application/json',
-            'Lang' => 'en',
-            'Origin' => 'https://www.bybit.com',
-            'Referer' => 'https://www.bybit.com/fiat/trade/otc/?token=USDT&currency='.strtoupper($currency->getCode()),
-            'Sec-Ch-Ua' => '"Not/A)Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            'Sec-Ch-Ua-Mobile' => '?0',
-            'Sec-Ch-Ua-Platform' => '"macOS"',
-            'Sec-Fetch-Dest' => 'empty',
-            'Sec-Fetch-Mode' => 'cors',
-            'Sec-Fetch-Site' => 'same-origin',
-            'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-        ])
+        $result = Http::withHeaders($this->onlineItemsHeaders($currency))
+            ->retry(3, 600, throw: false)
             ->asJson()
             ->post('https://www.bybit.com/x-api/fiat/otc/item/online', $data);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('ByBit API error: '.$result->body());
+            throw new \RuntimeException($this->describeHttpError($result->status(), $result->body()));
         }
 
         $payload = $result->json();
@@ -101,6 +87,45 @@ class ByBitParser extends BaseParser
         }
 
         return $payload['result']['items'];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function onlineItemsHeaders(Currency $currency): array
+    {
+        return [
+            'Accept' => 'application/json',
+            'Accept-Language' => 'en-US,en;q=0.9',
+            'Cache-Control' => 'no-cache',
+            'Pragma' => 'no-cache',
+            'Priority' => 'u=1, i',
+            'Accept-Encoding' => 'gzip, deflate, br',
+            'Content-Type' => 'application/json',
+            'Lang' => 'en',
+            'Platform' => 'PC',
+            'Origin' => 'https://www.bybit.com',
+            'Referer' => 'https://www.bybit.com/en/fiat/trade/otc/buy/USDT/'.strtoupper($currency->getCode()),
+            'Sec-Ch-Ua' => '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
+            'Sec-Ch-Ua-Mobile' => '?0',
+            'Sec-Ch-Ua-Platform' => '"macOS"',
+            'Sec-Fetch-Dest' => 'empty',
+            'Sec-Fetch-Mode' => 'cors',
+            'Sec-Fetch-Site' => 'same-origin',
+            'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        ];
+    }
+
+    /**
+     * Turn a raw (often HTML) provider error body into a short, human-readable message.
+     */
+    protected function describeHttpError(int $status, string $body): string
+    {
+        if ($status === 403 || stripos($body, 'Access Denied') !== false) {
+            return 'ByBit временно ограничил доступ к API (Access Denied, HTTP 403). Обычно это анти-бот защита по IP — повторите попытку позже.';
+        }
+
+        return 'ByBit API error (HTTP '.$status.'): '.Str::limit(strip_tags($body), 200);
     }
 
     /**
@@ -205,28 +230,13 @@ class ByBitParser extends BaseParser
             'itemRegion' => 1,
         ];
 
-        $result = Http::withHeaders([
-            'Accept' => 'application/json',
-            'Accept-Language' => 'en',
-            'Cache-Control' => 'no-cache',
-            'Accept-Encoding' => 'gzip, deflate, br',
-            'Content-Type' => 'application/json',
-            'Lang' => 'en',
-            'Origin' => 'https://www.bybit.com',
-            'Referer' => 'https://www.bybit.com/fiat/trade/otc/?token=USDT&currency='.strtoupper($currency->getCode()),
-            'Sec-Ch-Ua' => '"Not/A)Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            'Sec-Ch-Ua-Mobile' => '?0',
-            'Sec-Ch-Ua-Platform' => '"macOS"',
-            'Sec-Fetch-Dest' => 'empty',
-            'Sec-Fetch-Mode' => 'cors',
-            'Sec-Fetch-Site' => 'same-origin',
-            'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-        ])
+        $result = Http::withHeaders($this->onlineItemsHeaders($currency))
+            ->retry(3, 600, throw: false)
             ->asJson()
             ->post('https://www.bybit.com/x-api/fiat/otc/item/online', $data);
 
         if (! $result->successful()) {
-            throw new \RuntimeException('ByBit API error: '.$result->body());
+            throw new \RuntimeException($this->describeHttpError($result->status(), $result->body()));
         }
 
         $payload = $result->json();

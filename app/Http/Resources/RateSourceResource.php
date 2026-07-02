@@ -20,7 +20,6 @@ class RateSourceResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'type' => $this->type->value,
-            'direction' => $this->direction->value,
             'base_currency' => strtolower($this->base_currency),
             'quote_currency' => strtolower($this->quote_currency),
             'pair' => $this->pair(),

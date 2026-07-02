@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Casts\MoneyCast;
-use App\Enums\RateSourceDirection;
 use App\Enums\RateSourceType;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
@@ -14,9 +13,8 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property int $id
- * @property string|null $name
+ * @property string $name
  * @property RateSourceType $type
- * @property RateSourceDirection $direction
  * @property string $base_currency
  * @property string $quote_currency
  * @property Money|null $rate
@@ -35,7 +33,6 @@ class RateSource extends Model
     protected $fillable = [
         'name',
         'type',
-        'direction',
         'base_currency',
         'quote_currency',
         'rate',
@@ -50,7 +47,6 @@ class RateSource extends Model
     {
         return [
             'type' => RateSourceType::class,
-            'direction' => RateSourceDirection::class,
             'rate' => MoneyCast::class,
             'settings' => 'array',
             'is_active' => 'bool',
@@ -78,11 +74,9 @@ class RateSource extends Model
     /**
      * @param  Builder<RateSource>  $query
      */
-    public function scopeForPair(Builder $query, Currency $currency, RateSourceDirection $direction): void
+    public function scopeForCurrency(Builder $query, Currency $currency): void
     {
-        $query
-            ->where('quote_currency', $currency->getCode())
-            ->where('direction', $direction->value);
+        $query->where('quote_currency', $currency->getCode());
     }
 
     public function quoteCurrency(): Currency

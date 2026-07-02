@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Admin\RateSource;
 
-use App\Enums\RateSourceDirection;
 use App\Enums\RateSourceType;
 use App\Services\Money\Currency;
 use Illuminate\Foundation\Http\FormRequest;
@@ -21,9 +20,8 @@ class SaveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
             'type' => ['required', Rule::in(RateSourceType::values())],
-            'direction' => ['required', Rule::in(RateSourceDirection::values())],
             'quote_currency' => ['required', Rule::in(Currency::getAllCodes())],
             'is_active' => ['boolean'],
             'settings' => ['nullable', 'array'],

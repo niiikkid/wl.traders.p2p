@@ -4,7 +4,6 @@ namespace App\Models;
 
 use App\Enums\DetailType;
 use App\Enums\MarketEnum;
-use App\Enums\RateSourceDirection;
 use App\Services\Money\Currency;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -148,9 +147,9 @@ class Merchant extends Model
     }
 
     /**
-     * Карта привязок источников курсов: валюта => направление => привязка.
+     * Карта привязок источников курсов: валюта => привязка.
      *
-     * @return array<string, array<string, array{mode: string, source_id?: int}>>
+     * @return array<string, array{mode: string, source_id?: int}>
      */
     public function getRateSourcesMap(): array
     {
@@ -160,21 +159,15 @@ class Merchant extends Model
     }
 
     /**
-     * Привязка источника курса для конкретной валюты и направления.
+     * Привязка источника курса для конкретной валюты.
      *
      * @return array{mode: string, source_id?: int}|null
      */
-    public function getRateSourceBinding(Currency $currency, RateSourceDirection $direction): ?array
+    public function getRateSourceBinding(Currency $currency): ?array
     {
         $map = $this->getRateSourcesMap();
         $code = strtolower($currency->getCode());
-        $byCurrency = $map[$code] ?? $map[strtoupper($code)] ?? null;
-
-        if (! is_array($byCurrency)) {
-            return null;
-        }
-
-        $binding = $byCurrency[$direction->value] ?? null;
+        $binding = $map[$code] ?? $map[strtoupper($code)] ?? null;
 
         return is_array($binding) ? $binding : null;
     }
@@ -182,7 +175,7 @@ class Merchant extends Model
     /**
      * Сохранить карту привязок источников курсов в настройках мерчанта.
      *
-     * @param  array<string, array<string, array{mode: string, source_id?: int}>>  $map
+     * @param  array<string, array{mode: string, source_id?: int}>  $map
      */
     public function setRateSourcesMap(array $map): void
     {
