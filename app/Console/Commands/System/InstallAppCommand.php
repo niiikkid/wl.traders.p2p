@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\System;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
@@ -13,7 +13,9 @@ class InstallAppCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:install';
+    protected $signature = 'system:install';
+
+    protected $aliases = ['app:install'];
 
     /**
      * The console command description.
@@ -31,7 +33,7 @@ class InstallAppCommand extends Command
         $this->info('Dropping all tables...');
         $tables = DB::select('SHOW TABLES');
         $databaseName = DB::getDatabaseName();
-        $tableColumn = 'Tables_in_' . $databaseName;
+        $tableColumn = 'Tables_in_'.$databaseName;
 
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         foreach ($tables as $table) {
@@ -52,10 +54,10 @@ class InstallAppCommand extends Command
 
         Artisan::call('migrate --force');
 
-        //services()->settings()->createAll();
+        // services()->settings()->createAll();
 
-        //commands
-        Artisan::call('app:load-filter-conditions');
-        Artisan::call('app:update-p2p-prices');
+        // commands
+        Artisan::call('market:filters:refresh');
+        Artisan::call('market:prices:refresh');
     }
 }

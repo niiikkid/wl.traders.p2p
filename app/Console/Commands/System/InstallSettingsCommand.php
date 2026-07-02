@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\System;
 
 use Illuminate\Console\Command;
 
@@ -11,14 +11,16 @@ class InstallSettingsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:install-settings';
+    protected $signature = 'system:settings:install';
+
+    protected $aliases = ['app:install-settings'];
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = '';
+    protected $description = 'Install missing application settings.';
 
     /**
      * Execute the console command.

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Users;
 
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -13,7 +13,9 @@ class ResetAllPasswordsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:reset-all-passwords {password? : Новый пароль для всех пользователей (по умолчанию: "password")}';
+    protected $signature = 'users:passwords:reset-all {password? : Новый пароль для всех пользователей (по умолчанию: "password")}';
+
+    protected $aliases = ['app:reset-all-passwords'];
 
     /**
      * The console command description.
@@ -29,7 +31,7 @@ class ResetAllPasswordsCommand extends Command
     {
         $password = $this->argument('password') ?? 'password';
 
-        $this->info("Начинаю сброс паролей для всех пользователей...");
+        $this->info('Начинаю сброс паролей для всех пользователей...');
         $this->info("Новый пароль: {$password}");
 
         /*// Подтверждение действия
@@ -44,6 +46,7 @@ class ResetAllPasswordsCommand extends Command
 
         if ($totalUsers === 0) {
             $this->warn('Пользователи не найдены.');
+
             return 0;
         }
 
@@ -57,7 +60,7 @@ class ResetAllPasswordsCommand extends Command
         User::chunk(100, function ($users) use ($password, $progressBar, &$updatedCount) {
             foreach ($users as $user) {
                 $user->update([
-                    'password' => Hash::make($password)
+                    'password' => Hash::make($password),
                 ]);
                 $updatedCount++;
                 $progressBar->advance();

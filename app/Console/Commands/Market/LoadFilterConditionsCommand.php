@@ -1,11 +1,7 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Market;
 
-use App\Enums\MarketEnum;
-use App\Services\Market\Utils\Parser\BinanceParser;
-use App\Services\Market\Utils\Parser\ByBitParser;
-use App\Services\Money\Currency;
 use Illuminate\Console\Command;
 
 class LoadFilterConditionsCommand extends Command
@@ -15,14 +11,16 @@ class LoadFilterConditionsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:load-filter-conditions';
+    protected $signature = 'market:filters:refresh';
+
+    protected $aliases = ['app:load-filter-conditions'];
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = '';
+    protected $description = 'Refresh market filter conditions.';
 
     /**
      * Execute the console command.

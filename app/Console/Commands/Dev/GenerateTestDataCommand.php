@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Dev;
 
 use App\DTO\Merchant\MerchantCreateDTO;
 use App\DTO\PaymentDetail\PaymentDetailCreateDTO;
@@ -34,7 +34,9 @@ class GenerateTestDataCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:generate-test-data';
+    protected $signature = 'dev:test-data:generate';
+
+    protected $aliases = ['app:generate-test-data'];
 
     /**
      * The console command description.

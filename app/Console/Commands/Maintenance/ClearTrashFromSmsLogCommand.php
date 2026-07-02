@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Maintenance;
 
 use App\Models\SmsLog;
 use Illuminate\Console\Command;
@@ -12,14 +12,16 @@ class ClearTrashFromSmsLogCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:clear-trash-from-sms-log-command';
+    protected $signature = 'maintenance:sms-logs:prune-orphans';
+
+    protected $aliases = ['app:clear-trash-from-sms-log-command'];
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = '';
+    protected $description = 'Production only: delete orphan SMS logs older than one month.';
 
     /**
      * Execute the console command.

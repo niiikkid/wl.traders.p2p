@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Funds;
 
 use App\Enums\FundsOnHoldStatus;
 use App\Models\FundsOnHold;
@@ -14,14 +14,16 @@ class ExecuteFundsOnHoldCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:execute-funds-on-hold';
+    protected $signature = 'funds:on-hold:execute';
+
+    protected $aliases = ['app:execute-funds-on-hold'];
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = '';
+    protected $description = 'Execute due funds-on-hold operations.';
 
     /**
      * Execute the console command.

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\MerchantApi;
 
 use App\Contracts\MerchantApiStatisticsServiceContract;
 use App\Models\MerchantApiStatistic;
@@ -13,7 +13,9 @@ class UpdateMerchantApiStatisticsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'api-stats:update {--full : Update all statistics}';
+    protected $signature = 'merchant-api:stats:update {--full : Update all statistics}';
+
+    protected $aliases = ['api-stats:update'];
 
     /**
      * The console command description.
@@ -33,8 +35,8 @@ class UpdateMerchantApiStatisticsCommand extends Command
         $hasData = MerchantApiStatistic::count() > 0;
 
         // Если данных нет или указан флаг --full, выполняем полное обновление
-        if ($this->option('full') || !$hasData) {
-            if (!$hasData && !$this->option('full')) {
+        if ($this->option('full') || ! $hasData) {
+            if (! $hasData && ! $this->option('full')) {
                 $this->info('No statistics data found. Performing full update...');
             }
 

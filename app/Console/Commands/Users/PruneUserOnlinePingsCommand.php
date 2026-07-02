@@ -2,14 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Users;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class PruneUserOnlinePingsCommand extends Command
 {
-    protected $signature = 'app:prune-user-online-pings';
+    protected $signature = 'users:online-pings:prune';
+
+    protected $aliases = ['app:prune-user-online-pings'];
 
     protected $description = 'Удаляет онлайн-пинги веб-панели старше 7 дней';
 

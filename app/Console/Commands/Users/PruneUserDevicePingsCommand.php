@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Users;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +14,9 @@ class PruneUserDevicePingsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:prune-user-device-pings';
+    protected $signature = 'users:device-pings:prune';
+
+    protected $aliases = ['app:prune-user-device-pings'];
 
     /**
      * The console command description.
@@ -47,5 +49,3 @@ class PruneUserDevicePingsCommand extends Command
         return self::SUCCESS;
     }
 }
-
-

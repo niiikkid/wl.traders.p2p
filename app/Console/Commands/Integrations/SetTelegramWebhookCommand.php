@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Integrations;
 
 use Illuminate\Console\Command;
 use Telegram\Bot\Laravel\Facades\Telegram;
 
 class SetTelegramWebhookCommand extends Command
 {
-    protected $signature = 'app:telegram-webhook';
+    protected $signature = 'integrations:telegram:webhook:set';
+
+    protected $aliases = ['app:telegram-webhook'];
 
     protected $description = 'Установить webhook для Telegram бота.';
 

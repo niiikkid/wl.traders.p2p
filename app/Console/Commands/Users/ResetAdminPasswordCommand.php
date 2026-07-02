@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Users;
 
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -13,7 +13,9 @@ class ResetAdminPasswordCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:reset-admin-password {login : Логин администратора (email)} {password : Новый пароль}';
+    protected $signature = 'users:passwords:reset-admin {login : Логин администратора (email)} {password : Новый пароль}';
+
+    protected $aliases = ['app:reset-admin-password'];
 
     /**
      * The console command description.

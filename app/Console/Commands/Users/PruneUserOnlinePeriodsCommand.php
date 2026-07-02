@@ -2,14 +2,16 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Users;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class PruneUserOnlinePeriodsCommand extends Command
 {
-    protected $signature = 'app:prune-user-online-periods';
+    protected $signature = 'users:online-periods:prune';
+
+    protected $aliases = ['app:prune-user-online-periods'];
 
     protected $description = 'Удаляет интервалы онлайн старше 180 дней';
 

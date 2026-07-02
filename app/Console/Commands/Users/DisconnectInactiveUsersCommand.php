@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Users;
 
 use App\Models\User;
 use Carbon\Carbon;
@@ -17,7 +17,9 @@ class DisconnectInactiveUsersCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:disconnect-inactive-users';
+    protected $signature = 'users:online:disconnect-inactive';
+
+    protected $aliases = ['app:disconnect-inactive-users'];
 
     /**
      * The console command description.

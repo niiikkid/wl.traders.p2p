@@ -1,8 +1,7 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Market;
 
-use App\Services\Money\Currency;
 use Illuminate\Console\Command;
 
 class UpdateP2PPricesCommand extends Command
@@ -12,14 +11,16 @@ class UpdateP2PPricesCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:update-p2p-prices';
+    protected $signature = 'market:prices:refresh';
+
+    protected $aliases = ['app:update-p2p-prices'];
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = '';
+    protected $description = 'Refresh cached P2P market prices.';
 
     /**
      * Execute the console command.

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\PaymentDetails;
 
 use App\Services\PaymentDetail\PaymentDetailLimitResetService;
 use Illuminate\Console\Command;
@@ -12,7 +12,9 @@ class ResetPaymentDetailDailyLimitsCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:reset-payment-detail-daily-limits';
+    protected $signature = 'payment-details:limits:reset-daily';
+
+    protected $aliases = ['app:reset-payment-detail-daily-limits'];
 
     /**
      * The console command description.

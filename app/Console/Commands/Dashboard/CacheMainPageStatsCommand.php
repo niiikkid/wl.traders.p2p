@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Dashboard;
 
 use App\Jobs\CacheMainPageStatsJob;
 use App\Models\User;
@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\Queue;
 
 class CacheMainPageStatsCommand extends Command
 {
-    protected $signature = 'app:cache-main-page-stats';
+    protected $signature = 'dashboard:stats:cache';
+
+    protected $aliases = ['app:cache-main-page-stats'];
 
     protected $description = 'Перекэшировать данные главных страниц для всех пользователей.';
 
@@ -18,7 +20,7 @@ class CacheMainPageStatsCommand extends Command
         $queueSize = Queue::connection('redis')->size(CacheMainPageStatsJob::QUEUE);
 
         if ($queueSize > 0) {
-            $this->info("Очередь ".CacheMainPageStatsJob::QUEUE." занята ({$queueSize} задач), запуск пропущен.");
+            $this->info('Очередь '.CacheMainPageStatsJob::QUEUE." занята ({$queueSize} задач), запуск пропущен.");
 
             return self::SUCCESS;
         }
@@ -68,4 +70,3 @@ class CacheMainPageStatsCommand extends Command
         return array_values(array_unique($viewModes));
     }
 }
-

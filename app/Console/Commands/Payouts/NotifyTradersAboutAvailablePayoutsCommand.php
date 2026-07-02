@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Payouts;
 
 use App\Jobs\SendNotificationJob;
 use App\Models\User;
@@ -25,7 +25,9 @@ class NotifyTradersAboutAvailablePayoutsCommand extends Command
 
     private const STATE_AVAILABLE = 'available';
 
-    protected $signature = 'app:notify-traders-about-available-payouts';
+    protected $signature = 'payouts:available:notify-traders';
+
+    protected $aliases = ['app:notify-traders-about-available-payouts'];
 
     protected $description = 'Отправляет трейдерам Telegram-уведомления о появлении новых доступных выплат в общем стакане.';
 

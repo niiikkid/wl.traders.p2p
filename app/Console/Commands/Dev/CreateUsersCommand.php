@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Dev;
 
 use Database\Seeders\UserSeeder;
 use Illuminate\Console\Command;
+use Spatie\Permission\Models\Role;
 
 class CreateUsersCommand extends Command
 {
@@ -12,7 +13,9 @@ class CreateUsersCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'app:create-users';
+    protected $signature = 'dev:users:create';
+
+    protected $aliases = ['app:create-users'];
 
     /**
      * The console command description.
@@ -28,7 +31,7 @@ class CreateUsersCommand extends Command
     {
         $this->info('Начинаем создание пользователей...');
 
-        $seeder = new UserSeeder();
+        $seeder = new UserSeeder;
         $seeder->run();
 
         $this->info('Пользователи успешно созданы!');
@@ -36,11 +39,11 @@ class CreateUsersCommand extends Command
         $this->info('- Администратор (admin@example.com / password)');
         $this->info('- Трейдер (trader@example.com / password)');
         $this->info('- Мерчант (merchant@example.com / password)');
-        
-        if (\Spatie\Permission\Models\Role::where('name', 'Team Leader')->exists()) {
+
+        if (Role::where('name', 'Team Leader')->exists()) {
             $this->info('- Тимлидер (teamleader@example.com / password)');
         }
 
         return Command::SUCCESS;
     }
-} 
+}

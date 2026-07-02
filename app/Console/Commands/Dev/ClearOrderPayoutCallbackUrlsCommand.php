@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\Console\Commands\Dev;
 
 use App\Models\Merchant;
 use App\Models\Order;
@@ -12,7 +12,9 @@ class ClearOrderPayoutCallbackUrlsCommand extends Command
     /**
      * @var string
      */
-    protected $signature = 'app:clear-order-payout-callback-urls';
+    protected $signature = 'dev:callbacks:clear';
+
+    protected $aliases = ['app:clear-order-payout-callback-urls'];
 
     /**
      * @var string
