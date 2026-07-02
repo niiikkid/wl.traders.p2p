@@ -8,6 +8,7 @@ import {computed, reactive, ref, watch} from "vue";
 import {useViewStore} from "@/store/view.js";
 import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
+import RateSourceBindings from "@/Pages/Merchant/Tabs/Partials/RateSourceBindings.vue";
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import {DEFAULT_RUB_MARKET, filterMarketOptions} from "@/utils/market.js";
 
@@ -544,8 +545,21 @@ const activeTab = ref('callback');
 const adminTabs = [
     {id: 'moderation', title: 'Модерация', description: 'Статус доступа'},
     {id: 'geo', title: 'Гео', description: 'Валюты и маркеты'},
+    {id: 'rate-sources', title: 'Источники', description: 'Курсы по направлениям'},
     {id: 'settings', title: 'Лимиты', description: 'Время и суммы'},
 ];
+
+const geoCurrencyCodes = computed(() => (merchant.value?.geos ?? [])
+    .map((geo) => String(geo.currency ?? '').toLowerCase())
+    .filter((code) => code !== ''));
+
+const handleRateSourcesUpdated = (value) => {
+    if (value) {
+        merchant.value = value;
+        resetFormsFromMerchant(merchant.value);
+        emit('updated', merchant.value);
+    }
+};
 
 const tabs = computed(() => {
     const rows = [
@@ -1032,6 +1046,18 @@ const callbackState = computed(() => {
                             />
                         </form>
                     </div>
+                </div>
+            </div>
+
+            <!-- Таб: Источники курсов (только для админа) -->
+            <div v-if="activeTab === 'rate-sources' && viewStore.isAdminViewMode" class="space-y-3">
+                <div v-if="merchant">
+                    <RateSourceBindings
+                        :merchant-id="merchant.id"
+                        :currencies="geoCurrencyCodes"
+                        :bindings="merchant.rate_source_bindings ?? []"
+                        @updated="handleRateSourcesUpdated"
+                    />
                 </div>
             </div>
 

@@ -80,6 +80,7 @@ class OrderDetailAssigner
             'team_leader_split_from_service_percent' => $details->trader->teamLeaderSplitFromServicePercent,
             'conversion_price' => $details->exchangePrice,
             'market' => $details->market,
+            'rate_source_id' => $details->rateSourceId,
             'rate_fixed_at' => now(),
             'trader_commission_rate' => $details->traderCommissionRate,
             'team_leader_commission_rate' => $details->teamLeaderCommissionRate,

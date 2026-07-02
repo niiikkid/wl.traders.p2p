@@ -6,7 +6,6 @@ return [
     'name' => [
         'bybit' => 'ByBit',
         'binance' => 'Binance',
-        'rapira' => 'Rapira (архив)',
         'manual' => 'Ручной',
         'merchant_api' => 'Курс от мерчанта (API)',
     ],

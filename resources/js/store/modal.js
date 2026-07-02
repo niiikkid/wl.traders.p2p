@@ -85,7 +85,7 @@ export const useModalStore = defineStore('modal', {
                     showed: false,
                     params: {},
                 },
-                priceParserEdit: {
+                rateSourceEdit: {
                     showed: false,
                     params: {},
                 },
@@ -133,7 +133,7 @@ export const useModalStore = defineStore('modal', {
         paymentGatewayCreateModal: (state) => state.modals.paymentGatewayCreate,
         paymentGatewayEditModal: (state) => state.modals.paymentGatewayEdit,
         paymentGatewayBulkSettingsModal: (state) => state.modals.paymentGatewayBulkSettings,
-        priceParserEditModal: (state) => state.modals.priceParserEdit,
+        rateSourceEditModal: (state) => state.modals.rateSourceEdit,
         antiFraudSettingModal: (state) => state.modals.antiFraudSetting,
         antiFraudClientOrdersModal: (state) => state.modals.antiFraudClientOrders,
     },
@@ -247,8 +247,8 @@ export const useModalStore = defineStore('modal', {
         openAntiFraudClientOrdersModal(props) {
             this.openModal('antiFraudClientOrders', props);
         },
-        openPriceParserEditModal(props) {
-            this.openModal('priceParserEdit', props);
+        openRateSourceEditModal(props) {
+            this.openModal('rateSourceEdit', props);
         },
         closeAll() {
             for (const modal_name in this.modals) {

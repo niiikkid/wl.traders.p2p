@@ -4,7 +4,11 @@ namespace App\Services\Market;
 
 use App\Contracts\MarketServiceContract;
 use App\Enums\MarketEnum;
+use App\Enums\RateSourceDirection;
 use App\Jobs\LoadConversionPricesJob;
+use App\Jobs\RefreshRateSourceJob;
+use App\Models\Merchant;
+use App\Models\RateSource;
 use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
 use App\Services\Market\Utils\MarketStore;
 use App\Services\Market\Utils\Parser\BinanceParser;
@@ -13,6 +17,9 @@ use App\Services\Market\Utils\Parser\Parser;
 use App\Services\Market\Value\ResolvedMarketPrice;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\Rates\RateRefreshService;
+use App\Services\Rates\RateSourceStore;
+use App\Services\Rates\ResolvedRateBinding;
 use GuzzleHttp\Exception\ConnectException;
 use Illuminate\Support\Collection;
 use Throwable;
@@ -36,6 +43,83 @@ class MarketService implements MarketServiceContract
             $this->supportedCurrenciesForMarket($market)
                 ->each(fn (Currency $currency) => LoadConversionPricesJob::dispatch($currency, $market));
         }
+    }
+
+    public function resolveRateBinding(Merchant $merchant, Currency $currency, RateSourceDirection $direction): ResolvedRateBinding
+    {
+        $binding = $merchant->getRateSourceBinding($currency, $direction);
+
+        if ($binding) {
+            $mode = $binding['mode'] ?? null;
+
+            if ($mode === ResolvedRateBinding::MODE_MERCHANT_API) {
+                return ResolvedRateBinding::merchantApi();
+            }
+
+            if ($mode === ResolvedRateBinding::MODE_SOURCE && ! empty($binding['source_id'])) {
+                $source = RateSource::query()
+                    ->active()
+                    ->whereKey((int) $binding['source_id'])
+                    ->where('quote_currency', $currency->getCode())
+                    ->where('direction', $direction->value)
+                    ->first();
+
+                // A configured-but-missing/inactive source resolves to source mode with no model,
+                // so the caller fails clearly instead of silently switching sources.
+                return new ResolvedRateBinding(ResolvedRateBinding::MODE_SOURCE, source: $source);
+            }
+        }
+
+        // Legacy fallback: merchant is still bound via settings.geos (currency => market).
+        $market = $merchant->getGeoMarket($currency);
+
+        if ($market && $market->equals(MarketEnum::MERCHANT_API)) {
+            return ResolvedRateBinding::merchantApi();
+        }
+
+        if ($market) {
+            return ResolvedRateBinding::legacyMarket($market);
+        }
+
+        return new ResolvedRateBinding(ResolvedRateBinding::MODE_LEGACY_MARKET, market: null);
+    }
+
+    public function getSourceRate(RateSource $source): Money
+    {
+        $cached = RateSourceStore::get($source);
+
+        if ($cached && $cached->greaterThanZero()) {
+            return $cached;
+        }
+
+        $source->refresh();
+
+        if ($source->rate instanceof Money && $source->rate->greaterThanZero()) {
+            RateSourceStore::put($source, $source->rate);
+
+            return $source->rate;
+        }
+
+        return new Money(0, $source->quoteCurrency());
+    }
+
+    public function refreshSource(RateSource $source): void
+    {
+        (new RateRefreshService)->refresh($source);
+    }
+
+    public function previewSource(RateSource $source): array
+    {
+        return (new RateRefreshService)->preview($source);
+    }
+
+    public function refreshAllActiveSources(): void
+    {
+        RateSource::query()
+            ->active()
+            ->automatic()
+            ->pluck('id')
+            ->each(fn (int $id) => RefreshRateSourceJob::dispatch($id));
     }
 
     public function loadPricesFor(Currency $currency, MarketEnum $market = MarketEnum::BYBIT): void

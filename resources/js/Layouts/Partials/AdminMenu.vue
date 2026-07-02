@@ -37,11 +37,11 @@ const items = computed(() => [
         badge: menu.value.onlineUsers,
     },
     {
-        key: 'currencies',
-        label: 'Валюты',
+        key: 'rate-sources',
+        label: 'Источники курсов',
         icon: CurrenciesIcon,
-        href: route('admin.currencies.index'),
-        active: route().current('admin.currencies.*'),
+        href: route('admin.rate-sources.index'),
+        active: route().current('admin.rate-sources.*'),
     },
     {
         key: 'payment-gateways',

@@ -9,6 +9,10 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('market:prices:refresh')->everyThreeMinutes();
+Schedule::call(fn () => services()->market()->refreshAllActiveSources())
+    ->everyThreeMinutes()
+    ->name('rate-sources:refresh')
+    ->withoutOverlapping();
 Schedule::command('funds:on-hold:execute')->everyMinute();
 Schedule::command('users:device-pings:prune')->everyMinute();
 Schedule::command('users:online-periods:prune')->daily();

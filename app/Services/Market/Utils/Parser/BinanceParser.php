@@ -21,9 +21,9 @@ class BinanceParser extends BaseParser
         }
 
         $settings = services()->settings()->getMarketPriceParser($currency, MarketEnum::BINANCE);
-        //TODO вообще должно быть наоборот
+        // TODO вообще должно быть наоборот
         $buyPrice = $this->parseAveragePrice($currency, 'BUY', $settings->buy);
-        $sellPrice = $this->parseAveragePrice($currency, 'BUY', $settings->sell); //ВРЕМЕННО ПОСТВИЛ BUY, вернуть на SELL при изменении системы парсинга курсов.
+        $sellPrice = $this->parseAveragePrice($currency, 'BUY', $settings->sell); // ВРЕМЕННО ПОСТВИЛ BUY, вернуть на SELL при изменении системы парсинга курсов.
 
         $buyPrice = $buyPrice ?? 0.0;
         $sellPrice = $sellPrice ?? 0.0;
@@ -32,6 +32,23 @@ class BinanceParser extends BaseParser
             buyPrice: Money::fromPrecision((string) $buyPrice, $currency->getCode()),
             sellPrice: Money::fromPrecision((string) $sellPrice, $currency->getCode()),
         );
+    }
+
+    /**
+     * Parse a single ready rate for a configured rate source (one side only).
+     *
+     * @param  string  $p2pSide  'buy' or 'sell' (Binance tradeType BUY or SELL)
+     */
+    public function parseSourceRate(Currency $currency, BinancePriceParserSideSettings $side, string $p2pSide): Money
+    {
+        if ($currency->equals(Currency::RUB())) {
+            throw new Exception('Binance market supports all currencies except RUB.');
+        }
+
+        $tradeType = $p2pSide === 'sell' ? 'SELL' : 'BUY';
+        $average = $this->parseAveragePrice($currency, $tradeType, $side) ?? 0.0;
+
+        return Money::fromPrecision((string) $average, $currency->getCode());
     }
 
     public function parseFilterConditions(Currency $currency): array
@@ -45,7 +62,7 @@ class BinanceParser extends BaseParser
             ->post('https://p2p.binance.com/bapi/c2c/v2/public/c2c/adv/filter-conditions', $payload);
 
         if (! $response->successful()) {
-            throw new Exception('Binance filter conditions API error: ' . $response->body());
+            throw new Exception('Binance filter conditions API error: '.$response->body());
         }
 
         $data = $response->json();
@@ -131,7 +148,7 @@ class BinanceParser extends BaseParser
                 ->post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', $payload);
 
             if (! $response->successful()) {
-                throw new Exception('Binance API error: ' . $response->body());
+                throw new Exception('Binance API error: '.$response->body());
             }
 
             $data = $response->json();
@@ -185,6 +202,7 @@ class BinanceParser extends BaseParser
             if (is_string($item)) {
                 $code = strtoupper($item);
                 $countries[] = ['id' => $code, 'name' => $code];
+
                 continue;
             }
 
@@ -225,6 +243,7 @@ class BinanceParser extends BaseParser
                     continue;
                 }
                 $methods[] = ['id' => $id, 'name' => $id];
+
                 continue;
             }
 
@@ -258,6 +277,7 @@ class BinanceParser extends BaseParser
             if ($value === null || $value === '') {
                 continue;
             }
+
             return is_scalar($value) ? (string) $value : null;
         }
 

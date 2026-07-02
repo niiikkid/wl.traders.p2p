@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\MarketEnum;
+use App\Enums\RateSourceDirection;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MerchantResource;
 use App\Models\Merchant;
+use App\Models\RateSource;
 use App\Services\Money\Currency;
+use App\Services\Rates\ResolvedRateBinding;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -248,6 +251,77 @@ class MerchantController extends Controller
         if (! empty($geoMap)) {
             $merchant->market = MarketEnum::from(reset($geoMap));
         }
+        $merchant->save();
+
+        return response()->json([
+            'merchant' => MerchantResource::make($merchant->fresh())->resolve(),
+        ]);
+    }
+
+    /**
+     * Привязать конкретные источники курсов к мерчанту по валюте и направлению.
+     *
+     * @throws ValidationException
+     */
+    public function updateRateSources(Request $request, Merchant $merchant): JsonResponse
+    {
+        $validated = $request->validate([
+            'bindings' => ['present', 'array'],
+            'bindings.*.currency' => ['required', 'string', Rule::in(Currency::getAllCodes())],
+            'bindings.*.direction' => ['required', Rule::in(RateSourceDirection::values())],
+            'bindings.*.mode' => ['required', Rule::in([
+                ResolvedRateBinding::MODE_SOURCE,
+                ResolvedRateBinding::MODE_MERCHANT_API,
+            ])],
+            'bindings.*.source_id' => ['nullable', 'integer'],
+        ]);
+
+        $validator = validator([], []);
+
+        $map = [];
+
+        foreach ($validated['bindings'] as $binding) {
+            $currency = strtolower($binding['currency']);
+            $direction = $binding['direction'];
+            $mode = $binding['mode'];
+
+            if ($mode === ResolvedRateBinding::MODE_SOURCE) {
+                $sourceId = $binding['source_id'] ?? null;
+
+                $source = $sourceId
+                    ? RateSource::query()
+                        ->active()
+                        ->whereKey((int) $sourceId)
+                        ->where('quote_currency', $currency)
+                        ->where('direction', $direction)
+                        ->first()
+                    : null;
+
+                if (! $source) {
+                    $validator->errors()->add(
+                        'bindings',
+                        'Не найден активный источник для '.strtoupper($currency).' ('.$direction.').'
+                    );
+
+                    continue;
+                }
+
+                $map[$currency][$direction] = [
+                    'mode' => ResolvedRateBinding::MODE_SOURCE,
+                    'source_id' => $source->id,
+                ];
+
+                continue;
+            }
+
+            $map[$currency][$direction] = ['mode' => ResolvedRateBinding::MODE_MERCHANT_API];
+        }
+
+        if ($validator->errors()->isNotEmpty()) {
+            throw new ValidationException($validator);
+        }
+
+        $merchant->setRateSourcesMap($map);
         $merchant->save();
 
         return response()->json([

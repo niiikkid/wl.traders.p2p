@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\MarketEnum;
 use App\Models\Merchant;
 use App\Services\Money\Currency;
 use Illuminate\Database\Migrations\Migration;
@@ -24,7 +23,7 @@ return new class extends Migration
                     }
 
                     $settings['geos'] = [
-                        Currency::RUB()->getCode() => MarketEnum::RAPIRA->value,
+                        Currency::RUB()->getCode() => 'rapira',
                     ];
 
                     $merchant->settings = $settings;

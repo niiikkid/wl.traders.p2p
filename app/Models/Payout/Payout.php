@@ -9,6 +9,7 @@ use App\Enums\PayoutStatus;
 use App\Models\CallbackLog;
 use App\Models\Merchant;
 use App\Models\PaymentGateway;
+use App\Models\RateSource;
 use App\Models\User;
 use App\Observers\PayoutObserver;
 use App\Services\Money\Money;
@@ -43,6 +44,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property Money $merchant_debit
  * @property Money $trader_credit
  * @property MarketEnum $rate_market
+ * @property int|null $rate_source_id
  * @property Money $conversion_price
  * @property Carbon|null $rate_fixed_at
  * @property PayoutStatus $status
@@ -102,6 +104,7 @@ class Payout extends Model
         'trader_commission_rate',
         'teamlead_commission_rate',
         'rate_market',
+        'rate_source_id',
         'conversion_price',
         'conversion_price_currency',
         'rate_fixed_at',
@@ -119,6 +122,7 @@ class Payout extends Model
         'payout_method_type' => PayoutMethodType::class,
         'status' => PayoutStatus::class,
         'rate_market' => MarketEnum::class,
+        'rate_source_id' => 'integer',
         'amount_fiat' => MoneyCast::class,
         'usdt_body' => MoneyCast::class,
         'total_fee' => MoneyCast::class,
@@ -148,6 +152,11 @@ class Payout extends Model
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
+    }
+
+    public function rateSource(): BelongsTo
+    {
+        return $this->belongsTo(RateSource::class);
     }
 
     public function trader(): BelongsTo

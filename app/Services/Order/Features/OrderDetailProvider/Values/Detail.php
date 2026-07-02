@@ -29,5 +29,6 @@ class Detail
         public Trader $trader,
         public Money $amount,
         public MarketEnum $market,
+        public ?int $rateSourceId = null,
     ) {}
 }

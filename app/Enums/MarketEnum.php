@@ -10,13 +10,15 @@ enum MarketEnum: string
 
     case BYBIT = 'bybit';
     case BINANCE = 'binance';
-    case RAPIRA = 'rapira';
     case MANUAL = 'manual';
     case MERCHANT_API = 'merchant_api';
 
+    /**
+     * Kept for backward compatibility with callers; no market is deprecated anymore.
+     */
     public function isDeprecated(): bool
     {
-        return $this === self::RAPIRA;
+        return false;
     }
 
     /**
@@ -24,10 +26,7 @@ enum MarketEnum: string
      */
     public static function selectableCases(): array
     {
-        return array_values(array_filter(
-            self::cases(),
-            fn (self $case) => ! $case->isDeprecated()
-        ));
+        return self::cases();
     }
 
     /**
@@ -40,9 +39,6 @@ enum MarketEnum: string
 
     public function activeReplacement(): self
     {
-        return match ($this) {
-            self::RAPIRA => self::BYBIT,
-            default => $this,
-        };
+        return $this;
     }
 }

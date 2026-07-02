@@ -8,6 +8,7 @@ use App\Enums\BalanceType;
 use App\Enums\MarketEnum;
 use App\Enums\PayoutOperationType;
 use App\Enums\PayoutStatus;
+use App\Enums\RateSourceDirection;
 use App\Enums\TransactionType;
 use App\Exceptions\PayoutCreationTimedOutException;
 use App\Exceptions\PayoutException;
@@ -55,12 +56,15 @@ class PayoutService implements PayoutServiceContract
 
             $currency = $data->amountFiat->getCurrency();
             $geoMarket = $this->resolveGeoMarket($data->merchant, $currency);
-            $conversionPrice = $this->resolveConversionPriceForPayout(
+            $resolvedRate = $this->resolveConversionPriceForPayout(
                 merchant: $data->merchant,
                 currency: $currency,
                 geoMarket: $geoMarket,
                 merchantRate: $data->merchantRate
             );
+            $conversionPrice = $resolvedRate['price'];
+            $rateMarket = $resolvedRate['market'];
+            $rateSourceId = $resolvedRate['rate_source_id'];
 
             if (! $conversionPrice->greaterThanZero()) {
                 throw PayoutException::marketPriceUnavailable();
@@ -134,7 +138,8 @@ class PayoutService implements PayoutServiceContract
                 'merchant_debit_currency' => $merchantDebit->getCurrency()->getCode(),
                 'trader_credit' => $traderCredit,
                 'trader_credit_currency' => $traderCredit->getCurrency()->getCode(),
-                'rate_market' => $geoMarket,
+                'rate_market' => $rateMarket,
+                'rate_source_id' => $rateSourceId,
                 'conversion_price' => $conversionPrice,
                 'conversion_price_currency' => strtoupper($conversionPrice->getCurrency()->getCode()),
                 'rate_fixed_at' => $rateFixedAt,
@@ -1003,6 +1008,10 @@ class PayoutService implements PayoutServiceContract
     }
 
     /**
+     * Resolve the pay-out rate, its market label, and the attached rate source (if any).
+     *
+     * @return array{price: Money, market: MarketEnum, rate_source_id: int|null}
+     *
      * @throws PayoutException
      */
     private function resolveConversionPriceForPayout(
@@ -1010,8 +1019,10 @@ class PayoutService implements PayoutServiceContract
         Currency $currency,
         MarketEnum $geoMarket,
         ?Money $merchantRate = null
-    ): Money {
-        if ($geoMarket->equals(MarketEnum::MERCHANT_API)) {
+    ): array {
+        $binding = services()->market()->resolveRateBinding($merchant, $currency, RateSourceDirection::PAY_OUT);
+
+        if ($binding->isMerchantApi()) {
             $merchantApiRateSetting = $merchant->getMerchantApiRateSetting($currency);
             $referenceRate = (float) ($merchantApiRateSetting['payout_reference_rate'] ?? 0);
             $maxDeviationPercent = (float) ($merchantApiRateSetting['max_deviation_percent'] ?? 0);
@@ -1041,18 +1052,40 @@ class PayoutService implements PayoutServiceContract
                 );
             }
 
-            return $merchantRate;
+            return [
+                'price' => $merchantRate,
+                'market' => MarketEnum::MERCHANT_API,
+                'rate_source_id' => null,
+            ];
         }
 
         if ($merchantRate) {
             throw PayoutException::merchantApiRateForbidden(strtoupper($currency->getCode()));
         }
 
-        return services()->market()->getBuyPrice(
-            $currency,
-            $geoMarket,
-            false
-        );
+        if ($binding->isSource()) {
+            if (! $binding->source) {
+                throw PayoutException::marketPriceUnavailable();
+            }
+
+            $rate = services()->market()->getSourceRate($binding->source);
+
+            if (! $rate->greaterThanZero()) {
+                throw PayoutException::marketPriceUnavailable();
+            }
+
+            return [
+                'price' => $rate,
+                'market' => $binding->source->type->toMarketEnum(),
+                'rate_source_id' => $binding->source->id,
+            ];
+        }
+
+        return [
+            'price' => services()->market()->getBuyPrice($currency, $geoMarket, false),
+            'market' => $geoMarket,
+            'rate_source_id' => null,
+        ];
     }
 
     /**

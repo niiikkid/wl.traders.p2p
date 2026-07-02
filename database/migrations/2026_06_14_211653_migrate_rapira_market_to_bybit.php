@@ -16,7 +16,7 @@ return new class extends Migration
     public function up(): void
     {
         DB::table('merchants')
-            ->where('market', MarketEnum::RAPIRA->value)
+            ->where('market', 'rapira')
             ->update(['market' => MarketEnum::BYBIT->value]);
 
         Merchant::query()
@@ -33,7 +33,7 @@ return new class extends Migration
                     $updated = false;
 
                     foreach ($geoMap as $currencyCode => $marketValue) {
-                        if ($marketValue === MarketEnum::RAPIRA->value) {
+                        if ($marketValue === 'rapira') {
                             $geoMap[$currencyCode] = MarketEnum::BYBIT->value;
                             $updated = true;
                         }
@@ -56,12 +56,12 @@ return new class extends Migration
                 foreach ($userMetas as $userMeta) {
                     $allowedMarkets = $userMeta->allowed_markets;
 
-                    if (! is_array($allowedMarkets) || ! in_array(MarketEnum::RAPIRA->value, $allowedMarkets, true)) {
+                    if (! is_array($allowedMarkets) || ! in_array('rapira', $allowedMarkets, true)) {
                         continue;
                     }
 
                     $userMeta->allowed_markets = array_values(array_unique(array_map(
-                        fn (string $market) => $market === MarketEnum::RAPIRA->value
+                        fn (string $market) => $market === 'rapira'
                             ? MarketEnum::BYBIT->value
                             : $market,
                         $allowedMarkets
@@ -71,7 +71,7 @@ return new class extends Migration
                 }
             });
 
-        Cache::forget('conversion-price-for-'.Currency::RUB()->getCode().'-'.MarketEnum::RAPIRA->value);
+        Cache::forget('conversion-price-for-'.Currency::RUB()->getCode().'-rapira');
     }
 
     /**

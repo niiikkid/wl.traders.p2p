@@ -45,6 +45,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property float|null $team_leader_split_from_service_percent
  * @property Currency $currency
  * @property MarketEnum $market
+ * @property int|null $rate_source_id
  * @property Money $conversion_price
  * @property Carbon|null $rate_fixed_at
  * @property float $trader_commission_rate
@@ -119,6 +120,7 @@ class Order extends Model
         'team_leader_split_from_service_percent', // Сплит тимлида: платит сервис, %
         'currency',
         'market',
+        'rate_source_id',
         'conversion_price', // Курс (exchangeRate)
         'rate_fixed_at',
         'trader_commission_rate', // Комиссия трейдера, %
@@ -165,6 +167,7 @@ class Order extends Model
         'finished_at' => 'datetime',
         'currency' => CurrencyCast::class,
         'market' => MarketEnum::class,
+        'rate_source_id' => 'integer',
         'base_amount' => MoneyCast::class,
         'amount' => MoneyCast::class,
         'total_profit' => BaseCurrencyMoneyCast::class,
@@ -257,6 +260,11 @@ class Order extends Model
     public function merchant(): BelongsTo
     {
         return $this->belongsTo(Merchant::class);
+    }
+
+    public function rateSource(): BelongsTo
+    {
+        return $this->belongsTo(RateSource::class);
     }
 
     public function merchantClient(): BelongsTo

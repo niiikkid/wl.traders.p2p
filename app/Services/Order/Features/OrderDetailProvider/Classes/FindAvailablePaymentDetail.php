@@ -56,6 +56,8 @@ class FindAvailablePaymentDetail
         protected ?Currency $currency = null,
         protected ?PaymentGateway $gateway = null,
         protected ?Money $forcedExchangePrice = null,
+        protected ?MarketEnum $forcedMarket = null,
+        protected ?int $rateSourceId = null,
     ) {
         if (is_null($this->gateway) && is_null($this->currency)) {
             throw OrderException::make('Должен быть указан либо gateway, либо currency.');
@@ -66,7 +68,7 @@ class FindAvailablePaymentDetail
         $this->end = Carbon::createFromTimeString($this->primeTimeBonus->ends);
         if ($this->forcedExchangePrice && $this->forcedExchangePrice->greaterThanZero()) {
             $this->exchangePrice = $this->forcedExchangePrice;
-            $this->exchangeMarket = $this->market;
+            $this->exchangeMarket = $this->forcedMarket ?? $this->market;
         } else {
             if ($this->market->equals(MarketEnum::MERCHANT_API)) {
                 throw OrderException::marketPriceUnavailable();
@@ -179,6 +181,7 @@ class FindAvailablePaymentDetail
             trader: $trader,
             amount: $this->amount,
             market: $this->exchangeMarket,
+            rateSourceId: $this->rateSourceId,
         );
     }
 

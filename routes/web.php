@@ -4,7 +4,6 @@ use App\Http\Controllers\Admin\AddressWhitelistController;
 use App\Http\Controllers\Admin\AntiFraudClientController;
 use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
-use App\Http\Controllers\Admin\CurrencyController;
 use App\Http\Controllers\Admin\DashboardStatsController;
 use App\Http\Controllers\Admin\EnabledCardsController;
 use App\Http\Controllers\Admin\FinancesController;
@@ -14,8 +13,8 @@ use App\Http\Controllers\Admin\MerchantApiLogController;
 use App\Http\Controllers\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Admin\OpenAiSettingController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
-use App\Http\Controllers\Admin\PriceParserController;
 use App\Http\Controllers\Admin\ProfitCalculatorController;
+use App\Http\Controllers\Admin\RateSourceController;
 use App\Http\Controllers\Admin\SenderStopListController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SmsStopWordController;
@@ -398,9 +397,14 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/withdrawals/{invoice}/success', [WithdrawalController::class, 'success'])->name('withdrawals.success');
         Route::patch('/withdrawals/{invoice}/fail', [WithdrawalController::class, 'fail'])->name('withdrawals.fail');
 
-        Route::resource('/currencies', CurrencyController::class)->only(['index']);
-        Route::get('currencies/{currency}/price-parsers/edit-data', [PriceParserController::class, 'editData'])->name('currencies.price-parsers.edit-data');
-        Route::patch('currencies/{currency}/price-parsers', [PriceParserController::class, 'update'])->name('currencies.price-parsers.update');
+        Route::get('/rate-sources/options', [RateSourceController::class, 'options'])->name('rate-sources.options');
+        Route::get('/rate-sources/filter-options', [RateSourceController::class, 'filterOptions'])->name('rate-sources.filter-options');
+        Route::post('/rate-sources/preview', [RateSourceController::class, 'preview'])->name('rate-sources.preview');
+        Route::post('/rate-sources/{rateSource}/refresh', [RateSourceController::class, 'refresh'])->name('rate-sources.refresh');
+        Route::get('/rate-sources', [RateSourceController::class, 'index'])->name('rate-sources.index');
+        Route::post('/rate-sources', [RateSourceController::class, 'store'])->name('rate-sources.store');
+        Route::patch('/rate-sources/{rateSource}', [RateSourceController::class, 'update'])->name('rate-sources.update');
+        Route::delete('/rate-sources/{rateSource}', [RateSourceController::class, 'destroy'])->name('rate-sources.destroy');
 
         Route::get('/sms-logs', [App\Http\Controllers\Admin\SmsLogController::class, 'index'])->name('sms-logs.index');
         Route::get('/incoming-sms-logs', [IncomingSmsLogController::class, 'index'])->name('incoming-sms-logs.index');
@@ -440,6 +444,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/merchants/{merchant}/validated', [App\Http\Controllers\Admin\MerchantController::class, 'validated'])->name('merchants.validated');
         Route::patch('/merchants/{merchant}/settings', [App\Http\Controllers\Admin\MerchantController::class, 'updateSettings'])->name('merchants.settings.update');
         Route::patch('/merchants/{merchant}/geo', [App\Http\Controllers\Admin\MerchantController::class, 'updateGeo'])->name('merchants.geo.update');
+        Route::patch('/merchants/{merchant}/rate-sources', [App\Http\Controllers\Admin\MerchantController::class, 'updateRateSources'])->name('merchants.rate-sources.update');
         Route::patch('/merchants/{merchant}/commission-settings', [MerchantController::class, 'updateCommissionSettings'])->name('merchants.commission-settings.update');
         // Вход под другим пользователем
         Route::post('/impersonate/{user}', function (User $user) {
