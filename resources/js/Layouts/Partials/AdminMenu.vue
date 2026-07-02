@@ -55,7 +55,7 @@ const items = computed(() => [
         label: 'Реквизиты',
         icon: PaymentDetailsIcon,
         href: route('admin.payment-details.index'),
-        active: route().current('admin.payment-details.*') || route().current('admin.enabled-cards.*'),
+        active: route().current('admin.payment-details.*'),
         badge: menu.value.activeDetails,
         badgeClass: 'badge-success',
     },

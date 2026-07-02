@@ -25,6 +25,7 @@ import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import PaymentDetailCreateModal from "@/Modals/PaymentDetail/PaymentDetailCreateModal.vue";
 import PaymentDetailEditModal from "@/Modals/PaymentDetail/PaymentDetailEditModal.vue";
 import PaymentDetailBulkEditModal from "@/Modals/PaymentDetail/PaymentDetailBulkEditModal.vue";
+import PaymentDetailVolumeStatisticsModal from "@/Modals/PaymentDetail/PaymentDetailVolumeStatisticsModal.vue";
 import PaymentDetailResetLimitsModal from "@/Modals/PaymentDetail/PaymentDetailResetLimitsModal.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
 import PaymentDetailScheduleServerClock from "@/Components/PaymentDetail/PaymentDetailScheduleServerClock.vue";
@@ -44,6 +45,9 @@ const openCreateModal = () => {
 };
 const openEditModal = (paymentDetail) => {
     modalStore.openPaymentDetailEditModal({ paymentDetail });
+};
+const openVolumeStatisticsModal = (paymentDetail) => {
+    modalStore.openPaymentDetailVolumeStatisticsModal({ uuid: paymentDetail.uuid, paymentDetail });
 };
 const openResetLimitsModal = (paymentDetail) => {
     modalStore.openPaymentDetailResetLimitsModal({ paymentDetail });
@@ -376,13 +380,6 @@ defineOptions({ layout: AuthenticatedLayout })
         >
             <template #button>
                 <PageToolbar>
-                    <PageToolbarAction
-                        v-if="viewStore.isAdminViewMode"
-                        icon="chart-bar"
-                        title="Включенные реквизиты"
-                        @click="router.visit(route('admin.enabled-cards.index'), { preserveScroll: true })"
-                    />
-
                     <PageToolbarAction
                         v-if="isTraderView"
                         icon="schedule"
@@ -804,6 +801,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         </div>
                                                     </TableInfoDropdown>
                                                     <TableActionsDropdown v-if="currentTab === 'active'">
+                                                        <TableAction @click="openVolumeStatisticsModal(payment_detail)">
+                                                            Статистика
+                                                        </TableAction>
                                                         <TableAction @click="openEditModal(payment_detail)">
                                                             Редактировать
                                                         </TableAction>
@@ -842,6 +842,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </label>
                                             <TableActionsDropdown button-class="btn btn-ghost btn-circle btn-xs">
                                                 <template v-if="currentTab === 'active'">
+                                                    <TableAction @click="openVolumeStatisticsModal(payment_detail)">
+                                                        Статистика
+                                                    </TableAction>
                                                     <TableAction @click="openEditModal(payment_detail)">
                                                         Редактировать
                                                     </TableAction>
@@ -1060,6 +1063,7 @@ defineOptions({ layout: AuthenticatedLayout })
         <PaymentDetailCreateModal />
         <PaymentDetailEditModal />
         <PaymentDetailBulkEditModal />
+        <PaymentDetailVolumeStatisticsModal />
         <PaymentDetailResetLimitsModal />
         <ConfirmModal/>
     </div>

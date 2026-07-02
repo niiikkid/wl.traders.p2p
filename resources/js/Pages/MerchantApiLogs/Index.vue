@@ -490,7 +490,7 @@ onBeforeUnmount(() => {
                     </template>
                     </FiltersPanel>
 
-                    <section v-if="activeApiLogTab === 'orders'" class="space-y-2">
+                    <section v-if="activeApiLogTab === 'orders' && isMerchantLogsPage" class="space-y-2">
                     <button
                         type="button"
                         class="group flex w-full items-center gap-3 rounded-box border border-base-300 bg-base-100 px-4 py-3 shadow-sm transition-colors hover:border-primary/50 focus:outline-none"

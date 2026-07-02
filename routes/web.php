@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AntiFraudClientController;
 use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
 use App\Http\Controllers\Admin\CurrencyController;
+use App\Http\Controllers\Admin\DashboardStatsController;
 use App\Http\Controllers\Admin\EnabledCardsController;
 use App\Http\Controllers\Admin\FinancesController;
 use App\Http\Controllers\Admin\IntegrationApiController;
@@ -49,6 +50,7 @@ use App\Http\Controllers\PaymentDetailArchiveController;
 use App\Http\Controllers\PaymentDetailController;
 use App\Http\Controllers\PaymentDetailLimitResetController;
 use App\Http\Controllers\PaymentDetailScheduleController;
+use App\Http\Controllers\PaymentDetailVolumeStatisticsController;
 use App\Http\Controllers\PayoutReceiptController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SmsLogController;
@@ -184,6 +186,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::delete('/payment-details/{paymentDetail:uuid}/unarchive', [PaymentDetailArchiveController::class, 'destroy'])->name('payment-details.unarchive');
         Route::patch('/payment-details/{paymentDetail:uuid}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.unarchive');
         Route::patch('/payment-details/{paymentDetail:uuid}/toggle-active', [PaymentDetailController::class, 'toggleActive'])->name('payment-details.toggle-active');
+        Route::get('/payment-details/{paymentDetail:uuid}/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'show'])->name('payment-details.volume-statistics');
         Route::patch('/payment-details/bulk-update', [PaymentDetailController::class, 'bulkUpdate'])->name('payment-details.bulk-update');
         Route::resource('/payment-details', PaymentDetailController::class)
             ->only(['index', 'store', 'update'])
@@ -308,6 +311,9 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::post('/news/format', [NewsController::class, 'format'])->name('news.format');
         Route::delete('/news/{newsPost}', [NewsController::class, 'destroy'])->name('news.destroy');
         Route::get('/main/filter-options/{type}', [MainPageController::class, 'adminFilterOptions'])->name('main.filter-options');
+        Route::get('/main/anti-fraud-stats', [DashboardStatsController::class, 'antiFraud'])->name('main.anti-fraud-stats');
+        Route::get('/main/api-log-stats', [DashboardStatsController::class, 'merchantApi'])->name('main.api-log-stats');
+        Route::get('/main/enabled-cards-stats', [DashboardStatsController::class, 'enabledCards'])->name('main.enabled-cards-stats');
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
 
         Route::get('/app', [App\Http\Controllers\Admin\ApkController::class, 'index'])->name('app.index');
@@ -341,7 +347,6 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/profit-calculator', [ProfitCalculatorController::class, 'index'])->name('profit-calculator.index');
         Route::post('/profit-calculator/calculate', [ProfitCalculatorController::class, 'calculate'])->name('profit-calculator.calculate');
 
-        Route::get('/enabled-cards', [EnabledCardsController::class, 'index'])->name('enabled-cards.index');
         Route::post('/enabled-cards/limit-levels', [EnabledCardsController::class, 'storeLimitLevel'])->name('enabled-cards.limit-levels.store');
         Route::delete('/enabled-cards/limit-levels', [EnabledCardsController::class, 'destroyLimitLevel'])->name('enabled-cards.limit-levels.destroy');
 
@@ -406,6 +411,7 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::delete('/sms-stop-word/{smsStopWord}', [SmsStopWordController::class, 'destroy'])->name('sms-stop-word.destroy');
 
         Route::get('/payment-details', [App\Http\Controllers\Admin\PaymentDetailController::class, 'index'])->name('payment-details.index');
+        Route::get('/payment-details/{paymentDetail:uuid}/volume-statistics', [PaymentDetailVolumeStatisticsController::class, 'show'])->name('payment-details.volume-statistics');
 
         Route::get('/disputes', [App\Http\Controllers\Admin\DisputeController::class, 'index'])->name('disputes.index');
         Route::post('/disputes/{order}', [App\Http\Controllers\Admin\DisputeController::class, 'store'])->name('disputes.store');

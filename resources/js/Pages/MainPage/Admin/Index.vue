@@ -2,7 +2,16 @@
 import { Head, usePage, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import AppTooltip from '@/Components/AppTooltip.vue';
-import StatsModeNav from '@/Components/MainPage/StatsModeNav.vue';
+import StatsTabsNav from '@/Components/MainPage/StatsTabsNav.vue';
+import AntiFraudStatsWidget from './Components/AntiFraudStatsWidget.vue';
+import MerchantApiStatsWidget from './Components/MerchantApiStatsWidget.vue';
+import EnabledCardsStatsWidget from './Components/EnabledCardsStatsWidget.vue';
+import OrdersIcon from '@/Layouts/Partials/Icons/OrdersIcon.vue';
+import PayoutsIcon from '@/Layouts/Partials/Icons/PayoutsIcon.vue';
+import DisputesIcon from '@/Layouts/Partials/Icons/DisputesIcon.vue';
+import LogsIcon from '@/Layouts/Partials/Icons/LogsIcon.vue';
+import AntiFraudIcon from '@/Layouts/Partials/Icons/AntiFraudIcon.vue';
+import PaymentDetailsIcon from '@/Layouts/Partials/Icons/PaymentDetailsIcon.vue';
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import ApexCharts from 'apexcharts';
 import axios from 'axios';
@@ -775,21 +784,79 @@ watch(canShowMerchantSeries, (canShow) => {
     }
 });
 
-const switchStatsMode = (mode) => {
-    if (activeStatsMode.value === mode) {
+const statTabs = [
+    { key: 'deals', label: 'Сделки', icon: OrdersIcon, mode: 'deals' },
+    { key: 'payouts', label: 'Выплаты', icon: PayoutsIcon, mode: 'payouts' },
+    { key: 'disputes', label: 'Споры', icon: DisputesIcon, mode: 'deals' },
+    { key: 'api-logs', label: 'API-логи', icon: LogsIcon },
+    { key: 'anti-fraud', label: 'Антифрод', icon: AntiFraudIcon },
+    { key: 'enabled-cards', label: 'Реквизиты', icon: PaymentDetailsIcon },
+];
+
+const readInitialTab = () => {
+    if (typeof window !== 'undefined') {
+        const requested = new URLSearchParams(window.location.search).get('stab');
+        if (requested && statTabs.some((tab) => tab.key === requested)) {
+            return requested;
+        }
+    }
+
+    return activeStatsMode.value === 'payouts' ? 'payouts' : 'deals';
+};
+
+const activeTab = ref(readInitialTab());
+const activatedTabs = ref([activeTab.value]);
+
+const isPrimaryTab = computed(() => activeTab.value === 'deals' || activeTab.value === 'payouts');
+
+const syncStabQuery = (key) => {
+    if (typeof window === 'undefined') {
         return;
     }
-    processing.value = true;
-    router.visit(route('admin.main.index'), {
-        data: { mode, period: 'month' },
-        replace: true,
-        preserveScroll: true,
-        preserveState: false,
-        onFinish: () => {
-            processing.value = false;
-        },
-    });
+    const url = new URL(window.location.href);
+    url.searchParams.set('stab', key);
+    window.history.replaceState(window.history.state, '', url);
 };
+
+const switchTab = (key) => {
+    if (key === activeTab.value) {
+        return;
+    }
+
+    const tab = statTabs.find((item) => item.key === key);
+
+    if (tab?.mode && tab.mode !== activeStatsMode.value) {
+        processing.value = true;
+        router.visit(route('admin.main.index'), {
+            data: { mode: tab.mode, period: 'month', stab: key },
+            replace: true,
+            preserveScroll: true,
+            preserveState: false,
+            onFinish: () => {
+                processing.value = false;
+            },
+        });
+        return;
+    }
+
+    if (!activatedTabs.value.includes(key)) {
+        activatedTabs.value.push(key);
+    }
+    activeTab.value = key;
+    syncStabQuery(key);
+};
+
+watch(activeTab, (tab) => {
+    nextTick(() => {
+        if (tab === 'deals' || tab === 'payouts') {
+            renderChart();
+            resizeChart();
+        } else if (tab === 'disputes') {
+            renderDisputeChart();
+            apexDisputeChart.value?.resize();
+        }
+    });
+});
 
 const applyFilter = (options = {}) => {
     if (processing.value) {
@@ -800,6 +867,7 @@ const applyFilter = (options = {}) => {
     const requestData = {
         period: selectedPeriodPreset.value,
         mode: activeStatsMode.value,
+        stab: activeTab.value,
     };
 
     if (selectedPeriodPreset.value === 'month') {
@@ -1282,9 +1350,10 @@ defineOptions({ layout: AuthenticatedLayout });
                 <slot name="button"></slot>
             </div>
 
-            <StatsModeNav :current="activeStatsMode" @switch="switchStatsMode" />
+            <StatsTabsNav :current="activeTab" :items="statTabs" @switch="switchTab" />
 
             <section>
+                <div v-show="isPrimaryTab">
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     <div class="card bg-base-100 shadow px-6 py-5">
                         <div class="flex items-center justify-between">
@@ -1770,8 +1839,10 @@ defineOptions({ layout: AuthenticatedLayout });
                     </div>
                 </div>
 
-                <template v-if="activeStatsMode === 'deals'">
-                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+                </div>
+
+                <div v-show="activeTab === 'disputes'">
+                    <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
                         <div class="card bg-base-100 shadow px-4 py-3">
                             <div class="flex items-center justify-between gap-2">
                                 <div>
@@ -1867,7 +1938,19 @@ defineOptions({ layout: AuthenticatedLayout });
                         </div>
                         <div ref="disputeChart" class="h-50"></div>
                     </div>
-                </template>
+                </div>
+
+                <div v-if="activatedTabs.includes('api-logs')" v-show="activeTab === 'api-logs'">
+                    <MerchantApiStatsWidget />
+                </div>
+
+                <div v-if="activatedTabs.includes('anti-fraud')" v-show="activeTab === 'anti-fraud'">
+                    <AntiFraudStatsWidget />
+                </div>
+
+                <div v-if="activatedTabs.includes('enabled-cards')" v-show="activeTab === 'enabled-cards'">
+                    <EnabledCardsStatsWidget />
+                </div>
             </section>
         </div>
     </div>
