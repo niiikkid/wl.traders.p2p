@@ -14,9 +14,41 @@
         <script>
             (function() {
                 try {
-                    var theme = 'dim';
-                    document.documentElement.setAttribute('data-theme', theme);
-                    document.documentElement.classList.add('dark');
+                    var root = document.documentElement;
+                    root.setAttribute('data-theme', 'dim');
+                    root.classList.add('dark');
+
+                    var raw = window.localStorage.getItem('theme-generator:selected');
+                    if (!raw) {
+                        return;
+                    }
+
+                    var selected = JSON.parse(raw);
+                    var isDark = selected && selected.colorScheme === 'dark';
+
+                    if (selected && selected.type === 'builtin' && selected.slug) {
+                        root.setAttribute('data-theme', selected.slug);
+                        root.classList.toggle('dark', isDark);
+                        return;
+                    }
+
+                    if (selected && selected.tokens) {
+                        var css = '[data-theme="tg-live"]{color-scheme:' + (isDark ? 'dark' : 'light') + ';';
+                        Object.keys(selected.tokens).forEach(function(key) {
+                            if (/^--[a-z0-9-]+$/.test(key)) {
+                                css += key + ':' + String(selected.tokens[key]).replace(/[;{}<>]/g, '') + ';';
+                            }
+                        });
+                        css += '}';
+
+                        var style = document.createElement('style');
+                        style.id = 'theme-generator-live-style';
+                        style.textContent = css;
+                        document.head.appendChild(style);
+
+                        root.setAttribute('data-theme', 'tg-live');
+                        root.classList.toggle('dark', isDark);
+                    }
                 } catch (e) {
                     // silent
                 }

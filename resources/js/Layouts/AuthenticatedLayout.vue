@@ -10,8 +10,12 @@ import {playNotificationAudio} from "@/utils/notificationAudioPlayer.js";
 import PaymentDetailScheduleManagerModal from '@/Modals/PaymentDetailSchedule/PaymentDetailScheduleManagerModal.vue';
 import ModalsHost from '@/Components/Modal/ModalsHost.vue';
 import AppFooter from '@/Layouts/Partials/AppFooter.vue';
+import ThemeGeneratorDrawer from '@/Features/Themes/components/ThemeGeneratorDrawer.vue';
+import { useThemeGeneratorStore } from '@/Features/Themes/stores/themeGenerator.js';
 
 const viewStore = useViewStore();
+const themeGeneratorStore = useThemeGeneratorStore();
+const canUseThemeGenerator = computed(() => usePage().props.auth?.role?.name === 'Super Admin');
 
 const rates = ref(usePage().props.data.rates);
 const role = usePage().props.auth.role;
@@ -384,6 +388,10 @@ onMounted(() => {
     startOnlinePing();
     window.addEventListener('visibilitychange', handleNotificationVisibilityChange);
     window.addEventListener('beforeunload', handleNotificationBeforeUnload);
+
+    if (canUseThemeGenerator.value && window.location.hash.startsWith('#theme=')) {
+        themeGeneratorStore.importHash(window.location.hash);
+    }
 })
 
 const getMobileDrawer = () => document.getElementById('mobile-drawer');
@@ -483,5 +491,24 @@ onUnmounted(() => {
 
         <PaymentDetailScheduleManagerModal v-if="viewStore.isTraderViewMode" />
         <ModalsHost />
+
+        <button
+            v-if="canUseThemeGenerator && !themeGeneratorStore.isOpen"
+            type="button"
+            class="btn btn-primary btn-circle fixed bottom-5 right-5 z-[9990] shadow-lg"
+            title="Генератор тем"
+            aria-label="Генератор тем"
+            @click="themeGeneratorStore.open()"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+                <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+                <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+                <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+            </svg>
+        </button>
+
+        <ThemeGeneratorDrawer v-if="canUseThemeGenerator" />
     </div>
 </template>

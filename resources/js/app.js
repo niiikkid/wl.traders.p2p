@@ -7,8 +7,13 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { Ziggy } from './ziggy-routes.js';
 import { createPinia } from 'pinia'
+import { bootstrapPersistedTheme } from '@/Features/Themes/lib/theme-runtime.js';
 
 const pinia = createPinia()
+
+// Re-apply a previously selected/generated theme before the app mounts so the
+// chosen theme survives full page reloads (drawer persists it in localStorage).
+bootstrapPersistedTheme();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 

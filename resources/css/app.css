@@ -123,6 +123,27 @@
     border-radius: var(--radius-field);
 }
 
+/* Theme generator drawer transitions (Vue <Transition>). */
+.tg-fade-enter-active,
+.tg-fade-leave-active {
+    transition: opacity 0.2s ease;
+}
+
+.tg-fade-enter-from,
+.tg-fade-leave-to {
+    opacity: 0;
+}
+
+.tg-slide-enter-active,
+.tg-slide-leave-active {
+    transition: transform 0.25s ease;
+}
+
+.tg-slide-enter-from,
+.tg-slide-leave-to {
+    transform: translateX(100%);
+}
+
 /*
  * ModalNext: при закрытии убрать «залипание» затемнения (Daisy анимирует background ~0.3s).
  * Открытие сохраняет @starting-style у .modal.modal-open; в закрытом состоянии переходов нет.
