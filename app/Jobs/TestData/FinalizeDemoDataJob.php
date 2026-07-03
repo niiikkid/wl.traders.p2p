@@ -12,6 +12,7 @@ use App\Models\UserActivityLog;
 use App\Support\TestData\DemoDataHelper;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -42,8 +43,15 @@ class FinalizeDemoDataJob implements ShouldQueue
 
     public function handle(): void
     {
-        $this->seedOrderLogs();
-        $this->seedPayoutLogs();
+        // Разрешаем массовое присвоение created_at для исторических журналов.
+        Model::unguard();
+        try {
+            $this->seedOrderLogs();
+            $this->seedPayoutLogs();
+        } finally {
+            Model::reguard();
+        }
+
         $this->rebuildApiStatistics();
     }
 
@@ -101,7 +109,7 @@ class FinalizeDemoDataJob implements ShouldQueue
             'request_id' => (string) Str::uuid(),
             'request_type' => MerchantApiRequestLog::TYPE_ORDER,
             'external_id' => $order->external_id,
-            'amount' => (string) $order->base_amount->toUnits(),
+            'amount' => $order->base_amount->toBeauty(),
             'currency' => $order->currency?->getCode(),
             'payment_gateway' => $order->paymentGateway?->name,
             'payment_detail_type' => $order->paymentDetail?->detail_type?->value,
@@ -134,7 +142,7 @@ class FinalizeDemoDataJob implements ShouldQueue
             'request_id' => (string) Str::uuid(),
             'request_type' => MerchantApiRequestLog::TYPE_PAYOUT,
             'external_id' => $payout->external_id,
-            'amount' => (string) $payout->amount_fiat->toUnits(),
+            'amount' => $payout->amount_fiat->toBeauty(),
             'currency' => $payout->amount_fiat->getCurrency()->getCode(),
             'payment_gateway' => $payout->paymentGateway?->name,
             'payment_detail_type' => $payout->payout_method_type?->value,

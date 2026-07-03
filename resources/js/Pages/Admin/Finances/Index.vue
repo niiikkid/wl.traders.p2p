@@ -13,6 +13,7 @@ import InputFilter from '@/Components/Filters/Partials/InputFilter.vue';
 import DropdownFilter from '@/Components/Filters/Partials/DropdownFilter.vue';
 import FiltersPanel from '@/Components/Filters/FiltersPanel.vue';
 import DateTime from '@/Components/DateTime.vue';
+import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
@@ -150,7 +151,10 @@ router.on('success', () => {
                             <td>
                                 <div v-if="invoice.merchant" class="max-w-44">
                                     <div class="truncate font-medium">{{ invoice.merchant.name }}</div>
-                                    <div class="truncate font-mono text-xs text-base-content/60">{{ invoice.merchant.uuid }}</div>
+                                    <CopyableOrderUid
+                                        :uuid="invoice.merchant.uuid ?? ''"
+                                        class="text-xs text-base-content/60"
+                                    />
                                 </div>
                                 <span v-else class="text-base-content/50">—</span>
                             </td>
@@ -274,7 +278,10 @@ router.on('success', () => {
                                     </svg>
                                     <template v-if="invoice.merchant">
                                         <span class="text-base-content/80 truncate">{{ invoice.merchant.name }}</span>
-                                        <span class="font-mono text-xs text-base-content/50 truncate">{{ invoice.merchant.uuid }}</span>
+                                        <CopyableOrderUid
+                                            :uuid="invoice.merchant.uuid ?? ''"
+                                            class="text-xs text-base-content/50"
+                                        />
                                     </template>
                                     <span v-else class="text-base-content/60">—</span>
                                 </div>

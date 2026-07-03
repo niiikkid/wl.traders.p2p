@@ -1,5 +1,6 @@
 <script setup>
 import {useFilterModel} from "@/composables/useFilterModel.js";
+import FilterField from "@/Components/Filters/Partials/FilterField.vue";
 
 const props = defineProps({
     name: {
@@ -14,16 +15,16 @@ const model = useFilterModel(props.name);
 </script>
 
 <template>
-    <div class="form-control w-full flex items-center">
-        <label :for="`checkbox-${$.uid}`" class="label cursor-pointer justify-start gap-2 py-0">
+    <FilterField>
+        <label :for="`checkbox-${$.uid}`" class="flex h-8 cursor-pointer items-center gap-2">
             <input
                 v-model="model"
                 :id="`checkbox-${$.uid}`"
                 type="checkbox"
                 value=""
-                class="checkbox checkbox-sm"
+                class="checkbox checkbox-sm shrink-0"
             >
-            <span class="text-sm">{{ title }}</span>
+            <span class="text-sm leading-none">{{ title }}</span>
         </label>
-    </div>
+    </FilterField>
 </template>

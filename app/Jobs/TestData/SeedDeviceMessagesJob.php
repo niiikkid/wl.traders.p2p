@@ -9,6 +9,7 @@ use App\Support\TestData\DemoDataHelper;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -40,6 +41,18 @@ class SeedDeviceMessagesJob implements ShouldQueue
             return;
         }
 
+        // Разрешаем массовое присвоение created_at для исторического распределения.
+        Model::unguard();
+        try {
+            $this->generate($device);
+        } finally {
+            Model::reguard();
+        }
+    }
+
+    private function generate(UserDevice $device): void
+    {
+
         $gateways = queries()->paymentGateway()->getAllActive()
             ->filter(fn ($pg) => is_array($pg->sms_senders) && count($pg->sms_senders) > 0)
             ->values();
@@ -57,7 +70,7 @@ class SeedDeviceMessagesJob implements ShouldQueue
                 $bank = DemoDataHelper::bankName();
             }
 
-            $amount = DemoDataHelper::realisticFiatAmount('rub');
+            $amount = DemoDataHelper::realisticFiatAmount(DemoDataHelper::DEMO_CURRENCY);
             $last4 = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
             $createdAt = Carbon::now()
                 ->subDays(random_int(0, max(0, $this->days)))

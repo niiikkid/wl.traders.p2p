@@ -7,6 +7,7 @@ import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
 import AntiFraudSettingModal from '@/Modals/Admin/AntiFraudSettingModal.vue';
+import AntiFraudTrafficSummary from '@/Components/Admin/AntiFraudTrafficSummary.vue';
 import PageToolbar from '@/Components/Table/PageToolbar.vue';
 import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
 import { useModalStore } from '@/store/modal.js';
@@ -35,14 +36,6 @@ const editSetting = (setting) => {
 };
 
 const merchantLabel = (setting) => setting.merchant?.name || setting.merchant?.uuid || `#${setting.merchant_id}`;
-
-const formatRateLimits = (limits) => {
-    if (!limits || !limits.length) {
-        return '—';
-    }
-
-    return limits.map((limit) => `${limit.count} / ${limit.minutes}м`).join(', ');
-};
 </script>
 
 <template>
@@ -74,41 +67,34 @@ const formatRateLimits = (limits) => {
                 <div class="relative">
                     <DataTable>
                         <template #head>
-                            <th>Мерчант</th>
-                            <th>Статус</th>
-                            <th>Primary</th>
-                            <th>Secondary</th>
-                            <th class="text-right">
+                            <th class="w-0 max-w-36">Мерчант</th>
+                            <th class="w-0 whitespace-nowrap">Статус</th>
+                            <th>Правила трафика</th>
+                            <th class="w-0 text-right">
                                 <span class="sr-only">Действия</span>
                             </th>
                         </template>
 
                         <tr v-for="setting in settings" :key="setting.id">
-                            <td class="align-top">
-                                <div class="font-medium">{{ merchantLabel(setting) }}</div>
+                            <td class="w-0 max-w-36 align-top">
+                                <div
+                                    class="truncate font-medium text-sm"
+                                    :title="merchantLabel(setting)"
+                                >
+                                    {{ merchantLabel(setting) }}
+                                </div>
                             </td>
-                            <td class="align-top whitespace-nowrap">
+                            <td class="w-0 align-top whitespace-nowrap">
                                 <span v-if="setting.enabled" class="badge badge-success badge-sm">Включен</span>
                                 <span v-else class="badge badge-ghost badge-sm">Выключен</span>
                             </td>
-                            <td class="align-top text-sm">
-                                <div>Pending: {{ setting.primary_max_pending ?? '—' }}</div>
-                                <div>Лимиты: {{ formatRateLimits(setting.primary_rate_limits) }}</div>
-                                <div>Fail подряд: {{ setting.primary_failed_limit ?? '—' }}</div>
-                                <div>Блок: {{ setting.primary_block_days ?? '—' }} дн.</div>
-                            </td>
-                            <td class="align-top text-sm">
-                                <div v-if="setting.secondary_enabled === false" class="text-base-content/60">
-                                    Фильтры отключены
+                            <td class="align-top">
+                                <div class="grid min-w-[18rem] grid-cols-2 gap-2">
+                                    <AntiFraudTrafficSummary type="primary" :setting="setting" />
+                                    <AntiFraudTrafficSummary type="secondary" :setting="setting" />
                                 </div>
-                                <template v-else>
-                                    <div>Pending: {{ setting.secondary_max_pending ?? '—' }}</div>
-                                    <div>Лимиты: {{ formatRateLimits(setting.secondary_rate_limits) }}</div>
-                                    <div>Fail подряд: {{ setting.secondary_failed_limit ?? '—' }}</div>
-                                    <div>Блок: {{ setting.secondary_block_days ?? '—' }} дн.</div>
-                                </template>
                             </td>
-                            <td class="align-top text-right whitespace-nowrap">
+                            <td class="w-0 align-top text-right whitespace-nowrap">
                                 <button type="button" class="btn btn-xs btn-outline" @click="editSetting(setting)">
                                     Редактировать
                                 </button>
@@ -129,26 +115,10 @@ const formatRateLimits = (limits) => {
                                 <span v-else class="badge badge-ghost badge-sm shrink-0">Выключен</span>
                             </div>
 
-                            <div class="pt-2 space-y-3 text-sm">
-                                <div>
-                                    <div class="text-xs text-base-content/50 mb-1">Primary</div>
-                                    <div>Pending: {{ setting.primary_max_pending ?? '—' }}</div>
-                                    <div>Лимиты: {{ formatRateLimits(setting.primary_rate_limits) }}</div>
-                                    <div>Fail подряд: {{ setting.primary_failed_limit ?? '—' }}</div>
-                                    <div>Блок: {{ setting.primary_block_days ?? '—' }} дн.</div>
-                                </div>
-
-                                <div>
-                                    <div class="text-xs text-base-content/50 mb-1">Secondary</div>
-                                    <div v-if="setting.secondary_enabled === false" class="text-base-content/60">
-                                        Фильтры отключены
-                                    </div>
-                                    <template v-else>
-                                        <div>Pending: {{ setting.secondary_max_pending ?? '—' }}</div>
-                                        <div>Лимиты: {{ formatRateLimits(setting.secondary_rate_limits) }}</div>
-                                        <div>Fail подряд: {{ setting.secondary_failed_limit ?? '—' }}</div>
-                                        <div>Блок: {{ setting.secondary_block_days ?? '—' }} дн.</div>
-                                    </template>
+                            <div class="pt-2">
+                                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <AntiFraudTrafficSummary type="primary" :setting="setting" />
+                                    <AntiFraudTrafficSummary type="secondary" :setting="setting" />
                                 </div>
                             </div>
 

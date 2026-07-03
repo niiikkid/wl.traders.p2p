@@ -11,8 +11,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Банки (платёжные шлюзы) намеренно не сидируются при установке —
+        // они генерируются как выдуманные командой dev:test-data:generate.
         $this->call([
-            PaymentGatewaySeeder::class,
             SenderStopListSeeder::class,
             UserSeeder::class,
         ]);

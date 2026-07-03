@@ -257,7 +257,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         class="border-b last:border-none border-base-200"
                                         :class="shouldHighlightPendingDispute(order) ? 'bg-error/10 border-l-2 border-l-error' : 'bg-base-100'"
                                     >
-                                    <th scope="row" class="font-medium whitespace-nowrap text-gray-900 dark:text-gray-200">
+                                    <th scope="row" class="font-medium whitespace-nowrap text-base-content">
                                         <div class="inline-flex items-center gap-1.5">
                                             <span
                                                 v-if="viewStore.isAdminViewMode && order.manual_control_acquiring"

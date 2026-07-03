@@ -1,7 +1,9 @@
 <script setup>
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import CopyAddress from '@/Components/CopyAddress.vue';
 import DateTime from '@/Components/DateTime.vue';
+import MoneyValue from '@/Components/MoneyValue.vue';
 import { ref } from 'vue';
 import axios from 'axios';
 
@@ -44,8 +46,17 @@ const toggleActive = (address) => {
     );
 };
 
+const refreshingAddressId = ref(null);
+
 const refreshBalance = (address) => {
-    router.post(route('admin.wallet-deposit.addresses.refresh-balance', address.id), {}, { preserveScroll: true });
+    refreshingAddressId.value = address.id;
+
+    router.post(route('admin.wallet-deposit.addresses.refresh-balance', address.id), {}, {
+        preserveScroll: true,
+        onFinish: () => {
+            refreshingAddressId.value = null;
+        },
+    });
 };
 
 // Manual review
@@ -174,19 +185,47 @@ const filterByStatus = (event) => {
                         </thead>
                         <tbody>
                             <tr v-for="address in addresses" :key="address.id">
-                                <td><code class="text-xs">{{ address.address }}</code></td>
+                                <td><CopyAddress :text="address.address" /></td>
                                 <td>{{ address.label || '—' }}</td>
                                 <td>
                                     <input type="checkbox" class="toggle toggle-sm toggle-success" :checked="address.is_active" @change="toggleActive(address)" />
                                 </td>
                                 <td>{{ address.open_invoices_count ?? 0 }}</td>
-                                <td>{{ address.balance !== null ? address.balance + ' USDT' : '—' }}</td>
+                                <td class="whitespace-nowrap">
+                                    <MoneyValue v-if="address.balance !== null" :value="address.balance" currency="usdt" compact />
+                                    <span v-else class="text-base-content/50">—</span>
+                                </td>
                                 <td>
                                     <DateTime v-if="address.last_checked_at" :data="address.last_checked_at" />
                                     <span v-else class="text-base-content/50">—</span>
                                 </td>
                                 <td class="text-right">
-                                    <button class="btn btn-ghost btn-xs" @click="refreshBalance(address)">Обновить баланс</button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-ghost btn-xs btn-square"
+                                        title="Обновить баланс"
+                                        aria-label="Обновить баланс"
+                                        :disabled="refreshingAddressId === address.id"
+                                        @click="refreshBalance(address)"
+                                    >
+                                        <span v-if="refreshingAddressId === address.id" class="loading loading-spinner loading-xs" />
+                                        <svg
+                                            v-else
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke-width="1.75"
+                                            stroke="currentColor"
+                                            class="size-4 shrink-0"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                                            />
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                             <tr v-if="addresses.length === 0">
@@ -234,8 +273,10 @@ const filterByStatus = (event) => {
                                     </template>
                                     <span v-else class="text-base-content/50">—</span>
                                 </td>
-                                <td class="whitespace-nowrap">{{ invoice.amount }} USDT</td>
-                                <td><code class="text-xs">{{ invoice.address }}</code></td>
+                                <td class="whitespace-nowrap">
+                                    <MoneyValue :value="invoice.amount" currency="usdt" compact />
+                                </td>
+                                <td><CopyAddress :text="invoice.address" /></td>
                                 <td>{{ invoice.confirmations }}/{{ invoice.required_confirmations }}</td>
                                 <td><DateTime :data="invoice.created_at" /></td>
                                 <td class="text-right">
@@ -270,8 +311,14 @@ const filterByStatus = (event) => {
 
                 <div v-if="reviewInvoice" class="mt-2 text-sm space-y-1">
                     <div><span class="text-base-content/60">Пользователь:</span> {{ reviewInvoice.user.email }}</div>
-                    <div><span class="text-base-content/60">Сумма инвойса:</span> <b>{{ reviewInvoice.amount }} USDT</b></div>
-                    <div class="break-all"><span class="text-base-content/60">Адрес:</span> <code>{{ reviewInvoice.address }}</code></div>
+                    <div class="flex flex-wrap items-center gap-1">
+                        <span class="text-base-content/60">Сумма инвойса:</span>
+                        <MoneyValue :value="reviewInvoice.amount" currency="usdt" />
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1">
+                        <span class="text-base-content/60">Адрес:</span>
+                        <CopyAddress :text="reviewInvoice.address" />
+                    </div>
                 </div>
 
                 <div class="my-3 flex items-center gap-2">
@@ -306,8 +353,8 @@ const filterByStatus = (event) => {
                                     <a :href="t.explorer_url" target="_blank" class="link link-primary">{{ t.txid.slice(0, 8) }}…</a>
                                 </td>
                                 <td class="whitespace-nowrap">
-                                    {{ t.amount }} USDT
-                                    <span v-if="t.matches_invoice_amount" class="badge badge-success badge-xs">точная</span>
+                                    <MoneyValue :value="t.amount" currency="usdt" compact />
+                                    <span v-if="t.matches_invoice_amount" class="badge badge-success badge-xs ml-1">точная</span>
                                 </td>
                                 <td class="whitespace-nowrap"><DateTime :data="t.timestamp" /></td>
                                 <td class="text-xs space-x-1">

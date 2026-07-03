@@ -65,10 +65,17 @@ const save = () => {
     setTimeout(() => { savedFlash.value = false; }, 1500);
 };
 
-const publish = () => {
-    if (store.publish()) {
+const publishError = ref(false);
+
+const publish = async () => {
+    publishError.value = false;
+
+    if (await store.publish()) {
         savedFlash.value = true;
         setTimeout(() => { savedFlash.value = false; }, 1500);
+    } else if (!store.publishing) {
+        publishError.value = true;
+        setTimeout(() => { publishError.value = false; }, 2500);
     }
 };
 
@@ -137,10 +144,14 @@ onBeforeUnmount(() => {
                     <button
                         type="button"
                         class="btn btn-primary btn-sm"
-                        :disabled="!store.canPublish"
+                        :class="{ 'btn-error': publishError }"
+                        :disabled="!store.canPublish || store.publishing"
                         :title="publishTitle"
                         @click="publish"
-                    >Publish</button>
+                    >
+                        <span v-if="store.publishing" class="loading loading-spinner loading-xs"></span>
+                        {{ publishError ? 'Ошибка' : (store.publishing ? 'Публикация…' : 'Опубликовать') }}
+                    </button>
                     <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Закрыть" @click="attemptClose">✕</button>
                 </header>
 

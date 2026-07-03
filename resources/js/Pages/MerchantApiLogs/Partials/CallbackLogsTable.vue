@@ -36,7 +36,7 @@ const toggleExpand = (logId) => {
                     Тип
                 </th>
                 <th scope="col">
-                    UUID сущности
+                    UUID
                 </th>
                 <th scope="col">
                     HTTP код
@@ -123,7 +123,7 @@ const toggleExpand = (logId) => {
                                     <div class="text-sm text-base-content truncate">{{ log.type }}</div>
                                 </div>
                                 <div v-if="log.callbackable">
-                                    <div class="text-xs text-base-content/70 mb-1">UUID сущности</div>
+                                    <div class="text-xs text-base-content/70 mb-1">UUID</div>
                                     <CopyableOrderUid :uuid="log.callbackable.uuid ?? ''" />
                                 </div>
                             </div>
@@ -167,7 +167,7 @@ const toggleExpand = (logId) => {
                             <div class="border-b border-base-content/10 my-2"></div>
                             <div class="flex items-center justify-between">
                                 <div class="flex-1 min-w-0">
-                                    <div v-if="log.callbackable" class="text-xs text-base-content/70 mb-1">UUID сущности</div>
+                                    <div v-if="log.callbackable" class="text-xs text-base-content/70 mb-1">UUID</div>
                                     <CopyableOrderUid v-if="log.callbackable" :uuid="log.callbackable.uuid ?? ''" />
                                     <div v-else class="text-sm text-base-content/60">-</div>
                                 </div>

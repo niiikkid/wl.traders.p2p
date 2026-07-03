@@ -212,6 +212,6 @@ class SeedMerchantOrdersJob implements ShouldQueue
             fn (string $code) => isset(DemoDataHelper::SELL_RATES[$code]) && Currency::isCurrency($code),
         ));
 
-        return $supported !== [] ? $supported : ['rub'];
+        return $supported !== [] ? $supported : [DemoDataHelper::DEMO_CURRENCY];
     }
 }

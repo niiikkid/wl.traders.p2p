@@ -52,5 +52,15 @@ interface SettingsServiceContract
 
     public function updatePayoutCurrencySettings(array $settings): void;
 
+    /**
+     * @return array{type:string,slug:string,name:string,colorScheme:string,tokens:array<string,string>}|null
+     */
+    public function getPublishedTheme(): ?array;
+
+    /**
+     * @param  array{type:string,slug:string,name:string,colorScheme:string,tokens:array<string,string>}|null  $theme
+     */
+    public function updatePublishedTheme(?array $theme): void;
+
     public function createAll(): void;
 }

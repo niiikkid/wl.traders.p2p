@@ -126,7 +126,7 @@ defineOptions({ layout: AuthenticatedLayout })
                     <template v-if="isCallbackLogsTab">
                         <InputFilter
                             name="uuid"
-                            placeholder="UUID сущности"
+                            placeholder="UUID"
                         />
                         <InputFilter
                             name="merchant"

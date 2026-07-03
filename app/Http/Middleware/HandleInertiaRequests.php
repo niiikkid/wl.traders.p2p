@@ -305,6 +305,7 @@ class HandleInertiaRequests extends Middleware
             'app' => [
                 'name' => config('app.name'),
                 'slogan' => services()->settings()->getAppSlogan(),
+                'publishedTheme' => services()->settings()->getPublishedTheme(),
             ],
             'auth' => [
                 'user' => fn () => $authUser

@@ -106,7 +106,7 @@ class SeedMerchantPayoutsJob implements ShouldQueue
 
         $roll = random_int(1, 100);
 
-        if ($roll <= 15) {
+        if ($roll <= 10) {
             // Отменена до взятия.
             services()->payout()->cancel($payout);
             $this->backdate($payout->id, $createdAt, ['canceled_at' => $createdAt]);
@@ -114,8 +114,8 @@ class SeedMerchantPayoutsJob implements ShouldQueue
             return;
         }
 
-        if ($roll <= 25) {
-            // Осталась открытой (в пуле).
+        if ($roll <= 22) {
+            // Осталась открытой (в пуле, ждёт трейдера).
             $this->backdate($payout->id, $createdAt);
 
             return;
@@ -131,18 +131,34 @@ class SeedMerchantPayoutsJob implements ShouldQueue
         $payout = services()->payout()->take($payout, $trader);
         $takenAt = (clone $createdAt)->addMinutes(random_int(1, 30));
 
-        if ($roll <= 35) {
-            // Взята трейдером, но ещё не отправлена.
+        if ($roll <= 40) {
+            // Взята трейдером (прикреплена), но ещё не отправлена.
             $this->backdate($payout->id, $createdAt, ['taken_at' => $takenAt]);
 
             return;
         }
 
-        // Отправлена и зачислена (hold отключаем для мгновенного завершения).
-        $trader->payout_hold_enabled = false;
-        $payout = services()->payout()->markSent($payout, $trader);
-
         $sentAt = (clone $takenAt)->addMinutes(random_int(1, 20));
+
+        if ($roll <= 68) {
+            // Отправлена и находится на удержании (статус SENT).
+            // Включаем hold с большим окном, чтобы выплата осталась в статусе «отправлена».
+            $trader->payout_hold_enabled = true;
+            $trader->payout_hold_minutes = 2880;
+            services()->payout()->markSent($payout, $trader);
+
+            $this->backdate($payout->id, $createdAt, [
+                'taken_at' => $takenAt,
+                'sent_at' => $sentAt,
+            ]);
+
+            return;
+        }
+
+        // Отправлена и зачислена трейдеру (hold отключён — мгновенное завершение).
+        $trader->payout_hold_enabled = false;
+        services()->payout()->markSent($payout, $trader);
+
         $this->backdate($payout->id, $createdAt, [
             'taken_at' => $takenAt,
             'sent_at' => $sentAt,
@@ -197,6 +213,6 @@ class SeedMerchantPayoutsJob implements ShouldQueue
             fn (string $code) => isset(DemoDataHelper::SELL_RATES[$code]) && Currency::isCurrency($code),
         ));
 
-        return $supported !== [] ? $supported : ['rub'];
+        return $supported !== [] ? $supported : [DemoDataHelper::DEMO_CURRENCY];
     }
 }

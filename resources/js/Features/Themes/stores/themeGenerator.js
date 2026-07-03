@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { defineStore } from 'pinia';
 import {
     BUILTIN_THEME_SLUGS,
@@ -54,6 +55,7 @@ export const useThemeGeneratorStore = defineStore('themeGenerator', {
         savedSnapshot: '',
         cssModalOpen: false,
         loaded: false,
+        publishing: false,
     }),
 
     getters: {
@@ -236,24 +238,48 @@ export const useThemeGeneratorStore = defineStore('themeGenerator', {
             this.savedSnapshot = snapshot(this.draft);
         },
 
-        publish() {
-            if (!this.canPublish) {
+        /**
+         * Publish the current draft as the project-wide theme. Persists it on
+         * the server so every user sees it, then mirrors it locally.
+         *
+         * @returns {Promise<boolean>}
+         */
+        async publish() {
+            if (!this.canPublish || this.publishing) {
                 return false;
             }
 
-            this.ensureEditableDraft();
-            this.draft.status = 'published';
+            this.publishing = true;
 
-            const index = this.custom.findIndex((t) => t.id === this.draft.id);
-            const stored = deepClone(this.draft);
-
-            if (index >= 0) {
-                this.custom.splice(index, 1, stored);
-            } else {
-                this.custom.push(stored);
+            try {
+                await axios.post(route('admin.appearance.theme.publish'), {
+                    type: this.draft.type === 'builtin' ? 'builtin' : 'custom',
+                    slug: this.draft.slug,
+                    name: this.draft.name,
+                    colorScheme: this.draft.colorScheme === 'dark' ? 'dark' : 'light',
+                    tokens: sanitizeTokens(this.draft.tokens),
+                });
+            } catch (error) {
+                return false;
+            } finally {
+                this.publishing = false;
             }
 
-            writeCustomThemes(this.custom);
+            this.draft.status = 'published';
+
+            if (this.draft.type === 'custom') {
+                const index = this.custom.findIndex((t) => t.id === this.draft.id);
+                const stored = deepClone(this.draft);
+
+                if (index >= 0) {
+                    this.custom.splice(index, 1, stored);
+                } else {
+                    this.custom.push(stored);
+                }
+
+                writeCustomThemes(this.custom);
+            }
+
             persistSelectedTheme(this.draft);
             this.savedSnapshot = snapshot(this.draft);
             this.applyDraftLive();

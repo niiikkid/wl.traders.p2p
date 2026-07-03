@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AddressWhitelistController;
 use App\Http\Controllers\Admin\AntiFraudClientController;
 use App\Http\Controllers\Admin\AntiFraudHistoryController;
 use App\Http\Controllers\Admin\AntiFraudSettingController;
+use App\Http\Controllers\Admin\AppearanceThemeController;
 use App\Http\Controllers\Admin\DashboardStatsController;
 use App\Http\Controllers\Admin\EnabledCardsController;
 use App\Http\Controllers\Admin\FinancesController;
@@ -320,6 +321,9 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::get('/main/api-log-stats', [DashboardStatsController::class, 'merchantApi'])->name('main.api-log-stats');
         Route::get('/main/enabled-cards-stats', [DashboardStatsController::class, 'enabledCards'])->name('main.enabled-cards-stats');
         Route::get('/notifications', [AdminNotificationController::class, 'index'])->name('notifications.index');
+
+        Route::post('/appearance/theme/publish', [AppearanceThemeController::class, 'publish'])->name('appearance.theme.publish');
+        Route::delete('/appearance/theme', [AppearanceThemeController::class, 'reset'])->name('appearance.theme.reset');
 
         Route::get('/app', [App\Http\Controllers\Admin\ApkController::class, 'index'])->name('app.index');
         Route::post('/app', [App\Http\Controllers\Admin\ApkController::class, 'store'])->name('app.store');

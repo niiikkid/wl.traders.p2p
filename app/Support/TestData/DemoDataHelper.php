@@ -19,41 +19,32 @@ use Illuminate\Support\Str;
 class DemoDataHelper
 {
     /**
-     * Ориентировочные sell-курсы (сколько фиата за 1 USDT) для правдоподобных сделок.
+     * Единственная валюта демо-данных — украинская гривна.
+     */
+    public const DEMO_CURRENCY = 'uah';
+
+    /**
+     * Ориентировочные sell-курсы (сколько фиата за 1 USDT).
+     * Используются для наполнения кэша курсов и создания источников курсов.
      *
      * @var array<string, float>
      */
     public const SELL_RATES = [
-        'rub' => 97.5,
-        'kzt' => 505.0,
-        'eur' => 0.93,
-        'tjs' => 10.9,
-        'kgs' => 88.5,
         'uah' => 41.5,
         'usd' => 1.0,
-        'azn' => 1.70,
-        'try' => 34.5,
-        'idr' => 16050.0,
-        'pln' => 3.98,
+        'eur' => 0.93,
     ];
 
     /**
-     * Диапазоны сумм заказов в фиате [min, max] по валютам.
+     * Диапазоны сумм заказов/выплат в фиате [min, max] по валютам.
+     * Реальные сделки — от 300 до 5000 гривен.
      *
      * @var array<string, array{0: int, 1: int}>
      */
     public const AMOUNT_RANGES = [
-        'rub' => [1500, 45000],
-        'kzt' => [8000, 250000],
-        'eur' => [20, 600],
-        'tjs' => [200, 6000],
-        'kgs' => [1500, 45000],
-        'uah' => [800, 20000],
-        'usd' => [20, 600],
-        'azn' => [30, 1000],
-        'try' => [700, 18000],
-        'idr' => [300000, 9000000],
-        'pln' => [80, 2500],
+        'uah' => [300, 5000],
+        'usd' => [10, 150],
+        'eur' => [10, 150],
     ];
 
     /**
@@ -145,22 +136,29 @@ class DemoDataHelper
     }
 
     /**
-     * @return array<int, string>
+     * Выдуманные (не настоящие) банки-шлюзы для гривны.
+     *
+     * @return array<int, array{name: string, code: string, senders: array<int, string>}>
      */
-    public static function bankNames(): array
+    public static function fictionalBanks(): array
     {
         return [
-            'Сбербанк', 'Тинькофф Банк', 'ВТБ', 'Альфа-Банк', 'Райффайзенбанк',
-            'Газпромбанк', 'Открытие', 'Совкомбанк', 'Росбанк', 'Почта Банк',
-            'МКБ', 'Уралсиб', 'ОЗОН Банк', 'ЮMoney',
+            ['name' => 'ПриватКапітал', 'code' => 'privcapital', 'senders' => ['PRIVCAP', 'ua.privcapital.app']],
+            ['name' => 'МоноФінанс', 'code' => 'monofin', 'senders' => ['MONOFIN', 'ua.monofin']],
+            ['name' => 'ДніпроБанк', 'code' => 'dniprobank', 'senders' => ['DNIPRO', 'ua.dniprobank.mobile']],
+            ['name' => 'КиївКредит', 'code' => 'kyivcredit', 'senders' => ['KYIVCR', 'ua.kyivcredit']],
+            ['name' => 'ЗахідПей', 'code' => 'zahidpay', 'senders' => ['ZAHIDPAY', 'ua.zahidpay.app']],
+            ['name' => 'КарпатиБанк', 'code' => 'karpatybank', 'senders' => ['KARPATY', 'ua.karpatybank']],
+            ['name' => 'ТавріяФінанс', 'code' => 'tavriafin', 'senders' => ['TAVRIA', 'ua.tavriafin.mobile']],
+            ['name' => 'ОдесаКапітал', 'code' => 'odesacap', 'senders' => ['ODESACAP', 'ua.odesacapital']],
         ];
     }
 
     public static function bankName(): string
     {
-        $banks = self::bankNames();
+        $banks = self::fictionalBanks();
 
-        return $banks[array_rand($banks)];
+        return $banks[array_rand($banks)]['name'];
     }
 
     /**
@@ -333,20 +331,20 @@ class DemoDataHelper
     }
 
     /**
-     * Текст банковского SMS/PUSH о зачислении с суммой заказа.
+     * Текст банковского SMS/PUSH о зачислении с суммой заказа (в гривнах).
      */
     public static function bankMessage(int $amount, string $last4): string
     {
-        $balance = number_format(random_int(5_000, 900_000), 0, '.', ' ');
+        $balance = number_format(random_int(1_000, 90_000), 0, '.', ' ');
         $sender = self::fullName();
 
         $templates = [
-            "Perevod {$amount}r ot {$sender}. Balans: {$balance}r. Karta *{$last4}",
-            "Postuplenie {$amount} RUB na kartu *{$last4}. Dostupno {$balance} RUB",
-            "Zachislenie *{$last4} +{$amount}r; ostatok {$balance}r",
-            "Вы получили перевод {$amount} ₽ на карту *{$last4}. Баланс {$balance} ₽",
-            "+{$amount} руб. Перевод от {$sender}. Доступно: {$balance} руб",
-            "SBP: postuplenie {$amount}.00 RUB. Schet *{$last4}. Balans {$balance}.00",
+            "Zarahuvannya {$amount} UAH na kartu *{$last4}. Dostupno {$balance} UAH",
+            "Perekaz {$amount} grn vid {$sender}. Balans: {$balance} grn. Kartka *{$last4}",
+            "Popovnennya *{$last4} +{$amount} grn; zalyshok {$balance} grn",
+            "Ви отримали переказ {$amount} ₴ на картку *{$last4}. Баланс {$balance} ₴",
+            "+{$amount} грн. Переказ від {$sender}. Доступно: {$balance} грн",
+            "Zarahovano {$amount}.00 UAH. Rakhunok *{$last4}. Balans {$balance}.00",
         ];
 
         return $templates[array_rand($templates)];

@@ -3,11 +3,28 @@ import {
     NEUTRAL_FAMILIES,
     tailwindColor,
 } from './color.js';
+import { contrastRatio } from './theme-contrast.js';
 import { RADIUS_OPTIONS } from './theme-schema.js';
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 
 const chance = (probability) => Math.random() < probability;
+
+/**
+ * Pick the content color (lightest or darkest shade of the same family) that
+ * has the best readable contrast against the given surface color. Guarantees
+ * the theme clears the publish contrast threshold.
+ *
+ * @param {string} family
+ * @param {string} surface  oklch color string of the surface
+ * @returns {string}
+ */
+const contentColorFor = (family, surface) => {
+    const light = tailwindColor(family, 50);
+    const dark = tailwindColor(family, 950);
+
+    return contrastRatio(dark, surface) >= contrastRatio(light, surface) ? dark : light;
+};
 
 const SEMANTIC_FAMILIES = {
     info: ['cyan', 'sky', 'blue'],
@@ -15,8 +32,6 @@ const SEMANTIC_FAMILIES = {
     warning: ['yellow', 'amber', 'orange'],
     error: ['red', 'pink', 'rose'],
 };
-
-const contentShadeFor = (isDark) => (isDark ? 100 : 950);
 
 /**
  * Generate a fresh, coherent daisyUI token set. Compatible in spirit with the
@@ -37,12 +52,11 @@ export const randomTokens = () => {
     const semanticShade = () => pick([400, 500, 600]);
 
     const brand = (family) => {
-        const shade = brandShade();
-        const contentShade = shade >= 500 ? 100 : 900;
+        const color = tailwindColor(family, brandShade());
 
         return {
-            color: tailwindColor(family, shade),
-            content: tailwindColor(family, contentShade),
+            color,
+            content: contentColorFor(family, color),
         };
     };
 
@@ -51,14 +65,15 @@ export const randomTokens = () => {
     const accent = brand(pick(CHROMATIC_FAMILIES));
 
     const neutralShade = pick([600, 700, 800, 900, 950]);
+    const neutralColor = tailwindColor(baseFamily, neutralShade);
 
     const semantic = (name) => {
         const family = pick(SEMANTIC_FAMILIES[name]);
-        const shade = semanticShade();
+        const color = tailwindColor(family, semanticShade());
 
         return {
-            color: tailwindColor(family, shade),
-            content: tailwindColor(family, shade >= 500 ? 100 : 950),
+            color,
+            content: contentColorFor(family, color),
         };
     };
 
@@ -83,8 +98,8 @@ export const randomTokens = () => {
             '--color-secondary-content': secondary.content,
             '--color-accent': accent.color,
             '--color-accent-content': accent.content,
-            '--color-neutral': tailwindColor(baseFamily, neutralShade),
-            '--color-neutral-content': tailwindColor(baseFamily, contentShadeFor(neutralShade >= 500)),
+            '--color-neutral': neutralColor,
+            '--color-neutral-content': contentColorFor(baseFamily, neutralColor),
             '--color-info': info.color,
             '--color-info-content': info.content,
             '--color-success': success.color,

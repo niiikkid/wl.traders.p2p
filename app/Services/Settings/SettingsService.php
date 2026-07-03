@@ -34,6 +34,8 @@ class SettingsService implements SettingsServiceContract
 
     const PAYOUT_CURRENCY_SETTINGS = 'payout_currency_settings';
 
+    const PUBLISHED_THEME = 'published_theme';
+
     protected $settings = null;
 
     public function getAppSlogan(): string
@@ -192,6 +194,39 @@ class SettingsService implements SettingsServiceContract
         );
     }
 
+    /**
+     * The currently published (project-wide) DaisyUI theme, or null when the
+     * default built-in theme should be used.
+     *
+     * @return array{type:string,slug:string,name:string,colorScheme:string,tokens:array<string,string>}|null
+     */
+    public function getPublishedTheme(): ?array
+    {
+        $value = $this->getParamOrNull(self::PUBLISHED_THEME);
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        $decoded = json_decode($value, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
+     * @param  array{type:string,slug:string,name:string,colorScheme:string,tokens:array<string,string>}|null  $theme
+     */
+    public function updatePublishedTheme(?array $theme): void
+    {
+        Setting::updateOrCreate(
+            ['key' => self::PUBLISHED_THEME],
+            ['value' => $theme === null ? '' : json_encode($theme)]
+        );
+
+        cache()->put('app-settings', Setting::all());
+        $this->settings = null;
+    }
+
     public function createAll(): void
     {
         cache()->forget('app-settings');
@@ -237,6 +272,11 @@ class SettingsService implements SettingsServiceContract
             'value' => json_encode($this->normalizePayoutCurrencySettings([])),
         ]);
 
+        Setting::firstOrCreate([
+            'key' => self::PUBLISHED_THEME,
+            'value' => '',
+        ]);
+
         $currenciesJson = Setting::query()->where('key', self::CURRENCY_PRICE_PARSER_SETTINGS)->value('value');
         if (! empty($currenciesJson)) {
             $currencies = json_decode($currenciesJson, true);
@@ -278,6 +318,23 @@ class SettingsService implements SettingsServiceContract
         }
 
         return $setting->value;
+    }
+
+    protected function getParamOrNull(string $key): mixed
+    {
+        if (! $this->settings) {
+            $settings = cache()->get('app-settings');
+
+            if (! $settings) {
+                $settings = cache()->rememberForever('app-settings', function () {
+                    return Setting::all();
+                });
+            }
+
+            $this->settings = $settings;
+        }
+
+        return $this->settings->where('key', $key)->first()?->value;
     }
 
     protected function updateParam(string $key, mixed $value): bool

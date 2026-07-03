@@ -18,36 +18,55 @@
                     root.setAttribute('data-theme', 'dim');
                     root.classList.add('dark');
 
-                    var raw = window.localStorage.getItem('theme-generator:selected');
-                    if (!raw) {
-                        return;
-                    }
+                    // Apply a theme object ({type, slug, colorScheme, tokens}) to <html>.
+                    // Token names/values are strictly sanitized before being inlined.
+                    var apply = function(selected) {
+                        if (!selected) {
+                            return;
+                        }
 
-                    var selected = JSON.parse(raw);
-                    var isDark = selected && selected.colorScheme === 'dark';
+                        var isDark = selected.colorScheme === 'dark';
 
-                    if (selected && selected.type === 'builtin' && selected.slug) {
-                        root.setAttribute('data-theme', selected.slug);
-                        root.classList.toggle('dark', isDark);
-                        return;
-                    }
-
-                    if (selected && selected.tokens) {
-                        var css = '[data-theme="tg-live"]{color-scheme:' + (isDark ? 'dark' : 'light') + ';';
-                        Object.keys(selected.tokens).forEach(function(key) {
-                            if (/^--[a-z0-9-]+$/.test(key)) {
-                                css += key + ':' + String(selected.tokens[key]).replace(/[;{}<>]/g, '') + ';';
+                        if (selected.type === 'builtin' && selected.slug) {
+                            var style = document.getElementById('theme-generator-live-style');
+                            if (style) {
+                                style.remove();
                             }
-                        });
-                        css += '}';
+                            root.setAttribute('data-theme', selected.slug);
+                            root.classList.toggle('dark', isDark);
+                            return;
+                        }
 
-                        var style = document.createElement('style');
-                        style.id = 'theme-generator-live-style';
-                        style.textContent = css;
-                        document.head.appendChild(style);
+                        if (selected.tokens) {
+                            var css = '[data-theme="tg-live"]{color-scheme:' + (isDark ? 'dark' : 'light') + ';';
+                            Object.keys(selected.tokens).forEach(function(key) {
+                                if (/^--[a-z0-9-]+$/.test(key)) {
+                                    css += key + ':' + String(selected.tokens[key]).replace(/[;{}<>]/g, '') + ';';
+                                }
+                            });
+                            css += '}';
 
-                        root.setAttribute('data-theme', 'tg-live');
-                        root.classList.toggle('dark', isDark);
+                            var el = document.getElementById('theme-generator-live-style');
+                            if (!el) {
+                                el = document.createElement('style');
+                                el.id = 'theme-generator-live-style';
+                                document.head.appendChild(el);
+                            }
+                            el.textContent = css;
+
+                            root.setAttribute('data-theme', 'tg-live');
+                            root.classList.toggle('dark', isDark);
+                        }
+                    };
+
+                    // 1. Project-wide published theme (visible to every user).
+                    var published = @json(services()->settings()->getPublishedTheme());
+                    apply(published);
+
+                    // 2. Local override for the admin who is editing in this browser.
+                    var raw = window.localStorage.getItem('theme-generator:selected');
+                    if (raw) {
+                        apply(JSON.parse(raw));
                     }
                 } catch (e) {
                     // silent

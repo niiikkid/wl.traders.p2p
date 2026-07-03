@@ -7,6 +7,8 @@ use App\DTO\PaymentDetail\PaymentDetailCreateDTO;
 use App\DTO\User\UserCreateDTO;
 use App\Enums\BalanceType;
 use App\Enums\DetailType;
+use App\Enums\NetworkEnum;
+use App\Enums\RateSourceType;
 use App\Enums\TeamLeaderInsuranceMode;
 use App\Enums\TelegramChatMessageStatus;
 use App\Enums\TelegramChatMessageType;
@@ -14,14 +16,19 @@ use App\Enums\TelegramChatParserType;
 use App\Enums\TelegramChatStatus;
 use App\Enums\TelegramChatType;
 use App\Enums\UserActivityAction;
+use App\Enums\WalletDepositInvoiceStatus;
+use App\Enums\WalletDepositMatchType;
 use App\Jobs\TestData\FinalizeDemoDataJob;
 use App\Jobs\TestData\SeedDeviceMessagesJob;
 use App\Jobs\TestData\SeedMerchantOrdersJob;
 use App\Jobs\TestData\SeedMerchantPayoutsJob;
+use App\Models\AntiFraudLog;
 use App\Models\Merchant;
 use App\Models\MerchantClient;
 use App\Models\NewsPost;
 use App\Models\NewsPostReaction;
+use App\Models\PaymentGateway;
+use App\Models\RateSource;
 use App\Models\Setting;
 use App\Models\TelegramAccount;
 use App\Models\TelegramChat;
@@ -31,12 +38,18 @@ use App\Models\UserActivityLog;
 use App\Models\UserDevice;
 use App\Models\UserLoginHistory;
 use App\Models\UserOnlinePeriod;
+use App\Models\Wallet;
+use App\Models\WalletDepositAddress;
+use App\Models\WalletDepositInvoice;
 use App\Models\WithdrawalAddress;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use App\Support\TestData\DemoDataHelper;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
@@ -55,8 +68,6 @@ class GenerateTestDataCommand extends Command
         {--traders=25 : Количество трейдеров}
         {--merchant-users=6 : Количество пользователей-мерчантов}
         {--supports=4 : Количество саппортов}
-        {--analysts=2 : Количество аналитиков}
-        {--providers=2 : Количество Provider Liquidity}
         {--orders=200 : Заказов на одного активного мерчанта}
         {--payouts=50 : Выплат на одного активного мерчанта}
         {--sms=40 : SMS/PUSH на одно устройство}
@@ -72,9 +83,6 @@ class GenerateTestDataCommand extends Command
     /** @var array<string, int> */
     private array $roleIds = [];
 
-    /** Вторичная валюта (кроме RUB), для которой есть активные карточные шлюзы. */
-    private ?string $secondaryCurrency = null;
-
     public function handle(): int
     {
         if (is_production() && ! $this->option('force')) {
@@ -89,11 +97,27 @@ class GenerateTestDataCommand extends Command
 
         $this->days = max(1, (int) $this->option('days'));
 
+        // Снимаем защиту mass-assignment, чтобы можно было проставлять исторические
+        // created_at/updated_at напрямую при создании журналов (иначе даты = сейчас).
+        Model::unguard();
+        try {
+            return $this->generate();
+        } finally {
+            Model::reguard();
+        }
+    }
+
+    private function generate(): int
+    {
         $this->prepare();
 
         if (! $this->resolveRoles()) {
             return Command::FAILURE;
         }
+
+        $this->info('Создаю выдуманные банки (платёжные шлюзы) и источники курсов...');
+        $this->createFictionalGateways();
+        $this->createRateSources();
 
         $this->info('Создаю пользователей всех ролей...');
         $teamLeaders = $this->createTeamLeaders((int) $this->option('team-leaders'));
@@ -104,12 +128,8 @@ class GenerateTestDataCommand extends Command
             'support_can_edit_order_amount' => (bool) random_int(0, 1),
             'support_can_use_manual_control_acq' => (bool) random_int(0, 1),
         ]));
-        $this->createSimpleUsers('analyst', 'Analyst', (int) $this->option('analysts'));
-        $this->createSimpleUsers('provider', 'Provider Liquidity', (int) $this->option('providers'));
 
         $tradersLike = $this->tradersLikeUsers();
-
-        $this->secondaryCurrency = $this->resolveSecondaryCurrency();
 
         $this->info('Создаю устройства и реквизиты...');
         $this->createDevices($tradersLike);
@@ -125,6 +145,9 @@ class GenerateTestDataCommand extends Command
 
         $this->info('Создаю адреса и заявки на вывод...');
         $this->createWithdrawals($tradersLike);
+
+        $this->info('Создаю крипто-процессинг: адреса пополнения и invoice...');
+        $this->createCryptoProcessing();
 
         $this->info('Создаю новости, Telegram, журналы входов и онлайн-периоды...');
         $this->createNews();
@@ -152,9 +175,84 @@ class GenerateTestDataCommand extends Command
         }
     }
 
+    /**
+     * Создаёт выдуманные банки-шлюзы для гривны (банки в проекте больше не сидируются).
+     */
+    private function createFictionalGateways(): void
+    {
+        $currency = DemoDataHelper::DEMO_CURRENCY;
+
+        // Лимиты хранятся как человекочитаемые суммы фиата (как в справочнике банков).
+        $minLimit = '100';
+        $maxLimit = '50000';
+
+        $created = 0;
+        foreach (DemoDataHelper::fictionalBanks() as $bank) {
+            if (PaymentGateway::query()->where('code', $bank['code'])->exists()) {
+                continue;
+            }
+
+            DB::table('payment_gateways')->insert([
+                'code' => $bank['code'],
+                'logo' => '',
+                'name' => $bank['name'],
+                'currency' => $currency,
+                'is_active' => 1,
+                'max_limit' => $maxLimit,
+                'min_limit' => $minLimit,
+                'nspk_schema' => null,
+                'sms_senders' => json_encode($bank['senders'], JSON_UNESCAPED_UNICODE),
+                'detail_types' => json_encode(['card', 'phone'], JSON_UNESCAPED_UNICODE),
+                'is_intrabank' => 0,
+                'commission_rate' => 2.5,
+                'service_commission_rate' => 8.0,
+                'reservation_time_for_orders' => random_int(15, 30),
+                'reservation_time_for_payouts' => random_int(10, 20),
+                'trader_commission_rate_for_orders' => (float) random_int(5, 8),
+                'trader_commission_rate_for_payouts' => (float) random_int(1, 3),
+                'trader_commission_tiers_for_orders' => null,
+                'total_service_commission_rate_for_orders' => (float) random_int(9, 12),
+                'total_service_commission_rate_for_payouts' => (float) random_int(2, 4),
+                'total_service_commission_tiers_for_orders' => null,
+                'use_flexible_trader_commission_for_orders' => 0,
+            ]);
+            $created++;
+        }
+
+        $this->line("  Банков-шлюзов: {$created}");
+    }
+
+    /**
+     * Создаёт сущности источников курсов (RateSource) — ручные, с готовым курсом.
+     */
+    private function createRateSources(): void
+    {
+        $created = 0;
+        foreach (DemoDataHelper::SELL_RATES as $code => $rate) {
+            if (! Currency::isCurrency($code)) {
+                continue;
+            }
+
+            RateSource::query()->updateOrCreate(
+                ['base_currency' => 'usdt', 'quote_currency' => $code, 'type' => RateSourceType::MANUAL->value],
+                [
+                    'name' => 'Ручной курс USDT/'.strtoupper($code),
+                    'rate' => Money::fromPrecision((string) $rate, $code),
+                    'rate_currency' => $code,
+                    'settings' => ['manual' => ['sell' => ['rate' => $rate], 'buy' => ['rate' => round($rate * 1.008, 6)]]],
+                    'is_active' => true,
+                    'last_refreshed_at' => now(),
+                ],
+            );
+            $created++;
+        }
+
+        $this->line("  Источников курсов: {$created}");
+    }
+
     private function resolveRoles(): bool
     {
-        $needed = ['Super Admin', 'Trader', 'Merchant', 'Team Leader', 'Support', 'Analyst', 'Provider Liquidity'];
+        $needed = ['Super Admin', 'Trader', 'Merchant', 'Team Leader', 'Support'];
 
         foreach ($needed as $name) {
             $role = Role::query()->where('name', $name)->first();
@@ -233,8 +331,9 @@ class GenerateTestDataCommand extends Command
             $user->update([
                 'is_online' => random_int(1, 100) <= 85,
                 'stop_traffic' => random_int(1, 100) <= 10,
-                'payouts_enabled' => random_int(1, 100) <= 60,
+                'payouts_enabled' => random_int(1, 100) <= 70,
                 'payout_hold_enabled' => false,
+                'payout_active_payouts_limit' => random_int(20, 50),
                 'can_work_without_device' => random_int(1, 100) <= 20,
                 'sms_auto_close_orders_enabled' => random_int(1, 100) <= 40,
             ]);
@@ -317,75 +416,47 @@ class GenerateTestDataCommand extends Command
      */
     private function createPaymentDetails(Collection $users): void
     {
+        $currency = DemoDataHelper::DEMO_CURRENCY;
         $active = queries()->paymentGateway()->getAllActive();
 
         $cardGateways = [];
         $phoneGateways = [];
         foreach ($active as $pg) {
-            $code = strtolower($pg->currency->getCode());
+            if (strtolower($pg->currency->getCode()) !== $currency) {
+                continue;
+            }
             $types = $pg->detail_types ?? [];
             if (in_array(DetailType::CARD, $types, true)) {
-                $cardGateways[$code][] = (int) $pg->id;
+                $cardGateways[] = (int) $pg->id;
             }
             if (in_array(DetailType::PHONE, $types, true)) {
-                $phoneGateways[$code][] = (int) $pg->id;
+                $phoneGateways[] = (int) $pg->id;
             }
         }
 
-        if (empty($cardGateways['rub']) && empty($phoneGateways['rub'])) {
-            $this->warn('  Нет активных RUB-шлюзов — реквизиты не будут созданы.');
+        if ($cardGateways === [] && $phoneGateways === []) {
+            $this->warn('  Нет активных UAH-шлюзов — реквизиты не будут созданы.');
 
             return;
         }
 
-        $secondaryCurrency = $this->secondaryCurrency;
-
         foreach ($users as $user) {
             $deviceId = UserDevice::query()->where('user_id', $user->id)->value('id');
 
-            // 3 RUB-карты (2 активные, 1 выключена).
-            if (! empty($cardGateways['rub'])) {
+            // 3 карты (2 активные, 1 выключена).
+            if ($cardGateways !== []) {
                 for ($i = 0; $i < 3; $i++) {
-                    $this->makePaymentDetail($user->id, $deviceId, DetailType::CARD, 'rub', $cardGateways['rub'], $i < 2);
+                    $this->makePaymentDetail($user->id, $deviceId, DetailType::CARD, $currency, $cardGateways, $i < 2);
                 }
             }
 
-            // 2 RUB-телефона (1 активный).
-            if (! empty($phoneGateways['rub'])) {
+            // 2 телефона (1 активный).
+            if ($phoneGateways !== []) {
                 for ($i = 0; $i < 2; $i++) {
-                    $this->makePaymentDetail($user->id, $deviceId, DetailType::PHONE, 'rub', $phoneGateways['rub'], $i === 0);
+                    $this->makePaymentDetail($user->id, $deviceId, DetailType::PHONE, $currency, $phoneGateways, $i === 0);
                 }
             }
-
-            // 1 реквизит во вторичной валюте.
-            if ($secondaryCurrency && ! empty($cardGateways[$secondaryCurrency])) {
-                $this->makePaymentDetail($user->id, $deviceId, DetailType::CARD, $secondaryCurrency, $cardGateways[$secondaryCurrency], true);
-            }
         }
-    }
-
-    /**
-     * Вторичная валюта (кроме rub) с наибольшим числом активных карточных шлюзов.
-     */
-    private function resolveSecondaryCurrency(): ?string
-    {
-        $cardGateways = [];
-        foreach (queries()->paymentGateway()->getAllActive() as $pg) {
-            $code = strtolower($pg->currency->getCode());
-            if (in_array(DetailType::CARD, $pg->detail_types ?? [], true)) {
-                $cardGateways[$code] = ($cardGateways[$code] ?? 0) + 1;
-            }
-        }
-
-        unset($cardGateways['rub']);
-        if ($cardGateways === []) {
-            return null;
-        }
-
-        arsort($cardGateways);
-        $code = array_key_first($cardGateways);
-
-        return isset(DemoDataHelper::SELL_RATES[$code]) ? $code : null;
     }
 
     /**
@@ -435,7 +506,7 @@ class GenerateTestDataCommand extends Command
 
             services()->invoice()->deposit(
                 walletID: $wallet->id,
-                amount: Money::fromPrecision((string) random_int(50000, 200000), Currency::USDT()),
+                amount: Money::fromPrecision((string) random_int(5000, 30000), Currency::USDT()),
                 balanceType: BalanceType::TRUST,
                 transactionID: DemoDataHelper::transactionId(),
                 txHash: DemoDataHelper::txHash(),
@@ -456,7 +527,7 @@ class GenerateTestDataCommand extends Command
 
             services()->invoice()->deposit(
                 walletID: $wallet->id,
-                amount: Money::fromPrecision((string) random_int(30000, 120000), Currency::USDT()),
+                amount: Money::fromPrecision((string) random_int(5000, 25000), Currency::USDT()),
                 balanceType: BalanceType::RESERVE,
             );
         }
@@ -513,17 +584,22 @@ class GenerateTestDataCommand extends Command
 
     private function configureMerchant(Merchant $merchant): void
     {
-        // GEO-карта: RUB всегда, иногда добавляем вторичную валюту, для которой
-        // у трейдеров гарантированно есть реквизиты (иначе заказы не создадутся).
-        $geo = ['rub' => 'bybit'];
-        if ($this->secondaryCurrency && random_int(1, 100) <= 30) {
-            $geo[$this->secondaryCurrency] = 'bybit';
-        }
-
-        $merchant->setGeoMap($geo);
+        // GEO-карта: только гривна.
+        $merchant->setGeoMap([DemoDataHelper::DEMO_CURRENCY => 'bybit']);
         $merchant->save();
 
-        // Антифрод примерно для половины мерчантов.
+        // Клиенты мерчанта.
+        $clientIds = [];
+        foreach (range(1, random_int(4, 10)) as $ignored) {
+            $client = MerchantClient::query()->create([
+                'merchant_id' => $merchant->id,
+                'client_id' => 'client-'.Str::lower(Str::random(10)),
+                'blocked_until' => random_int(1, 100) <= 15 ? now()->addDays(random_int(1, 7)) : null,
+            ]);
+            $clientIds[] = (int) $client->id;
+        }
+
+        // Антифрод примерно для половины мерчантов — с настройками и историей проверок.
         if (random_int(0, 1) === 1) {
             try {
                 services()->antiFraudSetting()->create([
@@ -539,17 +615,49 @@ class GenerateTestDataCommand extends Command
                     'secondary_block_days' => random_int(1, 3),
                     'secondary_rate_limits' => [['count' => random_int(2, 4), 'minutes' => random_int(10, 60)]],
                 ]);
+
+                $this->createAntiFraudHistory($merchant, $clientIds);
             } catch (\Throwable $e) {
                 // ignore
             }
         }
+    }
 
-        // Клиенты мерчанта.
-        foreach (range(1, random_int(3, 8)) as $ignored) {
-            MerchantClient::query()->create([
+    /**
+     * Генерирует историю антифрод-проверок (для графиков), распределённую по времени.
+     *
+     * @param  array<int, int>  $clientIds
+     */
+    private function createAntiFraudHistory(Merchant $merchant, array $clientIds): void
+    {
+        if ($clientIds === []) {
+            return;
+        }
+
+        $denyReasons = [
+            'Превышен лимит попыток создания заказов',
+            'Слишком много незавершённых заказов',
+            'Клиент временно заблокирован',
+            'Превышен лимит неуспешных заказов',
+        ];
+
+        $total = random_int(40, 120);
+        for ($i = 0; $i < $total; $i++) {
+            $isDeny = random_int(1, 100) <= 18;
+            $trafficType = random_int(1, 100) <= 70 ? 'primary' : 'secondary';
+            $createdAt = now()
+                ->subDays(random_int(0, $this->days))
+                ->subMinutes(random_int(0, 1440));
+
+            AntiFraudLog::query()->create([
                 'merchant_id' => $merchant->id,
+                'merchant_client_id' => $clientIds[array_rand($clientIds)],
                 'client_id' => 'client-'.Str::lower(Str::random(10)),
-                'blocked_until' => random_int(1, 100) <= 15 ? now()->addDays(random_int(1, 7)) : null,
+                'decision' => $isDeny ? 'deny' : 'allow',
+                'message' => $isDeny ? $denyReasons[array_rand($denyReasons)] : null,
+                'meta' => ['traffic_type' => $trafficType],
+                'created_at' => $createdAt,
+                'updated_at' => $createdAt,
             ]);
         }
     }
@@ -567,7 +675,7 @@ class GenerateTestDataCommand extends Command
 
             services()->invoice()->deposit(
                 walletID: $merchant->wallet->id,
-                amount: Money::fromPrecision((string) random_int(30000, 150000), Currency::USDT()),
+                amount: Money::fromPrecision((string) random_int(3000, 12000), Currency::USDT()),
                 balanceType: BalanceType::MERCHANT,
             );
         }
@@ -615,6 +723,151 @@ class GenerateTestDataCommand extends Command
                 }
             }
         }
+    }
+
+    /**
+     * Наполняет крипто-процессинг: пул адресов пополнения (TRC20/USDT) и invoice
+     * в разных статусах (ожидание, обработка, оплачен, истёк, несовпадение суммы и т.д.).
+     */
+    private function createCryptoProcessing(): void
+    {
+        // 1. Пул адресов пополнения.
+        $addresses = [];
+        for ($i = 1; $i <= 10; $i++) {
+            $addresses[] = WalletDepositAddress::query()->create([
+                'currency' => Currency::USDT()->getCode(),
+                'network' => NetworkEnum::TRX,
+                'address' => DemoDataHelper::tronAddress(),
+                'label' => 'Пул USDT TRC20 #'.$i,
+                'is_active' => $i <= 8,
+                'balance_units' => Money::fromPrecision((string) random_int(0, 50000), Currency::USDT()),
+                'last_checked_at' => now()->subMinutes(random_int(1, 120)),
+                'metadata' => ['source' => 'demo'],
+            ]);
+        }
+
+        // 2. Кошельки-получатели: пользовательские (trust) и мерчантские (merchant).
+        $walletTargets = Wallet::query()->get()
+            ->map(fn (Wallet $w) => [
+                'id' => (int) $w->id,
+                'balance_type' => $w->merchant_id ? BalanceType::MERCHANT : BalanceType::TRUST,
+            ])
+            ->all();
+
+        if ($walletTargets === []) {
+            return;
+        }
+
+        $adminId = User::query()->role('Super Admin')->value('id');
+
+        $statuses = [
+            WalletDepositInvoiceStatus::PAID, WalletDepositInvoiceStatus::PAID, WalletDepositInvoiceStatus::PAID,
+            WalletDepositInvoiceStatus::PENDING,
+            WalletDepositInvoiceStatus::PROCESSING,
+            WalletDepositInvoiceStatus::EXPIRED,
+            WalletDepositInvoiceStatus::AMOUNT_MISMATCH,
+            WalletDepositInvoiceStatus::CANCELLED,
+            WalletDepositInvoiceStatus::FAILED,
+        ];
+
+        $count = 60;
+        for ($i = 0; $i < $count; $i++) {
+            $target = $walletTargets[array_rand($walletTargets)];
+            $address = $addresses[array_rand($addresses)];
+            $status = $statuses[array_rand($statuses)];
+            $amount = Money::fromPrecision((string) random_int(50, 3000), Currency::USDT());
+
+            $isPending = $status === WalletDepositInvoiceStatus::PENDING;
+            $createdAt = $isPending
+                ? now()->subMinutes(random_int(1, 45))
+                : now()->subDays(random_int(0, $this->days))->subMinutes(random_int(0, 1440));
+            $expiresAt = (clone $createdAt)->addMinutes(30);
+
+            $this->makeDepositInvoice($target, $address->id, $status, $amount, $createdAt, $expiresAt, (int) $adminId);
+        }
+
+        $this->line('  Адресов пополнения: '.count($addresses).', invoice: '.$count);
+    }
+
+    /**
+     * @param  array{id: int, balance_type: BalanceType}  $target
+     */
+    private function makeDepositInvoice(array $target, int $addressId, WalletDepositInvoiceStatus $status, Money $amount, Carbon $createdAt, Carbon $expiresAt, int $adminId): void
+    {
+        $data = [
+            'wallet_id' => $target['id'],
+            'balance_type' => $target['balance_type'],
+            'deposit_address_id' => $addressId,
+            'address' => DemoDataHelper::tronAddress(),
+            'currency' => Currency::USDT()->getCode(),
+            'network' => NetworkEnum::TRX,
+            'amount' => $amount,
+            'status' => $status,
+            'confirmations' => 0,
+            'expires_at' => $expiresAt,
+            'poll_until_at' => (clone $expiresAt)->addMinutes(60),
+            'created_at' => $createdAt,
+            'updated_at' => $createdAt,
+        ];
+
+        $matchedAt = (clone $createdAt)->addMinutes(random_int(1, 20));
+
+        switch ($status) {
+            case WalletDepositInvoiceStatus::PAID:
+                $manual = random_int(1, 100) <= 25;
+                $data = array_merge($data, [
+                    'amount_received' => $amount,
+                    'txid' => DemoDataHelper::txHash(),
+                    'confirmations' => random_int(20, 60),
+                    'match_type' => $manual ? WalletDepositMatchType::MANUAL : WalletDepositMatchType::AUTOMATIC,
+                    'matched_at' => $matchedAt,
+                    'finalized_at' => $matchedAt,
+                    'last_checked_at' => $matchedAt,
+                    'resolved_by_user_id' => $manual ? $adminId : null,
+                    'resolution_note' => $manual ? 'Прикреплено вручную по TXID' : null,
+                ]);
+                break;
+
+            case WalletDepositInvoiceStatus::PROCESSING:
+                $data = array_merge($data, [
+                    'amount_received' => $amount,
+                    'txid' => DemoDataHelper::txHash(),
+                    'confirmations' => random_int(1, 15),
+                    'match_type' => WalletDepositMatchType::AUTOMATIC,
+                    'matched_at' => $matchedAt,
+                    'last_checked_at' => now()->subMinutes(random_int(1, 30)),
+                ]);
+                break;
+
+            case WalletDepositInvoiceStatus::AMOUNT_MISMATCH:
+                $received = $amount->mul((string) (random_int(40, 90) / 100));
+                $data = array_merge($data, [
+                    'amount_received' => $received,
+                    'txid' => DemoDataHelper::txHash(),
+                    'confirmations' => random_int(20, 40),
+                    'match_type' => WalletDepositMatchType::AUTOMATIC,
+                    'matched_at' => $matchedAt,
+                    'finalized_at' => $matchedAt,
+                    'error_message' => 'Полученная сумма не совпадает с суммой счёта',
+                ]);
+                break;
+
+            case WalletDepositInvoiceStatus::FAILED:
+                $data['error_message'] = 'Ошибка обработки транзакции';
+                $data['finalized_at'] = $matchedAt;
+                break;
+
+            case WalletDepositInvoiceStatus::EXPIRED:
+            case WalletDepositInvoiceStatus::CANCELLED:
+                $data['finalized_at'] = (clone $expiresAt);
+                break;
+
+            case WalletDepositInvoiceStatus::PENDING:
+            default:
+                break;
+        }
+
+        WalletDepositInvoice::query()->create($data);
     }
 
     private function createNews(): void
