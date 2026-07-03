@@ -45,9 +45,7 @@ class SmsLogResource extends JsonResource
                     'status_name' => $order->status_name,
                     'created_at' => $order->created_at->toISOString(),
                     'payment_gateway_name' => $order->paymentGateway?->name,
-                    'payment_gateway_logo_path' => $order->paymentGateway?->logo
-                        ? asset('storage/logos/'.$order->paymentGateway->logo)
-                        : null,
+                    'payment_gateway_logo_path' => $order->paymentGateway?->logoUrl(),
                     'payment_detail' => $order->paymentDetail?->detail,
                     'payment_detail_type' => $order->paymentDetail?->detail_type?->value,
                     'payment_detail_name' => $order->paymentDetail?->name,

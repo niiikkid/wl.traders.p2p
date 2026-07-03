@@ -12,6 +12,7 @@ import NumberInputBlock from "@/Components/Form/NumberInputBlock.vue";
 import TraderCommissionRangePreview from "@/Components/PaymentGateway/TraderCommissionRangePreview.vue";
 import PaymentDetailScheduleField from "@/Components/PaymentDetail/PaymentDetailScheduleField.vue";
 import PaymentDetailScheduleStatus from "@/Components/PaymentDetail/PaymentDetailScheduleStatus.vue";
+import GatewayLogo from "@/Components/GatewayLogo.vue";
 import { useModalStore } from "@/store/modal.js";
 import {useViewStore} from "@/store/view.js";
 import {
@@ -499,17 +500,11 @@ watch(
                             </span>
                         </div>
                         <div class="flex items-center gap-3 rounded-box border border-base-200 bg-base-100 p-3">
-                            <div class="w-10 h-10 rounded-full bg-base-200 flex items-center justify-center overflow-hidden">
-                                <img
-                                    v-if="payment_detail?.payment_gateway?.logo_path"
-                                    :src="payment_detail?.payment_gateway?.logo_path"
-                                    :alt="payment_detail?.payment_gateway?.name || 'Платежный метод'"
-                                    class="w-10 h-10 object-contain"
-                                />
-                                <span v-else class="text-xs text-base-content/60">
-                                    PG
-                                </span>
-                            </div>
+                            <GatewayLogo
+                                :img_path="payment_detail?.payment_gateway?.logo_path"
+                                :name="payment_detail?.payment_gateway?.name || 'Платежный метод'"
+                                class="h-10 w-10 shrink-0"
+                            />
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <div class="font-medium truncate">

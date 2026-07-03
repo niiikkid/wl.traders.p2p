@@ -136,7 +136,7 @@ class PaymentDetailVolumeStatisticsService
                 'currency_symbol' => $paymentDetail->currency->getSymbol(),
                 'payment_gateway' => $paymentGateway === null ? null : [
                     'name' => (string) $paymentGateway->name,
-                    'logo_path' => $paymentGateway->logo ? asset('storage/logos/'.$paymentGateway->logo) : null,
+                    'logo_path' => $paymentGateway->logoUrl(),
                 ],
             ],
             'volume' => Money::fromUnits((string) $volumeUnits, $currencyCode)->toBeauty(),

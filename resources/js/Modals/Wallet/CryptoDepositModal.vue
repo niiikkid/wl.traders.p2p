@@ -214,7 +214,7 @@ onBeforeUnmount(stopTimers);
 
         <ModalBody>
             <div v-if="step === 'amount'" class="space-y-3">
-                <p v-if="description" class="text-sm text-base-content/70">{{ description }}</p>
+                <p v-if="description" class="min-w-0 text-pretty text-sm text-base-content/70">{{ description }}</p>
                 <div>
                     <InputLabel :for="`${modalName}_amount`" value="Сумма пополнения (USDT)" :error="!!error" />
                     <TextInput
@@ -229,19 +229,21 @@ onBeforeUnmount(stopTimers);
                     />
                     <InputError class="mt-2" :message="error" />
                 </div>
-                <div class="alert alert-warning alert-soft text-sm">
-                    Пополнение принимается только в <b>USDT (сеть TRON / TRC20)</b>.
+                <div role="alert" class="alert alert-warning alert-soft w-full min-w-0 items-start py-2.5 text-sm">
+                    <span class="min-w-0 text-pretty">
+                        Пополнение принимается только в <b>USDT (сеть TRON / TRC20)</b>.
+                    </span>
                 </div>
             </div>
 
             <div v-else class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <span class="badge" :class="statusInfo.badge">{{ statusInfo.label }}</span>
-                    <span v-if="!isFinal" class="font-mono text-sm text-base-content/70">Осталось {{ countdown }}</span>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span class="badge whitespace-normal text-left" :class="statusInfo.badge">{{ statusInfo.label }}</span>
+                    <span v-if="!isFinal" class="shrink-0 font-mono text-sm text-base-content/70">Осталось {{ countdown }}</span>
                 </div>
 
-                <div v-if="invoice.status === 'paid'" class="alert alert-success alert-soft text-sm">
-                    Средства успешно зачислены на баланс.
+                <div v-if="invoice.status === 'paid'" role="alert" class="alert alert-success alert-soft w-full min-w-0 items-start py-2.5 text-sm">
+                    <span class="min-w-0 text-pretty">Средства успешно зачислены на баланс.</span>
                 </div>
 
                 <template v-else-if="invoice.status === 'pending' || invoice.status === 'processing'">
@@ -278,10 +280,12 @@ onBeforeUnmount(stopTimers);
                     </ul>
                 </template>
 
-                <div v-else class="alert alert-error alert-soft text-sm">
-                    <template v-if="invoice.status === 'expired'">Время оплаты истекло. Создайте новый инвойс.</template>
-                    <template v-else-if="invoice.status === 'amount_mismatch'">Получена другая сумма — платёж передан на проверку администратору.</template>
-                    <template v-else>Инвойс завершён. При вопросах обратитесь в поддержку.</template>
+                <div v-else role="alert" class="alert alert-error alert-soft w-full min-w-0 items-start py-2.5 text-sm">
+                    <span class="min-w-0 text-pretty">
+                        <template v-if="invoice.status === 'expired'">Время оплаты истекло. Создайте новый инвойс.</template>
+                        <template v-else-if="invoice.status === 'amount_mismatch'">Получена другая сумма — платёж передан на проверку администратору.</template>
+                        <template v-else>Инвойс завершён. При вопросах обратитесь в поддержку.</template>
+                    </span>
                 </div>
             </div>
         </ModalBody>

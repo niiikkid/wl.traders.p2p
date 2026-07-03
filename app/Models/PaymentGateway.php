@@ -163,4 +163,9 @@ class PaymentGateway extends Model
             defaultRate: $defaultRate
         );
     }
+
+    public function logoUrl(): ?string
+    {
+        return filled($this->logo) ? asset('storage/logos/'.$this->logo) : null;
+    }
 }

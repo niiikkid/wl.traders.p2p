@@ -264,7 +264,7 @@ const filterByStatus = (event) => {
                         </thead>
                         <tbody>
                             <tr v-for="invoice in invoices.data" :key="invoice.id">
-                                <td><span class="badge" :class="statusInfo(invoice.status).badge">{{ statusInfo(invoice.status).label }}</span></td>
+                                <td><span class="badge badge-sm badge-soft" :class="statusInfo(invoice.status).badge">{{ statusInfo(invoice.status).label }}</span></td>
                                 <td class="text-xs">{{ invoice.user.email }}</td>
                                 <td class="text-xs">
                                     <template v-if="invoice.merchant">

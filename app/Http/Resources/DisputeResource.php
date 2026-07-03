@@ -52,7 +52,7 @@ class DisputeResource extends JsonResource
             ],
             'payment_gateway' => [
                 'name' => $this->order->paymentGateway->name,
-                'logo_path' => asset('storage/logos/'.$this->order->paymentGateway->logo),
+                'logo_path' => $this->order->paymentGateway->logoUrl(),
             ],
             'status' => $this->status->value,
             'reason' => $this->reason,

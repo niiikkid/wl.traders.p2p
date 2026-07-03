@@ -64,7 +64,7 @@ class SmsLogController extends Controller
                 return [
                     'id' => $paymentGateway->id,
                     'name' => $paymentGateway->name,
-                    'logo_path' => $paymentGateway->logo ? asset('storage/logos/'.$paymentGateway->logo) : null,
+                    'logo_path' => $paymentGateway->logoUrl(),
                 ];
             })
             ->values();
@@ -77,7 +77,7 @@ class SmsLogController extends Controller
                 return [
                     'id' => $paymentGateway->id,
                     'name' => $paymentGateway->name,
-                    'logo_path' => $paymentGateway->logo ? asset('storage/logos/'.$paymentGateway->logo) : null,
+                    'logo_path' => $paymentGateway->logoUrl(),
                 ];
             })
             ->values();

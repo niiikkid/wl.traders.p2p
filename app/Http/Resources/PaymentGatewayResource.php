@@ -39,7 +39,7 @@ class PaymentGatewayResource extends JsonResource
             'is_intrabank' => $this->is_intrabank,
             'reservation_time_for_orders' => $this->reservation_time_for_orders,
             'reservation_time_for_payouts' => $this->reservation_time_for_payouts,
-            'logo_path' => $this->logo ? asset('storage/logos/'.$this->logo) : null,
+            'logo_path' => $this->logoUrl(),
         ];
     }
 }

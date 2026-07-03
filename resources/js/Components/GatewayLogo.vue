@@ -1,30 +1,54 @@
 <script setup>
 import AppTooltip from '@/Components/AppTooltip.vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     img_path: {
         type: String,
+        default: null,
     },
     name: {
         type: String,
         default: null,
     },
 });
+
+const image_failed = ref(false);
+
+watch(
+    () => props.img_path,
+    () => {
+        image_failed.value = false;
+    },
+);
+
+const show_image = computed(() => {
+    const path = props.img_path?.trim();
+
+    return Boolean(path) && !image_failed.value;
+});
+
+const on_image_error = () => {
+    image_failed.value = true;
+};
 </script>
 
 <template>
-    <div>
-        <AppTooltip v-if="name" :tip="nam1e" wrapper-class="inline-block rounded-lg">
-            <div class="rounded-lg overflow-hidden">
+    <div class="shrink-0">
+        <AppTooltip v-if="name" :tip="name" wrapper-class="block size-full rounded-lg">
+            <div class="size-full overflow-hidden rounded-lg">
                 <img
-                    v-if="img_path"
+                    v-if="show_image"
                     :src="img_path"
-                    class=""
+                    class="size-full object-contain"
                     loading="lazy"
                     decoding="async"
+                    :alt="name"
+                    @error="on_image_error"
                 />
                 <svg
                     v-else
+                    class="size-full"
                     aria-hidden="true"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -34,16 +58,19 @@ const props = defineProps({
                 </svg>
             </div>
         </AppTooltip>
-        <div v-else class="rounded-lg overflow-hidden">
+        <div v-else class="size-full overflow-hidden rounded-lg">
             <img
-                v-if="img_path"
+                v-if="show_image"
                 :src="img_path"
-                class=""
+                class="size-full object-contain"
                 loading="lazy"
                 decoding="async"
+                alt=""
+                @error="on_image_error"
             />
             <svg
                 v-else
+                class="size-full"
                 aria-hidden="true"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
