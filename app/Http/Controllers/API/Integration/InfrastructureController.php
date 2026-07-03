@@ -192,7 +192,7 @@ class InfrastructureController extends Controller
 
     public function invoices(Request $request): JsonResponse
     {
-        $query = Invoice::query()->with(['wallet.user']);
+        $query = Invoice::query()->with(['wallet.user', 'wallet.merchant']);
 
         $this->applyIdFilter($query, 'wallet_id', $request->string('wallet_ids')->toString());
         $invoiceType = $request->string('type')->toString();
@@ -222,6 +222,9 @@ class InfrastructureController extends Controller
                 'id' => $invoice->wallet?->id,
                 'user_id' => $invoice->wallet?->user?->id,
                 'user_email' => $invoice->wallet?->user?->email,
+                'merchant_id' => $invoice->wallet?->merchant?->id,
+                'merchant_uuid' => $invoice->wallet?->merchant?->uuid,
+                'merchant_name' => $invoice->wallet?->merchant?->name,
             ],
             'created_at' => $invoice->created_at?->toIso8601String(),
             'updated_at' => $invoice->updated_at?->toIso8601String(),
@@ -230,7 +233,7 @@ class InfrastructureController extends Controller
 
     public function invoice(Invoice $invoice): JsonResponse
     {
-        $invoice->loadMissing(['wallet.user']);
+        $invoice->loadMissing(['wallet.user', 'wallet.merchant']);
 
         return response()->json([
             'data' => [
@@ -248,6 +251,9 @@ class InfrastructureController extends Controller
                     'id' => $invoice->wallet?->id,
                     'user_id' => $invoice->wallet?->user?->id,
                     'user_email' => $invoice->wallet?->user?->email,
+                    'merchant_id' => $invoice->wallet?->merchant?->id,
+                    'merchant_uuid' => $invoice->wallet?->merchant?->uuid,
+                    'merchant_name' => $invoice->wallet?->merchant?->name,
                 ],
                 'created_at' => $invoice->created_at?->toIso8601String(),
                 'updated_at' => $invoice->updated_at?->toIso8601String(),
@@ -324,7 +330,7 @@ class InfrastructureController extends Controller
 
     public function wallet(Wallet $wallet): JsonResponse
     {
-        $wallet->loadMissing('user');
+        $wallet->loadMissing(['user', 'merchant']);
 
         return response()->json([
             'data' => [
@@ -333,6 +339,11 @@ class InfrastructureController extends Controller
                     'id' => $wallet->user?->id,
                     'email' => $wallet->user?->email,
                 ],
+                'merchant' => $wallet->merchant ? [
+                    'id' => $wallet->merchant->id,
+                    'uuid' => $wallet->merchant->uuid,
+                    'name' => $wallet->merchant->name,
+                ] : null,
                 'balances' => [
                     'merchant_balance' => $wallet->merchant_balance->toBeauty(),
                     'trust_balance' => $wallet->trust_balance->toBeauty(),
@@ -350,7 +361,7 @@ class InfrastructureController extends Controller
     public function walletTransactions(Request $request, Wallet $wallet): JsonResponse
     {
         $query = $wallet->transactions()->getQuery();
-        $query->with('wallet.user');
+        $query->with(['wallet.user', 'wallet.merchant']);
 
         $this->applyExactFilter($query, 'type', $request->string('type')->toString());
         $this->applyExactFilter($query, 'direction', $request->string('direction')->toString());
@@ -367,6 +378,9 @@ class InfrastructureController extends Controller
                 'id' => $transaction->wallet?->id,
                 'user_id' => $transaction->wallet?->user?->id,
                 'user_email' => $transaction->wallet?->user?->email,
+                'merchant_id' => $transaction->wallet?->merchant?->id,
+                'merchant_uuid' => $transaction->wallet?->merchant?->uuid,
+                'merchant_name' => $transaction->wallet?->merchant?->name,
             ],
             'created_at' => $transaction->created_at?->toIso8601String(),
             'updated_at' => $transaction->updated_at?->toIso8601String(),
@@ -379,7 +393,7 @@ class InfrastructureController extends Controller
             abort(404);
         }
 
-        $transaction->loadMissing('wallet.user');
+        $transaction->loadMissing(['wallet.user', 'wallet.merchant']);
 
         return response()->json([
             'data' => [
@@ -392,6 +406,9 @@ class InfrastructureController extends Controller
                     'id' => $transaction->wallet?->id,
                     'user_id' => $transaction->wallet?->user?->id,
                     'user_email' => $transaction->wallet?->user?->email,
+                    'merchant_id' => $transaction->wallet?->merchant?->id,
+                    'merchant_uuid' => $transaction->wallet?->merchant?->uuid,
+                    'merchant_name' => $transaction->wallet?->merchant?->name,
                 ],
                 'created_at' => $transaction->created_at?->toIso8601String(),
                 'updated_at' => $transaction->updated_at?->toIso8601String(),

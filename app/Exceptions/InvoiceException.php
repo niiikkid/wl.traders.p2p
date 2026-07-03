@@ -28,4 +28,9 @@ class InvoiceException extends BaseException
     {
         return new self('Инвойс с таким transaction id уже существует.');
     }
+
+    public static function merchantWalletMissing(): static
+    {
+        return new self('Для выбранного мерчанта не найден кошелёк.');
+    }
 }

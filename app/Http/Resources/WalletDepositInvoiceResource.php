@@ -22,6 +22,11 @@ class WalletDepositInvoiceResource extends JsonResource
             'currency' => $this->currency->getCode(),
             'network' => $this->network->value,
             'balance_type' => $this->balance_type->value,
+            'merchant' => $this->wallet?->merchant ? [
+                'id' => $this->wallet->merchant->id,
+                'uuid' => $this->wallet->merchant->uuid,
+                'name' => $this->wallet->merchant->name,
+            ] : null,
             'address' => $this->address,
             'qr_url' => route('deposit.invoices.qr', $this->resource),
             'txid' => $this->txid,

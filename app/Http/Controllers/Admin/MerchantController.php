@@ -20,7 +20,7 @@ class MerchantController extends Controller
     public function index()
     {
         $merchants = Merchant::query()
-            ->with(['user'])
+            ->with(['user', 'wallet'])
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
 
@@ -32,7 +32,7 @@ class MerchantController extends Controller
     public function indexData(Request $request): JsonResponse
     {
         $merchants = Merchant::query()
-            ->with(['user'])
+            ->with(['user', 'wallet'])
             ->orderByDesc('id')
             ->paginate($request->get('per_page', 10));
 

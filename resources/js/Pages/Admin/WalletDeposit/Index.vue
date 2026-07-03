@@ -215,6 +215,7 @@ const filterByStatus = (event) => {
                             <tr>
                                 <th>Статус</th>
                                 <th>Пользователь</th>
+                                <th>Мерчант</th>
                                 <th>Сумма</th>
                                 <th>Адрес</th>
                                 <th>Подтв.</th>
@@ -226,6 +227,13 @@ const filterByStatus = (event) => {
                             <tr v-for="invoice in invoices.data" :key="invoice.id">
                                 <td><span class="badge" :class="statusInfo(invoice.status).badge">{{ statusInfo(invoice.status).label }}</span></td>
                                 <td class="text-xs">{{ invoice.user.email }}</td>
+                                <td class="text-xs">
+                                    <template v-if="invoice.merchant">
+                                        <div class="font-medium">{{ invoice.merchant.name }}</div>
+                                        <div class="font-mono text-base-content/60">{{ invoice.merchant.uuid }}</div>
+                                    </template>
+                                    <span v-else class="text-base-content/50">—</span>
+                                </td>
                                 <td class="whitespace-nowrap">{{ invoice.amount }} USDT</td>
                                 <td><code class="text-xs">{{ invoice.address }}</code></td>
                                 <td>{{ invoice.confirmations }}/{{ invoice.required_confirmations }}</td>
@@ -236,7 +244,7 @@ const filterByStatus = (event) => {
                                 </td>
                             </tr>
                             <tr v-if="invoices.data.length === 0">
-                                <td colspan="7" class="text-center text-base-content/50">Инвойсов пока нет</td>
+                                <td colspan="8" class="text-center text-base-content/50">Инвойсов пока нет</td>
                             </tr>
                         </tbody>
                     </table>

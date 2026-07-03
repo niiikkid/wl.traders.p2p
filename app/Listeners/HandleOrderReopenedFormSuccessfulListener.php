@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Enums\BalanceType;
 use App\Enums\TransactionType;
 use App\Events\OrderReopenedFromSucessfulEvent;
+use App\Exceptions\OrderException;
 use App\Utils\Transaction;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -26,8 +27,13 @@ class HandleOrderReopenedFormSuccessfulListener implements ShouldQueue
     public function handle(OrderReopenedFromSucessfulEvent $event): void
     {
         Transaction::run(function () use ($event) {
+            $event->order->merchant->loadMissing('wallet');
+            if (! $event->order->merchant->wallet) {
+                throw OrderException::merchantWalletMissing();
+            }
+
             services()->wallet()->takeFromBalance(
-                $event->order->merchant->user->wallet->id,
+                $event->order->merchant->wallet->id,
                 $event->order->merchant_profit,
                 TransactionType::ROLLBACK_INCOME_FROM_A_SUCCESSFUL_ORDER,
                 BalanceType::MERCHANT,

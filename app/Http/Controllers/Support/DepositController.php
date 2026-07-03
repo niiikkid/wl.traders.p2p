@@ -22,7 +22,7 @@ class DepositController extends Controller
         $filtersVariants = $this->getFiltersData();
 
         $invoices = Invoice::query()
-            ->with('wallet.user')
+            ->with(['wallet.user', 'wallet.merchant'])
             ->where('type', InvoiceType::DEPOSIT)
             ->when(! empty($filters->invoiceStatuses), function ($query) use ($filters) {
                 $query->whereIn('status', $filters->invoiceStatuses);
@@ -36,8 +36,8 @@ class DepositController extends Controller
             })
             ->when($filters->user, function ($query) use ($filters) {
                 $query->where(function ($query) use ($filters) {
-                    $query->whereRelation('wallet.user', 'email', 'like', '%' . $filters->user . '%');
-                    $query->orWhereRelation('wallet.user', 'name', 'like', '%' . $filters->user . '%');
+                    $query->whereRelation('wallet.user', 'email', 'like', '%'.$filters->user.'%');
+                    $query->orWhereRelation('wallet.user', 'name', 'like', '%'.$filters->user.'%');
                 });
             })
             ->orderByDesc('id')

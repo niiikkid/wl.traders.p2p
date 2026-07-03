@@ -34,6 +34,11 @@ class OrderException extends BaseException
         return new self('Мерчант отключен.');
     }
 
+    public static function merchantWalletMissing(): OrderException
+    {
+        return new self('Для мерчанта не найден кошелёк.');
+    }
+
     public static function noSuccessUrlForH2HOrders(): OrderException
     {
         return new self('Для H2H сделок невозможно указать success url.');

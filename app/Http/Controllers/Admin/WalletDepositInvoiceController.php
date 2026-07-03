@@ -44,7 +44,7 @@ class WalletDepositInvoiceController extends Controller
             );
 
             return response()->json([
-                'invoice' => (new WalletDepositInvoiceResource($invoice->loadMissing(['wallet.user', 'resolvedBy'])))->resolve(),
+                'invoice' => (new WalletDepositInvoiceResource($invoice->loadMissing(['wallet.user', 'wallet.merchant', 'resolvedBy'])))->resolve(),
             ]);
         } catch (WalletDepositException $e) {
             return response()->json(['message' => $e->getMessage()], 422);

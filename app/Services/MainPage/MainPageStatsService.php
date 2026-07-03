@@ -18,6 +18,7 @@ use App\Models\Order;
 use App\Models\PaymentDetail;
 use App\Models\Payout\Payout;
 use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
 use Carbon\Carbon;
@@ -50,17 +51,26 @@ class MainPageStatsService implements MainPageStatsServiceContract
 
         $totalProfit = Money::fromUnits($query->clone()->sum('merchant_profit'), Currency::USDT());
 
+        $merchantWalletIds = Wallet::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('merchant_id')
+            ->pluck('id')
+            ->all();
+
         $totalWithdrawalAmount = Invoice::query()
-            ->whereRelation('wallet', 'user_id', $user->id)
+            ->whereIn('wallet_id', $merchantWalletIds)
             ->where('type', InvoiceType::WITHDRAWAL)
             ->where('balance_type', BalanceType::MERCHANT)
             ->where('status', InvoiceStatus::SUCCESS)
             ->sum('amount');
         $totalWithdrawalAmount = Money::fromUnits($totalWithdrawalAmount, Currency::USDT());
 
-        $balance = $user->wallet
-            ? services()->wallet()->getTotalAvailableBalance($user->wallet, BalanceType::MERCHANT)
-            : Money::fromUnits(0, Currency::USDT());
+        $balance = Money::fromUnits(
+            (string) Wallet::query()
+                ->whereIn('id', $merchantWalletIds)
+                ->sum('merchant_balance'),
+            Currency::USDT()
+        );
 
         $successOrderCount = $query->clone()->count();
 

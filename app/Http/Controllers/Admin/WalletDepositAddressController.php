@@ -32,7 +32,7 @@ class WalletDepositAddressController extends Controller
             ->get();
 
         $invoices = WalletDepositInvoice::query()
-            ->with(['wallet.user', 'resolvedBy'])
+            ->with(['wallet.user', 'wallet.merchant', 'resolvedBy'])
             ->when($request->filled('status'), function ($query) use ($request): void {
                 $query->where('status', $request->string('status')->toString());
             })

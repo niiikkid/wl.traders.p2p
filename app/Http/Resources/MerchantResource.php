@@ -28,6 +28,9 @@ class MerchantResource extends JsonResource
             'domain' => $this->domain,
             'user_id' => $this->user_id,
             'active' => $this->active,
+            'wallet_id' => $this->wallet?->id,
+            'balance' => ($this->wallet?->merchant_balance ?? Money::zero(Currency::USDT()->getCode()))->toBeauty(),
+            'balance_currency' => Currency::USDT()->getCode(),
             'today_profit' => $this->when(isset($this->orders_sum_merchant_profit), Money::fromUnits($this->orders_sum_merchant_profit ?? 0, Currency::USDT())->toBeauty()),
             'profit_currency' => $this->when(isset($this->orders_sum_merchant_profit), Currency::USDT()->getCode()),
             'owner' => [

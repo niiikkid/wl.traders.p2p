@@ -13,6 +13,7 @@ import TrustBalance from "@/Pages/Wallet/Partials/TrustBalance.vue";
 import TeamleaderBalance from "@/Pages/Wallet/Partials/TeamleaderBalance.vue";
 import TeamLeaderSharedReserveBalance from "@/Pages/Wallet/Partials/TeamLeaderSharedReserveBalance.vue";
 import { useAppClipboard } from '@/composables/useAppClipboard.js';
+import { useModalStore } from '@/store/modal.js';
 
 const page = usePage();
 const user = page.props.user;
@@ -25,6 +26,8 @@ const walletSurfaces = computed(() => page.props.walletSurfaces ?? null);
 const traderBalanceTransfer = computed(() => page.props.traderBalanceTransfer ?? null);
 const teamLeaderInsurance = computed(() => page.props.teamLeaderInsurance ?? null);
 const withdrawalAddresses = computed(() => page.props.withdrawalAddresses?.items ?? []);
+const merchantWalletMode = computed(() => Boolean(page.props.merchantWalletMode));
+const merchantWallets = computed(() => page.props.merchantWallets ?? []);
 const { copy, copied } = useAppClipboard();
 
 const showTrustBalanceCard = computed(() => {
@@ -91,6 +94,42 @@ const availableFiatCurrencies = computed(() => {
 const updateFiatCurrency = () => {
     fiatCurrencyForm.patch(route('wallet.fiat-currency.update'), {
         preserveScroll: true,
+    });
+};
+
+const openMerchantHistory = (merchant, tab = 'invoices') => {
+    const merchantKey = String(merchant.id);
+
+    router.visit(route(route().current(), route().params), {
+        data: {
+            tab,
+            currentFilters: {
+                invoices: {
+                    invoiceTypes: 'all',
+                    merchants: merchantKey,
+                },
+                transactions: {
+                    merchants: merchantKey,
+                },
+            },
+        },
+        preserveScroll: true,
+    });
+};
+
+const openMerchantWithdrawal = (merchant) => {
+    useModalStore().open('withdrawal', {
+        user,
+        balanceType: 'merchant',
+        merchant,
+    });
+};
+
+const openMerchantDeposit = (merchant) => {
+    useModalStore().open('deposit', {
+        user,
+        balanceType: 'merchant',
+        merchant,
     });
 };
 
@@ -253,6 +292,83 @@ defineOptions({ layout: AuthenticatedLayout })
             />
             <EscrowBalance v-show="showEscrowBalanceCard"/>
             <DisputeBalance v-show="showDisputeBalanceCard"/>
+        </div>
+
+        <div
+            v-if="merchantWalletMode"
+            class="card bg-base-100 border border-base-300/60 shadow-sm rounded-2xl"
+        >
+            <div class="card-body gap-4 p-4 sm:p-5">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h3 class="text-lg font-semibold text-base-content">Кошельки магазинов</h3>
+                        <p class="text-sm text-base-content/60">Вывод и админские движения доступны только с конкретного магазина.</p>
+                    </div>
+                    <span class="badge badge-outline">USDT</span>
+                </div>
+
+                <div v-if="merchantWallets.length" class="grid gap-3">
+                    <div
+                        v-for="merchant in merchantWallets"
+                        :key="merchant.id"
+                        class="rounded-box border border-base-300 bg-base-200/40 p-3"
+                    >
+                        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div class="truncate font-medium">{{ merchant.name }}</div>
+                                    <span v-if="merchant.wallet_missing" class="badge badge-error badge-sm">Нет кошелька</span>
+                                </div>
+                                <div class="mt-1 font-mono text-xs text-base-content/60">
+                                    {{ merchant.uuid }}
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                                <div class="rounded bg-base-100 px-3 py-2 text-right">
+                                    <div class="text-xs text-base-content/60">Баланс</div>
+                                    <div class="font-semibold">{{ merchant.balance }} {{ merchant.currency }}</div>
+                                </div>
+                                <div class="rounded bg-base-100 px-3 py-2 text-right">
+                                    <div class="text-xs text-base-content/60">В выводе</div>
+                                    <div class="font-semibold">{{ merchant.locked_for_withdrawal }} {{ merchant.currency }}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-base-300/70 pt-3">
+                            <button
+                                type="button"
+                                class="btn btn-ghost btn-sm"
+                                @click="openMerchantHistory(merchant, 'invoices')"
+                            >
+                                История
+                            </button>
+                            <button
+                                v-if="viewStore.isAdminViewMode"
+                                type="button"
+                                class="btn btn-outline btn-sm"
+                                :disabled="merchant.wallet_missing"
+                                @click="openMerchantDeposit(merchant)"
+                            >
+                                Пополнить
+                            </button>
+                            <button
+                                type="button"
+                                class="btn btn-error btn-sm"
+                                :disabled="merchant.wallet_missing"
+                                @click="openMerchantWithdrawal(merchant)"
+                            >
+                                Вывести
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="text-sm text-base-content/60">
+                    У пользователя пока нет магазинов с кошельками.
+                </div>
+            </div>
         </div>
 
         <OperationsHistory/>

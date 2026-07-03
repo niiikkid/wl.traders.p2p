@@ -288,7 +288,11 @@ class HandleInertiaRequests extends Middleware
         $sharedWalletStats = null;
         if ($authUser instanceof User && (isRouteFor('Trader') || isRouteFor('Merchant'))) {
             $walletStatsCacheKey = "shared_wallet_stats_{$userRole}_{$authUser->id}";
-            $sharedWalletStats = cache()->remember($walletStatsCacheKey, 15, function () use ($authUser) {
+            $sharedWalletStats = cache()->remember($walletStatsCacheKey, 15, function () use ($authUser, $userRole) {
+                if ($userRole === 'merchant') {
+                    return services()->wallet()->getMerchantWalletStats($authUser);
+                }
+
                 /** @var WalletStatsValue $walletStatsValue */
                 $walletStatsValue = services()->wallet()->getWalletStats($authUser->wallet);
 

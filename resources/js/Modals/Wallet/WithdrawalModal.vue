@@ -19,18 +19,27 @@ const { copy, copied } = useAppClipboard();
 const show = computed(() => modalStore.isOpen('withdrawal'));
 const params = computed(() => modalStore.paramsOf('withdrawal'));
 const balanceType = computed(() => params.value.balanceType ?? 'trust');
+const merchant = computed(() => params.value.merchant ?? null);
 const showAddressForm = ref(false);
 
 const walletStats = computed(() => page.props.walletStats);
-const maxWithdrawableAmount = computed(() => (
-    walletStats.value?.totalAvailableBalances?.[balanceType.value]?.primary ?? null
-));
+const maxWithdrawableAmount = computed(() => {
+    if (balanceType.value === 'merchant' && merchant.value) {
+        return merchant.value.available_balance;
+    }
+
+    return walletStats.value?.totalAvailableBalances?.[balanceType.value]?.primary ?? null;
+});
 
 const isSelfWithdrawal = computed(() => (
     viewStore.isTraderViewMode || viewStore.isMerchantViewMode || viewStore.isTeamLeaderViewMode
 ));
 
 const title = computed(() => {
+    if (balanceType.value === 'merchant' && merchant.value) {
+        return `Вывод с магазина «${merchant.value.name}»`;
+    }
+
     const titles = {
         trust: 'Вывод с траст баланса',
         merchant: 'Вывод с мерчант баланса',
@@ -46,6 +55,7 @@ const form = useForm({
     amount: null,
     withdrawal_address_id: null,
     balance_type: null,
+    merchant_id: null,
 });
 
 const addressForm = useForm({
@@ -91,7 +101,11 @@ const withdraw = () => {
         : route('invoice.store');
 
     form
-        .transform((data) => ({ ...data, balance_type: balanceType.value }))
+        .transform((data) => ({
+            ...data,
+            balance_type: balanceType.value,
+            merchant_id: merchant.value?.id ?? null,
+        }))
         .post(target, {
             preserveScroll: true,
             onSuccess: () => {
@@ -111,6 +125,10 @@ const withdraw = () => {
             <div class="space-y-3">
                 <div>
                     <InputLabel for="amount" value="Сумма вывода" :error="!!form.errors.amount" />
+                    <div v-if="merchant" class="mb-2 rounded-lg bg-base-200/60 px-3 py-2 text-sm">
+                        <div class="font-medium">{{ merchant.name }}</div>
+                        <div class="font-mono text-xs text-base-content/60">{{ merchant.uuid }}</div>
+                    </div>
                     <NumberInput
                         id="amount"
                         v-model="form.amount"
@@ -122,6 +140,7 @@ const withdraw = () => {
                         @input="form.clearErrors('amount')"
                     />
                     <InputError class="mt-1.5" :message="form.errors.amount" />
+                    <InputError class="mt-1.5" :message="form.errors.merchant_id" />
                     <InputHelper
                         v-if="!form.errors.amount && maxWithdrawableAmount"
                         :model-value="`Максимум: ${maxWithdrawableAmount} USDT`"

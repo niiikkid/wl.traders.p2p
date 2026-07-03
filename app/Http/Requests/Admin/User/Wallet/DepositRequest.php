@@ -26,10 +26,20 @@ class DepositRequest extends FormRequest
      */
     public function rules(): array
     {
+        /** @var User|null $user */
+        $user = $this->route('user');
+
         return [
             'amount' => ['required', 'integer', 'min:1'],
             'balance_type' => ['required', Rule::enum(BalanceType::class)],
             'tx_hash' => ['nullable', 'string', 'max:255'],
+            'merchant_id' => [
+                Rule::requiredIf(fn (): bool => $user?->hasRole('Merchant') === true
+                    && $this->input('balance_type') === BalanceType::MERCHANT->value),
+                'nullable',
+                'integer',
+                Rule::exists('merchants', 'id')->where('user_id', $user?->id),
+            ],
         ];
     }
 
@@ -50,6 +60,16 @@ class DepositRequest extends FormRequest
                 $user,
                 $balanceType,
             );
+
+            if ($user->hasRole('Merchant') && $balanceType?->equals(BalanceType::MERCHANT)) {
+                $hasWallet = $user->wallets()
+                    ->where('merchant_id', $this->integer('merchant_id'))
+                    ->exists();
+
+                if (! $hasWallet) {
+                    $validator->errors()->add('merchant_id', __('Для выбранного мерчанта не найден кошелёк.'));
+                }
+            }
         });
     }
 }

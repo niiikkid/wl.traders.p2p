@@ -29,7 +29,7 @@ class FinancesController extends Controller
         $filtersVariants = $this->getFiltersData();
 
         $invoices = Invoice::query()
-            ->with('wallet.user')
+            ->with(['wallet.user', 'wallet.merchant'])
             ->where('type', $invoiceType)
             ->when(! empty($filters->invoiceStatuses), function ($query) use ($filters) {
                 $query->whereIn('status', $filters->invoiceStatuses);
@@ -45,6 +45,11 @@ class FinancesController extends Controller
                 $query->where(function ($query) use ($filters) {
                     $query->whereRelation('wallet.user', 'email', 'like', '%'.$filters->user.'%');
                     $query->orWhereRelation('wallet.user', 'name', 'like', '%'.$filters->user.'%');
+                });
+            })
+            ->when(! empty($filters->merchantIds), function ($query) use ($filters) {
+                $query->whereHas('wallet', function ($walletQuery) use ($filters) {
+                    $walletQuery->whereIn('merchant_id', $filters->merchantIds);
                 });
             })
             ->when($tab === 'withdrawals' && $filters->address, function ($query) use ($filters) {

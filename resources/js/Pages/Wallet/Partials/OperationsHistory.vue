@@ -15,6 +15,7 @@ const page = usePage();
 
 /** Полный доступ к типам балансов в таблице — только при просмотре кошелька Super Admin в админке. */
 const walletAdminFullView = computed(() => Boolean(page.props.walletAdminFullView));
+const merchantWalletMode = computed(() => Boolean(page.props.merchantWalletMode));
 
 const walletHistoryShowsBalanceType = computed(() => Boolean(page.props.walletHistoryShowsBalanceType));
 
@@ -144,7 +145,7 @@ const walletDepositStatus = (status) => {
                     </div>
 
                     <button
-                        v-if="currentTab === 'transactions' && viewStore.isAdminViewMode && user?.id"
+                        v-if="currentTab === 'transactions' && viewStore.isAdminViewMode && user?.id && !merchantWalletMode"
                         type="button"
                         class="btn btn-outline btn-sm gap-1.5 shrink-0"
                         :disabled="isWalletExportBlocked"
@@ -184,6 +185,10 @@ const walletDepositStatus = (status) => {
                                     v-if="showHistoryBalanceTypeColumn && depositInvoice.balance_type"
                                     class="badge badge-ghost badge-xs"
                                 >{{ balanceTypeLabel(depositInvoice.balance_type) }}</span>
+                                <span
+                                    v-if="depositInvoice.merchant"
+                                    class="badge badge-outline badge-xs max-w-48 truncate"
+                                >{{ depositInvoice.merchant.name }}</span>
                             </div>
                             <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-base-content/50">
                                 <DateTime :data="depositInvoice.created_at" />
@@ -257,6 +262,10 @@ const walletDepositStatus = (status) => {
                                         v-if="showHistoryBalanceTypeColumn && invoice.balance_type"
                                         class="badge badge-ghost badge-xs"
                                     >{{ balanceTypeLabel(invoice.balance_type) }}</span>
+                                <span
+                                    v-if="invoice.merchant"
+                                    class="badge badge-outline badge-xs max-w-48 truncate"
+                                >{{ invoice.merchant.name }}</span>
                                 </div>
                                 <div class="flex items-center gap-2 text-xs text-base-content/50 mt-0.5">
                                     <DateTime :data="invoice.created_at" />
@@ -324,6 +333,10 @@ const walletDepositStatus = (status) => {
                                         v-if="showHistoryBalanceTypeColumn && transaction.balance_type"
                                         class="badge badge-ghost badge-xs"
                                     >{{ balanceTypeLabel(transaction.balance_type) }}</span>
+                                <span
+                                    v-if="transaction.merchant"
+                                    class="badge badge-outline badge-xs max-w-48 truncate"
+                                >{{ transaction.merchant.name }}</span>
                                 </div>
                                 <div class="text-xs text-base-content/50 mt-0.5">
                                     <DateTime :data="transaction.created_at" />

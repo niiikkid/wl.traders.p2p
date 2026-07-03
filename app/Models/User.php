@@ -42,6 +42,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property Collection<int, UserDevice> $devices
  * @property Collection<int, Merchant> $merchants Мерчанты (магазины), к которым имеет доступ саппорт
  * @property Wallet $wallet
+ * @property Collection<int, Wallet> $wallets
  * @property UserMeta $meta
  * @property TelegramAccount|null $telegramAccount
  * @property User $merchant
@@ -405,7 +406,12 @@ class User extends Authenticatable
 
     public function wallet(): HasOne
     {
-        return $this->hasOne(Wallet::class);
+        return $this->hasOne(Wallet::class)->whereNull('merchant_id');
+    }
+
+    public function wallets(): HasMany
+    {
+        return $this->hasMany(Wallet::class);
     }
 
     public function meta(): HasOne

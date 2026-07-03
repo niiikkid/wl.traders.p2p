@@ -33,14 +33,18 @@ const formatNumber = (num) => { //TODO move to utils
     });
 }
 
+const walletStats = computed(() => usePage().props.walletStats ?? usePage().props.data?.wallet_stats ?? null);
 const walletFormated = computed(() => {
+    const stats = walletStats.value;
+
     return {
-        merchant_balance: formatNumber(wallet.value.merchant_balance),
-        trust_balance: formatNumber(wallet.value.trust_balance),
-        reserve_balance: formatNumber(wallet.value.reserve_balance),
+        merchant_balance: viewStore.isMerchantViewMode && stats
+            ? formatNumber(stats.totalAvailableBalances?.merchant?.primary ?? 0)
+            : formatNumber(wallet.value?.merchant_balance),
+        trust_balance: formatNumber(wallet.value?.trust_balance),
+        reserve_balance: formatNumber(wallet.value?.reserve_balance),
     }
 });
-const walletStats = computed(() => usePage().props.walletStats ?? usePage().props.data?.wallet_stats ?? null);
 
 const traderFinanceOverview = computed(() => {
     const stats = walletStats.value;

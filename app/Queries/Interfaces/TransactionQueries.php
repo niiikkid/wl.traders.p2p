@@ -10,4 +10,6 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 interface TransactionQueries
 {
     public function paginate(Wallet $wallet, ?TransactionDirection $transactionDirection = null, ?BalanceType $balanceType = null): LengthAwarePaginator;
+
+    public function paginateForWalletIds(array $walletIds, ?TransactionDirection $transactionDirection = null, ?BalanceType $balanceType = null): LengthAwarePaginator;
 }

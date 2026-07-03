@@ -35,6 +35,12 @@ class StoreRequest extends FormRequest
             'address' => ['nullable', 'string', 'min:34', 'max:34', new ValidateTRC20Address],
             'amount' => ['required', 'integer', 'min:1'],
             'balance_type' => ['required', Rule::enum(BalanceType::class)],
+            'merchant_id' => [
+                Rule::requiredIf(fn (): bool => $this->input('balance_type') === BalanceType::MERCHANT->value),
+                'nullable',
+                'integer',
+                Rule::exists('merchants', 'id')->where('user_id', $this->user()?->id),
+            ],
         ];
     }
 

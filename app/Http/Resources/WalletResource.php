@@ -27,6 +27,12 @@ class WalletResource extends JsonResource
             'reserve_balance' => $this->reserve_balance->toBeauty(),
             'currency' => $this->merchant_balance->getCurrency()->getCode(),
             'user_id' => $this->user_id,
+            'merchant_id' => $this->merchant_id,
+            'merchant' => $this->merchant ? [
+                'id' => $this->merchant->id,
+                'uuid' => $this->merchant->uuid,
+                'name' => $this->merchant->name,
+            ] : null,
         ];
     }
 }

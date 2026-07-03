@@ -35,6 +35,11 @@ class InvoiceResource extends JsonResource
                 'id' => $this->wallet->user->id,
                 'email' => $this->wallet->user->email,
             ],
+            'merchant' => $this->wallet->merchant ? [
+                'id' => $this->wallet->merchant->id,
+                'uuid' => $this->wallet->merchant->uuid,
+                'name' => $this->wallet->merchant->name,
+            ] : null,
             'wallet_id' => $this->wallet_id,
             'transaction_id' => $this->transaction_id,
             'created_at' => $this->created_at->toDateTimeString(),

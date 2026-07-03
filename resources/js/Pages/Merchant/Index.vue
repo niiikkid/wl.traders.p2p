@@ -67,6 +67,36 @@ const openSettings = (merchant) => {
     });
 };
 
+const openFinances = (merchant) => {
+    const merchantKey = String(merchant.id);
+    const data = {
+        tab: 'invoices',
+        currentFilters: {
+            invoices: {
+                invoiceTypes: 'all',
+                merchants: merchantKey,
+            },
+            transactions: {
+                merchants: merchantKey,
+            },
+        },
+    };
+
+    if (isAdminView.value) {
+        router.visit(route('admin.users.wallet.index', merchant.owner.id), {
+            data,
+            preserveScroll: true,
+        });
+
+        return;
+    }
+
+    router.visit(route('merchant.finances.index'), {
+        data,
+        preserveScroll: true,
+    });
+};
+
 const merchantStatusIconWrapClass = (merchant) => {
     if (!merchant.validated_at) {
         return 'bg-warning/15 text-warning ring-warning/30';
@@ -114,6 +144,7 @@ defineOptions({ layout: AuthenticatedLayout })
                             <th>ID</th>
                             <th>Название</th>
                             <th>Владелец</th>
+                            <th>Баланс</th>
                             <th>Статус</th>
                             <th class="text-center">
                                 <span class="sr-only">Действия</span>
@@ -127,6 +158,9 @@ defineOptions({ layout: AuthenticatedLayout })
                             </td>
                             <td>
                                 {{ merchant.owner.email }}
+                            </td>
+                            <td class="whitespace-nowrap font-medium">
+                                {{ merchant.balance }} {{ merchant.balance_currency }}
                             </td>
                             <td>
                                 <div class="flex items-center text-nowrap">
@@ -146,6 +180,9 @@ defineOptions({ layout: AuthenticatedLayout })
                             </td>
                             <td class="text-right">
                                 <TableActionsDropdown>
+                                    <TableAction @click="openFinances(merchant)">
+                                        Финансы
+                                    </TableAction>
                                     <TableAction @click="openSettings(merchant)">
                                         Настройки
                                     </TableAction>
@@ -193,14 +230,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div class="text-xs truncate max-w-36 text-base-content/70">{{ merchant.domain }}</div>
                                 </div>
                                 <div class="hidden sm:block">
-                                    <div class="flex items-center gap-2">
-                                        <svg class="w-4 h-4 text-primary shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                                        </svg>
-                                        <span class="text-base-content truncate">{{ merchant.owner.email }}</span>
+                                    <div class="space-y-1 text-right">
+                                        <div class="font-medium">{{ merchant.balance }} {{ merchant.balance_currency }}</div>
+                                        <div class="flex items-center gap-2 text-sm">
+                                            <svg class="w-4 h-4 text-primary shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                                            </svg>
+                                            <span class="text-base-content truncate">{{ merchant.owner.email }}</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <TableActionsDropdown>
+                                    <TableAction @click="openFinances(merchant)">
+                                        Финансы
+                                    </TableAction>
                                     <TableAction @click="openSettings(merchant)">
                                         Настройки
                                     </TableAction>
@@ -213,6 +256,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                                     </svg>
                                     <span class="text-base-content truncate">{{ merchant.owner.email }}</span>
+                                </div>
+                                <div class="mt-2 flex items-center justify-between gap-2 text-sm">
+                                    <span class="text-base-content/70">Баланс:</span>
+                                    <span class="font-medium">{{ merchant.balance }} {{ merchant.balance_currency }}</span>
                                 </div>
                             </div>
                         </DataCard>
@@ -325,17 +372,34 @@ defineOptions({ layout: AuthenticatedLayout })
                                                 {{ merchant.today_profit }} <span class="mt-1 text-sm text-primary/70">{{ merchant.profit_currency?.toUpperCase() }}</span>
                                             </p>
                                         </div>
+                                        <div class="rounded-2xl bg-base-200/70 p-4">
+                                            <p class="text-xs font-medium uppercase tracking-wide text-base-content/50">
+                                                Баланс
+                                            </p>
+                                            <p class="mt-2 text-2xl font-bold leading-none text-base-content">
+                                                {{ merchant.balance }} <span class="mt-1 text-sm text-primary/70">{{ merchant.balance_currency }}</span>
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div class="card-actions items-center justify-between border-t border-base-content/10 pt-4">
                                         <span class="text-sm text-base-content/60">Управление мерчантом</span>
-                                        <button
-                                            @click="openSettings(merchant)"
-                                            type="button"
-                                            class="btn btn-primary btn-sm"
-                                        >
-                                            Настройки
-                                        </button>
+                                        <div class="flex gap-2">
+                                            <button
+                                                @click="openFinances(merchant)"
+                                                type="button"
+                                                class="btn btn-outline btn-sm"
+                                            >
+                                                Финансы
+                                            </button>
+                                            <button
+                                                @click="openSettings(merchant)"
+                                                type="button"
+                                                class="btn btn-primary btn-sm"
+                                            >
+                                                Настройки
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -34,6 +34,11 @@ class WalletDepositInvoiceResource extends JsonResource
                 'id' => $this->wallet?->user?->id,
                 'email' => $this->wallet?->user?->email,
             ],
+            'merchant' => $this->wallet?->merchant ? [
+                'id' => $this->wallet->merchant->id,
+                'uuid' => $this->wallet->merchant->uuid,
+                'name' => $this->wallet->merchant->name,
+            ] : null,
             'resolved_by' => $this->resolvedBy?->email,
             'resolution_note' => $this->resolution_note,
             'matched_at' => $this->matched_at?->toIso8601String(),

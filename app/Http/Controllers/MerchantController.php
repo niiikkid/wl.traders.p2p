@@ -153,7 +153,7 @@ class MerchantController extends Controller
     protected function merchantsForOwner(): Collection
     {
         $merchants = Merchant::query()
-            ->with('user')
+            ->with(['user', 'wallet'])
             ->withSum(['orders' => function ($query) {
                 $query->where('status', OrderStatus::SUCCESS);
                 $query->whereDate('created_at', now()->today());

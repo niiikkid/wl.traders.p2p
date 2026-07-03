@@ -2,7 +2,7 @@
 import {useModalStore} from "@/store/modal.js";
 import {router, usePage} from "@inertiajs/vue3";
 import {useViewStore} from "@/store/view.js";
-import {ref} from "vue";
+import {computed, ref} from "vue";
 import BalanceCard from "@/Pages/Wallet/Partials/BalanceCard.vue";
 
 const viewStore = useViewStore();
@@ -11,6 +11,7 @@ const modalStore = useModalStore();
 const walletStats = ref(usePage().props.walletStats);
 const user = usePage().props.user;
 const primaryCurrency = walletStats.value.currency.primary.toUpperCase();
+const merchantWalletMode = computed(() => Boolean(usePage().props.merchantWalletMode));
 
 router.on('success', () => {
     walletStats.value = usePage().props.walletStats;
@@ -30,7 +31,7 @@ router.on('success', () => {
             </svg>
         </template>
 
-        <template #actions>
+        <template v-if="!merchantWalletMode" #actions>
             <div class="flex items-center gap-1.5">
                 <button
                     type="button"

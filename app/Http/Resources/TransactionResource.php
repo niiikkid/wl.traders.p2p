@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Invoice;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -27,6 +26,11 @@ class TransactionResource extends JsonResource
             'type' => $this->type->value,
             'type_name' => trans('transaction-type.'.$this->type->value),
             'balance_type' => $this->balance_type->value,
+            'merchant' => $this->wallet?->merchant ? [
+                'id' => $this->wallet->merchant->id,
+                'uuid' => $this->wallet->merchant->uuid,
+                'name' => $this->wallet->merchant->name,
+            ] : null,
             'wallet_id' => $this->wallet_id,
             'created_at' => $this->created_at->toDateTimeString(),
         ];

@@ -99,7 +99,12 @@ class UserResource extends JsonResource
                  */
                 $wallet = $this->wallet;
                 if ($this->hasRole('Merchant')) {
-                    $amount = $wallet->merchant_balance;
+                    $amount = Money::fromUnits(
+                        (string) $this->wallets()
+                            ->whereNotNull('merchant_id')
+                            ->sum('merchant_balance'),
+                        Currency::USDT()
+                    );
                 } elseif ($this->hasRole('Trader')) {
                     $amount = $wallet->trust_balance;
                 } elseif ($this->hasRole('Team Leader')) {

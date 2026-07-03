@@ -53,7 +53,7 @@ class OrderController extends Controller
         if ($isAdminOrderDetail) {
             $with = array_merge($with, [
                 'trader.wallet',
-                'merchant.user.wallet',
+                'merchant.wallet',
                 'teamLeader.wallet',
                 'agent.wallet',
                 'walletTransactions' => fn ($query) => $query->latest('id')->limit(50),

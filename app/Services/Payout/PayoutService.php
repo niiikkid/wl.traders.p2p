@@ -184,7 +184,7 @@ class PayoutService implements PayoutServiceContract
     public function cancel(Payout $payout): Payout
     {
         return Transaction::run(function () use ($payout) {
-            $payout->refresh()->loadMissing('merchant.user.wallet');
+            $payout->refresh()->loadMissing('merchant.wallet');
 
             if ($payout->status->notEquals(PayoutStatus::OPEN)) {
                 throw PayoutException::payoutNotOpen();
@@ -466,7 +466,7 @@ class PayoutService implements PayoutServiceContract
         return Transaction::run(function () use ($payout, $status, $trader, $note) {
             $locked = Payout::query()
                 ->whereKey($payout->id)
-                ->with(['merchant.user.wallet', 'trader.wallet', 'paymentGateway'])
+                ->with(['merchant.wallet', 'trader.wallet', 'paymentGateway'])
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -750,18 +750,13 @@ class PayoutService implements PayoutServiceContract
 
     private function resolveMerchantWallet(Merchant $merchant): Wallet
     {
-        $merchant->loadMissing('user.wallet');
+        $merchant->loadMissing('wallet');
 
-        if (! $merchant->user) {
+        if (! $merchant->wallet) {
             throw PayoutException::merchantWalletMissing();
         }
 
-        if (! $merchant->user->wallet) {
-            $wallet = services()->wallet()->create($merchant->user);
-            $merchant->user->setRelation('wallet', $wallet);
-        }
-
-        return $merchant->user->wallet;
+        return $merchant->wallet;
     }
 
     private function logOperation(Payout $payout, PayoutOperationType $type, ?Money $amount, array $meta = []): void

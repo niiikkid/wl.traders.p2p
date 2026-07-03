@@ -21,7 +21,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Money $teamleader_balance
  * @property Money $agent_balance
  * @property int $user_id
+ * @property int|null $merchant_id
  * @property User $user
+ * @property Merchant|null $merchant
  * @property Collection<int, Invoice> $invoices
  * @property Collection<int, Transaction> $transactions
  * @property Carbon $created_at
@@ -42,6 +44,7 @@ class Wallet extends Model
         'teamleader_balance',
         'agent_balance',
         'user_id',
+        'merchant_id',
     ];
 
     protected $casts = [
@@ -57,6 +60,11 @@ class Wallet extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function merchant(): BelongsTo
+    {
+        return $this->belongsTo(Merchant::class);
     }
 
     public function invoices(): HasMany

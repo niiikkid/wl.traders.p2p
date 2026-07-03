@@ -6,9 +6,11 @@ use App\Contracts\WalletServiceContract;
 use App\Enums\BalanceType;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
+use App\Enums\MarketEnum;
 use App\Enums\OrderStatus;
 use App\Enums\TransactionType;
 use App\Models\Invoice;
+use App\Models\Merchant;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\Wallet;
@@ -35,6 +37,7 @@ use App\Services\Wallet\ValueObjects\EscrowsValue;
 use App\Services\Wallet\ValueObjects\EscrowValue;
 use App\Services\Wallet\ValueObjects\WalletStatsValue;
 use App\Utils\Transaction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class WalletService implements WalletServiceContract
@@ -48,7 +51,7 @@ class WalletService implements WalletServiceContract
         return services()->settings()->getDefaultReserveBalanceLimit();
     }
 
-    public function create(User $user): Wallet
+    public function create(User $user, ?Merchant $merchant = null): Wallet
     {
         return Wallet::create([
             'merchant_balance' => 0,
@@ -59,7 +62,15 @@ class WalletService implements WalletServiceContract
             'teamleader_balance' => 0,
             'agent_balance' => 0,
             'user_id' => $user->id,
+            'merchant_id' => $merchant?->id,
         ]);
+    }
+
+    public function createForMerchant(Merchant $merchant): Wallet
+    {
+        $merchant->loadMissing('user');
+
+        return $this->create($merchant->user, $merchant);
     }
 
     public function takeFromBalance(int $walletID, Money $amount, TransactionType $transactionType, BalanceType $balanceType, ?Model $transactionable = null): void
@@ -155,7 +166,7 @@ class WalletService implements WalletServiceContract
             $secondaryCurrency = Currency::make($userFiatCurrency);
         }
 
-        $conversionRate = services()->market()->getSellPrice($secondaryCurrency);
+        $conversionRate = services()->market()->getSellPrice($secondaryCurrency, MarketEnum::BYBIT);
 
         $totalAvailableBalances = collect();
 
@@ -231,5 +242,148 @@ class WalletService implements WalletServiceContract
             currency: new CurrencyValue($primaryCurrency, $secondaryCurrency),
             maxReserveBalance: $this->getMaxReserveBalance($wallet->user)
         );
+    }
+
+    public function getMerchantWalletStats(User $user, ?int $merchantID = null): array
+    {
+        $user->loadMissing('roles');
+
+        $primaryCurrency = Currency::USDT();
+        $secondaryCurrency = Currency::RUB();
+
+        $userFiatCurrency = $user->fiat_currency;
+        if ($userFiatCurrency && Currency::isCurrency($userFiatCurrency)) {
+            $secondaryCurrency = Currency::make($userFiatCurrency);
+        }
+
+        $conversionRate = services()->market()->getSellPrice($secondaryCurrency, MarketEnum::BYBIT);
+        $wallets = $this->merchantWalletsForUser($user, $merchantID)->get();
+        $walletIDs = $wallets->pluck('id')->all();
+
+        $merchantBalance = $wallets->reduce(
+            fn (Money $balance, Wallet $wallet): Money => $balance->add($wallet->merchant_balance),
+            Money::zero($primaryCurrency->getCode())
+        );
+
+        $lockedForWithdrawal = Money::zero($primaryCurrency->getCode());
+        if ($walletIDs !== []) {
+            $lockedForWithdrawal = Money::fromUnits(
+                (string) Invoice::query()
+                    ->where('type', InvoiceType::WITHDRAWAL)
+                    ->whereIn('wallet_id', $walletIDs)
+                    ->where('status', InvoiceStatus::PENDING)
+                    ->where('balance_type', BalanceType::MERCHANT)
+                    ->sum('amount'),
+                $primaryCurrency
+            );
+        }
+
+        $totalAvailableBalances = collect();
+        $lockedForWithdrawalBalances = collect();
+
+        foreach (BalanceType::cases() as $balanceType) {
+            $balance = $balanceType->equals(BalanceType::MERCHANT)
+                ? $merchantBalance
+                : Money::zero($primaryCurrency->getCode());
+
+            $lockedBalance = $balanceType->equals(BalanceType::MERCHANT)
+                ? $lockedForWithdrawal
+                : Money::zero($primaryCurrency->getCode());
+
+            $totalAvailableBalances->put(
+                $balanceType->value,
+                new BalanceValue($balance, $conversionRate->mul($balance))
+            );
+            $lockedForWithdrawalBalances->put(
+                $balanceType->value,
+                new BalanceValue($lockedBalance, $conversionRate->mul($lockedBalance))
+            );
+        }
+
+        return (new WalletStatsValue(
+            base: new BaseValue(
+                merchantAmount: $merchantBalance,
+                trustAmount: Money::zero($primaryCurrency->getCode()),
+                trustReserveAmount: Money::zero($primaryCurrency->getCode()),
+                teamleaderAmount: Money::zero($primaryCurrency->getCode()),
+                agentAmount: Money::zero($primaryCurrency->getCode())
+            ),
+            totalAvailableBalances: $totalAvailableBalances,
+            lockedForWithdrawalBalances: $lockedForWithdrawalBalances,
+            escrowBalances: new EscrowsValue(
+                orders: new EscrowValue(
+                    balance: new BalanceValue(Money::zero($primaryCurrency->getCode()), Money::zero($secondaryCurrency->getCode())),
+                    count: 0
+                ),
+                disputes: new EscrowValue(
+                    balance: new BalanceValue(Money::zero($primaryCurrency->getCode()), Money::zero($secondaryCurrency->getCode())),
+                    count: 0
+                )
+            ),
+            currency: new CurrencyValue($primaryCurrency, $secondaryCurrency),
+            maxReserveBalance: 0
+        ))->toArray();
+    }
+
+    public function getMerchantWalletSummaries(User $user): array
+    {
+        $merchants = Merchant::query()
+            ->with('wallet')
+            ->where('user_id', $user->id)
+            ->orderBy('name')
+            ->get();
+
+        $walletIDs = $merchants
+            ->pluck('wallet.id')
+            ->filter()
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        $lockedForWithdrawalSums = $walletIDs === []
+            ? collect()
+            : Invoice::query()
+                ->where('type', InvoiceType::WITHDRAWAL)
+                ->whereIn('wallet_id', $walletIDs)
+                ->where('status', InvoiceStatus::PENDING)
+                ->where('balance_type', BalanceType::MERCHANT)
+                ->selectRaw('wallet_id, COALESCE(SUM(amount), 0) as amount')
+                ->groupBy('wallet_id')
+                ->toBase()
+                ->pluck('amount', 'wallet_id');
+
+        return $merchants
+            ->map(function (Merchant $merchant) use ($lockedForWithdrawalSums): array {
+                $wallet = $merchant->wallet;
+                $lockedForWithdrawal = Money::fromUnits(
+                    (string) $lockedForWithdrawalSums->get($wallet?->id, 0),
+                    Currency::USDT()
+                );
+                $balance = $wallet?->merchant_balance ?? Money::zero(Currency::USDT()->getCode());
+
+                return [
+                    'id' => $merchant->id,
+                    'uuid' => $merchant->uuid,
+                    'name' => $merchant->name,
+                    'wallet_id' => $wallet?->id,
+                    'balance' => $balance->toBeauty(),
+                    'available_balance' => $balance->toBeauty(),
+                    'locked_for_withdrawal' => $lockedForWithdrawal->toBeauty(),
+                    'currency' => Currency::USDT()->getCode(),
+                    'wallet_missing' => $wallet === null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function merchantWalletsForUser(User $user, ?int $merchantID = null): Builder
+    {
+        return Wallet::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('merchant_id')
+            ->when($merchantID !== null, function ($query) use ($merchantID): void {
+                $query->where('merchant_id', $merchantID);
+            });
     }
 }

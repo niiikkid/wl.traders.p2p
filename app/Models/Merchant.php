@@ -25,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property bool $active
  * @property int $user_id
  * @property User $user
+ * @property Wallet|null $wallet
  * @property Collection<int, Order> $orders
  * @property Collection<int, User> $supports Саппорты, имеющие доступ к этому мерчанту
  * @property AntiFraudSetting|null $antiFraudSetting
@@ -82,6 +83,11 @@ class Merchant extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
     }
 
     /**

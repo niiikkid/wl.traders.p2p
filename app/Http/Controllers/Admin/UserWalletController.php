@@ -22,6 +22,7 @@ use App\Services\Money\Money;
 use App\Services\User\TeamLeaderInsuranceService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -54,6 +55,10 @@ class UserWalletController extends Controller
         $currentTab = request()->input('tab', 'invoices');
         if (empty($tabs[$currentTab])) {
             $currentTab = 'invoices';
+        }
+
+        if ($user->hasRole('Merchant')) {
+            return $this->merchantUserIndex($user, $tabs, $currentTab, $walletSurfaces);
         }
 
         if ($walletAdminFullView) {
@@ -271,6 +276,147 @@ class UserWalletController extends Controller
         );
     }
 
+    private function merchantUserIndex(User $user, array $tabs, string $currentTab, array $walletSurfaces): Response
+    {
+        $merchantWallets = services()->wallet()->getMerchantWalletSummaries($user);
+        $merchantFilterVariants = $this->merchantFilterVariants($merchantWallets);
+
+        $filters = [
+            'invoices' => [
+                'invoiceTypes' => [
+                    'all' => [
+                        'key' => 'all',
+                        'name' => 'Тип инвойса',
+                    ],
+                    InvoiceType::DEPOSIT->value => [
+                        'key' => InvoiceType::DEPOSIT->value,
+                        'name' => 'Пополнение',
+                    ],
+                    InvoiceType::WITHDRAWAL->value => [
+                        'key' => InvoiceType::WITHDRAWAL->value,
+                        'name' => 'Вывод',
+                    ],
+                ],
+                'merchants' => $merchantFilterVariants,
+            ],
+            'transactions' => [
+                'merchants' => $merchantFilterVariants,
+            ],
+        ];
+
+        $currentFilters = [
+            'invoices' => [
+                'invoiceTypes' => request()->input('currentFilters.invoices.invoiceTypes', 'all'),
+                'merchants' => request()->input('currentFilters.invoices.merchants', 'all'),
+            ],
+            'transactions' => [
+                'merchants' => request()->input('currentFilters.transactions.merchants', 'all'),
+            ],
+        ];
+
+        $merchantFilterKey = $currentTab === 'transactions'
+            ? $currentFilters['transactions']['merchants']
+            : $currentFilters['invoices']['merchants'];
+        $selectedMerchantId = $this->resolveMerchantFilterId($merchantFilterKey);
+        $walletIds = $this->merchantWalletIds($user, $selectedMerchantId);
+
+        $walletStats = services()->wallet()->getMerchantWalletStats($user, $selectedMerchantId);
+        $invoices = null;
+        $transactions = null;
+
+        if ($currentTab === 'invoices') {
+            $invoices = queries()->invoice()->paginateForWalletIds(
+                walletIds: $walletIds,
+                invoiceType: InvoiceType::tryFrom($currentFilters['invoices']['invoiceTypes']),
+                balanceType: BalanceType::MERCHANT,
+            );
+            $invoices = InvoiceResource::collection($invoices);
+        } elseif ($currentTab === 'transactions') {
+            $transactions = queries()->transaction()->paginateForWalletIds(
+                walletIds: $walletIds,
+                balanceType: BalanceType::MERCHANT,
+            );
+            $transactions = TransactionResource::collection($transactions);
+        }
+
+        $teamLeaderInsurance = null;
+        $walletHistoryShowsBalanceType = false;
+        $withdrawalAddresses = $this->withdrawalAddressProps($user);
+        $walletDepositInvoices = $this->walletDepositInvoicePropsForWalletIds($walletIds);
+        $merchantWalletMode = true;
+        $walletAdminFullView = false;
+
+        $user = UserResource::make($user)->resolve();
+
+        return Inertia::render('Wallet/Index', compact(
+            'walletStats',
+            'invoices',
+            'transactions',
+            'user',
+            'tabs',
+            'filters',
+            'currentTab',
+            'currentFilters',
+            'walletSurfaces',
+            'walletAdminFullView',
+            'teamLeaderInsurance',
+            'walletHistoryShowsBalanceType',
+            'withdrawalAddresses',
+            'walletDepositInvoices',
+            'merchantWallets',
+            'merchantWalletMode',
+            'selectedMerchantId',
+        ));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $merchantWallets
+     * @return array<string, array{key: string, name: string}>
+     */
+    private function merchantFilterVariants(array $merchantWallets): array
+    {
+        $variants = [
+            'all' => [
+                'key' => 'all',
+                'name' => 'Все магазины',
+            ],
+        ];
+
+        foreach ($merchantWallets as $merchantWallet) {
+            $variants[(string) $merchantWallet['id']] = [
+                'key' => (string) $merchantWallet['id'],
+                'name' => (string) $merchantWallet['name'],
+            ];
+        }
+
+        return $variants;
+    }
+
+    private function resolveMerchantFilterId(?string $merchantFilterKey): ?int
+    {
+        if ($merchantFilterKey === null || $merchantFilterKey === '' || $merchantFilterKey === 'all') {
+            return null;
+        }
+
+        return (int) $merchantFilterKey;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function merchantWalletIds(User $user, ?int $merchantId = null): array
+    {
+        return Wallet::query()
+            ->where('user_id', $user->id)
+            ->whereNotNull('merchant_id')
+            ->when($merchantId !== null, function ($query) use ($merchantId): void {
+                $query->where('merchant_id', $merchantId);
+            })
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
     /**
      * Для кошелька Super Admin выгрузка только по явно выбранному типу кошелька (не «все»).
      */
@@ -404,7 +550,28 @@ class UserWalletController extends Controller
     private function walletDepositInvoiceProps(Wallet $wallet): array
     {
         $invoices = WalletDepositInvoice::query()
+            ->with('wallet.merchant')
             ->where('wallet_id', $wallet->id)
+            ->latest()
+            ->limit(20)
+            ->get();
+
+        return WalletDepositInvoiceResource::collection($invoices)->resolve();
+    }
+
+    /**
+     * @param  array<int, int>  $walletIds
+     * @return array<int, mixed>
+     */
+    private function walletDepositInvoicePropsForWalletIds(array $walletIds): array
+    {
+        if ($walletIds === []) {
+            return [];
+        }
+
+        $invoices = WalletDepositInvoice::query()
+            ->with('wallet.merchant')
+            ->whereIn('wallet_id', $walletIds)
             ->latest()
             ->limit(20)
             ->get();
@@ -420,10 +587,13 @@ class UserWalletController extends Controller
     public function deposit(DepositRequest $request, User $user)
     {
         try {
+            $balanceType = BalanceType::from($request->balance_type);
+            $wallet = $this->resolveWalletForAdminBalanceOperation($request, $user, $balanceType);
+
             services()->invoice()->deposit(
-                walletID: $user->wallet->id,
+                walletID: $wallet->id,
                 amount: Money::fromPrecision($request->amount, Currency::USDT()),
-                balanceType: BalanceType::from($request->balance_type),
+                balanceType: $balanceType,
                 transactionID: null,
                 txHash: $request->tx_hash
             );
@@ -437,16 +607,37 @@ class UserWalletController extends Controller
     public function withdraw(WithdrawRequest $request, User $user)
     {
         try {
+            $balanceType = BalanceType::from($request->balance_type);
+            $wallet = $this->resolveWalletForAdminBalanceOperation($request, $user, $balanceType);
+
             services()->invoice()->withdraw(
-                walletID: $user->wallet->id,
+                walletID: $wallet->id,
                 amount: Money::fromPrecision($request->amount, Currency::USDT()),
-                balanceType: BalanceType::from($request->balance_type)
+                balanceType: $balanceType
             );
 
             return redirect()->back();
         } catch (InvoiceException $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
+    }
+
+    private function resolveWalletForAdminBalanceOperation(Request $request, User $user, BalanceType $balanceType): Wallet
+    {
+        if ($user->hasRole('Merchant') && $balanceType->equals(BalanceType::MERCHANT)) {
+            $wallet = Wallet::query()
+                ->where('user_id', $user->id)
+                ->where('merchant_id', $request->integer('merchant_id'))
+                ->first();
+
+            if ($wallet === null) {
+                throw InvoiceException::merchantWalletMissing();
+            }
+
+            return $wallet;
+        }
+
+        return $user->wallet;
     }
 
     /**

@@ -17,6 +17,7 @@ const viewStore = useViewStore();
 const show = computed(() => modalStore.isOpen('deposit'));
 const params = computed(() => modalStore.paramsOf('deposit'));
 const balanceType = computed(() => params.value.balanceType ?? 'trust');
+const merchant = computed(() => params.value.merchant ?? null);
 
 const title = computed(() => {
     const titles = {
@@ -44,6 +45,7 @@ const form = useForm({
     amount: null,
     balance_type: null,
     tx_hash: null,
+    merchant_id: null,
 });
 
 const close = () => {
@@ -54,7 +56,11 @@ const close = () => {
 
 const deposit = () => {
     form
-        .transform((data) => ({ ...data, balance_type: balanceType.value }))
+        .transform((data) => ({
+            ...data,
+            balance_type: balanceType.value,
+            merchant_id: merchant.value?.id ?? null,
+        }))
         .post(route('admin.users.wallet.deposit', params.value.user.id), {
             preserveScroll: true,
             onSuccess: () => {
@@ -77,6 +83,10 @@ const deposit = () => {
             <div class="mt-4 space-y-4">
                 <div>
                     <InputLabel for="amount" value="Сумма пополнения" :error="!!form.errors.amount" />
+                    <div v-if="merchant" class="mb-2 rounded-lg bg-base-200/60 px-3 py-2 text-sm">
+                        <div class="font-medium">{{ merchant.name }}</div>
+                        <div class="font-mono text-xs text-base-content/60">{{ merchant.uuid }}</div>
+                    </div>
                     <NumberInput
                         id="amount"
                         v-model="form.amount"
@@ -88,6 +98,7 @@ const deposit = () => {
                         @input="form.clearErrors('amount')"
                     />
                     <InputError class="mt-2" :message="form.errors.amount" />
+                    <InputError class="mt-2" :message="form.errors.merchant_id" />
                     <InputHelper
                         v-if="!form.errors.amount && balanceType === 'trust'"
                         :model-value="trustDepositHelper"

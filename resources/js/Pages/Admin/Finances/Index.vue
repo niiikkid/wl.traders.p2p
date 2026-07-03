@@ -105,6 +105,10 @@ router.on('success', () => {
                         name="user"
                         placeholder="Пользователь"
                     />
+                    <DropdownFilter
+                        name="merchantIds"
+                        title="Мерчант"
+                    />
                     <InputFilter
                         v-if="isWithdrawalsTab"
                         name="address"
@@ -120,6 +124,7 @@ router.on('success', () => {
                             <th scope="col">ID</th>
                             <th scope="col">Сумма</th>
                             <th scope="col">Пользователь</th>
+                            <th scope="col">Мерчант</th>
                             <th v-if="isWithdrawalsTab" scope="col">Адрес</th>
                             <th scope="col">Статус</th>
                             <th scope="col">Дата создания</th>
@@ -142,6 +147,13 @@ router.on('success', () => {
                                 <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                             </td>
                             <td>{{ invoice.user.email }}</td>
+                            <td>
+                                <div v-if="invoice.merchant" class="max-w-44">
+                                    <div class="truncate font-medium">{{ invoice.merchant.name }}</div>
+                                    <div class="truncate font-mono text-xs text-base-content/60">{{ invoice.merchant.uuid }}</div>
+                                </div>
+                                <span v-else class="text-base-content/50">—</span>
+                            </td>
                             <td v-if="isWithdrawalsTab">
                                 <div class="flex gap-2">
                                     <CopyAddress v-if="invoice.address" :text="invoice.address" />
@@ -254,6 +266,17 @@ router.on('success', () => {
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                                     </svg>
                                     <span class="text-base-content/80 truncate">{{ invoice.user.email }}</span>
+                                </div>
+
+                                <div class="flex items-center gap-2 text-sm">
+                                    <svg class="w-4 h-4 text-primary shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64M3.75 21V9.349m16.5 0V21M3.75 9.349a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72" />
+                                    </svg>
+                                    <template v-if="invoice.merchant">
+                                        <span class="text-base-content/80 truncate">{{ invoice.merchant.name }}</span>
+                                        <span class="font-mono text-xs text-base-content/50 truncate">{{ invoice.merchant.uuid }}</span>
+                                    </template>
+                                    <span v-else class="text-base-content/60">—</span>
                                 </div>
 
                                 <div v-if="isWithdrawalsTab" class="flex items-center gap-2 text-sm">
