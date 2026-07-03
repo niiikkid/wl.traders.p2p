@@ -14,6 +14,7 @@ import {useModalStore} from "@/store/modal.js";
 import PaymentGatewayModal from "@/Modals/PaymentGateway/PaymentGatewayModal.vue";
 import PaymentGatewayBulkSettingsModal from "@/Modals/PaymentGateway/PaymentGatewayBulkSettingsModal.vue";
 import DataTable from "@/Components/Table/DataTable.vue";
+import TableActionsHeadCell from "@/Components/Table/TableActionsHeadCell.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
 
@@ -84,9 +85,7 @@ defineOptions({ layout: AuthenticatedLayout })
                             <th scope="col" class="px-6 py-3">
                                 Статус
                             </th>
-                            <th scope="col" class="px-6 py-3 flex justify-center">
-                                <span class="sr-only">Действия</span>
-                            </th>
+                            <TableActionsHeadCell cell-class="px-6 py-3" />
                         </template>
                         <tr v-for="payment_gateway in payment_gateways.data">
                             <th scope="row" class="px-6 py-3 font-medium whitespace-nowrap">

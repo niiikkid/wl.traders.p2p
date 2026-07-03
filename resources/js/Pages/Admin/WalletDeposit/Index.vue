@@ -115,10 +115,10 @@ const filterByStatus = (event) => {
 
 <template>
     <div class="space-y-6 p-4">
-        <Head title="Крипто-пополнения" />
+        <Head title="CryptoProcessing" />
 
         <div>
-            <h1 class="text-xl font-semibold">Крипто-пополнения (USDT TRC20)</h1>
+            <h1 class="text-xl font-semibold">CryptoProcessing</h1>
             <p class="text-sm text-base-content/60">Внутренний процессинг пополнений: пул адресов и ручной разбор.</p>
         </div>
 

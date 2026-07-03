@@ -18,7 +18,7 @@ class OrderController extends Controller
         $filters = $this->getTableFilters();
         $filtersVariants = $this->getFiltersData();
 
-        $orders = queries()->order()->paginateForAdmin($filters);
+        $orders = queries()->order()->paginateForAdmin($filters, prioritizePendingDisputes: false);
         $orders = TableOrderResource::collection($orders);
         $incomingSmsLogsUnlinkedCount = IncomingSmsLogController::unlinkedCountForUser(auth()->user(), forAdmin: true);
 

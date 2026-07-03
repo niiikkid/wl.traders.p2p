@@ -210,6 +210,7 @@ defineOptions({ layout: AuthenticatedLayout })
             :subtitle="viewStore.isTraderViewMode ? 'Сообщения' : ''"
             :data="smsLogs"
             :display-pagination="currentTab === 'logs'"
+            :always-show-body="viewStore.isAdminViewMode && currentTab !== 'logs'"
         >
             <template v-slot:header>
                 <div class="space-y-4">

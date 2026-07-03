@@ -48,7 +48,7 @@ class OrderQueriesEloquent implements OrderQueries
             ->get();
     }
 
-    public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator
+    public function paginateForAdmin(TableFiltersValue $filters, bool $prioritizePendingDisputes = true): LengthAwarePaginator
     {
         return Order::query()
             ->whereNotNull('payment_detail_id')
@@ -136,7 +136,7 @@ class OrderQueriesEloquent implements OrderQueries
                     $query->orWhereRelation('paymentDetail.user', 'email', 'LIKE', '%'.$filters->user.'%');
                 });
             })
-            ->orderByDesc('has_pending_dispute')
+            ->when($prioritizePendingDisputes, fn (Builder $query) => $query->orderByDesc('has_pending_dispute'))
             ->orderByDesc('id')
             ->paginate(request()->per_page ?? 10);
     }

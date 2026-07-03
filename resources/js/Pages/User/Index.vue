@@ -18,6 +18,7 @@ import UserAvatar from '@/Components/User/UserAvatar.vue';
 import {useModalStore} from "@/store/modal.js";
 import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
+import TableActionsHeadCell from "@/Components/Table/TableActionsHeadCell.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
@@ -197,9 +198,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <th scope="col" class="px-6 py-3">
                                         Работает
                                     </th>
-                                    <th scope="col" class="px-6 py-3 flex justify-center">
-                                        <span class="sr-only">Действия</span>
-                                    </th>
+                                    <TableActionsHeadCell cell-class="px-6 py-3" />
                         </template>
                                 <tr v-for="user in users.data" class="hover">
                                     <th scope="row" class="px-6 py-3 font-medium whitespace-nowrap">
@@ -255,11 +254,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <button v-if="user.online_at" type="button" class="btn btn-ghost btn-xs gap-2 px-1" title="История онлайна" @click="openOnlineActivity(user)"><DateTime :data="user.online_at" :plural="true" :copyable="false"/></button>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap">
-                                        <div class="space-y-1">
-                                            <div class="flex items-center">
-                                                <input type="checkbox" :checked="user.is_online" class="toggle toggle-success" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
-                                            </div>
-                                        </div>
+                                        <template v-if="isTraderRole(user)">
+                                            <input type="checkbox" :checked="user.is_online" class="toggle toggle-success" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
+                                        </template>
+                                        <template v-else>—</template>
                                     </td>
                                     <td class="px-6 py-3 text-nowrap text-right">
                                         <TableActionsDropdown>
@@ -373,7 +371,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                             <div class="flex items-center gap-2">
                                                 <div class="flex items-center gap-2">
                                                     <span class="text-xs text-base-content/70">Работает: </span>
-                                                    <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user, 'order')" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
+                                                    <template v-if="isTraderRole(user)">
+                                                        <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
+                                                    </template>
+                                                    <template v-else>—</template>
                                                 </div>
                                                 <TableActionsDropdown>
                                                     <template v-if="currentTab === 'active'">
@@ -469,7 +470,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center gap-2">
                                                 <span class="tex-xs text-base-content/70">Работает:</span>
-                                                <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
+                                                <template v-if="isTraderRole(user)">
+                                                    <input type="checkbox" :checked="user.is_online" class="toggle toggle-success toggle-sm" @change="toggleOnline(user)" :disabled="onlineForm.processing || isCooldown || currentTab === 'archived'">
+                                                </template>
+                                                <template v-else>—</template>
                                             </div>
                                             <TableActionsDropdown>
                                                 <template v-if="currentTab === 'active'">

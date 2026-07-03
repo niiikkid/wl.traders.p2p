@@ -23,7 +23,7 @@ interface OrderQueries
      */
     public function pendingForDevice(int $deviceId, int $traderId): Collection;
 
-    public function paginateForAdmin(TableFiltersValue $filters): LengthAwarePaginator;
+    public function paginateForAdmin(TableFiltersValue $filters, bool $prioritizePendingDisputes = true): LengthAwarePaginator;
 
     public function paginateForUser(User $user, TableFiltersValue $filters): LengthAwarePaginator;
 

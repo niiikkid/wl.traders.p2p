@@ -13,6 +13,7 @@ import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import DataTable from "@/Components/Table/DataTable.vue";
+import TableActionsHeadCell from "@/Components/Table/TableActionsHeadCell.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
 
@@ -131,9 +132,7 @@ defineOptions({ layout: AuthenticatedLayout })
                             <th scope="col">
                                 Создан
                             </th>
-                            <th scope="col" class=" flex justify-center">
-                                <span class="sr-only">Действия</span>
-                            </th>
+                            <TableActionsHeadCell />
                         </template>
                                     <tr v-for="dispute in disputes.data" class="bg-base-100 border-b last:border-none">
                                         <th scope="row" class=" font-medium whitespace-nowrap">

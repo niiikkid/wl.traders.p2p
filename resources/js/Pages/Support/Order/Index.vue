@@ -18,6 +18,7 @@ import RefreshTableData from "@/Components/Table/RefreshTableData.vue";
 import PageToolbar from "@/Components/Table/PageToolbar.vue";
 import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
 import DataTable from "@/Components/Table/DataTable.vue";
+import TableActionsHeadCell from "@/Components/Table/TableActionsHeadCell.vue";
 import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
 import DisputeModal from "@/Modals/DisputeModal.vue";
@@ -199,9 +200,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                         <th scope="col">
                                             Создан
                                         </th>
-                                        <th scope="col" class=" flex justify-center">
-                                            <span class="sr-only">Действия</span>
-                                        </th>
+                                        <TableActionsHeadCell />
                         </template>
                                     <tr
                                         v-for="order in orders.data"

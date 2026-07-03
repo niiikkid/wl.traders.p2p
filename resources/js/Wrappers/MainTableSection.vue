@@ -40,6 +40,10 @@ const props = defineProps({
         type: Object,
         default: () => ({}),
     },
+    alwaysShowBody: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 tableFiltersStore.setMeta(props.data?.meta);
@@ -160,7 +164,7 @@ router.on('success', () => {
                     <slot name="table-filters"/>
                 </div>
                 <div>
-                    <slot v-if="items.length" name="body"/>
+                    <slot v-if="items.length || alwaysShowBody" name="body"/>
                     <TableEmptyState
                         v-else
                         title="Пока ничего нет"

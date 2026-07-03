@@ -7,1061 +7,910 @@ use App\DTO\PaymentDetail\PaymentDetailCreateDTO;
 use App\DTO\User\UserCreateDTO;
 use App\Enums\BalanceType;
 use App\Enums\DetailType;
-use App\Enums\DisputeCancelReasonCode;
-use App\Enums\OrderStatus;
-use App\Enums\OrderSubStatus;
-use App\Exceptions\DisputeException;
-use App\Models\Merchant as MerchantModel;
-use App\Models\Order;
-use App\Models\PaymentDetail;
+use App\Enums\TeamLeaderInsuranceMode;
+use App\Enums\TelegramChatMessageStatus;
+use App\Enums\TelegramChatMessageType;
+use App\Enums\TelegramChatParserType;
+use App\Enums\TelegramChatStatus;
+use App\Enums\TelegramChatType;
+use App\Enums\UserActivityAction;
+use App\Jobs\TestData\FinalizeDemoDataJob;
+use App\Jobs\TestData\SeedDeviceMessagesJob;
+use App\Jobs\TestData\SeedMerchantOrdersJob;
+use App\Jobs\TestData\SeedMerchantPayoutsJob;
+use App\Models\Merchant;
+use App\Models\MerchantClient;
+use App\Models\NewsPost;
+use App\Models\NewsPostReaction;
+use App\Models\Setting;
+use App\Models\TelegramAccount;
+use App\Models\TelegramChat;
+use App\Models\TelegramChatMessage;
 use App\Models\User;
+use App\Models\UserActivityLog;
 use App\Models\UserDevice;
+use App\Models\UserLoginHistory;
+use App\Models\UserOnlinePeriod;
+use App\Models\WithdrawalAddress;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
-use Carbon\Carbon;
+use App\Support\TestData\DemoDataHelper;
 use Illuminate\Console\Command;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
+/**
+ * Полностью наполняет проект правдоподобными демо-данными: пользователи всех ролей,
+ * устройства, реквизиты, депозиты, мерчанты, антифрод, выводы, новости, Telegram,
+ * журналы активности/входов, онлайн-периоды, а также заказы, выплаты, споры, SMS
+ * и логи API — последние ставятся в очередь `test-data` для устойчивой генерации
+ * больших объёмов без падения по таймауту.
+ */
 class GenerateTestDataCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    protected $signature = 'dev:test-data:generate';
+    protected $signature = 'dev:test-data:generate
+        {--team-leaders=4 : Количество тимлидов}
+        {--traders=25 : Количество трейдеров}
+        {--merchant-users=6 : Количество пользователей-мерчантов}
+        {--supports=4 : Количество саппортов}
+        {--analysts=2 : Количество аналитиков}
+        {--providers=2 : Количество Provider Liquidity}
+        {--orders=200 : Заказов на одного активного мерчанта}
+        {--payouts=50 : Выплат на одного активного мерчанта}
+        {--sms=40 : SMS/PUSH на одно устройство}
+        {--days=30 : Разброс данных по последним N дням}
+        {--force : Разрешить запуск в production}';
 
     protected $aliases = ['app:generate-test-data'];
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Генерирует тестовые данные для проекта';
+    protected $description = 'Генерирует полный набор правдоподобных демо-данных для проекта';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    private int $days = 30;
+
+    /** @var array<string, int> */
+    private array $roleIds = [];
+
+    /** Вторичная валюта (кроме RUB), для которой есть активные карточные шлюзы. */
+    private ?string $secondaryCurrency = null;
+
+    public function handle(): int
     {
-        $this->info('Начинаем генерацию тестовых данных...');
+        if (is_production() && ! $this->option('force')) {
+            $this->error('Команда заблокирована в production. Используйте --force осознанно.');
 
-        $words = [
-            'alex', 'mike', 'john', 'david', 'steve', 'paul', 'mark', 'tom', 'nick', 'joe',
-            'anna', 'lisa', 'mary', 'sara', 'kate', 'jane', 'emma', 'lucy', 'rose', 'amy',
-            'max', 'dan', 'sam', 'leo', 'ben', 'jake', 'ryan', 'luke', 'noah', 'jack',
-            'sophia', 'olivia', 'ava', 'isabella', 'mia', 'charlotte', 'amelia', 'harper', 'evelyn', 'abigail',
-            'gamer', 'player', 'pro', 'master', 'boss', 'king', 'queen', 'ninja', 'warrior', 'hunter',
-            'cool', 'swift', 'sharp', 'bright', 'dark', 'light', 'fast', 'slow', 'big', 'small',
-        ];
-
-        $rolesMap = [
-            'merchant' => 'Merchant',
-            'trader' => 'Trader',
-            'support' => 'Support',
-        ];
-
-        $roleIds = [];
-        foreach ($rolesMap as $key => $roleName) {
-            $role = Role::where('name', $roleName)->first();
-            if (! $role) {
-                $this->warn("Роль '{$roleName}' не найдена. Пропускаю создание пользователей этой роли.");
-
-                continue;
-            }
-            $roleIds[$key] = (int) $role->id;
+            return Command::FAILURE;
         }
 
-        // 3 мерчанта
-        if (isset($roleIds['merchant'])) {
-            for ($i = 1; $i <= 3; $i++) {
-                // Генерируем уникальный логин
-                do {
-                    $login = $words[array_rand($words)].random_int(1, 999999);
-                } while (User::where('email', strtolower($login))->exists());
-                services()->user()->create(new UserCreateDTO(
-                    login: $login,
-                    password: 'password',
-                    role_id: $roleIds['merchant'],
-                ));
-            }
+        @set_time_limit(0);
+        // Блокируем реальные исходящие HTTP-вызовы на время синхронной фазы генерации.
+        Http::fake();
+
+        $this->days = max(1, (int) $this->option('days'));
+
+        $this->prepare();
+
+        if (! $this->resolveRoles()) {
+            return Command::FAILURE;
         }
 
-        // 30 трейдеров (увеличено в 3 раза)
-        if (isset($roleIds['trader'])) {
-            for ($i = 1; $i <= 30; $i++) {
-                // Генерируем уникальный логин
-                do {
-                    $login = $words[array_rand($words)].random_int(1, 999999);
-                } while (User::where('email', strtolower($login))->exists());
-                services()->user()->create(new UserCreateDTO(
-                    login: $login,
-                    password: 'password',
-                    role_id: $roleIds['trader'],
-                ));
-            }
-        }
+        $this->info('Создаю пользователей всех ролей...');
+        $teamLeaders = $this->createTeamLeaders((int) $this->option('team-leaders'));
+        $traders = $this->createTraders((int) $this->option('traders'), $teamLeaders);
+        $merchantUsers = $this->createSimpleUsers('merchant', 'Merchant', (int) $this->option('merchant-users'));
+        $this->createSimpleUsers('support', 'Support', (int) $this->option('supports'), fn (User $u) => $u->update([
+            'support_can_view_deposits' => (bool) random_int(0, 1),
+            'support_can_edit_order_amount' => (bool) random_int(0, 1),
+            'support_can_use_manual_control_acq' => (bool) random_int(0, 1),
+        ]));
+        $this->createSimpleUsers('analyst', 'Analyst', (int) $this->option('analysts'));
+        $this->createSimpleUsers('provider', 'Provider Liquidity', (int) $this->option('providers'));
 
-        // 1 саппорт
-        if (isset($roleIds['support'])) {
-            // Генерируем уникальный логин
-            do {
-                $login = $words[array_rand($words)].random_int(1, 999999);
-            } while (User::where('email', strtolower($login))->exists());
-            services()->user()->create(new UserCreateDTO(
-                login: $login,
-                password: 'password',
-                role_id: $roleIds['support'],
-            ));
-        }
+        $tradersLike = $this->tradersLikeUsers();
 
-        // Устанавливаем is_online = 1 для всех трейдеров и администраторов
-        User::query()
-            ->role(['Trader', 'Super Admin'])
-            ->update(['is_online' => 1]);
+        $this->secondaryCurrency = $this->resolveSecondaryCurrency();
 
-        // Этап 2. Создание устройств для всех пользователей с трейдерским функционалом
-        // (включая администраторов, т.к. у них есть трейдерский функционал)
-        $androidDeviceNames = [
-            'Samsung Galaxy A51',
-            'Xiaomi Redmi Note 9',
-            'Huawei P30 Lite',
-            'Google Pixel 4a',
-            'OnePlus Nord N10',
-            'Samsung Galaxy S10e',
-            'Xiaomi Mi 9T',
-            'Realme 7',
-            'Motorola Moto G7',
-            'Nokia 7.2',
-        ];
+        $this->info('Создаю устройства и реквизиты...');
+        $this->createDevices($tradersLike);
+        $this->createPaymentDetails($tradersLike);
 
-        // Собираем всех пользователей с ролями Trader и Super Admin
-        $eligibleUsers = User::query()
-            ->role(['Trader', 'Super Admin'])
-            ->get();
+        $this->info('Начисляю депозиты (trust / reserve / merchant)...');
+        $this->fundTraders($tradersLike);
+        $this->fundTeamLeaders($teamLeaders);
 
-        foreach ($eligibleUsers as $eligibleUser) {
-            // Пропускаем, если у пользователя уже есть устройство(а)
-            $hasDevice = UserDevice::query()->where('user_id', $eligibleUser->id)->exists();
-            if ($hasDevice) {
-                continue;
-            }
+        $this->info('Создаю мерчантов, антифрод и клиентов...');
+        $merchants = $this->createMerchants($merchantUsers);
+        $this->fundMerchants($merchants);
 
-            $deviceName = $androidDeviceNames[array_rand($androidDeviceNames)];
-            services()->device()->create($eligibleUser->id, $deviceName);
-        }
+        $this->info('Создаю адреса и заявки на вывод...');
+        $this->createWithdrawals($tradersLike);
 
-        // Этап 3. Создание платежных реквизитов: 5 на пользователя (3 карты, 2 телефона)
-        $this->info('Создаю реквизиты для трейдеров и администраторов...');
+        $this->info('Создаю новости, Telegram, журналы входов и онлайн-периоды...');
+        $this->createNews();
+        $this->createTelegramData($traders);
+        $this->createLoginHistory();
+        $this->createOnlinePeriods($tradersLike);
+        $this->createFoundationActivityLogs();
 
-        $eligibleUsers = User::query()
-            ->role(['Trader', 'Super Admin'])
-            ->get();
+        $this->info('Ставлю в очередь генерацию заказов, выплат и SMS...');
+        $this->dispatchHeavyJobs();
 
-        // Выбор активных шлюзов, поддерживающих нужные типы реквизитов
-        $activeGateways = queries()->paymentGateway()->getAllActive();
-        $rubGateways = $activeGateways->filter(fn ($pg) => strtolower($pg->currency->getCode()) === 'rub');
-        $cardGateways = $rubGateways->filter(fn ($pg) => in_array(DetailType::CARD, $pg->detail_types ?? []))->pluck('id')->values()->all();
-        $phoneGateways = $rubGateways->filter(fn ($pg) => in_array(DetailType::PHONE, $pg->detail_types ?? []))->pluck('id')->values()->all();
-
-        foreach ($eligibleUsers as $user) {
-            $userDeviceId = UserDevice::where('user_id', $user->id)->value('id');
-
-            if (! $userDeviceId) {
-                continue;
-            }
-
-            // 3 карты: 2 активные, 1 выключена
-            for ($i = 0; $i < 3; $i++) {
-                if (empty($cardGateways)) {
-                    break;
-                }
-                $isActive = $i < 2; // первые две активные
-                // генерируем уникальную карту
-                do {
-                    $cardNumber = self::generateMirCard();
-                } while (PaymentDetail::where('detail', $cardNumber)->exists());
-                $dailyLimit = self::randomDailyLimitRub();
-
-                $dto = new PaymentDetailCreateDTO(
-                    name: 'Реквизит карты',
-                    detail: $cardNumber,
-                    detail_type: DetailType::CARD,
-                    initials: 'Иван Иванов',
-                    is_active: $isActive,
-                    daily_limit: $dailyLimit,
-                    monthly_limit: null,
-                    monthly_limit_reset_day: null,
-                    daily_successful_orders_limit: null,
-                    currency: 'rub',
-                    payment_gateway_ids: [$cardGateways[array_rand($cardGateways)]],
-                    max_pending_orders_quantity: rand(1, 3),
-                    order_interval_minutes: random_int(0, 1) === 0 ? null : random_int(1, 6) * 5,
-                    user_device_id: $userDeviceId,
-                    user_id: $user->id,
-                    min_order_amount: random_int(1, 5) * 1000,
-                    max_order_amount: random_int(1, 10) * 50000,
-                );
-                services()->paymentDetail()->create($dto);
-            }
-
-            // 2 телефона: 1 активен, 1 отключен
-            for ($i = 0; $i < 2; $i++) {
-                if (empty($phoneGateways)) {
-                    break;
-                }
-                $isActive = $i === 0; // первый включен, второй выключен
-                // генерируем уникальный номер телефона
-                do {
-                    $phone = self::generateRuMobile();
-                } while (PaymentDetail::where('detail', $phone)->exists());
-                $dailyLimit = self::randomDailyLimitRub();
-
-                $dto = new PaymentDetailCreateDTO(
-                    name: 'Телефон для переводов',
-                    detail: $phone,
-                    detail_type: DetailType::PHONE,
-                    initials: 'Иван Иванов',
-                    is_active: $isActive,
-                    daily_limit: $dailyLimit,
-                    monthly_limit: null,
-                    monthly_limit_reset_day: null,
-                    daily_successful_orders_limit: null,
-                    currency: 'rub',
-                    payment_gateway_ids: [$phoneGateways[array_rand($phoneGateways)]],
-                    max_pending_orders_quantity: rand(1, 3),
-                    order_interval_minutes: random_int(0, 1) === 0 ? null : random_int(1, 6) * 5,
-                    user_device_id: $userDeviceId,
-                    user_id: $user->id,
-                    min_order_amount: random_int(1, 5) * 1000,
-                    max_order_amount: random_int(1, 10) * 50000,
-                );
-                services()->paymentDetail()->create($dto);
-            }
-        }
-
-        // Этап 4. Начисление депозитов в USDT (TRC20) трейдерам и администраторам
-        $this->info('Начисляю тестовые депозиты в USDT (TRC20)...');
-
-        // используем тех же пользователей с ролями Trader и Super Admin
-        foreach ($eligibleUsers as $user) {
-            if (! $user->wallet) {
-                continue;
-            }
-
-            $amountUsd = self::randomUsdtAmount();
-            $transactionId = self::generateTransactionId();
-            $txHash = self::generateTronTxHash();
-
-            services()->invoice()->deposit(
-                walletID: $user->wallet->id,
-                amount: Money::fromPrecision($amountUsd, Currency::USDT()),
-                balanceType: BalanceType::TRUST,
-                transactionID: (string) $transactionId,
-                txHash: $txHash,
-            );
-        }
-
-        // Этап 5. Создание мерчантов для пользователей с ролью Merchant и Super Admin
-        $this->info('Создаю мерчантов для пользователей с ролью Merchant и Super Admin...');
-
-        $merchantUsers = User::query()
-            ->role(['Merchant', 'Super Admin'])
-            ->get();
-
-        $merchantNames = [
-            'Магазин Электроники',
-            'Книжный Мир',
-            'Спортивный Клуб',
-            'Кафе Уют',
-            'Автозапчасти Плюс',
-            'Цветочный Рай',
-            'Детский Мир',
-            'Продукты 24',
-            'Техносервис',
-            'Модный Стиль',
-            'Интернет-магазин Техники',
-            'Онлайн-аптека',
-            'Строительные Материалы',
-            'Одежда и Обувь',
-            'Дом и Сад',
-            'Красота и Здоровье',
-            'Спорт и Отдых',
-            'Автомобили и Мотоциклы',
-            'Бизнес и Офис',
-            'Хобби и Творчество',
-        ];
-
-        $projectDomains = [
-            'electronics-shop',
-            'book-world',
-            'sport-club',
-            'cozy-cafe',
-            'auto-parts',
-            'flower-paradise',
-            'kids-world',
-            'products-24',
-            'techno-service',
-            'fashion-style',
-            'tech-store',
-            'online-pharmacy',
-            'building-materials',
-            'clothing-shoes',
-            'home-garden',
-            'beauty-health',
-            'sport-leisure',
-            'auto-moto',
-            'business-office',
-            'hobby-creative',
-        ];
-
-        foreach ($merchantUsers as $merchantUser) {
-            // Создаем по 3 мерчанта для каждого пользователя
-            for ($i = 1; $i <= 3; $i++) {
-                $randomIndex = array_rand($merchantNames);
-                $name = $merchantNames[$randomIndex].' '.$i;
-                $projectLink = 'https://'.$projectDomains[$randomIndex].'-'.$i.'-example.com';
-
-                $merchant = services()->merchant()->create(new MerchantCreateDTO(
-                    user_id: $merchantUser->id,
-                    name: $name,
-                    description: 'Тестовый мерчант #'.$i,
-                    project_link: $projectLink,
-                ));
-
-                // Устанавливаем статусы для мерчантов:
-                // 1-й мерчант: не валидирован, не забанен (оставляем как есть)
-                // 2-й мерчант: валидирован, не забанен
-                // 3-й мерчант: валидирован, забанен
-                if ($i === 2) {
-                    // Валидируем второй мерчант
-                    $merchant->update(['validated_at' => now()]);
-                } elseif ($i === 3) {
-                    // Валидируем и баним третий мерчант
-                    $merchant->update([
-                        'validated_at' => now(),
-                        'banned_at' => now(),
-                    ]);
-                }
-            }
-        }
-
-        // Этап 7. Создание Team Leader пользователей (2 шт.) с процентом комиссии от рефералов 0.20
-        $this->info('Создаю Team Leader пользователей...');
-
-        $teamLeaderRole = Role::where('name', 'Team Leader')->first();
-        if (! $teamLeaderRole) {
-            $this->warn("Роль 'Team Leader' не найдена. Пропускаю создание Team Leader пользователей.");
-        } else {
-            for ($i = 1; $i <= 2; $i++) {
-                // Генерируем уникальный логин
-                do {
-                    $login = $words[array_rand($words)].random_int(1, 999999);
-                } while (User::where('email', strtolower($login))->exists());
-
-                $leader = User::create([
-                    'name' => '',
-                    'email' => strtolower($login),
-                    'password' => Hash::make('password'),
-                    'apk_access_token' => strtolower(Str::random(32)),
-                    'api_access_token' => strtolower(Str::random(32)),
-                    'traffic_enabled_at' => now(),
-                    'referral_commission_percentage' => 0.20,
-                ]);
-
-                $leader->assignRole($teamLeaderRole);
-
-                // Создаем кошелек Team Leader
-                services()->wallet()->create($leader);
-            }
-        }
-
-        // Этап 8. Закрепляем трейдеров за случайными Team Leader (если не закреплены)
-        $this->info('Закрепляю трейдеров за тим лидами...');
-
-        $teamLeaders = User::query()
-            ->role(['Team Leader', 'Super Admin'])
-            ->pluck('id');
-
-        if ($teamLeaders->isNotEmpty()) {
-            $tradersWithoutLeader = User::query()
-                ->role(['Trader'])
-                ->whereNull('team_leader_id')
-                ->get();
-
-            foreach ($tradersWithoutLeader as $trader) {
-                $trader->update([
-                    'team_leader_id' => $teamLeaders->random(),
-                ]);
-            }
-        }
-
-        // Этап 9. Симуляция 100 H2H запросов на создание сделок через HTTP API (каждый заказ — отдельный анонимный job)
-        $this->info('Постановка 100 отдельных задач на симуляцию H2H API запросов в очередь test-data...');
-        $totalJobs = 300;
-        for ($i = 0; $i < $totalJobs; $i++) {
-            dispatch(function () use ($i, $totalJobs) {
-                try {
-                    self::simulateSingleH2HOrder($i, $totalJobs);
-                } catch (\Throwable $e) {
-                    \Log::error('simulateSingleH2HOrder failed: '.$e->getMessage(), [
-                        'exception' => $e,
-                    ]);
-                }
-            })->onQueue('test-data');
-        }
-
-        $this->info('Все задачи симуляции отправлены в очередь test-data.');
-
-        // После постановки задач на создание сделок — ставим задачу на создание заявок на вывод
-        dispatch(function () {
-            try {
-                self::simulateWithdrawalsJob();
-            } catch (\Throwable $e) {
-                \Log::error('simulateWithdrawalsJob failed: '.$e->getMessage(), [
-                    'exception' => $e,
-                ]);
-            }
-        })->onQueue('test-data');
-
-        // Этап 11. Подключение девайсов приложения и генерация тестовых банковских сообщений (SMS/PUSH)
-        dispatch(function () {
-            try {
-                self::simulateAppDeviceAndSmsJob();
-            } catch (\Throwable $e) {
-                \Log::error('simulateAppDeviceAndSmsJob failed: '.$e->getMessage(), [
-                    'exception' => $e,
-                ]);
-            }
-        })->onQueue('test-data');
-
-        $this->info('Генерация тестовых данных завершена!');
+        $this->newLine();
+        $this->info('Синхронная часть завершена. Оставшиеся данные генерируются в очереди `test-data`.');
+        $this->warn('Убедитесь, что запущен Horizon (php artisan horizon) или воркеры очередей: test-data, order, callback, payout, notifications, sms.');
 
         return Command::SUCCESS;
     }
 
-    /**
-     * Создать заявки на вывод средств для всех мерчантов и администраторов с положительным MERCHANT балансом.
-     * Для каждого пользователя — 3 заявки: SUCCESS, FAIL (c возвратом), PENDING.
-     */
-    private static function simulateWithdrawalsJob(): void
+    private function prepare(): void
     {
-        // Берём пользователей с ролями Merchant и Super Admin
-        $users = User::query()
-            ->role(['Merchant', 'Super Admin'])
-            ->with('wallet')
-            ->get();
+        DemoDataHelper::seedMarketPrices();
+
+        if (Setting::query()->count() === 0) {
+            $this->call('app:install-settings');
+        }
+    }
+
+    private function resolveRoles(): bool
+    {
+        $needed = ['Super Admin', 'Trader', 'Merchant', 'Team Leader', 'Support', 'Analyst', 'Provider Liquidity'];
+
+        foreach ($needed as $name) {
+            $role = Role::query()->where('name', $name)->first();
+            if ($role) {
+                $this->roleIds[$name] = (int) $role->id;
+            }
+        }
+
+        if (! isset($this->roleIds['Trader'], $this->roleIds['Merchant'])) {
+            $this->error('Базовые роли не найдены. Сначала выполните миграции и db:seed.');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function createTeamLeaders(int $count): Collection
+    {
+        $leaders = collect();
+        if (! isset($this->roleIds['Team Leader'])) {
+            return $leaders;
+        }
+
+        for ($i = 1; $i <= $count; $i++) {
+            $sharedReserve = $i % 2 === 0;
+            $login = $this->uniqueLogin('lead');
+
+            $user = services()->user()->create(new UserCreateDTO(
+                login: $login,
+                password: 'password',
+                role_id: $this->roleIds['Team Leader'],
+                telegram_username: $login,
+                team_leader_insurance_mode: $sharedReserve
+                    ? TeamLeaderInsuranceMode::TeamLeaderReserve->value
+                    : TeamLeaderInsuranceMode::TraderReserve->value,
+                team_leader_trader_limit: random_int(10, 30),
+                team_leader_reserve_balance_limit: $sharedReserve ? 100000 : null,
+                team_leader_reserve_stop_threshold: $sharedReserve ? 500 : null,
+            ));
+
+            $user->update([
+                'referral_commission_percentage' => round(random_int(15, 30) / 100, 2),
+                'payout_referral_commission_percentage' => round(random_int(10, 25) / 100, 2),
+            ]);
+
+            $leaders->push($user->fresh());
+        }
+
+        $this->line("  Тимлидов: {$leaders->count()}");
+
+        return $leaders;
+    }
+
+    /**
+     * @param  Collection<int, User>  $teamLeaders
+     * @return Collection<int, User>
+     */
+    private function createTraders(int $count, Collection $teamLeaders): Collection
+    {
+        $traders = collect();
+
+        for ($i = 1; $i <= $count; $i++) {
+            $user = services()->user()->create(new UserCreateDTO(
+                login: $this->uniqueLogin('trader'),
+                password: 'password',
+                role_id: $this->roleIds['Trader'],
+                team_leader_id: $teamLeaders->isNotEmpty() && random_int(0, 100) < 80
+                    ? (int) $teamLeaders->random()->id
+                    : null,
+            ));
+
+            $user->update([
+                'is_online' => random_int(1, 100) <= 85,
+                'stop_traffic' => random_int(1, 100) <= 10,
+                'payouts_enabled' => random_int(1, 100) <= 60,
+                'payout_hold_enabled' => false,
+                'can_work_without_device' => random_int(1, 100) <= 20,
+                'sms_auto_close_orders_enabled' => random_int(1, 100) <= 40,
+            ]);
+
+            $traders->push($user->fresh());
+        }
+
+        $this->line("  Трейдеров: {$traders->count()}");
+
+        return $traders;
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function createSimpleUsers(string $prefix, string $roleName, int $count, ?callable $after = null): Collection
+    {
+        $users = collect();
+        if (! isset($this->roleIds[$roleName])) {
+            return $users;
+        }
+
+        for ($i = 1; $i <= $count; $i++) {
+            $user = services()->user()->create(new UserCreateDTO(
+                login: $this->uniqueLogin($prefix),
+                password: 'password',
+                role_id: $this->roleIds[$roleName],
+            ));
+
+            if ($after) {
+                $after($user);
+            }
+
+            $users->push($user->fresh());
+        }
+
+        $this->line("  {$roleName}: {$users->count()}");
+
+        return $users;
+    }
+
+    /**
+     * Пользователи с трейдерским функционалом (трейдеры + супер-админы).
+     *
+     * @return Collection<int, User>
+     */
+    private function tradersLikeUsers(): Collection
+    {
+        return User::query()->role(['Trader', 'Super Admin'])->get();
+    }
+
+    /**
+     * @param  Collection<int, User>  $users
+     */
+    private function createDevices(Collection $users): void
+    {
+        $names = DemoDataHelper::androidDeviceNames();
 
         foreach ($users as $user) {
-            if (! $user->wallet) {
+            if (UserDevice::query()->where('user_id', $user->id)->exists()) {
                 continue;
             }
 
-            // Доступный MERCHANT баланс
-            try {
-                $available = services()->wallet()->getTotalAvailableBalance($user->wallet, BalanceType::MERCHANT);
-            } catch (\Throwable $e) {
+            $device = services()->device()->create($user->id, $names[array_rand($names)]);
+
+            services()->device()->update(
+                device: $device,
+                android_id: DemoDataHelper::androidId(),
+                device_model: $names[array_rand($names)],
+                android_version: (string) random_int(10, 14),
+                manufacturer: 'Android',
+                brand: explode(' ', $names[array_rand($names)])[0],
+                device_connect_snapshot: json_encode(['source' => 'demo'], JSON_UNESCAPED_UNICODE),
+            );
+        }
+    }
+
+    /**
+     * @param  Collection<int, User>  $users
+     */
+    private function createPaymentDetails(Collection $users): void
+    {
+        $active = queries()->paymentGateway()->getAllActive();
+
+        $cardGateways = [];
+        $phoneGateways = [];
+        foreach ($active as $pg) {
+            $code = strtolower($pg->currency->getCode());
+            $types = $pg->detail_types ?? [];
+            if (in_array(DetailType::CARD, $types, true)) {
+                $cardGateways[$code][] = (int) $pg->id;
+            }
+            if (in_array(DetailType::PHONE, $types, true)) {
+                $phoneGateways[$code][] = (int) $pg->id;
+            }
+        }
+
+        if (empty($cardGateways['rub']) && empty($phoneGateways['rub'])) {
+            $this->warn('  Нет активных RUB-шлюзов — реквизиты не будут созданы.');
+
+            return;
+        }
+
+        $secondaryCurrency = $this->secondaryCurrency;
+
+        foreach ($users as $user) {
+            $deviceId = UserDevice::query()->where('user_id', $user->id)->value('id');
+
+            // 3 RUB-карты (2 активные, 1 выключена).
+            if (! empty($cardGateways['rub'])) {
+                for ($i = 0; $i < 3; $i++) {
+                    $this->makePaymentDetail($user->id, $deviceId, DetailType::CARD, 'rub', $cardGateways['rub'], $i < 2);
+                }
+            }
+
+            // 2 RUB-телефона (1 активный).
+            if (! empty($phoneGateways['rub'])) {
+                for ($i = 0; $i < 2; $i++) {
+                    $this->makePaymentDetail($user->id, $deviceId, DetailType::PHONE, 'rub', $phoneGateways['rub'], $i === 0);
+                }
+            }
+
+            // 1 реквизит во вторичной валюте.
+            if ($secondaryCurrency && ! empty($cardGateways[$secondaryCurrency])) {
+                $this->makePaymentDetail($user->id, $deviceId, DetailType::CARD, $secondaryCurrency, $cardGateways[$secondaryCurrency], true);
+            }
+        }
+    }
+
+    /**
+     * Вторичная валюта (кроме rub) с наибольшим числом активных карточных шлюзов.
+     */
+    private function resolveSecondaryCurrency(): ?string
+    {
+        $cardGateways = [];
+        foreach (queries()->paymentGateway()->getAllActive() as $pg) {
+            $code = strtolower($pg->currency->getCode());
+            if (in_array(DetailType::CARD, $pg->detail_types ?? [], true)) {
+                $cardGateways[$code] = ($cardGateways[$code] ?? 0) + 1;
+            }
+        }
+
+        unset($cardGateways['rub']);
+        if ($cardGateways === []) {
+            return null;
+        }
+
+        arsort($cardGateways);
+        $code = array_key_first($cardGateways);
+
+        return isset(DemoDataHelper::SELL_RATES[$code]) ? $code : null;
+    }
+
+    /**
+     * @param  array<int, int>  $gatewayIds
+     */
+    private function makePaymentDetail(int $userId, ?int $deviceId, DetailType $type, string $currency, array $gatewayIds, bool $isActive): void
+    {
+        try {
+            $dto = new PaymentDetailCreateDTO(
+                name: $type === DetailType::CARD ? 'Карта '.strtoupper($currency) : 'Телефон '.strtoupper($currency),
+                detail: DemoDataHelper::detailValue($type, $currency),
+                detail_type: $type,
+                initials: DemoDataHelper::initials(),
+                additional_info: null,
+                is_active: $isActive,
+                daily_limit: random_int(0, 1) === 0 ? null : random_int(3, 20) * 100000,
+                monthly_limit: null,
+                monthly_limit_reset_day: null,
+                monthly_successful_orders_limit: null,
+                daily_successful_orders_limit: random_int(0, 1) === 0 ? null : random_int(10, 50),
+                currency: $currency,
+                payment_gateway_ids: [$gatewayIds[array_rand($gatewayIds)]],
+                max_pending_orders_quantity: random_int(3, 8),
+                order_interval_minutes: null,
+                user_device_id: $deviceId,
+                user_id: $userId,
+                min_order_amount: null,
+                max_order_amount: null,
+            );
+
+            services()->paymentDetail()->create($dto);
+        } catch (\Throwable $e) {
+            $this->warn('  Реквизит пропущен: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * @param  Collection<int, User>  $users
+     */
+    private function fundTraders(Collection $users): void
+    {
+        foreach ($users as $user) {
+            $wallet = $user->wallet;
+            if (! $wallet) {
                 continue;
             }
 
-            // Преобразуем в целые единицы USDT (доллары) для удобного деления
-            $balanceInt = (int) $available->toBeauty();
-            if ($balanceInt <= 0) {
+            services()->invoice()->deposit(
+                walletID: $wallet->id,
+                amount: Money::fromPrecision((string) random_int(50000, 200000), Currency::USDT()),
+                balanceType: BalanceType::TRUST,
+                transactionID: DemoDataHelper::transactionId(),
+                txHash: DemoDataHelper::txHash(),
+            );
+        }
+    }
+
+    /**
+     * @param  Collection<int, User>  $leaders
+     */
+    private function fundTeamLeaders(Collection $leaders): void
+    {
+        foreach ($leaders as $leader) {
+            $wallet = $leader->wallet;
+            if (! $wallet) {
                 continue;
             }
 
-            // Определим случайное количество заявок (5..8), но не меньше 3 и по средствам
-            $minRequests = 3;
-            $maxRequests = 8;
-            $desiredRequests = random_int(5, 8);
+            services()->invoice()->deposit(
+                walletID: $wallet->id,
+                amount: Money::fromPrecision((string) random_int(30000, 120000), Currency::USDT()),
+                balanceType: BalanceType::RESERVE,
+            );
+        }
+    }
 
-            // Готовим распределение сумм на desiredRequests слотов, оставляя возможность для 3 последних PENDING
-            $remaining = $balanceInt;
-            $amounts = [];
-            $roundCandidates = [50, 100, 150, 200, 300, 500, 1000];
-            $minUnit = 10;
+    /**
+     * @param  Collection<int, User>  $merchantUsers
+     * @return Collection<int, Merchant>
+     */
+    private function createMerchants(Collection $merchantUsers): Collection
+    {
+        $merchants = collect();
+        $names = DemoDataHelper::companyNames();
 
-            for ($i = 0; $i < $desiredRequests; $i++) {
-                $mustLeft = $minUnit * max(0, ($desiredRequests - $i - 1));
-                $cands = array_values(array_filter($roundCandidates, function (int $v) use ($remaining, $mustLeft) {
-                    return $v <= max(0, $remaining - $mustLeft);
-                }));
+        // Мерчанты создаются и для мерчант-пользователей, и для супер-админов.
+        $owners = $merchantUsers->merge(User::query()->role('Super Admin')->get())->unique('id');
 
-                if (empty($cands)) {
-                    $slotsLeft = ($desiredRequests - $i);
-                    if ($slotsLeft <= 0) {
-                        break;
-                    }
-                    $alloc = intdiv($remaining, $slotsLeft);
-                    $alloc = max($minUnit, intdiv($alloc, $minUnit) * $minUnit);
-                    if ($alloc > $remaining) {
-                        $alloc = $remaining;
-                    }
-                    if ($alloc <= 0) {
-                        break;
-                    }
+        foreach ($owners as $owner) {
+            for ($i = 1; $i <= 2; $i++) {
+                $name = $names[array_rand($names)].' '.Str::upper(Str::random(3));
+
+                $merchant = services()->merchant()->create(new MerchantCreateDTO(
+                    user_id: $owner->id,
+                    name: $name,
+                    description: 'Демо-мерчант',
+                    project_link: 'https://'.Str::slug($name).'.example.com',
+                ));
+
+                // Статусы: 1-й — валидирован и активен; 2-й — иногда на модерации/бан.
+                if ($i === 1) {
+                    $merchant->update(['validated_at' => now()->subDays(random_int(5, 60))]);
                 } else {
-                    $alloc = $cands[array_rand($cands)];
+                    $roll = random_int(1, 100);
+                    if ($roll <= 60) {
+                        $merchant->update(['validated_at' => now()->subDays(random_int(1, 30))]);
+                    } elseif ($roll <= 80) {
+                        $merchant->update([
+                            'validated_at' => now()->subDays(random_int(1, 30)),
+                            'banned_at' => now()->subDays(random_int(1, 10)),
+                        ]);
+                    }
+                    // иначе остаётся на модерации (validated_at = null)
                 }
 
-                $amounts[] = $alloc;
-                $remaining -= $alloc;
-
-                if ($remaining < $minUnit && ($desiredRequests - $i - 1) > 0) {
-                    // недостаточно средств на оставшиеся слоты — ограничим количество
-                    $desiredRequests = $i + 1;
-                    break;
-                }
+                $this->configureMerchant($merchant);
+                $merchants->push($merchant->fresh());
             }
+        }
 
-            if (count($amounts) < $minRequests) {
-                // недостаточно средств для хотя бы 3 заявок — пропускаем
+        $this->line("  Мерчантов: {$merchants->count()}");
+
+        return $merchants;
+    }
+
+    private function configureMerchant(Merchant $merchant): void
+    {
+        // GEO-карта: RUB всегда, иногда добавляем вторичную валюту, для которой
+        // у трейдеров гарантированно есть реквизиты (иначе заказы не создадутся).
+        $geo = ['rub' => 'bybit'];
+        if ($this->secondaryCurrency && random_int(1, 100) <= 30) {
+            $geo[$this->secondaryCurrency] = 'bybit';
+        }
+
+        $merchant->setGeoMap($geo);
+        $merchant->save();
+
+        // Антифрод примерно для половины мерчантов.
+        if (random_int(0, 1) === 1) {
+            try {
+                services()->antiFraudSetting()->create([
+                    'merchant_id' => $merchant->id,
+                    'enabled' => true,
+                    'primary_max_pending' => random_int(1, 3),
+                    'primary_failed_limit' => random_int(3, 8),
+                    'primary_block_days' => random_int(1, 7),
+                    'primary_rate_limits' => [['count' => random_int(3, 6), 'minutes' => random_int(5, 30)]],
+                    'secondary_enabled' => true,
+                    'secondary_max_pending' => random_int(1, 2),
+                    'secondary_failed_limit' => random_int(2, 5),
+                    'secondary_block_days' => random_int(1, 3),
+                    'secondary_rate_limits' => [['count' => random_int(2, 4), 'minutes' => random_int(10, 60)]],
+                ]);
+            } catch (\Throwable $e) {
+                // ignore
+            }
+        }
+
+        // Клиенты мерчанта.
+        foreach (range(1, random_int(3, 8)) as $ignored) {
+            MerchantClient::query()->create([
+                'merchant_id' => $merchant->id,
+                'client_id' => 'client-'.Str::lower(Str::random(10)),
+                'blocked_until' => random_int(1, 100) <= 15 ? now()->addDays(random_int(1, 7)) : null,
+            ]);
+        }
+    }
+
+    /**
+     * @param  Collection<int, Merchant>  $merchants
+     */
+    private function fundMerchants(Collection $merchants): void
+    {
+        foreach ($merchants as $merchant) {
+            $merchant->loadMissing('wallet');
+            if (! $merchant->wallet || $merchant->banned_at) {
                 continue;
             }
 
-            // Создаём все заявки в статусе PENDING, сохраняя порядок создания
-            $createdInvoices = [];
-            foreach ($amounts as $amt) {
+            services()->invoice()->deposit(
+                walletID: $merchant->wallet->id,
+                amount: Money::fromPrecision((string) random_int(30000, 150000), Currency::USDT()),
+                balanceType: BalanceType::MERCHANT,
+            );
+        }
+    }
+
+    /**
+     * @param  Collection<int, User>  $users
+     */
+    private function createWithdrawals(Collection $users): void
+    {
+        foreach ($users->unique('id') as $user) {
+            $wallet = $user->wallet;
+            if (! $wallet) {
+                continue;
+            }
+
+            $balanceType = BalanceType::TRUST;
+
+            foreach (range(1, random_int(1, 3)) as $ignored) {
+                $address = DemoDataHelper::tronAddress();
+                $withdrawalAddress = WithdrawalAddress::query()->create([
+                    'user_id' => $user->id,
+                    'name' => 'Кошелёк '.Str::upper(Str::random(4)),
+                    'address' => $address,
+                    'address_hash' => WithdrawalAddress::hashAddress($address),
+                ]);
+
                 try {
                     $invoice = services()->invoice()->createWithdrawal(
-                        walletID: $user->wallet->id,
-                        amount: Money::fromPrecision($amt, Currency::USDT()),
-                        address: 'TRC20-TEST-'.uniqid('', true),
-                        balanceType: BalanceType::MERCHANT,
+                        walletID: $wallet->id,
+                        amount: Money::fromPrecision((string) random_int(100, 3000), Currency::USDT()),
+                        withdrawalAddress: $withdrawalAddress,
+                        balanceType: $balanceType,
                     );
-                    $createdInvoices[] = $invoice;
-                } catch (\Throwable $e) {
-                    // ignore отдельные ошибки создания, продолжаем
-                }
-            }
 
-            if (count($createdInvoices) < $minRequests) {
-                continue;
-            }
-
-            // Последние три оставляем PENDING; остальные случайно завершаем или отклоняем
-            $countCreated = count($createdInvoices);
-            $limitPending = 3;
-            $boundary = max(0, $countCreated - $limitPending);
-            for ($i = 0; $i < $boundary; $i++) {
-                $invoice = $createdInvoices[$i];
-                try {
-                    if ((bool) random_int(0, 1)) {
+                    $roll = random_int(1, 100);
+                    if ($roll <= 55) {
                         services()->invoice()->finishWithdrawal($invoice->id);
-                    } else {
+                    } elseif ($roll <= 75) {
                         services()->invoice()->cancelWithdrawal($invoice->id);
                     }
+                    // иначе оставляем в статусе PENDING
                 } catch (\Throwable $e) {
-                    // ignore
+                    // недостаточно средств/прочее — пропускаем
                 }
             }
         }
     }
 
-    /**
-     * Симулировать создание H2H-сделок через HTTP API.
-     */
-    private static function simulateH2HOrdersJob(int $count = 100): void
+    private function createNews(): void
     {
-        $merchants = MerchantModel::query()
-            ->whereNotNull('validated_at')
-            ->whereNull('banned_at')
-            ->where('active', true)
-            ->with('user')
-            ->get();
-
-        if ($merchants->isEmpty()) {
-            \Log::warning('Нет доступных мерчантов для симуляции H2H заказов.');
-
+        $admin = User::query()->role('Super Admin')->first();
+        if (! $admin) {
             return;
         }
 
-        $detailTypes = [DetailType::CARD->value, DetailType::PHONE->value];
-        $apiUrl = rtrim(config('app.url'), '/').'/api/h2h/order';
-        $callbackUrl = rtrim(config('app.url'), '/').'/api/test/h2h-callback';
-
-        for ($i = 0; $i < $count; $i++) {
-            $merchant = $merchants[$i % $merchants->count()];
-
-            // Пропускаем мерчанта без пользователя/токена
-            if (! $merchant->user || empty($merchant->user->api_access_token)) {
-                continue;
-            }
-
-            $payload = [
-                'external_id' => 'ext-'.Str::uuid()->toString(),
-                'amount' => random_int(1000, 5000),
-                'currency' => 'rub',
-                'payment_detail_type' => $detailTypes[array_rand($detailTypes)],
-                'merchant_id' => $merchant->uuid,
-                'callback_url' => $callbackUrl,
-            ];
-
-            try {
-                $response = Http::timeout(10)
-                    ->withHeaders([
-                        'Accept' => 'application/json',
-                        'Access-Token' => $merchant->user->api_access_token,
-                        // Можно варьировать время ожидания, оставим дефолт
-                    ])
-                    ->post($apiUrl, $payload);
-
-                if (! $response->ok()) {
-                    if ($response->status() === 400) {
-                        $message = null;
-                        try {
-                            $json = $response->json();
-                            if (is_array($json) && ($json['success'] ?? null) === false && isset($json['message'])) {
-                                $message = is_string($json['message']) ? $json['message'] : null;
-                            }
-                        } catch (\Throwable $e) {
-                            // ignore JSON parse errors and fallback to raw body below
-                        }
-
-                        if ($message !== null) {
-                            \Log::warning('H2H create failed: '.$message);
-                        } else {
-                            \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
-                        }
-                    } else {
-                        \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
-                    }
-                } else {
-                    // Успешно создано — попытаемся досрочно завершить половину сделок, половину — отменить
-                    try {
-                        $json = $response->json();
-                        $orderId = is_array($json) ? ($json['data']['order_id'] ?? null) : null;
-                    } catch (\Throwable $e) {
-                        $orderId = null;
-                    }
-
-                    if (is_string($orderId) && $orderId !== '') {
-                        $shouldFinish = (bool) random_int(0, 1);
-                        $endpoint = rtrim(config('app.url'), '/')."/api/h2h/order/{$orderId}/".($shouldFinish ? 'finish' : 'cancel');
-
-                        try {
-                            $finishResponse = Http::timeout(10)
-                                ->withHeaders([
-                                    'Accept' => 'application/json',
-                                    'Access-Token' => $merchant->user->api_access_token,
-                                ])
-                                ->patch($endpoint);
-
-                            if (! $finishResponse->ok()) {
-                                \Log::warning('H2H post-create action failed: HTTP '.$finishResponse->status().' '.$finishResponse->body());
-                            }
-                        } catch (\Throwable $e) {
-                            \Log::warning('H2H post-create action exception: '.$e->getMessage());
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                \Log::warning('H2H create exception: '.$e->getMessage());
-            }
-        }
-    }
-
-    /**
-     * Симулировать создание одной H2H-сделки через HTTP API.
-     */
-    private static function simulateSingleH2HOrder(int $index = 0, int $total = 1): void
-    {
-        $merchants = MerchantModel::query()
-            ->whereNotNull('validated_at')
-            ->whereNull('banned_at')
-            ->where('active', true)
-            ->with('user')
-            ->get();
-
-        if ($merchants->isEmpty()) {
-            \Log::warning('Нет доступных мерчантов для симуляции H2H заказа.');
-
-            return;
-        }
-
-        $detailTypes = [DetailType::CARD->value, DetailType::PHONE->value];
-        $apiUrl = rtrim(config('app.url'), '/').'/api/h2h/order';
-        $callbackUrl = rtrim(config('app.url'), '/').'/api/test/h2h-callback';
-
-        $merchant = $merchants->random();
-
-        // Пропускаем мерчанта без пользователя/токена
-        if (! $merchant->user || empty($merchant->user->api_access_token)) {
-            return;
-        }
-
-        $payload = [
-            'external_id' => 'ext-'.Str::uuid()->toString(),
-            'amount' => random_int(1000, 5000),
-            'currency' => 'rub',
-            'payment_detail_type' => $detailTypes[array_rand($detailTypes)],
-            'merchant_id' => $merchant->uuid,
-            'callback_url' => $callbackUrl,
+        $posts = [
+            ['Обновление платформы', 'Мы улучшили скорость назначения реквизитов и стабильность выплат.'],
+            ['Новые платёжные шлюзы', 'Добавлена поддержка новых банков и способов оплаты.'],
+            ['Плановые технические работы', 'В выходные возможны кратковременные перерывы в работе сервиса.'],
+            ['Изменения в комиссиях', 'С понедельника обновляются тарифы для отдельных направлений.'],
+            ['Антифрод: усиление защиты', 'Внедрены дополнительные проверки для снижения фрода.'],
         ];
 
-        try {
-            $response = Http::timeout(10)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'Access-Token' => $merchant->user->api_access_token,
-                ])
-                ->post($apiUrl, $payload);
+        $reactors = User::query()->whereKeyNot($admin->id)->inRandomOrder()->limit(20)->get();
 
-            if (! $response->ok()) {
-                if ($response->status() === 400) {
-                    $message = null;
-                    try {
-                        $json = $response->json();
-                        if (is_array($json) && ($json['success'] ?? null) === false && isset($json['message'])) {
-                            $message = is_string($json['message']) ? $json['message'] : null;
-                        }
-                    } catch (\Throwable $e) {
-                        // ignore JSON parse errors and fallback to raw body below
-                    }
+        foreach ($posts as [$title, $paragraph]) {
+            $content = DemoDataHelper::newsContent($title, $paragraph);
+            $createdAt = now()->subDays(random_int(0, $this->days));
 
-                    if ($message !== null) {
-                        \Log::warning('H2H create failed: '.$message);
-                    } else {
-                        \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
-                    }
-                } else {
-                    \Log::warning('H2H create failed: HTTP '.$response->status().' '.$response->body());
-                }
+            $post = NewsPost::query()->create([
+                'author_id' => $admin->id,
+                'title' => $title,
+                'is_visible_for_all' => random_int(0, 1) === 1,
+                'visible_role_names' => ['Trader', 'Team Leader'],
+                'content_json' => $content['json'],
+                'content_html' => $content['html'],
+                'views_count' => random_int(20, 500),
+                'likes_count' => 0,
+                'dislikes_count' => 0,
+                'created_at' => $createdAt,
+                'updated_at' => $createdAt,
+            ]);
 
-                return;
+            $likes = 0;
+            $dislikes = 0;
+            foreach ($reactors->random(min(8, $reactors->count())) as $reactor) {
+                $reaction = random_int(1, 100) <= 75 ? 'up' : 'down';
+                NewsPostReaction::query()->firstOrCreate(
+                    ['news_post_id' => $post->id, 'user_id' => $reactor->id],
+                    ['reaction' => $reaction],
+                );
+                $reaction === 'up' ? $likes++ : $dislikes++;
             }
 
-            // Успешно создано — попытаемся досрочно завершить половину сделок, половину — отменить
-            try {
-                $json = $response->json();
-                $orderId = is_array($json) ? ($json['data']['order_id'] ?? null) : null;
-            } catch (\Throwable $e) {
-                $orderId = null;
-            }
-
-            if (is_string($orderId) && $orderId !== '') {
-                $shouldFinish = (bool) random_int(0, 1);
-                $endpoint = rtrim(config('app.url'), '/')."/api/h2h/order/{$orderId}/".($shouldFinish ? 'finish' : 'cancel');
-
-                try {
-                    $finishResponse = Http::timeout(10)
-                        ->withHeaders([
-                            'Accept' => 'application/json',
-                            'Access-Token' => $merchant->user->api_access_token,
-                        ])
-                        ->patch($endpoint);
-
-                    if (! $finishResponse->ok()) {
-                        \Log::warning('H2H post-create action failed: HTTP '.$finishResponse->status().' '.$finishResponse->body());
-                    }
-                } catch (\Throwable $e) {
-                    \Log::warning('H2H post-create action exception: '.$e->getMessage());
-                }
-
-                // После создания сделки распределяем ее по последним 30 дням и корректируем времена
-                try {
-                    // Равномерное распределение по последним 30 дням
-                    $windowDays = 30;
-                    $bucket = $total > 0 ? (int) floor(($index % $total) * $windowDays / $total) : 0; // 0..29
-                    if ($bucket < 0) {
-                        $bucket = 0;
-                    }
-                    if ($bucket >= $windowDays) {
-                        $bucket = $windowDays - 1;
-                    }
-
-                    $daysAgo = $bucket; // 0..29
-                    $createdAt = Carbon::now()
-                        ->subDays($daysAgo)
-                        ->setTime(random_int(0, 23), random_int(0, 59), random_int(0, 59));
-                    $expiresAt = (clone $createdAt)->addMinutes(10);
-                    $finishedAt = (clone $createdAt)->addMinutes(random_int(3, 8));
-
-                    DB::table('orders')
-                        ->where('uuid', $orderId)
-                        ->update([
-                            'created_at' => $createdAt,
-                            'expires_at' => $expiresAt,
-                            'finished_at' => $finishedAt,
-                            'updated_at' => $finishedAt,
-                        ]);
-                } catch (\Throwable $e) {
-                    \Log::warning('Failed to update order timestamps for distribution: '.$e->getMessage());
-                }
-
-                // Создаём споры для половины отменённых сделок с прикреплением примерного чека
-                try {
-                    $orderModel = Order::where('uuid', $orderId)->with('dispute')->first();
-                    if ($orderModel && $orderModel->status->equals(OrderStatus::FAIL)) {
-                        // считаем отменённой ручной отменой; споры только для каждой второй
-                        if ($orderModel->sub_status && $orderModel->sub_status->equals(OrderSubStatus::CANCELED) && ($index % 2 === 1)) {
-                            $exampleReceiptPath = base_path('example_check.png');
-                            if (file_exists($exampleReceiptPath)) {
-                                $tmpDir = storage_path('framework/testing/disputes');
-                                if (! is_dir($tmpDir)) {
-                                    @mkdir($tmpDir, 0777, true);
-                                }
-                                $tmpPath = $tmpDir.'/example_check_'.uniqid('', true).'.png';
-                                if (@copy($exampleReceiptPath, $tmpPath)) {
-                                    $uploadedReceipt = new UploadedFile(
-                                        $tmpPath,
-                                        'example_check.png',
-                                        'image/png',
-                                        null,
-                                        true
-                                    );
-                                    try {
-                                        $dispute = services()->dispute()->create($orderModel->id, $uploadedReceipt);
-
-                                        // 1/3 оставить PENDING, 1/3 принять, 1/3 отклонить с причиной
-                                        $roll = random_int(0, 2);
-                                        if ($roll === 1) {
-                                            try {
-                                                services()->dispute()->accept($dispute->id);
-                                            } catch (DisputeException $e) {
-                                                // ignore
-                                            }
-                                        } elseif ($roll === 2) {
-                                            $reasons = [
-                                                'Некорректные данные платежа',
-                                                'Несоответствие сумм на чеке',
-                                                'Чек не читаем или повреждён',
-                                                'Истёк срок оплаты',
-                                                'Платёж не найден в системе банка',
-                                            ];
-                                            $reason = $reasons[array_rand($reasons)];
-                                            try {
-                                                services()->dispute()->cancel(
-                                                    $dispute->id,
-                                                    DisputeCancelReasonCode::OTHER,
-                                                    $reason,
-                                                    $this->makeTestBankStatementFile(),
-                                                );
-                                            } catch (DisputeException $e) {
-                                                // ignore
-                                            }
-                                        }
-                                    } catch (DisputeException $e) {
-                                        // ignore dispute creation issues in test data generation
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    // ignore any unexpected exceptions during dispute auto-creation
-                }
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('H2H create exception: '.$e->getMessage());
+            $post->update(['likes_count' => $likes, 'dislikes_count' => $dislikes]);
         }
-    }
-
-    private static function generateRuMobile(): string
-    {
-        // Российский мобильный номер: начинается с 79 и ещё 9 цифр (итого 11)
-        return '79'.str_pad((string) random_int(0, 999999999), 9, '0', STR_PAD_LEFT);
-    }
-
-    private static function generateMirCard(): string
-    {
-        // Сгенерируем валидный по Луну номер карты, начинающийся на 2 (МИР)
-        $prefix = '2200';
-        $length = 16;
-        $base = $prefix;
-        while (strlen($base) < $length - 1) {
-            $base .= (string) random_int(0, 9);
-        }
-
-        $checksum = self::luhnChecksumDigit($base);
-
-        return $base.$checksum;
-    }
-
-    private static function randomDailyLimitRub(): int
-    {
-        // от 10_000 до 100_000 с шагом 10_000
-        $steps = range(1, 10);
-
-        return $steps[array_rand($steps)] * 10000;
-    }
-
-    private static function luhnChecksumDigit(string $number): string
-    {
-        $sum = 0;
-        $alt = true;
-        for ($i = strlen($number) - 1; $i >= 0; $i--) {
-            $n = (int) $number[$i];
-            if ($alt) {
-                $n *= 2;
-                if ($n > 9) {
-                    $n -= 9;
-                }
-            }
-            $sum += $n;
-            $alt = ! $alt;
-        }
-        $digit = (10 - ($sum % 10)) % 10;
-
-        return (string) $digit;
-    }
-
-    private static function randomUsdtAmount(): int
-    {
-        // от 2000 до 5000 с шагом 500 (в долларах США)
-        $options = range(2000, 5000, 500);
-
-        return $options[array_rand($options)];
-    }
-
-    private static function generateTransactionId(): int
-    {
-        // Эмуляция числового идентификатора транзакции
-        return random_int(1_000_000, 999_999_999);
-    }
-
-    private static function generateTronTxHash(): string
-    {
-        // Эмуляция TRON tx hash: 64-символьная hex-строка
-        return bin2hex(random_bytes(32));
     }
 
     /**
-     * Подключить устройства приложений (3 трейдера и все администраторы) и диспатчить отдельный job на каждый девайс.
+     * @param  Collection<int, User>  $traders
      */
-    private static function simulateAppDeviceAndSmsJob(): void
+    private function createTelegramData(Collection $traders): void
     {
-        $traders = User::query()->role(['Trader'])->inRandomOrder()->limit(3)->get();
-        $admins = User::query()->role(['Super Admin'])->get();
+        // Личные привязки Telegram примерно для половины пользователей.
+        User::query()->whereNotNull('email')->inRandomOrder()->limit(40)->get()
+            ->each(function (User $user) {
+                if (random_int(0, 1) === 0 || TelegramAccount::query()->where('user_id', $user->id)->exists()) {
+                    return;
+                }
 
-        $users = $traders->concat($admins)->unique('id');
+                TelegramAccount::query()->create([
+                    'user_id' => $user->id,
+                    'chat_id' => (string) random_int(100000000, 999999999),
+                    'username' => $user->email,
+                    'first_name' => explode(' ', DemoDataHelper::fullName())[0],
+                    'last_name' => explode(' ', DemoDataHelper::fullName())[1] ?? null,
+                    'link_token' => Str::random(40),
+                    'is_active' => true,
+                    'linked_at' => now()->subDays(random_int(0, $this->days)),
+                ]);
+            });
+
+        // Групповые чаты: обработка споров и командные чаты трейдеров.
+        $disputeChat = TelegramChat::query()->create([
+            'telegram_chat_id' => '-100'.random_int(1000000000, 9999999999),
+            'type' => 'supergroup',
+            'title' => 'Диспуты — обработка',
+            'username' => null,
+            'status' => TelegramChatStatus::ACTIVE,
+            'chat_type' => TelegramChatType::DISPUTE_PROCESSING,
+            'parser_type' => TelegramChatParserType::STANDARD_DISPUTE,
+            'debug_enabled' => false,
+            'last_message_at' => now(),
+        ]);
+
+        $teamChat = TelegramChat::query()->create([
+            'telegram_chat_id' => '-100'.random_int(1000000000, 9999999999),
+            'type' => 'supergroup',
+            'title' => 'Команда трейдеров',
+            'username' => null,
+            'status' => TelegramChatStatus::ACTIVE,
+            'chat_type' => TelegramChatType::TRADER_TEAM,
+            'parser_type' => null,
+            'debug_enabled' => false,
+            'last_message_at' => now(),
+        ]);
+
+        if ($traders->isNotEmpty()) {
+            $attach = $traders->random(min(5, $traders->count()));
+            $teamChat->traders()->syncWithoutDetaching(
+                $attach->mapWithKeys(fn (User $t) => [$t->id => ['telegram_username' => $t->email]])->all()
+            );
+        }
+
+        $statuses = [
+            TelegramChatMessageStatus::RECEIVED,
+            TelegramChatMessageStatus::PROCESSED,
+            TelegramChatMessageStatus::IGNORED,
+            TelegramChatMessageStatus::FAILED,
+        ];
+
+        foreach (range(1, 25) as $n) {
+            $createdAt = now()->subDays(random_int(0, $this->days))->subMinutes(random_int(0, 1440));
+            $uuid = (string) Str::uuid();
+
+            TelegramChatMessage::query()->create([
+                'telegram_chat_id' => $disputeChat->id,
+                'telegram_update_id' => (string) Str::uuid(),
+                'telegram_message_id' => (string) random_int(1000, 999999),
+                'message_type' => random_int(0, 1) === 0 ? TelegramChatMessageType::TEXT : TelegramChatMessageType::PHOTO,
+                'text' => 'Спор по сделке '.$uuid,
+                'caption' => null,
+                'detected_uuid' => $uuid,
+                'order_id' => null,
+                'dispute_id' => null,
+                'status' => $statuses[array_rand($statuses)],
+                'failure_reason' => null,
+                'is_dispute_related' => true,
+                'raw_payload' => ['source' => 'demo'],
+                'processed_at' => $createdAt,
+                'created_at' => $createdAt,
+                'updated_at' => $createdAt,
+            ]);
+        }
+    }
+
+    private function createLoginHistory(): void
+    {
+        $locations = DemoDataHelper::locations();
+        $agents = DemoDataHelper::userAgents();
+
+        User::query()->get()->each(function (User $user) use ($locations, $agents) {
+            foreach (range(1, random_int(3, 10)) as $ignored) {
+                $loc = $locations[array_rand($locations)];
+                $agent = $agents[array_rand($agents)];
+                $createdAt = now()->subDays(random_int(0, $this->days))->subMinutes(random_int(0, 1440));
+
+                UserLoginHistory::query()->create([
+                    'user_id' => $user->id,
+                    'ip_address' => DemoDataHelper::ip(),
+                    'user_agent' => $agent['ua'],
+                    'device_type' => $agent['device'],
+                    'browser' => $agent['browser'],
+                    'operating_system' => $agent['os'],
+                    'location' => $loc['city'].', '.$loc['country'],
+                    'country_code' => $loc['country_code'],
+                    'country' => $loc['country'],
+                    'region' => $loc['region'],
+                    'city' => $loc['city'],
+                    'is_successful' => random_int(1, 100) <= 90,
+                    'created_at' => $createdAt,
+                    'updated_at' => $createdAt,
+                ]);
+            }
+        });
+    }
+
+    /**
+     * @param  Collection<int, User>  $users
+     */
+    private function createOnlinePeriods(Collection $users): void
+    {
+        $windowDays = min($this->days, 10);
 
         foreach ($users as $user) {
-            /** @var UserDevice|null $device */
-            $device = UserDevice::query()->where('user_id', $user->id)->orderByDesc('id')->first();
-            if (! $device) {
-                continue;
-            }
+            for ($d = 0; $d <= $windowDays; $d++) {
+                foreach (range(1, random_int(1, 3)) as $ignored) {
+                    $start = now()->subDays($d)
+                        ->setTime(random_int(7, 21), random_int(0, 59), 0);
+                    $end = (clone $start)->addMinutes(random_int(20, 240));
 
-            $deviceId = (int) $device->id;
-
-            dispatch(function () use ($deviceId) {
-                try {
-                    self::simulateAppDeviceAndSmsForDevice($deviceId);
-                } catch (\Throwable $e) {
-                    \Log::error('simulateAppDeviceAndSmsForDevice failed: '.$e->getMessage(), [
-                        'device_id' => $deviceId,
-                        'exception' => $e,
+                    UserOnlinePeriod::query()->create([
+                        'user_id' => $user->id,
+                        'started_at' => $start,
+                        'ended_at' => $end,
                     ]);
                 }
-            })->onQueue('test-data');
-        }
-    }
-
-    /**
-     * Обработать подключение и отправку сообщений для одного девайса.
-     */
-    private static function simulateAppDeviceAndSmsForDevice(int $deviceId): void
-    {
-        /** @var UserDevice|null $device */
-        $device = UserDevice::query()->find($deviceId);
-        if (! $device) {
-            return;
-        }
-
-        $apiBase = rtrim(config('app.url'), '/');
-        $connectUrl = $apiBase.'/api/app/device/connect';
-        $smsUrl = $apiBase.'/api/app/sms';
-
-        // Подключаем при необходимости
-        if (! $device->connected_at) {
-            $payload = [
-                'android_id' => 'android-'.Str::random(16),
-                'device_model' => 'Model '.random_int(10, 99),
-                'android_version' => (string) random_int(10, 14),
-                'manufacturer' => 'TestVendor',
-                'brand' => 'TestBrand',
-                'device_connect_snapshot' => json_encode(['source' => 'test'], JSON_UNESCAPED_UNICODE),
-            ];
-
-            try {
-                Http::timeout(10)
-                    ->withHeaders([
-                        'Accept' => 'application/json',
-                        'Access-Token' => $device->token,
-                    ])
-                    ->post($connectUrl, $payload);
-            } catch (\Throwable $e) {
-                // пропустим ошибку подключения
-            }
-        }
-
-        // Пул активных шлюзов с отправителями
-        $activeGateways = queries()->paymentGateway()->getAllActive();
-        $gatewaysWithSenders = $activeGateways->filter(function ($pg) {
-            return is_array($pg->sms_senders) && count($pg->sms_senders) > 0;
-        })->values();
-
-        if ($gatewaysWithSenders->isEmpty()) {
-            return;
-        }
-
-        // Отправим по 10 тестовых сообщений
-        for ($i = 0; $i < 10; $i++) {
-            $gateway = $gatewaysWithSenders[random_int(0, $gatewaysWithSenders->count() - 1)];
-            $sender = $gateway->sms_senders[array_rand($gateway->sms_senders)];
-
-            $amount = random_int(500, 150000);
-            $last4 = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
-
-            $templates = [
-                "+ {$amount} ₽ — баланс: 12 345 ₽ {$last4}",
-                "Перевод {$amount}р от Иван И. баланс 45 678р",
-                "Поступление {$amount} RUB на карту *{$last4}",
-                "Зачисление *{$last4} RUR {$amount}; остаток 10 000",
-                "Вы получили перевод: {$amount} руб на карту MIR{$last4}",
-                "Пополнение счета на {$amount} ₽",
-            ];
-            $message = $templates[array_rand($templates)];
-
-            $type = random_int(0, 1) === 0 ? 'sms' : 'push';
-            $timestamp = now()->subMinutes(random_int(0, 120))->getTimestamp();
-
-            $smsPayload = [
-                'sender' => $sender,
-                'message' => $message,
-                'timestamp' => $timestamp,
-                'type' => $type,
-            ];
-
-            try {
-                Http::timeout(10)
-                    ->withHeaders([
-                        'Accept' => 'application/json',
-                        'Access-Token' => $device->token,
-                        'Idempotency-Key' => (string) Str::uuid(),
-                    ])
-                    ->post($smsUrl, $smsPayload);
-            } catch (\Throwable $e) {
-                // игнорируем ошибки отдельных сообщений
             }
         }
     }
 
-    private function makeTestBankStatementFile(): UploadedFile
+    private function createFoundationActivityLogs(): void
     {
-        $path = sys_get_temp_dir().'/'.strtolower(Str::random(32)).'.png';
-        file_put_contents(
-            $path,
-            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
-        );
+        $admins = User::query()->role('Super Admin')->pluck('id')->all();
+        if ($admins === []) {
+            return;
+        }
 
-        return new UploadedFile($path, 'bank_statement.png', 'image/png', null, true);
+        $agents = DemoDataHelper::userAgents();
+
+        // Логи создания пользователей.
+        User::query()->inRandomOrder()->limit(40)->get()->each(function (User $user) use ($admins, $agents) {
+            $agent = $agents[array_rand($agents)];
+            UserActivityLog::query()->create([
+                'actor_user_id' => $admins[array_rand($admins)],
+                'impersonator_user_id' => null,
+                'actor_role' => 'Super Admin',
+                'action' => UserActivityAction::Created,
+                'subject_type' => 'user',
+                'subject_id' => $user->id,
+                'subject_uuid' => null,
+                'route_name' => 'admin.users.store',
+                'ip_address' => DemoDataHelper::ip(),
+                'user_agent' => $agent['ua'],
+                'changes' => [],
+                'meta' => ['source' => 'demo-data'],
+                'created_at' => $user->created_at,
+            ]);
+        });
+
+        // Логи создания мерчантов и реквизитов.
+        Merchant::query()->inRandomOrder()->limit(20)->get()->each(function (Merchant $merchant) use ($admins, $agents) {
+            $agent = $agents[array_rand($agents)];
+            UserActivityLog::query()->create([
+                'actor_user_id' => $admins[array_rand($admins)],
+                'impersonator_user_id' => null,
+                'actor_role' => 'Super Admin',
+                'action' => UserActivityAction::Created,
+                'subject_type' => 'merchant',
+                'subject_id' => $merchant->id,
+                'subject_uuid' => $merchant->uuid,
+                'route_name' => 'admin.merchants.store',
+                'ip_address' => DemoDataHelper::ip(),
+                'user_agent' => $agent['ua'],
+                'changes' => [],
+                'meta' => ['source' => 'demo-data'],
+                'created_at' => $merchant->created_at,
+            ]);
+        });
+    }
+
+    private function dispatchHeavyJobs(): void
+    {
+        $batchSize = 25;
+        $ordersPerMerchant = max(0, (int) $this->option('orders'));
+        $payoutsPerMerchant = max(0, (int) $this->option('payouts'));
+
+        $payoutTraderIds = User::query()
+            ->role('Trader')
+            ->where('payouts_enabled', true)
+            ->pluck('id')
+            ->all();
+
+        $activeMerchants = Merchant::query()
+            ->whereNotNull('validated_at')
+            ->whereNull('banned_at')
+            ->where('active', true)
+            ->pluck('id');
+
+        foreach ($activeMerchants as $merchantId) {
+            for ($created = 0; $created < $ordersPerMerchant; $created += $batchSize) {
+                $count = min($batchSize, $ordersPerMerchant - $created);
+                SeedMerchantOrdersJob::dispatch((int) $merchantId, $count, $this->days);
+            }
+
+            if ($payoutTraderIds !== []) {
+                for ($created = 0; $created < $payoutsPerMerchant; $created += $batchSize) {
+                    $count = min($batchSize, $payoutsPerMerchant - $created);
+                    SeedMerchantPayoutsJob::dispatch((int) $merchantId, $count, $payoutTraderIds, $this->days);
+                }
+            }
+        }
+
+        $smsPerDevice = max(0, (int) $this->option('sms'));
+        if ($smsPerDevice > 0) {
+            UserDevice::query()->pluck('id')->each(function ($deviceId) use ($smsPerDevice) {
+                SeedDeviceMessagesJob::dispatch((int) $deviceId, $smsPerDevice, $this->days);
+            });
+        }
+
+        // Финализация ставится последней — на однопоточной очереди выполнится после всех.
+        FinalizeDemoDataJob::dispatch($this->days);
+
+        $this->line('  Мерчантов для заказов/выплат: '.$activeMerchants->count());
+    }
+
+    private function uniqueLogin(string $prefix): string
+    {
+        do {
+            $login = $prefix.random_int(1000, 999999);
+        } while (User::query()->where('email', strtolower($login))->exists());
+
+        return $login;
     }
 }

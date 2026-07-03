@@ -12,8 +12,10 @@ import PayoutsIcon from '@/Layouts/Partials/Icons/PayoutsIcon.vue';
 import DisputesIcon from '@/Layouts/Partials/Icons/DisputesIcon.vue';
 import MerchantsIcon from '@/Layouts/Partials/Icons/MerchantsIcon.vue';
 import WalletIcon from '@/Layouts/Partials/Icons/WalletIcon.vue';
+import CryptoProcessingIcon from '@/Layouts/Partials/Icons/CryptoProcessingIcon.vue';
 import AutomationIcon from '@/Layouts/Partials/Icons/AutomationIcon.vue';
 import LogsIcon from '@/Layouts/Partials/Icons/LogsIcon.vue';
+import AuditIcon from '@/Layouts/Partials/Icons/AuditIcon.vue';
 import AntiFraudIcon from '@/Layouts/Partials/Icons/AntiFraudIcon.vue';
 import TelegramChatsIcon from '@/Layouts/Partials/Icons/TelegramChatsIcon.vue';
 import SettingsIcon from '@/Layouts/Partials/Icons/SettingsIcon.vue';
@@ -105,8 +107,8 @@ const items = computed(() => [
     },
     {
         key: 'wallet-deposit',
-        label: 'Крипто-пополнения',
-        icon: WalletIcon,
+        label: 'CryptoProcessing',
+        icon: CryptoProcessingIcon,
         href: route('admin.wallet-deposit.index'),
         active: route().current('admin.wallet-deposit.*'),
         spanClass: 'text-nowrap',
@@ -128,7 +130,7 @@ const items = computed(() => [
     {
         key: 'activity-logs',
         label: 'Аудит',
-        icon: LogsIcon,
+        icon: AuditIcon,
         href: route('admin.activity-logs.index'),
         active: route().current('admin.activity-logs.*'),
     },
