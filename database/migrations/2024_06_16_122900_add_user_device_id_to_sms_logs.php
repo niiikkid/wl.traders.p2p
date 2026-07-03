@@ -6,18 +6,21 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    public function up()
+    public function up(): void
     {
-        Schema::table('payment_details', function (Blueprint $table) {
+        if (Schema::hasColumn('sms_logs', 'user_device_id')) {
+            return;
+        }
+
+        Schema::table('sms_logs', function (Blueprint $table) {
             $table->foreignId('user_device_id')->nullable()->after('user_id');
         });
     }
 
-    public function down()
+    public function down(): void
     {
-        Schema::table('payment_details', function (Blueprint $table) {
-            $table->dropForeign(['user_device_id']);
+        Schema::table('sms_logs', function (Blueprint $table) {
             $table->dropColumn('user_device_id');
         });
     }
-}; 
+};

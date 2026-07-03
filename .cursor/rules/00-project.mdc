@@ -50,7 +50,7 @@ This is a real, working product that grew organically (hand-written, then AI-ass
 - Don't change the public merchant API contract (see `40-api.mdc`).
 - Don't delete tests, migrations, or important comments.
 - Don't touch `.env`, secrets, or production settings unless required by the task.
-- Don't run `php artisan migrate:fresh` / `app:install` (the latter drops all tables and restores `basedb.sql`).
+- Don't run `php artisan migrate:fresh` / `app:install` (the latter drops all tables, then rebuilds from migrations + seeders). Installation no longer uses `basedb.sql`.
 
 ## How to make decisions
 

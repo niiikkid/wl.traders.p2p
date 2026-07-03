@@ -43,21 +43,22 @@ class InstallAppCommand extends Command
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
         $this->info('All tables dropped successfully.');
 
-        // Восстановление базы данных из сырого SQL файла basedb.sql в корне проекта
-        $dump_path = base_path('basedb.sql');
-        if (file_exists($dump_path)) {
-            DB::unprepared(file_get_contents($dump_path));
-            $this->info('Database restored from basedb.sql');
-        } else {
-            $this->warn('basedb.sql not found at project root. Skipping DB restore.');
-        }
+        // Полная сборка схемы из миграций (без сырого SQL-дампа)
+        $this->info('Running migrations...');
+        Artisan::call('migrate', ['--force' => true], $this->output);
 
-        Artisan::call('migrate --force');
+        // Настройки приложения
+        $this->info('Installing settings...');
+        Artisan::call('app:install-settings', [], $this->output);
 
-        // services()->settings()->createAll();
+        // Справочные данные (платёжные шлюзы, стоп-листы, пользователи)
+        $this->info('Seeding reference data...');
+        Artisan::call('db:seed', ['--force' => true], $this->output);
 
         // commands
         Artisan::call('market:filters:refresh');
         Artisan::call('market:prices:refresh');
+
+        $this->info('Installation completed.');
     }
 }

@@ -10,7 +10,7 @@ alwaysApply: false
 
 - Create migrations with `php artisan make:migration --no-interaction`. One clear change per migration.
 - **Do not edit already-applied migrations** (other environments and the production DB depend on them). Add a new migration instead. When modifying a column, restate **all** of its previous attributes (Laravel drops unspecified ones).
-- This project ships an initial schema dump: `php artisan app:install` drops all tables, restores `basedb.sql`, then runs `migrate --force`. **Never run that yourself.** Incremental migrations live in `database/migrations/` (~300 files).
+- Installation builds the schema entirely from migrations: `php artisan app:install` drops all tables, runs `migrate --force`, installs settings (`app:install-settings`), then seeds reference data (`db:seed`: base roles, payment gateways, sender stop lists, users). **Never run that yourself** (it drops all tables). The legacy `basedb.sql` dump is no longer used. Migrations live in `database/migrations/` (~330 files).
 - Make `down()` genuinely reversible only when safe. For large/production changes, go step by step (add column → backfill → switch code → drop old).
 
 ## Column conventions (match existing tables)

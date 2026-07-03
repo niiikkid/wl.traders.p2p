@@ -237,7 +237,7 @@ class SettingsService implements SettingsServiceContract
             'value' => json_encode($this->normalizePayoutCurrencySettings([])),
         ]);
 
-        $currenciesJson = $this->getParam(self::CURRENCY_PRICE_PARSER_SETTINGS);
+        $currenciesJson = Setting::query()->where('key', self::CURRENCY_PRICE_PARSER_SETTINGS)->value('value');
         if (! empty($currenciesJson)) {
             $currencies = json_decode($currenciesJson, true);
         } else {

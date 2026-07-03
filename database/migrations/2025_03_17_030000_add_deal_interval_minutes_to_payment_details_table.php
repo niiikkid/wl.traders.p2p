@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasColumn('payment_details', 'order_interval_minutes')) {
+            return;
+        }
+
         Schema::table('payment_details', function (Blueprint $table) {
             $table->unsignedInteger('order_interval_minutes')->nullable()->after('max_order_amount');
         });
@@ -25,4 +29,4 @@ return new class extends Migration
             $table->dropColumn('order_interval_minutes');
         });
     }
-}; 
+};

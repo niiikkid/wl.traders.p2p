@@ -16,88 +16,42 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Создаем администратора
-        Transaction::run(function () {
-            $admin = User::create([
-                'name' => 'Администратор',
-                'email' => 'admin@example.com',
-                'password' => Hash::make('password'),
-                'apk_access_token' => strtolower(Str::random(32)),
-                'api_access_token' => strtolower(Str::random(32)),
-                'is_online' => true,
-            ]);
+        $this->createUser('Администратор', 'admin', 'Super Admin');
+        $this->createUser('Трейдер', 'trader', 'Trader');
+        $this->createUser('Мерчант', 'merchant', 'Merchant');
+        $this->createUser('Тимлидер', 'teamleader', 'Team Leader');
+        $this->createUser('Саппорт', 'support', 'Support');
+    }
 
-            $admin->assignRole('Super Admin');
+    /**
+     * Idempotently create a user with the given role and a wallet.
+     * The `email` column is used as the login identifier, not a mailbox.
+     */
+    private function createUser(string $name, string $login, string $role): void
+    {
+        if (! Role::query()->where('name', $role)->exists()) {
+            return;
+        }
 
-            services()->wallet()->create($admin);
-        });
-
-        // Создаем трейдера
-        Transaction::run(function () {
-            $trader = User::create([
-                'name' => 'Трейдер',
-                'email' => 'trader@example.com',
-                'password' => Hash::make('password'),
-                'apk_access_token' => strtolower(Str::random(32)),
-                'api_access_token' => strtolower(Str::random(32)),
-                'is_online' => true,
-            ]);
-
-            $trader->assignRole('Trader');
-
-            services()->wallet()->create($trader);
-        });
-
-        // Создаем мерчанта
-        Transaction::run(function () {
-            $merchant = User::create([
-                'name' => 'Мерчант',
-                'email' => 'merchant@example.com',
-                'password' => Hash::make('password'),
-                'apk_access_token' => strtolower(Str::random(32)),
-                'api_access_token' => strtolower(Str::random(32)),
-                'is_online' => true,
-            ]);
-
-            $merchant->assignRole('Merchant');
-
-            services()->wallet()->create($merchant);
-        });
-
-        // Создаем тимлидера, если такая роль существует
-        if (Role::where('name', 'Team Leader')->exists()) {
-            Transaction::run(function () {
-                $teamLeader = User::create([
-                    'name' => 'Тимлидер',
-                    'email' => 'teamleader@example.com',
+        Transaction::run(function () use ($name, $login, $role) {
+            $user = User::firstOrCreate(
+                ['email' => $login],
+                [
+                    'name' => $name,
                     'password' => Hash::make('password'),
                     'apk_access_token' => strtolower(Str::random(32)),
                     'api_access_token' => strtolower(Str::random(32)),
                     'is_online' => true,
-                ]);
+                ]
+            );
 
-                $teamLeader->assignRole('Team Leader');
+            if (! $user->wasRecentlyCreated) {
+                return;
+            }
 
-                services()->wallet()->create($teamLeader);
-            });
-        }
+            $user->assignRole($role);
 
-        // Создаем саппорта, если такая роль существует
-        if (Role::where('name', 'Support')->exists()) {
-            Transaction::run(function () {
-                $support = User::create([
-                    'name' => 'Саппорт',
-                    'email' => 'support@example.com',
-                    'password' => Hash::make('password'),
-                    'apk_access_token' => strtolower(Str::random(32)),
-                    'api_access_token' => strtolower(Str::random(32)),
-                    'is_online' => true,
-                ]);
-
-                $support->assignRole('Support');
-
-                services()->wallet()->create($support);
-            });
-        }
+            services()->wallet()->create($user);
+        });
     }
 }

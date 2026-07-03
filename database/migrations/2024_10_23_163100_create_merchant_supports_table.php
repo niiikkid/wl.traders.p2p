@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('merchant_supports')) {
+            return;
+        }
+
         Schema::create('merchant_supports', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('merchant_id');
@@ -19,7 +23,7 @@ return new class extends Migration
 
             $table->foreign('merchant_id')->references('id')->on('merchants')->onDelete('cascade');
             $table->foreign('support_id')->references('id')->on('users')->onDelete('cascade');
-            
+
             // Уникальный индекс для предотвращения дублирования связей
             $table->unique(['merchant_id', 'support_id']);
         });
@@ -32,4 +36,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('merchant_supports');
     }
-}; 
+};
