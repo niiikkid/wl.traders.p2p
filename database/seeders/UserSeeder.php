@@ -17,10 +17,6 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $this->createUser('Администратор', 'admin', 'Super Admin');
-        $this->createUser('Трейдер', 'trader', 'Trader');
-        $this->createUser('Мерчант', 'merchant', 'Merchant');
-        $this->createUser('Тимлидер', 'teamleader', 'Team Leader');
-        $this->createUser('Саппорт', 'support', 'Support');
     }
 
     /**

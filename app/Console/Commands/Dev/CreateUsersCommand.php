@@ -4,7 +4,6 @@ namespace App\Console\Commands\Dev;
 
 use Database\Seeders\UserSeeder;
 use Illuminate\Console\Command;
-use Spatie\Permission\Models\Role;
 
 class CreateUsersCommand extends Command
 {
@@ -34,15 +33,8 @@ class CreateUsersCommand extends Command
         $seeder = new UserSeeder;
         $seeder->run();
 
-        $this->info('Пользователи успешно созданы!');
-        $this->info('Созданы следующие пользователи:');
-        $this->info('- Администратор (admin@example.com / password)');
-        $this->info('- Трейдер (trader@example.com / password)');
-        $this->info('- Мерчант (merchant@example.com / password)');
-
-        if (Role::where('name', 'Team Leader')->exists()) {
-            $this->info('- Тимлидер (teamleader@example.com / password)');
-        }
+        $this->info('Пользователь успешно создан!');
+        $this->info('- Администратор (admin / password)');
 
         return Command::SUCCESS;
     }
