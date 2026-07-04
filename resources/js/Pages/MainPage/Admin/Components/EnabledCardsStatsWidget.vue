@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import axios from 'axios';
 import WidgetHeader from '@/Components/MainPage/WidgetHeader.vue';
+import StatCard from '@/Components/MainPage/StatCard.vue';
 import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
@@ -11,6 +12,7 @@ import UserFilter from '@/Pages/EnabledCards/Components/UserFilter.vue';
 
 const filtersBasePath = '/admin/filters';
 const CURRENCY_COOKIE_NAME = 'selected_currency';
+const CURRENCY_FILTER_ORDER = ['uah', 'rub', 'kzt', 'usd', 'eur'];
 
 const loading = ref(false);
 const loaded = ref(false);
@@ -96,9 +98,26 @@ onMounted(() => {
     load();
 });
 
+const availableCurrencies = computed(() => {
+    const currencies = statistics.value?.availableCurrencies || [];
+
+    return [...currencies].sort((a, b) => {
+        const indexA = CURRENCY_FILTER_ORDER.indexOf(a.code);
+        const indexB = CURRENCY_FILTER_ORDER.indexOf(b.code);
+        const orderA = indexA === -1 ? CURRENCY_FILTER_ORDER.length : indexA;
+        const orderB = indexB === -1 ? CURRENCY_FILTER_ORDER.length : indexB;
+
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+
+        return a.code.localeCompare(b.code);
+    });
+});
+
 const selectedCurrencyInfo = computed(() => {
     if (!statistics.value) return null;
-    return (statistics.value.availableCurrencies || []).find((c) => c.code === selectedCurrency.value) || null;
+    return availableCurrencies.value.find((c) => c.code === selectedCurrency.value) || null;
 });
 
 const selectedCurrencyLimit = computed(() => {
@@ -180,8 +199,8 @@ const resetFilters = () => {
         <div class="space-y-5">
                 <div v-if="loading && !loaded" class="space-y-4">
                     <div class="skeleton h-16 w-full"></div>
-                    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2 3xl:grid-cols-4">
-                        <div v-for="n in 4" :key="n" class="skeleton h-24 w-full"></div>
+                    <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                        <div v-for="n in 4" :key="n" class="skeleton h-16 w-full"></div>
                     </div>
                     <div class="skeleton h-40 w-full"></div>
                 </div>
@@ -191,113 +210,115 @@ const resetFilters = () => {
                 </div>
 
                 <template v-else-if="statistics">
-                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                        <div class="flex items-end gap-3">
-                            <div>
-                                <label for="ec-currency-select" class="label p-0">
-                                    <span class="label-text">Валюта</span>
-                                </label>
-                                <select
-                                    id="ec-currency-select"
-                                    v-model="selectedCurrency"
-                                    class="select select-bordered select-sm w-full min-w-[12rem] sm:w-48 max-w-full"
+                    <div class="rounded-box border border-base-300/60 bg-base-100 p-3">
+                        <div class="flex flex-wrap items-end gap-3">
+                            <div class="form-control shrink-0 gap-1">
+                                <span class="text-xs font-medium text-base-content/60">Валюта</span>
+                                <div
+                                    v-if="availableCurrencies.length > 1"
+                                    role="tablist"
+                                    class="tabs tabs-box p-0.5"
                                 >
-                                    <option
-                                        v-for="currency in statistics.availableCurrencies"
+                                    <button
+                                        v-for="currency in availableCurrencies"
                                         :key="currency.code"
-                                        :value="currency.code"
+                                        type="button"
+                                        role="tab"
+                                        class="tab h-8 min-h-8 px-2.5 text-xs font-medium"
+                                        :class="{ 'tab-active': selectedCurrency === currency.code }"
+                                        :title="`${currency.name} (${currency.symbol})`"
+                                        @click="selectedCurrency = currency.code"
                                     >
-                                        {{ currency.name }} ({{ currency.symbol }})
-                                    </option>
-                                </select>
+                                        {{ currency.code.toUpperCase() }}
+                                    </button>
+                                </div>
+                                <span v-else-if="selectedCurrencyInfo" class="badge badge-outline badge-sm h-8">
+                                    {{ selectedCurrencyInfo.code.toUpperCase() }}
+                                </span>
+                            </div>
+
+                            <DetailTypeFilter v-model="filters.detail_type" :filters-base-path="filtersBasePath" />
+                            <PaymentGatewayFilter v-model="filters.payment_gateway_id" :filters-base-path="filtersBasePath" />
+                            <UserFilter v-model="filters.user_id" :filters-base-path="filtersBasePath" />
+
+                            <div class="form-control shrink-0 gap-1 sm:ml-auto">
+                                <span class="invisible text-xs font-medium select-none" aria-hidden="true">&nbsp;</span>
+                                <button
+                                    type="button"
+                                    class="btn btn-outline btn-sm h-8 min-h-8 gap-1.5"
+                                    @click="resetFilters"
+                                >
+                                    <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    Сбросить фильтры
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                        <DetailTypeFilter v-model="filters.detail_type" :filters-base-path="filtersBasePath" />
-                        <PaymentGatewayFilter v-model="filters.payment_gateway_id" :filters-base-path="filtersBasePath" />
-                        <UserFilter v-model="filters.user_id" :filters-base-path="filtersBasePath" />
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="button" class="btn btn-ghost btn-sm gap-1" @click="resetFilters">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                            </svg>
-                            Сбросить фильтры
-                        </button>
-                    </div>
+                    <div class="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+                        <StatCard label="Количество реквизитов" :value="statistics.totalPaymentDetails" color="primary">
+                            <template #icon>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                </svg>
+                            </template>
+                        </StatCard>
 
-                    <div class="grid grid-cols-1 gap-3 xl:grid-cols-2 3xl:grid-cols-4">
-                        <div class="rounded-box border border-base-300/60 bg-base-100">
-                            <div class="card-body p-5">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-medium text-base-content/55">Количество реквизитов</p>
-                                        <p class="mt-1.5 text-xl font-semibold tabular-nums">{{ statistics.totalPaymentDetails }}</p>
-                                    </div>
-                                    <div class="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <StatCard
+                            :label="`Свободный лимит (${selectedCurrencyInfo?.symbol || '—'})`"
+                            :prefix="`${selectedCurrencyLimit?.symbol || ''} `"
+                            :value="selectedCurrencyLimit?.total_free_limit || '0.00'"
+                            color="success"
+                        >
+                            <template #icon>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </template>
+                        </StatCard>
 
-                        <div class="rounded-box border border-base-300/60 bg-base-100">
-                            <div class="card-body p-5">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-medium text-base-content/55">Свободный лимит ({{ selectedCurrencyInfo?.symbol || '—' }})</p>
-                                        <p class="mt-1.5 text-xl font-semibold tabular-nums">{{ selectedCurrencyLimit?.symbol }} {{ selectedCurrencyLimit?.total_free_limit || '0.00' }}</p>
-                                    </div>
-                                    <div class="grid size-10 place-items-center rounded-xl bg-success/10 text-success">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <StatCard
+                            :label="`Потенциальный лимит (${selectedCurrencyInfo?.symbol || '—'})`"
+                            :prefix="`${selectedPotentialLimit?.symbol || ''} `"
+                            :value="selectedPotentialLimit?.total_potential_limit || '0.00'"
+                            color="secondary"
+                        >
+                            <template #icon>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </template>
+                        </StatCard>
 
-                        <div class="rounded-box border border-base-300/60 bg-base-100">
-                            <div class="card-body p-5">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-medium text-base-content/55">Потенциальный лимит ({{ selectedCurrencyInfo?.symbol || '—' }})</p>
-                                        <p class="mt-1.5 text-xl font-semibold tabular-nums">{{ selectedPotentialLimit?.symbol }} {{ selectedPotentialLimit?.total_potential_limit || '0.00' }}</p>
-                                    </div>
-                                    <div class="grid size-10 place-items-center rounded-xl bg-secondary/10 text-secondary">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                                        </svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="rounded-box border border-base-300/60 bg-base-100">
-                            <div class="card-body p-5">
-                                <div class="flex items-center justify-between">
-                                    <div>
-                                        <p class="text-xs font-medium text-base-content/55">Баланс трейдеров ({{ statistics.tradersBalance.symbol }})</p>
-                                        <p class="md:flex grid gap-x-4">
-                                            <span class="flex items-center">
-                                                <span class="text-base-content/60 text-sm mr-2">Всего:</span>
-                                                <span class="font-bold">{{ statistics.tradersBalance.symbol }} {{ statistics.tradersBalance.total }}</span>
-                                            </span>
-                                            <span class="flex items-center">
-                                                <span class="text-base-content/60 text-sm mr-2">Онлайн:</span>
-                                                <span class="font-bold text-success">{{ statistics.tradersBalance.symbol }} {{ statistics.tradersBalance.online }}</span>
-                                            </span>
+                        <div class="col-span-2 lg:col-span-1">
+                            <div class="rounded-box border border-base-300/60 bg-base-100 transition-colors hover:border-base-300">
+                                <div class="flex items-start justify-between gap-2 px-3 py-3 sm:gap-3 sm:px-4 sm:py-3.5">
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-xs font-medium text-base-content/55">
+                                            Баланс трейдеров ({{ statistics.tradersBalance.symbol }})
                                         </p>
+                                        <dl class="mt-1.5 flex flex-col gap-1 text-sm leading-tight">
+                                            <div class="flex min-w-0 items-baseline gap-2">
+                                                <dt class="shrink-0 text-xs text-base-content/55">Всего</dt>
+                                                <dd class="truncate font-semibold tabular-nums text-base-content">
+                                                    {{ statistics.tradersBalance.symbol }} {{ statistics.tradersBalance.total }}
+                                                </dd>
+                                            </div>
+                                            <div class="flex min-w-0 items-baseline gap-2">
+                                                <dt class="shrink-0 text-xs text-base-content/55">Онлайн</dt>
+                                                <dd class="truncate font-semibold tabular-nums text-success">
+                                                    {{ statistics.tradersBalance.symbol }} {{ statistics.tradersBalance.online }}
+                                                </dd>
+                                            </div>
+                                        </dl>
                                     </div>
-                                    <div class="grid size-10 place-items-center rounded-xl bg-warning/10 text-warning">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <span class="grid size-8 shrink-0 place-items-center rounded-xl bg-warning/10 text-warning sm:size-9 [&>svg]:size-4 sm:[&>svg]:size-5">
+                                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
-                                    </div>
+                                    </span>
                                 </div>
                             </div>
                         </div>

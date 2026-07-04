@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { defineStore } from 'pinia';
 import {
     BUILTIN_THEME_SLUGS,
@@ -252,12 +251,14 @@ export const useThemeGeneratorStore = defineStore('themeGenerator', {
             this.publishing = true;
 
             try {
-                await axios.post(route('admin.appearance.theme.publish'), {
+                await window.axios.post(route('admin.appearance.theme.publish'), {
                     type: this.draft.type === 'builtin' ? 'builtin' : 'custom',
                     slug: this.draft.slug,
                     name: this.draft.name,
                     colorScheme: this.draft.colorScheme === 'dark' ? 'dark' : 'light',
                     tokens: sanitizeTokens(this.draft.tokens),
+                }, {
+                    headers: { Accept: 'application/json' },
                 });
             } catch (error) {
                 return false;

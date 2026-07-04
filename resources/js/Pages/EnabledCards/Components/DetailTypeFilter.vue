@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import FilterField from '@/Components/Filters/Partials/FilterField.vue';
 
 const props = defineProps({
   modelValue: String,
@@ -32,21 +33,20 @@ const updateValue = (event) => {
 </script>
 
 <template>
-  <div class="w-full md:w-auto">
-    <label for="detail-type-filter" class="label p-0">
-      <span class="label-text">Тип реквизита</span>
-    </label>
-    <select
-      id="detail-type-filter"
-      class="select select-sm select-bordered w-full"
-      :value="modelValue"
-      @change="updateValue"
-      :disabled="loading"
-    >
-      <option value="">Все типы</option>
-      <option v-for="type in detailTypes" :key="type.value" :value="type.value">
-        {{ type.label }}
-      </option>
-    </select>
+  <div class="min-w-0 w-full sm:w-40">
+    <FilterField label="Тип реквизита">
+      <select
+        id="detail-type-filter"
+        class="select select-bordered select-sm w-full"
+        :value="modelValue"
+        :disabled="loading"
+        @change="updateValue"
+      >
+        <option value="">Все типы</option>
+        <option v-for="type in detailTypes" :key="type.value" :value="type.value">
+          {{ type.label }}
+        </option>
+      </select>
+    </FilterField>
   </div>
 </template>

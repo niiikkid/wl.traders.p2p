@@ -35,9 +35,9 @@ const props = defineProps({
 });
 
 const initials = computed(() => getUserInitials({
-    name: props.name || props.user?.name,
     email: props.email || props.user?.email,
     login: props.login || props.user?.login,
+    name: props.name || props.user?.name,
 }));
 
 const resolvedAvatarUrl = computed(() => (

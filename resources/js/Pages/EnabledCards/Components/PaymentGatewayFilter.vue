@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import axios from 'axios';
+import FilterField from '@/Components/Filters/Partials/FilterField.vue';
 
 const props = defineProps({
   modelValue: [String, Number],
@@ -126,16 +127,14 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="w-full md:w-auto payment-gateway-filter">
-    <label for="payment-gateway-filter" class="label p-0">
-      <span class="label-text">Платежный метод</span>
-    </label>
-    <div class="form-control relative">
+  <div class="payment-gateway-filter min-w-0 w-full sm:w-48">
+    <FilterField label="Платежный метод">
+    <div class="relative">
       <input
         id="payment-gateway-filter"
         type="text"
-        class="input input-sm input-bordered w-full"
-        placeholder="Введите название метода..."
+        class="input input-bordered input-sm w-full pr-8"
+        placeholder="Поиск метода..."
         v-model="searchQuery"
         @focus="showDropdown = true"
         @input="showDropdown = true"
@@ -144,14 +143,13 @@ onMounted(async () => {
       <button
         v-if="selectedGateway"
         type="button"
-        class="btn btn-ghost btn-xs absolute right-1 top-1"
+        class="btn btn-ghost btn-xs btn-circle absolute right-0.5 top-1/2 -translate-y-1/2"
         @click="clearSelection"
       >
         ✕
       </button>
 
-      <!-- Индикатор загрузки -->
-      <span v-if="loading" class="loading loading-spinner loading-sm absolute right-3 top-3"></span>
+      <span v-if="loading" class="loading loading-spinner loading-xs absolute right-2 top-1/2 -translate-y-1/2"></span>
 
       <!-- Выпадающий список результатов -->
       <div
@@ -177,5 +175,6 @@ onMounted(async () => {
         <span>Ничего не найдено</span>
       </div>
     </div>
+    </FilterField>
   </div>
 </template>
