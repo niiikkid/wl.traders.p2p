@@ -3,6 +3,7 @@ import {Head} from '@inertiajs/vue3';
 import {computed, ref} from 'vue';
 import axios from 'axios';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Select from '@/Components/Select.vue';
 
 defineOptions({ layout: AuthenticatedLayout });
 
@@ -16,6 +17,11 @@ const props = defineProps({
         default: () => ({}),
     },
 });
+
+const currencyOptions = computed(() => props.currencies.map((currency) => ({
+    value: currency,
+    name: currency.toUpperCase(),
+})));
 
 const form = ref({
     logic: props.defaults.logic ?? 'in_body',
@@ -214,11 +220,15 @@ const resetForm = () => {
                                 <div class="label">
                                     <span class="label-text">Валюта</span>
                                 </div>
-                                <select v-model="form.amount_currency" class="select select-bordered select-sm w-full">
-                                    <option v-for="currency in currencies" :key="currency" :value="currency">
-                                        {{ currency.toUpperCase() }}
-                                    </option>
-                                </select>
+                                <Select
+                                    v-model="form.amount_currency"
+                                    :items="currencyOptions"
+                                    value="value"
+                                    name="name"
+                                    :required="false"
+                                    size="sm"
+                                    currency-icons
+                                />
                                 <div v-if="getError('amount_currency')" class="label">
                                     <span class="label-text-alt text-error">{{ getError('amount_currency') }}</span>
                                 </div>

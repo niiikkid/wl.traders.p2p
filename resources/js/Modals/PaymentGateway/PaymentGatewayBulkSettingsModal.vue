@@ -17,6 +17,7 @@ import { useModalStore } from "@/store/modal.js";
 import { computed, ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { isRemovedDetailType, stripRemovedDetailTypes } from "@/utils/paymentDetail.js";
+import CurrencyDisplay from '@/Components/Currency/CurrencyDisplay.vue';
 
 const filterDetailTypeOptions = (items) => (items || []).filter((item) => !isRemovedDetailType(item.code));
 
@@ -493,13 +494,19 @@ watch(
                         value="code"
                         name="code"
                         label="Валюта"
+                        currency-icons
                     />
                     <InputError :message="errors.currency?.[0]" class="mt-1" />
                     <p v-if="!isCurrencySelected && !errors.currency" class="text-xs text-warning">
                         Сначала выберите валюту — без неё остальные настройки недоступны.
                     </p>
                     <div v-else-if="isCurrencySelected" class="flex flex-wrap items-center gap-2">
-                        <span class="badge badge-outline badge-sm">{{ currencyLabel }}</span>
+                        <CurrencyDisplay
+                            :currency="form.currency"
+                            :show-label="true"
+                            size="sm"
+                            :icon-size="18"
+                        />
                         <span v-if="appliedFieldsCount" class="text-xs text-base-content/60">
                             К применению: {{ appliedFieldsCount }} {{ appliedFieldsCount === 1 ? 'поле' : appliedFieldsCount < 5 ? 'поля' : 'полей' }}
                         </span>

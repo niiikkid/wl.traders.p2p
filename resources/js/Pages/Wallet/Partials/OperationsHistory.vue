@@ -6,6 +6,7 @@ import Pagination from "@/Components/Pagination/Pagination.vue";
 import TableEmptyState from "@/Components/TableEmptyState.vue";
 import DateTime from "@/Components/DateTime.vue";
 import {walletBalanceTypeLabel} from "@/utils/walletBalanceTypeLabel.js";
+import {walletDepositInvoiceStatusBadge} from "@/utils/walletDepositInvoiceStatus.js";
 import {useModalStore} from "@/store/modal.js";
 
 const viewStore = useViewStore();
@@ -113,13 +114,13 @@ const walletDepositStatus = (status) => {
         pending: { label: 'Ожидание оплаты', badge: 'badge-info' },
         processing: { label: 'Подтверждается', badge: 'badge-warning' },
         paid: { label: 'Зачислено', badge: 'badge-success' },
-        expired: { label: 'Истёк', badge: 'badge-neutral' },
-        cancelled: { label: 'Отменён', badge: 'badge-error' },
-        amount_mismatch: { label: 'Проверка суммы', badge: 'badge-error' },
-        failed: { label: 'Ошибка', badge: 'badge-error' },
+        expired: { label: 'Истёк', badge: walletDepositInvoiceStatusBadge('expired') },
+        cancelled: { label: 'Отменён', badge: walletDepositInvoiceStatusBadge('cancelled') },
+        amount_mismatch: { label: 'Проверка суммы', badge: walletDepositInvoiceStatusBadge('amount_mismatch') },
+        failed: { label: 'Ошибка', badge: walletDepositInvoiceStatusBadge('failed') },
     };
 
-    return statuses[status] ?? { label: status, badge: 'badge-neutral' };
+    return statuses[status] ?? { label: status, badge: walletDepositInvoiceStatusBadge(status) };
 };
 </script>
 

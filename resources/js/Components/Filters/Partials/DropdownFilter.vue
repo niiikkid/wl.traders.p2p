@@ -3,6 +3,7 @@ import {computed, watch, ref, onMounted, onBeforeUnmount} from "vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import {useFilterModel} from "@/composables/useFilterModel.js";
 import FilterDropdownTrigger from "@/Components/Filters/Partials/FilterDropdownTrigger.vue";
+import CurrencyDisplay from "@/Components/Currency/CurrencyDisplay.vue";
 
 const tableFiltersStore = useTableFiltersStore();
 
@@ -13,7 +14,11 @@ const props = defineProps({
     title: {
         type: String,
         default: 'Фильтр'
-    }
+    },
+    currencyIcons: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const model = useFilterModel(props.name, '');
@@ -103,6 +108,13 @@ onBeforeUnmount(() => {
                             :value="option.value"
                             v-model="option.selected"
                             class="checkbox checkbox-sm"
+                        />
+                        <CurrencyDisplay
+                            v-if="currencyIcons"
+                            :currency="option.value"
+                            :show-label="false"
+                            size="sm"
+                            :icon-size="18"
                         />
                         <span class="text-sm font-medium">{{ option.name }}</span>
                     </label>

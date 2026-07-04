@@ -2,6 +2,7 @@
 import {Head, router, useForm, usePage} from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import GoBackButton from "@/Components/GoBackButton.vue";
+import Select from "@/Components/Select.vue";
 import ConfirmModal from "@/Components/Modals/ConfirmModal.vue";
 import MerchantBalance from "@/Pages/Wallet/Partials/MerchantBalance.vue";
 import {useViewStore} from "@/store/view.js";
@@ -157,20 +158,19 @@ defineOptions({ layout: AuthenticatedLayout })
                 class="flex items-center gap-2"
             >
                 <span class="text-sm text-base-content/60">Валюта</span>
-                <select
-                    v-model="fiatCurrencyForm.fiat_currency"
-                    class="select select-bordered select-sm w-20"
-                    :disabled="fiatCurrencyForm.processing"
-                    @change="updateFiatCurrency"
-                >
-                    <option
-                        v-for="currency in availableFiatCurrencies"
-                        :key="currency.code"
-                        :value="currency.code"
-                    >
-                        {{ currency.label }}
-                    </option>
-                </select>
+                <div class="w-28">
+                    <Select
+                        v-model="fiatCurrencyForm.fiat_currency"
+                        :items="availableFiatCurrencies"
+                        value="code"
+                        name="label"
+                        :required="true"
+                        size="sm"
+                        currency-icons
+                        :disabled="fiatCurrencyForm.processing"
+                        @change="updateFiatCurrency"
+                    />
+                </div>
             </label>
         </div>
 

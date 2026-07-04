@@ -6,6 +6,7 @@ import DateTime from '@/Components/DateTime.vue';
 import MoneyValue from '@/Components/MoneyValue.vue';
 import { ref } from 'vue';
 import axios from 'axios';
+import { walletDepositInvoiceStatusBadge } from '@/utils/walletDepositInvoiceStatus.js';
 
 const props = defineProps({
     addresses: { type: Array, default: () => [] },
@@ -17,16 +18,19 @@ const props = defineProps({
 defineOptions({ layout: AuthenticatedLayout });
 
 const STATUS_LABELS = {
-    pending: { label: 'Ожидание', badge: 'badge-info' },
-    processing: { label: 'Подтверждается', badge: 'badge-warning' },
-    paid: { label: 'Зачислено', badge: 'badge-success' },
-    expired: { label: 'Истёк', badge: 'badge-neutral' },
-    cancelled: { label: 'Отменён', badge: 'badge-ghost' },
-    amount_mismatch: { label: 'Неверная сумма', badge: 'badge-error' },
-    failed: { label: 'Ошибка', badge: 'badge-error' },
+    pending: 'Ожидание',
+    processing: 'Подтверждается',
+    paid: 'Зачислено',
+    expired: 'Истёк',
+    cancelled: 'Отменён',
+    amount_mismatch: 'Неверная сумма',
+    failed: 'Ошибка',
 };
 
-const statusInfo = (status) => STATUS_LABELS[status] ?? { label: status, badge: 'badge-neutral' };
+const statusInfo = (status) => ({
+    label: STATUS_LABELS[status] ?? status,
+    badge: walletDepositInvoiceStatusBadge(status),
+});
 const isFinal = (status) => ['paid', 'expired', 'cancelled', 'amount_mismatch', 'failed'].includes(status);
 
 const addressForm = useForm({ address: '', label: '', is_active: true });

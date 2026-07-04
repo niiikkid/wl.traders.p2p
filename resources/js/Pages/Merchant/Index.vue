@@ -15,6 +15,8 @@ import DataCardList from "@/Components/Table/DataCardList.vue";
 import DataCard from "@/Components/Table/DataCard.vue";
 import PageToolbar from "@/Components/Table/PageToolbar.vue";
 import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
+import MoneyValue from "@/Components/MoneyValue.vue";
+import MerchantStatus from "@/Components/MerchantStatus.vue";
 import {computed, ref} from 'vue';
 
 const viewStore = useViewStore();
@@ -160,23 +162,10 @@ defineOptions({ layout: AuthenticatedLayout })
                                 {{ merchant.owner.email }}
                             </td>
                             <td class="whitespace-nowrap font-medium">
-                                {{ merchant.balance }} {{ merchant.balance_currency }}
+                                <MoneyValue :value="merchant.balance" :currency="merchant.balance_currency" />
                             </td>
                             <td>
-                                <div class="flex items-center text-nowrap">
-                                    <template v-if="!merchant.validated_at">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-warning me-2"></div> На модерации
-                                    </template>
-                                    <template v-else-if="merchant.banned_at">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-error me-2"></div> Заблокирован
-                                    </template>
-                                    <template v-else-if="merchant.active">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-success me-2"></div> Включен
-                                    </template>
-                                    <template v-else>
-                                        <div class="h-2.5 w-2.5 rounded-full bg-error me-2"></div> Выключен
-                                    </template>
-                                </div>
+                                <MerchantStatus :merchant="merchant" />
                             </td>
                             <td class="text-right">
                                 <TableActionsDropdown>
@@ -203,24 +192,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <span class="text-base-content/70">ID:</span>
                                     <span class="text-base-content font-medium">{{ merchant.id }}</span>
                                 </div>
-                                <div class="flex items-center text-nowrap">
-                                    <template v-if="!merchant.validated_at">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-warning me-2"></div>
-                                        <span class="text-xs">На модерации</span>
-                                    </template>
-                                    <template v-else-if="merchant.banned_at">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-error me-2"></div>
-                                        <span class="text-xs">Заблокирован</span>
-                                    </template>
-                                    <template v-else-if="merchant.active">
-                                        <div class="h-2.5 w-2.5 rounded-full bg-success me-2"></div>
-                                        <span class="text-xs">Включен</span>
-                                    </template>
-                                    <template v-else>
-                                        <div class="h-2.5 w-2.5 rounded-full bg-error me-2"></div>
-                                        <span class="text-xs">Выключен</span>
-                                    </template>
-                                </div>
+                                <MerchantStatus :merchant="merchant" compact />
                             </div>
 
                             <!-- Основная информация -->
@@ -231,7 +203,9 @@ defineOptions({ layout: AuthenticatedLayout })
                                 </div>
                                 <div class="hidden sm:block">
                                     <div class="space-y-1 text-right">
-                                        <div class="font-medium">{{ merchant.balance }} {{ merchant.balance_currency }}</div>
+                                        <div class="font-medium">
+                                            <MoneyValue :value="merchant.balance" :currency="merchant.balance_currency" />
+                                        </div>
                                         <div class="flex items-center gap-2 text-sm">
                                             <svg class="w-4 h-4 text-primary shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
@@ -259,7 +233,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                 </div>
                                 <div class="mt-2 flex items-center justify-between gap-2 text-sm">
                                     <span class="text-base-content/70">Баланс:</span>
-                                    <span class="font-medium">{{ merchant.balance }} {{ merchant.balance_currency }}</span>
+                                    <MoneyValue :value="merchant.balance" :currency="merchant.balance_currency" />
                                 </div>
                             </div>
                         </DataCard>
@@ -287,30 +261,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                                         />
                                                     </span>
                                                 </span>
-                                                <span
-                                                    v-if="! merchant.validated_at"
-                                                    class="badge badge-warning badge-sm"
-                                                >
-                                                    Модерация
-                                                </span>
-                                                <span
-                                                    v-else-if="merchant.banned_at"
-                                                    class="badge badge-error badge-sm"
-                                                >
-                                                    Заблокирован
-                                                </span>
-                                                <span
-                                                    v-else-if="merchant.active"
-                                                    class="badge badge-success badge-sm"
-                                                >
-                                                    Включен
-                                                </span>
-                                                <span
-                                                    v-else
-                                                    class="badge badge-error badge-sm"
-                                                >
-                                                    Выключен
-                                                </span>
+                                                <MerchantStatus :merchant="merchant" compact />
                                             </div>
                                             <h3 class="text-xl font-semibold leading-tight text-base-content truncate">
                                                 {{ merchant.name }}
@@ -363,22 +314,20 @@ defineOptions({ layout: AuthenticatedLayout })
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-1 gap-3">
-                                        <div class="rounded-2xl bg-base-200/70 p-4">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-base-content/50">
-                                                Доход сегодня
-                                            </p>
-                                            <p class="mt-2 text-2xl font-bold leading-none text-base-content">
-                                                {{ merchant.today_profit }} <span class="mt-1 text-sm text-primary/70">{{ merchant.profit_currency?.toUpperCase() }}</span>
-                                            </p>
+                                    <div class="stats stats-horizontal w-full rounded-xl bg-base-200/70">
+                                        <div class="stat px-3 py-2">
+                                            <div class="stat-title text-xs">Доход сегодня</div>
+                                            <div class="stat-value text-base font-semibold leading-tight">
+                                                {{ merchant.today_profit }}
+                                                <span class="text-xs font-normal text-primary/70">{{ merchant.profit_currency?.toUpperCase() }}</span>
+                                            </div>
                                         </div>
-                                        <div class="rounded-2xl bg-base-200/70 p-4">
-                                            <p class="text-xs font-medium uppercase tracking-wide text-base-content/50">
-                                                Баланс
-                                            </p>
-                                            <p class="mt-2 text-2xl font-bold leading-none text-base-content">
-                                                {{ merchant.balance }} <span class="mt-1 text-sm text-primary/70">{{ merchant.balance_currency }}</span>
-                                            </p>
+                                        <div class="stat px-3 py-2">
+                                            <div class="stat-title text-xs">Баланс</div>
+                                            <div class="stat-value text-base font-semibold leading-tight">
+                                                {{ merchant.balance }}
+                                                <span class="text-xs font-normal text-primary/70">{{ merchant.balance_currency?.toUpperCase() }}</span>
+                                            </div>
                                         </div>
                                     </div>
 

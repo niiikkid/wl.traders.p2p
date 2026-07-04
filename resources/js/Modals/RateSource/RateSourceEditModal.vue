@@ -9,6 +9,7 @@ import InputHelper from "@/Components/InputHelper.vue";
 import NumberInput from "@/Components/NumberInput.vue";
 import TextInput from "@/Components/TextInput.vue";
 import Select from "@/Components/Select.vue";
+import CurrencyPairDisplay from "@/Components/Currency/CurrencyPairDisplay.vue";
 import Multiselect from "@/Components/Form/Multiselect.vue";
 import { ref, computed, watch } from "vue";
 import { storeToRefs } from "pinia";
@@ -291,6 +292,8 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
                             name="name"
                             :required="false"
                             size="sm"
+                            currency-icons
+                            pair-base="usdt"
                             @change="clearError('quote_currency')"
                         />
                         <InputError :message="errorMessage('quote_currency')" class="mt-1" />
@@ -416,7 +419,9 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
                     <div class="text-sm">
                         <template v-if="previewResult.status === 'success'">
                             Курс получен: <span class="font-semibold">{{ previewResult.rate }}</span>
-                            <span class="opacity-70"> ({{ form.quote_currency.toUpperCase() }} за 1 USDT, сторона {{ previewResult.side }})</span>
+                            <span class="inline-flex items-center gap-2 opacity-70">
+                                (<CurrencyPairDisplay base-currency="usdt" :quote-currency="form.quote_currency" size="sm" :icon-size="16" />, сторона {{ previewResult.side }})
+                            </span>
                         </template>
                         <template v-else-if="previewResult.status === 'empty'">
                             Подходящих объявлений не найдено — курс пустой. Проверьте фильтры (методы, объём, количество сделок).

@@ -74,7 +74,7 @@ const formatRateLimits = (limits) => {
                 <dt class="text-[10px] uppercase tracking-wide text-base-content/45">Fail</dt>
                 <dd class="font-medium tabular-nums">{{ failedLimit ?? '—' }}</dd>
             </div>
-            <div class="min-w-0 col-span-2">
+            <div class="min-w-0">
                 <dt class="text-[10px] uppercase tracking-wide text-base-content/45">Лимиты</dt>
                 <dd class="truncate font-medium" :title="formatRateLimits(rateLimits)">
                     {{ formatRateLimits(rateLimits) }}

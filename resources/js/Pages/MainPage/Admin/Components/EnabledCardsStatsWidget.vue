@@ -9,6 +9,7 @@ import DataCard from '@/Components/Table/DataCard.vue';
 import DetailTypeFilter from '@/Pages/EnabledCards/Components/DetailTypeFilter.vue';
 import PaymentGatewayFilter from '@/Pages/EnabledCards/Components/PaymentGatewayFilter.vue';
 import UserFilter from '@/Pages/EnabledCards/Components/UserFilter.vue';
+import CurrencyDisplay from '@/Components/Currency/CurrencyDisplay.vue';
 
 const filtersBasePath = '/admin/filters';
 const CURRENCY_COOKIE_NAME = 'selected_currency';
@@ -229,11 +230,21 @@ const resetFilters = () => {
                                         :title="`${currency.name} (${currency.symbol})`"
                                         @click="selectedCurrency = currency.code"
                                     >
-                                        {{ currency.code.toUpperCase() }}
+                                        <CurrencyDisplay
+                                            :currency="currency.code"
+                                            :show-label="true"
+                                            size="sm"
+                                            :icon-size="16"
+                                        />
                                     </button>
                                 </div>
-                                <span v-else-if="selectedCurrencyInfo" class="badge badge-outline badge-sm h-8">
-                                    {{ selectedCurrencyInfo.code.toUpperCase() }}
+                                <span v-else-if="selectedCurrencyInfo" class="badge badge-outline badge-sm h-8 gap-2">
+                                    <CurrencyDisplay
+                                        :currency="selectedCurrencyInfo.code"
+                                        :show-label="true"
+                                        size="sm"
+                                        :icon-size="16"
+                                    />
                                 </span>
                             </div>
 

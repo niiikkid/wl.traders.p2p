@@ -7,6 +7,7 @@ import { useModalStore } from '@/store/modal.js';
 import { router } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import axios from 'axios';
+import { walletDepositInvoiceStatusBadge } from '@/utils/walletDepositInvoiceStatus.js';
 
 const props = defineProps({
     modalName: { type: String, required: true },
@@ -36,13 +37,24 @@ const STATUS_MAP = {
     pending: { label: 'Ожидание оплаты', badge: 'badge-info' },
     processing: { label: 'Оплата обнаружена, ждём подтверждений', badge: 'badge-warning' },
     paid: { label: 'Зачислено', badge: 'badge-success' },
-    expired: { label: 'Инвойс истёк', badge: 'badge-neutral' },
-    cancelled: { label: 'Отменён', badge: 'badge-error' },
-    amount_mismatch: { label: 'Неверная сумма — нужна проверка', badge: 'badge-error' },
-    failed: { label: 'Ошибка — обратитесь в поддержку', badge: 'badge-error' },
+    expired: { label: 'Инвойс истёк', badge: walletDepositInvoiceStatusBadge('expired') },
+    cancelled: { label: 'Отменён', badge: walletDepositInvoiceStatusBadge('cancelled') },
+    amount_mismatch: { label: 'Неверная сумма — нужна проверка', badge: walletDepositInvoiceStatusBadge('amount_mismatch') },
+    failed: { label: 'Ошибка — обратитесь в поддержку', badge: walletDepositInvoiceStatusBadge('failed') },
 };
 
-const statusInfo = computed(() => STATUS_MAP[invoice.value?.status] ?? { label: invoice.value?.status ?? '', badge: 'badge-neutral' });
+const statusInfo = computed(() => {
+    const status = invoice.value?.status;
+
+    if (!status) {
+        return { label: '', badge: walletDepositInvoiceStatusBadge('') };
+    }
+
+    return STATUS_MAP[status] ?? {
+        label: status,
+        badge: walletDepositInvoiceStatusBadge(status),
+    };
+});
 const isFinal = computed(() => ['paid', 'expired', 'cancelled', 'amount_mismatch', 'failed'].includes(invoice.value?.status));
 
 const remainingSeconds = computed(() => {

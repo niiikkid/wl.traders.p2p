@@ -11,7 +11,7 @@ import PaymentDetailsNav from '@/Components/Admin/PaymentDetailsNav.vue';
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
-import GatewayLogo from "@/Components/GatewayLogo.vue";
+import PaymentDetailGatewayWithCurrency from "@/Components/PaymentDetail/PaymentDetailGatewayWithCurrency.vue";
 import TableActionsDropdown from "@/Components/Table/TableActionsDropdown.vue";
 import TableAction from "@/Components/Table/TableAction.vue";
 import TableInfoDropdown from "@/Components/Table/TableInfoDropdown.vue";
@@ -285,10 +285,9 @@ defineOptions({ layout: AuthenticatedLayout })
             title="Реквизиты"
             :data="paymentDetails"
         >
-            <template #button>
+            <template v-if="isTraderView" #button>
                 <PageToolbar>
                     <PageToolbarAction
-                        v-if="isTraderView"
                         icon="schedule"
                         title="Расписание работы"
                         @click="openScheduleManagerModal"
@@ -446,7 +445,7 @@ defineOptions({ layout: AuthenticatedLayout })
                                             Расписание
                                         </th>
                                         <th scope="col" class="text-nowrap">
-                                            Статус
+                                            В работе
                                         </th>
                                         <th v-if="isTraderView && displayDetailLastDeal" scope="col" class="text-nowrap">
                                             Последняя сделка
@@ -488,7 +487,11 @@ defineOptions({ layout: AuthenticatedLayout })
                                             </td>
                                             <td>
                                                 <div class="flex items-center gap-3">
-                                                    <GatewayLogo :img_path="payment_detail.payment_gateway.logo_path" :name="payment_detail.payment_gateway.name" class="w-10 h-10"/>
+                                                    <PaymentDetailGatewayWithCurrency
+                                                        :img_path="payment_detail.payment_gateway.logo_path"
+                                                        :name="payment_detail.payment_gateway.name"
+                                                        :currency="payment_detail.currency"
+                                                    />
                                                     <PaymentDetail
                                                         :detail="payment_detail.detail"
                                                         :type="payment_detail.detail_type"
@@ -576,7 +579,12 @@ defineOptions({ layout: AuthenticatedLayout })
                             >
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="flex min-w-0 items-start gap-3">
-                                            <GatewayLogo :img_path="payment_detail.payment_gateway.logo_path" :name="payment_detail.payment_gateway.name" class="w-10 h-10 shrink-0"/>
+                                            <PaymentDetailGatewayWithCurrency
+                                                :img_path="payment_detail.payment_gateway.logo_path"
+                                                :name="payment_detail.payment_gateway.name"
+                                                :currency="payment_detail.currency"
+                                                logo-class="w-10 h-10 shrink-0"
+                                            />
                                             <PaymentDetail
                                                 :detail="payment_detail.detail"
                                                 :type="payment_detail.detail_type"
@@ -667,9 +675,9 @@ defineOptions({ layout: AuthenticatedLayout })
             </template>
         </MainTableSection>
 
-        <PaymentDetailCreateModal />
+        <PaymentDetailCreateModal v-if="isTraderView" />
         <PaymentDetailEditModal />
-        <PaymentDetailBulkEditModal />
+        <PaymentDetailBulkEditModal v-if="isTraderView" />
         <PaymentDetailVolumeStatisticsModal />
         <PaymentDetailResetLimitsModal />
         <ConfirmModal/>

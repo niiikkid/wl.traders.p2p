@@ -9,6 +9,7 @@ import {useViewStore} from "@/store/view.js";
 import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
+import CurrencyDisplay from '@/Components/Currency/CurrencyDisplay.vue';
 
 const viewStore = useViewStore();
 const emit = defineEmits(['updated']);
@@ -820,8 +821,16 @@ const callbackState = computed(() => {
                             :key="`${geo.currency}-${geo.market}`"
                             class="rounded-lg bg-base-100 p-2.5 ring-1 ring-base-content/5"
                         >
-                            <div class="text-xs font-medium text-base-content">
-                                {{ currencies.find((c) => c.value.toLowerCase() === geo.currency)?.name || geo.currency.toUpperCase() }}
+                            <div class="flex items-center gap-2 text-xs font-medium text-base-content">
+                                <CurrencyDisplay
+                                    :currency="geo.currency"
+                                    :show-label="false"
+                                    size="sm"
+                                    :icon-size="16"
+                                />
+                                <span>
+                                    {{ currencies.find((c) => c.value.toLowerCase() === geo.currency)?.name || geo.currency.toUpperCase() }}
+                                </span>
                             </div>
                             <div class="text-[11px] text-base-content/70">
                                 {{ markets.find((m) => m.value === geo.market)?.name || geo.market }}
@@ -918,6 +927,7 @@ const callbackState = computed(() => {
                                         default_title="Выберите валюту"
                                         :required="false"
                                         size="sm"
+                                        currency-icons
                                         :error="!!geoForm.errors.currency || !!geoForm.errors.geos"
                                         @change="() => { clearFormError(geoForm, 'currency'); clearFormError(geoForm, 'geos'); }"
                                     ></Select>
@@ -1042,8 +1052,16 @@ const callbackState = computed(() => {
                                     class="flex items-start justify-between gap-2 rounded-lg bg-base-100 p-2.5"
                                 >
                                     <div>
-                                        <div class="text-xs font-medium text-base-content">
-                                            {{ currencies.find(c => c.value.toLowerCase() === geo.currency?.toLowerCase())?.name || geo.currency?.toUpperCase() }}
+                                        <div class="flex items-center gap-2 text-xs font-medium text-base-content">
+                                            <CurrencyDisplay
+                                                :currency="geo.currency"
+                                                :show-label="false"
+                                                size="sm"
+                                                :icon-size="16"
+                                            />
+                                            <span>
+                                                {{ currencies.find(c => c.value.toLowerCase() === geo.currency?.toLowerCase())?.name || geo.currency?.toUpperCase() }}
+                                            </span>
                                         </div>
                                         <div class="text-[11px] text-base-content/70">
                                             {{ sourceLabel(geo.currency, geo.source) }}
@@ -1146,6 +1164,7 @@ const callbackState = computed(() => {
                                             default_title="Выберите валюту"
                                             :required="false"
                                             size="sm"
+                                            currency-icons
                                         />
                                     </div>
                                     <button
@@ -1166,8 +1185,16 @@ const callbackState = computed(() => {
                                         class="flex items-center gap-2 rounded-lg bg-base-200 p-2"
                                     >
                                         <div class="flex-1">
-                                            <div class="mb-1 text-xs font-medium text-base-content">
-                                                {{ currencies.find(c => c.value === currency)?.name || currency.toUpperCase() }}
+                                            <div class="mb-1 flex items-center gap-2 text-xs font-medium text-base-content">
+                                                <CurrencyDisplay
+                                                    :currency="currency"
+                                                    :show-label="false"
+                                                    size="sm"
+                                                    :icon-size="16"
+                                                />
+                                                <span>
+                                                    {{ currencies.find(c => c.value === currency)?.name || currency.toUpperCase() }}
+                                                </span>
                                             </div>
                                             <div class="flex items-center gap-1.5">
                                                 <TextInput

@@ -9,7 +9,7 @@ import FilterCheckbox from "@/Components/Filters/Partials/FilterCheckbox.vue";
 import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
 import {useTableFiltersStore} from "@/store/tableFilters.js";
 import PaymentDetail from "@/Components/PaymentDetail.vue";
-import GatewayLogo from "@/Components/GatewayLogo.vue";
+import PaymentDetailGatewayWithCurrency from "@/Components/PaymentDetail/PaymentDetailGatewayWithCurrency.vue";
 import PaymentDetailLimit from "@/Components/PaymentDetailLimit.vue";
 import PaymentDetailOrdersLimit from "@/Components/PaymentDetailOrdersLimit.vue";
 import TableCellPopover from "@/Components/Table/TableCellPopover.vue";
@@ -166,7 +166,11 @@ defineOptions({layout: AuthenticatedLayout});
                                         </th>
                                         <td>
                                             <div class="flex items-center gap-3">
-                                                <GatewayLogo :img_path="detail.payment_gateway.logo_path" :name="detail.payment_gateway.name" class="w-10 h-10" />
+                                                <PaymentDetailGatewayWithCurrency
+                                                    :img_path="detail.payment_gateway.logo_path"
+                                                    :name="detail.payment_gateway.name"
+                                                    :currency="detail.currency"
+                                                />
                                                 <PaymentDetail
                                                     :detail="detail.detail"
                                                     :type="detail.detail_type"
@@ -332,7 +336,11 @@ defineOptions({layout: AuthenticatedLayout});
                                 </div>
 
                                 <div class="flex items-center gap-3">
-                                    <GatewayLogo :img_path="detail.payment_gateway.logo_path" :name="detail.payment_gateway.name" class="w-10 h-10" />
+                                    <PaymentDetailGatewayWithCurrency
+                                        :img_path="detail.payment_gateway.logo_path"
+                                        :name="detail.payment_gateway.name"
+                                        :currency="detail.currency"
+                                    />
                                     <div class="min-w-0">
                                         <PaymentDetail
                                             :detail="detail.detail"

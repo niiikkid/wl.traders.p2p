@@ -30,6 +30,7 @@ import { storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { useTraderMaxMinOrderAmount } from "@/composables/useTraderMaxMinOrderAmount.js";
+import CurrencyDisplay from "@/Components/Currency/CurrencyDisplay.vue";
 
 const modalStore = useModalStore();
 const viewStore = useViewStore();
@@ -616,6 +617,7 @@ watch(
                                 name="name"
                                 default_title="Выберите валюту"
                                 :default_value="null"
+                                currency-icons
                                 @change="selectedDetailType = null; form.payment_gateway_ids = []; errors.currency = null"
                                 :disabled="processing"
                             ></Select>
@@ -1087,7 +1089,14 @@ watch(
                         <dl class="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
                             <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
                                 <dt class="text-base-content/60">Валюта</dt>
-                                <dd class="font-medium">{{ form.currency?.toUpperCase() || '—' }}</dd>
+                                <dd class="font-medium">
+                                    <CurrencyDisplay
+                                        v-if="form.currency"
+                                        :currency="form.currency"
+                                        size="sm"
+                                    />
+                                    <span v-else>—</span>
+                                </dd>
                             </div>
                             <div class="flex justify-between gap-3 border-b border-base-300/60 py-1">
                                 <dt class="text-base-content/60">Тип реквизита</dt>

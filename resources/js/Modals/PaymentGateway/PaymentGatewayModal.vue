@@ -621,6 +621,7 @@ watch(
                                     value="code"
                                     name="code"
                                     label="Валюта"
+                                    currency-icons
                                 />
                                 <InputError :message="errors.currency?.[0]" class="mt-1" />
                             </div>

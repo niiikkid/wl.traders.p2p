@@ -17,6 +17,7 @@ import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
+import MoneyValue from '@/Components/MoneyValue.vue';
 import { useModalStore } from '@/store/modal.js';
 
 defineOptions({ layout: AuthenticatedLayout });
@@ -143,7 +144,7 @@ router.on('success', () => {
                                 {{ invoice.id }}
                             </th>
                             <td>
-                                <div class="font-medium text-nowrap text-base-content">{{ invoice.amount }} {{ invoice.currency.toUpperCase() }}</div>
+                                <MoneyValue :value="invoice.amount" :currency="invoice.currency" block />
                                 <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
                                 <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                             </td>
@@ -196,9 +197,7 @@ router.on('success', () => {
 
                             <div class="hidden sm:flex items-center justify-between gap-2">
                                 <div :class="isWithdrawalsTab ? 'w-24' : 'text-right'">
-                                    <div class="font-medium text-nowrap text-base-content">
-                                        {{ invoice.amount }} {{ invoice.currency.toUpperCase() }}
-                                    </div>
+                                    <MoneyValue :value="invoice.amount" :currency="invoice.currency" block />
                                     <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
                                     <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                                 </div>
@@ -231,9 +230,7 @@ router.on('success', () => {
                             <div class="sm:hidden">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <div class="font-medium text-nowrap text-xs text-base-content">
-                                            {{ invoice.amount }} {{ invoice.currency.toUpperCase() }}
-                                        </div>
+                                        <MoneyValue :value="invoice.amount" :currency="invoice.currency" compact block />
                                         <span v-if="invoice.balance_type === 'trust'" class="badge badge-ghost badge-xs mt-1">Траст</span>
                                         <span v-else-if="invoice.balance_type === 'merchant'" class="badge badge-ghost badge-xs mt-1">Мерчант</span>
                                     </div>

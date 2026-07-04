@@ -6,6 +6,7 @@ import MainTableSection from "@/Wrappers/MainTableSection.vue";
 import PageToolbar from "@/Components/Table/PageToolbar.vue";
 import PageToolbarAction from "@/Components/Table/PageToolbarAction.vue";
 import GatewayLogo from "@/Components/GatewayLogo.vue";
+import CurrencyDisplay from "@/Components/Currency/CurrencyDisplay.vue";
 import InputFilter from "@/Components/Filters/Partials/InputFilter.vue";
 import FiltersPanel from "@/Components/Filters/FiltersPanel.vue";
 import DropdownFilter from "@/Components/Filters/Partials/DropdownFilter.vue";
@@ -62,6 +63,7 @@ defineOptions({ layout: AuthenticatedLayout })
                     <DropdownFilter
                         name="currency"
                         title="Валюта"
+                        currency-icons
                     />
                 </FiltersPanel>
             </template>
@@ -101,8 +103,18 @@ defineOptions({ layout: AuthenticatedLayout })
                                 </div>
                             </td>
                             <td class="px-6 py-3">
-                                <div class="text-nowrap">Max {{ payment_gateway.max_limit }} {{ payment_gateway.currency.toUpperCase() }}</div>
-                                <div class="text-nowrap">Min {{ payment_gateway.min_limit }} {{ payment_gateway.currency.toUpperCase() }}</div>
+                                <div class="flex items-center gap-2 text-nowrap">
+                                    <CurrencyDisplay
+                                        :currency="payment_gateway.currency"
+                                        :show-label="false"
+                                        size="sm"
+                                        :icon-size="18"
+                                    />
+                                    <div>
+                                        <div>Max {{ payment_gateway.max_limit }}</div>
+                                        <div>Min {{ payment_gateway.min_limit }}</div>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-6 py-3">
                                 <div v-if="payment_gateway.use_flexible_trader_commission_for_orders" class="text-nowrap">
@@ -174,9 +186,17 @@ defineOptions({ layout: AuthenticatedLayout })
                                     <div v-else class="text-right text-xs text-nowrap">
                                         {{ payment_gateway.trader_commission_rate_for_orders }}% / {{ payment_gateway.total_service_commission_rate_for_orders }}%
                                     </div>
-                                    <div>
-                                        <div class="text-nowrap text-xs"><span class="text-base-content/70">Max</span> {{ payment_gateway.max_limit }} {{ payment_gateway.currency.toUpperCase() }}</div>
-                                        <div class="text-nowrap text-xs"><span class="text-base-content/70">Min</span> {{ payment_gateway.min_limit }} {{ payment_gateway.currency.toUpperCase() }}</div>
+                                    <div class="flex items-center gap-2">
+                                        <CurrencyDisplay
+                                            :currency="payment_gateway.currency"
+                                            :show-label="false"
+                                            size="sm"
+                                            :icon-size="16"
+                                        />
+                                        <div>
+                                            <div class="text-nowrap text-xs"><span class="text-base-content/70">Max</span> {{ payment_gateway.max_limit }}</div>
+                                            <div class="text-nowrap text-xs"><span class="text-base-content/70">Min</span> {{ payment_gateway.min_limit }}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

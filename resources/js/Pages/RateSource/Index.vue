@@ -6,6 +6,7 @@ import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
 import RateSourceEditModal from '@/Modals/RateSource/RateSourceEditModal.vue';
+import CurrencyPairDisplay from '@/Components/Currency/CurrencyPairDisplay.vue';
 import { useModalStore } from '@/store/modal.js';
 import { ref } from 'vue';
 
@@ -91,7 +92,14 @@ const remove = (source) => {
                                 {{ source.name || '—' }}
                                 <span v-if="!source.is_active" class="badge badge-ghost badge-xs ml-1">выкл</span>
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap">{{ source.pair }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                <CurrencyPairDisplay
+                                    :base-currency="source.base_currency"
+                                    :quote-currency="source.quote_currency"
+                                    :pair="source.pair"
+                                    size="sm"
+                                />
+                            </td>
                             <td class="px-4 py-3">{{ typeLabel(source.type) }}</td>
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <span :class="!source.rate || source.rate === '0.00' ? 'text-error' : ''">
@@ -144,7 +152,12 @@ const remove = (source) => {
                             <div class="flex flex-col gap-1 text-sm">
                                 <div class="flex justify-between">
                                     <span class="text-base-content/70">Пара</span>
-                                    <span>{{ source.pair }}</span>
+                                    <CurrencyPairDisplay
+                                        :base-currency="source.base_currency"
+                                        :quote-currency="source.quote_currency"
+                                        :pair="source.pair"
+                                        size="sm"
+                                    />
                                 </div>
                                 <div class="flex justify-between">
                                     <span class="text-base-content/70">Тип</span>

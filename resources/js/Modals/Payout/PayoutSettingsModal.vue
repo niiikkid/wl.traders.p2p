@@ -7,6 +7,7 @@ import { storeToRefs } from 'pinia';
 import { useModalStore } from '@/store/modal.js';
 import { computed, ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
+import CurrencyDisplay from '@/Components/Currency/CurrencyDisplay.vue';
 
 const modalStore = useModalStore();
 const { payoutSettingsModal } = storeToRefs(modalStore);
@@ -169,9 +170,12 @@ watch(
                             >
                                 <td class="py-2">
                                     <div class="flex min-w-0 items-center gap-2">
-                                        <span class="badge badge-neutral badge-sm shrink-0 font-mono tabular-nums">
-                                            {{ item.currency.code }}
-                                        </span>
+                                        <CurrencyDisplay
+                                            :currency="item.currency.code"
+                                            :show-label="true"
+                                            size="sm"
+                                            :icon-size="18"
+                                        />
                                         <span class="truncate text-xs text-base-content/70">
                                             {{ item.currency.name }}
                                         </span>
