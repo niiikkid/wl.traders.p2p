@@ -194,7 +194,7 @@ const resetFilters = () => {
 </script>
 
 <template>
-    <div class="space-y-4">
+    <div class="min-w-0 space-y-4">
         <WidgetHeader title="Включенные реквизиты" :loading="loading" @refresh="load" />
 
         <div class="space-y-5">
@@ -211,32 +211,38 @@ const resetFilters = () => {
                 </div>
 
                 <template v-else-if="statistics">
-                    <div class="rounded-box border border-base-300/60 bg-base-100 p-3">
-                        <div class="flex flex-wrap items-end gap-3">
-                            <div class="form-control shrink-0 gap-1">
+                    <div class="rounded-box border border-base-300/60 bg-base-100 p-3 min-w-0">
+                        <div class="flex flex-wrap items-end gap-3 min-w-0">
+                            <div class="form-control min-w-0 w-full gap-1 sm:w-auto sm:max-w-full">
                                 <span class="text-xs font-medium text-base-content/60">Валюта</span>
                                 <div
                                     v-if="availableCurrencies.length > 1"
-                                    role="tablist"
-                                    class="tabs tabs-box p-0.5"
+                                    class="max-w-full overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]"
                                 >
-                                    <button
-                                        v-for="currency in availableCurrencies"
-                                        :key="currency.code"
-                                        type="button"
-                                        role="tab"
-                                        class="tab h-8 min-h-8 px-2.5 text-xs font-medium"
-                                        :class="{ 'tab-active': selectedCurrency === currency.code }"
-                                        :title="`${currency.name} (${currency.symbol})`"
-                                        @click="selectedCurrency = currency.code"
+                                    <div
+                                        role="tablist"
+                                        aria-label="Валюта"
+                                        class="tabs tabs-box w-fit max-w-none gap-0.5 p-0.5"
                                     >
-                                        <CurrencyDisplay
-                                            :currency="currency.code"
-                                            :show-label="true"
-                                            size="sm"
-                                            :icon-size="16"
-                                        />
-                                    </button>
+                                        <button
+                                            v-for="currency in availableCurrencies"
+                                            :key="currency.code"
+                                            type="button"
+                                            role="tab"
+                                            class="tab h-8 min-h-8 shrink-0 whitespace-nowrap px-2.5 text-xs font-medium"
+                                            :class="{ 'tab-active': selectedCurrency === currency.code }"
+                                            :title="`${currency.name} (${currency.symbol})`"
+                                            :aria-selected="selectedCurrency === currency.code"
+                                            @click="selectedCurrency = currency.code"
+                                        >
+                                            <CurrencyDisplay
+                                                :currency="currency.code"
+                                                :show-label="true"
+                                                size="sm"
+                                                :icon-size="16"
+                                            />
+                                        </button>
+                                    </div>
                                 </div>
                                 <span v-else-if="selectedCurrencyInfo" class="badge badge-outline badge-sm h-8 gap-2">
                                     <CurrencyDisplay
