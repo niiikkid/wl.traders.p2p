@@ -10,11 +10,11 @@ import {computed} from 'vue';
 import {useForm, usePage} from '@inertiajs/vue3';
 
 const page = usePage();
-const openAiSetting = page.props.openAiSetting;
+const openAiSetting = computed(() => page.props.openAiSetting);
 
 const form = useForm({
     api_key: '',
-    selected_model: openAiSetting.selected_model ?? '',
+    selected_model: openAiSetting.value.selected_model ?? '',
 });
 
 const modelOptions = computed(() => {
@@ -31,17 +31,25 @@ const modelOptions = computed(() => {
     }));
 });
 
+const syncFormFromPage = () => {
+    form.defaults({
+        api_key: '',
+        selected_model: page.props.openAiSetting.selected_model ?? '',
+    });
+    form.reset();
+};
+
 const save = () => {
     form.patch(route('admin.open-ai.update'), {
         preserveScroll: true,
-        onSuccess: () => form.reset('api_key'),
+        onSuccess: syncFormFromPage,
     });
 };
 
 const refreshModels = () => {
     form.post(route('admin.open-ai.models.refresh'), {
         preserveScroll: true,
-        onSuccess: () => form.reset('api_key'),
+        onSuccess: syncFormFromPage,
     });
 };
 </script>
@@ -124,7 +132,7 @@ const refreshModels = () => {
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-                <PrimaryButton class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
+                <PrimaryButton type="submit" class="btn-sm" :disabled="form.processing">Сохранить</PrimaryButton>
                 <button
                     type="button"
                     class="btn btn-outline btn-sm"
