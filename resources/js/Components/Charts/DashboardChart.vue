@@ -117,6 +117,14 @@ const showSymbol = computed(() => props.labels.length <= 40);
 
 const buildSeriesItem = (item, index) => {
     const color = resolveSeriesColor(item, index);
+    const showMarkers = showSymbol.value && !item.dashed;
+    const lineType = item.dashed ? 'dashed' : 'solid';
+    const lineStyle = {
+        width: 2,
+        color,
+        type: lineType,
+    };
+
     if (props.type === 'bar') {
         return {
             name: item.name,
@@ -124,8 +132,10 @@ const buildSeriesItem = (item, index) => {
             data: item.data,
             barMaxWidth: 28,
             itemStyle: { color, borderRadius: [3, 3, 0, 0] },
+            emphasis: { focus: 'none' },
         };
     }
+
     return {
         name: item.name,
         type: 'line',
@@ -133,14 +143,20 @@ const buildSeriesItem = (item, index) => {
         smooth: props.smooth,
         symbol: 'circle',
         symbolSize: 6,
-        showSymbol: showSymbol.value && !item.dashed,
-        lineStyle: {
-            width: 2,
-            color,
-            type: item.dashed ? 'dashed' : 'solid',
-        },
+        showSymbol: showMarkers,
+        lineStyle,
         itemStyle: { color },
-        emphasis: { focus: 'series' },
+        // focus: 'series' conflicts with axis tooltip — it blurs the line and flickers
+        // when multiple series share the same x-axis category.
+        emphasis: item.dashed
+            ? { disabled: true }
+            : {
+                focus: 'none',
+                lineStyle,
+                itemStyle: { color },
+                showSymbol: showMarkers,
+                scale: showMarkers,
+            },
         ...(item.area
             ? { areaStyle: { color: withAlpha(color, 0.12) } }
             : {}),
