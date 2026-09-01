@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${BASH_SOURCE[0]:-}"
+SCRIPT_DIR=""
+if [[ -n "$SCRIPT_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+fi
 INSTALLER_SERVER="$SCRIPT_DIR/installer/server.py"
 SOURCE_ARCHIVE_URL="${WL_TRADERS_SOURCE_ARCHIVE_URL:-https://codeload.github.com/niiikkid/wl.traders.p2p/tar.gz/refs/heads/main}"
 
