@@ -8,7 +8,7 @@
 
 **WL Traders** — self-hosted платформа для мерчантов и трейдеров: приём P2P-платежей, выплаты, распределение заявок, споры, комиссии и расчёты в USDT.
 
-![Панель управления WL Traders](docs/images/wl-traders-dashboard.png)
+![Панель управления WL Traders](https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/8caa7a7/docs/images/wl-traders-dashboard.png)
 
 ## Для чего нужна платформа
 
