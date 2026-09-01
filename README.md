@@ -1,4 +1,4 @@
-# WLPay — P2P-процессинг для мерчантов и трейдеров
+# WL Traders
 
 [![PHP 8.3](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![Laravel 11](https://img.shields.io/badge/Laravel-11-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
@@ -6,9 +6,9 @@
 [![MySQL 8](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Redis](https://img.shields.io/badge/Redis-queues-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 
-**WLPay** — self-hosted платформа, которую можно развернуть на своём сервере для приёма P2P-платежей и проведения выплат. Она соединяет мерчантов с трейдерами, распределяет заявки, ведёт споры, комиссии и расчёты в USDT.
+**WL Traders** — self-hosted платформа для мерчантов и трейдеров: приём P2P-платежей, выплаты, распределение заявок, споры, комиссии и расчёты в USDT.
 
-![Панель управления WLPay](docs/images/wlpay-dashboard.png)
+![Панель управления WL Traders](docs/images/wl-traders-dashboard.png)
 
 ## Для чего нужна платформа
 
@@ -79,18 +79,18 @@ tar \
   --exclude='vendor' \
   --exclude='public/build' \
   --exclude='._*' \
-  -czf /tmp/wlpay.tar.gz .
+  -czf /tmp/wl-traders.tar.gz .
 
-scp /tmp/wlpay.tar.gz root@SERVER_IP:/root/
+scp /tmp/wl-traders.tar.gz root@SERVER_IP:/root/
 ```
 
 Подключитесь к серверу и распакуйте архив:
 
 ```bash
 ssh root@SERVER_IP
-mkdir -p /root/wlpay-source
-tar -xzf /root/wlpay.tar.gz -C /root/wlpay-source
-cd /root/wlpay-source
+mkdir -p /root/wl-traders-source
+tar -xzf /root/wl-traders.tar.gz -C /root/wl-traders-source
+cd /root/wl-traders-source
 chmod +x install.sh
 sudo ./install.sh
 ```
@@ -105,15 +105,15 @@ http://SERVER_IP:8787/?token=...
 
 ### 2. Что делает установщик
 
-- копирует проект в `/var/www/wlpay`;
+- копирует проект в `/var/www/wl-traders`;
 - устанавливает и настраивает Nginx, PHP, MySQL, Redis, Composer и Node.js;
 - создаёт отдельную MySQL-базу и пользователя;
 - формирует production `.env`, генерирует ключ приложения и запускает `system:install`;
 - собирает frontend;
-- настраивает Horizon как службу `wlpay-horizon`;
+- настраивает Horizon как службу `wl-traders-horizon`;
 - добавляет Laravel scheduler и снимки Horizon в cron;
 - создаёт `storage:link`, кеши Laravel, лимиты PHP/Nginx и исправляет буферы FastCGI;
-- при выбранной опции включает firewall, создаёт 2 ГБ swap и ежедневные локальные бэкапы MySQL и `storage` в `/var/backups/wlpay`;
+- при выбранной опции включает firewall, создаёт 2 ГБ swap и ежедневные локальные бэкапы MySQL и `storage` в `/var/backups/wl-traders`;
 - открывает установленный проект по адресу, указанному в панели, и выключает временную панель.
 
 Установщик останавливается, если в целевой папке уже есть `.env` либо выбранная база содержит таблицы: существующие данные не удаляются.

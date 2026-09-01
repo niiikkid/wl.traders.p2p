@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Temporary one-time web installer for WLPay on a fresh Ubuntu server."""
+"""Temporary one-time web installer for WL Traders on a fresh Ubuntu server."""
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ def validate_path(value: str) -> Path:
         raise ValueError("Путь установки может содержать только буквы, цифры, /, ., _ и -")
     path = Path(value)
     if not path.is_absolute() or path == Path("/") or len(path.parts) < 3:
-        raise ValueError("Путь установки должен быть абсолютным, например /var/www/wlpay")
+        raise ValueError("Путь установки должен быть абсолютным, например /var/www/wl-traders")
     return path
 
 
@@ -232,14 +232,14 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
     server_tokens off;
 }}
 """
-    Path("/etc/nginx/sites-available/wlpay").write_text(nginx, encoding="utf-8")
-    enabled = Path("/etc/nginx/sites-enabled/wlpay")
+    Path("/etc/nginx/sites-available/wl-traders").write_text(nginx, encoding="utf-8")
+    enabled = Path("/etc/nginx/sites-enabled/wl-traders")
     enabled.unlink(missing_ok=True)
-    enabled.symlink_to("/etc/nginx/sites-available/wlpay")
+    enabled.symlink_to("/etc/nginx/sites-available/wl-traders")
     Path("/etc/nginx/sites-enabled/default").unlink(missing_ok=True)
 
     horizon = f"""[Unit]
-Description=WLPay Laravel Horizon
+Description=WL Traders Laravel Horizon
 After=network.target mysql.service redis-server.service
 Wants=mysql.service redis-server.service
 
@@ -258,17 +258,17 @@ TimeoutStopSec=240
 [Install]
 WantedBy=multi-user.target
 """
-    Path("/etc/systemd/system/wlpay-horizon.service").write_text(horizon, encoding="utf-8")
+    Path("/etc/systemd/system/wl-traders-horizon.service").write_text(horizon, encoding="utf-8")
 
     cron = (
         f"* * * * * www-data cd {app_path} && /usr/bin/php artisan schedule:run "
-        ">> /var/log/wlpay-scheduler.log 2>&1\n"
+        ">> /var/log/wl-traders-scheduler.log 2>&1\n"
         f"*/5 * * * * www-data cd {app_path} && /usr/bin/php artisan horizon:snapshot "
-        ">> /var/log/wlpay-scheduler.log 2>&1\n"
+        ">> /var/log/wl-traders-scheduler.log 2>&1\n"
     )
-    Path("/etc/cron.d/wlpay").write_text(cron, encoding="utf-8")
-    os.chmod("/etc/cron.d/wlpay", 0o644)
-    log_path = Path("/var/log/wlpay-scheduler.log")
+    Path("/etc/cron.d/wl-traders").write_text(cron, encoding="utf-8")
+    os.chmod("/etc/cron.d/wl-traders", 0o644)
+    log_path = Path("/var/log/wl-traders-scheduler.log")
     log_path.touch(exist_ok=True)
     shutil.chown(log_path, user="www-data", group="www-data")
 
@@ -281,27 +281,27 @@ max_input_time=120
     for sapi in ("cli", "fpm"):
         ini_dir = Path(f"/etc/php/{php_version}/{sapi}/conf.d")
         ini_dir.mkdir(parents=True, exist_ok=True)
-        (ini_dir / "99-wlpay.ini").write_text(php_ini, encoding="utf-8")
+        (ini_dir / "99-wl-traders.ini").write_text(php_ini, encoding="utf-8")
 
 
 def install_backup(target: Path, db_name: str, retention_days: int) -> None:
     backup = f"""#!/usr/bin/env bash
 set -Eeuo pipefail
-DEST=/var/backups/wlpay
+DEST=/var/backups/wl-traders
 STAMP=$(date +%Y%m%d-%H%M%S)
 install -d -m 0700 "$DEST"
 mysqldump --single-transaction --quick {quote(db_name)} | gzip -9 > "$DEST/database-$STAMP.sql.gz"
 tar -C {quote(target)} -czf "$DEST/storage-$STAMP.tar.gz" storage/app
 find "$DEST" -type f -mtime +{retention_days} -delete
 """
-    path = Path("/usr/local/sbin/wlpay-backup")
+    path = Path("/usr/local/sbin/wl-traders-backup")
     path.write_text(backup, encoding="utf-8")
     os.chmod(path, 0o700)
-    Path("/etc/cron.d/wlpay-backup").write_text(
-        "17 3 * * * root /usr/local/sbin/wlpay-backup >> /var/log/wlpay-backup.log 2>&1\n",
+    Path("/etc/cron.d/wl-traders-backup").write_text(
+        "17 3 * * * root /usr/local/sbin/wl-traders-backup >> /var/log/wl-traders-backup.log 2>&1\n",
         encoding="utf-8",
     )
-    os.chmod("/etc/cron.d/wlpay-backup", 0o644)
+    os.chmod("/etc/cron.d/wl-traders-backup", 0o644)
 
 
 def copy_project(target: Path) -> None:
@@ -446,7 +446,7 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         run("systemctl daemon-reload")
         run("nginx -t")
         php_fpm_service = f"php{php_version}-fpm"
-        run(f"systemctl enable --now {quote(php_fpm_service)} nginx mysql redis-server wlpay-horizon cron")
+        run(f"systemctl enable --now {quote(php_fpm_service)} nginx mysql redis-server wl-traders-horizon cron")
         run(f"systemctl restart {quote(php_fpm_service)}")
         run("systemctl reload nginx")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} optimize")
@@ -468,12 +468,12 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
 
         add_log("Проверяю ответ приложения…")
         run("curl --fail --silent --show-error --max-time 20 -o /dev/null http://127.0.0.1/")
-        set_state(phase="done", message="WLPay установлен", error=None)
+        set_state(phase="done", message="WL Traders установлен", error=None)
         add_log("Установка завершена. Панель закроется автоматически.")
         if settings["enable_firewall"]:
             installer_port = int(settings["installer_port"])
             run(
-                "systemd-run --unit=wlpay-installer-firewall-cleanup "
+                "systemd-run --unit=wl-traders-installer-firewall-cleanup "
                 "--on-active=30s /usr/sbin/ufw --force delete allow "
                 f"{installer_port}/tcp"
             )
@@ -488,20 +488,20 @@ PAGE = r"""<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WLPay Installer</title>
+<title>WL Traders Installer</title>
 <style>
 :root{color-scheme:dark;--bg:#05060a;--card:#0c0e16;--line:#252a3a;--text:#f4f6ff;--muted:#9299ae;--accent:#6d7cff;--accent2:#a66cff;--danger:#ff667d}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#17122e 0,transparent 28rem),radial-gradient(circle at 90% 10%,#0d2140 0,transparent 25rem),var(--bg);color:var(--text);font:15px/1.45 Inter,ui-sans-serif,system-ui,sans-serif}.wrap{width:min(980px,calc(100% - 32px));margin:42px auto 80px}.brand{display:flex;align-items:center;gap:14px;margin-bottom:26px}.mark{width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 35px #746cff66}.brand h1{margin:0;font-size:24px}.brand p{margin:2px 0 0;color:var(--muted)}.card{background:#0c0e16e8;border:1px solid var(--line);border-radius:20px;padding:24px;box-shadow:0 20px 80px #0008;backdrop-filter:blur(12px);margin-bottom:18px}.card h2{font-size:16px;margin:0 0 18px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.full{grid-column:1/-1}label{display:grid;gap:7px;color:#dce0ef;font-size:13px}small,.hint{color:var(--muted)}input,select{width:100%;border:1px solid var(--line);background:#080a10;color:var(--text);border-radius:11px;padding:12px 13px;outline:none}input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px #6d7cff20}.secret{font-family:ui-monospace,SFMono-Regular,monospace}.checks{display:grid;gap:12px}.check{display:flex;gap:10px;align-items:flex-start;background:#080a10;border:1px solid var(--line);border-radius:12px;padding:13px}.check input{width:auto;margin-top:3px}.optional{display:inline-block;color:#b8a8ff;background:#a66cff18;border:1px solid #a66cff44;border-radius:999px;padding:2px 8px;font-size:11px;margin-left:7px}.actions{display:flex;justify-content:space-between;align-items:center;gap:16px}.button{border:0;border-radius:13px;padding:13px 22px;color:white;background:linear-gradient(135deg,var(--accent),var(--accent2));font-weight:750;cursor:pointer;box-shadow:0 12px 28px #6d7cff38}.button:disabled{opacity:.5;cursor:not-allowed}.warning{color:#ffd08a}.status{display:none}.status.active{display:block}.bar{height:8px;background:#171a24;border-radius:99px;overflow:hidden;margin:16px 0}.bar i{display:block;width:34%;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;animation:move 1.2s infinite alternate}.done .bar i{width:100%;animation:none}.failed .bar i{background:var(--danger);width:100%;animation:none}@keyframes move{from{transform:translateX(-70%)}to{transform:translateX(270%)}}pre{height:310px;overflow:auto;background:#05060a;border:1px solid var(--line);border-radius:13px;padding:15px;color:#c9cee2;font:12px/1.55 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap}.pill{display:inline-flex;align-items:center;gap:8px;color:var(--muted)}.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px var(--accent)}@media(max-width:720px){.grid{grid-template-columns:1fr}.full{grid-column:auto}.wrap{margin-top:20px}.card{padding:18px}.actions{align-items:stretch;flex-direction:column}.button{width:100%}}
 </style>
 </head>
 <body><main class="wrap">
-<div class="brand"><div class="mark"></div><div><h1>WLPay Installer</h1><p>Одноразовая установка на чистый Ubuntu-сервер</p></div></div>
+<div class="brand"><div class="mark"></div><div><h1>WL Traders Installer</h1><p>Одноразовая установка на чистый Ubuntu-сервер</p></div></div>
 <section class="card"><span class="warning">Панель временная и работает по HTTP. Открывайте её только с доверенного компьютера и не передавайте одноразовую ссылку другим.</span></section>
 <form id="form">
 <section class="card"><h2>Приложение</h2><div class="grid">
-<label>Название<input name="app_name" value="WLPay" required></label>
+<label>Название<input name="app_name" value="WL Traders" required></label>
 <label>Адрес приложения<input name="app_url" value="http://__SERVER_IP__" required></label>
-<label>Папка установки<input name="install_path" value="/var/www/wlpay" required></label>
+<label>Папка установки<input name="install_path" value="/var/www/wl-traders" required></label>
 <label>Часовой пояс<select name="timezone"><option>Europe/Moscow</option><option>UTC</option><option>Asia/Almaty</option><option>Asia/Dubai</option></select></label>
 <label>Язык<select name="locale"><option value="ru">Русский</option><option value="en">English</option></select></label>
 <label>Сессия, минут<input name="session_lifetime" type="number" value="10080" min="60" max="43200"></label>
@@ -509,8 +509,8 @@ PAGE = r"""<!doctype html>
 <label>Пароль администратора<input class="secret" name="admin_password" type="password" minlength="12" required autocomplete="new-password"><small>Логин после установки: admin</small></label>
 </div></section>
 <section class="card"><h2>MySQL</h2><div class="grid">
-<label>База данных<input name="db_name" value="wlpay" pattern="[A-Za-z0-9_]+" required></label>
-<label>Пользователь<input name="db_user" value="wlpay" pattern="[A-Za-z0-9_]+" required></label>
+<label>База данных<input name="db_name" value="wl_traders" pattern="[A-Za-z0-9_]+" required></label>
+<label>Пользователь<input name="db_user" value="wl_traders" pattern="[A-Za-z0-9_]+" required></label>
 <label class="full">Пароль БД<input class="secret" name="db_password" type="password" autocomplete="new-password"><small>Можно оставить пустым — установщик создаст случайный пароль и сохранит его только в .env.</small></label>
 </div></section>
 <section class="card"><h2>Опциональные интеграции</h2><div class="grid">
@@ -523,11 +523,11 @@ PAGE = r"""<!doctype html>
 <section class="card"><h2>Сервер</h2><div class="checks">
 <label class="check"><input name="create_swap" type="checkbox" checked><span><b>Создать swap 2 ГБ</b><br><small>Только если swap ещё отсутствует.</small></span></label>
 <label class="check"><input name="enable_firewall" type="checkbox" checked><span><b>Включить firewall</b><br><small>Оставит открытыми SSH и HTTP.</small></span></label>
-<label class="check"><input name="install_backups" type="checkbox" checked><span><b>Ежедневный локальный бэкап</b><br><small>MySQL и storage в /var/backups/wlpay.</small></span></label>
+<label class="check"><input name="install_backups" type="checkbox" checked><span><b>Ежедневный локальный бэкап</b><br><small>MySQL и storage в /var/backups/wl-traders.</small></span></label>
 <label>Хранить бэкапы, дней<input name="backup_retention_days" type="number" value="7" min="1" max="90"></label>
 <label class="check"><input name="generate_test_data" type="checkbox"><span><b>Создать тестовые данные</b><br><small>Для демо-сервера. На реальном production не включать.</small></span></label>
 </div></section>
-<section class="card"><div class="actions"><span class="warning">Установщик работает только с пустой базой и не удаляет существующие данные.</span><button class="button" type="submit">Установить WLPay</button></div></section>
+<section class="card"><div class="actions"><span class="warning">Установщик работает только с пустой базой и не удаляет существующие данные.</span><button class="button" type="submit">Установить WL Traders</button></div></section>
 </form>
 <section id="status" class="card status"><div class="pill"><span class="dot"></span><b id="message">Подготовка…</b></div><div class="bar"><i></i></div><pre id="logs"></pre></section>
 </main>
@@ -542,7 +542,7 @@ form.addEventListener('submit',async e=>{e.preventDefault();if(!confirm('Нач�
 
 
 class InstallerHandler(BaseHTTPRequestHandler):
-    server_version = "WLPayInstaller/1.0"
+    server_version = "WLTradersInstaller/1.0"
 
     def log_message(self, format: str, *args: Any) -> None:
         return

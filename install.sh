@@ -23,12 +23,12 @@ command -v python3 >/dev/null 2>&1 || {
     DEBIAN_FRONTEND=noninteractive apt-get install -y python3
 }
 
-PORT="${WLPAY_INSTALLER_PORT:-8787}"
+PORT="${WL_TRADERS_INSTALLER_PORT:-8787}"
 TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
 SERVER_IP="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.' | head -n1 || true)"
 SERVER_IP="${SERVER_IP:-127.0.0.1}"
 
-printf '\nWLPay Installer запущен.\n'
+printf '\nWL Traders Installer запущен.\n'
 printf 'Откройте в браузере:\n\n  http://%s:%s/?token=%s\n\n' "$SERVER_IP" "$PORT" "$TOKEN"
 printf 'Ссылка одноразовая. После установки панель автоматически остановится.\n'
 printf 'Чтобы отменить установку до нажатия кнопки, нажмите Ctrl+C.\n\n'
