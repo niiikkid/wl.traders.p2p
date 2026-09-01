@@ -13,6 +13,15 @@ class InstallScriptBootstrapTest(unittest.TestCase):
         self.assertIn("tar -xzf", content)
         self.assertIn("exec", content)
 
+    def test_enforces_supported_os_and_single_instance(self):
+        script = Path(__file__).resolve().parents[2] / "install.sh"
+        content = script.read_text(encoding="utf-8")
+
+        self.assertIn('VERSION_ID:-} != "26.04"', content)
+        self.assertIn("wl-traders-installer.lock", content)
+        self.assertIn("flock -n", content)
+        self.assertIn("--expires-in 2700", content)
+
     def test_can_run_from_standard_input_without_bash_source(self):
         script = Path(__file__).resolve().parents[2] / "install.sh"
         result = subprocess.run(
