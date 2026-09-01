@@ -1,8 +1,19 @@
 {
     "name": "laravel/laravel",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Self-hosted P2P payment processing platform for merchants and traders, with payments, payouts, disputes, USDT accounting, and API integration.",
+    "keywords": [
+        "p2p-payment-processing",
+        "self-hosted-p2p-platform",
+        "p2p-acquiring",
+        "merchant-payment-gateway",
+        "trader-platform",
+        "merchant-api",
+        "payment-orchestration",
+        "fiat-payments",
+        "usdt-processing",
+        "usdt-trc20"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.3",
