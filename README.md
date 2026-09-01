@@ -130,8 +130,8 @@ http://SERVER_IP:8787/?token=...
 ## Быстрый запуск для разработки
 
 ```bash
-git clone git@github.com:niiikkid/p2p.processing.traders.git
-cd p2p.processing.traders
+git clone git@github.com:niiikkid/wl.traders.p2p.git
+cd wl.traders.p2p
 
 composer install
 npm ci
