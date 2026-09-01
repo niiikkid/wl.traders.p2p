@@ -1,6 +1,42 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALLER_SERVER="$SCRIPT_DIR/installer/server.py"
+SOURCE_ARCHIVE_URL="${WL_TRADERS_SOURCE_ARCHIVE_URL:-https://codeload.github.com/niiikkid/wl.traders.p2p/tar.gz/refs/heads/main}"
+
+# This branch makes `curl -fsSL .../install.sh | sudo bash` self-contained:
+# the small bootstrap script downloads the matching project source without Git.
+if [[ ! -f "$INSTALLER_SERVER" ]]; then
+    if [[ ${EUID} -ne 0 ]]; then
+        echo "Запустите одной командой от root: curl -fsSL https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/main/install.sh | sudo bash"
+        exit 1
+    fi
+
+    command -v curl >/dev/null 2>&1 || {
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y curl ca-certificates
+    }
+    command -v tar >/dev/null 2>&1 || {
+        apt-get update
+        DEBIAN_FRONTEND=noninteractive apt-get install -y tar gzip
+    }
+
+    SOURCE_DIR="$(mktemp -d /tmp/wl-traders-source.XXXXXX)"
+    trap 'rm -rf "$SOURCE_DIR"' EXIT
+    echo "Скачиваю исходный код WL Traders…"
+    curl --fail --location --retry 3 --retry-delay 2 "$SOURCE_ARCHIVE_URL" -o "$SOURCE_DIR/source.tar.gz"
+    tar -xzf "$SOURCE_DIR/source.tar.gz" -C "$SOURCE_DIR"
+    PROJECT_SOURCE="$(find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -type d -name 'wl.traders.p2p-*' -print -quit)"
+
+    if [[ -z "$PROJECT_SOURCE" || ! -f "$PROJECT_SOURCE/installer/server.py" ]]; then
+        echo "Не удалось получить полный архив исходного кода WL Traders."
+        exit 1
+    fi
+
+    exec bash "$PROJECT_SOURCE/install.sh"
+fi
+
 if [[ ${EUID} -ne 0 ]]; then
     echo "Запустите установщик от root: sudo ./install.sh"
     exit 1
