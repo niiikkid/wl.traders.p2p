@@ -53,8 +53,15 @@ fi
 
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ ${ID:-} != "ubuntu" ]]; then
-    echo "Этот установщик рассчитан на Ubuntu. Обнаружено: ${PRETTY_NAME:-unknown}"
+if [[ ${ID:-} != "ubuntu" || ${VERSION_ID:-} != "26.04" ]]; then
+    echo "Этот установщик рассчитан только на Ubuntu 26.04. Обнаружено: ${PRETTY_NAME:-unknown}"
+    exit 1
+fi
+
+install -d -m 0755 /run/lock
+exec 9>/run/lock/wl-traders-installer.lock
+if ! flock -n 9; then
+    echo "Установщик WL Traders уже запущен в другом процессе."
     exit 1
 fi
 
@@ -64,6 +71,14 @@ command -v python3 >/dev/null 2>&1 || {
 }
 
 PORT="${WL_TRADERS_INSTALLER_PORT:-8787}"
+if [[ ! "$PORT" =~ ^[0-9]+$ ]] || (( PORT < 1024 || PORT > 65535 )); then
+    echo "Порт установщика должен быть числом от 1024 до 65535."
+    exit 1
+fi
+if ss -H -ltn "sport = :$PORT" 2>/dev/null | grep -q .; then
+    echo "Порт $PORT уже занят. Завершите старый установщик или задайте WL_TRADERS_INSTALLER_PORT."
+    exit 1
+fi
 TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
 SERVER_IP="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.' | head -n1 || true)"
 SERVER_IP="${SERVER_IP:-127.0.0.1}"
@@ -71,9 +86,11 @@ SERVER_IP="${SERVER_IP:-127.0.0.1}"
 printf '\nWL Traders Installer запущен.\n'
 printf 'Откройте в браузере:\n\n  http://%s:%s/?token=%s\n\n' "$SERVER_IP" "$PORT" "$TOKEN"
 printf 'Ссылка одноразовая. После установки панель автоматически остановится.\n'
+printf 'Если установка не начнётся, ссылка перестанет работать через 45 минут.\n'
 printf 'Чтобы отменить установку до нажатия кнопки, нажмите Ctrl+C.\n\n'
 
 exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/installer/server.py" \
     --host 0.0.0.0 \
     --port "$PORT" \
-    --token "$TOKEN"
+    --token "$TOKEN" \
+    --expires-in 2700
