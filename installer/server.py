@@ -733,8 +733,8 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(f"Поле {key} обязательно")
 
     password = str(raw["admin_password"])
-    if len(password) < 12:
-        raise ValueError("Пароль администратора должен содержать минимум 12 символов")
+    if len(password) < 8:
+        raise ValueError("Пароль администратора должен содержать минимум 8 символов")
     if password != str(raw.get("admin_password_confirmation", "")):
         raise ValueError("Пароль администратора и подтверждение не совпадают")
 

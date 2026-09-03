@@ -88,6 +88,13 @@ class InstallerValidationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "не совпадают"):
             installer.normalize_settings(payload)
 
+    def test_rejects_admin_password_shorter_than_eight_chars(self):
+        payload = self.valid_payload()
+        payload["admin_password"] = "short"
+        payload["admin_password_confirmation"] = "short"
+        with self.assertRaisesRegex(ValueError, "8 символов"):
+            installer.normalize_settings(payload)
+
     def test_rejects_unknown_timezone(self):
         payload = self.valid_payload()
         payload["timezone"] = "Mars/Olympus"
