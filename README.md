@@ -86,49 +86,6 @@ http://SERVER_IP:8787/?token=...
 
 Ссылка защищена случайным токеном, перестаёт принимать новую установку через 45 минут и автоматически закрывается после завершения. Панель временно работает по HTTP, поэтому никому не передавайте ссылку.
 
-### Установка из локальной копии
-
-Если сервер не должен скачивать исходники с GitHub, соберите и передайте архив вручную:
-
-```bash
-cd /path/to/wl.traders.p2p
-
-COPYFILE_DISABLE=1 tar --no-xattrs \
-  --exclude='.git' \
-  --exclude='.env' \
-  --exclude='node_modules' \
-  --exclude='vendor' \
-  --exclude='public/build' \
-  --exclude='._*' \
-  -czf /tmp/wl-traders.tar.gz .
-
-scp /tmp/wl-traders.tar.gz root@SERVER_IP:/root/
-ssh root@SERVER_IP
-mkdir -p /root/wl-traders-source
-tar -xzf /root/wl-traders.tar.gz -C /root/wl-traders-source
-cd /root/wl-traders-source
-chmod +x install.sh
-./install.sh
-```
-
-### 2. Что делает установщик
-
-- копирует проект в `/var/www/wl-traders`;
-- устанавливает и настраивает Nginx, PHP, MySQL, Redis, Composer и Node.js;
-- при выборе домена проверяет A-запись и открывает продукт по домену через HTTP (SSL — опционально через Cloudflare);
-- создаёт отдельную MySQL-базу и пользователя;
-- формирует production `.env`, генерирует ключ приложения и запускает `system:install`;
-- собирает frontend;
-- выполняет установку во временной папке и удаляет незавершённую попытку при ошибке;
-- настраивает Horizon как службу `wl-traders-horizon`;
-- добавляет Laravel scheduler и снимки Horizon в cron;
-- создаёт `storage:link`, кеши Laravel, лимиты PHP/Nginx и исправляет буферы FastCGI;
-- при выбранной опции включает firewall, создаёт 2 ГБ swap и ежедневные локальные бэкапы MySQL и `storage` в `/var/backups/wl-traders`;
-- проверяет PHP-модули, Nginx, Redis, Horizon, scheduler, HTTP-ответ и пробный бэкап;
-- показывает ссылку на готовый проект и выключает временную панель.
-
-Установщик останавливается, если целевая папка, база или пользователь БД уже существуют: существующие данные не изменяются.
-
 ### Интеграции
 
 - **Telegram** — опционально, но нужен для Telegram-функций.
