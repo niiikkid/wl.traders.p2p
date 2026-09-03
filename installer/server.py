@@ -28,7 +28,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 INSTALL_LOG = Path("/var/log/wl-traders-installer.log")
 SUPPORTED_UBUNTU_VERSION = "26.04"
 MIN_MEMORY_BYTES = int(3.5 * 1024**3)
-MIN_DISK_BYTES = 45 * 1024**3
+MIN_DISK_BYTES = 20 * 1024**3
 INSTALL_STEPS = (
     "Проверка сервера",
     "Системные пакеты",
@@ -191,7 +191,7 @@ def environment_issues(
     if memory_bytes < MIN_MEMORY_BYTES:
         issues.append("Нужно минимум 4 ГБ RAM")
     if disk_bytes < MIN_DISK_BYTES:
-        issues.append("Нужен диск объёмом не менее 50 ГБ")
+        issues.append("Нужен диск объёмом не менее 20 ГБ")
     return issues
 
 

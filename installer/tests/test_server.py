@@ -68,9 +68,19 @@ class InstallerValidationTest(unittest.TestCase):
             version_id="26.04",
             cpu_count=2,
             memory_bytes=int(3.75 * 1024**3),
-            disk_bytes=48 * 1024**3,
+            disk_bytes=20 * 1024**3,
         )
         self.assertEqual([], issues)
+
+    def test_rejects_small_disk(self):
+        issues = installer.environment_issues(
+            os_id="ubuntu",
+            version_id="26.04",
+            cpu_count=2,
+            memory_bytes=4 * 1024**3,
+            disk_bytes=15 * 1024**3,
+        )
+        self.assertTrue(any("20 ГБ" in issue for issue in issues))
 
     def test_rejects_mismatched_admin_password_confirmation(self):
         payload = self.valid_payload()
