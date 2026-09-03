@@ -90,13 +90,12 @@ class InstallerValidationTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "без пути"):
             installer.normalize_settings(payload)
 
-    def test_domain_mode_builds_https_application_url(self):
+    def test_domain_mode_builds_http_application_url(self):
         payload = self.valid_payload()
         payload.update(
             {
                 "site_mode": "domain",
                 "domain": "Pay.Example.com.",
-                "ssl_email": "admin@example.com",
             }
         )
 
@@ -104,7 +103,7 @@ class InstallerValidationTest(unittest.TestCase):
 
         self.assertEqual("domain", settings["site_mode"])
         self.assertEqual("pay.example.com", settings["domain"])
-        self.assertEqual("https://pay.example.com", settings["app_url"])
+        self.assertEqual("http://pay.example.com", settings["app_url"])
 
     def test_domain_mode_rejects_url_in_domain_field(self):
         payload = self.valid_payload()
@@ -112,18 +111,10 @@ class InstallerValidationTest(unittest.TestCase):
             {
                 "site_mode": "domain",
                 "domain": "https://pay.example.com",
-                "ssl_email": "admin@example.com",
             }
         )
 
         with self.assertRaisesRegex(ValueError, "без http"):
-            installer.normalize_settings(payload)
-
-    def test_domain_mode_requires_certificate_email(self):
-        payload = self.valid_payload()
-        payload.update({"site_mode": "domain", "domain": "pay.example.com"})
-
-        with self.assertRaisesRegex(ValueError, "email"):
             installer.normalize_settings(payload)
 
     def test_ip_mode_requires_plain_http_ip_address(self):
@@ -152,25 +143,17 @@ class InstallerValidationTest(unittest.TestCase):
             "resolved_ipv4_addresses",
             return_value={"203.0.113.10", "198.51.100.20"},
         ):
-            with self.assertRaisesRegex(RuntimeError, "DNS only"):
+            with self.assertRaisesRegex(RuntimeError, "серое облако"):
                 installer.validate_domain_dns("pay.example.com", "203.0.113.10")
 
-    def test_certbot_command_is_non_interactive_and_redirects_to_https(self):
-        command = installer.certbot_command("pay.example.com", "admin@example.com")
-
-        self.assertIn("--nginx", command)
-        self.assertIn("--non-interactive", command)
-        self.assertIn("--redirect", command)
-        self.assertIn("--domain pay.example.com", command)
-        self.assertIn("--email admin@example.com", command)
-
-    def test_installer_page_contains_six_steps_and_cloudflare_guidance(self):
+    def test_installer_page_contains_six_steps_and_cloudflare_recommendation(self):
         page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
 
         self.assertEqual(6, page.count('class="panel" data-step='))
-        self.assertIn("DNS only", page)
+        self.assertIn("Cloudflare", page)
         self.assertIn("Full (strict)", page)
         self.assertIn("Always Use HTTPS", page)
+        self.assertNotIn("DNS only", page)
 
     def test_temporary_firewall_rule_has_persistent_one_shot_cleanup(self):
         source = MODULE_PATH.read_text(encoding="utf-8")

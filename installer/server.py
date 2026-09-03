@@ -258,15 +258,6 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.timer"),
         Path("/usr/local/sbin/wl-traders-installer-firewall-cleanup"),
     ]
-    if settings["site_mode"] == "domain":
-        domain = settings["domain"]
-        protected_paths.extend(
-            [
-                Path("/etc/letsencrypt/live") / domain,
-                Path("/etc/letsencrypt/archive") / domain,
-                Path("/etc/letsencrypt/renewal") / f"{domain}.conf",
-            ]
-        )
     existing = [str(path) for path in protected_paths if path.exists() or path.is_symlink()]
     if existing:
         raise RuntimeError("Найдена предыдущая установка: " + ", ".join(existing))
@@ -274,8 +265,6 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         raise RuntimeError(f"Временная папка {staging} существует и не принадлежит установщику")
     if not port_is_available(80) and not only_default_nginx_site_enabled():
         raise RuntimeError("TCP-порт 80 уже занят. Остановите использующую его службу и повторите установку")
-    if settings["site_mode"] == "domain" and not port_is_available(443):
-        raise RuntimeError("TCP-порт 443 уже занят. Освободите его для HTTPS и повторите установку")
     if shutil.disk_usage(target.parent if target.parent.exists() else "/").free < 10 * 1024**3:
         raise RuntimeError("Для установки нужно не менее 10 ГБ свободного места")
     try:
@@ -295,7 +284,6 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         server_ip = public_ip()
         validate_domain_dns(domain, server_ip)
         checks.append({"name": "Домен", "value": f"{domain} → {server_ip}"})
-        checks.append({"name": "Порт 443", "value": "свободен"})
     return checks
 
 
@@ -360,16 +348,9 @@ def validate_domain_dns(domain: str, server_ip: str) -> list[str]:
     if set(addresses) != {server_ip}:
         raise RuntimeError(
             f"A-запись {domain} ведёт на {', '.join(addresses)}, а должна вести на сервер {server_ip}. "
-            "В Cloudflare временно выберите режим DNS only (серое облако)"
+            "Если домен уже за Cloudflare, временно выключите прокси (серое облако)"
         )
     return addresses
-
-
-def certbot_command(domain: str, email: str) -> str:
-    return (
-        "certbot --nginx --non-interactive --agree-tos --redirect "
-        f"--email {quote(email)} --domain {quote(domain)}"
-    )
 
 
 def dotenv_value(value: str) -> str:
@@ -721,17 +702,12 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Выберите доступ по IP-адресу или домену")
 
     domain = ""
-    ssl_email = str(raw.get("ssl_email", "")).strip()
-    if ssl_email and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", ssl_email):
-        raise ValueError("Укажите корректный email для уведомлений о сертификате")
     if site_mode == "domain":
-        if not ssl_email:
-            raise ValueError("Для HTTPS укажите email владельца сертификата")
         domain_value = str(raw.get("domain", "")).strip()
         if not domain_value and legacy_url:
             domain_value = urlparse(validate_url(legacy_url)).hostname or ""
         domain = validate_domain(domain_value)
-        app_url = f"https://{domain}"
+        app_url = f"http://{domain}"
     else:
         app_url = validate_url(legacy_url or f"http://{public_ip()}")
         parsed_app_url = urlparse(app_url)
@@ -751,7 +727,6 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
         "app_name": app_name,
         "site_mode": site_mode,
         "domain": domain,
-        "ssl_email": ssl_email,
         "app_url": app_url,
         "install_path": validate_path(str(raw["install_path"]).strip()),
         "timezone": timezone,
@@ -786,17 +761,10 @@ def cleanup_failed_install(
     database_created: bool,
     user_created: bool,
     system_files_created: bool,
-    certificate_domain: str | None,
     firewall_enabled: bool,
     installer_port: int | None,
 ) -> None:
     add_log("Отменяю только изменения, созданные этой попыткой…")
-    if certificate_domain:
-        subprocess.run(
-            ["certbot", "delete", "--non-interactive", "--cert-name", certificate_domain],
-            capture_output=True,
-            text=True,
-        )
 
     if system_files_created:
         subprocess.run(["systemctl", "disable", "--now", "wl-traders-horizon"], capture_output=True, text=True)
@@ -859,7 +827,6 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
     user_created = False
     system_files_created = False
     firewall_enabled = False
-    certificate_domain: str | None = None
     installer_port: int | None = None
 
     try:
@@ -888,12 +855,11 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         set_progress(2)
         apt_options = "-o Acquire::Retries=3 -o DPkg::Lock::Timeout=180"
         run(f"export DEBIAN_FRONTEND=noninteractive; apt-get {apt_options} update")
-        https_packages = " certbot python3-certbot-nginx" if settings["site_mode"] == "domain" else ""
         run(
             f"export DEBIAN_FRONTEND=noninteractive; apt-get {apt_options} install -y --no-install-recommends "
             "nginx mysql-server redis-server composer nodejs npm rsync unzip curl ufw cron logrotate ca-certificates "
             "php-cli php-fpm php-mysql php-redis php-bcmath php-gmp php-mbstring "
-            f"php-xml php-curl php-zip php-gd php-intl{https_packages}"
+            "php-xml php-curl php-zip php-gd php-intl"
         )
         run("systemctl enable --now mysql redis-server cron")
         run("php -r 'exit(version_compare(PHP_VERSION, \"8.3.0\", \">=\") ? 0 : 1);'")
@@ -989,18 +955,12 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         run(f"systemctl enable --now {quote(php_fpm_service)} nginx mysql redis-server wl-traders-horizon cron")
         run(f"systemctl restart {quote(php_fpm_service)} wl-traders-horizon")
         run("systemctl reload nginx")
-        if settings["site_mode"] == "domain":
-            add_log("Получаю HTTPS-сертификат Let's Encrypt и настраиваю перенаправление на HTTPS…")
-            certificate_domain = settings["domain"]
-            run(certbot_command(settings["domain"], settings["ssl_email"]))
-            run("systemctl enable --now certbot.timer")
-            run("nginx -t && systemctl reload nginx")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} optimize")
 
         if settings["enable_firewall"]:
             add_log("Включаю firewall: SSH, сайт и временно панель установки…")
             installer_port = int(settings["installer_port"])
-            nginx_firewall_profile = "Nginx Full" if settings["site_mode"] == "domain" else "Nginx HTTP"
+            nginx_firewall_profile = "Nginx HTTP"
             schedule_firewall_cleanup(installer_port, delay_minutes=50)
             firewall_enabled = True
             run(
@@ -1022,15 +982,8 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         run("redis-cli ping")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} horizon:status")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} schedule:list --no-ansi")
-        if settings["site_mode"] == "domain":
-            local_https = f"--resolve {quote(host + ':443:127.0.0.1')} {quote('https://' + host)}"
-            run(f"curl --fail --silent --show-error --max-time 20 {local_https}/up")
-            run(f"curl --fail --silent --show-error --max-time 20 -o /dev/null {local_https}/")
-            run("systemctl is-active certbot.timer")
-            run(f"certbot certificates --cert-name {quote(settings['domain'])}")
-        else:
-            run(f"curl --fail --silent --show-error --max-time 20 -H {quote('Host: ' + host)} http://127.0.0.1/up")
-            run(f"curl --fail --silent --show-error --max-time 20 -o /dev/null -H {quote('Host: ' + host)} http://127.0.0.1/")
+        run(f"curl --fail --silent --show-error --max-time 20 -H {quote('Host: ' + host)} http://127.0.0.1/up")
+        run(f"curl --fail --silent --show-error --max-time 20 -o /dev/null -H {quote('Host: ' + host)} http://127.0.0.1/")
         if settings["install_backups"]:
             run("/usr/local/sbin/wl-traders-backup")
             backups = list(Path("/var/backups/wl-traders").glob("*"))
@@ -1053,8 +1006,8 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
                 {"name": "Очереди", "value": "Horizon работает"},
                 {"name": "Планировщик", "value": "расписание загружено"},
                 {
-                    "name": "HTTPS",
-                    "value": "сертификат установлен" if settings["site_mode"] == "domain" else "не используется для IP",
+                    "name": "SSL",
+                    "value": "не настроен · можно включить через Cloudflare",
                 },
                 {"name": "Бэкапы", "value": "проверены" if settings["install_backups"] else "отключены"},
             ],
@@ -1072,7 +1025,6 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
             database_created=database_created,
             user_created=user_created,
             system_files_created=system_files_created,
-            certificate_domain=certificate_domain,
             firewall_enabled=firewall_enabled,
             installer_port=installer_port,
         )
