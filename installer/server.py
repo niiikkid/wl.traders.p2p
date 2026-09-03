@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import ipaddress
 import json
 import os
 import re
@@ -20,6 +21,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+from urllib.request import urlopen
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -37,6 +39,8 @@ INSTALL_STEPS = (
     "Финальная проверка",
 )
 STATE_LOCK = threading.Lock()
+PUBLIC_IP_LOCK = threading.Lock()
+PUBLIC_IP_CACHE: str | None = None
 STATE: dict[str, Any] = {
     "phase": "ready",
     "message": "Установщик готов",
@@ -95,14 +99,51 @@ def set_progress(index: int, message: str | None = None) -> None:
 
 
 def public_ip() -> str:
-    try:
-        output = subprocess.check_output(["hostname", "-I"], text=True, timeout=5)
-        for value in output.split():
-            if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", value) and not value.startswith("127."):
-                return value
-    except (OSError, subprocess.SubprocessError):
-        pass
-    return "127.0.0.1"
+    global PUBLIC_IP_CACHE
+    with PUBLIC_IP_LOCK:
+        if PUBLIC_IP_CACHE:
+            return PUBLIC_IP_CACHE
+
+        configured_ip = os.environ.get("WL_TRADERS_PUBLIC_IP", "").strip()
+        try:
+            configured_address = ipaddress.ip_address(configured_ip)
+            if configured_address.version == 4 and configured_address.is_global:
+                PUBLIC_IP_CACHE = configured_ip
+                return configured_ip
+        except ValueError:
+            pass
+
+        for endpoint in ("https://api.ipify.org", "https://checkip.amazonaws.com"):
+            try:
+                with urlopen(endpoint, timeout=5) as response:  # noqa: S310 - fixed trusted endpoints
+                    candidate = response.read(64).decode("ascii").strip()
+                address = ipaddress.ip_address(candidate)
+                if address.version == 4 and address.is_global:
+                    PUBLIC_IP_CACHE = candidate
+                    return candidate
+            except (OSError, ValueError, UnicodeError):
+                continue
+
+        try:
+            output = subprocess.check_output(["hostname", "-I"], text=True, timeout=5)
+            fallback = ""
+            for value in output.split():
+                try:
+                    address = ipaddress.ip_address(value)
+                except ValueError:
+                    continue
+                if address.version != 4 or address.is_loopback:
+                    continue
+                if address.is_global:
+                    PUBLIC_IP_CACHE = value
+                    return value
+                if not fallback:
+                    fallback = value
+            if fallback:
+                return fallback
+        except (OSError, subprocess.SubprocessError):
+            pass
+        return "127.0.0.1"
 
 
 def quote(value: str | Path) -> str:
@@ -208,12 +249,24 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
 
     target: Path = settings["install_path"]
     staging = target.parent / f".{target.name}.installing"
-    protected_paths = (
+    protected_paths = [
         target,
         Path("/etc/nginx/sites-available/wl-traders"),
         Path("/etc/systemd/system/wl-traders-horizon.service"),
         Path("/etc/cron.d/wl-traders"),
-    )
+        Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.service"),
+        Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.timer"),
+        Path("/usr/local/sbin/wl-traders-installer-firewall-cleanup"),
+    ]
+    if settings["site_mode"] == "domain":
+        domain = settings["domain"]
+        protected_paths.extend(
+            [
+                Path("/etc/letsencrypt/live") / domain,
+                Path("/etc/letsencrypt/archive") / domain,
+                Path("/etc/letsencrypt/renewal") / f"{domain}.conf",
+            ]
+        )
     existing = [str(path) for path in protected_paths if path.exists() or path.is_symlink()]
     if existing:
         raise RuntimeError("Найдена предыдущая установка: " + ", ".join(existing))
@@ -221,6 +274,8 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         raise RuntimeError(f"Временная папка {staging} существует и не принадлежит установщику")
     if not port_is_available(80) and not only_default_nginx_site_enabled():
         raise RuntimeError("TCP-порт 80 уже занят. Остановите использующую его службу и повторите установку")
+    if settings["site_mode"] == "domain" and not port_is_available(443):
+        raise RuntimeError("TCP-порт 443 уже занят. Освободите его для HTTPS и повторите установку")
     if shutil.disk_usage(target.parent if target.parent.exists() else "/").free < 10 * 1024**3:
         raise RuntimeError("Для установки нужно не менее 10 ГБ свободного места")
     try:
@@ -229,12 +284,19 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
     except OSError as exc:
         raise RuntimeError("Сервер не может разрешить адреса Ubuntu/GitHub. Проверьте DNS и сеть") from exc
 
-    return [
+    checks = [
         {"name": "Система", "value": facts["os"]},
         {"name": "Ресурсы", "value": f"{facts['cpu']} vCPU · {facts['memory_gb']} ГБ RAM · {facts['disk_free_gb']} ГБ свободно"},
         {"name": "Порт 80", "value": "свободен"},
         {"name": "Данные", "value": "предыдущая установка не найдена"},
     ]
+    if settings["site_mode"] == "domain":
+        domain = settings["domain"]
+        server_ip = public_ip()
+        validate_domain_dns(domain, server_ip)
+        checks.append({"name": "Домен", "value": f"{domain} → {server_ip}"})
+        checks.append({"name": "Порт 443", "value": "свободен"})
+    return checks
 
 
 def validate_identifier(value: str, field: str) -> str:
@@ -267,6 +329,47 @@ def validate_url(value: str) -> str:
     if port not in {None, 80, 443}:
         raise ValueError("Приложение должно использовать стандартный порт 80 или 443")
     return value.rstrip("/")
+
+
+def validate_domain(value: str) -> str:
+    domain = value.strip().lower().rstrip(".")
+    if len(domain) > 253 or not re.fullmatch(
+        r"(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}",
+        domain,
+    ):
+        raise ValueError("Укажите домен без http://, пути и порта, например pay.example.com")
+    return domain
+
+
+def resolved_ipv4_addresses(domain: str) -> set[str]:
+    try:
+        return {
+            str(result[4][0])
+            for result in socket.getaddrinfo(domain, 80, family=socket.AF_INET, type=socket.SOCK_STREAM)
+        }
+    except OSError:
+        return set()
+
+
+def validate_domain_dns(domain: str, server_ip: str) -> list[str]:
+    addresses = sorted(resolved_ipv4_addresses(domain))
+    if not addresses:
+        raise RuntimeError(
+            f"Домен {domain} пока не имеет A-записи. Добавьте в DNS адрес сервера {server_ip} и повторите"
+        )
+    if set(addresses) != {server_ip}:
+        raise RuntimeError(
+            f"A-запись {domain} ведёт на {', '.join(addresses)}, а должна вести на сервер {server_ip}. "
+            "В Cloudflare временно выберите режим DNS only (серое облако)"
+        )
+    return addresses
+
+
+def certbot_command(domain: str, email: str) -> str:
+    return (
+        "certbot --nginx --non-interactive --agree-tos --redirect "
+        f"--email {quote(email)} --domain {quote(domain)}"
+    )
 
 
 def dotenv_value(value: str) -> str:
@@ -386,10 +489,12 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
     socket_path = f"/run/php/php{php_version}-fpm.sock"
     upload_mb = int(settings["upload_limit_mb"])
 
+    default_server = " default_server" if settings["site_mode"] == "ip" else ""
+    server_name = settings["domain"] if settings["site_mode"] == "domain" else "_"
     nginx = f"""server {{
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    server_name {urlparse(settings['app_url']).hostname or '_'} _;
+    listen 80{default_server};
+    listen [::]:80{default_server};
+    server_name {server_name};
     root {app_path}/public;
     index index.php index.html;
     charset utf-8;
@@ -492,6 +597,41 @@ max_input_time=120
     Path("/etc/logrotate.d/wl-traders").write_text(logrotate, encoding="utf-8")
 
 
+def schedule_firewall_cleanup(installer_port: int, delay_minutes: int) -> None:
+    service_name = "wl-traders-installer-firewall-cleanup"
+    script_path = Path(f"/usr/local/sbin/{service_name}")
+    service_path = Path(f"/etc/systemd/system/{service_name}.service")
+    timer_path = Path(f"/etc/systemd/system/{service_name}.timer")
+    run_at = (dt.datetime.now().astimezone() + dt.timedelta(minutes=delay_minutes)).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    script_path.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -u\n"
+        f"/usr/sbin/ufw --force delete allow {installer_port}/tcp || true\n"
+        f"/usr/bin/systemctl disable {service_name}.timer || true\n"
+        f"rm -f {quote(service_path)} {quote(timer_path)} {quote(script_path)}\n"
+        "/usr/bin/systemctl daemon-reload\n",
+        encoding="utf-8",
+    )
+    os.chmod(script_path, 0o700)
+    service_path.write_text(
+        "[Unit]\nDescription=Close temporary WL Traders installer port\n\n"
+        "[Service]\nType=oneshot\n"
+        f"ExecStart={script_path}\n",
+        encoding="utf-8",
+    )
+    timer_path.write_text(
+        "[Unit]\nDescription=Schedule temporary WL Traders installer port cleanup\n\n"
+        f"[Timer]\nOnCalendar={run_at}\nPersistent=true\nUnit={service_name}.service\n\n"
+        "[Install]\nWantedBy=timers.target\n",
+        encoding="utf-8",
+    )
+    run("systemctl daemon-reload")
+    run(f"systemctl enable {service_name}.timer && systemctl restart {service_name}.timer")
+
+
 def install_backup(target: Path, db_name: str, retention_days: int) -> None:
     backup = f"""#!/usr/bin/env bash
 set -Eeuo pipefail
@@ -543,7 +683,7 @@ def copy_project(target: Path) -> None:
 
 
 def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
-    required = ["app_name", "app_url", "install_path", "db_name", "db_user", "admin_password"]
+    required = ["app_name", "install_path", "db_name", "db_user", "admin_password"]
     for key in required:
         if not str(raw.get(key, "")).strip():
             raise ValueError(f"Поле {key} обязательно")
@@ -568,12 +708,51 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
     if len(app_name) > 80:
         raise ValueError("Название приложения не должно быть длиннее 80 символов")
 
+    site_mode = str(raw.get("site_mode", "")).strip()
+    legacy_url = str(raw.get("app_url", "")).strip()
+    if not site_mode:
+        parsed_legacy_url = urlparse(validate_url(legacy_url))
+        try:
+            ipaddress.ip_address(parsed_legacy_url.hostname or "")
+            site_mode = "ip"
+        except ValueError:
+            site_mode = "domain"
+    if site_mode not in {"ip", "domain"}:
+        raise ValueError("Выберите доступ по IP-адресу или домену")
+
+    domain = ""
+    ssl_email = str(raw.get("ssl_email", "")).strip()
+    if ssl_email and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", ssl_email):
+        raise ValueError("Укажите корректный email для уведомлений о сертификате")
+    if site_mode == "domain":
+        if not ssl_email:
+            raise ValueError("Для HTTPS укажите email владельца сертификата")
+        domain_value = str(raw.get("domain", "")).strip()
+        if not domain_value and legacy_url:
+            domain_value = urlparse(validate_url(legacy_url)).hostname or ""
+        domain = validate_domain(domain_value)
+        app_url = f"https://{domain}"
+    else:
+        app_url = validate_url(legacy_url or f"http://{public_ip()}")
+        parsed_app_url = urlparse(app_url)
+        try:
+            ipaddress.ip_address(parsed_app_url.hostname or "")
+        except ValueError as exc:
+            raise ValueError("Для доступа по IP укажите IP-адрес сервера, а не домен") from exc
+        if parsed_app_url.scheme != "http":
+            raise ValueError("Без домена доступ по IP работает через http://")
+        if parsed_app_url.port not in {None, 80}:
+            raise ValueError("Для доступа по IP используйте стандартный HTTP-порт 80")
+
     db_password = str(raw.get("db_password", "")) or secrets.token_urlsafe(24)
     if len(db_password) < 16:
         raise ValueError("Пароль базы данных должен содержать минимум 16 символов или оставьте поле пустым")
     settings = {
         "app_name": app_name,
-        "app_url": validate_url(str(raw["app_url"]).strip()),
+        "site_mode": site_mode,
+        "domain": domain,
+        "ssl_email": ssl_email,
+        "app_url": app_url,
         "install_path": validate_path(str(raw["install_path"]).strip()),
         "timezone": timezone,
         "locale": locale,
@@ -607,10 +786,25 @@ def cleanup_failed_install(
     database_created: bool,
     user_created: bool,
     system_files_created: bool,
+    certificate_domain: str | None,
+    firewall_enabled: bool,
+    installer_port: int | None,
 ) -> None:
     add_log("Отменяю только изменения, созданные этой попыткой…")
+    if certificate_domain:
+        subprocess.run(
+            ["certbot", "delete", "--non-interactive", "--cert-name", certificate_domain],
+            capture_output=True,
+            text=True,
+        )
+
     if system_files_created:
         subprocess.run(["systemctl", "disable", "--now", "wl-traders-horizon"], capture_output=True, text=True)
+        subprocess.run(
+            ["systemctl", "disable", "--now", "wl-traders-installer-firewall-cleanup.timer"],
+            capture_output=True,
+            text=True,
+        )
         for path in (
             Path("/etc/nginx/sites-enabled/wl-traders"),
             Path("/etc/nginx/sites-available/wl-traders"),
@@ -618,9 +812,19 @@ def cleanup_failed_install(
             Path("/etc/cron.d/wl-traders"),
             Path("/etc/cron.d/wl-traders-backup"),
             Path("/usr/local/sbin/wl-traders-backup"),
+            Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.service"),
+            Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.timer"),
+            Path("/usr/local/sbin/wl-traders-installer-firewall-cleanup"),
         ):
             path.unlink(missing_ok=True)
         subprocess.run(["systemctl", "daemon-reload"], capture_output=True, text=True)
+
+    if firewall_enabled and installer_port is not None:
+        subprocess.run(
+            ["ufw", "--force", "delete", "allow", f"{installer_port}/tcp"],
+            capture_output=True,
+            text=True,
+        )
 
     for candidate in (staging, target):
         if not candidate or not candidate.exists():
@@ -655,10 +859,13 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
     user_created = False
     system_files_created = False
     firewall_enabled = False
+    certificate_domain: str | None = None
+    installer_port: int | None = None
 
     try:
         settings = normalize_settings(raw_settings)
-        settings["installer_port"] = int(server.server_port)
+        installer_port = int(server.server_port)
+        settings["installer_port"] = installer_port
         target = settings["install_path"]
         assert isinstance(target, Path)
         staging = target.parent / f".{target.name}.installing"
@@ -666,6 +873,8 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
             phase="installing",
             message="Установка началась",
             app_url=settings["app_url"],
+            site_mode=settings["site_mode"],
+            domain=settings["domain"],
             error=None,
             logs=[],
             checks=[],
@@ -679,11 +888,12 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         set_progress(2)
         apt_options = "-o Acquire::Retries=3 -o DPkg::Lock::Timeout=180"
         run(f"export DEBIAN_FRONTEND=noninteractive; apt-get {apt_options} update")
+        https_packages = " certbot python3-certbot-nginx" if settings["site_mode"] == "domain" else ""
         run(
             f"export DEBIAN_FRONTEND=noninteractive; apt-get {apt_options} install -y --no-install-recommends "
             "nginx mysql-server redis-server composer nodejs npm rsync unzip curl ufw cron logrotate ca-certificates "
             "php-cli php-fpm php-mysql php-redis php-bcmath php-gmp php-mbstring "
-            "php-xml php-curl php-zip php-gd php-intl"
+            f"php-xml php-curl php-zip php-gd php-intl{https_packages}"
         )
         run("systemctl enable --now mysql redis-server cron")
         run("php -r 'exit(version_compare(PHP_VERSION, \"8.3.0\", \">=\") ? 0 : 1);'")
@@ -779,16 +989,24 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         run(f"systemctl enable --now {quote(php_fpm_service)} nginx mysql redis-server wl-traders-horizon cron")
         run(f"systemctl restart {quote(php_fpm_service)} wl-traders-horizon")
         run("systemctl reload nginx")
+        if settings["site_mode"] == "domain":
+            add_log("Получаю HTTPS-сертификат Let's Encrypt и настраиваю перенаправление на HTTPS…")
+            certificate_domain = settings["domain"]
+            run(certbot_command(settings["domain"], settings["ssl_email"]))
+            run("systemctl enable --now certbot.timer")
+            run("nginx -t && systemctl reload nginx")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} optimize")
 
         if settings["enable_firewall"]:
-            add_log("Включаю firewall: SSH, HTTP и временно панель установки…")
+            add_log("Включаю firewall: SSH, сайт и временно панель установки…")
             installer_port = int(settings["installer_port"])
+            nginx_firewall_profile = "Nginx Full" if settings["site_mode"] == "domain" else "Nginx HTTP"
+            schedule_firewall_cleanup(installer_port, delay_minutes=50)
+            firewall_enabled = True
             run(
-                "ufw allow OpenSSH && ufw allow 'Nginx HTTP' && "
+                f"ufw allow OpenSSH && ufw allow {quote(nginx_firewall_profile)} && "
                 f"ufw allow {installer_port}/tcp && ufw --force enable"
             )
-            firewall_enabled = True
 
         if settings["generate_test_data"]:
             add_log("Запускаю генерацию тестовых данных…")
@@ -804,13 +1022,24 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         run("redis-cli ping")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} horizon:status")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} schedule:list --no-ansi")
-        run(f"curl --fail --silent --show-error --max-time 20 -H {quote('Host: ' + host)} http://127.0.0.1/up")
-        run(f"curl --fail --silent --show-error --max-time 20 -o /dev/null -H {quote('Host: ' + host)} http://127.0.0.1/")
+        if settings["site_mode"] == "domain":
+            local_https = f"--resolve {quote(host + ':443:127.0.0.1')} {quote('https://' + host)}"
+            run(f"curl --fail --silent --show-error --max-time 20 {local_https}/up")
+            run(f"curl --fail --silent --show-error --max-time 20 -o /dev/null {local_https}/")
+            run("systemctl is-active certbot.timer")
+            run(f"certbot certificates --cert-name {quote(settings['domain'])}")
+        else:
+            run(f"curl --fail --silent --show-error --max-time 20 -H {quote('Host: ' + host)} http://127.0.0.1/up")
+            run(f"curl --fail --silent --show-error --max-time 20 -o /dev/null -H {quote('Host: ' + host)} http://127.0.0.1/")
         if settings["install_backups"]:
             run("/usr/local/sbin/wl-traders-backup")
             backups = list(Path("/var/backups/wl-traders").glob("*"))
             if len(backups) < 2 or any(path.stat().st_size == 0 for path in backups):
                 raise RuntimeError("Проверочная резервная копия не создана")
+
+        if firewall_enabled:
+            assert installer_port is not None
+            schedule_firewall_cleanup(installer_port, delay_minutes=2)
 
         (target / ".wl-traders-installer-id").unlink(missing_ok=True)
         set_state(
@@ -823,17 +1052,14 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
                 {"name": "Сайт", "value": "отвечает"},
                 {"name": "Очереди", "value": "Horizon работает"},
                 {"name": "Планировщик", "value": "расписание загружено"},
+                {
+                    "name": "HTTPS",
+                    "value": "сертификат установлен" if settings["site_mode"] == "domain" else "не используется для IP",
+                },
                 {"name": "Бэкапы", "value": "проверены" if settings["install_backups"] else "отключены"},
             ],
         )
         add_log("Установка и основные production-проверки завершены.")
-        if firewall_enabled:
-            installer_port = int(settings["installer_port"])
-            run(
-                "systemd-run --unit=wl-traders-installer-firewall-cleanup "
-                "--on-active=2min /usr/sbin/ufw --force delete allow "
-                f"{installer_port}/tcp"
-            )
         threading.Timer(110, server.shutdown).start()
     except Exception as exc:  # noqa: BLE001 - installer must surface all failures
         add_log(f"ОШИБКА: {exc}")
@@ -846,6 +1072,9 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
             database_created=database_created,
             user_created=user_created,
             system_files_created=system_files_created,
+            certificate_domain=certificate_domain,
+            firewall_enabled=firewall_enabled,
+            installer_port=installer_port,
         )
         set_state(
             phase="failed",
@@ -856,82 +1085,7 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         threading.Timer(3600, server.shutdown).start()
 
 
-PAGE = r"""<!doctype html>
-<html lang="ru">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#000000">
-<title>Установка WL Traders</title>
-<style>
-:root{color-scheme:dark;--void:#000;--surface:#07080b;--surface-2:#0b0d11;--line:rgba(240,240,250,.14);--line-strong:rgba(240,240,250,.28);--text:#f0f0fa;--muted:rgba(240,240,250,.58);--faint:rgba(240,240,250,.38);--danger:#ff7b82;--warning:#e6c98a;--success:#dfffe8;--display:"SFMono-Regular",Consolas,"Liberation Mono",monospace;--body:"Helvetica Neue",Helvetica,Arial,sans-serif;--max:1260px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-width:320px;background:var(--void);color:var(--text);font:15px/1.55 var(--body);-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button{color:inherit}::selection{background:var(--text);color:var(--void)}
-.shell{position:relative;isolation:isolate;min-height:100svh;overflow:hidden}.space{position:fixed;z-index:-2;inset:0;pointer-events:none;background:radial-gradient(circle at 76% 18%,rgba(112,126,158,.12),transparent 26rem),radial-gradient(circle at 18% 92%,rgba(255,255,255,.035),transparent 28rem),#000}.space:before{content:"";position:absolute;width:min(74vw,980px);aspect-ratio:1;right:-32vw;top:-18vw;border:1px solid rgba(240,240,250,.1);border-radius:50%;box-shadow:0 0 0 110px rgba(240,240,250,.012),0 0 0 220px rgba(240,240,250,.008)}.space:after{content:"";position:absolute;inset:0;opacity:.55;background-image:radial-gradient(circle,#fff 0 1px,transparent 1.25px),radial-gradient(circle,rgba(255,255,255,.55) 0 1px,transparent 1.2px);background-position:0 0,46px 28px;background-size:151px 151px,233px 233px;mask-image:linear-gradient(to bottom,black,transparent 72%)}
-.topbar{position:sticky;top:0;z-index:20;border-bottom:1px solid var(--line);background:rgba(0,0,0,.82);backdrop-filter:blur(18px)}.topbar-inner{width:min(calc(100% - 48px),var(--max));height:72px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:24px}.brand{display:flex;align-items:center;gap:13px}.brand-mark{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--text);background:var(--text);color:#000;font:600 11px/1 var(--display);letter-spacing:-.06em}.brand-name{font:500 14px/1.2 var(--display);letter-spacing:.08em;text-transform:uppercase}.brand-name small{display:block;margin-top:5px;color:var(--faint);font-size:9px;font-weight:400;letter-spacing:.16em}.session{display:flex;align-items:center;gap:10px;color:var(--muted);font:10px/1 var(--display);letter-spacing:.12em;text-transform:uppercase}.session-dot{width:6px;height:6px;border-radius:50%;background:var(--text);box-shadow:0 0 0 5px rgba(240,240,250,.07)}
-.layout{width:min(calc(100% - 48px),var(--max));margin:0 auto;padding:54px 0 88px;display:grid;grid-template-columns:260px minmax(0,1fr);gap:clamp(42px,6vw,92px)}.rail{align-self:start;position:sticky;top:110px}.rail-kicker,.kicker{color:var(--muted);font:10px/1.4 var(--display);letter-spacing:.18em;text-transform:uppercase}.rail h1{margin:17px 0 14px;font:300 clamp(31px,3.2vw,46px)/1.04 var(--display);letter-spacing:-.065em}.rail-copy{margin:0;color:var(--muted);font-size:14px;max-width:230px}.progress{margin:38px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}.progress a{min-height:52px;display:grid;grid-template-columns:28px 1fr;align-items:center;border-bottom:1px solid var(--line);color:var(--faint);text-decoration:none;font:10px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;transition:color .18s ease,border-color .18s ease}.progress a:hover,.progress a.active{color:var(--text);border-color:var(--line-strong)}.progress span{color:var(--faint)}.security-note{margin-top:32px;padding:16px 0;border-block:1px solid var(--line);color:var(--muted);font-size:12px}.security-note b{display:block;margin-bottom:6px;color:var(--warning);font:500 10px/1.3 var(--display);letter-spacing:.12em;text-transform:uppercase}
-.content{min-width:0}.intro{padding:4px 0 34px;border-bottom:1px solid var(--line)}.intro-row{display:flex;align-items:flex-end;justify-content:space-between;gap:30px}.intro h2{max-width:720px;margin:13px 0 0;font:300 clamp(37px,5vw,68px)/.98 var(--display);letter-spacing:-.075em}.intro h2 span{color:rgba(240,240,250,.48)}.system-tag{flex:0 0 auto;margin-bottom:4px;padding:8px 10px;border:1px solid var(--line);color:var(--muted);font:9px/1 var(--display);letter-spacing:.12em;text-transform:uppercase}.server-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:27px;background:var(--line);border:1px solid var(--line)}.server-fact{min-width:0;padding:13px 14px;background:#050609}.server-fact b{display:block;color:var(--faint);font:8px/1.3 var(--display);letter-spacing:.1em;text-transform:uppercase}.server-fact span{display:block;margin-top:7px;overflow:hidden;text-overflow:ellipsis;color:var(--text);font:11px/1.35 var(--display);white-space:nowrap}
-.form-section{scroll-margin-top:100px;padding:42px 0;border-bottom:1px solid var(--line)}.section-head{display:grid;grid-template-columns:46px minmax(0,1fr);gap:16px;margin-bottom:27px}.section-number{padding-top:4px;color:var(--faint);font:10px/1 var(--display);letter-spacing:.12em}.section-head h3{margin:0;font:400 22px/1.2 var(--display);letter-spacing:-.035em}.section-head p{margin:8px 0 0;color:var(--muted);font-size:14px;max-width:660px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:19px 20px}.full{grid-column:1/-1}label.field{display:grid;gap:8px;color:rgba(240,240,250,.84);font-size:12px}.label-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.optional{color:var(--faint);font:9px/1 var(--display);letter-spacing:.1em;text-transform:uppercase}.field small,.hint{color:var(--faint);font-size:11px}.control{position:relative}input:not([type=checkbox]),select{width:100%;min-height:49px;border:1px solid var(--line);border-radius:2px;background:rgba(240,240,250,.025);color:var(--text);padding:13px 14px;outline:none;transition:border-color .18s ease,background .18s ease}select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--faint) 50%),linear-gradient(135deg,var(--faint) 50%,transparent 50%);background-position:calc(100% - 18px) 21px,calc(100% - 13px) 21px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}input:hover,select:hover{border-color:var(--line-strong)}input:focus,select:focus{border-color:var(--text);background:rgba(240,240,250,.045);box-shadow:0 0 0 3px rgba(240,240,250,.07)}input::placeholder{color:rgba(240,240,250,.25)}.secret{padding-right:78px!important;font-family:var(--display)}.reveal-secret{position:absolute;right:1px;top:1px;width:74px;height:47px;border:0;border-left:1px solid var(--line);background:transparent;cursor:pointer;color:var(--muted);font:8px/1 var(--display);letter-spacing:.06em}.reveal-secret:hover{color:var(--text);background:rgba(240,240,250,.04)}.advanced{margin-top:25px;border:1px solid var(--line);background:#050609}.advanced summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 19px;cursor:pointer;color:var(--text);font:11px/1.3 var(--display);list-style:none}.advanced summary::-webkit-details-marker{display:none}.advanced summary:after{content:"+";color:var(--muted);font-size:18px}.advanced[open] summary:after{content:"−"}.advanced-body{padding:20px;border-top:1px solid var(--line)}.generate-secret{position:absolute;right:75px;top:1px;width:94px;height:47px;border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font:8px/1 var(--display);letter-spacing:.06em}.generate-secret:hover{color:var(--text);background:rgba(240,240,250,.04)}.secret.has-generator{padding-right:170px!important}
-.integration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}.integration{min-width:0;padding:21px;background:#050609}.integration-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:17px}.integration h4{margin:0;font:400 14px/1.25 var(--display);letter-spacing:-.02em}.integration p{margin:6px 0 0;color:var(--faint);font-size:11px}.badge{flex:0 0 auto;padding:5px 7px;border:1px solid var(--line);color:var(--faint);font:8px/1 var(--display);letter-spacing:.1em;text-transform:uppercase}.integration .field+.field{margin-top:13px}.integration.full{grid-column:1/-1}.no-config{margin:18px 0 0;color:var(--muted);font-size:12px}
-.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}.check{position:relative;min-height:118px;display:flex;align-items:flex-start;gap:13px;padding:20px;background:#050609;cursor:pointer;transition:background .18s ease}.check:hover{background:#0a0b0f}.check input{appearance:none;flex:0 0 auto;width:18px;height:18px;margin:1px 0 0;border:1px solid var(--line-strong);background:#000;display:grid;place-items:center}.check input:checked{border-color:var(--text);background:var(--text)}.check input:checked:after{content:"";width:8px;height:4px;border-left:2px solid #000;border-bottom:2px solid #000;transform:translateY(-1px) rotate(-45deg)}.check b{display:block;color:var(--text);font:400 13px/1.25 var(--display)}.check small{display:block;margin-top:8px;color:var(--faint);font-size:11px;line-height:1.45}.retention{margin-top:19px;max-width:320px}
-.launch{padding:34px 0 0}.launch-panel{position:relative;overflow:hidden;border:1px solid var(--line-strong);background:#050609;padding:clamp(24px,4vw,38px)}.launch-panel:after{content:"DEPLOY";position:absolute;right:-10px;bottom:-29px;color:rgba(240,240,250,.035);font:300 clamp(72px,11vw,138px)/1 var(--display);letter-spacing:-.09em;pointer-events:none}.launch-copy,.actions{position:relative;z-index:1}.launch-copy h3{margin:0;font:300 clamp(25px,3vw,38px)/1.05 var(--display);letter-spacing:-.05em}.launch-copy p{max-width:650px;margin:12px 0 0;color:var(--muted);font-size:13px}.review{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:25px;border:1px solid var(--line);background:var(--line)}.review div{padding:13px;background:#030405}.review b{display:block;color:var(--faint);font:8px/1 var(--display);letter-spacing:.1em;text-transform:uppercase}.review span{display:block;margin-top:7px;color:var(--text);font:11px/1.35 var(--display)}.actions{margin-top:27px;display:flex;align-items:center;justify-content:space-between;gap:22px}.warning{display:flex;align-items:flex-start;gap:9px;color:var(--warning);font-size:11px;max-width:470px}.warning:before{content:"!";flex:0 0 auto;width:17px;height:17px;display:grid;place-items:center;border:1px solid currentColor;font:600 9px/1 var(--display)}.button{min-height:48px;flex:0 0 auto;border:1px solid var(--text);border-radius:2px;padding:0 22px;background:var(--text);color:#000;cursor:pointer;font:500 10px/1 var(--display);letter-spacing:.13em;text-transform:uppercase;transition:background .18s ease,color .18s ease,transform .18s ease}.button:hover{background:#fff;transform:translateY(-1px)}.button:disabled{opacity:.38;cursor:not-allowed;transform:none}.button.secondary{background:transparent;color:var(--text)}
-.status{display:none;margin-top:30px;border:1px solid var(--line-strong);background:#030405}.status.active{display:block}.status-head{min-height:67px;padding:0 20px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line)}.pill{display:flex;align-items:center;gap:11px;font:400 12px/1 var(--display);letter-spacing:.04em}.dot{width:7px;height:7px;border-radius:50%;background:var(--text);box-shadow:0 0 0 6px rgba(240,240,250,.06);animation:pulse 1.7s infinite}.status.done .dot{background:var(--success)}.status.failed .dot{background:var(--danger)}.status-label{color:var(--faint);font:9px/1 var(--display);letter-spacing:.13em;text-transform:uppercase}.bar{height:3px;background:rgba(240,240,250,.08);overflow:hidden}.bar i{display:block;width:0;height:100%;background:var(--text);transition:width .35s ease}.status.done .bar i{background:var(--success)}.status.failed .bar i{background:var(--danger)}.status-details{padding:18px 20px;border-bottom:1px solid var(--line);color:var(--muted);font-size:12px}.result-actions{display:none;gap:12px;padding:20px;border-bottom:1px solid var(--line)}.status.done .result-actions{display:flex}.technical summary{padding:15px 20px;cursor:pointer;color:var(--faint);font:9px/1 var(--display);letter-spacing:.12em;text-transform:uppercase}.technical[open] summary{border-bottom:1px solid var(--line)}pre{height:300px;margin:0;overflow:auto;padding:20px;color:rgba(240,240,250,.68);background:#000;font:11px/1.65 var(--display);white-space:pre-wrap;word-break:break-word}.status.done pre{color:rgba(223,255,232,.72)}.status.failed pre{color:rgba(255,123,130,.82)}
-.footer{width:min(calc(100% - 48px),var(--max));margin:auto;padding:28px 0 42px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:24px;color:var(--faint);font:9px/1.4 var(--display);letter-spacing:.1em;text-transform:uppercase}
-@keyframes pulse{50%{opacity:.35}}@keyframes scan{0%{transform:translateX(-110%)}100%{transform:translateX(310%)}}
-:focus-visible{outline:2px solid var(--text);outline-offset:3px}
-@media(max-width:920px){.layout{grid-template-columns:1fr;padding-top:38px}.rail{position:static}.rail-copy{max-width:620px}.progress{display:grid;grid-template-columns:repeat(4,1fr);margin-top:25px}.progress a{padding:0 8px}.security-note{margin-top:24px}.intro-row{align-items:flex-start}.system-tag{display:none}}
-@media(max-width:640px){.topbar-inner,.layout,.footer{width:min(calc(100% - 28px),var(--max))}.topbar-inner{height:64px}.session span:last-child{display:none}.layout{padding:30px 0 58px;gap:34px}.rail h1{font-size:34px}.progress{grid-template-columns:repeat(2,1fr)}.intro h2{font-size:39px}.grid,.integration-grid,.checks{grid-template-columns:1fr}.integration.full{grid-column:auto}.section-head{grid-template-columns:32px 1fr}.form-section{padding:34px 0}.actions{align-items:stretch;flex-direction:column}.button{width:100%}.status-head{align-items:flex-start;flex-direction:column;padding-block:17px}.footer{flex-direction:column}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-</style>
-</head>
-<body><div class="shell"><div class="space" aria-hidden="true"></div>
-<header class="topbar"><div class="topbar-inner"><div class="brand"><div class="brand-mark">WL</div><div class="brand-name">WL Traders<small>Установка на сервер</small></div></div><div class="session"><span class="session-dot"></span><span>Одноразовая ссылка</span></div></div></header>
-<main class="layout">
-<aside class="rail"><div class="rail-kicker">Установка · 4 раздела</div><h1>Настройка перед установкой.</h1><p class="rail-copy">Заполните основные параметры. Большинство значений уже подходят для обычного сервера — их можно не менять.</p><nav aria-label="Разделы установщика"><ol class="progress"><li><a class="active" href="#application"><span>01</span>Приложение</a></li><li><a href="#database"><span>02</span>База данных</a></li><li><a href="#integrations"><span>03</span>Дополнения</a></li><li><a href="#server"><span>04</span>Сервер</a></li></ol></nav><div class="security-note"><b>Важно</b>Эта страница временная и работает без HTTPS. Открывайте её только со своего компьютера и никому не отправляйте ссылку.</div></aside>
-<div class="content"><header class="intro"><div class="intro-row"><div><span class="kicker">Шаг 1 · Заполните настройки</span><h2>Установка WL Traders<br><span>на ваш Ubuntu‑сервер.</span></h2></div><span class="system-tag">Ubuntu 26.04</span></div><div class="server-facts"><div class="server-fact"><b>Система</b><span>__SERVER_OS__</span></div><div class="server-fact"><b>Процессор</b><span>__SERVER_CPU__ vCPU</span></div><div class="server-fact"><b>Память</b><span>__SERVER_MEMORY__ ГБ</span></div><div class="server-fact"><b>Свободно</b><span>__SERVER_DISK_FREE__ ГБ</span></div></div></header>
-<form id="form">
-<section class="form-section" id="application"><div class="section-head"><span class="section-number">01</span><div><h3>Основные настройки</h3><p>Название и адрес, по которому будет открываться WL Traders. Если домена пока нет, оставьте IP‑адрес сервера.</p></div></div><div class="grid">
-<label class="field"><span>Название</span><input name="app_name" value="WL Traders" required></label>
-<label class="field"><span>Адрес приложения</span><input name="app_url" value="http://__SERVER_IP__" required inputmode="url"></label>
-<label class="field"><span>Папка на сервере</span><input class="secret" name="install_path" value="/var/www/wl-traders" required><small>Куда установщик скопирует файлы WL Traders.</small></label>
-<label class="field"><span>Часовой пояс</span><select name="timezone"><option>Europe/Moscow</option><option>UTC</option><option>Asia/Almaty</option><option>Asia/Dubai</option></select><small>Используется для времени сделок, отчётов и журналов.</small></label>
-<label class="field"><span>Язык интерфейса</span><select name="locale"><option value="ru">Русский</option><option value="en">English</option></select></label>
-<label class="field"><span>Срок входа без повторной авторизации, минут</span><input name="session_lifetime" type="number" value="10080" min="60" max="43200"><small>10080 минут — это 7 дней.</small></label>
-<label class="field"><span>Максимальный размер файла, МБ</span><input name="upload_limit_mb" type="number" value="64" min="2" max="512"><small>Ограничение для чеков, выписок и других загрузок.</small></label>
-<label class="field"><span>Пароль администратора</span><span class="control"><input class="secret has-generator" name="admin_password" type="password" minlength="12" required autocomplete="new-password"><button class="generate-secret" type="button">Создать</button><button class="reveal-secret" type="button" aria-label="Показать пароль">Показать</button></span><small>Минимум 12 символов · логин после установки: admin</small></label>
-<label class="field"><span>Повторите пароль</span><span class="control"><input class="secret" name="admin_password_confirmation" type="password" minlength="12" required autocomplete="new-password"><button class="reveal-secret" type="button" aria-label="Показать пароль">Показать</button></span><small>Защищает от случайной опечатки.</small></label>
-</div></section>
-<section class="form-section" id="database"><div class="section-head"><span class="section-number">02</span><div><h3>База данных</h3><p>Здесь будут храниться пользователи, сделки и настройки. Рекомендуемые названия уже заполнены — обычно их менять не нужно.</p></div></div><div class="grid">
-<label class="field"><span>Название базы</span><input class="secret" name="db_name" value="wl_traders" pattern="[A-Za-z0-9_]+" required></label>
-<label class="field"><span>Пользователь</span><input class="secret" name="db_user" value="wl_traders" pattern="[A-Za-z0-9_]+" required></label>
-<label class="field full"><span class="label-row"><span>Пароль базы данных</span><span class="optional">Можно не заполнять</span></span><span class="control"><input class="secret" name="db_password" type="password" autocomplete="new-password"><button class="reveal-secret" type="button" aria-label="Показать пароль">Показать</button></span><small>Если оставить поле пустым, установщик сам создаст надёжный пароль и сохранит его в настройках приложения.</small></label>
-</div></section>
-<section class="form-section" id="integrations"><div class="section-head"><span class="section-number">03</span><div><h3>Дополнительные подключения</h3><p>Этот раздел можно полностью пропустить. Ключи понадобятся только для функций, описанных ниже, и сохранятся на вашем сервере.</p></div></div><div class="integration-grid">
-<article class="integration"><div class="integration-head"><div><h4>Telegram</h4><p>Нужен для уведомлений и функций Telegram‑бота.</p></div><span class="badge">Необязательно</span></div><label class="field"><span>Имя бота</span><input name="telegram_bot_name" autocomplete="off"></label><label class="field"><span>Токен бота</span><input class="secret" name="telegram_bot_token" type="password" autocomplete="new-password"></label><label class="field"><span>Секретный токен webhook</span><input class="secret" name="telegram_webhook_token" type="password" autocomplete="new-password"></label></article>
-<article class="integration"><div class="integration-head"><div><h4>TronGrid</h4><p>Нужен для полноценной работы счетов USDT в сети TRC20.</p></div><span class="badge">Необязательно</span></div><label class="field"><span>API‑ключ TronGrid</span><input class="secret" name="trongrid_api_key" type="password" autocomplete="new-password"></label></article>
-<article class="integration full"><div class="integration-head"><div><h4>Определение страны по IP</h4><p>Нужно для географических ограничений и проверок пользователей.</p></div><span class="badge">Необязательно</span></div><label class="field"><span>API‑ключ IP Geolocation</span><input class="secret" name="ipgeolocation_api_key" type="password" autocomplete="new-password"></label></article>
-</div><p class="no-config">Почта и Sentry намеренно не настраиваются этим установщиком.</p></section>
-<section class="form-section" id="server"><div class="section-head"><span class="section-number">04</span><div><h3>Защита и резервные копии</h3><p>Для обычной установки оставьте первые три пункта включёнными. Тестовые данные нужны только для демонстрации.</p></div></div><div class="checks">
-<label class="check"><input name="create_swap" type="checkbox" checked><span><b>Добавить 2 ГБ резервной памяти</b><small>Помогает серверу не зависнуть при нехватке оперативной памяти. Создаётся только при необходимости.</small></span></label>
-<label class="check"><input name="enable_firewall" type="checkbox" checked><span><b>Включить сетевую защиту</b><small>Оставит открытыми доступ по SSH и сайт. Временный порт установщика закроется автоматически.</small></span></label>
-<label class="check"><input name="install_backups" type="checkbox" checked><span><b>Ежедневная резервная копия</b><small>База данных и загруженные файлы сохраняются в /var/backups/wl-traders.</small></span></label>
-<label class="check"><input name="generate_test_data" type="checkbox"><span><b>Тестовые данные</b><small>Только для демо‑сервера. Не включайте на реальном production.</small></span></label>
-</div><label class="field retention"><span>Хранить бэкапы, дней</span><input name="backup_retention_days" type="number" value="7" min="1" max="90"></label></section>
-<section class="launch"><div class="launch-panel"><div class="launch-copy"><span class="kicker">Последний шаг</span><h3>Проверьте настройки и начните установку.</h3><p>Установщик сначала проверит сервер, затем установит и сам проверит WL Traders. При ошибке незавершённая попытка будет безопасно отменена.</p></div><div class="review"><div><b>Адрес</b><span id="review-url">—</span></div><div><b>Защита</b><span id="review-security">Firewall · бэкапы · swap</span></div><div><b>Дополнения</b><span id="review-integrations">Не выбраны</span></div></div><div class="actions"><span class="warning">Установщик не изменяет существующую базу или предыдущую установку.</span><button class="button" type="submit">Проверить и установить →</button></div></div></section>
-</form>
-<section id="status" class="status" aria-live="polite"><div class="status-head"><div class="pill"><span class="dot"></span><b id="message">Подготовка…</b></div><span id="status-label" class="status-label">Ход установки</span></div><div class="bar"><i id="progress-bar"></i></div><div id="status-details" class="status-details">Сервер проверяется перед любыми изменениями.</div><div class="result-actions"><a id="open-app" class="button" href="#">Открыть WL Traders →</a></div><details id="technical" class="technical"><summary>Технический журнал</summary><pre id="logs"></pre></details></section>
-</div></main><footer class="footer"><span>WL Traders · Установка на сервер</span><span>Одноразовая страница · Данные остаются на сервере</span></footer></div>
-<script>
-const token=new URLSearchParams(location.search).get('token');
-const form=document.getElementById('form'),statusBox=document.getElementById('status'),logs=document.getElementById('logs'),message=document.getElementById('message'),submitButton=form.querySelector('button[type="submit"]'),progressBar=document.getElementById('progress-bar'),statusLabel=document.getElementById('status-label'),statusDetails=document.getElementById('status-details'),technical=document.getElementById('technical'),openApp=document.getElementById('open-app');
-let timer=null;
-function payload(){const f=new FormData(form),o={};for(const [k,v] of f.entries())o[k]=v;for(const k of ['create_swap','enable_firewall','install_backups','generate_test_data'])o[k]=form.elements[k].checked;return o}
-async function poll(){try{const r=await fetch('/status?token='+encodeURIComponent(token)),s=await r.json();message.textContent=s.message;logs.textContent=s.logs.join('\n');logs.scrollTop=logs.scrollHeight;statusBox.className='status active '+s.phase;progressBar.style.width=(s.progress||0)+'%';statusLabel.textContent=s.step_index?`${s.step_index} из ${s.step_total}`:'Готово';statusDetails.textContent=s.error||s.step||'Основные проверки пройдены.';if(s.phase==='done'){clearInterval(timer);openApp.href=s.app_url}if(s.phase==='failed'){clearInterval(timer);technical.open=true}}catch(e){message.textContent='Панель завершает работу…'}}
-form.addEventListener('submit',async e=>{e.preventDefault();if(!confirm('Начать установку WL Traders на этом сервере?'))return;submitButton.disabled=true;statusBox.classList.add('active');statusBox.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});const r=await fetch('/install?token='+encodeURIComponent(token),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload())});if(!r.ok){alert((await r.json()).error);submitButton.disabled=false;return}form.style.display='none';timer=setInterval(poll,1000);poll()});
-document.querySelectorAll('.reveal-secret').forEach(button=>button.addEventListener('click',()=>{const input=button.parentElement.querySelector('input');const show=input.type==='password';input.type=show?'text':'password';button.textContent=show?'Скрыть':'Показать';button.setAttribute('aria-label',show?'Скрыть пароль':'Показать пароль')}));
-document.querySelector('.generate-secret').addEventListener('click',()=>{const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';const values=crypto.getRandomValues(new Uint32Array(24));const password=[...values].map(v=>chars[v%chars.length]).join('');form.elements.admin_password.value=password;form.elements.admin_password_confirmation.value=password});
-function updateReview(){document.getElementById('review-url').textContent=form.elements.app_url.value||'—';const enabled=['enable_firewall','install_backups','create_swap'].filter(k=>form.elements[k].checked).length;document.getElementById('review-security').textContent=`${enabled} из 3 включено`;const integrations=['telegram_bot_token','trongrid_api_key','ipgeolocation_api_key'].filter(k=>form.elements[k].value.trim()).length;document.getElementById('review-integrations').textContent=integrations?`${integrations} подключено`:'Не выбраны'}form.addEventListener('input',updateReview);updateReview();
-const sectionLinks=[...document.querySelectorAll('.progress a')];if('IntersectionObserver'in window){const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(entry.isIntersecting){sectionLinks.forEach(link=>link.classList.toggle('active',link.getAttribute('href')==='#'+entry.target.id))}})},{rootMargin:'-22% 0px -65%',threshold:0});document.querySelectorAll('.form-section').forEach(section=>observer.observe(section))}
-</script></body></html>"""
+PAGE = Path(__file__).with_name("page.html").read_text(encoding="utf-8")
 
 class InstallerHandler(BaseHTTPRequestHandler):
     server_version = "WLTradersInstaller/2.0"
@@ -958,6 +1112,17 @@ class InstallerHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def read_json_payload(self, max_length: int = 131072) -> dict[str, Any]:
+        if self.headers.get_content_type() != "application/json":
+            raise ValueError("Ожидался JSON-запрос")
+        length = int(self.headers.get("Content-Length", "0"))
+        if length <= 0 or length > max_length:
+            raise ValueError("Некорректный размер запроса")
+        payload = json.loads(self.rfile.read(length))
+        if not isinstance(payload, dict):
+            raise ValueError("Ожидался JSON-объект")
+        return payload
 
     def do_GET(self) -> None:  # noqa: N802
         if not self.authorized():
@@ -996,7 +1161,19 @@ class InstallerHandler(BaseHTTPRequestHandler):
         if not self.authorized():
             self.send_error(HTTPStatus.FORBIDDEN)
             return
-        if urlparse(self.path).path != "/install":
+        path = urlparse(self.path).path
+        if path == "/domain-check":
+            try:
+                payload = self.read_json_payload(max_length=8192)
+                domain = validate_domain(str(payload.get("domain", "")))
+                server_ip = public_ip()
+                validate_domain_dns(domain, server_ip)
+            except (ValueError, TypeError, json.JSONDecodeError, RuntimeError) as exc:
+                self.json_response({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+                return
+            self.json_response({"ok": True, "domain": domain, "server_ip": server_ip})
+            return
+        if path != "/install":
             self.send_error(HTTPStatus.NOT_FOUND)
             return
         with STATE_LOCK:
@@ -1004,12 +1181,7 @@ class InstallerHandler(BaseHTTPRequestHandler):
                 self.json_response({"error": "Установка уже запущена"}, HTTPStatus.CONFLICT)
                 return
         try:
-            if self.headers.get_content_type() != "application/json":
-                raise ValueError("Ожидался JSON-запрос")
-            length = int(self.headers.get("Content-Length", "0"))
-            if length <= 0 or length > 131072:
-                raise ValueError("Некорректный размер запроса")
-            payload = json.loads(self.rfile.read(length))
+            payload = self.read_json_payload()
             normalize_settings(payload)
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
             self.json_response({"error": str(exc)}, HTTPStatus.BAD_REQUEST)

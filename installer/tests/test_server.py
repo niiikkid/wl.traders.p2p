@@ -2,6 +2,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "server.py"
@@ -27,6 +28,29 @@ class InstallerValidationTest(unittest.TestCase):
             "admin_password_confirmation": "correct-horse-battery-staple",
             "upload_limit_mb": 64,
         }
+
+    def test_public_ip_prefers_explicit_bootstrap_value(self):
+        previous_cache = getattr(installer, "PUBLIC_IP_CACHE")
+        setattr(installer, "PUBLIC_IP_CACHE", None)
+        self.addCleanup(setattr, installer, "PUBLIC_IP_CACHE", previous_cache)
+
+        with patch.dict(installer.os.environ, {"WL_TRADERS_PUBLIC_IP": "8.8.8.8"}):
+            with patch.object(installer, "urlopen") as request:
+                self.assertEqual("8.8.8.8", installer.public_ip())
+
+        request.assert_not_called()
+
+    def test_public_ip_does_not_cache_private_fallback(self):
+        previous_cache = getattr(installer, "PUBLIC_IP_CACHE")
+        setattr(installer, "PUBLIC_IP_CACHE", None)
+        self.addCleanup(setattr, installer, "PUBLIC_IP_CACHE", previous_cache)
+
+        with patch.dict(installer.os.environ, {"WL_TRADERS_PUBLIC_IP": ""}):
+            with patch.object(installer, "urlopen", side_effect=OSError):
+                with patch.object(installer.subprocess, "check_output", return_value="10.0.0.5\n"):
+                    self.assertEqual("10.0.0.5", installer.public_ip())
+
+        self.assertIsNone(getattr(installer, "PUBLIC_IP_CACHE"))
 
     def test_requires_ubuntu_2604(self):
         issues = installer.environment_issues(
@@ -65,6 +89,96 @@ class InstallerValidationTest(unittest.TestCase):
         payload["app_url"] = "http://203.0.113.10/setup?debug=1"
         with self.assertRaisesRegex(ValueError, "без пути"):
             installer.normalize_settings(payload)
+
+    def test_domain_mode_builds_https_application_url(self):
+        payload = self.valid_payload()
+        payload.update(
+            {
+                "site_mode": "domain",
+                "domain": "Pay.Example.com.",
+                "ssl_email": "admin@example.com",
+            }
+        )
+
+        settings = installer.normalize_settings(payload)
+
+        self.assertEqual("domain", settings["site_mode"])
+        self.assertEqual("pay.example.com", settings["domain"])
+        self.assertEqual("https://pay.example.com", settings["app_url"])
+
+    def test_domain_mode_rejects_url_in_domain_field(self):
+        payload = self.valid_payload()
+        payload.update(
+            {
+                "site_mode": "domain",
+                "domain": "https://pay.example.com",
+                "ssl_email": "admin@example.com",
+            }
+        )
+
+        with self.assertRaisesRegex(ValueError, "без http"):
+            installer.normalize_settings(payload)
+
+    def test_domain_mode_requires_certificate_email(self):
+        payload = self.valid_payload()
+        payload.update({"site_mode": "domain", "domain": "pay.example.com"})
+
+        with self.assertRaisesRegex(ValueError, "email"):
+            installer.normalize_settings(payload)
+
+    def test_ip_mode_requires_plain_http_ip_address(self):
+        payload = self.valid_payload()
+        payload.update({"site_mode": "ip", "app_url": "https://203.0.113.10"})
+
+        with self.assertRaisesRegex(ValueError, "http://"):
+            installer.normalize_settings(payload)
+
+    def test_ip_mode_rejects_http_on_port_443(self):
+        payload = self.valid_payload()
+        payload.update({"site_mode": "ip", "app_url": "http://203.0.113.10:443"})
+
+        with self.assertRaisesRegex(ValueError, "порт 80"):
+            installer.normalize_settings(payload)
+
+    @patch.object(installer, "resolved_ipv4_addresses", return_value={"203.0.113.10"})
+    def test_domain_dns_must_point_only_to_server(self, _resolver):
+        self.assertEqual(
+            ["203.0.113.10"],
+            installer.validate_domain_dns("pay.example.com", "203.0.113.10"),
+        )
+
+        with patch.object(
+            installer,
+            "resolved_ipv4_addresses",
+            return_value={"203.0.113.10", "198.51.100.20"},
+        ):
+            with self.assertRaisesRegex(RuntimeError, "DNS only"):
+                installer.validate_domain_dns("pay.example.com", "203.0.113.10")
+
+    def test_certbot_command_is_non_interactive_and_redirects_to_https(self):
+        command = installer.certbot_command("pay.example.com", "admin@example.com")
+
+        self.assertIn("--nginx", command)
+        self.assertIn("--non-interactive", command)
+        self.assertIn("--redirect", command)
+        self.assertIn("--domain pay.example.com", command)
+        self.assertIn("--email admin@example.com", command)
+
+    def test_installer_page_contains_six_steps_and_cloudflare_guidance(self):
+        page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
+
+        self.assertEqual(6, page.count('class="panel" data-step='))
+        self.assertIn("DNS only", page)
+        self.assertIn("Full (strict)", page)
+        self.assertIn("Always Use HTTPS", page)
+
+    def test_temporary_firewall_rule_has_persistent_one_shot_cleanup(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("OnCalendar=", source)
+        self.assertIn("Persistent=true", source)
+        self.assertIn("ufw --force delete allow", source)
+        self.assertIn("wl-traders-installer-firewall-cleanup.timer", source)
 
     def test_redacts_common_secret_assignments(self):
         text = "DB_PASSWORD=hunter2 TELEGRAM_BOT_TOKEN=123:secret API_KEY=abc"

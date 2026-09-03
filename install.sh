@@ -7,11 +7,12 @@ if [[ -n "$SCRIPT_PATH" ]]; then
     SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 fi
 INSTALLER_SERVER="$SCRIPT_DIR/installer/server.py"
+INSTALLER_PAGE="$SCRIPT_DIR/installer/page.html"
 SOURCE_ARCHIVE_URL="${WL_TRADERS_SOURCE_ARCHIVE_URL:-https://codeload.github.com/niiikkid/wl.traders.p2p/tar.gz/refs/heads/main}"
 
 # This branch makes `curl -fsSL .../install.sh | sudo bash` self-contained:
 # the small bootstrap script downloads the matching project source without Git.
-if [[ ! -f "$INSTALLER_SERVER" ]]; then
+if [[ ! -f "$INSTALLER_SERVER" || ! -f "$INSTALLER_PAGE" ]]; then
     if [[ ${EUID} -ne 0 ]]; then
         echo "Запустите одной командой от root: curl -fsSL https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/main/install.sh | sudo bash"
         exit 1
@@ -33,7 +34,7 @@ if [[ ! -f "$INSTALLER_SERVER" ]]; then
     tar -xzf "$SOURCE_DIR/source.tar.gz" -C "$SOURCE_DIR"
     PROJECT_SOURCE="$(find "$SOURCE_DIR" -mindepth 1 -maxdepth 1 -type d -name 'wl.traders.p2p-*' -print -quit)"
 
-    if [[ -z "$PROJECT_SOURCE" || ! -f "$PROJECT_SOURCE/installer/server.py" ]]; then
+    if [[ -z "$PROJECT_SOURCE" || ! -f "$PROJECT_SOURCE/installer/server.py" || ! -f "$PROJECT_SOURCE/installer/page.html" ]]; then
         echo "Не удалось получить полный архив исходного кода WL Traders."
         exit 1
     fi
@@ -80,8 +81,15 @@ if ss -H -ltn "sport = :$PORT" 2>/dev/null | grep -q .; then
     exit 1
 fi
 TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
-SERVER_IP="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.' | head -n1 || true)"
+SERVER_IP="$(curl -4fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+if [[ ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    SERVER_IP="$(curl -4fsS --max-time 5 https://checkip.amazonaws.com 2>/dev/null || true)"
+fi
+if [[ ! "$SERVER_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    SERVER_IP="$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.' | head -n1 || true)"
+fi
 SERVER_IP="${SERVER_IP:-127.0.0.1}"
+export WL_TRADERS_PUBLIC_IP="$SERVER_IP"
 
 printf '\nWL Traders Installer запущен.\n'
 printf 'Откройте в браузере:\n\n  http://%s:%s/?token=%s\n\n' "$SERVER_IP" "$PORT" "$TOKEN"

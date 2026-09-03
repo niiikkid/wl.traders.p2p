@@ -11,6 +11,7 @@ class InstallScriptBootstrapTest(unittest.TestCase):
         self.assertIn("WL_TRADERS_SOURCE_ARCHIVE_URL", content)
         self.assertIn("codeload.github.com/niiikkid/wl.traders.p2p/tar.gz/refs/heads/main", content)
         self.assertIn("tar -xzf", content)
+        self.assertIn("installer/page.html", content)
         self.assertIn("exec", content)
 
     def test_enforces_supported_os_and_single_instance(self):
