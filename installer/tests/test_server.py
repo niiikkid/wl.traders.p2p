@@ -129,6 +129,8 @@ class InstallerValidationTest(unittest.TestCase):
                 "site_mode": "domain",
                 "domain": "pay.example.com",
                 "https_mode": "cloudflare",
+                "cloudflare_cert": "-----BEGIN CERTIFICATE-----\nABC\n-----END CERTIFICATE-----",
+                "cloudflare_key": "-----BEGIN PRIVATE KEY-----\nDEF\n-----END PRIVATE KEY-----",
             }
         )
 
@@ -136,6 +138,17 @@ class InstallerValidationTest(unittest.TestCase):
 
         self.assertEqual("cloudflare", settings["https_mode"])
         self.assertEqual("https://pay.example.com", settings["app_url"])
+        self.assertEqual(payload["cloudflare_cert"], settings["cloudflare_cert"])
+        self.assertEqual(payload["cloudflare_key"], settings["cloudflare_key"])
+
+    def test_cloudflare_mode_requires_origin_certificate(self):
+        payload = self.valid_payload()
+        payload.update(
+            {"site_mode": "domain", "domain": "pay.example.com", "https_mode": "cloudflare"}
+        )
+
+        with self.assertRaisesRegex(ValueError, "сертификат"):
+            installer.normalize_settings(payload)
 
     def test_ip_mode_forces_plain_http_despite_cloudflare_choice(self):
         payload = self.valid_payload()
@@ -219,6 +232,7 @@ class InstallerValidationTest(unittest.TestCase):
         self.assertIn("Cloudflare", page)
         self.assertIn("https_mode", page)
         self.assertIn("Flexible", page)
+        self.assertIn("Full (strict)", page)
         self.assertIn("Always Use HTTPS", page)
         self.assertNotIn("DNS only", page)
 
@@ -227,6 +241,8 @@ class InstallerValidationTest(unittest.TestCase):
 
         self.assertIn("[hidden]{display:none!important}", page)
         self.assertIn('id="install" type="submit" hidden', page)
+        self.assertIn('name="cloudflare_cert"', page)
+        self.assertIn('name="cloudflare_key"', page)
 
     def test_temporary_firewall_rule_has_persistent_one_shot_cleanup(self):
         source = MODULE_PATH.read_text(encoding="utf-8")

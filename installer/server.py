@@ -258,6 +258,8 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.timer"),
         Path("/usr/local/sbin/wl-traders-installer-firewall-cleanup"),
         CLOUDFLARE_REAL_IP_CONF,
+        CLOUDFLARE_ORIGIN_CERT,
+        CLOUDFLARE_ORIGIN_KEY,
     ]
     existing = [str(path) for path in protected_paths if path.exists() or path.is_symlink()]
     if existing:
@@ -266,6 +268,8 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         raise RuntimeError(f"Временная папка {staging} существует и не принадлежит установщику")
     if not port_is_available(80) and not only_default_nginx_site_enabled():
         raise RuntimeError("TCP-порт 80 уже занят. Остановите использующую его службу и повторите установку")
+    if settings["https_mode"] == "cloudflare" and not port_is_available(443):
+        raise RuntimeError("TCP-порт 443 уже занят. Освободите его для HTTPS и повторите установку")
     if shutil.disk_usage(target.parent if target.parent.exists() else "/").free < 10 * 1024**3:
         raise RuntimeError("Для установки нужно не менее 10 ГБ свободного места")
     try:
@@ -286,6 +290,7 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         if settings["https_mode"] == "cloudflare":
             validate_cloudflare_dns(domain)
             checks.append({"name": "Домен", "value": f"{domain} → HTTPS через Cloudflare"})
+            checks.append({"name": "Порт 443", "value": "свободен"})
         else:
             validate_domain_dns(domain, server_ip)
             checks.append({"name": "Домен", "value": f"{domain} → {server_ip}"})
@@ -370,6 +375,8 @@ def validate_cloudflare_dns(domain: str) -> list[str]:
 
 
 CLOUDFLARE_REAL_IP_CONF = Path("/etc/nginx/conf.d/wl-traders-cloudflare-realip.conf")
+CLOUDFLARE_ORIGIN_CERT = Path("/etc/nginx/wl-traders-origin.pem")
+CLOUDFLARE_ORIGIN_KEY = Path("/etc/nginx/wl-traders-origin.key")
 
 
 def cloudflare_ip_ranges() -> list[str]:
@@ -523,17 +530,30 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
 
     default_server = " default_server" if settings["site_mode"] == "ip" else ""
     server_name = settings["domain"] if settings["site_mode"] == "domain" else "_"
-    proxy_directives = ""
+
     if settings["https_mode"] == "cloudflare":
-        proxy_directives = (
-            "\n    # Трафик приходит через Cloudflare — приложение считает его HTTPS\n"
-            "    fastcgi_param HTTPS on;"
+        listen_block = "    listen 443 ssl;\n    listen [::]:443 ssl;"
+        ssl_block = (
+            f"    ssl_certificate {CLOUDFLARE_ORIGIN_CERT};\n"
+            f"    ssl_certificate_key {CLOUDFLARE_ORIGIN_KEY};\n"
+            "    ssl_protocols TLSv1.2 TLSv1.3;\n"
         )
-    nginx = f"""server {{
-    listen 80{default_server};
-    listen [::]:80{default_server};
+        redirect_block = f"""server {{
+    listen 80;
+    listen [::]:80;
     server_name {server_name};
-    root {app_path}/public;
+    return 301 https://$host$request_uri;
+}}
+
+"""
+    else:
+        listen_block = f"    listen 80{default_server};\n    listen [::]:80{default_server};"
+        ssl_block = ""
+        redirect_block = ""
+    nginx = f"""{redirect_block}server {{
+{listen_block}
+    server_name {server_name};
+{ssl_block}    root {app_path}/public;
     index index.php index.html;
     charset utf-8;
     client_max_body_size {upload_mb}M;
@@ -541,7 +561,7 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
     client_header_timeout 20s;
     keepalive_timeout 65s;
     access_log /var/log/nginx/wl-traders-access.log;
-    error_log /var/log/nginx/wl-traders-error.log warn;{proxy_directives}
+    error_log /var/log/nginx/wl-traders-error.log warn;
 
     location / {{
         try_files $uri $uri/ /index.php?$query_string;
@@ -572,6 +592,10 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
     Path("/etc/nginx/sites-enabled/default").unlink(missing_ok=True)
 
     if settings["https_mode"] == "cloudflare":
+        CLOUDFLARE_ORIGIN_CERT.write_text(settings["cloudflare_cert"].strip() + "\n", encoding="utf-8")
+        CLOUDFLARE_ORIGIN_KEY.write_text(settings["cloudflare_key"].strip() + "\n", encoding="utf-8")
+        os.chmod(CLOUDFLARE_ORIGIN_CERT, 0o644)
+        os.chmod(CLOUDFLARE_ORIGIN_KEY, 0o600)
         if configure_cloudflare_real_ip():
             add_log("Cloudflare: real IP включён (CF-Connecting-IP)")
         else:
@@ -789,6 +813,16 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
         if parsed_app_url.port not in {None, 80}:
             raise ValueError("Для доступа по IP используйте стандартный HTTP-порт 80")
 
+    cloudflare_cert = ""
+    cloudflare_key = ""
+    if https_mode == "cloudflare":
+        cloudflare_cert = str(raw.get("cloudflare_cert", "")).strip()
+        cloudflare_key = str(raw.get("cloudflare_key", "")).strip()
+        if "BEGIN CERTIFICATE" not in cloudflare_cert:
+            raise ValueError("Для Cloudflare скопируйте origin-сертификат (PEM) из панели Cloudflare")
+        if "BEGIN PRIVATE KEY" not in cloudflare_key and "BEGIN RSA PRIVATE KEY" not in cloudflare_key:
+            raise ValueError("Для Cloudflare скопируйте приватный ключ origin (PEM) из панели Cloudflare")
+
     db_password = str(raw.get("db_password", "")) or secrets.token_urlsafe(24)
     if len(db_password) < 16:
         raise ValueError("Пароль базы данных должен содержать минимум 16 символов или оставьте поле пустым")
@@ -798,6 +832,8 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
         "https_mode": https_mode,
         "domain": domain,
         "app_url": app_url,
+        "cloudflare_cert": cloudflare_cert,
+        "cloudflare_key": cloudflare_key,
         "install_path": validate_path(str(raw["install_path"]).strip()),
         "timezone": timezone,
         "locale": locale,
@@ -854,6 +890,8 @@ def cleanup_failed_install(
             Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.timer"),
             Path("/usr/local/sbin/wl-traders-installer-firewall-cleanup"),
             CLOUDFLARE_REAL_IP_CONF,
+            CLOUDFLARE_ORIGIN_CERT,
+            CLOUDFLARE_ORIGIN_KEY,
         ):
             path.unlink(missing_ok=True)
         subprocess.run(["systemctl", "daemon-reload"], capture_output=True, text=True)
@@ -1032,7 +1070,7 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
         if settings["enable_firewall"]:
             add_log("Включаю firewall: SSH, сайт и временно панель установки…")
             installer_port = int(settings["installer_port"])
-            nginx_firewall_profile = "Nginx HTTP"
+            nginx_firewall_profile = "Nginx Full" if settings["https_mode"] == "cloudflare" else "Nginx HTTP"
             schedule_firewall_cleanup(installer_port, delay_minutes=50)
             firewall_enabled = True
             run(
@@ -1049,13 +1087,15 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
 
         set_progress(7)
         host = urlparse(settings["app_url"]).hostname or public_ip()
+        curl_scheme = "https" if settings["https_mode"] == "cloudflare" else "http"
+        curl_insecure = " -k" if settings["https_mode"] == "cloudflare" else ""
         run("nginx -t")
         run(f"systemctl is-active {quote(php_fpm_service)} nginx mysql redis-server wl-traders-horizon cron")
         run("redis-cli ping")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} horizon:status")
         run(f"sudo -u www-data /usr/bin/php {quote(target / 'artisan')} schedule:list --no-ansi")
-        run(f"curl --fail --silent --show-error --max-time 20 -H {quote('Host: ' + host)} http://127.0.0.1/up")
-        run(f"curl --fail --silent --show-error --max-time 20 -o /dev/null -H {quote('Host: ' + host)} http://127.0.0.1/")
+        run(f"curl --fail --silent --show-error --max-time 20{curl_insecure} -H {quote('Host: ' + host)} {curl_scheme}://127.0.0.1/up")
+        run(f"curl --fail --silent --show-error --max-time 20{curl_insecure} -o /dev/null -H {quote('Host: ' + host)} {curl_scheme}://127.0.0.1/")
         if settings["install_backups"]:
             run("/usr/local/sbin/wl-traders-backup")
             backups = list(Path("/var/backups/wl-traders").glob("*"))
