@@ -244,6 +244,12 @@ class InstallerValidationTest(unittest.TestCase):
         self.assertIn('name="cloudflare_cert"', page)
         self.assertIn('name="cloudflare_key"', page)
 
+    def test_enter_key_advances_to_next_step_instead_of_submitting(self):
+        page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
+
+        self.assertIn("event.key!=='Enter'", page)
+        self.assertIn("next.click()", page)
+
     def test_temporary_firewall_rule_has_persistent_one_shot_cleanup(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
 
