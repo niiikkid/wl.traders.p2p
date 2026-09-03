@@ -205,6 +205,12 @@ class InstallerValidationTest(unittest.TestCase):
         self.assertIn("Always Use HTTPS", page)
         self.assertNotIn("DNS only", page)
 
+    def test_hidden_attribute_is_enforced_in_css(self):
+        page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
+
+        self.assertIn("[hidden]{display:none!important}", page)
+        self.assertIn('id="install" type="submit" hidden', page)
+
     def test_temporary_firewall_rule_has_persistent_one_shot_cleanup(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
 
