@@ -105,6 +105,39 @@ class InstallerValidationTest(unittest.TestCase):
         self.assertEqual("pay.example.com", settings["domain"])
         self.assertEqual("http://pay.example.com", settings["app_url"])
 
+    def test_cloudflare_mode_builds_https_application_url(self):
+        payload = self.valid_payload()
+        payload.update(
+            {
+                "site_mode": "domain",
+                "domain": "pay.example.com",
+                "https_mode": "cloudflare",
+            }
+        )
+
+        settings = installer.normalize_settings(payload)
+
+        self.assertEqual("cloudflare", settings["https_mode"])
+        self.assertEqual("https://pay.example.com", settings["app_url"])
+
+    def test_ip_mode_forces_plain_http_despite_cloudflare_choice(self):
+        payload = self.valid_payload()
+        payload.update({"site_mode": "ip", "https_mode": "cloudflare"})
+
+        settings = installer.normalize_settings(payload)
+
+        self.assertEqual("none", settings["https_mode"])
+        self.assertTrue(settings["app_url"].startswith("http://"))
+
+    def test_rejects_unknown_https_mode(self):
+        payload = self.valid_payload()
+        payload.update(
+            {"site_mode": "domain", "domain": "pay.example.com", "https_mode": "vpn"}
+        )
+
+        with self.assertRaisesRegex(ValueError, "HTTPS"):
+            installer.normalize_settings(payload)
+
     def test_domain_mode_rejects_url_in_domain_field(self):
         payload = self.valid_payload()
         payload.update(
@@ -146,12 +179,29 @@ class InstallerValidationTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "серое облако"):
                 installer.validate_domain_dns("pay.example.com", "203.0.113.10")
 
-    def test_installer_page_contains_six_steps_and_cloudflare_recommendation(self):
+    @patch.object(
+        installer,
+        "resolved_ipv4_addresses",
+        return_value={"104.26.6.25", "172.67.74.17"},
+    )
+    def test_cloudflare_dns_accepts_proxied_addresses(self, _resolver):
+        self.assertEqual(
+            ["104.26.6.25", "172.67.74.17"],
+            installer.validate_cloudflare_dns("pay.example.com"),
+        )
+
+    @patch.object(installer, "resolved_ipv4_addresses", return_value=set())
+    def test_cloudflare_dns_requires_resolution(self, _resolver):
+        with self.assertRaisesRegex(RuntimeError, "Proxied"):
+            installer.validate_cloudflare_dns("pay.example.com")
+
+    def test_installer_page_contains_six_steps_and_cloudflare_choice(self):
         page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
 
         self.assertEqual(6, page.count('class="panel" data-step='))
         self.assertIn("Cloudflare", page)
-        self.assertIn("Full (strict)", page)
+        self.assertIn("https_mode", page)
+        self.assertIn("Flexible", page)
         self.assertIn("Always Use HTTPS", page)
         self.assertNotIn("DNS only", page)
 

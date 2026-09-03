@@ -257,6 +257,7 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
         Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.service"),
         Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.timer"),
         Path("/usr/local/sbin/wl-traders-installer-firewall-cleanup"),
+        CLOUDFLARE_REAL_IP_CONF,
     ]
     existing = [str(path) for path in protected_paths if path.exists() or path.is_symlink()]
     if existing:
@@ -282,8 +283,12 @@ def run_preflight(settings: dict[str, Any]) -> list[dict[str, str]]:
     if settings["site_mode"] == "domain":
         domain = settings["domain"]
         server_ip = public_ip()
-        validate_domain_dns(domain, server_ip)
-        checks.append({"name": "Домен", "value": f"{domain} → {server_ip}"})
+        if settings["https_mode"] == "cloudflare":
+            validate_cloudflare_dns(domain)
+            checks.append({"name": "Домен", "value": f"{domain} → HTTPS через Cloudflare"})
+        else:
+            validate_domain_dns(domain, server_ip)
+            checks.append({"name": "Домен", "value": f"{domain} → {server_ip}"})
     return checks
 
 
@@ -348,9 +353,53 @@ def validate_domain_dns(domain: str, server_ip: str) -> list[str]:
     if set(addresses) != {server_ip}:
         raise RuntimeError(
             f"A-запись {domain} ведёт на {', '.join(addresses)}, а должна вести на сервер {server_ip}. "
-            "Если домен уже за Cloudflare, временно выключите прокси (серое облако)"
+            "Если домен уже за Cloudflare, выберите установку «С Cloudflare» или временно "
+            "выключите прокси (серое облако)"
         )
     return addresses
+
+
+def validate_cloudflare_dns(domain: str) -> list[str]:
+    addresses = sorted(resolved_ipv4_addresses(domain))
+    if not addresses:
+        raise RuntimeError(
+            f"Домен {domain} пока не имеет A-записи. Добавьте домен в Cloudflare с включённым "
+            "Proxied (оранжевое облако) и повторите"
+        )
+    return addresses
+
+
+CLOUDFLARE_REAL_IP_CONF = Path("/etc/nginx/conf.d/wl-traders-cloudflare-realip.conf")
+
+
+def cloudflare_ip_ranges() -> list[str]:
+    ranges: list[str] = []
+    for url in ("https://www.cloudflare.com/ips-v4", "https://www.cloudflare.com/ips-v6"):
+        try:
+            with urlopen(url, timeout=10) as response:  # noqa: S310 - fixed trusted endpoint
+                body = response.read().decode("ascii")
+        except (OSError, UnicodeError):
+            continue
+        for line in body.splitlines():
+            candidate = line.strip()
+            if not candidate or candidate.startswith("#"):
+                continue
+            try:
+                ipaddress.ip_network(candidate, strict=False)
+            except ValueError:
+                continue
+            ranges.append(candidate)
+    return ranges
+
+
+def configure_cloudflare_real_ip() -> bool:
+    ranges = cloudflare_ip_ranges()
+    if not ranges:
+        return False
+    lines = [f"set_real_ip_from {value};" for value in ranges]
+    lines.append("real_ip_header CF-Connecting-IP;")
+    CLOUDFLARE_REAL_IP_CONF.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return True
 
 
 def dotenv_value(value: str) -> str:
@@ -402,6 +451,8 @@ def write_env(target: Path, settings: dict[str, Any]) -> None:
         "TRONGRID_API_KEY": settings["trongrid_api_key"],
         "IPGEOLOCATION_API_KEY": settings["ipgeolocation_api_key"],
     }
+    if settings["https_mode"] == "cloudflare":
+        values["SESSION_SECURE_COOKIE"] = "true"
 
     output: list[str] = []
     seen: set[str] = set()
@@ -472,6 +523,12 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
 
     default_server = " default_server" if settings["site_mode"] == "ip" else ""
     server_name = settings["domain"] if settings["site_mode"] == "domain" else "_"
+    proxy_directives = ""
+    if settings["https_mode"] == "cloudflare":
+        proxy_directives = (
+            "\n    # Трафик приходит через Cloudflare — приложение считает его HTTPS\n"
+            "    fastcgi_param HTTPS on;"
+        )
     nginx = f"""server {{
     listen 80{default_server};
     listen [::]:80{default_server};
@@ -484,7 +541,7 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
     client_header_timeout 20s;
     keepalive_timeout 65s;
     access_log /var/log/nginx/wl-traders-access.log;
-    error_log /var/log/nginx/wl-traders-error.log warn;
+    error_log /var/log/nginx/wl-traders-error.log warn;{proxy_directives}
 
     location / {{
         try_files $uri $uri/ /index.php?$query_string;
@@ -513,6 +570,12 @@ def install_system_files(target: Path, settings: dict[str, Any], php_version: st
     enabled.unlink(missing_ok=True)
     enabled.symlink_to("/etc/nginx/sites-available/wl-traders")
     Path("/etc/nginx/sites-enabled/default").unlink(missing_ok=True)
+
+    if settings["https_mode"] == "cloudflare":
+        if configure_cloudflare_real_ip():
+            add_log("Cloudflare: real IP включён (CF-Connecting-IP)")
+        else:
+            add_log("ВНИМАНИЕ: не удалось получить диапазоны IP Cloudflare — real IP не настроен")
 
     horizon = f"""[Unit]
 Description=WL Traders Laravel Horizon
@@ -701,14 +764,20 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
     if site_mode not in {"ip", "domain"}:
         raise ValueError("Выберите доступ по IP-адресу или домену")
 
+    https_mode = str(raw.get("https_mode", "none")).strip() or "none"
+    if https_mode not in {"none", "cloudflare"}:
+        raise ValueError("Выберите способ HTTPS: без Cloudflare или с Cloudflare")
+
     domain = ""
     if site_mode == "domain":
         domain_value = str(raw.get("domain", "")).strip()
         if not domain_value and legacy_url:
             domain_value = urlparse(validate_url(legacy_url)).hostname or ""
         domain = validate_domain(domain_value)
-        app_url = f"http://{domain}"
+        scheme = "https" if https_mode == "cloudflare" else "http"
+        app_url = f"{scheme}://{domain}"
     else:
+        https_mode = "none"
         app_url = validate_url(legacy_url or f"http://{public_ip()}")
         parsed_app_url = urlparse(app_url)
         try:
@@ -726,6 +795,7 @@ def normalize_settings(raw: dict[str, Any]) -> dict[str, Any]:
     settings = {
         "app_name": app_name,
         "site_mode": site_mode,
+        "https_mode": https_mode,
         "domain": domain,
         "app_url": app_url,
         "install_path": validate_path(str(raw["install_path"]).strip()),
@@ -783,6 +853,7 @@ def cleanup_failed_install(
             Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.service"),
             Path("/etc/systemd/system/wl-traders-installer-firewall-cleanup.timer"),
             Path("/usr/local/sbin/wl-traders-installer-firewall-cleanup"),
+            CLOUDFLARE_REAL_IP_CONF,
         ):
             path.unlink(missing_ok=True)
         subprocess.run(["systemctl", "daemon-reload"], capture_output=True, text=True)
@@ -841,6 +912,7 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
             message="Установка началась",
             app_url=settings["app_url"],
             site_mode=settings["site_mode"],
+            https_mode=settings["https_mode"],
             domain=settings["domain"],
             error=None,
             logs=[],
@@ -1007,7 +1079,11 @@ def perform_install(raw_settings: dict[str, Any], server: ThreadingHTTPServer) -
                 {"name": "Планировщик", "value": "расписание загружено"},
                 {
                     "name": "SSL",
-                    "value": "не настроен · можно включить через Cloudflare",
+                    "value": (
+                        "включён через Cloudflare"
+                        if settings["https_mode"] == "cloudflare"
+                        else "не настроен · можно включить через Cloudflare"
+                    ),
                 },
                 {"name": "Бэкапы", "value": "проверены" if settings["install_backups"] else "отключены"},
             ],
@@ -1118,12 +1194,18 @@ class InstallerHandler(BaseHTTPRequestHandler):
             try:
                 payload = self.read_json_payload(max_length=8192)
                 domain = validate_domain(str(payload.get("domain", "")))
+                https_mode = str(payload.get("https_mode", "none")).strip() or "none"
                 server_ip = public_ip()
-                validate_domain_dns(domain, server_ip)
+                if https_mode == "cloudflare":
+                    addresses = validate_cloudflare_dns(domain)
+                else:
+                    addresses = validate_domain_dns(domain, server_ip)
             except (ValueError, TypeError, json.JSONDecodeError, RuntimeError) as exc:
                 self.json_response({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
                 return
-            self.json_response({"ok": True, "domain": domain, "server_ip": server_ip})
+            self.json_response(
+                {"ok": True, "domain": domain, "server_ip": server_ip, "https_mode": https_mode, "addresses": addresses}
+            )
             return
         if path != "/install":
             self.send_error(HTTPStatus.NOT_FOUND)

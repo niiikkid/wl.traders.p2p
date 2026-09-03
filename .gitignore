@@ -1,4 +1,8 @@
 /.phpunit.cache
+/__pycache__/
+*.pyc
+/installer/__pycache__/
+/installer/tests/__pycache__/
 /bootstrap/ssr
 /node_modules
 /public/build
