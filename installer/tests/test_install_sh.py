@@ -45,6 +45,35 @@ class InstallScriptBootstrapTest(unittest.TestCase):
             self.assertIn('--port\n9876', result.stdout)
             self.assertIn(str(root / 'installer' / 'server.py'), result.stdout)
 
+    def test_busy_panel_port_stops_before_docker(self):
+        import socket
+        with socket.socket() as listener, tempfile.TemporaryDirectory() as directory:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen()
+            binary = Path(directory) / 'docker'
+            binary.write_text('#!/bin/sh\nprintf DOCKER_WAS_CALLED >&2\nexit 1\n')
+            binary.chmod(0o755)
+            port = str(listener.getsockname()[1])
+            result = subprocess.run(['bash', str(ROOT / 'install.sh')], env={**os.environ, 'PATH': directory + os.pathsep + os.environ['PATH'], 'WL_TRADERS_INSTALLER_PORT': port}, capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertNotIn('DOCKER_WAS_CALLED', result.stderr)
+            self.assertIn('занят', result.stderr)
+            self.assertIn(port, result.stderr)
+
+    def test_busy_panel_port_has_actionable_error_without_traceback(self):
+        import socket
+        import sys
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen()
+            port = str(listener.getsockname()[1])
+            result = subprocess.run([sys.executable, str(ROOT / 'installer/server.py'), '--port', port], capture_output=True, text=True, timeout=10)
+            self.assertNotEqual(0, result.returncode)
+            self.assertNotIn('Traceback', result.stderr)
+            self.assertIn('занят', result.stderr)
+            self.assertIn('SSH', result.stderr)
+            self.assertIn(port, result.stderr)
+
     def test_container_scripts_keep_unix_line_endings_on_windows(self):
         attributes = ROOT / '.gitattributes'
         self.assertTrue(attributes.exists(), 'Git checkouts on Windows must preserve executable script line endings')

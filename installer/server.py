@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import errno
 import html
 import ipaddress
 import json
@@ -415,7 +416,18 @@ def main() -> None:
     parser.add_argument('--token', default=None)
     parser.add_argument('--expires-in', type=int, default=2700)
     args = parser.parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), InstallerHandler)
+    try:
+        server = ThreadingHTTPServer((args.host, args.port), InstallerHandler)
+    except OSError as exc:
+        if exc.errno == errno.EADDRINUSE:
+            raise SystemExit(
+                f'Порт установщика {args.port} занят. Возможно, уже открыт мастер или SSH-туннель.\n'
+                'SSH-туннель запускайте на своём компьютере, не на сервере. '
+                'Если подключились с сервера к нему же, в той вложенной сессии выполните exit.\n'
+                'Не останавливайте незнакомую службу. Для другого порта задайте WL_TRADERS_INSTALLER_PORT '
+                'и такой же удалённый порт SSH-туннеля. Данные приложения не изменены.'
+            ) from None
+        raise SystemExit(f'Не удалось открыть панель на {args.host}:{args.port}: {exc}') from None
     server.install_token = args.token or secrets.token_urlsafe(32)
     server.expires_at = time.monotonic() + max(300, min(args.expires_in, 7200))
     url = f'http://127.0.0.1:{args.port}/?token={server.install_token}'
@@ -423,7 +435,8 @@ def main() -> None:
     if args.host not in {'127.0.0.1', 'localhost', '::1'}:
         print('ВНИМАНИЕ: панель доступна по сети без TLS; используйте SSH-туннель для передачи секретов.', flush=True)
     if platform.system() == 'Linux':
-        print(f'Для удалённого сервера: ssh -L {args.port}:127.0.0.1:{args.port} root@{public_ip()}', flush=True)
+        print('Следующую SSH-команду запускайте только в новом терминале СВОЕГО КОМПЬЮТЕРА, не здесь на сервере. Если туннель уже открыт, повторять её не нужно.', flush=True)
+        print(f'ssh -N -o ExitOnForwardFailure=yes -L {args.port}:127.0.0.1:{args.port} root@{public_ip()}', flush=True)
         print('Затем откройте указанный локальный URL на своём компьютере. Остановка панели: Ctrl+C.', flush=True)
     elif platform.system() in {'Darwin', 'Windows'}:
         import webbrowser

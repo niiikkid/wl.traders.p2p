@@ -34,9 +34,27 @@ apt_packages() {
     fi
     DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=3 -o DPkg::Lock::Timeout=180 install -y --no-install-recommends "$@"
 }
-command -v curl >/dev/null 2>&1 || apt_packages curl ca-certificates
 command -v python3 >/dev/null 2>&1 || apt_packages python3
 python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)' || fail 'Нужен Python 3.10 или новее: https://www.python.org/downloads/'
+
+# Detect panel conflicts before Docker installation or source downloads. Do not kill listeners.
+python3 -c '
+import errno, socket, sys
+host, port = sys.argv[1], int(sys.argv[2])
+try:
+    with socket.socket() as probe:
+        probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        probe.bind((host, port))
+except OSError as exc:
+    if exc.errno == errno.EADDRINUSE:
+        sys.exit(f"Порт установщика {port} занят. Docker и приложение не изменены.\n"
+                 "Возможно, уже открыт мастер или SSH-туннель. SSH-туннель запускайте на своём компьютере, не на сервере.\n"
+                 "Если подключились по SSH с сервера к нему же, в той вложенной сессии выполните exit.\n"
+                 f"На Linux посмотреть владельца порта: ss -lntp \"sport = :{port}\"\n"
+                 "Не останавливайте незнакомую службу. Для другого порта задайте WL_TRADERS_INSTALLER_PORT и такой же удалённый порт SSH-туннеля.")
+    sys.exit(f"Не удалось открыть панель на {host}:{port}: {exc}")
+' "$HOST" "$PORT"
+command -v curl >/dev/null 2>&1 || apt_packages curl ca-certificates
 
 if ! command -v docker >/dev/null 2>&1; then
     [[ "$OS" == Linux && ${EUID} -eq 0 ]] || fail 'Установите и запустите Docker Desktop: https://www.docker.com/products/docker-desktop/ — затем повторите эту команду.'
