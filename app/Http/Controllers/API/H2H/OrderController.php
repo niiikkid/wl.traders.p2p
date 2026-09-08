@@ -12,6 +12,7 @@ use App\Http\Resources\API\H2H\OrderResource;
 use App\Models\Order;
 use App\Models\OrderManualControlConfirmationCode;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 
 class OrderController extends Controller
@@ -57,7 +58,16 @@ class OrderController extends Controller
 
         Gate::authorize('api-access-to-merchant', $merchant);
 
-        return services()->orderPooling()->processOrderPooling($request);
+        $pendingKey = "pending_order_external_id_{$request->external_id}_merchant_{$merchant->id}";
+        if (! Cache::add($pendingKey, true, 60 * 60)) {
+            return response()->failWithMessage('Заказ с таким external_id уже в процессе создания для данного мерчанта.', 422);
+        }
+
+        try {
+            return services()->orderPooling()->processOrderPooling($request);
+        } finally {
+            Cache::forget($pendingKey);
+        }
     }
 
     public function finish(Order $order): JsonResponse

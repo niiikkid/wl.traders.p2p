@@ -15,9 +15,10 @@ class ApiWithdrawalsAccessToken
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $token = $request->header('Access-Token');
+        $expectedToken = (string) config('api.api_withdraw_token', '');
+        $token = (string) $request->header('Access-Token', '');
 
-        if (config('api.api_withdraw_token') !== $token) {
+        if ($expectedToken === '' || $token === '' || ! hash_equals($expectedToken, $token)) {
             return response()->failWithMessage('Invalid Access Token.');
         }
 

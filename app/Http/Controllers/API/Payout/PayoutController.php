@@ -12,6 +12,7 @@ use App\Models\MerchantApiRequestLog;
 use App\Models\Payout\Payout;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Throwable;
@@ -24,10 +25,19 @@ class PayoutController extends Controller
 
         Gate::authorize('api-access-to-merchant', $merchant);
 
-        return $this->processPayoutPooling(
-            request: $request,
-            merchant: $merchant,
-        );
+        $pendingKey = "pending_payout_external_id_{$request->external_id}_merchant_{$merchant->id}";
+        if (! Cache::add($pendingKey, true, 60 * 60)) {
+            return response()->failWithMessage('Выплата с таким external_id уже в процессе создания для данного мерчанта.', 422);
+        }
+
+        try {
+            return $this->processPayoutPooling(
+                request: $request,
+                merchant: $merchant,
+            );
+        } finally {
+            Cache::forget($pendingKey);
+        }
     }
 
     public function show(Request $request, Payout $payout): JsonResponse

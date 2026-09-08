@@ -27,8 +27,9 @@ class StoreRequest extends FormRequest
             : null;
 
         return [
-            'merchant_id' => ['required', 'exists:merchants,uuid'],
+            'merchant_id' => ['bail', 'required', 'string', 'exists:merchants,uuid'],
             'external_id' => [
+                'bail',
                 'required',
                 'string',
                 'max:255',
@@ -57,10 +58,6 @@ class StoreRequest extends FormRequest
                         return;
                     }
 
-                    $pendingKey = "pending_payout_external_id_{$value}_merchant_{$merchant->id}";
-                    if (! Cache::add($pendingKey, true, 60 * 60)) {
-                        $fail('Выплата с таким external_id уже в процессе создания для данного мерчанта.');
-                    }
                 },
             ],
             'amount' => ['required', 'integer', 'gt:0'],
@@ -116,7 +113,10 @@ class StoreRequest extends FormRequest
                 }
             },
             function (Validator $validator) {
-                $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+                $merchantUuid = $this->input('merchant_id');
+                $merchant = is_string($merchantUuid) && $merchantUuid !== ''
+                    ? queries()->merchant()->findByUUID($merchantUuid)
+                    : null;
                 if (! $merchant instanceof Merchant) {
                     return;
                 }
