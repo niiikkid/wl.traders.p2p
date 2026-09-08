@@ -3,100 +3,486 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#000000">
-<title>Установка WL Traders</title>
+<meta name="theme-color" content="#0b0d11">
+<meta name="referrer" content="no-referrer">
+<title>Установка · WL Traders</title>
 <style>
-:root{color-scheme:dark;--bg:#000;--panel:#08090c;--panel-2:#0d0f14;--line:rgba(239,242,255,.14);--line-strong:rgba(239,242,255,.3);--text:#f2f4fb;--muted:rgba(242,244,251,.62);--faint:rgba(242,244,251,.38);--warning:#e8c98e;--danger:#ff858c;--ok:#9ed7ff;--mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;--body:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--max:1120px}
-*{box-sizing:border-box}[hidden]{display:none!important}html{min-width:320px;background:var(--bg)}body{margin:0;color:var(--text);background:radial-gradient(circle at 86% 3%,rgba(118,139,184,.13),transparent 29rem),#000;font:15px/1.55 var(--body);-webkit-font-smoothing:antialiased}button,input,select{font:inherit}button{color:inherit}a{color:inherit}::selection{background:#fff;color:#000}
-body:before{content:"";position:fixed;z-index:-1;inset:0;pointer-events:none;opacity:.4;background-image:radial-gradient(circle,#fff 0 1px,transparent 1.2px),radial-gradient(circle,rgba(255,255,255,.5) 0 1px,transparent 1.2px);background-position:0 0,51px 31px;background-size:173px 173px,263px 263px;mask-image:linear-gradient(to bottom,#000,transparent 75%)}
-.topbar{height:68px;border-bottom:1px solid var(--line);background:rgba(0,0,0,.82);backdrop-filter:blur(18px);position:sticky;top:0;z-index:20}.topbar-inner{width:min(calc(100% - 40px),var(--max));height:100%;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:12px}.mark{width:34px;height:34px;display:grid;place-items:center;background:#fff;color:#000;font:700 11px/1 var(--mono);letter-spacing:-.05em}.brand b{display:block;font:500 12px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase}.brand small,.session{color:var(--faint);font:9px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase}.session{display:flex;align-items:center;gap:9px}.session i{width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.07)}
-.shell{width:min(calc(100% - 40px),var(--max));margin:0 auto;padding:46px 0 72px;display:grid;grid-template-columns:250px minmax(0,1fr);gap:clamp(38px,6vw,76px)}.rail{align-self:start;position:sticky;top:104px}.eyebrow{color:var(--faint);font:9px/1.4 var(--mono);letter-spacing:.17em;text-transform:uppercase}.rail h1{margin:15px 0 12px;font:300 clamp(29px,3.5vw,42px)/1.04 var(--mono);letter-spacing:-.06em}.rail>p{margin:0;color:var(--muted);font-size:13px}.steps{margin:31px 0 0;padding:0;list-style:none;border-top:1px solid var(--line)}.step-link{width:100%;min-height:48px;padding:0;border:0;border-bottom:1px solid var(--line);background:transparent;display:grid;grid-template-columns:28px 1fr auto;align-items:center;text-align:left;color:var(--faint);cursor:default;font:9px/1.2 var(--mono);letter-spacing:.1em;text-transform:uppercase}.step-link.current{color:var(--text);border-color:var(--line-strong)}.step-link.available{cursor:pointer}.step-link.done:after{content:"✓";color:var(--ok)}.notice{margin-top:25px;padding:15px 0;border-block:1px solid var(--line);color:var(--muted);font-size:11px}.notice b{display:block;margin-bottom:5px;color:var(--warning);font:500 9px/1.3 var(--mono);letter-spacing:.11em;text-transform:uppercase}
-.main{min-width:0}.intro{padding:3px 0 26px;border-bottom:1px solid var(--line)}.intro-row{display:flex;align-items:flex-end;justify-content:space-between;gap:22px}.intro h2{margin:10px 0 0;font:300 clamp(34px,5vw,58px)/1 var(--mono);letter-spacing:-.07em}.intro h2 span{color:var(--muted)}.tag{flex:0 0 auto;margin-bottom:4px;padding:7px 9px;border:1px solid var(--line);color:var(--muted);font:8px/1 var(--mono);letter-spacing:.11em;text-transform:uppercase}.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:24px;border:1px solid var(--line);background:var(--line)}.fact{padding:12px;background:#050609;min-width:0}.fact b{display:block;color:var(--faint);font:8px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase}.fact span{display:block;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:11px/1.3 var(--mono)}
-.panel{padding:36px 0 0}.panel[hidden]{display:none}.panel-head{display:grid;grid-template-columns:42px minmax(0,1fr);gap:14px;margin-bottom:25px}.panel-number{padding-top:5px;color:var(--faint);font:10px/1 var(--mono)}.panel-head h3{margin:0;font:400 22px/1.25 var(--mono);letter-spacing:-.035em}.panel-head p{max-width:660px;margin:8px 0 0;color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}.full{grid-column:1/-1}.field{display:grid;gap:8px;align-content:start;color:rgba(242,244,251,.86);font-size:12px}.label-row{display:flex;justify-content:space-between;gap:12px}.optional{color:var(--faint);font:8px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}.field small,.help{color:var(--faint);font-size:11px}.control{position:relative}input:not([type=checkbox]):not([type=radio]),select,textarea{width:100%;min-height:48px;padding:12px 13px;border:1px solid var(--line);border-radius:2px;outline:none;background:rgba(242,244,251,.025);color:var(--text)}textarea{min-height:128px;font:11px/1.55 var(--mono);resize:vertical}input:hover,select:hover{border-color:var(--line-strong)}input:focus,select:focus{border-color:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.07)}input::placeholder{color:rgba(242,244,251,.25)}select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--faint) 50%),linear-gradient(135deg,var(--faint) 50%,transparent 50%);background-position:calc(100% - 18px) 20px,calc(100% - 13px) 20px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}.secret{padding-right:73px!important;font-family:var(--mono)}.has-generator{padding-right:139px!important}.reveal,.generate{position:absolute;top:1px;height:46px;border:0;border-left:1px solid var(--line);background:#08090c;color:var(--muted);cursor:pointer;font:8px/1 var(--mono);letter-spacing:.05em}.reveal{right:1px;width:70px}.generate{right:71px;width:67px}.reveal:hover,.generate:hover{color:#fff}
-.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.choice{position:relative;display:block;min-height:132px;padding:19px;border:1px solid var(--line);background:#050609;cursor:pointer}.choice:hover{border-color:var(--line-strong)}.choice input{position:absolute;opacity:0}.choice:has(input:checked){border-color:#fff;background:#0b0d12;box-shadow:inset 0 0 0 1px #fff}.choice b{display:block;font:400 14px/1.3 var(--mono)}.choice p{margin:8px 0 0;color:var(--muted);font-size:12px}.choice .badge{display:inline-block;margin-top:13px;padding:5px 7px;border:1px solid var(--line);color:var(--faint);font:8px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase}.choice:has(input:checked) .badge{color:#fff;border-color:var(--line-strong)}
-.domain-box{margin-top:20px}.https-choices{margin-top:16px}.cloudflare-cert{margin-top:16px}.domain-box[hidden],.ip-box[hidden]{display:none}.guide{margin-top:18px;padding:20px;border:1px solid var(--line);background:#050609}.guide-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}.guide h4{margin:0;font:400 14px/1.3 var(--mono)}.guide p{margin:6px 0 0;color:var(--muted);font-size:11px}.recommended{padding:5px 7px;border:1px solid var(--line-strong);color:#fff;font:8px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase}.dns-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:17px;border:1px solid var(--line);background:var(--line);counter-reset:dns}.dns-step{padding:14px;background:#08090c;counter-increment:dns}.dns-step:before{content:"0" counter(dns);display:block;margin-bottom:7px;color:var(--faint);font:8px/1 var(--mono)}.dns-step b{font:500 11px/1.35 var(--mono)}.dns-step small{display:block;margin-top:5px;color:var(--faint);font-size:10px;line-height:1.45}.dns-record{margin-top:13px;padding:11px 12px;border:1px solid var(--line);color:var(--muted);font:10px/1.5 var(--mono);word-break:break-word}.dns-record strong{color:#fff;font-weight:500}.dns-check{min-height:18px;margin-top:10px;color:var(--faint);font:10px/1.4 var(--mono)}.dns-check.ok{color:var(--ok)}.dns-check.error{color:var(--danger)}.cloudflare-note{margin-top:13px;padding:14px 16px;border:1px solid var(--line);background:rgba(158,215,255,.05);color:var(--muted);font-size:11px}.cloudflare-note b{color:var(--ok)}.ip-box{margin-top:18px;padding:16px 18px;border-left:2px solid var(--warning);background:rgba(232,201,142,.04);color:var(--muted);font-size:12px}
-.integrations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;border:1px solid var(--line);background:var(--line)}.integration{padding:20px;background:#050609}.integration.full{grid-column:1/-1}.integration-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}.integration h4{margin:0;font:400 13px/1.3 var(--mono)}.integration p{margin:5px 0 0;color:var(--faint);font-size:11px}.badge{padding:5px 7px;border:1px solid var(--line);color:var(--faint);font:8px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase}.integration .field+.field{margin-top:12px}.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;border:1px solid var(--line);background:var(--line)}.check{min-height:112px;padding:18px;background:#050609;display:flex;align-items:flex-start;gap:12px;cursor:pointer}.check:hover{background:#0a0c10}.check input{appearance:none;flex:0 0 auto;width:18px;height:18px;margin:1px 0 0;border:1px solid var(--line-strong);display:grid;place-items:center}.check input:checked{background:#fff}.check input:checked:after{content:"";width:8px;height:4px;border-left:2px solid #000;border-bottom:2px solid #000;transform:translateY(-1px) rotate(-45deg)}.check b{display:block;font:400 12px/1.3 var(--mono)}.check small{display:block;margin-top:7px;color:var(--faint);font-size:10px}.retention{max-width:320px;margin-top:17px}
-.review{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;border:1px solid var(--line);background:var(--line)}.review-item{padding:16px;background:#050609}.review-item b{display:block;color:var(--faint);font:8px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}.review-item span{display:block;margin-top:7px;font:11px/1.45 var(--mono);word-break:break-word}.final-note{margin-top:16px;padding:17px;border:1px solid var(--line);color:var(--muted);font-size:12px}.final-note b{color:var(--text)}
-.nav-actions{margin-top:30px;padding-top:22px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:16px}.nav-actions-right{display:flex;gap:10px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:46px;padding:0 20px;border:1px solid #fff;border-radius:2px;background:#fff;color:#000;cursor:pointer;font:500 9px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;text-decoration:none}.button:hover{background:#e9ecf4}.button:disabled{opacity:.35;cursor:not-allowed}.button.secondary{background:transparent;color:#fff;border-color:var(--line-strong)}.button.secondary:hover{border-color:#fff}.step-counter{color:var(--faint);font:9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase}
-.status{display:none;margin-top:34px;border:1px solid var(--line-strong);background:#030405}.status.active{display:block}.status-head{min-height:64px;padding:0 19px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line)}.pill{display:flex;align-items:center;gap:11px;font:400 12px/1 var(--mono)}.dot{width:7px;height:7px;border-radius:50%;background:#fff;box-shadow:0 0 0 6px rgba(255,255,255,.06);animation:pulse 1.7s infinite}.status.done .dot{background:var(--ok)}.status.failed .dot{background:var(--danger)}.status-label{color:var(--faint);font:9px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}.bar{height:3px;background:rgba(255,255,255,.08)}.bar i{display:block;width:0;height:100%;background:#fff;transition:width .3s}.status.done .bar i{background:var(--ok)}.status.failed .bar i{background:var(--danger)}.status-details{padding:17px 19px;border-bottom:1px solid var(--line);color:var(--muted);font-size:12px}.result-actions{display:none;padding:19px;gap:10px;border-bottom:1px solid var(--line)}.status.done .result-actions{display:flex}.cloudflare-finish{display:none;margin:19px;padding:18px;border:1px solid var(--line);background:#080a0e}.status.done.domain .cloudflare-finish{display:block}.status.done.domain.https-cloudflare #cf-finish-steps{display:none}.status.done.domain.https-none #cf-finish-active{display:none}.cloudflare-finish h4{margin:0;font:400 13px/1.3 var(--mono)}.cloudflare-finish p{margin:7px 0 0;color:var(--muted);font-size:11px}.cloudflare-finish ol{margin:12px 0 0;padding-left:20px;color:var(--muted);font-size:11px}.cloudflare-finish li+li{margin-top:5px}.technical summary{padding:14px 19px;cursor:pointer;color:var(--faint);font:9px/1 var(--mono);letter-spacing:.11em;text-transform:uppercase}.technical[open] summary{border-bottom:1px solid var(--line)}pre{height:270px;margin:0;overflow:auto;padding:18px;background:#000;color:rgba(242,244,251,.68);font:10px/1.65 var(--mono);white-space:pre-wrap;word-break:break-word}
-.footer{width:min(calc(100% - 40px),var(--max));margin:auto;padding:25px 0 36px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:18px;color:var(--faint);font:8px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase}@keyframes pulse{50%{opacity:.35}}:focus-visible{outline:2px solid #fff;outline-offset:3px}
-@media(max-width:860px){.shell{grid-template-columns:1fr}.rail{position:static}.steps{display:grid;grid-template-columns:repeat(3,1fr)}.step-link{padding:0 8px}.notice{display:none}.intro-row{align-items:flex-start}.tag{display:none}}
-@media(max-width:620px){.topbar-inner,.shell,.footer{width:min(calc(100% - 28px),var(--max))}.session span{display:none}.shell{padding-top:29px;gap:30px}.steps{grid-template-columns:repeat(2,1fr)}.facts{grid-template-columns:repeat(2,1fr)}.grid,.choices,.integrations,.checks,.review,.dns-steps{grid-template-columns:1fr}.integration.full,.full{grid-column:auto}.panel-head{grid-template-columns:30px 1fr}.nav-actions{align-items:stretch;flex-direction:column}.nav-actions-right{display:grid;grid-template-columns:1fr 1fr}.button{width:100%}.status-head{padding-block:15px;align-items:flex-start;flex-direction:column}.footer{flex-direction:column}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+:root{color-scheme:dark;--bg:#0b0d11;--panel:#11141a;--line:#303640;--text:#f2f4f8;--muted:#a6afbd;--blue:#8bb8ff;--focus:#a9ccff;--font:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 var(--font)}button,input,select,textarea{font:inherit}button,a,input,select,textarea,summary{-webkit-tap-highlight-color:transparent}:focus-visible{outline:3px solid var(--focus);outline-offset:3px}a{color:var(--blue)}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}h1,h2,h3,p{margin:0}h1{font-size:24px;letter-spacing:-.5px;line-height:1.3}h2{font-size:20px;line-height:1.35;letter-spacing:-.3px}h3{font-size:15px}p+ p{margin-top:8px}small,.help{font-size:12px;color:var(--muted)}.topbar{border-bottom:1px solid var(--line)}.topbar-inner{max-width:828px;padding:17px 24px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{display:flex;align-items:center;gap:10px;font-weight:650;letter-spacing:.2px}.mark{display:grid;place-items:center;width:30px;height:30px;background:var(--text);color:var(--bg);font-size:11px;font-weight:800}.badge{color:var(--muted);font-size:12px}.shell{max-width:828px;margin:auto;padding:28px 24px 32px}.intro{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}.intro p{color:var(--muted);margin-top:5px}.steps{list-style:none;padding:0;margin:0 0 20px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.step-link{display:flex;align-items:center;gap:9px;width:100%;padding:9px 0;text-align:left;border:0;border-bottom:2px solid var(--line);background:none;color:var(--muted);font-size:13px;min-height:44px}.step-link span{flex:none;width:24px;height:24px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;font-size:12px}.step-link[aria-current=step]{border-color:var(--blue);color:var(--text)}.step-link[aria-current=step] span{background:var(--blue);color:#101622;border-color:var(--blue)}.card{padding:24px;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-width:0}.panel-head{margin-bottom:20px}.panel-head p{color:var(--muted);margin-top:6px}.choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 18px;padding:0;border:0;min-width:0}.choices legend{margin-bottom:10px}.choice{display:grid;grid-template-columns:16px minmax(0,1fr);align-content:start;gap:5px 8px;padding:13px 12px;border:1px solid var(--line);border-radius:6px;cursor:pointer;min-width:0}.choice input{margin:3px 0 0;accent-color:var(--blue);width:16px;height:16px}.choice b{font-size:13px;font-weight:600}.choice small{grid-column:2;line-height:1.4}.choice:has(input:checked){border-color:var(--blue);background:#182334}.choice:has(input:focus-visible){outline:3px solid var(--focus);outline-offset:3px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.full{grid-column:1/-1}.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field>label{font-weight:550;font-size:13px}.field input,.field select,.field textarea{width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #414957;border-radius:5px;background:#0d1016;color:var(--text)}.field input::placeholder,.field textarea::placeholder{color:#8590a1}.field textarea{resize:vertical;min-height:112px;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}.field [aria-invalid=true]{border-color:var(--blue)}.field-error{font-size:12px;color:var(--blue);font-weight:550}.inline-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.button{display:inline-flex;justify-content:center;align-items:center;gap:6px;min-height:44px;padding:10px 16px;border:1px solid var(--blue);border-radius:5px;background:var(--blue);color:#0c1524;font-weight:600;font-size:13px;text-decoration:none;text-align:center}.button:hover:not(:disabled){filter:brightness(1.08)}.button.secondary{background:transparent;color:var(--text);border-color:#465161}.button.text{color:var(--blue);background:none;border-color:transparent;padding:7px 9px;font-weight:500}.note{margin-top:16px;padding:12px 14px;background:#18202d;border-left:2px solid var(--blue);color:#c2d0e2;font-size:12px;overflow-wrap:anywhere}.note b{color:var(--text)}.subsection{margin-top:16px}.check{display:flex;gap:10px;align-items:flex-start;font-size:13px;cursor:pointer;min-height:44px;padding-block:10px}.check input{width:17px;height:17px;margin:1px 0 0;accent-color:var(--blue);flex:none}.check small{display:block;margin-top:3px}.guide{font-size:12px;color:var(--muted);padding-left:21px;margin:12px 0}.guide li+li{margin-top:8px}.guide b{color:var(--text)}.guide code{font-size:12px;overflow-wrap:anywhere}.review{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;margin:0}.review div{padding:12px 0;border-bottom:1px solid var(--line);min-width:0}.review dt{font-size:12px;color:var(--muted);margin-bottom:4px}.review dd{margin:0;overflow-wrap:anywhere;font-weight:500}.review .full{grid-column:1/-1}.settings{margin-top:20px;border:1px solid var(--line);border-radius:6px}.settings>summary{padding:13px 14px;font-weight:550;cursor:pointer;min-height:46px}.settings-body{padding:4px 14px 16px}.settings-body>.help{margin-bottom:16px}.nested{margin-top:18px;border-top:1px solid var(--line)}.nested summary{padding:14px 0;cursor:pointer}.error-box{padding:12px 14px;margin-top:16px;border:1px solid var(--blue);border-radius:5px;color:var(--text);font-size:13px;overflow-wrap:anywhere}.nav-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}.nav-right{display:flex;gap:8px}.counter{color:var(--muted);font-size:12px}.system{font-size:12px;color:var(--muted);margin-top:20px}.system summary{cursor:pointer;min-height:44px;display:list-item;padding-block:12px}.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:8px}.facts div{min-width:0}.facts dt{font-size:11px}.facts dd{margin:4px 0 0;color:var(--text);overflow-wrap:anywhere}.footer{border-top:1px solid var(--line);margin-top:16px;padding-top:16px;color:var(--muted);font-size:12px}.status-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}.status-head h2{font-size:18px}.status-head span{color:var(--blue);font-size:13px;white-space:nowrap}progress{display:block;width:100%;height:8px;appearance:none;border:0;border-radius:10px;background:var(--line);overflow:hidden}progress::-webkit-progress-bar{background:var(--line)}progress::-webkit-progress-value{background:var(--blue)}progress::-moz-progress-bar{background:var(--blue)}.status-copy{margin-top:16px;color:var(--muted);overflow-wrap:anywhere}.status-copy b{color:var(--text)}.status-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}.technical{margin-top:18px;border-top:1px solid var(--line);font-size:12px}.technical summary{padding:14px 0;cursor:pointer;min-height:44px;color:var(--muted)}pre{margin:0;padding:12px;max-height:280px;overflow:auto;background:#0b0d11;color:#bdc7d6;font:11px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:580px){.topbar-inner{padding:13px 16px}.shell{padding:22px 16px}.intro{margin-bottom:14px}h1{font-size:22px}.card{padding:18px 16px}.grid,.review{grid-template-columns:1fr}.choices{grid-template-columns:1fr;gap:8px}.choice{padding:11px 12px}.choice small{grid-column:2}.steps{gap:8px;margin-bottom:16px}.step-link{flex-direction:column;align-items:flex-start;gap:6px;font-size:11px}.facts{grid-template-columns:repeat(2,minmax(0,1fr))}.nav-actions{align-items:flex-end;flex-wrap:wrap}.counter{width:100%}.nav-right{margin-left:auto}.button{padding-inline:12px}.status-head{align-items:flex-start}.status-actions{flex-direction:column}.review .full,.full{grid-column:1/-1}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
-<header class="topbar"><div class="topbar-inner"><div class="brand"><div class="mark">WL</div><div><b>WL Traders</b><small>Установка на сервер</small></div></div><div class="session"><i></i><span>Одноразовая ссылка</span></div></div></header>
-<div class="shell">
-<aside class="rail"><div class="eyebrow">Настройка установки</div><h1>Шаг за шагом.</h1><p>На каждом экране только одна группа настроек. Рекомендуемые значения уже выбраны.</p><ol class="steps">
-<li><button class="step-link current available" type="button" data-goto="0"><span>01</span>Адрес</button></li>
-<li><button class="step-link" type="button" data-goto="1"><span>02</span>Приложение</button></li>
-<li><button class="step-link" type="button" data-goto="2"><span>03</span>База</button></li>
-<li><button class="step-link" type="button" data-goto="3"><span>04</span>Подключения</button></li>
-<li><button class="step-link" type="button" data-goto="4"><span>05</span>Защита</button></li>
-<li><button class="step-link" type="button" data-goto="5"><span>06</span>Проверка</button></li>
-</ol><div class="notice"><b>Важно</b>Панель временно работает без HTTPS. Никому не отправляйте эту ссылку.</div></aside>
-<main class="main"><header class="intro"><div class="intro-row"><div><span class="eyebrow" id="step-kicker">Шаг 1 из 6 · Адрес</span><h2>Установка WL Traders<br><span>на Ubuntu‑сервер.</span></h2></div><span class="tag">Ubuntu 26.04</span></div><div class="facts"><div class="fact"><b>Система</b><span>__SERVER_OS__</span></div><div class="fact"><b>Процессор</b><span>__SERVER_CPU__ vCPU</span></div><div class="fact"><b>Память</b><span>__SERVER_MEMORY__ ГБ</span></div><div class="fact"><b>Свободно</b><span>__SERVER_DISK_FREE__ ГБ</span></div></div></header>
-<form id="form"><input type="hidden" name="app_url" value="http://__SERVER_IP__">
-<section class="panel" data-step="0"><div class="panel-head"><span class="panel-number">01</span><div><h3>Как будет открываться продукт?</h3><p>Домен удобнее и безопаснее. Если домена пока нет, установите по IP через обычный HTTP.</p></div></div>
-<div class="choices"><label class="choice"><input type="radio" name="site_mode" value="domain" checked><b>Использовать домен</b><p>Установщик проверит DNS и откроет продукт по домену через HTTP.</p><span class="badge">Рекомендуется</span></label><label class="choice"><input type="radio" name="site_mode" value="ip"><b>Использовать IP‑адрес</b><p>Подходит для временного доступа. HTTPS без домена не настраивается.</p><span class="badge">HTTP</span></label></div>
-<div class="domain-box" id="domain-box"><div class="grid"><label class="field full"><span>Домен продукта</span><input name="domain" placeholder="pay.example.com" autocomplete="url" required><small>Без http://, https:// и пути.</small></label></div>
-<div class="choices https-choices"><label class="choice"><input type="radio" name="https_mode" value="none" checked><b>Без Cloudflare</b><p>Сайт откроется по HTTP. Cloudflare можно включить позже.</p><span class="badge">HTTP</span></label><label class="choice"><input type="radio" name="https_mode" value="cloudflare"><b>С Cloudflare</b><p>Домен уже в Cloudflare — сайт сразу откроется по HTTPS.</p><span class="badge">HTTPS</span></label></div>
-<div class="cloudflare-cert" id="cloudflare-cert-box" hidden><div class="grid"><label class="field full"><span>Origin-сертификат Cloudflare</span><textarea name="cloudflare_cert" placeholder="-----BEGIN CERTIFICATE-----" spellcheck="false"></textarea><small>Cloudflare → SSL/TLS → Origin Certificates → Create Certificate. Скопируйте сюда блок Certificate.</small></label><label class="field full"><span>Приватный ключ origin</span><textarea name="cloudflare_key" placeholder="-----BEGIN PRIVATE KEY-----" spellcheck="false"></textarea><small>Скопируйте сюда блок Private Key из того же окна Cloudflare.</small></label></div></div>
-<div class="guide"><div class="guide-head" id="guide-head-none"><div><h4>DNS</h4><p>Создайте A‑запись домена на IP сервера. Установщик проверит её перед изменениями на сервере.</p></div></div><div class="guide-head" id="guide-head-cf" hidden><div><h4>Cloudflare</h4><p>Домен должен быть в Cloudflare с включённым Proxied (оранжевое облако). Сайт откроется по HTTPS сразу.</p></div><span class="recommended">HTTPS сразу</span></div><div class="dns-record">Тип: <strong>A</strong> · Значение: <strong>__SERVER_IP__</strong></div><div class="dns-check" id="dns-check">DNS будет проверен при переходе к следующему шагу.</div><div class="cloudflare-note" id="note-none">Сайт откроется по <b>HTTP</b>. Чтобы получить SSL и защитить сервер, подключите <b>Cloudflare</b>: он выдаст HTTPS и скроет IP сервера за своим прокси.</div><div class="cloudflare-note" id="note-cf" hidden>В Cloudflare оставьте Proxied включённым, выберите <b>SSL/TLS → Full (strict)</b> и <b>Always Use HTTPS</b>. Сертификат и ключ origin вставьте выше — установщик настроит сайт по HTTPS.</div></div></div>
-<div class="ip-box" id="ip-box" hidden>Продукт откроется по адресу <strong>http://__SERVER_IP__</strong>. Позже домен и HTTPS потребуется настроить отдельно.</div></section>
-<section class="panel" data-step="1" hidden><div class="panel-head"><span class="panel-number">02</span><div><h3>Приложение и вход</h3><p>Название, язык и пароль владельца. Остальные значения подходят для обычной установки.</p></div></div><div class="grid">
-<label class="field"><span>Название</span><input name="app_name" value="WL Traders" required maxlength="80"></label><label class="field"><span>Папка на сервере</span><input class="secret" name="install_path" value="/var/www/wl-traders" required><small>Куда будут скопированы файлы.</small></label>
-<label class="field"><span>Часовой пояс</span><select name="timezone"><option>Europe/Moscow</option><option>UTC</option><option>Asia/Almaty</option><option>Asia/Dubai</option></select></label><label class="field"><span>Язык интерфейса</span><select name="locale"><option value="ru">Русский</option><option value="en">English</option></select></label>
-<label class="field"><span>Срок входа, минут</span><input name="session_lifetime" type="number" value="10080" min="60" max="43200"><small>10080 минут — 7 дней.</small></label><label class="field"><span>Максимальный файл, МБ</span><input name="upload_limit_mb" type="number" value="64" min="2" max="512"><small>Для чеков, выписок и других загрузок.</small></label>
-<label class="field"><span>Пароль администратора</span><span class="control"><input class="secret has-generator" name="admin_password" type="password" minlength="8" required autocomplete="new-password"><button class="generate" type="button">Создать</button><button class="reveal" type="button">Показать</button></span><small>Минимум 8 символов. Логин: admin</small></label><label class="field"><span>Повторите пароль</span><span class="control"><input class="secret" name="admin_password_confirmation" type="password" minlength="8" required autocomplete="new-password"><button class="reveal" type="button">Показать</button></span></label>
-</div></section>
-<section class="panel" data-step="2" hidden><div class="panel-head"><span class="panel-number">03</span><div><h3>База данных</h3><p>Здесь хранятся пользователи, сделки и настройки. Обычно менять заполненные названия не нужно.</p></div></div><div class="grid"><label class="field"><span>Название базы</span><input class="secret" name="db_name" value="wl_traders" pattern="[A-Za-z0-9_]+" required></label><label class="field"><span>Пользователь базы</span><input class="secret" name="db_user" value="wl_traders" pattern="[A-Za-z0-9_]+" required></label><label class="field full"><span class="label-row"><span>Пароль базы данных</span><span class="optional">Можно не заполнять</span></span><span class="control"><input class="secret" name="db_password" type="password" minlength="16" autocomplete="new-password"><button class="reveal" type="button">Показать</button></span><small>Если оставить пустым, установщик создаст и сохранит надёжный пароль сам.</small></label></div></section>
-<section class="panel" data-step="3" hidden><div class="panel-head"><span class="panel-number">04</span><div><h3>Дополнительные подключения</h3><p>Весь шаг можно пропустить. Пустые поля не мешают основной работе продукта.</p></div></div><div class="integrations">
-<article class="integration"><div class="integration-head"><div><h4>Telegram</h4><p>Для уведомлений и функций бота.</p></div><span class="badge">Необязательно</span></div><label class="field"><span>Имя бота</span><input name="telegram_bot_name" autocomplete="off"></label><label class="field"><span>Токен бота</span><input class="secret" name="telegram_bot_token" type="password" autocomplete="new-password"></label><label class="field"><span>Секрет webhook</span><input class="secret" name="telegram_webhook_token" type="password" autocomplete="new-password"></label></article>
-<article class="integration"><div class="integration-head"><div><h4>TronGrid</h4><p>Для полноценной работы счетов USDT TRC20.</p></div><span class="badge">Необязательно</span></div><label class="field"><span>API‑ключ</span><input class="secret" name="trongrid_api_key" type="password" autocomplete="new-password"></label></article>
-<article class="integration full"><div class="integration-head"><div><h4>Определение страны по IP</h4><p>Для географических ограничений и проверок.</p></div><span class="badge">Необязательно</span></div><label class="field"><span>API‑ключ IP Geolocation</span><input class="secret" name="ipgeolocation_api_key" type="password" autocomplete="new-password"></label></article></div><p class="help">Почта и Sentry намеренно не настраиваются установщиком.</p></section>
-<section class="panel" data-step="4" hidden><div class="panel-head"><span class="panel-number">05</span><div><h3>Защита и резервные копии</h3><p>Для рабочего сервера оставьте первые три пункта включёнными. Тестовые данные — только для демо.</p></div></div><div class="checks">
-<label class="check"><input name="create_swap" type="checkbox" checked><span><b>2 ГБ резервной памяти</b><small>Создаётся только если swap ещё нет.</small></span></label><label class="check"><input name="enable_firewall" type="checkbox" checked><span><b>Сетевая защита</b><small>Оставляет SSH, сайт и временно панель установки.</small></span></label><label class="check"><input name="install_backups" type="checkbox" checked><span><b>Ежедневные бэкапы</b><small>База и файлы в /var/backups/wl-traders.</small></span></label><label class="check"><input name="generate_test_data" type="checkbox"><span><b>Тестовые данные</b><small>Не включайте на реальном production.</small></span></label></div><label class="field retention"><span>Хранить бэкапы, дней</span><input name="backup_retention_days" type="number" value="7" min="1" max="90"></label></section>
-<section class="panel" data-step="5" hidden><div class="panel-head"><span class="panel-number">06</span><div><h3>Проверьте настройки</h3><p>После нажатия установщик ещё раз проверит сервер и DNS. Существующие данные он не удаляет.</p></div></div><div class="review"><div class="review-item"><b>Адрес</b><span id="review-url">—</span></div><div class="review-item"><b>HTTPS</b><span id="review-https">—</span></div><div class="review-item"><b>Защита</b><span id="review-security">—</span></div><div class="review-item"><b>Подключения</b><span id="review-integrations">—</span></div></div><div class="final-note"><b>Перед началом:</b> убедитесь, что сервер чистый и у вас есть доступ по SSH. При ошибке незавершённая попытка будет отменена.</div></section>
-<div class="nav-actions"><span class="step-counter" id="counter">Шаг 1 из 6</span><div class="nav-actions-right"><button class="button secondary" id="back" type="button" disabled>← Назад</button><button class="button" id="next" type="button">Далее →</button><button class="button" id="install" type="submit" hidden>Начать установку →</button></div></div></form>
-<section id="status" class="status" aria-live="polite"><div class="status-head"><div class="pill"><span class="dot"></span><b id="message">Подготовка…</b></div><span id="status-label" class="status-label">Ход установки</span></div><div class="bar"><i id="progress-bar"></i></div><div id="status-details" class="status-details">Сервер проверяется перед любыми изменениями.</div><div class="result-actions"><a id="open-app" class="button" href="#">Открыть WL Traders →</a></div><div class="cloudflare-finish" id="cloudflare-finish"><div id="cf-finish-steps"><h4>SSL через Cloudflare (по желанию)</h4><p>Сайт работает по HTTP. Чтобы получить SSL и защитить сервер, добавьте домен в Cloudflare:</p><ol><li>Включите Proxied (оранжевое облако) у A‑записи домена.</li><li>В SSL/TLS выберите Flexible (origin без сертификата).</li><li>В Edge Certificates включите Always Use HTTPS.</li></ol></div><div id="cf-finish-active"><h4>HTTPS включён через Cloudflare</h4><p>Сайт работает по HTTPS. В Cloudflare оставьте Proxied включённым и выберите SSL/TLS → Full (strict).</p></div></div><details id="technical" class="technical"><summary>Технический журнал</summary><pre id="logs"></pre></details></section>
-</main></div><footer class="footer"><span>WL Traders · Установка на сервер</span><span>Одноразовая панель · Данные остаются на сервере</span></footer>
-<script>
-const token=new URLSearchParams(location.search).get('token');
-const form=document.getElementById('form');
-const panels=[...document.querySelectorAll('[data-step]')];
-const links=[...document.querySelectorAll('.step-link')];
-const back=document.getElementById('back');
-const next=document.getElementById('next');
-const installButton=document.getElementById('install');
-const counter=document.getElementById('counter');
-const kicker=document.getElementById('step-kicker');
-const statusBox=document.getElementById('status');
-const logs=document.getElementById('logs');
-const message=document.getElementById('message');
-const progressBar=document.getElementById('progress-bar');
-const statusLabel=document.getElementById('status-label');
-const statusDetails=document.getElementById('status-details');
-const technical=document.getElementById('technical');
-const openApp=document.getElementById('open-app');
-const labels=['Адрес','Приложение','База данных','Подключения','Защита','Проверка'];
-let current=0,maxVisited=0,timer=null;
-function selectedMode(){return form.elements.site_mode.value}
-function selectedHttps(){return form.elements.https_mode.value}
-function syncAddress(){const domainMode=selectedMode()==='domain';const cf=selectedHttps()==='cloudflare';document.getElementById('domain-box').hidden=!domainMode;document.getElementById('ip-box').hidden=domainMode;form.elements.domain.required=domainMode;form.elements.app_url.value=domainMode?(cf?'https://':'http://')+form.elements.domain.value.trim().toLowerCase():'http://__SERVER_IP__';document.getElementById('guide-head-none').hidden=cf;document.getElementById('guide-head-cf').hidden=!cf;document.getElementById('note-none').hidden=cf;document.getElementById('note-cf').hidden=!cf;document.getElementById('cloudflare-cert-box').hidden=!cf;form.elements.cloudflare_cert.required=cf;form.elements.cloudflare_key.required=cf;updateReview()}
-function validatePanel(index){form.elements.admin_password_confirmation.setCustomValidity('');const controls=[...panels[index].querySelectorAll('input,select,textarea')].filter(control=>!control.disabled&&!control.closest('[hidden]'));for(const control of controls){if(!control.checkValidity()){control.reportValidity();return false}}if(index===1&&form.elements.admin_password.value!==form.elements.admin_password_confirmation.value){form.elements.admin_password_confirmation.setCustomValidity('Пароли не совпадают');form.elements.admin_password_confirmation.reportValidity();return false}return true}
-function showStep(index){current=index;maxVisited=Math.max(maxVisited,index);panels.forEach((panel,i)=>panel.hidden=i!==index);links.forEach((link,i)=>{link.classList.toggle('current',i===index);link.classList.toggle('done',i<index);link.classList.toggle('available',i<=maxVisited);link.disabled=i>maxVisited});back.disabled=index===0;next.hidden=index===panels.length-1;installButton.hidden=index!==panels.length-1;counter.textContent=`Шаг ${index+1} из ${panels.length}`;kicker.textContent=`Шаг ${index+1} из ${panels.length} · ${labels[index]}`;if(index===panels.length-1)updateReview();scrollTo({top:0,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}
-next.addEventListener('click',async()=>{if(!validatePanel(current))return;if(current===0&&selectedMode()==='domain'){const dnsStatus=document.getElementById('dns-check');next.disabled=true;next.textContent='Проверяю DNS…';dnsStatus.className='dns-check';dnsStatus.textContent='Проверяю запись домена…';const cf=selectedHttps()==='cloudflare';try{const response=await fetch('/domain-check?token='+encodeURIComponent(token),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:form.elements.domain.value,https_mode:selectedHttps()})});const result=await response.json();if(!response.ok)throw new Error(result.error);dnsStatus.className='dns-check ok';dnsStatus.textContent=cf?`Готово: ${result.domain} за Cloudflare, сайт откроется по HTTPS.`:`Готово: ${result.domain} ведёт на ${result.server_ip}.`}catch(error){dnsStatus.className='dns-check error';dnsStatus.textContent=error.message;return}finally{next.disabled=false;next.textContent='Далее →'}}showStep(current+1)});back.addEventListener('click',()=>showStep(current-1));links.forEach(link=>link.addEventListener('click',()=>{const index=Number(link.dataset.goto);if(index<=maxVisited)showStep(index)}));
-function payload(){const data=new FormData(form),result={};for(const [key,value] of data.entries())result[key]=value;for(const key of ['create_swap','enable_firewall','install_backups','generate_test_data'])result[key]=form.elements[key].checked;return result}
-function updateReview(){const domainMode=selectedMode()==='domain';const cf=domainMode&&selectedHttps()==='cloudflare';const domain=form.elements.domain.value.trim().toLowerCase();form.elements.app_url.value=domainMode?(cf?'https://':'http://')+domain:'http://__SERVER_IP__';document.getElementById('review-url').textContent=form.elements.app_url.value;document.getElementById('review-https').textContent=cf?'HTTPS через Cloudflare':(domainMode?'HTTP · SSL можно включить позже':'Нет · доступ по IP через HTTP');const enabled=['enable_firewall','install_backups','create_swap'].filter(key=>form.elements[key].checked).length;document.getElementById('review-security').textContent=`${enabled} из 3 включено`;const integrations=['telegram_bot_token','trongrid_api_key','ipgeolocation_api_key'].filter(key=>form.elements[key].value.trim()).length;document.getElementById('review-integrations').textContent=integrations?`${integrations} подключено`:'Не выбраны'}
-form.addEventListener('input',event=>{if(event.target.name==='site_mode'||event.target.name==='domain'||event.target.name==='https_mode')syncAddress();else updateReview()});
-form.addEventListener('keydown',event=>{if(event.key!=='Enter')return;const t=event.target;if(t.tagName==='TEXTAREA')return;if(t.tagName==='INPUT'&&(t.type==='radio'||t.type==='checkbox'))return;if(current<panels.length-1){event.preventDefault();next.click()}});
-document.querySelectorAll('.reveal').forEach(button=>button.addEventListener('click',()=>{const input=button.parentElement.querySelector('input');const show=input.type==='password';input.type=show?'text':'password';button.textContent=show?'Скрыть':'Показать'}));
-document.querySelector('.generate').addEventListener('click',()=>{const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%';const values=crypto.getRandomValues(new Uint32Array(24));const password=[...values].map(value=>chars[value%chars.length]).join('');form.elements.admin_password.value=password;form.elements.admin_password_confirmation.value=password;form.elements.admin_password_confirmation.setCustomValidity('')});
-async function poll(){try{const response=await fetch('/status?token='+encodeURIComponent(token));const state=await response.json();message.textContent=state.message;logs.textContent=state.logs.join('\n');logs.scrollTop=logs.scrollHeight;statusBox.className='status active '+state.phase+(state.site_mode==='domain'?' domain '+(state.https_mode==='cloudflare'?'https-cloudflare':'https-none'):'');progressBar.style.width=(state.progress||0)+'%';statusLabel.textContent=state.step_index?`${state.step_index} из ${state.step_total}`:'Готово';statusDetails.textContent=state.error||state.step||'Основные проверки пройдены.';if(state.phase==='done'){clearInterval(timer);openApp.href=state.app_url}if(state.phase==='failed'){clearInterval(timer);technical.open=true}}catch(error){message.textContent='Панель завершает работу…'}}
-form.addEventListener('submit',async event=>{event.preventDefault();if(!validatePanel(current)||!confirm('Начать установку WL Traders на этом сервере?'))return;installButton.disabled=true;const response=await fetch('/install?token='+encodeURIComponent(token),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload())});if(!response.ok){alert((await response.json()).error);installButton.disabled=false;return}form.hidden=true;statusBox.classList.add('active');timer=setInterval(poll,1000);poll()});
-syncAddress();showStep(0);
+<header class="topbar"><div class="topbar-inner"><div class="brand"><span class="mark" aria-hidden="true">WL</span>WL Traders</div><span class="badge">Установка · Docker</span></div></header>
+<main class="shell">
+<header class="intro"><div><h1>Установка WL Traders</h1><p>Выберите адрес и задайте пароль. Остальное уже настроено.</p></div></header>
+<ol class="steps" aria-label="Шаги установки" id="steps">
+<li><button class="step-link" type="button" data-goto="0" aria-current="step"><span aria-hidden="true">1</span>Где открыть</button></li>
+<li><button class="step-link" type="button" data-goto="1" disabled><span aria-hidden="true">2</span>Администратор</button></li>
+<li><button class="step-link" type="button" data-goto="2" disabled><span aria-hidden="true">3</span>Проверка</button></li>
+</ol>
+<noscript><p class="error-box">Для установки включите JavaScript в браузере и обновите страницу.</p></noscript>
+<form id="form" class="card" novalidate hidden data-default-mode="__DEFAULT_MODE__">
+<input type="hidden" name="app_url"><input type="hidden" name="db_name" value="wl_traders"><input type="hidden" name="db_user" value="wl_traders">
+<section data-step="0" aria-labelledby="heading-address">
+<div class="panel-head"><h2 id="heading-address" tabindex="-1">Где открыть приложение?</h2><p>На этом компьютере — для знакомства. На сервере — для доступа из сети.</p></div>
+<fieldset class="choices"><legend class="sr-only">Способ доступа</legend>
+<label class="choice"><input type="radio" name="site_mode" value="local" checked><b>На этом компьютере</b><small>Только локальный доступ</small></label>
+<label class="choice"><input type="radio" name="site_mode" value="ip"><b>По IP-адресу</b><small>Без домена, по сети</small></label>
+<label class="choice"><input type="radio" name="site_mode" value="domain"><b>По домену</b><small>Сайт с вашим адресом</small></label>
+</fieldset>
+<div class="grid" id="direct-fields">
+<div class="field" id="ip-box" hidden><label for="ip-address">IP-адрес компьютера или сервера</label><input id="ip-address" name="ip_address" value="__SERVER_IP__" placeholder="192.168.1.10" autocomplete="off" spellcheck="false" aria-describedby="ip-help"><small id="ip-help">Адрес без http:// и номера порта.</small></div>
+<div class="field"><label for="http-port">Порт приложения</label><input id="http-port" name="http_port" type="number" value="8080" min="1" max="65535" required aria-describedby="port-help"><small id="port-help">Оставьте как есть. Если порт занят, выберите другой.</small></div>
+</div>
+<div id="domain-box" hidden>
+<div class="field"><label for="domain">Домен</label><input id="domain" name="domain" placeholder="pay.example.com" autocomplete="off" spellcheck="false" aria-describedby="domain-help"><small id="domain-help">Без https:// и пути. Домен нужно зарегистрировать заранее.</small></div>
+<label class="check"><input type="checkbox" id="use-cloudflare"><span>Подключить HTTPS через Cloudflare<small>Если ваш домен уже добавлен в Cloudflare.</small></span></label>
+<input type="hidden" name="https_mode" value="none">
+<div class="note" id="plain-dns">Создайте у вашего DNS-провайдера A-запись домена на <b>__SERVER_IP__</b>. Порт 80 сервера должен быть доступен из сети.</div>
+<div id="cloudflare-box" hidden>
+<ol class="guide"><li>В Cloudflare → <b>DNS</b> создайте A-запись на <code>__SERVER_IP__</code> и включите <b>Proxied</b> (значок облака).</li><li>В <b>SSL/TLS → Origin Server → Create Certificate</b> создайте сертификат для указанного домена. Вставьте сертификат и приватный ключ ниже.</li><li>В <b>SSL/TLS</b> выберите <b>Full (strict)</b>. Включите <b>Always Use HTTPS</b>. Разрешите доступ к портам 80 и 443 сервера.</li></ol>
+<div class="grid"><div class="field full"><label for="cloudflare-cert">Сертификат Cloudflare Origin CA</label><textarea id="cloudflare-cert" name="cloudflare_cert" placeholder="-----BEGIN CERTIFICATE-----" autocomplete="off" spellcheck="false"></textarea></div><div class="field full"><label for="cloudflare-key">Приватный ключ сертификата</label><textarea id="cloudflare-key" name="cloudflare_key" placeholder="-----BEGIN PRIVATE KEY-----" autocomplete="off" spellcheck="false" aria-describedby="key-help"></textarea><small id="key-help">Не передавайте ключ другим людям. Он нужен для HTTPS между Cloudflare и сервером.</small></div></div>
+<p class="help subsection">Cloudflare не закрывает прямой доступ к серверу автоматически. Ограничение доступа к серверу настраивается отдельно.</p>
+</div>
+<div class="inline-actions"><button class="button secondary" type="button" id="check-domain">Проверить домен</button></div><p class="help subsection" id="dns-check" role="status">Проверим настройки домена перед следующим шагом.</p>
+</div>
+<p class="note" id="address-note"></p>
+</section>
+<section data-step="1" aria-labelledby="heading-admin" hidden>
+<div class="panel-head"><h2 id="heading-admin" tabindex="-1">Доступ администратора</h2><p>Логин: <b>admin</b>. Сохраните пароль в менеджере паролей.</p></div>
+<div class="grid"><div class="field"><label for="admin-password">Пароль</label><input id="admin-password" name="admin_password" type="password" minlength="8" required autocomplete="new-password" aria-describedby="password-help"><small id="password-help">Не менее 8 символов. Лучше — длинный и уникальный.</small></div><div class="field"><label for="admin-confirmation">Повторите пароль</label><input id="admin-confirmation" name="admin_password_confirmation" type="password" minlength="8" required autocomplete="new-password"></div></div>
+<div class="inline-actions"><button class="button secondary" id="generate-password" type="button">Создать надёжный пароль</button><button class="button text" id="show-password" type="button" aria-pressed="false">Показать пароль</button></div><p id="password-feedback" class="help subsection" role="status"></p>
+<p class="note">Установщик не сохраняет пароль в хранилище браузера. Не отправляйте никому ссылку на эту панель: она даёт доступ к установке.</p>
+</section>
+<section data-step="2" aria-labelledby="heading-review" hidden>
+<div class="panel-head"><h2 id="heading-review" tabindex="-1">Всё готово к установке</h2><p>Проверьте адрес. Дополнительные настройки можно не менять.</p></div>
+<dl class="review"><div class="full"><dt>Адрес приложения</dt><dd id="review-url">—</dd></div><div><dt>Вход</dt><dd>admin · ваш пароль</dd></div><div><dt>Соединение</dt><dd id="review-https">—</dd></div><div><dt>Резервные копии</dt><dd id="review-backups">Ежедневно · хранить 7 дней</dd></div><div><dt>Подключения</dt><dd id="review-integrations">Не настроены</dd></div></dl>
+<p class="note" id="review-warning"></p>
+<details class="settings" id="optional-settings"><summary>Дополнительные настройки</summary><div class="settings-body"><p class="help">Значения подходят для первого запуска. Служебные настройки базы данных создаются автоматически.</p>
+<div class="grid"><div class="field"><label for="app-name">Название приложения</label><input id="app-name" name="app_name" value="WL Traders" maxlength="80" required></div><div class="field"><label for="install-path">Папка установки</label><input id="install-path" name="install_path" value="__INSTALL_PATH__" required spellcheck="false"><small>Путь на компьютере, где запущен Docker.</small></div><div class="field"><label for="timezone">Часовой пояс</label><select id="timezone" name="timezone"><option>Europe/Moscow</option><option>UTC</option><option>Asia/Almaty</option><option>Asia/Dubai</option></select></div><div class="field"><label for="locale">Язык приложения</label><select id="locale" name="locale"><option value="ru">Русский</option><option value="en">English</option></select></div><div class="field"><label for="session-lifetime">Срок входа, минут</label><input id="session-lifetime" name="session_lifetime" type="number" min="60" max="43200" value="10080" required><small>По умолчанию — 7 дней.</small></div><div class="field"><label for="upload-limit">Максимальный файл, МБ</label><input id="upload-limit" name="upload_limit_mb" type="number" min="2" max="512" value="64" required></div></div>
+<label class="check"><input name="install_backups" type="checkbox" checked><span>Ежедневные резервные копии<small>Хранятся на этом же компьютере. Для защиты от потери диска нужна отдельная копия.</small></span></label><div class="field"><label for="backup-retention">Хранить копии, дней</label><input id="backup-retention" name="backup_retention_days" type="number" min="1" max="90" value="7" required></div>
+<details class="nested"><summary>Подключения: Telegram, USDT и геолокация</summary><p class="help">Можно оставить пустыми. Нужны для соответствующих функций, а не для установки.</p><div class="grid subsection"><div class="field"><label for="telegram-name">Имя Telegram-бота</label><input id="telegram-name" name="telegram_bot_name" autocomplete="off"></div><div class="field"><label for="telegram-token">Токен Telegram-бота</label><input id="telegram-token" name="telegram_bot_token" type="password" autocomplete="new-password"></div><div class="field"><label for="telegram-webhook">Секрет webhook Telegram</label><input id="telegram-webhook" name="telegram_webhook_token" type="password" autocomplete="new-password"></div><div class="field"><label for="trongrid-key">API-ключ TronGrid · USDT TRC20</label><input id="trongrid-key" name="trongrid_api_key" type="password" autocomplete="new-password"></div><div class="field full"><label for="geolocation-key">API-ключ IP Geolocation</label><input id="geolocation-key" name="ipgeolocation_api_key" type="password" autocomplete="new-password"></div></div></details>
+</div></details>
+<p class="help subsection">Docker скачает и запустит необходимые компоненты. Первый запуск может занять несколько минут. Не выключайте компьютер и Docker. Существующие данные не удаляются.</p>
+</section>
+<div id="form-error" class="error-box" role="alert" hidden></div>
+<div class="nav-actions"><span class="counter" id="counter">Шаг 1 из 3</span><div class="nav-right"><button class="button secondary" type="button" id="back" disabled>Назад</button><button class="button" type="button" id="next">Далее</button><button class="button" type="submit" id="install" hidden>Начать установку</button></div></div>
+</form>
+<section id="status" class="card" aria-labelledby="message"><div class="status-head"><h2 id="message" tabindex="-1">Проверяем состояние установки…</h2><span id="status-percent"></span></div><progress id="progress-bar" max="100" value="0" aria-label="Ход установки"></progress><p class="status-copy" id="status-details" role="status">Подключаемся к установщику.</p><div id="connection-error" class="error-box" role="alert" hidden></div><div class="status-actions"><button type="button" class="button secondary" id="retry-status" hidden>Проверить связь</button><button type="button" class="button" id="retry-install" hidden>Исправить и повторить</button><a class="button" id="open-app" hidden rel="noreferrer">Открыть приложение</a></div><p class="help subsection" id="result-note" hidden></p><details class="technical"><summary>Подробности установки</summary><pre id="checks"></pre><pre id="logs" aria-label="Журнал установки"></pre></details></section>
+<details class="system"><summary>Компьютер и ресурсы</summary><dl class="facts"><div><dt>Система</dt><dd>__SERVER_OS__</dd></div><div><dt>Процессор</dt><dd>__SERVER_CPU__ ядер</dd></div><div><dt>Память</dt><dd>__SERVER_MEMORY__ ГБ</dd></div><div><dt>Свободно на диске</dt><dd>__SERVER_DISK_FREE__ ГБ</dd></div></dl></details>
+<footer class="footer">Личная ссылка установки. Не публикуйте её. Если панель открыта по HTTP, её данные передаются без шифрования.</footer>
+</main>
+<script id="installer-logic">
+'use strict';
+function addressSettings(values) {
+    const mode = values.site_mode;
+    const port = mode === 'domain' ? 80 : Number(values.http_port);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Укажите порт от 1 до 65535.');
+    let host = 'localhost';
+    let domain = '';
+    const https = mode === 'domain' && values.https_mode === 'cloudflare' ? 'cloudflare' : 'none';
+    if (mode === 'ip') {
+        host = String(values.ip_address || '').trim();
+        const parts = host.split('.');
+        if (!/^(0|[1-9]\d{0,2})(\.(0|[1-9]\d{0,2})){3}$/.test(host) || parts.some(part => Number(part) > 255)) {
+            throw new Error('Укажите IP-адрес, например 192.168.1.10, без http:// и порта.');
+        }
+        if (host === '0.0.0.0') throw new Error('Укажите адрес компьютера, а не 0.0.0.0.');
+    } else if (mode === 'domain') {
+        domain = String(values.domain || '').trim().toLowerCase();
+        if (domain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) {
+            throw new Error('Укажите домен, например pay.example.com, без https:// и пути.');
+        }
+        host = domain;
+    } else if (mode !== 'local') throw new Error('Выберите, где открыть приложение.');
+    const suffix = mode !== 'domain' && port !== 80 ? ':' + port : '';
+    return {site_mode: mode, http_port: port, app_url: (https === 'cloudflare' ? 'https://' : 'http://') + host + suffix, domain, https_mode: https};
+}
+function installationView(state) {
+    if (!state || !['ready', 'starting', 'installing', 'done', 'failed'].includes(state.phase)) {
+        throw new Error('Установщик вернул неизвестное состояние. Проверяем ещё раз.');
+    }
+    const finished = state.phase === 'done';
+    if (finished) {
+        let url;
+        try { url = new URL(state.app_url); } catch { throw new Error('Установка завершена, но адрес приложения не получен. Проверяем ещё раз.'); }
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Получен некорректный адрес приложения.');
+    }
+    return {
+        showForm: state.phase === 'ready',
+        finished,
+        canRetry: state.phase === 'failed',
+        keepPolling: state.phase === 'starting' || state.phase === 'installing',
+        progress: Math.max(0, Math.min(100, Number(state.progress) || 0)),
+    };
+}
+function createStatusPoller({request, onState, onConnectionError, schedule = setTimeout, cancel = clearTimeout}) {
+    let timer = null;
+    let pending = null;
+    async function run() {
+        let again = false;
+        try {
+            const state = await request();
+            const view = installationView(state);
+            onState(state, view);
+            again = view.keepPolling;
+        } catch (error) {
+            onConnectionError(error);
+            again = error.status !== 401 && error.status !== 403;
+        } finally {
+            pending = null;
+            if (again) timer = schedule(refresh, 2500);
+        }
+    }
+    function refresh() {
+        if (timer !== null) { cancel(timer); timer = null; }
+        if (!pending) pending = run();
+        return pending;
+    }
+    return {refresh};
+}
+function enterAction({key, tagName, step, isComposing = false}) {
+    if (key !== 'Enter' || isComposing || tagName !== 'INPUT') return 'native';
+    return step < 2 ? 'next' : 'block';
+}
+function apiPath(path, token) {
+    if (!token) {
+        const error = new Error('Откройте полную личную ссылку из терминала, включая token.');
+        error.status = 403;
+        throw error;
+    }
+    return path + '?token=' + encodeURIComponent(token);
+}
+function createPassword() {
+    return Array.from(crypto.getRandomValues(new Uint8Array(18)), value => value.toString(16).padStart(2, '0')).join('') + 'Aa!';
+}
+function installationPayload(values) {
+    const result = {...values, ...addressSettings(values)};
+    delete result.ip_address;
+    result.install_backups = values.install_backups === true;
+    result.backup_retention_days = Number(values.backup_retention_days || 7);
+    if (result.https_mode !== 'cloudflare') {
+        delete result.cloudflare_cert;
+        delete result.cloudflare_key;
+    }
+    return result;
+}
+</script>
+<script id="installer-ui">
+'use strict';
+const $ = id => document.getElementById(id);
+const form = $('form');
+const field = name => form.elements.namedItem(name);
+const panels = [...document.querySelectorAll('[data-step]')];
+const stepLinks = [...document.querySelectorAll('[data-goto]')];
+const token = new URLSearchParams(location.search).get('token');
+let current = 0;
+let busy = false;
+
+let previousMode = form.dataset.defaultMode === 'ip' ? 'ip' : 'local';
+const ports = {local: '8080', ip: '80'};
+field('site_mode').value = previousMode;
+field('http_port').value = ports[previousMode];
+
+function values() {
+    return {...Object.fromEntries(new FormData(form)), install_backups: field('install_backups').checked};
+}
+function formError(text) {
+    $('form-error').textContent = text;
+    $('form-error').hidden = !text;
+}
+function clearFieldError(control) {
+    control.removeAttribute('aria-invalid');
+    const error = $(control.id + '-error');
+    if (error) error.hidden = true;
+}
+function fieldError(control, text) {
+    let error = $(control.id + '-error');
+    if (!error) {
+        error = document.createElement('span');
+        error.id = control.id + '-error';
+        error.className = 'field-error';
+        control.closest('.field').append(error);
+        control.setAttribute('aria-describedby', [control.getAttribute('aria-describedby'), error.id].filter(Boolean).join(' '));
+    }
+    error.textContent = text;
+    error.hidden = false;
+    control.setAttribute('aria-invalid', 'true');
+    for (let parent = control.parentElement; parent; parent = parent.parentElement) {
+        if (parent.tagName === 'DETAILS') parent.open = true;
+    }
+    control.focus();
+}
+function validatePanel(index) {
+    for (const control of panels[index].querySelectorAll('input, select, textarea')) {
+        if (control.disabled || control.type === 'hidden') continue;
+        clearFieldError(control);
+        if (!control.checkValidity()) {
+            showStep(index, false);
+            const text = control.validity.valueMissing ? 'Заполните это поле.'
+                : control.validity.tooShort ? 'Введите не менее ' + control.minLength + ' символов.'
+                : control.type === 'number' ? 'Введите целое число от ' + control.min + ' до ' + control.max + '.'
+                : 'Проверьте значение поля.';
+            fieldError(control, text);
+            return false;
+        }
+    }
+    if (index === 0) {
+        try { addressSettings(values()); }
+        catch (error) {
+            showStep(0, false);
+            fieldError(field(field('site_mode').value === 'domain' ? 'domain' : 'ip_address'), error.message);
+            return false;
+        }
+    }
+    if (index === 1) {
+        if (field('admin_password').value.length < 8) {
+            showStep(1, false);
+            fieldError(field('admin_password'), 'Введите не менее 8 символов.');
+            return false;
+        }
+        if (field('admin_password').value !== field('admin_password_confirmation').value) {
+            showStep(1, false);
+            fieldError(field('admin_password_confirmation'), 'Пароли не совпадают. Повторите первый пароль.');
+            return false;
+        }
+    }
+    return true;
+}
+function setBusy(value) {
+    busy = value;
+    $('next').disabled = value;
+    $('back').disabled = value || current === 0;
+    $('install').disabled = value;
+    $('check-domain').disabled = value;
+    stepLinks.forEach((link, index) => { link.disabled = value || index > current; });
+}
+function showStep(index, focus = true) {
+    current = index;
+    panels.forEach((panel, i) => { panel.hidden = i !== index; });
+    stepLinks.forEach((link, i) => {
+        if (i === index) link.setAttribute('aria-current', 'step');
+        else link.removeAttribute('aria-current');
+    });
+    $('counter').textContent = 'Шаг ' + (index + 1) + ' из 3';
+    $('next').hidden = index === 2;
+    $('install').hidden = index !== 2;
+    setBusy(busy);
+    updateReview();
+    if (focus) panels[index].querySelector('h2').focus();
+}
+function updateReview() {
+    let address;
+    try { address = addressSettings(values()); } catch { address = null; }
+    field('app_url').value = address ? address.app_url : '';
+    $('review-url').textContent = address ? address.app_url : 'Проверьте адрес на первом шаге';
+    const mode = field('site_mode').value;
+    const cf = mode === 'domain' && field('https_mode').value === 'cloudflare';
+    $('review-https').textContent = cf ? 'HTTPS · Cloudflare Full (strict)' : 'HTTP · без шифрования';
+    $('review-backups').textContent = field('install_backups').checked
+        ? 'Ежедневно · хранить ' + field('backup_retention_days').value + ' дней' : 'Выключены';
+    const names = [['telegram_bot_token', 'Telegram'], ['trongrid_api_key', 'TronGrid'], ['ipgeolocation_api_key', 'Геолокация']];
+    $('review-integrations').textContent = names.filter(([key]) => field(key).value.trim()).map(([, label]) => label).join(', ') || 'Не настроены';
+    const warning = cf
+        ? 'HTTPS требует правильной настройки Cloudflare и действующего сертификата. До реальных платежей отдельно проверьте подключения и безопасность приложения.'
+        : mode === 'local'
+            ? 'Доступ только на компьютере с Docker, через localhost. Это режим для знакомства, не для реальных платежей.'
+            : 'HTTP не шифрует пароли и данные. Используйте этот режим только для проверки, не для реальных платежей. Для работы нужен HTTPS.';
+    $('review-warning').textContent = warning;
+    $('address-note').textContent = (address ? 'Адрес: ' + address.app_url + '. ' : '') + warning;
+}
+function syncAddress() {
+    const mode = field('site_mode').value;
+    if (previousMode !== mode) {
+        if (previousMode !== 'domain') ports[previousMode] = field('http_port').value;
+        if (mode !== 'domain') field('http_port').value = ports[mode];
+        previousMode = mode;
+    }
+    const domain = mode === 'domain';
+    const cf = domain && $('use-cloudflare').checked;
+    $('direct-fields').hidden = domain;
+    $('ip-box').hidden = mode !== 'ip';
+    $('domain-box').hidden = !domain;
+    $('cloudflare-box').hidden = !cf;
+    $('plain-dns').hidden = cf;
+    field('http_port').disabled = domain;
+    field('ip_address').disabled = mode !== 'ip';
+    field('ip_address').required = mode === 'ip';
+    field('domain').disabled = !domain;
+    field('domain').required = domain;
+    field('https_mode').value = cf ? 'cloudflare' : 'none';
+    for (const name of ['cloudflare_cert', 'cloudflare_key']) {
+        field(name).disabled = !cf;
+        field(name).required = cf;
+    }
+    updateReview();
+}
+async function api(path, body) {
+    const url = apiPath(path, token);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try {
+        const response = await fetch(url, {
+            method: body === undefined ? 'GET' : 'POST',
+            headers: {'Accept': 'application/json', ...(body === undefined ? {} : {'Content-Type': 'application/json'})},
+            ...(body === undefined ? {} : {body: JSON.stringify(body)}),
+            cache: 'no-store', signal: controller.signal,
+        });
+        let result;
+        try { result = await response.json(); } catch { result = null; }
+        if (!response.ok) {
+            const error = new Error(response.status === 401 || response.status === 403
+                ? 'Ссылка установки недействительна. Откройте актуальную личную ссылку из терминала.'
+                : result?.error || 'Установщик отклонил запрос (HTTP ' + response.status + ').');
+            error.status = response.status;
+            throw error;
+        }
+        if (!result) throw new Error('Не удалось прочитать ответ установщика.');
+        return result;
+    } finally { clearTimeout(timeout); }
+}
+async function checkDomain() {
+    if (!validatePanel(0)) return false;
+    const snapshot = JSON.stringify(addressSettings(values()));
+    setBusy(true);
+    $('dns-check').textContent = 'Проверяем домен…';
+    try {
+        await api('/domain-check', {domain: field('domain').value.trim(), https_mode: field('https_mode').value});
+        if (JSON.stringify(addressSettings(values())) !== snapshot) {
+            $('dns-check').textContent = 'Адрес изменился во время проверки. Проверьте его ещё раз.';
+            return false;
+        }
+        $('dns-check').textContent = 'Проверка домена пройдена. Доступ к самому сайту проверим после установки.';
+        return true;
+    } catch (error) {
+        $('dns-check').textContent = error.status ? error.message : 'Не удалось проверить домен. Проверьте связь и повторите попытку.';
+        return false;
+    } finally { setBusy(false); }
+}
+async function advance() {
+    if (busy || current >= 2 || !validatePanel(current)) return;
+    formError('');
+    if (current === 0 && field('site_mode').value === 'domain' && !await checkDomain()) return;
+    showStep(current + 1);
+}
+function showStatus() {
+    form.hidden = true;
+    $('steps').hidden = true;
+    $('status').hidden = false;
+}
+function renderState(state, view) {
+
+    $('connection-error').hidden = true;
+    $('retry-status').hidden = true;
+    setBusy(false);
+    if (view.showForm) {
+        form.hidden = false;
+        $('steps').hidden = false;
+        $('status').hidden = true;
+        return;
+    }
+    showStatus();
+    $('message').textContent = view.finished ? 'Установка завершена' : view.canRetry ? 'Установка остановлена' : 'Устанавливаем приложение';
+    $('status-percent').textContent = view.finished ? 'Готово' : view.canRetry ? '' : view.progress + '%';
+    $('progress-bar').value = view.progress;
+    $('status-details').textContent = state.error || state.message || state.step || (view.canRetry ? 'Проверьте подробности и повторите попытку.' : 'Ожидаем следующего этапа.');
+    $('logs').textContent = Array.isArray(state.logs) ? state.logs.join('\n') : '';
+    $('checks').textContent = state.checks ? JSON.stringify(state.checks, null, 2) : '';
+    $('retry-install').hidden = !view.canRetry;
+    $('open-app').hidden = !view.finished;
+    $('result-note').hidden = !view.finished && !view.canRetry;
+    if (view.finished) {
+        $('open-app').href = state.app_url;
+        $('result-note').textContent = 'Адрес: ' + state.app_url + '. Логин: admin. Используйте заданный пароль. ' + (state.app_url.startsWith('http:') ? 'HTTP — только для проверки, не для реальных платежей.' : 'Перед реальными платежами проверьте подключения и безопасность.');
+    }
+    if (view.canRetry) {
+        $('result-note').textContent = 'Существующие данные не удаляются. Для повтора используйте прежнюю папку установки и пароль администратора. После обновления страницы пароль нужно ввести снова.';
+    }
+}
+function connectionLost(error) {
+    showStatus();
+    $('connection-error').hidden = false;
+    $('connection-error').textContent = error.status === 401 || error.status === 403 ? error.message
+        : 'Не удалось получить состояние установки. Результат пока неизвестен; установка могла продолжиться. Проверьте связь. Повторяем проверку автоматически. Не закрывайте Docker.';
+    $('retry-status').hidden = error.status === 401 || error.status === 403;
+    $('retry-install').hidden = true;
+    $('open-app').hidden = true;
+}
+const poller = createStatusPoller({request: () => api('/status'), onState: renderState, onConnectionError: connectionLost});
+$('next').addEventListener('click', advance);
+$('back').addEventListener('click', () => { if (!busy && current > 0) { formError(''); showStep(current - 1); } });
+stepLinks.forEach(link => link.addEventListener('click', () => {
+    if (!busy && Number(link.dataset.goto) < current) { formError(''); showStep(Number(link.dataset.goto)); }
+}));
+$('check-domain').addEventListener('click', checkDomain);
+$('retry-status').addEventListener('click', () => poller.refresh());
+$('retry-install').addEventListener('click', () => {
+    form.hidden = false;
+    $('steps').hidden = false;
+    $('status').hidden = true;
+    formError('Проверьте причину ошибки и настройки. Используйте прежнюю папку и пароль; данные сохранятся.');
+    $('install').textContent = 'Повторить установку';
+    showStep(field('admin_password').value ? 2 : 0);
+});
+form.addEventListener('input', event => {
+    clearFieldError(event.target);
+    formError('');
+    if (['site_mode', 'domain', 'https_mode'].includes(event.target.name) || event.target.id === 'use-cloudflare') {
+        $('dns-check').textContent = 'Проверим настройки домена перед следующим шагом.';
+        syncAddress();
+    } else updateReview();
+});
+form.addEventListener('keydown', event => {
+    const action = enterAction({key: event.key, tagName: event.target.tagName, step: current, isComposing: event.isComposing});
+    if (action !== 'native') event.preventDefault();
+    if (action === 'next') advance();
+});
+$('show-password').addEventListener('click', () => {
+    const show = field('admin_password').type === 'password';
+    for (const name of ['admin_password', 'admin_password_confirmation']) field(name).type = show ? 'text' : 'password';
+    $('show-password').textContent = show ? 'Скрыть пароль' : 'Показать пароль';
+    $('show-password').setAttribute('aria-pressed', String(show));
+});
+$('generate-password').addEventListener('click', () => {
+    try {
+        const password = createPassword();
+        for (const name of ['admin_password', 'admin_password_confirmation']) {
+            field(name).value = password;
+            clearFieldError(field(name));
+        }
+        $('password-feedback').textContent = 'Пароль создан, оба поля заполнены. Нажмите «Показать пароль» и сохраните его в менеджере паролей.';
+    } catch { formError('Браузер не смог создать надёжный пароль. Используйте менеджер паролей.'); }
+});
+form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (busy || current !== 2 || event.submitter !== $('install')) return;
+    formError('');
+    for (let i = 0; i < panels.length; i++) if (!validatePanel(i)) return;
+    const data = installationPayload(values());
+    setBusy(true);
+    try {
+        await api('/install', data);
+        showStatus();
+        $('message').textContent = 'Установка запускается…';
+        $('status-details').textContent = 'Запрос принят. Проверяем ход установки.';
+        $('retry-install').hidden = true;
+        $('open-app').hidden = true;
+        await poller.refresh();
+    } catch (error) {
+        if (error.status && error.status !== 409) {
+            formError(error.message);
+            setBusy(false);
+        } else {
+            connectionLost(error);
+            await poller.refresh();
+        }
+    }
+});
+syncAddress();
+showStep(0, false);
+poller.refresh();
 </script>
 </body>
 </html>

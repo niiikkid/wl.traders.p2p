@@ -1,289 +1,128 @@
 import importlib.util
+import json
+import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import server as installer
 
 
-MODULE_PATH = Path(__file__).resolve().parents[1] / "server.py"
-SPEC = importlib.util.spec_from_file_location("wl_traders_installer", MODULE_PATH)
-assert SPEC and SPEC.loader
-installer = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(installer)
+def payload(**extra):
+    data = dict(app_name='WL Traders', site_mode='local', install_path=str(Path.home() / 'wl-traders'),
+                admin_password='correct-horse-battery', admin_password_confirmation='correct-horse-battery',
+                db_name='wl_traders', db_user='wl_traders')
+    data.update(extra)
+    return data
 
 
-class InstallerValidationTest(unittest.TestCase):
-    def valid_payload(self):
-        return {
-            "app_name": "WL Traders",
-            "app_url": "http://203.0.113.10",
-            "install_path": "/var/www/wl-traders",
-            "timezone": "Europe/Moscow",
-            "locale": "ru",
-            "session_lifetime": 10080,
-            "db_name": "wl_traders",
-            "db_user": "wl_traders",
-            "db_password": "",
-            "admin_password": "correct-horse-battery-staple",
-            "admin_password_confirmation": "correct-horse-battery-staple",
-            "upload_limit_mb": 64,
-        }
+class ValidationTest(unittest.TestCase):
+    def test_local_defaults(self):
+        settings = installer.normalize_settings(payload())
+        self.assertEqual(('http://localhost:8080', 8080, '127.0.0.1'),
+                         (settings['app_url'], settings['http_port'], settings['bind_address']))
 
-    def test_public_ip_prefers_explicit_bootstrap_value(self):
-        previous_cache = getattr(installer, "PUBLIC_IP_CACHE")
-        setattr(installer, "PUBLIC_IP_CACHE", None)
-        self.addCleanup(setattr, installer, "PUBLIC_IP_CACHE", previous_cache)
+    def test_ip_custom_port(self):
+        settings = installer.normalize_settings(payload(site_mode='ip', app_url='http://192.0.2.1:8090', http_port=8090))
+        self.assertEqual('0.0.0.0', settings['bind_address'])
 
-        with patch.dict(installer.os.environ, {"WL_TRADERS_PUBLIC_IP": "8.8.8.8"}):
-            with patch.object(installer, "urlopen") as request:
-                self.assertEqual("8.8.8.8", installer.public_ip())
+    def test_inconsistent_ports_rejected(self):
+        for extra in [dict(http_port=8081, app_url='http://localhost:8080'),
+                      dict(site_mode='ip', http_port=80, app_url='http://192.0.2.1:8080'),
+                      dict(http_port=True), dict(http_port=70000), dict(http_port='80; touch x')]:
+            with self.subTest(extra=extra), self.assertRaises(ValueError):
+                installer.normalize_settings(payload(**extra))
 
-        request.assert_not_called()
+    def test_local_cannot_publish_foreign_url(self):
+        with self.assertRaises(ValueError):
+            installer.normalize_settings(payload(app_url='http://192.0.2.1:8080'))
 
-    def test_public_ip_does_not_cache_private_fallback(self):
-        previous_cache = getattr(installer, "PUBLIC_IP_CACHE")
-        setattr(installer, "PUBLIC_IP_CACHE", None)
-        self.addCleanup(setattr, installer, "PUBLIC_IP_CACHE", previous_cache)
+    def test_domain_http(self):
+        settings = installer.normalize_settings(payload(site_mode='domain', domain='Pay.Example.com.'))
+        self.assertEqual('http://pay.example.com', settings['app_url'])
+        self.assertEqual(80, settings['http_port'])
 
-        with patch.dict(installer.os.environ, {"WL_TRADERS_PUBLIC_IP": ""}):
-            with patch.object(installer, "urlopen", side_effect=OSError):
-                with patch.object(installer.subprocess, "check_output", return_value="10.0.0.5\n"):
-                    self.assertEqual("10.0.0.5", installer.public_ip())
+    def test_rejects_invalid_values(self):
+        for extra in [dict(admin_password_confirmation='wrong'), dict(timezone='Mars/Olympus'),
+                      dict(db_name='a; DROP'), dict(app_name='a\nAPP_KEY=bad'),
+                      dict(site_mode='ip', app_url='https://192.0.2.1'),
+                      dict(site_mode='domain', domain='https://bad.com'), dict(install_path='/')]:
+            with self.subTest(extra=extra), self.assertRaises(ValueError):
+                installer.normalize_settings(payload(**extra))
 
-        self.assertIsNone(getattr(installer, "PUBLIC_IP_CACHE"))
+    def test_desktop_never_fetches_public_ip(self):
+        with patch.object(installer.platform, 'system', return_value='Darwin'), patch.object(installer, 'urlopen') as fetch:
+            self.assertEqual('127.0.0.1', installer.public_ip())
+            fetch.assert_not_called()
 
-    def test_requires_ubuntu_2604(self):
-        issues = installer.environment_issues(
-            os_id="ubuntu",
-            version_id="24.04",
-            cpu_count=2,
-            memory_bytes=4 * 1024**3,
-            disk_bytes=50 * 1024**3,
-        )
-        self.assertTrue(any("26.04" in issue for issue in issues))
+    def test_default_paths(self):
+        with patch.dict(installer.os.environ, {'WL_TRADERS_INSTALL_DIR': '/tmp/custom'}):
+            self.assertEqual(Path('/tmp/custom'), installer.default_install_path())
 
-    def test_accepts_realistic_four_gigabyte_server(self):
-        issues = installer.environment_issues(
-            os_id="ubuntu",
-            version_id="26.04",
-            cpu_count=2,
-            memory_bytes=int(3.75 * 1024**3),
-            disk_bytes=20 * 1024**3,
-        )
-        self.assertEqual([], issues)
+    def test_cf_dns_rejects_non_cf_address(self):
+        with patch.object(installer, 'resolved_ipv4_addresses', return_value={'8.8.8.8'}), \
+             patch.object(installer, 'cloudflare_ip_ranges', return_value=['104.16.0.0/13']):
+            with self.assertRaises(RuntimeError):
+                installer.validate_cloudflare_dns('pay.example.com')
 
-    def test_rejects_small_disk(self):
-        issues = installer.environment_issues(
-            os_id="ubuntu",
-            version_id="26.04",
-            cpu_count=2,
-            memory_bytes=4 * 1024**3,
-            disk_bytes=15 * 1024**3,
-        )
-        self.assertTrue(any("20 ГБ" in issue for issue in issues))
-
-    def test_rejects_mismatched_admin_password_confirmation(self):
-        payload = self.valid_payload()
-        payload["admin_password_confirmation"] = "different-password"
-        with self.assertRaisesRegex(ValueError, "не совпадают"):
-            installer.normalize_settings(payload)
-
-    def test_rejects_admin_password_shorter_than_eight_chars(self):
-        payload = self.valid_payload()
-        payload["admin_password"] = "short"
-        payload["admin_password_confirmation"] = "short"
-        with self.assertRaisesRegex(ValueError, "8 символов"):
-            installer.normalize_settings(payload)
-
-    def test_rejects_unknown_timezone(self):
-        payload = self.valid_payload()
-        payload["timezone"] = "Mars/Olympus"
-        with self.assertRaisesRegex(ValueError, "часовой пояс"):
-            installer.normalize_settings(payload)
-
-    def test_rejects_app_url_with_query_or_fragment(self):
-        payload = self.valid_payload()
-        payload["app_url"] = "http://203.0.113.10/setup?debug=1"
-        with self.assertRaisesRegex(ValueError, "без пути"):
-            installer.normalize_settings(payload)
-
-    def test_domain_mode_builds_http_application_url(self):
-        payload = self.valid_payload()
-        payload.update(
-            {
-                "site_mode": "domain",
-                "domain": "Pay.Example.com.",
-            }
-        )
-
-        settings = installer.normalize_settings(payload)
-
-        self.assertEqual("domain", settings["site_mode"])
-        self.assertEqual("pay.example.com", settings["domain"])
-        self.assertEqual("http://pay.example.com", settings["app_url"])
-
-    def test_cloudflare_mode_builds_https_application_url(self):
-        payload = self.valid_payload()
-        payload.update(
-            {
-                "site_mode": "domain",
-                "domain": "pay.example.com",
-                "https_mode": "cloudflare",
-                "cloudflare_cert": "-----BEGIN CERTIFICATE-----\nABC\n-----END CERTIFICATE-----",
-                "cloudflare_key": "-----BEGIN PRIVATE KEY-----\nDEF\n-----END PRIVATE KEY-----",
-            }
-        )
-
-        settings = installer.normalize_settings(payload)
-
-        self.assertEqual("cloudflare", settings["https_mode"])
-        self.assertEqual("https://pay.example.com", settings["app_url"])
-        self.assertEqual(payload["cloudflare_cert"], settings["cloudflare_cert"])
-        self.assertEqual(payload["cloudflare_key"], settings["cloudflare_key"])
-
-    def test_cloudflare_mode_requires_origin_certificate(self):
-        payload = self.valid_payload()
-        payload.update(
-            {"site_mode": "domain", "domain": "pay.example.com", "https_mode": "cloudflare"}
-        )
-
-        with self.assertRaisesRegex(ValueError, "сертификат"):
-            installer.normalize_settings(payload)
-
-    def test_ip_mode_forces_plain_http_despite_cloudflare_choice(self):
-        payload = self.valid_payload()
-        payload.update({"site_mode": "ip", "https_mode": "cloudflare"})
-
-        settings = installer.normalize_settings(payload)
-
-        self.assertEqual("none", settings["https_mode"])
-        self.assertTrue(settings["app_url"].startswith("http://"))
-
-    def test_rejects_unknown_https_mode(self):
-        payload = self.valid_payload()
-        payload.update(
-            {"site_mode": "domain", "domain": "pay.example.com", "https_mode": "vpn"}
-        )
-
-        with self.assertRaisesRegex(ValueError, "HTTPS"):
-            installer.normalize_settings(payload)
-
-    def test_domain_mode_rejects_url_in_domain_field(self):
-        payload = self.valid_payload()
-        payload.update(
-            {
-                "site_mode": "domain",
-                "domain": "https://pay.example.com",
-            }
-        )
-
-        with self.assertRaisesRegex(ValueError, "без http"):
-            installer.normalize_settings(payload)
-
-    def test_ip_mode_requires_plain_http_ip_address(self):
-        payload = self.valid_payload()
-        payload.update({"site_mode": "ip", "app_url": "https://203.0.113.10"})
-
-        with self.assertRaisesRegex(ValueError, "http://"):
-            installer.normalize_settings(payload)
-
-    def test_ip_mode_rejects_http_on_port_443(self):
-        payload = self.valid_payload()
-        payload.update({"site_mode": "ip", "app_url": "http://203.0.113.10:443"})
-
-        with self.assertRaisesRegex(ValueError, "порт 80"):
-            installer.normalize_settings(payload)
-
-    @patch.object(installer, "resolved_ipv4_addresses", return_value={"203.0.113.10"})
-    def test_domain_dns_must_point_only_to_server(self, _resolver):
-        self.assertEqual(
-            ["203.0.113.10"],
-            installer.validate_domain_dns("pay.example.com", "203.0.113.10"),
-        )
-
-        with patch.object(
-            installer,
-            "resolved_ipv4_addresses",
-            return_value={"203.0.113.10", "198.51.100.20"},
-        ):
-            with self.assertRaisesRegex(RuntimeError, "серое облако"):
-                installer.validate_domain_dns("pay.example.com", "203.0.113.10")
-
-    @patch.object(
-        installer,
-        "resolved_ipv4_addresses",
-        return_value={"104.26.6.25", "172.67.74.17"},
-    )
-    def test_cloudflare_dns_accepts_proxied_addresses(self, _resolver):
-        self.assertEqual(
-            ["104.26.6.25", "172.67.74.17"],
-            installer.validate_cloudflare_dns("pay.example.com"),
-        )
-
-    @patch.object(installer, "resolved_ipv4_addresses", return_value=set())
-    def test_cloudflare_dns_requires_resolution(self, _resolver):
-        with self.assertRaisesRegex(RuntimeError, "Proxied"):
-            installer.validate_cloudflare_dns("pay.example.com")
-
-    def test_installer_page_contains_six_steps_and_cloudflare_choice(self):
-        page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
-
-        self.assertEqual(6, page.count('class="panel" data-step='))
-        self.assertIn("Cloudflare", page)
-        self.assertIn("https_mode", page)
-        self.assertIn("Flexible", page)
-        self.assertIn("Full (strict)", page)
-        self.assertIn("Always Use HTTPS", page)
-        self.assertNotIn("DNS only", page)
-
-    def test_hidden_attribute_is_enforced_in_css(self):
-        page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
-
-        self.assertIn("[hidden]{display:none!important}", page)
-        self.assertIn('id="install" type="submit" hidden', page)
-        self.assertIn('name="cloudflare_cert"', page)
-        self.assertIn('name="cloudflare_key"', page)
-
-    def test_enter_key_advances_to_next_step_instead_of_submitting(self):
-        page = (MODULE_PATH.parent / "page.html").read_text(encoding="utf-8")
-
-        self.assertIn("event.key!=='Enter'", page)
-        self.assertIn("next.click()", page)
-
-    def test_temporary_firewall_rule_has_persistent_one_shot_cleanup(self):
-        source = MODULE_PATH.read_text(encoding="utf-8")
-
-        self.assertIn("OnCalendar=", source)
-        self.assertIn("Persistent=true", source)
-        self.assertIn("ufw --force delete allow", source)
-        self.assertIn("wl-traders-installer-firewall-cleanup.timer", source)
-
-    def test_redacts_common_secret_assignments(self):
-        text = "DB_PASSWORD=hunter2 TELEGRAM_BOT_TOKEN=123:secret API_KEY=abc"
-        redacted = installer.redact_sensitive(text)
-        self.assertNotIn("hunter2", redacted)
-        self.assertNotIn("123:secret", redacted)
-        self.assertNotIn("abc", redacted)
-        self.assertEqual(3, redacted.count("[скрыто]"))
-
-    def test_env_file_is_private_and_production_safe(self):
-        payload = self.valid_payload()
-        settings = installer.normalize_settings(payload)
-        with tempfile.TemporaryDirectory() as directory:
-            target = Path(directory)
-            (target / ".env.example").write_text(
-                "APP_ENV=local\nAPP_DEBUG=true\nAPP_URL=http://localhost\n"
-                "DB_PASSWORD=\nTELESCOPE_ENABLED=true\n",
-                encoding="utf-8",
-            )
-            installer.write_env(target, settings)
-            env_path = target / ".env"
-            content = env_path.read_text(encoding="utf-8")
-            self.assertIn("APP_ENV=production", content)
-            self.assertIn("APP_DEBUG=false", content)
-            self.assertIn("TELESCOPE_ENABLED=false", content)
-            self.assertEqual(0o640, env_path.stat().st_mode & 0o777)
+    def test_redaction(self):
+        secret = 'arbitrary-unique-password'
+        with patch.object(installer, 'SECRET_VALUES', {secret}):
+            value = installer.redact_sensitive('DB_PASSWORD=hunter2 APP_KEY=base64:xxx ' + secret)
+        for text in ['hunter2', 'base64:xxx', secret]:
+            self.assertNotIn(text, value)
 
 
-if __name__ == "__main__":
+class HttpTest(unittest.TestCase):
+    def setUp(self):
+        installer.set_state(phase='ready', logs=[])
+        self.server = installer.ThreadingHTTPServer(('127.0.0.1', 0), installer.InstallerHandler)
+        self.server.install_token = 'test-token'
+        self.server.expires_at = time.monotonic() + 100
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.base = 'http://127.0.0.1:' + str(self.server.server_port)
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join()
+
+    def post(self):
+        request = Request(self.base + '/install?token=test-token', data=json.dumps(payload()).encode(),
+                          headers={'Content-Type': 'application/json'})
+        try:
+            with urlopen(request) as response:
+                return response.status
+        except HTTPError as exc:
+            code = exc.code
+            exc.close()
+            return code
+
+    def test_atomic_claim_and_retry(self):
+        with patch.object(installer, 'perform_install'):
+            results = []
+            threads = [threading.Thread(target=lambda: results.append(self.post())) for _ in range(4)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual([202, 409, 409, 409], sorted(results))
+            installer.set_state(phase='failed')
+            self.assertEqual(202, self.post())
+
+    def test_token_required(self):
+        with self.assertRaises(HTTPError) as error:
+            urlopen(self.base + '/status')
+        self.assertEqual(403, error.exception.code)
+        error.exception.close()
+
+
+if __name__ == '__main__':
     unittest.main()

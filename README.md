@@ -1,150 +1,99 @@
 # WL Traders
 
-[![PHP 8.3](https://img.shields.io/badge/PHP-8.3-777BB4?logo=php&logoColor=white)](https://www.php.net/)
-[![Laravel 11](https://img.shields.io/badge/Laravel-11-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
-[![Vue 3](https://img.shields.io/badge/Vue-3-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org/)
-[![MySQL 8](https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
-[![Redis](https://img.shields.io/badge/Redis-queues-DC382D?logo=redis&logoColor=white)](https://redis.io/)
-
-**WL Traders** — self-hosted платформа для мерчантов и трейдеров: приём P2P-платежей, выплаты, распределение заявок, споры, комиссии и расчёты в USDT.
+**Своя P2P-площадка для мерчантов и трейдеров:** приём платежей, выплаты, распределение заявок, споры, комиссии и расчёты в USDT. Данные и правила работы остаются у владельца.
 
 ![Панель управления WL Traders](https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/682c3cc/docs/images/wl-traders-dashboard.png)
 
-## Для чего нужна платформа
+- **Мерчантам:** API, платежи и выплаты, статусы и callback-уведомления.
+- **Трейдерам:** реквизиты, лимиты, графики, обработка сделок и споров.
+- **Команде процессинга:** пользователи, комиссии, балансы, антифрод, 2FA и отчёты.
+- USDT TRC20, Telegram и Android-приложение для работы с SMS.
 
-- **Мерчанту** — подключить приём платежей и выплаты через API, видеть статусы операций и получать callback-уведомления.
-- **Трейдеру** — управлять реквизитами, лимитами и графиками работы, обрабатывать сделки, выплаты и споры.
-- **Команде процессинга** — контролировать пользователей, оборот, доход, комиссии, антифрод, финансы и работу всей площадки из одной панели.
+## Установка
 
-Платформа подходит как основа для собственной P2P-площадки: данные, правила обработки и инфраструктура остаются под контролем владельца.
+Нужен **компьютер или VPS**, а не обычный хостинг сайтов: минимум 2 ядра, 4 ГБ памяти и 20 ГБ свободного места, доступ в интернет. Все службы приложения запускаются в Docker; отдельно ставить PHP, MySQL или Node.js не нужно.
 
-## Возможности
+### На сервере Ubuntu 22.04+ / Debian 12+
 
-- приём фиатных P2P-платежей и проведение выплат;
-- H2H API для мерчантов, callback-и и журнал запросов;
-- кабинеты администратора, мерчанта, трейдера, тимлидера и поддержки;
-- распределение заявок по реквизитам трейдеров;
-- лимиты, расписания и статистика платёжных реквизитов;
-- споры, чеки, банковские выписки и ручная обработка;
-- комиссии, внутренние балансы и учёт в USDT;
-- пополнение через USDT TRC20;
-- антифрод, 2FA, журнал действий и история входов;
-- интеграция с Android-приложением, SMS и Telegram;
-- очереди, мониторинг и отчёты по работе системы.
-
-## Стек
-
-- **Backend:** PHP 8.3, Laravel 11, Sanctum, Horizon
-- **Frontend:** Vue 3, Inertia.js, Vite, Tailwind CSS, DaisyUI
-- **Данные:** MySQL 8, Redis
-- **Мониторинг:** Laravel Pulse, Telescope, Nightwatch, Sentry
-
-## Требования
-
-### Production-сервер
-
-Установщик рассчитан на **чистый Ubuntu 26.04** или аналогичный свежий Ubuntu-сервер. Минимальная конфигурация:
-
-- 2 vCPU 3.3 ГГц;
-- 4 ГБ RAM;
-- 20 ГБ SSD/NVMe;
-- доступ по SSH от `root`;
-- открытые TCP-порты 80 и 443 при установке с доменом (только 80 при доступе по IP).
-
-Он сам устанавливает PHP, Nginx, MySQL, Redis, Composer и Node.js. `git` на production-сервере не нужен.
-
-### Локальная разработка
-
-- PHP 8.3+ с расширениями `bcmath`, `gmp`, `mbstring`
-- Composer
-- Node.js 18+ и npm
-- MySQL 8+
-- Redis
-
-## Установка на production-сервер
-
-Установщик рассчитан на **чистую Ubuntu 26.04**. Подключитесь к серверу как `root` и запустите:
+**1.** Откройте Терминал (Mac/Linux) или PowerShell (Windows) на своём компьютере и подключитесь к серверу:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/main/install.sh | bash
+ssh -L 8787:127.0.0.1:8787 root@IP_СЕРВЕРА
 ```
 
-Скрипт проверит ОС, свободный порт и отсутствие другой запущенной установки, затем покажет временную ссылку:
+Вместо `IP_СЕРВЕРА` укажите адрес из панели хостера. Этот способ защищает ввод пароля и ключей установщика через SSH.
 
-```text
-http://SERVER_IP:8787/?token=...
-```
-
-Откройте её со своего компьютера. Панель проведёт по шести коротким шагам. Можно выбрать:
-
-- **домен** — установщик проверит DNS и откроет продукт по домену. Далее можно выбрать **«Без Cloudflare»** (сайт по HTTP) или **«С Cloudflare»** (сайт сразу по HTTPS);
-- **IP-адрес** — продукт будет доступен по HTTP.
-
-Для домена без Cloudflare создайте DNS-запись типа `A`, направленную на IP сервера. Для варианта «С Cloudflare» домен должен быть добавлен в Cloudflare с включённым **Proxied** (оранжевое облако), а также нужен **Origin Certificate** (SSL/TLS → Origin Certificates): его сертификат и ключ вставляются в панель установщика, а в SSL/TLS выбирается режим **Full (strict)**. Продукт сразу работает по HTTPS, а Cloudflare принимает трафик перед сервером и скрывает IP сервера.
-
-Безопасные значения для базы, firewall, swap и бэкапов уже выбраны. Дополнительные ключи Telegram, TronGrid и IP Geolocation можно оставить пустыми.
-
-Ссылка защищена случайным токеном, перестаёт принимать новую установку через 45 минут и автоматически закрывается после завершения. Панель временно работает по HTTP, поэтому никому не передавайте ссылку.
-
-### Интеграции
-
-- **Telegram** — опционально, но нужен для Telegram-функций.
-- **TronGrid** — опционально; без него не будут полноценно работать инвойсы USDT TRC20.
-- **IP Geolocation** — опционально; без него не сработает часть гео-функций.
-- Почта и Sentry установщиком не настраиваются.
-
-После установки войдите в админ-панель под логином `admin` и паролем, заданным в панели. HTTPS используется при выборе «С Cloudflare»; для «Без Cloudflare» и доступа по IP — HTTP.
-
-## Быстрый запуск для разработки
+**2.** В открывшемся подключении выполните:
 
 ```bash
-git clone git@github.com:niiikkid/wl.traders.p2p.git
-cd wl.traders.p2p
-
-composer install
-npm ci
-cp .env.example .env
-php artisan key:generate
+(dir=$(mktemp -d) && trap 'rm -rf "$dir"' EXIT && curl -fsSL https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/main/install.sh -o "$dir/install.sh" && bash "$dir/install.sh")
 ```
 
-Укажите подключение к MySQL и Redis в `.env`, затем выполните:
+На чистой Ubuntu 22.04+/Debian 12+ установщик сам добавит Docker и Python. На другом Linux заранее установите [Docker Engine с Compose](https://docs.docker.com/engine/install/) и Python 3.10+; команда запуска та же.
+
+**3.** Откройте показанную ссылку `http://127.0.0.1:8787/?token=…` в браузере **своего компьютера**. Выберите адрес сайта, задайте пароль администратора и нажмите **«Установить»**. Не закрывайте SSH до завершения.
+
+### На Mac
+
+Установите и запустите [Docker Desktop](https://www.docker.com/products/docker-desktop/), установите [Python 3.10+](https://www.python.org/downloads/). В Терминале выполните:
 
 ```bash
-php artisan migrate
-npm run build
-php artisan serve
+(dir=$(mktemp -d) && trap 'rm -rf "$dir"' EXIT && curl -fsSL https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/main/install.sh -o "$dir/install.sh" && bash "$dir/install.sh")
 ```
 
-В отдельных процессах запустите очередь и frontend для разработки:
+Откройте ссылку из терминала. Для знакомства выберите **«На этом компьютере»** — сайт будет доступен только вам по `http://localhost:8080`. `sudo` на Mac не нужен.
+
+### На Windows
+
+Установите [Docker Desktop](https://www.docker.com/products/docker-desktop/) с WSL 2 и режимом **Linux containers**, затем [Python 3.10+](https://www.python.org/downloads/windows/) с галочкой **Add Python to PATH**. Если установка попросит перезагрузку — выполните её. Запустите Docker Desktop и откройте новый PowerShell:
+
+```powershell
+$dir = Join-Path $env:TEMP ([guid]::NewGuid().ToString())
+New-Item -ItemType Directory -Path $dir -ErrorAction Stop | Out-Null
+try {
+    Invoke-WebRequest -UseBasicParsing -ErrorAction Stop https://raw.githubusercontent.com/niiikkid/wl.traders.p2p/main/install.ps1 -OutFile "$dir\install.ps1"
+    powershell -ExecutionPolicy Bypass -File "$dir\install.ps1"
+} finally { Remove-Item -LiteralPath $dir -Recurse -Force }
+```
+
+Откройте ссылку из PowerShell и выберите **«На этом компьютере»**. Настройка политики запуска действует только для этого процесса.
+
+### Какой адрес выбрать
+
+| Режим | Для чего |
+|---|---|
+| На этом компьютере | Знакомство с продуктом; доступ только с этого компьютера. |
+| IP-адрес сервера | Проверка без домена. Откройте выбранный порт сайта у хостера. |
+| Домен | Создайте A-запись на IP сервера. Для HTTPS выберите Cloudflare, вставьте Origin Certificate и его ключ, включите **Proxied** и **Full (strict)**. |
+
+**HTTP не шифрует пароли и данные. Для реальных платежей используйте HTTPS.** При режиме Cloudflare нужны порты 80/443; мастер установки не нужно открывать в интернет. Обычный домен без Cloudflare работает по HTTP.
+
+Логин после установки — **`admin`**, пароль — заданный вами. Telegram, TronGrid и IP Geolocation можно пропустить; соответствующие функции без них ограничены. Почта и Sentry не настраиваются.
+
+## После установки
+
+Папка по умолчанию: `/opt/wl-traders` на сервере, `wl-traders` в домашней папке на Mac/Windows. Внутри неё:
 
 ```bash
-php artisan horizon
-npm run dev
+docker compose ps                # состояние служб
+docker compose stop              # остановить, сохранив данные
+docker compose up -d --wait       # снова запустить
+docker compose run --rm backup --once  # сделать резервную копию
 ```
 
-> Для рабочего сервера дополнительно нужно настроить веб-сервер, HTTPS, планировщик Laravel, постоянный запуск очередей и все используемые интеграции. Тестовые сидеры создают пользователей с известными паролями — не используйте их в production.
+Ежедневные копии включены по умолчанию и сохраняются в `backups` внутри папки установки. Данные хранятся отдельно от контейнеров. **Не выполняйте `docker compose down -v`** — эта команда удаляет базу и файлы. Сохраняйте также папку установки с её настройками и секретами; копии только на том же диске не защищают от потери сервера.
 
-## Основные настройки
+Если установка прервалась, исправьте указанную причину и повторите запуск с той же папкой. Не удаляйте её и Docker-тома. Повторный запуск установщика — не способ переноса старой установки без Docker; для неё нужен отдельный перенос базы, файлов и ключа приложения.
 
-Конфигурация хранится в `.env`. Перед запуском проверьте:
+На компьютере Docker Desktop должен работать; после выхода из системы/сна сайт может быть недоступен. Для постоянной работы используйте VPS.
 
-- подключение к MySQL и Redis;
-- URL приложения;
-- токены API и webhook-секреты;
-- Telegram-бота, если нужны Telegram-функции;
-- TronGrid для полноценных USDT TRC20-инвойсов;
-- IP Geolocation для гео-функций;
-- параметры мобильного приложения и обработки SMS.
+[Что проверено и ограничения Windows / Cloudflare](docs/installer-verification.md).
 
-Почта и Sentry в текущей конфигурации не используются.
+## Разработка и связанные проекты
 
-Не добавляйте реальные токены и пароли в Git.
+Стек: Laravel 11 / PHP 8.4, Vue 3 / Inertia / Vite, MySQL 8.4, Redis, Nginx. Код можно получить через **Code → Download ZIP** или `git clone https://github.com/niiikkid/wl.traders.p2p.git`; затем запустить `bash install.sh` или `install.ps1` из папки проекта.
 
-## Связанные проекты
+- [P2P App](https://github.com/niiikkid/p2p-app) — Android-приложение для SMS.
+- [Payment System](https://github.com/niiikkid/payment.system) — криптопроцессинг.
 
-- [P2P App](https://github.com/niiikkid/p2p-app) — Android-приложение для автоматики и обработки SMS.
-- [Payment System](https://github.com/niiikkid/payment.system) — связанный криптопроцессинг.
-
-## Поисковые ключи
-
-`P2P payment processing` · `self-hosted P2P platform` · `P2P acquiring` · `merchant payment gateway` · `trader platform` · `merchant API` · `payment orchestration` · `fiat payments` · `USDT processing` · `USDT TRC20` · `P2P payments` · `P2P payouts` · `платформа для мерчантов` · `платформа для трейдеров` · `P2P процессинг` · `приём P2P платежей`
+Не публикуйте пароли, токены, резервные копии и `.env` в Git.

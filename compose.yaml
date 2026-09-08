@@ -1,0 +1,153 @@
+# Generated installation: run from its persistent directory, not the source checkout.
+x-service: &service
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 60s
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+x-app: &app
+  <<: *service
+  image: ${COMPOSE_PROJECT_NAME}-app
+  build:
+    context: ./src
+    target: app
+  user: www-data
+  env_file:
+    - path: ./config/app.env
+      format: raw
+  volumes:
+    - storage:/var/www/html/storage
+    - ./config/php.ini:/usr/local/etc/php/conf.d/99-wl.ini:ro
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  mysql:
+    <<: *service
+    image: mysql:8.4
+    env_file:
+      - path: ./config/mysql.env
+        format: raw
+    volumes:
+      - database:/var/lib/mysql
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$$MYSQL_USER" "$$MYSQL_DATABASE" -e "SELECT 1" >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+
+  redis:
+    <<: *service
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, "yes", --maxmemory-policy, noeviction]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  init:
+    <<: *app
+    profiles: [tools]
+    restart: "no"
+    user: root
+    command: [php, installer/docker/bootstrap.php]
+    volumes:
+      - storage:/var/www/html/storage
+      - ./config:/run/wl-config:ro
+
+  app:
+    <<: *app
+    healthcheck:
+      test: [CMD-SHELL, 'SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  web:
+    <<: *service
+    image: ${COMPOSE_PROJECT_NAME}-web
+    build:
+      context: ./src
+      target: web
+    ports:
+      - "${WL_BIND_ADDRESS:-127.0.0.1}:${WL_HTTP_PORT:-8080}:${WL_CONTAINER_PORT:-80}"
+    # Additional Cloudflare HTTP port
+    volumes:
+      - storage:/var/www/html/storage:ro
+      - ./config/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./config/tls:/etc/wl-config:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -qO-, 'http://127.0.0.1:8081/up']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  horizon:
+    <<: *app
+    command: [php, artisan, horizon]
+    stop_signal: SIGTERM
+    stop_grace_period: 240s
+    healthcheck:
+      test: [CMD, php, artisan, 'horizon:status']
+      interval: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 20s
+
+  schedule:
+    <<: *app
+    command: [python3, installer/docker/schedule.py]
+    stop_signal: SIGTERM
+    healthcheck:
+      test: [CMD, python3, installer/docker/schedule.py, --health]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  backup:
+    <<: *service
+    profiles: [backups]
+    image: ${COMPOSE_PROJECT_NAME}-backup
+    build:
+      context: ./src
+      target: backup
+    environment:
+      BACKUP_RETENTION_DAYS: ${WL_BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - storage:/storage:ro
+      - ./config:/config:ro
+      - ./compose.yaml:/installation/compose.yaml:ro
+      - ./.env:/installation/.env:ro
+      - ./.wl-traders-install.json:/installation/.wl-traders-install.json:ro
+      - ./backups:/backups
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python3, /usr/local/bin/backup.py, --health]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  database:
+  redis:
+  storage:
