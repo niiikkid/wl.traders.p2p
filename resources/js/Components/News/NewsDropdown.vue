@@ -101,7 +101,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="rootRef" class="relative">
+    <div ref="rootRef" class="static sm:relative">
         <button
             type="button"
             class="btn btn-ghost btn-square indicator h-auto min-h-0 px-2.5 py-1.5 rounded-xl border border-base-300/70 hover:border-primary/60 hover:bg-primary/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary/40"
@@ -125,7 +125,7 @@ onBeforeUnmount(() => {
 
         <div
             v-show="isOpen"
-            class="absolute right-0 top-full z-[60] mt-2 w-[min(34rem,calc(100vw-2rem))] rounded-box border border-base-300 bg-base-100 shadow-xl"
+            class="absolute left-4 right-4 top-full z-[60] mt-2 sm:left-auto sm:right-0 sm:w-[min(34rem,calc(100vw-2rem))] rounded-box border border-base-300 bg-base-100 shadow-xl"
             @click.stop
         >
             <NewsFeedPanel
