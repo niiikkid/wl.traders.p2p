@@ -200,7 +200,8 @@ const filterByStatus = (event) => {
                                     <span v-else class="text-base-content/50">—</span>
                                 </td>
                                 <td>
-                                    <DateTime v-if="address.last_checked_at" :data="address.last_checked_at" />
+                                    <span v-if="address.last_error" class="text-xs text-error" role="status">Не удалось обновить баланс</span>
+                                    <DateTime v-else-if="address.last_checked_at" :data="address.last_checked_at" />
                                     <span v-else class="text-base-content/50">—</span>
                                 </td>
                                 <td class="text-right">

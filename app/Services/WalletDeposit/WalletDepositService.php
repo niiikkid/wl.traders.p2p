@@ -94,7 +94,6 @@ class WalletDepositService implements WalletDepositServiceContract
             ]);
         } catch (\Throwable $e) {
             $address->update([
-                'last_checked_at' => now(),
                 'last_error' => Str::limit($e->getMessage(), 190, ''),
             ]);
         }
