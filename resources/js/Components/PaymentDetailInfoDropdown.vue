@@ -21,7 +21,7 @@ const paymentDetail = ref(null);
 const dropdown = ref(null);
 const button = ref(null);
 const overlay = ref(null);
-const dropdownPosition = ref({top: 0, left: 0});
+const dropdownPosition = ref(null);
 const dropdownMaxHeight = ref(null);
 
 const canSetOrderAmountLimits = computed(() => {
@@ -36,9 +36,11 @@ const shouldShowAmountRange = computed(() => {
 });
 
 const dropdownStyles = computed(() => ({
-    top: `${dropdownPosition.value.top}px`,
-    left: `${dropdownPosition.value.left}px`,
+    top: `${dropdownPosition.value?.top ?? 0}px`,
+    left: `${dropdownPosition.value?.left ?? 0}px`,
+    visibility: dropdownPosition.value ? "visible" : "hidden",
     width: "min(22rem, calc(100vw - 1rem))",
+    maxWidth: "calc(100% - 1rem)",
     maxHeight: dropdownMaxHeight.value ?? "none",
     overflowY: dropdownMaxHeight.value ? "auto" : "visible",
 }));
@@ -112,7 +114,12 @@ const processingModeBadgeClass = computed(() => {
 });
 
 const updateDropdownPosition = () => {
-    if (!button.value || !dropdown.value) {
+    if (!isOpen.value || !button.value || !dropdown.value) {
+        return;
+    }
+
+    if (!button.value.getClientRects().length) {
+        closeDropdown();
         return;
     }
 
@@ -120,22 +127,29 @@ const updateDropdownPosition = () => {
     const viewportPadding = 8;
     const rect = button.value.getBoundingClientRect();
     const dropdownWidth = dropdown.value.offsetWidth;
-    const dropdownHeight = dropdown.value.offsetHeight;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const minLeft = window.scrollX + viewportPadding;
-    const maxLeft = window.scrollX + viewportWidth - dropdownWidth - viewportPadding;
-    const targetLeft = rect.right + window.scrollX - dropdownWidth;
+    const dropdownHeight = dropdown.value.scrollHeight + dropdown.value.offsetHeight - dropdown.value.clientHeight;
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+
+    if (rect.bottom <= 0 || rect.top >= viewportHeight || rect.right <= 0 || rect.left >= viewportWidth) {
+        closeDropdown();
+        return;
+    }
+
+    const minLeft = viewportPadding;
+    const maxLeft = viewportWidth - dropdownWidth - viewportPadding;
+    const targetLeft = rect.right - dropdownWidth;
     const spaceAbove = rect.top - viewportPadding - gap;
     const spaceBelow = viewportHeight - rect.bottom - viewportPadding - gap;
     const opensUp = spaceAbove > spaceBelow;
-    const availableHeight = Math.max(160, opensUp ? spaceAbove : spaceBelow);
+    const availableHeight = Math.max(0, opensUp ? spaceAbove : spaceBelow);
+    const renderedHeight = Math.min(dropdownHeight, availableHeight);
     const top = opensUp
-        ? rect.top + window.scrollY - Math.min(dropdownHeight, availableHeight) - gap
-        : rect.bottom + window.scrollY + gap;
+        ? rect.top - renderedHeight - gap
+        : rect.bottom + gap;
 
     dropdownPosition.value = {
-        top: Math.max(window.scrollY + viewportPadding, top),
+        top: Math.max(viewportPadding, Math.min(top, viewportHeight - renderedHeight - viewportPadding)),
         left: Math.max(minLeft, Math.min(targetLeft, maxLeft)),
     };
     dropdownMaxHeight.value = `${availableHeight}px`;
@@ -165,17 +179,30 @@ const loadPaymentDetail = async () => {
 };
 
 const toggleDropdown = async () => {
-    isOpen.value = !isOpen.value;
+    if (isOpen.value) {
+        closeDropdown();
+        return;
+    }
+
+    if (!button.value?.getClientRects().length) {
+        return;
+    }
+
+    dropdownPosition.value = null;
+    dropdownMaxHeight.value = null;
+    isOpen.value = true;
+
+    await nextTick();
+    updateDropdownPosition();
 
     if (isOpen.value) {
-        await nextTick();
-        updateDropdownPosition();
         await loadPaymentDetail();
     }
 };
 
 const closeDropdown = () => {
     isOpen.value = false;
+    dropdownPosition.value = null;
 };
 
 const resetLoadedDetail = () => {
@@ -212,11 +239,13 @@ const handleClickOutside = (event) => {
 onMounted(() => {
     document.addEventListener("click", handleClickOutside);
     window.addEventListener("resize", updateDropdownPosition);
+    window.addEventListener("scroll", updateDropdownPosition, true);
 });
 
 onUnmounted(() => {
     document.removeEventListener("click", handleClickOutside);
     window.removeEventListener("resize", updateDropdownPosition);
+    window.removeEventListener("scroll", updateDropdownPosition, true);
 });
 </script>
 
@@ -248,7 +277,7 @@ onUnmounted(() => {
             <div
                 v-if="isOpen"
                 ref="dropdown"
-                class="absolute z-50 rounded-box border border-base-300 bg-base-100 shadow-lg pointer-events-auto"
+                class="fixed z-50 rounded-box border border-base-300 bg-base-100 shadow-lg pointer-events-auto"
                 :style="dropdownStyles"
             >
                 <div class="grid gap-3 p-3 text-xs leading-tight">
