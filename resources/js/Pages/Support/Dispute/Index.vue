@@ -44,7 +44,7 @@ const confirmAcceptDispute = (dispute) => {
 const confirmRollbackDispute = (dispute) => {
     modalStore.openConfirmModal({
         title: 'Вы уверены что хотите открыть спор #' + dispute?.id + '?',
-        body: 'Референтная сделка не изменит свой статус.',
+        body: 'Спор и связанная сделка будут открыты повторно. Сделка вернётся в ожидание решения спора, а балансы будут пересчитаны. Причина отклонения и банковская выписка будут удалены.',
         confirm_button_name: 'Открыть спор',
         confirm: () => {
             useForm({}).patch(route('support.disputes.rollback', dispute.id), {
