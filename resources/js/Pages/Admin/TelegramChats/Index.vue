@@ -1715,14 +1715,14 @@ watch(
                         autocomplete="off"
                         placeholder="Введите новый токен"
                     >
-                    <p class="label">
+                    <p class="label whitespace-normal">
                         <span v-if="botSettingState.has_bot_token">Токен сохранён. Оставьте поле пустым, чтобы не менять.</span>
                         <span v-else>Укажите токен отдельного бота для чат-автоматизации.</span>
                     </p>
                 </fieldset>
 
-                <label class="label cursor-pointer justify-start gap-3">
-                    <input v-model="regenerateWebhookSecret" type="checkbox" class="checkbox checkbox-sm">
+                <label class="label max-w-full cursor-pointer justify-start gap-3 whitespace-normal">
+                    <input v-model="regenerateWebhookSecret" type="checkbox" class="checkbox checkbox-sm shrink-0">
                     <span class="label-text">Перегенерировать секрет webhook</span>
                 </label>
 
