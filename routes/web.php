@@ -410,6 +410,8 @@ Route::group(['middleware' => ['2fa']], function () {
             ));
         })->name('withdrawals.index');
         Route::get('/withdrawals/address/whitelist', [AddressWhitelistController::class, 'index'])->name('withdrawals.address.whitelist.index');
+        Route::post('/withdrawals/address/whitelist', [AddressWhitelistController::class, 'store'])->name('withdrawals.address.whitelist.store');
+        Route::delete('/withdrawals/address/whitelist/{withdrawalAddress}', [AddressWhitelistController::class, 'destroy'])->name('withdrawals.address.whitelist.destroy');
         Route::patch('/withdrawals/{invoice}/success', [WithdrawalController::class, 'success'])->name('withdrawals.success');
         Route::patch('/withdrawals/{invoice}/fail', [WithdrawalController::class, 'fail'])->name('withdrawals.fail');
 
