@@ -396,7 +396,7 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
                     </div>
 
                     <div v-if="form.type === 'binance'">
-                        <InputLabel value="Мин. количество сделок за месяц" />
+                        <InputLabel value="Мин. количество сделок за месяц" class="max-w-full whitespace-normal" />
                         <NumberInput
                             v-model="form.min_month_orders"
                             type="text"
