@@ -357,7 +357,7 @@ if (! hash_equals($expected, $signature)) {
 </script>
 
 <template>
-    <div class="space-y-10" data-api-docs-markdown-root>
+    <div class="space-y-10 wrap-anywhere" data-api-docs-markdown-root>
         <div class="grid grid-cols-1 gap-6 xl:flex">
             <ApiDocumentationNav :sections="tocSections" />
 
@@ -519,7 +519,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-3 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-primary badge-lg">GET</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/currencies</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/currencies</code>
                                 <span class="text-base-content/70">Доступные валюты</span>
                             </div>
                             <CodeBlock :code="currenciesResponse" lang="jsonc" label="Ответ" />
@@ -528,7 +528,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-3 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-primary badge-lg">GET</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/payment-gateways</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/payment-gateways</code>
                                 <span class="text-base-content/70">Доступные платёжные методы</span>
                             </div>
                             <CodeBlock :code="gatewaysResponse" lang="jsonc" label="Ответ" />
@@ -547,7 +547,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-4 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-secondary badge-lg">POST</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order</code>
                                 <span class="text-base-content/70">Создать сделку</span>
                             </div>
 
@@ -570,16 +570,16 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-2 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-primary badge-lg">GET</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}</code>
                                 <span class="text-base-content/70">Получить сделку</span>
                             </div>
-                            <p class="text-sm text-base-content/80">Возвращает тот же объект, что и при создании. Альтернатива: <code class="rounded bg-base-200 px-1">/api/h2h/order/{merchant_id}/{external_id}</code>.</p>
+                            <p class="text-sm text-base-content/80">Возвращает тот же объект, что и при создании. Альтернатива: <code class="wrap-anywhere rounded bg-base-200 px-1">/api/h2h/order/{merchant_id}/{external_id}</code>.</p>
                         </section>
 
                         <section class="space-y-2 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-warning badge-lg text-white">PATCH</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/cancel</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/cancel</code>
                                 <span class="text-base-content/70">Закрыть сделку как неуспешную</span>
                             </div>
                             <p class="text-sm text-base-content/80">Доступно для сделки в статусе <code class="rounded bg-base-200 px-1">pending</code> без открытого спора.</p>
@@ -588,7 +588,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-2 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-warning badge-lg text-white">PATCH</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/finish</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/finish</code>
                                 <span class="text-base-content/70">Завершить сделку как успешную</span>
                             </div>
                             <p class="text-sm text-base-content/80">
@@ -600,7 +600,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-4 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-secondary badge-lg">POST</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/confirmation-code</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/confirmation-code</code>
                                 <span class="text-base-content/70">Передать код подтверждения</span>
                             </div>
                             <p class="text-sm text-base-content/80">Доступно для сделок в режиме <code class="rounded bg-base-200 px-1">manual_control_acquiring</code> и статусе <code class="rounded bg-base-200 px-1">pending</code>.</p>
@@ -611,7 +611,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-4 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-secondary badge-lg">POST</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/dispute</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/h2h/order/{order_id}/dispute</code>
                                 <span class="text-base-content/70">Открыть спор</span>
                             </div>
                             <p class="text-sm text-base-content/80">
@@ -679,7 +679,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-4 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-secondary badge-lg">POST</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/payouts</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/payouts</code>
                                 <span class="text-base-content/70">Создать выплату</span>
                             </div>
                             <div>
@@ -695,7 +695,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-2 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-primary badge-lg">GET</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/payouts/{payout_id}</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/payouts/{payout_id}</code>
                                 <span class="text-base-content/70">Получить выплату</span>
                             </div>
                             <p class="text-sm text-base-content/80">Возвращает те же поля, что и при создании.</p>
@@ -704,7 +704,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-2 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-warning badge-lg text-white">PATCH</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/payouts/{payout_id}/cancel</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/payouts/{payout_id}/cancel</code>
                                 <span class="text-base-content/70">Отменить выплату</span>
                             </div>
                             <p class="text-sm text-base-content/80">Доступно, пока выплата в статусе <code class="rounded bg-base-200 px-1">open</code>. Средства возвращаются магазину.</p>
@@ -713,7 +713,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-3 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-primary badge-lg">GET</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/payouts/{payout_id}/receipts</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/payouts/{payout_id}/receipts</code>
                                 <span class="text-base-content/70">Чеки выплаты</span>
                             </div>
                             <p class="text-sm text-base-content/80">Возвращает до 5 чеков в base64.</p>
@@ -750,7 +750,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-3 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-primary badge-lg">GET</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/statements/orders</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/statements/orders</code>
                                 <span class="text-base-content/70">Список сделок</span>
                             </div>
                             <CodeBlock :code="statementsOrdersResponse" lang="jsonc" label="Ответ" />
@@ -759,7 +759,7 @@ if (! hash_equals($expected, $signature)) {
                         <section class="space-y-3 rounded-xl border border-base-200 p-4">
                             <div class="flex flex-wrap items-center gap-3">
                                 <span class="badge badge-primary badge-lg">GET</span>
-                                <code class="rounded bg-base-200 px-2 py-1 text-sm">/api/statements/payouts</code>
+                                <code class="max-w-full wrap-anywhere rounded bg-base-200 px-2 py-1 text-sm">/api/statements/payouts</code>
                                 <span class="text-base-content/70">Список выплат</span>
                             </div>
                             <CodeBlock :code="statementsPayoutsResponse" lang="jsonc" label="Ответ" />
