@@ -158,6 +158,10 @@ class TelegramChatController extends Controller
     {
         if (array_key_exists('chat_type', $validated)) {
             $chatType = $validated['chat_type'];
+            if (is_string($chatType)) {
+                $chatType = TelegramChatType::tryFrom($chatType);
+            }
+
             $validated['parser_type'] = ($chatType instanceof TelegramChatType
                 && $chatType->equals(TelegramChatType::DISPUTE_PROCESSING))
                 ? TelegramChatParserType::STANDARD_DISPUTE
@@ -168,6 +172,10 @@ class TelegramChatController extends Controller
 
         if (array_key_exists('parser_type', $validated)) {
             $parserType = $validated['parser_type'];
+            if (is_string($parserType)) {
+                $parserType = TelegramChatParserType::tryFrom($parserType);
+            }
+
             $validated['chat_type'] = ($parserType instanceof TelegramChatParserType
                 && $parserType->equals(TelegramChatParserType::STANDARD_DISPUTE))
                 ? TelegramChatType::DISPUTE_PROCESSING
