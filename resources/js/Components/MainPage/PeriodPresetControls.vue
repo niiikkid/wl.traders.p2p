@@ -1,4 +1,5 @@
 <script setup>
+import { ref, watch } from 'vue';
 import { useDropdown } from '@/composables/useDropdown.js';
 
 const props = defineProps({
@@ -30,6 +31,47 @@ const emit = defineEmits(['select-preset', 'update:dateFrom', 'update:dateTo']);
 const desktopCustom = useDropdown();
 const mobilePresets = useDropdown();
 const mobileCustom = useDropdown();
+const mobileCustomPanel = ref(null);
+const mobileCustomLeft = ref(null);
+
+const positionMobileCustom = () => {
+    if (window.innerWidth >= 768) {
+        mobileCustom.close();
+        return;
+    }
+
+    const dropdown = mobileCustom.el.value;
+    const panel = mobileCustomPanel.value;
+
+    if (!mobileCustom.isOpen.value || !dropdown || !panel) {
+        return;
+    }
+
+    const padding = 8;
+    const viewportWidth = document.documentElement.clientWidth;
+    const triggerRect = dropdown.getBoundingClientRect();
+    const panelWidth = panel.offsetWidth;
+    const centeredLeft = triggerRect.left + (triggerRect.width - panelWidth) / 2;
+    const left = Math.max(padding, Math.min(centeredLeft, viewportWidth - panelWidth - padding));
+
+    mobileCustomLeft.value = `${left - triggerRect.left - dropdown.clientLeft}px`;
+};
+
+watch(mobileCustom.isOpen, (isOpen, wasOpen, onCleanup) => {
+    if (!isOpen) {
+        mobileCustomLeft.value = null;
+        return;
+    }
+
+    positionMobileCustom();
+    window.addEventListener('scroll', positionMobileCustom, true);
+    window.addEventListener('resize', positionMobileCustom);
+
+    onCleanup(() => {
+        window.removeEventListener('scroll', positionMobileCustom, true);
+        window.removeEventListener('resize', positionMobileCustom);
+    });
+}, { flush: 'post' });
 
 const selectPreset = (value) => {
     emit('select-preset', value);
@@ -137,19 +179,23 @@ const selectMobilePreset = (value) => {
                 >
                     Свой период
                 </button>
-                <div class="dropdown-content z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 bg-base-100 p-3 shadow left-1/2 -translate-x-1/2">
+                <div
+                    ref="mobileCustomPanel"
+                    class="dropdown-content z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 bg-base-100 p-3 shadow left-0"
+                    :style="{ left: mobileCustomLeft }"
+                >
                     <div class="flex items-center gap-2">
                         <input
                             :value="dateFrom"
                             type="date"
-                            class="input input-bordered input-sm w-full"
+                            class="input input-bordered input-sm min-w-0 flex-1"
                             @input="emit('update:dateFrom', $event.target.value)"
                         >
-                        <span class="text-sm text-base-content/60">—</span>
+                        <span class="shrink-0 text-sm text-base-content/60">—</span>
                         <input
                             :value="dateTo"
                             type="date"
-                            class="input input-bordered input-sm w-full"
+                            class="input input-bordered input-sm min-w-0 flex-1"
                             @input="emit('update:dateTo', $event.target.value)"
                         >
                     </div>
