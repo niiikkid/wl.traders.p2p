@@ -241,3 +241,12 @@ Vue components must have a single root element.
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
 </laravel-boost-guidelines>
+
+## Sequential QA repair continuation
+
+- When the user asks to continue testing or fix the next numbered QA issue, first read `qa/REPAIR_HANDOFF.md` and load the `wltraders-responsive-qa` skill. This is sequential repair of the existing report, not a new full audit.
+- Read the current applicable `.cursor/rules/*.mdc` and `.cursor/skills/` instructions. Use Context7 for library/framework details and confirm the installed major version; use Boost documentation tools when available.
+- Before editing, briefly explain the defect in Russian with the role, exact page/tab/control, reported widths and proposed fix range. Offer interactive solution choices and wait for the user's selection.
+- After selection, make the smallest approved change, update the existing local installation without resetting data, perform minimal targeted verification, and create a separate local commit. Do not push to GitHub. Do not stage the unrelated QA archive.
+- Update the repair handoff after each completed defect. It holds progress and the next approval boundary; reusable procedures belong in the skill. Never record credentials or session cookies in repository documentation.
+- The entire `qa/` directory, including `qa/REPAIR_HANDOFF.md`, is local-only and ignored by Git. Keep these files on disk for continuation, but never commit or force-add QA reports, screenshots, data, or the handoff.
