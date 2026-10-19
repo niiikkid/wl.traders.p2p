@@ -85,6 +85,8 @@ const fiatCurrencyForm = useForm({
     fiat_currency: walletStats.currency.secondary,
 });
 
+const canUpdateFiatCurrency = computed(() => !user || String(user.id) === String(page.props.auth.user.id));
+
 const availableFiatCurrencies = computed(() => {
     return (page.props.data?.rates ?? []).map((rate) => ({
         code: rate.code,
@@ -93,6 +95,10 @@ const availableFiatCurrencies = computed(() => {
 });
 
 const updateFiatCurrency = () => {
+    if (!canUpdateFiatCurrency.value || fiatCurrencyForm.processing) {
+        return;
+    }
+
     fiatCurrencyForm.patch(route('wallet.fiat-currency.update'), {
         preserveScroll: true,
     });
@@ -167,7 +173,7 @@ defineOptions({ layout: AuthenticatedLayout })
                         :required="true"
                         size="sm"
                         currency-icons
-                        :disabled="fiatCurrencyForm.processing"
+                        :disabled="!canUpdateFiatCurrency || fiatCurrencyForm.processing"
                         @change="updateFiatCurrency"
                     />
                 </div>
