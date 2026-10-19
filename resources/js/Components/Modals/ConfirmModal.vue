@@ -30,7 +30,13 @@ const confirm = () => {
 
 <template>
     <Modal :show="show" size="md" :stack-level="2" @close="close">
-        <ModalHeader :title="params.title" @close="close" />
+        <ModalHeader @close="close">
+            <template #title>
+                <h3 class="whitespace-normal wrap-anywhere text-base font-bold leading-tight tracking-tight text-base-content sm:text-lg">
+                    {{ params.title }}
+                </h3>
+            </template>
+        </ModalHeader>
 
         <ModalBody>
             <p v-if="params.body" class="text-sm text-base-content/70">
