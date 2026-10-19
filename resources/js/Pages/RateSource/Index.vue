@@ -16,6 +16,7 @@ const props = defineProps({
     sources: { type: Array, default: () => [] },
     types: { type: Array, default: () => [] },
     currencies: { type: Array, default: () => [] },
+    manualRateDefaults: { type: Object, default: () => ({}) },
 });
 
 const modalStore = useModalStore();
@@ -31,11 +32,11 @@ const STATUS_BADGE = {
 const typeLabel = (value) => TYPE_LABELS[value] ?? value;
 
 const openCreate = () => {
-    modalStore.openRateSourceEditModal({ currencies: props.currencies });
+    modalStore.openRateSourceEditModal({ currencies: props.currencies, manualRateDefaults: props.manualRateDefaults });
 };
 
 const openEdit = (source) => {
-    modalStore.openRateSourceEditModal({ source, currencies: props.currencies });
+    modalStore.openRateSourceEditModal({ source, currencies: props.currencies, manualRateDefaults: props.manualRateDefaults });
 };
 
 const refresh = (source) => {

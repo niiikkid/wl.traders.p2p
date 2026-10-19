@@ -4,9 +4,12 @@ namespace Tests\Unit;
 
 use App\Enums\MarketEnum;
 use App\Http\Requests\MerchantApiLog\AmountDistributionRequest;
+use App\Models\Setting;
+use App\Models\ValueObjects\Settings\ManualPriceParserSettings;
 use App\Services\Market\Utils\MarketStore;
 use App\Services\Money\Currency;
 use App\Services\Money\Money;
+use App\Services\Settings\SettingsService;
 use App\Support\TestData\DemoDataHelper;
 use Illuminate\Cache\ArrayStore;
 use Illuminate\Cache\Repository as CacheRepository;
@@ -94,6 +97,8 @@ class CurrencyPriorityTest extends TestCase
     public function test_demo_market_prices_cover_usd_and_preserve_other_supported_demo_fiat(): void
     {
         DemoDataHelper::seedMarketPrices();
+        $this->assertSame(1.08, DemoDataHelper::SELL_RATES['usd']);
+        $this->assertSame(config('money.currencies.USD.manual_rate'), DemoDataHelper::SELL_RATES['usd']);
 
         foreach (DemoDataHelper::SELL_RATES as $code => $rate) {
             foreach ([MarketEnum::BYBIT, MarketEnum::BINANCE, MarketEnum::MANUAL] as $market) {
@@ -102,8 +107,41 @@ class CurrencyPriorityTest extends TestCase
                     MarketStore::getSellPrice(Currency::make($code), $market),
                 );
                 $this->assertNotNull(MarketStore::getBuyPrice(Currency::make($code), $market));
+                if ($code === 'usd') {
+                    $this->assertSame(
+                        Money::fromPrecision('1.08', 'usd')->toUnits(),
+                        MarketStore::getBuyPrice(Currency::USD(), $market),
+                    );
+                }
             }
         }
+    }
+
+    public function test_manual_usd_defaults_do_not_replace_explicit_rates_or_other_currencies(): void
+    {
+        $defaults = ManualPriceParserSettings::fromArray([], 'usd');
+        $this->assertSame(1.08, $defaults->buy->rate);
+        $this->assertSame(1.08, $defaults->sell->rate);
+        $explicit = ManualPriceParserSettings::fromArray(['rate' => 1.13], 'usd');
+        $this->assertSame(1.13, $explicit->buy->rate);
+        $this->assertSame(1.13, $explicit->sell->rate);
+        $this->assertSame(0.0, ManualPriceParserSettings::fromArray(['sell' => ['rate' => 0]], 'usd')->sell->rate);
+        $this->assertSame(0.0, ManualPriceParserSettings::defaults('eur')->sell->rate);
+        $this->assertSame(0.0, ManualPriceParserSettings::defaults()->sell->rate);
+    }
+
+    public function test_settings_service_supplies_manual_usd_default_without_changing_automatic_settings(): void
+    {
+        cache()->put('app-settings', collect([new Setting([
+            'key' => SettingsService::CURRENCY_PRICE_PARSER_SETTINGS,
+            'value' => json_encode(['usd' => ['bybit' => ['buy' => ['amount' => 1500], 'sell' => ['amount' => 2000]]]]),
+        ])]));
+        $service = new SettingsService;
+
+        $this->assertSame(1.08, $service->getMarketPriceParser(Currency::USD(), MarketEnum::MANUAL)->sell->rate);
+        $automatic = $service->getMarketPriceParser(Currency::USD(), MarketEnum::BYBIT);
+        $this->assertSame(1500, $automatic->buy->amount);
+        $this->assertSame(2000, $automatic->sell->amount);
     }
 
     public function test_fiat_default_migration_preserves_existing_preferences_and_rolls_back(): void

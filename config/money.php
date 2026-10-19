@@ -9,6 +9,7 @@ return [
             'base' => false,
             'symbol' => '$',
             'name' => 'Доллар США',
+            'manual_rate' => 1.08,
         ],
         'RUB' => [
             'precision' => 8,

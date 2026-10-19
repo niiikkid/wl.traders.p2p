@@ -28,6 +28,9 @@ class RateSourceController extends Controller
             'sources' => $sources,
             'types' => RateSourceType::values(),
             'currencies' => Currency::getAllCodes(),
+            'manualRateDefaults' => Currency::getAll()->mapWithKeys(fn (Currency $currency) => [
+                $currency->getCode() => config('money.currencies.'.strtoupper($currency->getCode()).'.manual_rate'),
+            ])->all(),
         ]);
     }
 

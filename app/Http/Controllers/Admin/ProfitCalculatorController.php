@@ -26,7 +26,7 @@ class ProfitCalculatorController extends Controller
                 'logic' => 'in_body',
                 'amount_currency' => $defaultCurrency,
                 'amount' => '1000',
-                'exchange_rate' => '1',
+                'exchange_rate' => (string) config('money.currencies.'.strtoupper($defaultCurrency).'.manual_rate', 1),
                 'total_commission_rate' => 5,
                 'trader_commission_rate' => 2,
                 'teamleader_commission_rate' => 0,

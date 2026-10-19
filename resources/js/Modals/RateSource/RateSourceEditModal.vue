@@ -240,8 +240,13 @@ watch(
     }
 );
 
-watch(() => [form.value.type, form.value.quote_currency], () => {
+watch(() => [form.value.type, form.value.quote_currency], ([type, currency], previous) => {
     previewResult.value = null;
+    if (!isEdit.value && (currency !== previous?.[1] || form.value.rate === null)) {
+        form.value.rate = type === 'manual'
+            ? rateSourceEditModal.value.params?.manualRateDefaults?.[currency] ?? null
+            : null;
+    }
     if (rateSourceEditModal.value.showed) {
         loadFilterOptions();
     }

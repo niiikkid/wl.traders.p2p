@@ -72,7 +72,7 @@ const contrastPairs = computed(() => evaluateContrast(store.draftTokens));
 
             <!-- Alerts -->
             <div class="space-y-2">
-                <div class="alert alert-info"><span>Курс обновлён: 1 USDT = 1.00 USD</span></div>
+                <div class="alert alert-info"><span>Курс обновлён: 1 USDT = 1.08 USD</span></div>
                 <div class="alert alert-success"><span>Выплата успешно отправлена трейдеру.</span></div>
                 <div class="alert alert-warning"><span>Ожидание подтверждения оплаты.</span></div>
                 <div class="alert alert-error"><span>Спор по заявке A-10238 открыт.</span></div>

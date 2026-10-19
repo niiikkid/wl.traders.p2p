@@ -94,7 +94,7 @@ class SettingsService implements SettingsServiceContract
     ): CurrencyPriceParserSettings|BinancePriceParserSettings|ManualPriceParserSettings {
         $param = json_decode($this->getParam(self::CURRENCY_PRICE_PARSER_SETTINGS), true);
         $settings = $param[$currency->getCode()] ?? [];
-        $settings = $this->normalizeMarketPriceParserSettings($settings);
+        $settings = $this->normalizeMarketPriceParserSettings($settings, $currency->getCode());
 
         $marketKey = $market->value;
         $marketSettings = $settings[$marketKey] ?? [];
@@ -114,7 +114,7 @@ class SettingsService implements SettingsServiceContract
         $param = json_decode($this->getParam(self::CURRENCY_PRICE_PARSER_SETTINGS), true);
         $code = $currency->getCode();
 
-        $current = $this->normalizeMarketPriceParserSettings($param[$code] ?? []);
+        $current = $this->normalizeMarketPriceParserSettings($param[$code] ?? [], $code);
         $current[$market->value] = $settings->toArray();
 
         $param[$code] = $current;
@@ -286,7 +286,7 @@ class SettingsService implements SettingsServiceContract
 
         Currency::getAll()->each(function (Currency $currency) use (&$currencies) {
             $code = $currency->getCode();
-            $currencies[$code] = $this->normalizeMarketPriceParserSettings($currencies[$code] ?? []);
+            $currencies[$code] = $this->normalizeMarketPriceParserSettings($currencies[$code] ?? [], $code);
         });
 
         Setting::updateOrCreate(['key' => self::CURRENCY_PRICE_PARSER_SETTINGS], [
@@ -347,12 +347,12 @@ class SettingsService implements SettingsServiceContract
         return (bool) $res;
     }
 
-    protected function normalizeMarketPriceParserSettings(array $settings): array
+    protected function normalizeMarketPriceParserSettings(array $settings, ?string $currencyCode = null): array
     {
         if (isset($settings['bybit']) || isset($settings['binance']) || isset($settings['manual'])) {
             $settings['bybit'] = CurrencyPriceParserSettings::fromArray($settings['bybit'] ?? [])->toArray();
             $settings['binance'] = BinancePriceParserSettings::fromArray($settings['binance'] ?? [])->toArray();
-            $settings['manual'] = ManualPriceParserSettings::fromArray($settings['manual'] ?? [])->toArray();
+            $settings['manual'] = ManualPriceParserSettings::fromArray($settings['manual'] ?? [], $currencyCode)->toArray();
 
             return $settings;
         }
@@ -360,7 +360,7 @@ class SettingsService implements SettingsServiceContract
         return [
             'bybit' => CurrencyPriceParserSettings::fromArray($settings)->toArray(),
             'binance' => BinancePriceParserSettings::defaults()->toArray(),
-            'manual' => ManualPriceParserSettings::defaults()->toArray(),
+            'manual' => ManualPriceParserSettings::defaults($currencyCode)->toArray(),
         ];
     }
 

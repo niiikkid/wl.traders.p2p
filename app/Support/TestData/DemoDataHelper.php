@@ -30,7 +30,7 @@ class DemoDataHelper
      * @var array<string, float>
      */
     public const SELL_RATES = [
-        'usd' => 1.0,
+        'usd' => 1.08,
         'uah' => 41.5,
         'eur' => 0.93,
     ];
@@ -61,8 +61,9 @@ class DemoDataHelper
             }
 
             $sellUnits = Money::fromPrecision((string) $sell, $code)->toUnits();
-            // Небольшой спред: покупка чуть дороже продажи.
-            $buyUnits = Money::fromPrecision((string) round($sell * 1.008, 6), $code)->toUnits();
+            // USD uses a fixed demo rate; other currencies retain their spread.
+            $buyRate = $code === 'usd' ? $sell : round($sell * 1.008, 6);
+            $buyUnits = Money::fromPrecision((string) $buyRate, $code)->toUnits();
 
             foreach ($markets as $market) {
                 MarketStore::putPrice(new Currency($code), $market, $buyUnits, $sellUnits);

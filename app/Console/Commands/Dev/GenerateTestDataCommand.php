@@ -239,7 +239,7 @@ class GenerateTestDataCommand extends Command
                     'name' => 'Ручной курс USDT/'.strtoupper($code),
                     'rate' => Money::fromPrecision((string) $rate, $code),
                     'rate_currency' => $code,
-                    'settings' => ['manual' => ['sell' => ['rate' => $rate], 'buy' => ['rate' => round($rate * 1.008, 6)]]],
+                    'settings' => ['rate' => $rate, 'side' => 'sell'],
                     'is_active' => true,
                     'last_refreshed_at' => now(),
                 ],

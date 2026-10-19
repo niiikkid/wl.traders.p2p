@@ -11,7 +11,7 @@ class ManualPriceParserSettings
         public ManualPriceParserSideSettings $sell,
     ) {}
 
-    public static function fromArray(?array $data): self
+    public static function fromArray(?array $data, ?string $currencyCode = null): self
     {
         $data = $data ?? [];
 
@@ -22,17 +22,21 @@ class ManualPriceParserSettings
             $buyData = $sellData = $data;
         }
 
+        $defaults = self::defaults($currencyCode);
+
         return new self(
-            buy: ManualPriceParserSideSettings::fromArray($buyData),
-            sell: ManualPriceParserSideSettings::fromArray($sellData),
+            buy: ManualPriceParserSideSettings::fromArray($buyData + $defaults->buy->toArray()),
+            sell: ManualPriceParserSideSettings::fromArray($sellData + $defaults->sell->toArray()),
         );
     }
 
-    public static function defaults(): self
+    public static function defaults(?string $currencyCode = null): self
     {
+        $rate = $currencyCode === null ? 0.0 : (float) config('money.currencies.'.strtoupper($currencyCode).'.manual_rate', 0.0);
+
         return new self(
-            buy: ManualPriceParserSideSettings::defaults(),
-            sell: ManualPriceParserSideSettings::defaults(),
+            buy: new ManualPriceParserSideSettings(rate: $rate),
+            sell: new ManualPriceParserSideSettings(rate: $rate),
         );
     }
 
