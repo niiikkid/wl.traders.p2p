@@ -39,6 +39,10 @@ const props = defineProps({
         type: [Number, null],
         default: null,
     },
+    yMinInterval: {
+        type: Number,
+        default: undefined,
+    },
     showLegend: {
         type: Boolean,
         default: false,
@@ -203,6 +207,7 @@ const option = computed(() => ({
         type: 'value',
         min: props.yMin ?? undefined,
         max: props.yMax ?? undefined,
+        minInterval: props.yMinInterval,
         splitLine: { lineStyle: { color: splitLineColor, width: 1 } },
         axisLabel: {
             color: axisLabelColor.value,

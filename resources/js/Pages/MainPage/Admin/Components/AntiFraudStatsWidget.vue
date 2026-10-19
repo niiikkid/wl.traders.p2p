@@ -70,6 +70,7 @@ onMounted(() => {
                 :series="antiFraudSeries"
                 value-type="count"
                 :y-min="0"
+                :y-min-interval="1"
                 height="15rem"
             />
         </div>
