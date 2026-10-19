@@ -146,13 +146,13 @@ router.on('success', () => {
 
 <template>
     <div class=" bg-base-100 shadow-sm z-50 w-full">
-        <div class="navbar lg:container mx-auto px-4">
-            <div class="flex-1">
-                <div class="flex items-center justify-start rtl:justify-end">
+        <div class="navbar lg:container mx-auto px-2 sm:px-4">
+            <div class="min-w-0 flex-1">
+                <div class="flex min-w-0 items-center justify-start rtl:justify-end">
                     <!--data-drawer-target="logo-sidebar" data-drawer-toggle="logo-sidebar" aria-controls="logo-sidebar"-->
                     <button
                         type="button"
-                        class="btn btn-ghost btn-square mr-2 lg:hidden"
+                        class="btn btn-ghost btn-square sm:mr-2 lg:hidden"
                         @click.prevent="toggleSidebar"
                     >
                         <span class="sr-only">Открыть меню</span>
@@ -160,7 +160,7 @@ router.on('success', () => {
                             <path clip-rule="evenodd" fill-rule="evenodd" d="M2 4.75A.75.75 0 012.75 4h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 4.75zm0 10.5a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5a.75.75 0 01-.75-.75zM2 10a.75.75 0 01.75-.75h14.5a.75.75 0 010 1.5H2.75A.75.75 0 012 10z"></path>
                         </svg>
                     </button>
-                    <Link :href="route('dashboard')" class="flex ms-2 md:me-24 text-base-content">
+                    <Link :href="route('dashboard')" class="hidden min-w-0 ms-2 text-base-content sm:flex md:me-24">
                         <div class="hidden lg:block">
                             <div class="text-4xl font-semibold">{{$page.props.app.name}}</div>
                             <div class="text-xs font-medium text-base-content/70">{{$page.props.app.slogan}}</div>
@@ -172,7 +172,7 @@ router.on('success', () => {
                     </Link>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex shrink-0 items-center gap-0.5 sm:gap-2">
                 <div v-show="viewStore.isMerchantViewMode" class="lg:block hidden">
                     <div class="dropdown dropdown-end">
                         <button
