@@ -436,7 +436,7 @@ const toggleLoginHistoryLogging = () => {
                     <InputError :message="form.errors.current_password" class="mt-2" />
                 </div>
 
-                <div class="modal-action">
+                <div class="modal-action flex-wrap">
                     <button
                         type="button"
                         class="btn btn-sm btn-ghost"

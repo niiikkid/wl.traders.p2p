@@ -3,7 +3,7 @@
 </script>
 
 <template>
-    <div class="modal-action">
+    <div class="modal-action flex-wrap">
         <slot/>
     </div>
 </template>

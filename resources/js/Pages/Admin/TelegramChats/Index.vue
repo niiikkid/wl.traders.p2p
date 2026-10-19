@@ -1798,7 +1798,7 @@ watch(
                     class="h-[70vh] w-full rounded-box border border-base-300 bg-base-100"
                 ></iframe>
 
-                <div class="modal-action">
+                <div class="modal-action flex-wrap">
                     <button
                         type="button"
                         class="btn btn-outline btn-sm"
