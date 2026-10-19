@@ -17,6 +17,7 @@ import DataTable from '@/Components/Table/DataTable.vue';
 import DataCardList from '@/Components/Table/DataCardList.vue';
 import DataCard from '@/Components/Table/DataCard.vue';
 
+const payoutDateQuery = { payoutTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const reloadingTableData = ref(false);
@@ -47,6 +48,7 @@ defineOptions({ layout: AuthenticatedLayout });
         <Head title="Выплаты" />
 
         <MainTableSection
+            :visit-extra-data="payoutDateQuery"
             title="Выплаты"
             :data="payouts"
         >
@@ -60,7 +62,7 @@ defineOptions({ layout: AuthenticatedLayout });
                 </PageToolbar>
             </template>
             <template #header>
-                <FiltersPanel name="support-payouts">
+                <FiltersPanel name="support-payouts" :query="payoutDateQuery">
                     <DateFilter name="startDate" title="Создано с" />
                     <DateFilter name="endDate" title="Создано по" />
                     <InputFilter name="uuid" placeholder="UUID" />

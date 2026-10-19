@@ -27,6 +27,7 @@ import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
 
 const tableFiltersStore = useTableFiltersStore();
 
+const payoutDateQuery = { payoutTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const traders = computed(() => usePage().props.traders ?? []);
@@ -308,7 +309,7 @@ const payoutReceiptLinks = (payout) => {
 };
 
 const openAdminPayoutsExport = () => {
-    const url = route('admin.payouts.export', tableFiltersStore.getQueryData);
+    const url = route('admin.payouts.export', { ...tableFiltersStore.getQueryData, ...payoutDateQuery });
     window.open(url, '_blank');
 };
 
@@ -320,6 +321,7 @@ defineOptions({ layout: AuthenticatedLayout });
         <Head title="Выплаты" />
 
         <MainTableSection
+            :visit-extra-data="payoutDateQuery"
             title="Выплаты"
             :data="payouts"
         >
@@ -342,7 +344,7 @@ defineOptions({ layout: AuthenticatedLayout });
             </template>
             <template #header>
                 <div class="space-y-4">
-                    <FiltersPanel name="admin-payouts">
+                    <FiltersPanel name="admin-payouts" :query="payoutDateQuery">
                         <DateFilter name="startDate" title="Создано с" />
                         <DateFilter name="endDate" title="Создано по" />
                         <InputFilter name="uuid" placeholder="UUID" />

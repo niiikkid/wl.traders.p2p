@@ -8,6 +8,7 @@ use App\Models\User;
 use App\ObjectValues\TableFilters\TableFiltersValue;
 use App\Queries\Interfaces\PayoutQueries;
 use App\Services\Money\Money;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -119,10 +120,10 @@ class PayoutQueriesEloquent implements PayoutQueries
                 $query->where('amount_fiat_currency', strtoupper($filters->currency));
             })
             ->when($filters->startDate, function (Builder $query) use ($filters) {
-                $query->whereDate('created_at', '>=', $filters->startDate);
+                $query->where('created_at', '>=', $this->payoutDateBoundary($filters->startDate));
             })
             ->when($filters->endDate, function (Builder $query) use ($filters) {
-                $query->whereDate('created_at', '<=', $filters->endDate);
+                $query->where('created_at', '<', $this->payoutDateBoundary($filters->endDate, nextDay: true));
             })
             ->when($filters->uuid, function (Builder $query) use ($filters) {
                 $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
@@ -197,10 +198,10 @@ class PayoutQueriesEloquent implements PayoutQueries
                 $query->where('amount_fiat_currency', strtoupper($filters->currency));
             })
             ->when($filters->startDate, function (Builder $query) use ($filters) {
-                $query->whereDate('created_at', '>=', $filters->startDate);
+                $query->where('created_at', '>=', $this->payoutDateBoundary($filters->startDate));
             })
             ->when($filters->endDate, function (Builder $query) use ($filters) {
-                $query->whereDate('created_at', '<=', $filters->endDate);
+                $query->where('created_at', '<', $this->payoutDateBoundary($filters->endDate, nextDay: true));
             })
             ->when($filters->uuid, function (Builder $query) use ($filters) {
                 $query->where('uuid', 'LIKE', '%'.$filters->uuid.'%');
@@ -305,6 +306,21 @@ class PayoutQueriesEloquent implements PayoutQueries
     private function statusValues(array $statuses): array
     {
         return array_map(static fn (PayoutStatus $status) => $status->value, $statuses);
+    }
+
+    private function payoutDateBoundary(Carbon $date, bool $nextDay = false): Carbon
+    {
+        $timezone = request()->input('payoutTimezone');
+        if (! is_string($timezone) || ! in_array($timezone, timezone_identifiers_list(\DateTimeZone::ALL_WITH_BC), true)) {
+            $timezone = config('app.timezone');
+        }
+
+        $boundary = Carbon::createFromFormat('!Y-m-d', $date->format('Y-m-d'), $timezone);
+        if ($nextDay) {
+            $boundary->addDay();
+        }
+
+        return $boundary->setTimezone(config('app.timezone'));
     }
 
     private function asFiatUnits(?string $amount, ?string $currency): ?string

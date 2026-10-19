@@ -18,6 +18,7 @@ import DataCard from '@/Components/Table/DataCard.vue';
 import {useModalStore} from '@/store/modal.js';
 
 const modalStore = useModalStore();
+const payoutDateQuery = { payoutTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
 const payouts = computed(() => usePage().props.payouts ?? { data: [] });
 const payoutItems = computed(() => payouts.value?.data ?? []);
 const expandedRows = ref({});
@@ -115,12 +116,13 @@ defineOptions({ layout: AuthenticatedLayout });
         <Head title="Выплаты" />
 
         <MainTableSection
+            :visit-extra-data="payoutDateQuery"
             title="Выплаты"
             :data="payouts"
         >
             <template #header>
                 <div class="space-y-4">
-                    <FiltersPanel name="merchant-payouts">
+                    <FiltersPanel name="merchant-payouts" :query="payoutDateQuery">
                         <DateFilter name="startDate" title="Создано с" />
                         <DateFilter name="endDate" title="Создано по" />
                         <InputFilter name="uuid" placeholder="UUID" />
