@@ -27,6 +27,16 @@ const amount = ref('');
 const error = ref('');
 const loading = ref(false);
 const invoice = ref(null);
+const modalTitle = computed(() => {
+    const titles = {
+        merchant: 'Пополнение мерчант баланса',
+        trust: 'Пополнение траст баланса',
+        reserve: 'Пополнение общего страхового резерва',
+    };
+    const balanceType = invoice.value?.balance_type ?? modalParams.value.invoice?.balance_type;
+
+    return titles[balanceType] ?? props.title;
+});
 const copied = ref(false);
 const now = ref(Date.now());
 
@@ -222,7 +232,7 @@ onBeforeUnmount(stopTimers);
 
 <template>
     <Modal :show="show" size="sm" @close="close">
-        <ModalHeader :title="title" @close="close" />
+        <ModalHeader :title="modalTitle" @close="close" />
 
         <ModalBody>
             <div v-if="step === 'amount'" class="space-y-3">
