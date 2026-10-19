@@ -29,7 +29,7 @@ const selectValue = (value, event) => {
 </script>
 
 <template>
-    <div class="dropdown dropdown-left dropdown-top">
+    <div class="dropdown dropdown-top dropdown-end">
         <div
             tabindex="0"
             role="button"
