@@ -111,7 +111,10 @@ const selectMobilePreset = (value) => {
                 >
                     Свой период
                 </button>
-                <div class="dropdown-content z-30 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-3 shadow right-0 left-auto">
+                <div
+                    v-if="desktopCustom.isOpen.value"
+                    class="absolute z-30 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-3 shadow right-0 left-auto"
+                >
                     <div class="flex items-center gap-2">
                         <input
                             :value="dateFrom"
@@ -180,8 +183,9 @@ const selectMobilePreset = (value) => {
                     Свой период
                 </button>
                 <div
+                    v-if="mobileCustom.isOpen.value"
                     ref="mobileCustomPanel"
-                    class="dropdown-content z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 bg-base-100 p-3 shadow left-0"
+                    class="absolute z-30 mt-2 w-72 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 bg-base-100 p-3 shadow left-0"
                     :style="{ left: mobileCustomLeft }"
                 >
                     <div class="flex items-center gap-2">
