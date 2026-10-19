@@ -89,7 +89,7 @@ class NewsController extends Controller
         return response()->success($result);
     }
 
-    public function store(StoreRequest $request): RedirectResponse
+    public function store(StoreRequest $request): JsonResponse|RedirectResponse
     {
         abort_unless($request->user()->hasRole('Super Admin'), 403);
 
@@ -133,7 +133,7 @@ class NewsController extends Controller
             ->with('message', 'Новость успешно опубликована');
     }
 
-    public function destroy(NewsPost $newsPost): RedirectResponse
+    public function destroy(NewsPost $newsPost): JsonResponse|RedirectResponse
     {
         abort_unless(request()->user()?->hasRole('Super Admin'), 403);
 
