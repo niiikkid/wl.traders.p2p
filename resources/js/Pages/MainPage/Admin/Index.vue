@@ -166,7 +166,7 @@ const activeTabTitle = computed(() => activeTabConfig.value.label);
 
 const activeData = computed(() => getLastPoints(
     normalizeChartLabels(chartSources[activeChartTab.value].value, selectedPeriodPreset.value),
-    isMobile.value,
+    isMobile.value && selectedPeriodPreset.value !== 'month',
 ));
 
 const hasSelectedMerchants = computed(() => (selectedFilters.value.merchant || []).length > 0);
@@ -203,7 +203,7 @@ const activeDisputeTabConfig = computed(() => disputeChartTabs.find((tab) => tab
 const activeDisputeTabTitle = computed(() => activeDisputeTabConfig.value.label);
 const activeDisputeData = computed(() => getLastPoints(
     normalizeChartLabels(disputeSources[activeDisputeChartTab.value].value, selectedPeriodPreset.value),
-    isMobile.value,
+    isMobile.value && selectedPeriodPreset.value !== 'month',
 ));
 const disputeSeries = computed(() => {
     const series = [{

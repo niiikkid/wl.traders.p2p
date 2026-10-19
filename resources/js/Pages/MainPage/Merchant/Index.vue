@@ -103,7 +103,7 @@ const activeTabTitle = computed(() => activeTabConfig.value.label);
 
 const activeData = computed(() => getLastPoints(
     normalizeChartLabels(chartSources[activeChartTab.value].value, selectedPeriodPreset.value),
-    isMobile.value,
+    isMobile.value && selectedPeriodPreset.value !== 'month',
 ));
 
 const activeSeries = computed(() => [{
