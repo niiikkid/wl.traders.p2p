@@ -201,9 +201,7 @@ watch(
 
             if (paymentDetailBulkEditModal.value.params?.scope === 'selected') {
                 scope.value = 'selected';
-                selectedIds.value = (paymentDetailBulkEditModal.value.params?.selected_ids || [])
-                    .map((id) => Number(id))
-                    .filter((id) => Number.isFinite(id));
+                selectedIds.value = [...(paymentDetailBulkEditModal.value.params?.selected_ids || [])];
                 selectedPreview.value = paymentDetailBulkEditModal.value.params?.selected_preview || [];
             }
         } else {

@@ -52,8 +52,8 @@ class BulkUpdateRequest extends FormRequest
                 'min:1',
             ],
             'selected_ids.*' => [
-                'integer',
-                Rule::exists('payment_details', 'id')
+                'uuid',
+                Rule::exists('payment_details', 'uuid')
                     ->where('user_id', $this->user()?->id),
             ],
             'fields' => ['required', 'array', 'min:1'],
