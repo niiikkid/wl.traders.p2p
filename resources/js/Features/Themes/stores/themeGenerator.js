@@ -96,8 +96,16 @@ export const useThemeGeneratorStore = defineStore('themeGenerator', {
 
             if (!this.draft) {
                 const selected = readSelectedTheme();
+                const savedTheme = selected?.id && selected.type !== 'builtin'
+                    ? this.custom.find((theme) => theme.id === selected.id)
+                    : null;
 
-                if (selected?.tokens) {
+                if (savedTheme) {
+                    this.draft = {
+                        ...deepClone(savedTheme),
+                        tokens: sanitizeTokens(savedTheme.tokens),
+                    };
+                } else if (selected?.tokens) {
                     this.draft = {
                         id: selected.id ?? uid(),
                         type: selected.type === 'builtin' ? 'builtin' : 'custom',
