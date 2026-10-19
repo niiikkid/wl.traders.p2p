@@ -113,12 +113,12 @@ const showAdditionalInfo = computed(() => (
         && props.paymentDetail.additional_info !== '')
 ));
 
-const sectionClass = 'rounded-box border border-base-300 bg-base-200/40 p-3';
+const sectionClass = 'min-w-0 rounded-box border border-base-300 bg-base-200/40 p-3';
 const sectionTitleClass = 'text-[10px] font-semibold uppercase tracking-wide text-base-content/60';
 </script>
 
 <template>
-    <div class="grid gap-3">
+    <div class="grid min-w-0 gap-3">
         <div :class="sectionClass">
             <p class="mb-2.5" :class="sectionTitleClass">
                 Информация по реквизиту
@@ -129,35 +129,35 @@ const sectionTitleClass = 'text-[10px] font-semibold uppercase tracking-wide tex
                     class="flex items-center justify-between gap-2"
                 >
                     <span class="text-base-content/70">Банк:</span>
-                    <span class="text-right font-medium">{{ paymentDetail.payment_gateway.name }}</span>
+                    <span class="min-w-0 text-right font-medium wrap-anywhere">{{ paymentDetail.payment_gateway.name }}</span>
                 </div>
                 <div
                     v-if="viewStore.isAdminViewMode && paymentDetail.owner_email"
                     class="flex items-center justify-between gap-2"
                 >
                     <span class="text-base-content/70">Профиль:</span>
-                    <span class="text-right">{{ paymentDetail.owner_email }}</span>
+                    <span class="min-w-0 text-right wrap-anywhere">{{ paymentDetail.owner_email }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-base-content/70">Инициалы:</span>
-                    <span class="text-right">{{ displayValue(paymentDetail.initials) }}</span>
+                    <span class="min-w-0 text-right wrap-anywhere">{{ displayValue(paymentDetail.initials) }}</span>
                 </div>
                 <div
                     v-if="showAdditionalInfo"
                     class="flex items-center justify-between gap-2"
                 >
                     <span class="text-base-content/70">ИПН (ИНН):</span>
-                    <span class="text-right">{{ displayValue(paymentDetail.additional_info) }}</span>
+                    <span class="min-w-0 text-right wrap-anywhere">{{ displayValue(paymentDetail.additional_info) }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-base-content/70">Статус:</span>
-                    <span class="badge badge-sm" :class="isActiveBadgeClass">
+                    <span class="badge badge-sm shrink-0" :class="isActiveBadgeClass">
                         {{ isActiveLabel }}
                     </span>
                 </div>
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-base-content/70">Обработка:</span>
-                    <span class="badge badge-sm" :class="processingModeBadgeClass">
+                    <span class="badge badge-sm shrink-0" :class="processingModeBadgeClass">
                         {{ processingModeLabel }}
                     </span>
                 </div>
@@ -166,17 +166,17 @@ const sectionTitleClass = 'text-[10px] font-semibold uppercase tracking-wide tex
                     class="flex items-center justify-between gap-2"
                 >
                     <span class="text-base-content/70">Устройство:</span>
-                    <span class="text-right">{{ paymentDetail.device_name }}</span>
+                    <span class="min-w-0 text-right wrap-anywhere">{{ paymentDetail.device_name }}</span>
                 </div>
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-base-content/70">Макс. активных:</span>
-                    <span class="text-right">
+                    <span class="min-w-0 text-right wrap-anywhere">
                         {{ displayValue(paymentDetail.max_pending_orders_quantity) }}
                     </span>
                 </div>
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-base-content/70">Интервал:</span>
-                    <span class="text-right">
+                    <span class="min-w-0 text-right wrap-anywhere">
                         {{ paymentDetail.order_interval_minutes !== null && paymentDetail.order_interval_minutes !== ''
                             ? paymentDetail.order_interval_minutes + ' мин'
                             : '-' }}
@@ -188,13 +188,13 @@ const sectionTitleClass = 'text-[10px] font-semibold uppercase tracking-wide tex
                 >
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-base-content/70">Мин:</span>
-                        <span class="text-right">
+                        <span class="min-w-0 text-right wrap-anywhere">
                             {{ paymentDetail.min_order_amount !== null ? paymentDetail.min_order_amount : '∞' }}
                         </span>
                     </div>
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-base-content/70">Макс:</span>
-                        <span class="text-right">
+                        <span class="min-w-0 text-right wrap-anywhere">
                             {{ paymentDetail.max_order_amount !== null ? paymentDetail.max_order_amount : '∞' }}
                         </span>
                     </div>
@@ -214,7 +214,7 @@ const sectionTitleClass = 'text-[10px] font-semibold uppercase tracking-wide tex
         </div>
 
         <div :class="sectionClass">
-            <div class="mb-2.5 flex items-center justify-between gap-2">
+            <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                 <p :class="sectionTitleClass">
                     Дневные лимиты
                 </p>
@@ -260,11 +260,11 @@ const sectionTitleClass = 'text-[10px] font-semibold uppercase tracking-wide tex
         </div>
 
         <div :class="sectionClass">
-            <div class="mb-2.5 flex items-center justify-between gap-2">
+            <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                 <p :class="sectionTitleClass">
                     Месячные лимиты
                 </p>
-                <span class="badge badge-xs badge-outline">
+                <span class="badge badge-xs badge-outline h-auto max-w-full whitespace-normal wrap-anywhere">
                     {{ formatMonthlyLimitResetLabel(paymentDetail.monthly_limit_reset_day) }}
                 </span>
             </div>

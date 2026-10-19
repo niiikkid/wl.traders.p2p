@@ -155,16 +155,16 @@ watch(
 
             <template v-else-if="displayPaymentDetail">
                 <div class="grid gap-4 xl:grid-cols-[minmax(0,22rem)_1fr]">
-                    <div class="space-y-4">
+                    <div class="min-w-0 space-y-4">
                         <div class="rounded-box border border-base-300 bg-base-200/40 p-3">
-                            <div class="flex min-w-0 items-start gap-3">
+                            <div class="flex min-w-0 flex-col items-start gap-3 sm:flex-row">
                                 <GatewayLogo
                                     v-if="displayPaymentDetail.payment_gateway"
                                     :img_path="displayPaymentDetail.payment_gateway.logo_path"
                                     :name="displayPaymentDetail.payment_gateway.name"
                                     class="h-14 w-14 shrink-0"
                                 />
-                                <div class="min-w-0 flex-1">
+                                <div class="min-w-0 w-full sm:w-auto sm:flex-1">
                                     <PaymentDetail
                                         size="md"
                                         :detail="displayPaymentDetail.detail"
@@ -183,7 +183,7 @@ watch(
                     </div>
 
                     <div
-                        class="space-y-4"
+                        class="min-w-0 space-y-4"
                         :class="{ 'pointer-events-none opacity-60': loading && payload }"
                     >
                         <div
@@ -272,16 +272,16 @@ watch(
                                     v-if="(distribution.buckets ?? []).length > 0"
                                     class="overflow-x-auto rounded-box border border-base-300 bg-base-100"
                                 >
-                                    <table class="table table-xs table-zebra text-[11px]">
+                                    <table class="table table-xs w-full table-fixed table-zebra text-[11px] sm:table-auto">
                                         <thead>
                                             <tr class="text-[10px] uppercase text-base-content/60">
-                                                <th class="py-2">
+                                                <th class="w-2/5 px-1 py-2 sm:w-auto sm:px-2">
                                                     Диапазон
                                                 </th>
-                                                <th class="py-2 text-right">
+                                                <th class="px-1 py-2 text-right sm:px-2">
                                                     Сделок
                                                 </th>
-                                                <th class="py-2 text-right">
+                                                <th class="px-1 py-2 text-right sm:px-2">
                                                     %
                                                 </th>
                                             </tr>
@@ -298,15 +298,15 @@ watch(
                                                             class="size-2 shrink-0 rounded-full ring-2 ring-base-100"
                                                             :style="{ backgroundColor: distributionIndicatorColor(bucket.count) }"
                                                         />
-                                                        <span class="truncate leading-tight">
+                                                        <span class="min-w-0 whitespace-normal leading-tight wrap-anywhere sm:truncate">
                                                             {{ bucket.label }}
                                                         </span>
                                                     </span>
                                                 </td>
-                                                <td class="py-1.5 text-right tabular-nums">
+                                                <td class="py-1.5 text-right whitespace-normal tabular-nums wrap-anywhere">
                                                     {{ formatInteger(bucket.count) }}
                                                 </td>
-                                                <td class="py-1.5 text-right tabular-nums">
+                                                <td class="py-1.5 text-right whitespace-normal tabular-nums wrap-anywhere">
                                                     {{ bucket.percent }}%
                                                 </td>
                                             </tr>
