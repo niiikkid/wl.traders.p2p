@@ -254,14 +254,14 @@ const walletDepositStatus = (status) => {
                             </span>
 
                             <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2">
+                                <div class="flex flex-wrap items-center gap-2">
                                     <span class="font-medium text-base-content">
                                         {{ invoice.type === 'deposit' ? 'Пополнение' : 'Вывод' }}
                                     </span>
                                     <span class="text-xs text-base-content/40">#{{ invoice.id }}</span>
                                     <span
                                         v-if="showHistoryBalanceTypeColumn && invoice.balance_type"
-                                        class="badge badge-ghost badge-xs"
+                                        class="badge badge-ghost badge-xs max-w-full h-auto whitespace-normal wrap-anywhere"
                                     >{{ balanceTypeLabel(invoice.balance_type) }}</span>
                                 <span
                                     v-if="invoice.merchant"
@@ -327,12 +327,12 @@ const walletDepositStatus = (status) => {
                             </span>
 
                             <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2">
+                                <div class="flex flex-wrap items-center gap-2">
                                     <span class="font-medium text-base-content truncate">{{ transaction.type_name }}</span>
                                     <span class="text-xs text-base-content/40">#{{ transaction.id }}</span>
                                     <span
                                         v-if="showHistoryBalanceTypeColumn && transaction.balance_type"
-                                        class="badge badge-ghost badge-xs"
+                                        class="badge badge-ghost badge-xs max-w-full h-auto whitespace-normal wrap-anywhere"
                                     >{{ balanceTypeLabel(transaction.balance_type) }}</span>
                                 <span
                                     v-if="transaction.merchant"
