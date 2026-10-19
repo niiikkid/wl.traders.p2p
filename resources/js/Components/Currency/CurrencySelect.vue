@@ -122,9 +122,10 @@ onBeforeUnmount(() => {
 
 <template>
     <div ref="rootRef" class="dropdown w-full" :class="{ 'dropdown-open': isOpen && !disabled }">
-        <div
-            tabindex="0"
-            role="button"
+        <button
+            type="button"
+            :disabled="disabled"
+            :aria-expanded="isOpen && !disabled"
             :class="triggerClasses"
             @click.stop="toggleOpen"
         >
@@ -149,9 +150,10 @@ onBeforeUnmount(() => {
             <svg class="size-2.5 shrink-0 opacity-60" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 10 6">
                 <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 4 4 4-4" />
             </svg>
-        </div>
+        </button>
 
         <ul
+            v-if="isOpen && !disabled"
             tabindex="0"
             class="dropdown-content z-[100] mt-1 flex max-h-60 w-full min-w-full flex-col flex-nowrap gap-0.5 overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow"
             @click.stop
