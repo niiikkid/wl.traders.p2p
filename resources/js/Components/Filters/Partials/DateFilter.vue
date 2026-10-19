@@ -24,6 +24,21 @@ const model = useFilterModel(props.name);
 const dateInputRef = ref(null);
 let picker = null;
 
+const repositionPicker = () => {
+    if (!picker?.isVisible()) {
+        return;
+    }
+
+    picker.adjustPosition();
+
+    const margin = 8;
+    const bounds = picker.el.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const left = Math.max(margin, Math.min(bounds.left, viewportWidth - bounds.width - margin));
+
+    picker.el.style.left = `${parseFloat(picker.el.style.left) + left - bounds.left}px`;
+};
+
 // Форматирование даты для отображения в формате DD/MM/YYYY
 const formatDateForDisplay = (date) => {
     if (!date) return "";
@@ -57,6 +72,7 @@ onMounted(async () => {
         picker = new Pikaday({
             field: dateInputRef.value,
             format: 'DD/MM/YYYY',
+            onOpen: repositionPicker,
             i18n: {
                 previousMonth: 'Предыдущий месяц',
                 nextMonth: 'Следующий месяц',
@@ -78,9 +94,13 @@ onMounted(async () => {
             }
         }
     }
+
+    window.addEventListener('resize', repositionPicker);
 });
 
 onUnmounted(() => {
+    window.removeEventListener('resize', repositionPicker);
+
     if (picker) {
         picker.destroy();
     }
