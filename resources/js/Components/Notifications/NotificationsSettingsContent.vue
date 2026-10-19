@@ -263,8 +263,8 @@ router.on('success', () => {
             :class="showInAppSoundSettings ? 'xl:col-start-2 xl:row-start-1' : ''"
         >
             <div class="card-body gap-4 p-3 sm:p-4">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex min-w-0 items-start gap-3">
+                <div class="grid gap-3 sm:flex sm:items-start sm:justify-between sm:gap-4">
+                    <div class="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 sm:flex sm:gap-3">
                         <div
                             class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#2AABEE]/15 text-[#2AABEE]"
                             aria-hidden="true"
@@ -273,15 +273,15 @@ router.on('success', () => {
                                 <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
                             </svg>
                         </div>
-                        <div class="min-w-0">
-                            <h3 class="card-title text-lg">Telegram</h3>
-                            <p class="text-sm text-base-content/70">
+                        <div class="contents sm:block sm:min-w-0">
+                            <h3 class="card-title self-center text-lg sm:self-auto">Telegram</h3>
+                            <p class="col-span-2 text-sm text-base-content/70">
                                 Мгновенные уведомления о важных событиях в панели — отдельно от звуков в браузере.
                             </p>
                         </div>
                     </div>
                     <span
-                        class="badge shrink-0 whitespace-nowrap"
+                        class="badge w-fit shrink-0 justify-self-start whitespace-nowrap"
                         :class="telegramAccount.is_active ? 'badge-success' : 'badge-warning'"
                     >
                         {{ telegramAccount.is_active ? 'Подключён' : 'Не подключён' }}
@@ -383,7 +383,7 @@ router.on('success', () => {
                     </div>
 
                     <div v-else class="alert alert-warning text-sm">
-                        <span>Бот не настроен. Укажите <code class="rounded bg-base-200 px-1">TELEGRAM_BOT_NAME</code>, чтобы сформировать ссылку привязки.</span>
+                        <span>Бот не настроен. Укажите <code class="rounded bg-warning-content/10 px-1 text-warning-content">TELEGRAM_BOT_NAME</code>, чтобы сформировать ссылку привязки.</span>
                     </div>
                 </div>
 
