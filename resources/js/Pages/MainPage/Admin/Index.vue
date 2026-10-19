@@ -284,7 +284,7 @@ defineOptions({ layout: AuthenticatedLayout });
 
             <section>
                 <div v-show="isPrimaryTab">
-                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:grid-cols-4">
                         <StatCard label="Оборот" prefix="$" :value="statisticsFormatted.totalTurnover" color="success">
                             <template #icon>
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
