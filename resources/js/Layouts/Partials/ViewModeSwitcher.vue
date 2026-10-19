@@ -51,7 +51,7 @@ const getCurrentViewModeLabel = () => {
 </script>
 
 <template>
-    <div class="dropdown dropdown-end">
+    <div class="dropdown dropdown-start">
         <button
             tabindex="0"
             type="button"
