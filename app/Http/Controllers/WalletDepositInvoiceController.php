@@ -27,11 +27,12 @@ class WalletDepositInvoiceController extends Controller
         Gate::authorize('access-to-wallet-deposit-invoice', $walletDepositInvoice);
 
         abort_unless(
-            $walletDepositInvoice->qr_disk && $walletDepositInvoice->qr_path,
+            $walletDepositInvoice->qr_path,
             404
         );
 
-        $disk = Storage::disk($walletDepositInvoice->qr_disk);
+        // Legacy invoices with an empty disk were written to the default filesystem disk.
+        $disk = Storage::disk($walletDepositInvoice->qr_disk ?: null);
 
         abort_unless($disk->exists($walletDepositInvoice->qr_path), 404);
 

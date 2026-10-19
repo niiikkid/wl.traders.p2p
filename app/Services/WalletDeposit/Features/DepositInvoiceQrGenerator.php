@@ -17,7 +17,7 @@ class DepositInvoiceQrGenerator
 {
     public function generate(WalletDepositInvoice $invoice): void
     {
-        $disk = (string) config('services.wallet_deposit.qr_disk', 'local');
+        $disk = (string) (config('services.wallet_deposit.qr_disk') ?: config('filesystems.default', 'local'));
         $path = "wallet-deposit-invoices/{$invoice->uuid}/qr.svg";
 
         $renderer = new ImageRenderer(
