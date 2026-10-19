@@ -115,6 +115,9 @@ class PayoutQueriesEloquent implements PayoutQueries
             ->when(! empty($filters->payoutMethodTypes), function (Builder $query) use ($filters) {
                 $query->whereIn('payout_method_type', $filters->payoutMethodTypes);
             })
+            ->when($filters->currency, function (Builder $query) use ($filters) {
+                $query->where('amount_fiat_currency', strtoupper($filters->currency));
+            })
             ->when($filters->startDate, function (Builder $query) use ($filters) {
                 $query->whereDate('created_at', '>=', $filters->startDate);
             })
@@ -189,6 +192,9 @@ class PayoutQueriesEloquent implements PayoutQueries
             })
             ->when(! empty($filters->payoutMethodTypes), function (Builder $query) use ($filters) {
                 $query->whereIn('payout_method_type', $filters->payoutMethodTypes);
+            })
+            ->when($filters->currency, function (Builder $query) use ($filters) {
+                $query->where('amount_fiat_currency', strtoupper($filters->currency));
             })
             ->when($filters->startDate, function (Builder $query) use ($filters) {
                 $query->whereDate('created_at', '>=', $filters->startDate);
