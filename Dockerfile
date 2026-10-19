@@ -39,7 +39,9 @@ CMD ["php-fpm", "-F"]
 
 FROM nginx:stable-alpine AS web
 COPY --from=app /var/www/html/public /var/www/html/public
-RUN rm /etc/nginx/conf.d/default.conf
+# Source archives may retain owner-only permissions; Nginx must read public assets.
+RUN chmod -R a+rX /var/www/html/public \
+    && rm /etc/nginx/conf.d/default.conf
 STOPSIGNAL SIGQUIT
 
 FROM mysql:8.4 AS backup
