@@ -1667,7 +1667,7 @@ watch(
                         placeholder="Необязательно"
                         autocomplete="off"
                     >
-                    <p class="label text-xs text-base-content/60">
+                    <p class="label whitespace-normal text-xs text-base-content/60">
                         Telegram username без @ — для упоминания в уведомлениях.
                     </p>
                 </fieldset>
