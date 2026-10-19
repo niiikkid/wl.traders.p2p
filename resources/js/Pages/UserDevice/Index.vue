@@ -146,6 +146,7 @@ const closeSnapshotModal = () => {
 
                                 <div class="flex flex-wrap items-center gap-3">
                                     <a
+                                        v-if="$page.props.apkAvailable"
                                         :href="route('app.download')"
                                         class="btn btn-primary btn-sm sm:btn-md gap-2 shadow-sm"
                                     >
@@ -160,10 +161,21 @@ const closeSnapshotModal = () => {
                                         </svg>
                                         Скачать APK
                                     </a>
+                                    <button
+                                        v-else
+                                        type="button"
+                                        class="btn btn-primary btn-sm sm:btn-md gap-2 shadow-sm"
+                                        disabled
+                                    >
+                                        Скачать APK
+                                    </button>
                                     <span class="text-xs text-base-content/50">
                                         Только для Android
                                     </span>
                                 </div>
+                                <p v-if="!$page.props.apkAvailable" class="text-sm text-base-content/70">
+                                    APK пока не загружен. Обратитесь к администратору.
+                                </p>
                             </div>
                         </section>
 

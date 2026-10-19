@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\UserDeviceResource;
 use App\Models\UserDevice;
+use App\Services\AppApkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,10 +17,8 @@ class UserDeviceController extends Controller
 {
     /**
      * Отображает список устройств пользователя
-     *
-     * @return Response
      */
-    public function index()
+    public function index(AppApkService $appApkService): Response
     {
         $devices = Auth::user()
             ->devices()
@@ -28,8 +27,9 @@ class UserDeviceController extends Controller
         $devices = UserDeviceResource::collection($devices);
 
         $smsAutoCloseEnabled = (bool) Auth::user()->sms_auto_close_orders_enabled;
+        $apkAvailable = $appApkService->exists();
 
-        return Inertia::render('UserDevice/Index', compact('devices', 'smsAutoCloseEnabled'));
+        return Inertia::render('UserDevice/Index', compact('devices', 'smsAutoCloseEnabled', 'apkAvailable'));
     }
 
     public function connectSnapshot(UserDevice $device): JsonResponse
