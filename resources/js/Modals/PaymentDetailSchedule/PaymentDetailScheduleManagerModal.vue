@@ -318,7 +318,7 @@ watch(
 </script>
 
 <template>
-    <Modal :show="paymentDetailScheduleManagerModal.showed" @close="close" maxWidth="4xl">
+    <Modal :show="paymentDetailScheduleManagerModal.showed" @close="close" maxWidth="4xl" :stack-level="1">
         <ModalHeader @close="close" :title="modalTitle" />
         <ModalBody>
             <div v-if="loading && !schedules.length" class="text-center text-sm text-base-content/70 py-8">
