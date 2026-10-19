@@ -86,7 +86,7 @@ const togglePicker = () => {
 </script>
 
 <template>
-    <div class="relative">
+    <div class="min-w-0" :class="{ 'col-span-full': open }">
         <button
             type="button"
             class="flex w-full items-center gap-2 rounded-field border border-base-content/15 bg-base-100 px-2 py-1.5 text-left transition hover:border-base-content/40"
@@ -105,10 +105,10 @@ const togglePicker = () => {
 
         <div
             v-if="open"
-            class="absolute right-0 z-30 mt-1 w-72 rounded-box border border-base-content/15 bg-base-100 p-3 shadow-xl"
+            class="mt-1 w-full min-w-0 rounded-box border border-base-content/15 bg-base-100 p-3 shadow-xl"
         >
-            <div class="mb-2 flex items-center justify-between">
-                <span class="text-xs font-semibold uppercase opacity-60">{{ label || token }}</span>
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <span class="min-w-0 wrap-anywhere text-xs font-semibold uppercase opacity-60">{{ label || token }}</span>
                 <span
                     v-if="contrastInfo"
                     class="badge badge-sm gap-1"
@@ -118,7 +118,7 @@ const togglePicker = () => {
                 </span>
             </div>
 
-            <div class="tabs tabs-box tabs-xs mb-3">
+            <div class="tabs tabs-box tabs-xs mb-3 grid w-full grid-cols-3">
                 <button type="button" class="tab" :class="{ 'tab-active': mode === 'oklch' }" @click="mode = 'oklch'">OKLCH</button>
                 <button type="button" class="tab" :class="{ 'tab-active': mode === 'hex' }" @click="mode = 'hex'">HEX</button>
                 <button type="button" class="tab" :class="{ 'tab-active': mode === 'palette' }" @click="mode = 'palette'">Палитра</button>
@@ -141,10 +141,10 @@ const togglePicker = () => {
 
             <div v-else-if="mode === 'hex'" class="space-y-3">
                 <div class="flex items-center gap-2">
-                    <input type="color" class="h-10 w-14 cursor-pointer rounded border border-base-content/20 bg-base-100" :value="hex" @input="setHex" />
+                    <input type="color" class="h-10 w-14 shrink-0 cursor-pointer rounded border border-base-content/20 bg-base-100" :value="hex" @input="setHex" />
                     <input
                         type="text"
-                        class="input input-sm input-bordered flex-1 font-mono text-xs"
+                        class="input input-sm input-bordered w-full min-w-0 flex-1 font-mono text-xs"
                         placeholder="oklch(...) / #hex / rgb(...)"
                         v-model="rawText"
                         @keyup.enter="commitRawText"
@@ -155,15 +155,15 @@ const togglePicker = () => {
             </div>
 
             <div v-else class="space-y-2">
-                <select v-model="paletteFamily" class="select select-sm select-bordered w-full text-xs">
+                <select v-model="paletteFamily" class="select select-sm select-bordered w-full min-w-0 text-xs">
                     <option v-for="family in PALETTE_FAMILIES" :key="family" :value="family">{{ family }}</option>
                 </select>
-                <div class="grid grid-cols-11 gap-1">
+                <div class="grid grid-cols-[repeat(auto-fit,minmax(1.25rem,1fr))] gap-1">
                     <button
                         v-for="entry in palette"
                         :key="entry.shade"
                         type="button"
-                        class="size-5 rounded border border-base-content/10 transition hover:scale-110"
+                        class="h-5 w-full min-w-0 rounded border border-base-content/10 transition hover:scale-110"
                         :style="{ backgroundColor: entry.color }"
                         :title="`${paletteFamily}-${entry.shade}`"
                         @click="applyPaletteColor(entry.color)"
