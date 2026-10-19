@@ -12,6 +12,8 @@ class NewsPost extends Model
 {
     use HasFactory;
 
+    public const SELECTABLE_VISIBLE_ROLE_NAMES = ['Trader', 'Support', 'Team Leader'];
+
     protected $fillable = [
         'author_id',
         'cover_image_path',
@@ -45,7 +47,7 @@ class NewsPost extends Model
     }
 
     /**
-     * @param array<int, string> $roleNames
+     * @param  array<int, string>  $roleNames
      */
     public function scopeVisibleForRoles(Builder $query, array $roleNames): Builder
     {

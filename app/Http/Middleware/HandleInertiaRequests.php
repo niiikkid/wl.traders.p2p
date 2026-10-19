@@ -372,7 +372,7 @@ class HandleInertiaRequests extends Middleware
             'openAiConfigured' => $openAiSetting->hasApiKey()
                 && is_string($openAiSetting->selected_model)
                 && $openAiSetting->selected_model !== '',
-            'roleOptions' => collect(['Trader', 'Support', 'Team Leader'])
+            'roleOptions' => collect(NewsPost::SELECTABLE_VISIBLE_ROLE_NAMES)
                 ->map(fn (string $roleName) => ['value' => $roleName, 'label' => $roleName])
                 ->values()
                 ->toArray(),

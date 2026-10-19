@@ -21,8 +21,6 @@ use RuntimeException;
 
 class NewsController extends Controller
 {
-    private const SELECTABLE_VISIBLE_ROLE_NAMES = ['Trader', 'Support', 'Team Leader'];
-
     private const VIEW_TRACK_COOLDOWN_MINUTES = 30;
 
     public function feed(Request $request): JsonResponse

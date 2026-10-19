@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\News;
 
+use App\Models\NewsPost;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreRequest extends FormRequest
 {
@@ -28,7 +30,7 @@ class StoreRequest extends FormRequest
             'cover_image' => ['nullable', 'file', 'extensions:jpg,jpeg,png,webp', 'max:4096'],
             'visibility_type' => ['required', 'in:all,roles'],
             'visible_roles' => ['required_if:visibility_type,roles', 'array'],
-            'visible_roles.*' => ['required', 'string', 'distinct', 'in:Trader,Team Leader'],
+            'visible_roles.*' => ['required', 'string', 'distinct', Rule::in(NewsPost::SELECTABLE_VISIBLE_ROLE_NAMES)],
         ];
     }
 
