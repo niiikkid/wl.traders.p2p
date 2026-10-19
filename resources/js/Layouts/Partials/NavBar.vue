@@ -50,7 +50,7 @@ const traderFinanceOverview = computed(() => {
     const stats = walletStats.value;
 
     return {
-        secondaryCurrency: (stats?.currency?.secondary ?? 'RUB').toUpperCase(),
+        secondaryCurrency: (stats?.currency?.secondary ?? 'USD').toUpperCase(),
         trustReserveAmount: stats?.base?.trustReserveAmount ?? walletFormated.value.reserve_balance,
         trustWithdrawalAmount: stats?.lockedForWithdrawalBalances?.trust?.primary ?? '0',
         escrowOrdersPrimary: stats?.escrowBalances?.orders?.balance?.primary ?? '0',

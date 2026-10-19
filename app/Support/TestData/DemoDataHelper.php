@@ -19,9 +19,9 @@ use Illuminate\Support\Str;
 class DemoDataHelper
 {
     /**
-     * Единственная валюта демо-данных — украинская гривна.
+     * Основная фиатная валюта демо-данных.
      */
-    public const DEMO_CURRENCY = 'uah';
+    public const DEMO_CURRENCY = 'usd';
 
     /**
      * Ориентировочные sell-курсы (сколько фиата за 1 USDT).
@@ -30,20 +30,20 @@ class DemoDataHelper
      * @var array<string, float>
      */
     public const SELL_RATES = [
-        'uah' => 41.5,
         'usd' => 1.0,
+        'uah' => 41.5,
         'eur' => 0.93,
     ];
 
     /**
      * Диапазоны сумм заказов/выплат в фиате [min, max] по валютам.
-     * Реальные сделки — от 300 до 5000 гривен.
+     * Основные демо-сделки — от 10 до 150 USD.
      *
      * @var array<string, array{0: int, 1: int}>
      */
     public const AMOUNT_RANGES = [
-        'uah' => [300, 5000],
         'usd' => [10, 150],
+        'uah' => [300, 5000],
         'eur' => [10, 150],
     ];
 
@@ -136,21 +136,21 @@ class DemoDataHelper
     }
 
     /**
-     * Выдуманные (не настоящие) банки-шлюзы для гривны.
+     * Выдуманные (не настоящие) банки-шлюзы без привязки к рынку.
      *
      * @return array<int, array{name: string, code: string, senders: array<int, string>}>
      */
     public static function fictionalBanks(): array
     {
         return [
-            ['name' => 'ПриватКапітал', 'code' => 'privcapital', 'senders' => ['PRIVCAP', 'ua.privcapital.app']],
-            ['name' => 'МоноФінанс', 'code' => 'monofin', 'senders' => ['MONOFIN', 'ua.monofin']],
-            ['name' => 'ДніпроБанк', 'code' => 'dniprobank', 'senders' => ['DNIPRO', 'ua.dniprobank.mobile']],
-            ['name' => 'КиївКредит', 'code' => 'kyivcredit', 'senders' => ['KYIVCR', 'ua.kyivcredit']],
-            ['name' => 'ЗахідПей', 'code' => 'zahidpay', 'senders' => ['ZAHIDPAY', 'ua.zahidpay.app']],
-            ['name' => 'КарпатиБанк', 'code' => 'karpatybank', 'senders' => ['KARPATY', 'ua.karpatybank']],
-            ['name' => 'ТавріяФінанс', 'code' => 'tavriafin', 'senders' => ['TAVRIA', 'ua.tavriafin.mobile']],
-            ['name' => 'ОдесаКапітал', 'code' => 'odesacap', 'senders' => ['ODESACAP', 'ua.odesacapital']],
+            ['name' => 'Atlas Bank', 'code' => 'demo-atlas', 'senders' => ['ATLAS', 'example.atlas.app']],
+            ['name' => 'Nova Finance', 'code' => 'demo-nova', 'senders' => ['NOVA', 'example.nova.app']],
+            ['name' => 'Orbit Bank', 'code' => 'demo-orbit', 'senders' => ['ORBIT', 'example.orbit.app']],
+            ['name' => 'Summit Credit', 'code' => 'demo-summit', 'senders' => ['SUMMIT', 'example.summit.app']],
+            ['name' => 'Horizon Pay', 'code' => 'demo-horizon', 'senders' => ['HORIZON', 'example.horizon.app']],
+            ['name' => 'Vertex Bank', 'code' => 'demo-vertex', 'senders' => ['VERTEX', 'example.vertex.app']],
+            ['name' => 'Prism Finance', 'code' => 'demo-prism', 'senders' => ['PRISM', 'example.prism.app']],
+            ['name' => 'Beacon Capital', 'code' => 'demo-beacon', 'senders' => ['BEACON', 'example.beacon.app']],
         ];
     }
 
@@ -261,18 +261,17 @@ class DemoDataHelper
     public static function detailValue(DetailType $type, string $currencyCode): string
     {
         return match ($type) {
-            DetailType::CARD => self::generateCard(),
+            DetailType::CARD => self::generateCard($currencyCode),
             DetailType::PHONE, DetailType::MOBILE_COMMERCE => self::phoneForCurrency($currencyCode),
             DetailType::ACCOUNT_NUMBER => self::accountNumber(),
             DetailType::IBAN_UAH => self::ibanUah(),
-            DetailType::E_COM => self::generateCard(),
+            DetailType::E_COM => self::generateCard($currencyCode),
         };
     }
 
-    public static function generateCard(): string
+    public static function generateCard(string $currencyCode = self::DEMO_CURRENCY): string
     {
-        // Валидный по Луну номер: 60% МИР (2200), иначе Visa (4).
-        $prefix = random_int(0, 9) < 6 ? '2200' : '4';
+        $prefix = strtolower($currencyCode) === 'rub' && random_int(0, 9) < 6 ? '2200' : '4';
         $base = $prefix;
         while (strlen($base) < 15) {
             $base .= (string) random_int(0, 9);
@@ -284,6 +283,7 @@ class DemoDataHelper
     public static function phoneForCurrency(string $currencyCode): string
     {
         return match (strtolower($currencyCode)) {
+            'usd' => '1202555'.str_pad((string) random_int(100, 199), 4, '0', STR_PAD_LEFT),
             'kzt' => '77'.str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT),
             'uah' => '380'.str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT),
             'try' => '90'.str_pad((string) random_int(0, 999999999), 9, '0', STR_PAD_LEFT),
@@ -331,20 +331,21 @@ class DemoDataHelper
     }
 
     /**
-     * Текст банковского SMS/PUSH о зачислении с суммой заказа (в гривнах).
+     * Текст банковского SMS/PUSH о зачислении в валюте шлюза.
      */
-    public static function bankMessage(int $amount, string $last4): string
+    public static function bankMessage(int $amount, string $last4, string $currencyCode = self::DEMO_CURRENCY): string
     {
         $balance = number_format(random_int(1_000, 90_000), 0, '.', ' ');
         $sender = self::fullName();
+        $currency = strtoupper($currencyCode);
 
         $templates = [
-            "Zarahuvannya {$amount} UAH na kartu *{$last4}. Dostupno {$balance} UAH",
-            "Perekaz {$amount} grn vid {$sender}. Balans: {$balance} grn. Kartka *{$last4}",
-            "Popovnennya *{$last4} +{$amount} grn; zalyshok {$balance} grn",
-            "Ви отримали переказ {$amount} ₴ на картку *{$last4}. Баланс {$balance} ₴",
-            "+{$amount} грн. Переказ від {$sender}. Доступно: {$balance} грн",
-            "Zarahovano {$amount}.00 UAH. Rakhunok *{$last4}. Balans {$balance}.00",
+            "Payment received: {$amount} {$currency}. Card *{$last4}. Available: {$balance} {$currency}",
+            "Transfer received: {$amount} {$currency} from {$sender}. Card *{$last4}. Balance: {$balance} {$currency}",
+            "Card *{$last4} credited with {$amount} {$currency}. Available balance: {$balance} {$currency}",
+            "Зачисление {$amount} {$currency} на карту *{$last4}. Баланс: {$balance} {$currency}",
+            "Перевод от {$sender}: +{$amount} {$currency}. Карта *{$last4}. Доступно: {$balance} {$currency}",
+            "Received {$amount}.00 {$currency}. Account *{$last4}. Balance: {$balance}.00 {$currency}",
         ];
 
         return $templates[array_rand($templates)];

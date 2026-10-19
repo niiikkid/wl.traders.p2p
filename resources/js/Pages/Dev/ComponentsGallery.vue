@@ -128,8 +128,8 @@ const demoCheckboxItems = [
 const selectedTimes = ref([]);
 
 const demoRadioItems = [
-    { name: 'RUB', value: 'RUB' },
     { name: 'USD', value: 'USD' },
+    { name: 'RUB', value: 'RUB' },
     { name: 'EUR', value: 'EUR' },
 ];
 const selectedCurrency = ref(null);

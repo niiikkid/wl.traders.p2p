@@ -1,4 +1,5 @@
 <script setup>
+import { sortCurrenciesUsdFirst } from '@/utils/currency.js';
 import Modal from "@/Components/Modals/Modal.vue";
 import ModalHeader from "@/Components/Modals/Components/ModalHeader.vue";
 import ModalBody from "@/Components/Modals/Components/ModalBody.vue";
@@ -208,7 +209,7 @@ const onDetailInput = (event) => {
 
 const availableCurrencies = computed(() => {
     const currencies = [...new Set(payment_gateways.value.map(pg => pg.currency))];
-    return currencies.map(currency => ({
+    return sortCurrenciesUsdFirst(currencies).map(currency => ({
         id: currency,
         name: currency?.toUpperCase()
     }));
@@ -494,6 +495,7 @@ const loadCreateData = () => {
         .then((res) => {
             const data = res.data?.data || res.data || {};
             payment_gateways.value = data.paymentGateways || [];
+            form.value.currency = availableCurrencies.value.find((currency) => currency.id?.toLowerCase() === 'usd')?.id ?? null;
             devices.value = (data.devices || []).map(device => ({
                 ...device,
                 name: `${device.name}`

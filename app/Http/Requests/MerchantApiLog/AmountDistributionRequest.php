@@ -44,6 +44,6 @@ class AmountDistributionRequest extends FormRequest
     {
         $currency = strtolower($this->string('currency')->toString());
 
-        return $currency !== '' ? $currency : 'uah';
+        return $currency !== '' ? $currency : 'usd';
     }
 }

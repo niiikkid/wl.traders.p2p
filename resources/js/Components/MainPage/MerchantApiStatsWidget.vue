@@ -6,6 +6,9 @@ import StatCard from '@/Components/MainPage/StatCard.vue';
 import PageToolbarAction from '@/Components/Table/PageToolbarAction.vue';
 import DashboardChart from '@/Components/Charts/DashboardChart.vue';
 import MerchantApiLogAmountDistributionModal from '@/Modals/MerchantApiLogs/MerchantApiLogAmountDistributionModal.vue';
+import { sortCurrenciesUsdFirst } from '@/utils/currency.js';
+
+const currencyEntries = (amounts) => sortCurrenciesUsdFirst(Object.entries(amounts), ([currency]) => currency);
 
 const props = defineProps({
     statsRouteName: {
@@ -356,7 +359,7 @@ onMounted(() => {
                                     <div>
                                         <h4 class="mb-2 text-sm font-medium opacity-70">Сегодня</h4>
                                         <div class="space-y-2">
-                                            <div v-for="(amount, currency) in sumBySuccessCurrencyToday" :key="'success-today-' + currency" class="flex justify-between">
+                                            <div v-for="[currency, amount] in currencyEntries(sumBySuccessCurrencyToday)" :key="'success-today-' + currency" class="flex justify-between">
                                                 <span>{{ currency.toUpperCase() }}</span>
                                                 <span class="font-medium">{{ formatNumber(amount) }}</span>
                                             </div>
@@ -366,7 +369,7 @@ onMounted(() => {
                                     <div>
                                         <h4 class="mb-2 text-sm font-medium opacity-70">Всего</h4>
                                         <div class="space-y-2">
-                                            <div v-for="(amount, currency) in sumBySuccessCurrencyTotal" :key="'success-total-' + currency" class="flex justify-between">
+                                            <div v-for="[currency, amount] in currencyEntries(sumBySuccessCurrencyTotal)" :key="'success-total-' + currency" class="flex justify-between">
                                                 <span>{{ currency.toUpperCase() }}</span>
                                                 <span class="font-medium">{{ formatNumber(amount) }}</span>
                                             </div>
@@ -384,7 +387,7 @@ onMounted(() => {
                                     <div>
                                         <h4 class="mb-2 text-sm font-medium opacity-70">Сегодня</h4>
                                         <div class="space-y-2">
-                                            <div v-for="(amount, currency) in sumByFailedCurrencyToday" :key="'failed-today-' + currency" class="flex justify-between">
+                                            <div v-for="[currency, amount] in currencyEntries(sumByFailedCurrencyToday)" :key="'failed-today-' + currency" class="flex justify-between">
                                                 <span>{{ currency.toUpperCase() }}</span>
                                                 <span class="font-medium">{{ formatNumber(amount) }}</span>
                                             </div>
@@ -394,7 +397,7 @@ onMounted(() => {
                                     <div>
                                         <h4 class="mb-2 text-sm font-medium opacity-70">Всего</h4>
                                         <div class="space-y-2">
-                                            <div v-for="(amount, currency) in sumByFailedCurrencyTotal" :key="'failed-total-' + currency" class="flex justify-between">
+                                            <div v-for="[currency, amount] in currencyEntries(sumByFailedCurrencyTotal)" :key="'failed-total-' + currency" class="flex justify-between">
                                                 <span>{{ currency.toUpperCase() }}</span>
                                                 <span class="font-medium">{{ formatNumber(amount) }}</span>
                                             </div>

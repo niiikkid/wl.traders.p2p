@@ -110,8 +110,8 @@ class HandleInertiaRequests extends Middleware
                     ];
                 })
                 ->sortByDesc(function ($currency) {
-                    // Desired order: uah, rub, kzt, usd, eur
-                    $order = ['uah', 'rub', 'kzt', 'usd', 'eur'];
+                    // Keep USD first while preserving the remaining priority order.
+                    $order = ['usd', 'uah', 'rub', 'kzt', 'eur'];
                     $idx = array_search($currency['code'], $order);
 
                     return $idx !== false ? $idx : count($order);

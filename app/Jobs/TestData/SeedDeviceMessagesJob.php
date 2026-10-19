@@ -57,20 +57,22 @@ class SeedDeviceMessagesJob implements ShouldQueue
             ->filter(fn ($pg) => is_array($pg->sms_senders) && count($pg->sms_senders) > 0)
             ->values();
 
-        // Наиболее частые отправители на случай отсутствия шлюзов с sms_senders.
-        $fallbackSenders = ['900', 'Sberbank', 'Tinkoff', 'VTB', 'AlfaBank', 'SBP'];
+        $fallbackBanks = DemoDataHelper::fictionalBanks();
 
         for ($i = 0; $i < $this->count; $i++) {
             if ($gateways->isNotEmpty()) {
                 $gateway = $gateways->random();
                 $sender = $gateway->sms_senders[array_rand($gateway->sms_senders)];
                 $bank = $gateway->name;
+                $currency = $gateway->currency->getCode();
             } else {
-                $sender = $fallbackSenders[array_rand($fallbackSenders)];
-                $bank = DemoDataHelper::bankName();
+                $fallbackBank = $fallbackBanks[array_rand($fallbackBanks)];
+                $sender = $fallbackBank['senders'][0];
+                $bank = $fallbackBank['name'];
+                $currency = DemoDataHelper::DEMO_CURRENCY;
             }
 
-            $amount = DemoDataHelper::realisticFiatAmount(DemoDataHelper::DEMO_CURRENCY);
+            $amount = DemoDataHelper::realisticFiatAmount($currency);
             $last4 = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
             $createdAt = Carbon::now()
                 ->subDays(random_int(0, max(0, $this->days)))
@@ -78,7 +80,7 @@ class SeedDeviceMessagesJob implements ShouldQueue
 
             SmsLog::create([
                 'sender' => (string) $sender,
-                'message' => DemoDataHelper::bankMessage($amount, $last4),
+                'message' => DemoDataHelper::bankMessage($amount, $last4, $currency),
                 'parsing_result' => [
                     'operation_type' => 'in',
                     'amount' => $amount,

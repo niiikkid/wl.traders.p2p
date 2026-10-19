@@ -135,7 +135,7 @@ defineOptions({ layout: AuthenticatedLayout });
                         <InputFilter name="amount" placeholder="Сумма (точная)" />
                         <InputFilter name="minAmount" placeholder="Мин. сумма" />
                         <InputFilter name="maxAmount" placeholder="Макс. сумма" />
-                        <InputFilter name="currency" placeholder="Валюта (например, RUB)" />
+                        <InputFilter name="currency" placeholder="Валюта (например, USD)" />
                     </FiltersPanel>
                 </div>
             </template>

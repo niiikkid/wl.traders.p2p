@@ -1,4 +1,5 @@
 <script setup>
+import { compareCurrenciesUsdFirst } from '@/utils/currency.js';
 import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import NumberInput from "@/Components/NumberInput.vue";
@@ -93,7 +94,8 @@ const pairCombinations = computed(() => {
             return left.detail_type.localeCompare(right.detail_type);
         }
 
-        return left.currency.localeCompare(right.currency);
+        return compareCurrenciesUsdFirst(left.currency, right.currency)
+            || left.currency.localeCompare(right.currency);
     });
 });
 

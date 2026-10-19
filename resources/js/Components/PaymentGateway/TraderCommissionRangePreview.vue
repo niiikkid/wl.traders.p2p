@@ -8,7 +8,7 @@ const props = defineProps({
     },
     currency: {
         type: String,
-        default: "RUB",
+        default: "USD",
     },
     minAmount: {
         type: [Number, String, null],
@@ -168,7 +168,7 @@ const selectedRangeText = computed(() => {
         return null;
     }
 
-    return `${sliderMin.value} - ${sliderMax.value} ${props.currency?.toUpperCase() || "RUB"}`;
+    return `${sliderMin.value} - ${sliderMax.value} ${props.currency?.toUpperCase() || "USD"}`;
 });
 
 const getRateByAmount = (amount) => {

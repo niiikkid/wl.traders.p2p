@@ -41,7 +41,7 @@ const createForm = () => ({
     id: null,
     name: '',
     type: 'bybit',
-    quote_currency: 'rub',
+    quote_currency: 'usd',
     is_active: true,
     side: 'sell',
     rate: null,
@@ -262,7 +262,7 @@ watch(() => [form.value.type, form.value.quote_currency], () => {
                             v-model="form.name"
                             type="text"
                             class="input input-bordered w-full mt-1"
-                            placeholder="Например, Bybit RUB (продажа)"
+                            placeholder="Например, Bybit USD (продажа)"
                             :error="!!errorMessage('name')"
                             @input="clearError('name')"
                         />

@@ -20,7 +20,12 @@ const phoneFormatsByCurrency = {
     GEL: { country: 'Грузия', code: '995', groups: [3, 2, 2, 2], placeholder: '+995 (555) 12-34-56' },
 };
 
-const defaultPhoneFormat = phoneFormatsByCurrency.RUB;
+const defaultPhoneFormat = {
+    country: 'Международный номер',
+    code: '',
+    groups: [],
+    placeholder: '+1 202 555 0123',
+};
 
 export function getPaymentDetailInputMeta(type, currency = null) {
     if (['phone', 'mobile_commerce'].includes(type)) {
@@ -30,7 +35,9 @@ export function getPaymentDetailInputMeta(type, currency = null) {
             badge: format.country,
             prefix: `+${format.code}`,
             placeholder: format.placeholder,
-            helper: `Формат для страны: ${format.country}. Код страны подставится автоматически.`,
+            helper: format.code
+                ? `Формат для страны: ${format.country}. Код страны подставится автоматически.`
+                : 'Введите полный международный номер с кодом страны.',
         };
     }
 
@@ -160,6 +167,10 @@ function formatPhone(value, format) {
 
     if (!digits) {
         return '';
+    }
+
+    if (!format.code) {
+        return `+${digits}`;
     }
 
     const localNumber = digits.slice(format.code.length);

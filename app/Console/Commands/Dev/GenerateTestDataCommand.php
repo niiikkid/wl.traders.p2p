@@ -176,14 +176,14 @@ class GenerateTestDataCommand extends Command
     }
 
     /**
-     * Создаёт выдуманные банки-шлюзы для гривны (банки в проекте больше не сидируются).
+     * Создаёт выдуманные банки-шлюзы для основной демо-валюты.
      */
     private function createFictionalGateways(): void
     {
         $currency = DemoDataHelper::DEMO_CURRENCY;
 
         // Лимиты хранятся как человекочитаемые суммы фиата (как в справочнике банков).
-        $minLimit = '100';
+        $minLimit = (string) DemoDataHelper::AMOUNT_RANGES[$currency][0];
         $maxLimit = '50000';
 
         $created = 0;
@@ -435,7 +435,7 @@ class GenerateTestDataCommand extends Command
         }
 
         if ($cardGateways === [] && $phoneGateways === []) {
-            $this->warn('  Нет активных UAH-шлюзов — реквизиты не будут созданы.');
+            $this->warn('  Нет активных '.strtoupper($currency).'-шлюзов — реквизиты не будут созданы.');
 
             return;
         }
@@ -584,7 +584,7 @@ class GenerateTestDataCommand extends Command
 
     private function configureMerchant(Merchant $merchant): void
     {
-        // GEO-карта: только гривна.
+        // GEO-карта основной демо-валюты.
         $merchant->setGeoMap([DemoDataHelper::DEMO_CURRENCY => 'bybit']);
         $merchant->save();
 

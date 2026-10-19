@@ -10,6 +10,7 @@ import Select from "@/Components/Select.vue";
 import Gateways from "@/Pages/Merchant/Tabs/Partials/Gateways.vue";
 import CopyableOrderUid from '@/Components/CopyableOrderUid.vue';
 import CurrencyDisplay from '@/Components/Currency/CurrencyDisplay.vue';
+import { sortCurrenciesUsdFirst } from '@/utils/currency.js';
 
 const viewStore = useViewStore();
 const emit = defineEmits(['updated']);
@@ -119,6 +120,9 @@ const normalizeGeoItems = (items) => {
 const geoItems = ref(normalizeGeoItems(merchant.value?.geos));
 const selectedCurrency = ref('');
 const minOrderAmounts = ref(merchant.value?.min_order_amounts ? {...merchant.value.min_order_amounts} : {});
+const sortedGeoItems = computed(() => sortCurrenciesUsdFirst(geoItems.value, (geo) => geo.currency));
+const sortedMerchantGeos = computed(() => sortCurrenciesUsdFirst(merchantGeosReadonly.value, (geo) => geo.currency));
+const sortedMinOrderAmounts = computed(() => sortCurrenciesUsdFirst(Object.entries(minOrderAmounts.value), ([currency]) => currency));
 
 const formCallback = reactive({
     callback_url: merchant.value?.callback_url ?? '',
@@ -817,7 +821,7 @@ const callbackState = computed(() => {
                 
                     <div v-if="merchantGeosReadonly.length" class="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
                         <div
-                            v-for="geo in merchantGeosReadonly"
+                            v-for="geo in sortedMerchantGeos"
                             :key="`${geo.currency}-${geo.market}`"
                             class="rounded-lg bg-base-100 p-2.5 ring-1 ring-base-content/5"
                         >
@@ -1047,7 +1051,7 @@ const callbackState = computed(() => {
 
                             <div v-if="geoItems?.length" class="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
                                 <div
-                                    v-for="geo in geoItems"
+                                    v-for="geo in sortedGeoItems"
                                     :key="geo.currency"
                                     class="flex items-start justify-between gap-2 rounded-lg bg-base-100 p-2.5"
                                 >
@@ -1180,7 +1184,7 @@ const callbackState = computed(() => {
                                 <!-- Список минимальных сумм по валютам -->
                                 <div v-if="Object.keys(minOrderAmounts).length > 0" class="mt-2 space-y-1.5">
                                     <div
-                                        v-for="(amount, currency) in minOrderAmounts"
+                                        v-for="[currency, amount] in sortedMinOrderAmounts"
                                         :key="currency"
                                         class="flex items-center gap-2 rounded-lg bg-base-200 p-2"
                                     >

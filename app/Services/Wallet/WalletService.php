@@ -159,7 +159,7 @@ class WalletService implements WalletServiceContract
         $wallet->loadMissing('user');
 
         $primaryCurrency = Currency::USDT(); // Равен валюте $wallet
-        $secondaryCurrency = Currency::RUB();
+        $secondaryCurrency = Currency::USD();
 
         $userFiatCurrency = $wallet->user->fiat_currency;
         if ($userFiatCurrency && Currency::isCurrency($userFiatCurrency)) {
@@ -249,7 +249,7 @@ class WalletService implements WalletServiceContract
         $user->loadMissing('roles');
 
         $primaryCurrency = Currency::USDT();
-        $secondaryCurrency = Currency::RUB();
+        $secondaryCurrency = Currency::USD();
 
         $userFiatCurrency = $user->fiat_currency;
         if ($userFiatCurrency && Currency::isCurrency($userFiatCurrency)) {

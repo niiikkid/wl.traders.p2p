@@ -294,7 +294,7 @@ const submit = () => {
 
 const isCurrencySelected = computed(() => !!form.value.currency);
 
-const currencyLabel = computed(() => (form.value.currency || 'RUB').toString().toUpperCase());
+const currencyLabel = computed(() => (form.value.currency || '').toString().toUpperCase());
 
 const appliedFieldsCount = computed(() => Object.values(form.value.apply).filter(Boolean).length);
 

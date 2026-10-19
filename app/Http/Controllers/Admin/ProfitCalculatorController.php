@@ -15,13 +15,10 @@ use Inertia\Response;
 
 class ProfitCalculatorController extends Controller
 {
-    /**
-     * @return Response
-     */
     public function index(): Response
     {
         $currencies = Currency::getAllCodes();
-        $defaultCurrency = $currencies[0] ?? 'rub';
+        $defaultCurrency = $currencies[0] ?? 'usd';
 
         return Inertia::render('Admin/Profit/Index', [
             'currencies' => $currencies,
@@ -29,7 +26,7 @@ class ProfitCalculatorController extends Controller
                 'logic' => 'in_body',
                 'amount_currency' => $defaultCurrency,
                 'amount' => '1000',
-                'exchange_rate' => '100',
+                'exchange_rate' => '1',
                 'total_commission_rate' => 5,
                 'trader_commission_rate' => 2,
                 'teamleader_commission_rate' => 0,
@@ -37,12 +34,6 @@ class ProfitCalculatorController extends Controller
         ]);
     }
 
-    /**
-     * @param CalculateProfitRequest $request
-     * @param ProfitServiceContract $profitService
-     *
-     * @return JsonResponse
-     */
     public function calculate(
         CalculateProfitRequest $request,
         ProfitServiceContract $profitService

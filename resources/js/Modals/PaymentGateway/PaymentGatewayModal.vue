@@ -187,7 +187,7 @@ const form = ref({
     is_intrabank: false,
     reservation_time_for_orders: null,
     reservation_time_for_payouts: null,
-    currency: 'RUB',
+    currency: 'USD',
     detail_types: [],
     logo: null,
     use_flexible_trader_commission_for_orders: false,
@@ -217,7 +217,7 @@ const resetFormForCreate = () => {
         is_intrabank: false,
         reservation_time_for_orders: 10,
         reservation_time_for_payouts: 10,
-        currency: 'RUB',
+        currency: 'USD',
         detail_types: [],
         logo: null,
         use_flexible_trader_commission_for_orders: false,
@@ -241,7 +241,7 @@ const resetFormForEdit = () => {
         is_intrabank: false,
         reservation_time_for_orders: null,
         reservation_time_for_payouts: null,
-        currency: 'RUB',
+        currency: 'USD',
         detail_types: [],
         logo: null,
         use_flexible_trader_commission_for_orders: false,
@@ -298,7 +298,7 @@ const loadEditData = () => {
             if (form.value.use_flexible_trader_commission_for_orders) {
                 alignAllFlexibleTiersWithLimits();
             }
-            form.value.currency = (paymentGateway.value.currency || 'RUB').toUpperCase();
+            form.value.currency = (paymentGateway.value.currency || 'USD').toUpperCase();
             form.value.detail_types = stripRemovedDetailTypes(paymentGateway.value.detail_types ?? []);
             loading.value = false;
         })
@@ -480,7 +480,7 @@ const toFormData = (is_edit) => {
     fd.append('is_intrabank', form.value.is_intrabank ? '1' : '0');
     fd.append('reservation_time_for_orders', form.value.reservation_time_for_orders ?? '');
     fd.append('reservation_time_for_payouts', form.value.reservation_time_for_payouts ?? '');
-    fd.append('currency', (form.value.currency || 'RUB').toString().toUpperCase());
+    fd.append('currency', (form.value.currency || '').toString().toUpperCase());
     stripRemovedDetailTypes(form.value.detail_types || []).forEach(v => fd.append('detail_types[]', v));
     if (form.value.logo) {
         fd.append('logo', form.value.logo);
@@ -637,7 +637,7 @@ watch(
                             <div>
                                 <InputLabel
                                     for="min_limit"
-                                    :value="'Мин. сумма, ' + (form.currency || 'RUB')?.toUpperCase()"
+                                    :value="'Мин. сумма, ' + (form.currency || 'USD')?.toUpperCase()"
                                     :error="!!errors.min_limit?.[0]"
                                 />
                                 <NumberInput
@@ -654,7 +654,7 @@ watch(
                             <div>
                                 <InputLabel
                                     for="max_limit"
-                                    :value="'Макс. сумма, ' + (form.currency || 'RUB')?.toUpperCase()"
+                                    :value="'Макс. сумма, ' + (form.currency || 'USD')?.toUpperCase()"
                                     :error="!!errors.max_limit?.[0]"
                                 />
                                 <NumberInput

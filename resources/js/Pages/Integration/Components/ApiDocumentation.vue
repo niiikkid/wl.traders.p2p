@@ -75,10 +75,10 @@ const currenciesResponse = `{
   "success": true,
   "data": [
     {
-      "currency": "rub",          // код валюты
+      "currency": "usd",          // код валюты (USD первым; доступны и другие валюты)
       "precision": 2,             // знаков после запятой
-      "symbol": "\u20bd",              // символ валюты
-      "name": "Российский рубль"  // название
+      "symbol": "$",              // символ валюты
+      "name": "Доллар США"        // название
     }
   ]
 }`;
@@ -87,11 +87,11 @@ const gatewaysResponse = `{
   "success": true,
   "data": [
     {
-      "name": "Сбербанк",                // название метода
-      "code": "sberbank",                // код (передаётся в payment_gateway)
-      "currency": "rub",                 // валюта метода
-      "min_limit": "1000",               // мин. сумма сделки
-      "max_limit": "100000",             // макс. сумма сделки
+      "name": "Atlas Bank",              // выдуманный метод для примера
+      "code": "demo-atlas",              // используйте код своего доступного метода
+      "currency": "usd",                 // валюта метода
+      "min_limit": "10",                 // мин. сумма сделки
+      "max_limit": "50000",              // макс. сумма сделки
       "reservation_time": 10,            // время резерва реквизита, мин
       "detail_types": ["card", "phone"]  // доступные типы реквизитов
     }
@@ -102,10 +102,10 @@ const orderCreateRequest = `{
   "merchant_id": "3db07a16-...",   // обязательно — UUID магазина
   "external_id": "order-100500",   // обязательно — ваш ID сделки (уникален в магазине)
   "amount": 1000,                  // обязательно — сумма сделки (целое число)
-  "payment_gateway": "sberbank",   // код метода ИЛИ currency (что-то одно)
-  "currency": "rub",               // код валюты ИЛИ payment_gateway
+  "payment_gateway": "demo-atlas", // код метода ИЛИ currency (что-то одно)
+  "currency": "usd",               // код валюты ИЛИ payment_gateway
   "payment_detail_type": "card",   // необязательно — тип реквизита
-  "rate": "100.5",                 // обязателен только при источнике курса merchant_api
+  "rate": "1.00",                  // пример; обязателен только при источнике курса merchant_api
   "client_id": "user-42",          // необязательно — ID клиента (для антифрода)
   "callback_url": "https://shop.example/callback" // необязательно — куда слать статусы
 }`;
@@ -118,22 +118,22 @@ const orderResponse = `{
     "merchant_id": "3db07a16-...",       // UUID магазина
     "initial_amount": "1000",            // исходная сумма при создании
     "amount": "1040",                    // текущая сумма (может пересчитаться)
-    "total_profit": "9.94",              // общая прибыль по сделке, USDT
-    "merchant_profit": "9.05",           // прибыль магазина, USDT
-    "currency": "rub",                   // валюта сделки
+    "total_profit": "1040",              // общая прибыль по сделке, USDT
+    "merchant_profit": "936",            // прибыль магазина после комиссии 10%, USDT
+    "currency": "usd",                   // валюта сделки
     "profit_currency": "usdt",           // валюта прибыли
-    "rate_currency": "rub",              // валюта курса
-    "rate": "100.77",                    // курс конвертации
+    "rate_currency": "usd",              // валюта курса
+    "rate": "1.00",                      // пример курса конвертации
     "status": "pending",                 // pending | success | fail
     "sub_status": "waiting_for_payment", // детальный под-статус
     "reject_reason": null,               // причина отклонения, если есть
     "callback_url": "https://...",       // URL для callback
     "manual_control_acquiring": false,   // режим Manual Control Acquiring
     "manual_control_confirmation_type": null, // тип подтверждения (MCA)
-    "payment_gateway": "sberbank",       // код метода
-    "payment_gateway_name": "Сбербанк",  // название метода
+    "payment_gateway": "demo-atlas",     // код выдуманного метода
+    "payment_gateway_name": "Atlas Bank", // название метода
     "payment_detail": {
-      "requisites": "2200...",           // реквизит для оплаты (карта/телефон/счёт)
+      "requisites": "4242...",           // реквизит для оплаты (карта/телефон/счёт)
       "type": "card",                    // тип реквизита
       "holder_name": "Иван Иванов"       // владелец реквизита
       // "dispute": { "status": "pending", "reason": null } — появляется при наличии спора
@@ -177,7 +177,7 @@ const mcaRequest = `{
   "merchant_id": "3db07a16-...",
   "external_id": "mca-order-1001",
   "amount": 1500,
-  "currency": "rub",               // только currency; payment_gateway указывать нельзя
+  "currency": "usd",               // только currency; payment_gateway указывать нельзя
   "manual_control_acquiring": true,
   "payment_detail_type": "card",   // допустим только card
   "card_number": "4444333322221111",
@@ -191,12 +191,12 @@ const mcaRequest = `{
 const payoutCreateRequest = `{
   "merchant_id": "3db07a16-...",   // обязательно — UUID магазина
   "external_id": "payout-100500",  // обязательно — ваш ID выплаты (уникален в магазине)
-  "amount": 100000,                // обязательно — сумма (целое число)
-  "payout_method": "sbp",          // обязательно — sbp | card
-  "payment_gateway": "sberbank",   // код метода ИЛИ currency (что-то одно)
-  "currency": "rub",               // код валюты ИЛИ payment_gateway
-  "rate": "77.5",                  // обязателен только при источнике курса merchant_api
-  "requisites": "79260000000",     // обязательно — телефон (СБП) или номер карты
+  "amount": 1000,                  // обязательно — сумма (целое число)
+  "payout_method": "card",         // обязательно — sbp | card (СБП для RUB)
+  "payment_gateway": "demo-atlas", // код метода ИЛИ currency (что-то одно)
+  "currency": "usd",               // код валюты ИЛИ payment_gateway
+  "rate": "1.00",                  // пример; обязателен только при источнике курса merchant_api
+  "requisites": "4242424242424242", // обязательно — телефон (СБП) или номер карты
   "recipient_name": "Иванов Иван", // обязательно — ФИО получателя
   "bank_name": "Custom Bank",      // необязательно (нельзя вместе с payment_gateway)
   "callback_url": "https://shop.example/payout-callback" // необязательно
@@ -208,32 +208,32 @@ const payoutResponse = `{
     "payout_id": "af8d6a20-...",     // UUID выплаты
     "external_id": "payout-100500",  // ваш ID выплаты
     "status": "open",                // open | taken | sent | completed | canceled
-    "payout_method": "sbp",          // метод выплаты
+    "payout_method": "card",         // метод выплаты
     "bank_name": "Custom Bank",      // банк (если задан)
-    "requisites": "79260000000",     // реквизиты получателя
+    "requisites": "4242424242424242", // реквизиты получателя
     "recipient_name": "Иванов Иван", // ФИО получателя
     "merchant": {
       "id": "3db07a16-...",          // UUID магазина
       "name": "My Shop"
     },
     "payment_gateway": {
-      "name": "Сбербанк",            // название метода
-      "code": "sberbank"             // код метода
+      "name": "Atlas Bank",          // выдуманный метод для примера
+      "code": "demo-atlas"           // код метода
     },
     "receipt_url": null,             // ссылка на чек (когда появится)
     "amounts": {
-      "fiat":            { "value": "100000.00", "currency": "RUB" },  // сумма в фиате
-      "usdt":            { "value": "1289.54",   "currency": "USDT" }, // тело в USDT
-      "merchant_charge": { "value": "1328.23",   "currency": "USDT" }  // списание с магазина
+      "fiat":            { "value": "1000.00", "currency": "USD" },  // сумма в фиате
+      "usdt":            { "value": "1000.00", "currency": "USDT" }, // тело в USDT
+      "merchant_charge": { "value": "1030.00", "currency": "USDT" }  // списание с магазина
     },
     "fees": {
-      "total": { "value": "38.69", "currency": "USDT" } // комиссия, USDT
+      "total": { "value": "30.00", "currency": "USDT" } // комиссия, USDT
     },
     "commission_percent": 3,         // ставка комиссии, %
     "rate": {
       "market": "bybit",             // источник курса
-      "value": "77.50",              // курс
-      "currency": "RUB",             // валюта курса
+      "value": "1.00",               // пример курса
+      "currency": "USD",             // валюта курса
       "fixed_at": "2026-01-04T12:00:00+00:00" // когда зафиксирован (ISO 8601)
     },
     "timestamps": {
@@ -271,14 +271,14 @@ const statementsOrdersResponse = `{
       "payin": {
         "initial_amount": "1000.00", // сумма при создании
         "amount": "1040.00",         // текущая сумма
-        "currency": "rub"
+        "currency": "usd"
       },
       "credit": {
-        "amount": "9.05",            // зачисление магазину
+        "amount": "936.00",          // зачисление магазину
         "currency": "usdt"
       },
       "rate": {
-        "value": "100.77",           // курс
+        "value": "1.00",             // пример курса
         "market": "bybit",           // источник курса
         "fixed_at": "2026-01-04T12:00:00+00:00" // ISO 8601
       },
@@ -295,10 +295,10 @@ const statementsPayoutsResponse = `{
     {
       "payout_id": "af8d6a20-...",
       "external_id": "payout-100500",
-      "payout": { "amount": "100000.00", "currency": "RUB" }, // сумма выплаты
-      "debit":  { "amount": "1328.23",   "currency": "USDT" }, // списание с магазина
+      "payout": { "amount": "1000.00", "currency": "USD" }, // сумма выплаты
+      "debit":  { "amount": "1030.00", "currency": "USDT" }, // списание с магазина
       "rate": {
-        "value": "77.50",
+        "value": "1.00",
         "market": "bybit",
         "fixed_at": "2026-01-04T12:00:00+00:00"
       },
@@ -317,7 +317,7 @@ const orderCurlExample = `curl -X POST https://api.example.com/api/h2h/order \\
     "merchant_id": "3db07a16-...",
     "external_id": "order-100500",
     "amount": 1000,
-    "currency": "rub"
+    "currency": "usd"
   }'`;
 
 const callbackOrderBody = `{
@@ -326,7 +326,7 @@ const callbackOrderBody = `{
   "status": "success",                // изменившийся статус
   "sub_status": "successfully_paid",
   "amount": "1040",
-  "currency": "rub"
+  "currency": "usd"
   // ... остальные поля — как в ответе создания сделки
 }`;
 

@@ -13,7 +13,7 @@ import CurrencyDisplay from '@/Components/Currency/CurrencyDisplay.vue';
 
 const filtersBasePath = '/admin/filters';
 const CURRENCY_COOKIE_NAME = 'selected_currency';
-const CURRENCY_FILTER_ORDER = ['uah', 'rub', 'kzt', 'usd', 'eur'];
+const CURRENCY_FILTER_ORDER = ['usd', 'uah', 'rub', 'kzt', 'eur'];
 
 const loading = ref(false);
 const loaded = ref(false);
@@ -50,9 +50,9 @@ const resolveInitialCurrency = () => {
     if (saved && currencies.some((c) => c.code === saved)) {
         return saved;
     }
-    const uah = currencies.find((c) => c.code === 'uah');
-    if (uah) {
-        return uah.code;
+    const usd = currencies.find((c) => c.code === 'usd');
+    if (usd) {
+        return usd.code;
     }
     return currencies.length > 0 ? currencies[0].code : null;
 };

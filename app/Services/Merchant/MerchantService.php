@@ -18,7 +18,7 @@ class MerchantService implements MerchantServiceContract
     {
         return Transaction::run(function () use ($data): Merchant {
             $defaultGeo = [
-                Currency::RUB()->getCode() => MarketEnum::BYBIT->value,
+                Currency::USD()->getCode() => MarketEnum::BYBIT->value,
             ];
 
             $merchant = Merchant::create([

@@ -6,10 +6,10 @@ import { evaluateContrast, contrastBadgeClass } from '../lib/theme-contrast.js';
 const store = useThemeGeneratorStore();
 
 const orders = [
-    { id: 'A-10241', amount: '15 000 ₽', status: 'В ожидании', badge: 'badge-warning' },
-    { id: 'A-10240', amount: '42 300 ₽', status: 'Оплачен', badge: 'badge-success' },
-    { id: 'A-10238', amount: '8 750 ₽', status: 'Спор', badge: 'badge-error' },
-    { id: 'A-10235', amount: '120 000 ₽', status: 'Завершён', badge: 'badge-info' },
+    { id: 'A-10241', amount: '150 USD', status: 'В ожидании', badge: 'badge-warning' },
+    { id: 'A-10240', amount: '423 USD', status: 'Оплачен', badge: 'badge-success' },
+    { id: 'A-10238', amount: '87.50 USD', status: 'Спор', badge: 'badge-error' },
+    { id: 'A-10235', amount: '1 200 USD', status: 'Завершён', badge: 'badge-info' },
 ];
 
 const contrastPairs = computed(() => evaluateContrast(store.draftTokens));
@@ -72,7 +72,7 @@ const contrastPairs = computed(() => evaluateContrast(store.draftTokens));
 
             <!-- Alerts -->
             <div class="space-y-2">
-                <div class="alert alert-info"><span>Курс обновлён: 1 USDT = 92.4 ₽</span></div>
+                <div class="alert alert-info"><span>Курс обновлён: 1 USDT = 1.00 USD</span></div>
                 <div class="alert alert-success"><span>Выплата успешно отправлена трейдеру.</span></div>
                 <div class="alert alert-warning"><span>Ожидание подтверждения оплаты.</span></div>
                 <div class="alert alert-error"><span>Спор по заявке A-10238 открыт.</span></div>

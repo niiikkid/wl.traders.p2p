@@ -22,7 +22,7 @@ const loading = ref(false);
 const loadError = ref('');
 const payload = ref(null);
 const selectedPeriod = ref('current_month');
-const selectedCurrency = ref('uah');
+const selectedCurrency = ref('usd');
 
 const periodOptions = computed(() => payload.value?.period_options ?? []);
 const currencyOptions = computed(() => payload.value?.currency_options ?? []);
@@ -89,7 +89,7 @@ const resetState = () => {
     loadError.value = '';
     payload.value = null;
     selectedPeriod.value = 'current_month';
-    selectedCurrency.value = 'uah';
+    selectedCurrency.value = 'usd';
 };
 
 watch(

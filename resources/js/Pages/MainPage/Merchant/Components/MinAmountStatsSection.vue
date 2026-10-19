@@ -55,7 +55,7 @@ watch(availableCurrencies, (currencies) => {
     }
 
     if (!currencies.some((currency) => currency.code === selectedCurrency.value)) {
-        selectedCurrency.value = currencies.find((currency) => currency.code === 'uah')?.code || currencies[0].code;
+        selectedCurrency.value = currencies.find((currency) => currency.code === 'usd')?.code || currencies[0].code;
     }
 }, { immediate: true });
 </script>

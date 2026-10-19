@@ -80,10 +80,12 @@ class SeedMerchantPayoutsJob implements ShouldQueue
     {
         $currencyCode = $currencies[array_rand($currencies)];
         $gateway = $this->pickGateway($currencyCode);
-        $methodType = random_int(0, 1) === 0 ? PayoutMethodType::SBP : PayoutMethodType::CARD;
+        $methodType = $currencyCode === 'rub' && random_int(0, 1) === 0
+            ? PayoutMethodType::SBP
+            : PayoutMethodType::CARD;
         $requisites = $methodType === PayoutMethodType::SBP
             ? DemoDataHelper::phoneForCurrency($currencyCode)
-            : DemoDataHelper::generateCard();
+            : DemoDataHelper::generateCard($currencyCode);
 
         $amount = DemoDataHelper::realisticFiatAmount($currencyCode);
 

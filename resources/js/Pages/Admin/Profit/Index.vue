@@ -25,7 +25,7 @@ const currencyOptions = computed(() => props.currencies.map((currency) => ({
 
 const form = ref({
     logic: props.defaults.logic ?? 'in_body',
-    amount_currency: props.defaults.amount_currency ?? 'rub',
+    amount_currency: props.defaults.amount_currency ?? 'usd',
     amount: props.defaults.amount ?? '',
     exchange_rate: props.defaults.exchange_rate ?? '',
     total_commission_rate: props.defaults.total_commission_rate ?? '',
@@ -172,7 +172,7 @@ const submit = async () => {
 const resetForm = () => {
     form.value = {
         logic: props.defaults.logic ?? 'in_body',
-        amount_currency: props.defaults.amount_currency ?? 'rub',
+        amount_currency: props.defaults.amount_currency ?? 'usd',
         amount: props.defaults.amount ?? '',
         exchange_rate: props.defaults.exchange_rate ?? '',
         total_commission_rate: props.defaults.total_commission_rate ?? '',
