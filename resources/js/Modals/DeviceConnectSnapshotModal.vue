@@ -16,6 +16,10 @@ const props = defineProps({
         type: String,
         default: '',
     },
+    snapshotRoute: {
+        type: String,
+        default: 'admin.devices.connect-snapshot.show',
+    },
 });
 
 const emit = defineEmits(['close']);
@@ -70,7 +74,7 @@ const fetchSnapshot = async () => {
 
     try {
         const response = await axios.get(
-            route('admin.devices.connect-snapshot.show', { device: props.deviceId }),
+            route(props.snapshotRoute, { device: props.deviceId }),
         );
         const data = response?.data?.data ?? {};
 

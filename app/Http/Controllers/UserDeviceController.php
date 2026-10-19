@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\UserDeviceResource;
+use App\Models\UserDevice;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,6 +30,18 @@ class UserDeviceController extends Controller
         $smsAutoCloseEnabled = (bool) Auth::user()->sms_auto_close_orders_enabled;
 
         return Inertia::render('UserDevice/Index', compact('devices', 'smsAutoCloseEnabled'));
+    }
+
+    public function connectSnapshot(UserDevice $device): JsonResponse
+    {
+        Gate::authorize('access-to-user-device-snapshot', $device);
+
+        return response()->success([
+            'device_id' => $device->id,
+            'has_snapshot' => filled($device->device_connect_snapshot),
+            'device_connect_snapshot' => $device->device_connect_snapshot,
+            'updated_at' => $device->updated_at?->toISOString(),
+        ]);
     }
 
     /**

@@ -51,6 +51,7 @@ use App\Models\SmsLog;
 use App\Models\TelegramBotSetting;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\UserDevice;
 use App\Models\Wallet;
 use App\Models\WalletDepositAddress;
 use App\Models\WalletDepositInvoice;
@@ -376,6 +377,9 @@ class AppServiceProvider extends ServiceProvider
         });
         Gate::define('access-to-self', function (User $user) {
             return $user->id === auth()->id() || $user->hasRole('Super Admin');
+        });
+        Gate::define('access-to-user-device-snapshot', function (User $user, UserDevice $device) {
+            return $user->id === $device->user_id;
         });
         Gate::define('access-to-wallet-deposit-invoice', function (User $user, WalletDepositInvoice $invoice) {
             return $user->id === $invoice->wallet?->user_id || $user->hasRole('Super Admin');

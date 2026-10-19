@@ -185,6 +185,8 @@ Route::group(['middleware' => ['2fa']], function () {
         Route::patch('/trader/devices/sms-processing-mode', [UserDeviceController::class, 'updateSmsProcessingMode'])
             ->name('trader.devices.sms-processing-mode.update');
         Route::get('/trader/devices/{device}/pings', [UserDevicePingController::class, 'index'])->name('trader.devices.pings');
+        Route::get('/trader/devices/{device}/connect-snapshot', [UserDeviceController::class, 'connectSnapshot'])
+            ->name('trader.devices.connect-snapshot.show');
 
         Route::post('/payment-details/{paymentDetail:uuid}/reset-limits', [PaymentDetailLimitResetController::class, 'store'])->name('payment-details.reset-limits');
         Route::post('/payment-details/{paymentDetail:uuid}/archive', [PaymentDetailArchiveController::class, 'store'])->name('payment-details.archive');

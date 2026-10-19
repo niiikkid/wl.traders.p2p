@@ -8,6 +8,7 @@ import MainTableSection from '@/Wrappers/MainTableSection.vue';
 import {ref} from "vue";
 import TraderAutomationNav from '@/Components/Trader/AutomationNav.vue';
 import DevicePingHistoryModal from '@/Modals/DevicePingHistoryModal.vue';
+import DeviceConnectSnapshotModal from '@/Modals/DeviceConnectSnapshotModal.vue';
 import UserDeviceCard from '@/Components/Device/UserDeviceCard.vue';
 import { useDevicesAutoRefresh } from '@/composables/useDevicesAutoRefresh.js';
 
@@ -72,6 +73,22 @@ const openPingModal = (device) => {
 const closePingModal = () => {
     pingModalOpen.value = false;
     pingModalDevice.value = null;
+};
+
+const snapshotModalOpen = ref(false);
+const snapshotDeviceId = ref(null);
+const snapshotDeviceName = ref('');
+
+const openSnapshotModal = (device) => {
+    snapshotDeviceId.value = device.id;
+    snapshotDeviceName.value = device.name ?? '';
+    snapshotModalOpen.value = true;
+};
+
+const closeSnapshotModal = () => {
+    snapshotModalOpen.value = false;
+    snapshotDeviceId.value = null;
+    snapshotDeviceName.value = '';
 };
 </script>
 
@@ -347,6 +364,7 @@ const closePingModal = () => {
                         :key="device.id"
                         :device="device"
                         @show-pings="openPingModal"
+                        @show-snapshot="openSnapshotModal"
                     />
                 </div>
             </template>
@@ -356,6 +374,13 @@ const closePingModal = () => {
             :open="pingModalOpen"
             :device="pingModalDevice"
             @close="closePingModal"
+        />
+        <DeviceConnectSnapshotModal
+            :open="snapshotModalOpen"
+            :device-id="snapshotDeviceId"
+            :device-name="snapshotDeviceName"
+            snapshot-route="trader.devices.connect-snapshot.show"
+            @close="closeSnapshotModal"
         />
     </div>
 </template>
