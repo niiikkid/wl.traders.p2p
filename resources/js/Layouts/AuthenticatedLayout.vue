@@ -495,7 +495,7 @@ onUnmounted(() => {
         <button
             v-if="canUseThemeGenerator && !themeGeneratorStore.isOpen"
             type="button"
-            class="btn btn-primary btn-circle fixed bottom-5 right-5 z-[9990] shadow-lg"
+            class="btn btn-primary btn-circle fixed bottom-5 right-5 z-40 shadow-lg"
             title="Генератор тем"
             aria-label="Генератор тем"
             @click="themeGeneratorStore.open()"
