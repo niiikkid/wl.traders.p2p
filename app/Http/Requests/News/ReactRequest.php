@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\News;
 
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -12,7 +13,12 @@ class ReactRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->hasAnyRole(['Trader', 'Team Leader', 'Super Admin']) ?? false;
+        return self::canReact($this->user());
+    }
+
+    public static function canReact(?User $user): bool
+    {
+        return $user?->hasAnyRole(['Trader', 'Team Leader', 'Super Admin']) ?? false;
     }
 
     /**

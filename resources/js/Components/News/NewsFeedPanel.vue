@@ -26,6 +26,14 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    canReact: {
+        type: Boolean,
+        default: false,
+    },
+    reactionErrors: {
+        type: Object,
+        default: () => ({}),
+    },
     canManage: {
         type: Boolean,
         default: false,
@@ -143,7 +151,9 @@ const deleteNews = (post) => {
                                     type="button"
                                     class="btn btn-xs join-item gap-1"
                                     :class="post.user_reaction === 'up' ? 'btn-success' : 'btn-ghost'"
-                                    :disabled="Boolean(reactionsProcessing[post.id])"
+                                    :disabled="!canReact || Boolean(reactionsProcessing[post.id])"
+                                    :aria-describedby="!canReact ? `news-reaction-restriction-${post.id}` : undefined"
+                                    aria-label="Нравится"
                                     @click.prevent="emit('react', post, 'up')"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -155,7 +165,9 @@ const deleteNews = (post) => {
                                     type="button"
                                     class="btn btn-xs join-item gap-1"
                                     :class="post.user_reaction === 'down' ? 'btn-error' : 'btn-ghost'"
-                                    :disabled="Boolean(reactionsProcessing[post.id])"
+                                    :disabled="!canReact || Boolean(reactionsProcessing[post.id])"
+                                    :aria-describedby="!canReact ? `news-reaction-restriction-${post.id}` : undefined"
+                                    aria-label="Не нравится"
                                     @click.prevent="emit('react', post, 'down')"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -165,6 +177,16 @@ const deleteNews = (post) => {
                                 </button>
                             </div>
                         </div>
+                        <p
+                            v-if="!canReact"
+                            :id="`news-reaction-restriction-${post.id}`"
+                            class="text-xs text-base-content/60"
+                        >
+                            Для вашей роли реакции на новости недоступны.
+                        </p>
+                        <p v-if="reactionErrors[post.id]" role="alert" class="text-xs text-error">
+                            {{ reactionErrors[post.id] }}
+                        </p>
                     </div>
                 </article>
 

@@ -46,6 +46,7 @@ class NewsController extends Controller
 
         return response()->success([
             'data' => NewsPostResource::collection($news->items())->resolve(),
+            'can_react' => ReactRequest::canReact($user),
             'meta' => [
                 'current_page' => $news->currentPage(),
                 'last_page' => $news->lastPage(),

@@ -10,7 +10,9 @@ export function useNewsFeed() {
     const meta = ref(null);
     const loading = ref(false);
     const loadingMore = ref(false);
+    const canReact = ref(false);
     const reactionsProcessing = reactive({});
+    const reactionErrors = reactive({});
     const newsElements = new Map();
     const visibilityTimers = new Map();
     const trackedPostIds = new Set();
@@ -147,6 +149,7 @@ export function useNewsFeed() {
             });
             const payload = response?.data?.data ?? {};
             const newPosts = payload.data ?? [];
+            canReact.value = payload.can_react === true;
 
             if (isFirstPage) {
                 posts.value = newPosts;
@@ -180,10 +183,11 @@ export function useNewsFeed() {
     };
 
     const reactToNews = (post, reaction) => {
-        if (!post?.id || reactionsProcessing[post.id]) {
+        if (!canReact.value || !post?.id || reactionsProcessing[post.id]) {
             return;
         }
 
+        delete reactionErrors[post.id];
         reactionsProcessing[post.id] = true;
 
         axios.post(route('news.reactions.store'), {
@@ -192,14 +196,23 @@ export function useNewsFeed() {
         }).then((response) => {
             const payload = response?.data?.post;
             if (!payload || Number(payload.id) !== Number(post.id)) {
+                reactionErrors[post.id] = 'Не удалось сохранить реакцию. Попробуйте ещё раз.';
                 return;
             }
 
             post.likes_count = Number(payload.likes_count ?? post.likes_count ?? 0);
             post.dislikes_count = Number(payload.dislikes_count ?? post.dislikes_count ?? 0);
             post.user_reaction = payload.user_reaction ?? reaction;
-        }).catch(() => {
-            // non-critical
+        }).catch((error) => {
+            const status = error.response?.status;
+            if (status === 403) {
+                reactionErrors[post.id] = 'У вас нет прав на реакции к новостям.';
+            } else if (status === 401 || status === 419) {
+                reactionErrors[post.id] = 'Сессия истекла. Обновите страницу и войдите снова.';
+            } else {
+                reactionErrors[post.id] = (status < 500 && error.response?.data?.message)
+                    || 'Не удалось сохранить реакцию. Попробуйте ещё раз.';
+            }
         }).finally(() => {
             reactionsProcessing[post.id] = false;
         });
@@ -247,7 +260,9 @@ export function useNewsFeed() {
         meta,
         loading,
         loadingMore,
+        canReact,
         reactionsProcessing,
+        reactionErrors,
         loadFeed,
         loadMore,
         markRead,

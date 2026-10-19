@@ -28,7 +28,9 @@ const {
     meta,
     loading,
     loadingMore,
+    canReact,
     reactionsProcessing,
+    reactionErrors,
     loadFeed,
     loadMore,
     markRead,
@@ -133,7 +135,9 @@ onBeforeUnmount(() => {
                 :meta="meta"
                 :loading="loading"
                 :loading-more="loadingMore"
+                :can-react="canReact"
                 :reactions-processing="reactionsProcessing"
+                :reaction-errors="reactionErrors"
                 :can-manage="canManage"
                 :observe-news-element="observeNewsElement"
                 @react="reactToNews"
