@@ -46,6 +46,7 @@ class WalletDepositAddressController extends Controller
         return Inertia::render('Admin/WalletDeposit/Index', [
             'addresses' => WalletDepositAddressResource::collection($addresses)->resolve(),
             'invoices' => WalletDepositInvoiceResource::collection($invoices),
+            'status' => $request->string('status')->toString(),
             'statuses' => array_map(
                 fn (WalletDepositInvoiceStatus $status): string => $status->value,
                 WalletDepositInvoiceStatus::cases(),

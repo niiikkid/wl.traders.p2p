@@ -11,6 +11,7 @@ import { walletDepositInvoiceStatusBadge } from '@/utils/walletDepositInvoiceSta
 const props = defineProps({
     addresses: { type: Array, default: () => [] },
     invoices: { type: Object, required: true },
+    status: { type: String, default: '' },
     statuses: { type: Array, default: () => [] },
     settings: { type: Object, required: true },
 });
@@ -247,7 +248,7 @@ const filterByStatus = (event) => {
             <div class="card-body">
                 <div class="flex items-center justify-between">
                     <h2 class="card-title text-base">Инвойсы</h2>
-                    <select class="select select-bordered select-sm" @change="filterByStatus">
+                    <select :value="status" class="select select-bordered select-sm" @change="filterByStatus">
                         <option value="">Все статусы</option>
                         <option v-for="s in statuses" :key="s" :value="s">{{ statusInfo(s).label }}</option>
                     </select>
