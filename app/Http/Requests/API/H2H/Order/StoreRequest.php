@@ -29,15 +29,21 @@ class StoreRequest extends FormRequest
      */
     public function rules(): array
     {
-        $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+        $merchantUuid = $this->input('merchant_id');
+        $merchant = is_string($merchantUuid) && $merchantUuid !== ''
+            ? queries()->merchant()->findByUUID($merchantUuid)
+            : null;
         $currency = null;
 
-        if (! empty($this->payment_gateway)) {
-            $paymentGateway = queries()->paymentGateway()->getByCode($this->payment_gateway);
+        $paymentGatewayCode = $this->input('payment_gateway');
+        $requestedCurrency = $this->input('currency');
 
-            $currency = $paymentGateway->currency->getCode();
-        } else if (! empty($this->currency)) {
-            $currency = $this->currency;
+        if (is_string($paymentGatewayCode) && $paymentGatewayCode !== '') {
+            $paymentGateway = queries()->paymentGateway()->getByCode($paymentGatewayCode);
+
+            $currency = $paymentGateway?->currency?->getCode();
+        } elseif (is_string($requestedCurrency) && $requestedCurrency !== '') {
+            $currency = $requestedCurrency;
         }
 
         $minOrderAmounts = is_array($merchant?->min_order_amounts) ? $merchant->min_order_amounts : [];
@@ -51,7 +57,9 @@ class StoreRequest extends FormRequest
 
         return [
             'external_id' => [
+                'bail',
                 'required',
+                'string',
                 function ($attribute, $value, $fail) use ($merchant) {
                     if (! $merchant instanceof Merchant) {
                         return;
@@ -81,23 +89,16 @@ class StoreRequest extends FormRequest
                         return;
                     }
 
-                    // Проверяем пендинг заказы в кэше
-                    $pendingKey = "pending_order_external_id_{$value}_merchant_{$merchant->id}";
-                    if (Cache::has($pendingKey)) {
-                        $fail('Заказ с таким external_id уже в процессе создания для данного мерчанта.');
-                        return;
-                    }
-
-                    // Помечаем, что заказ в процессе создания (час - достаточно для обработки очереди)
-                    Cache::put($pendingKey, true, 60 * 60);
                 },
                 'max:255',
             ],
             'amount' => ['required', 'integer', "min:$minAmount"],
             'callback_url' => $callbackValidationRules,
             'payment_gateway' => [
+                'bail',
                 'required_without:currency',
                 'prohibits:currency',
+                'string',
                 Rule::prohibitedIf(fn () => $this->boolean('manual_control_acquiring')),
                 function ($attribute, $value, $fail) {
                     $cacheKey = "payment_gateway_exists_{$value}";
@@ -105,6 +106,7 @@ class StoreRequest extends FormRequest
                     $exists = Cache::remember($cacheKey, 3600, function () use ($value) {
                         return DB::table('payment_gateways')
                             ->where('code', $value)
+                            ->where('is_active', true)
                             ->exists();
                     });
 
@@ -162,7 +164,9 @@ class StoreRequest extends FormRequest
                 'max:255',
             ],
             'merchant_id' => [
+                'bail',
                 'required',
+                'string',
                 function ($attribute, $value, $fail) {
                     $cacheKey = "merchant_exists_{$value}";
 
@@ -185,7 +189,10 @@ class StoreRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator) {
-            $merchant = queries()->merchant()->findByUUID($this->merchant_id);
+            $merchantUuid = $this->input('merchant_id');
+            $merchant = is_string($merchantUuid) && $merchantUuid !== ''
+                ? queries()->merchant()->findByUUID($merchantUuid)
+                : null;
             if (! $merchant instanceof Merchant) {
                 return;
             }

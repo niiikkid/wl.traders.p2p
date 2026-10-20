@@ -202,6 +202,10 @@ class DockerRuntime:
                 raise RuntimeError('Папка конфигурации/копий не должна быть символической ссылкой')
             path.mkdir(exist_ok=True, mode=0o700)
         state_path = self.target / 'config/state.json'
+        app_env_path = self.target / 'config/app.env'
+        previous_env = {}
+        if app_env_path.exists():
+            previous_env = dict(line.split('=', 1) for line in app_env_path.read_text(encoding='utf-8').splitlines() if '=' in line)
         if state_path.exists():
             self.state = json.loads(state_path.read_text(encoding='utf-8'))
             for key in ('app_key', 'db_password', 'db_root_password', 'admin_password', 'db_name', 'db_user'):
@@ -209,6 +213,10 @@ class DockerRuntime:
                     raise RuntimeError('Неполная сохранённая конфигурация; восстановите config/state.json из резервной копии. Новые секреты не созданы.')
             if any(self.settings[key] != self.state[key] for key in ('db_name', 'db_user')):
                 raise RuntimeError('Нельзя менять имя существующей базы или пользователя при повторной установке')
+            for key, env_name in (('api_deposit_token', 'API_DEPOSIT_TOKEN'), ('api_withdraw_token', 'API_WITHDRAW_TOKEN')):
+                if not self.state.get(key):
+                    self.state[key] = previous_env.get(env_name) or secrets.token_urlsafe(32)
+            atomic_write(state_path, json.dumps(self.state, ensure_ascii=False))
             self.log('Повторная установка: ключ приложения, пароли и база сохранены; пароль администратора не меняется.')
         else:
             if (self.target / '.env').exists():
@@ -216,9 +224,10 @@ class DockerRuntime:
             self.state = dict(app_key='base64:' + base64.b64encode(secrets.token_bytes(32)).decode(),
                               db_password=self.settings['db_password'] or secrets.token_urlsafe(32),
                               db_root_password=secrets.token_urlsafe(32), admin_password=self.settings['admin_password'],
-                              db_name=self.settings['db_name'], db_user=self.settings['db_user'])
+                              db_name=self.settings['db_name'], db_user=self.settings['db_user'],
+                              api_deposit_token=secrets.token_urlsafe(32), api_withdraw_token=secrets.token_urlsafe(32))
             atomic_write(state_path, json.dumps(self.state, ensure_ascii=False))
-        self.secret_values.update(str(value) for key, value in self.state.items() if 'password' in key or 'key' in key)
+        self.secret_values.update(str(value) for key, value in self.state.items() if 'password' in key or 'key' in key or 'token' in key)
         if copy_source:
             self.copy_source()
         # Compose env_file raw preserves dollar signs, quotes, spaces and backslashes verbatim.
@@ -230,11 +239,8 @@ class DockerRuntime:
                    SESSION_DRIVER='redis', SESSION_LIFETIME=s['session_lifetime'], SESSION_SECURE_COOKIE=str(s['https_mode'] == 'cloudflare').lower(),
                    QUEUE_CONNECTION='redis', CACHE_STORE='redis', REDIS_CLIENT='phpredis', REDIS_HOST='redis', REDIS_PORT='6379',
                    MAIL_MAILER='log', MAIL_FROM_ADDRESS='no-reply@example.invalid', MAIL_FROM_NAME=s['app_name'],
-                   TELEGRAM_REDIRECT_URI=s['app_url'] + '/auth/telegram/callback', TELESCOPE_ENABLED='false', NIGHTWATCH_ENABLED='false')
-        previous_env = {}
-        app_env_path = self.target / 'config/app.env'
-        if app_env_path.exists():
-            previous_env = dict(line.split('=', 1) for line in app_env_path.read_text(encoding='utf-8').splitlines() if '=' in line)
+                   TELEGRAM_REDIRECT_URI=s['app_url'] + '/auth/telegram/callback', TELESCOPE_ENABLED='false', NIGHTWATCH_ENABLED='false',
+                   API_DEPOSIT_TOKEN=self.state['api_deposit_token'], API_WITHDRAW_TOKEN=self.state['api_withdraw_token'])
         for field in ('telegram_bot_name', 'telegram_bot_token', 'telegram_webhook_token', 'trongrid_api_key', 'ipgeolocation_api_key'):
             env[field.upper()] = s[field] or previous_env.get(field.upper(), '')
         # Keep manually configured optional integrations while updating installer-managed values.

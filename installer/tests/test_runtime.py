@@ -48,6 +48,32 @@ class RuntimeTest(unittest.TestCase):
         self.assertNotIn('different-db-password', env)
         self.assertEqual(0o600, (self.path / 'config' / 'state.json').stat().st_mode & 0o777)
 
+    def test_prepare_generates_and_preserves_webhook_api_tokens(self):
+        obj = self.make_runtime()
+        obj.prepare(copy_source=False)
+        first_state = json.loads((self.path / 'config' / 'state.json').read_text())
+        first_env = dict(
+            line.split('=', 1)
+            for line in (self.path / 'config' / 'app.env').read_text().splitlines()
+            if '=' in line
+        )
+
+        for name in ('API_DEPOSIT_TOKEN', 'API_WITHDRAW_TOKEN'):
+            self.assertGreaterEqual(len(first_env[name]), 32)
+            self.assertEqual(first_state[name.lower()], first_env[name])
+
+        self.make_runtime().prepare(copy_source=False)
+        second_state = json.loads((self.path / 'config' / 'state.json').read_text())
+        second_env = dict(
+            line.split('=', 1)
+            for line in (self.path / 'config' / 'app.env').read_text().splitlines()
+            if '=' in line
+        )
+
+        self.assertEqual(first_state, second_state)
+        self.assertEqual(first_env['API_DEPOSIT_TOKEN'], second_env['API_DEPOSIT_TOKEN'])
+        self.assertEqual(first_env['API_WITHDRAW_TOKEN'], second_env['API_WITHDRAW_TOKEN'])
+
     def test_os_lock_rejects_concurrent_install(self):
         obj = self.make_runtime()
         with obj.lock():

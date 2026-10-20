@@ -15,13 +15,17 @@ class DepositController extends Controller
     public function webhook(Request $request)
     {
         $request->validate([
-            'email' => ['required', 'string', 'email', 'exists:users,email'],
+            'email' => ['required', 'string', 'max:255', 'exists:users,email'],
             'amount' => ['required', 'numeric', 'min:1'],
             'transaction_id' => ['required', 'string'],
             'tx_hash' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = User::query()->with('wallet')->where('email', $request->email)->first();
+
+        if (! $user?->wallet) {
+            return response()->failWithMessage('Кошелёк пользователя не найден.', 422);
+        }
 
         try {
             services()->invoice()->deposit(
