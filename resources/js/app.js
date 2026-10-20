@@ -15,7 +15,8 @@ const pinia = createPinia()
 // chosen theme survives full page reloads (drawer persists it in localStorage).
 bootstrapPersistedTheme();
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const page = JSON.parse(document.getElementById('app').dataset.page);
+const appName = page.props.app.name;
 
 const resolveZiggyConfig = () => {
     const config = { ...Ziggy };
@@ -40,7 +41,8 @@ router.on('invalid', (event) => {
 });
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    page,
+    title: (title) => title ? `${title} - ${appName}` : appName,
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
         const myApp =  createApp({ render: () => h(App, props) })
